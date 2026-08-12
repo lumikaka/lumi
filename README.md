@@ -373,8 +373,4 @@ updater 密钥通过 `cargo tauri signer generate` 离线生成，公钥保存�
 
 接入 updater 之前安装的 v0.1.4 及更早版本没有内置 updater 公钥，必须手动安装首个支持自动更新的稳定版；从下一个 patch 版本开始才能验证完整的自动升级链路。当前 macOS 发布没有 Apple notarization，Windows 发布没有 Authenticode 签名，因此 ad-hoc 签名的 macOS 构建仍可能被 Gatekeeper 阻止，Windows unsigned 构建仍可能被 SmartScreen 提示。当前阶段不包含 macOS Intel、Universal Binary、DMG、Mac App Store、Windows ARM64、MSI 或 portable ZIP。
 
-### PRD Skill
-
-仓库通过 `docs/skills/manage-prd` 提供 `$manage-prd`。它按 domain、domain data model 与可复制 feature 管理 `docs/prds`，并遵守 SQLite、REST、UUIDv7 和统一 JSON 信封约定。
-
 </details>
