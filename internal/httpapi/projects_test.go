@@ -1,0 +1,315 @@
+package httpapi
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"lumi/internal/appstore"
+	"lumi/internal/config"
+	"lumi/internal/project"
+
+	"github.com/labstack/echo/v4"
+)
+
+func projectAPIHarness(t *testing.T) (*echo.Echo, *project.Manager) {
+	t.Helper()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	store, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager := project.NewManager(store)
+	t.Cleanup(func() {
+		_ = manager.Close()
+		_ = store.Close()
+	})
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler
+	projects := NewProjectHandler(manager)
+	story := NewStoryHandler(manager)
+	defaults := NewProjectDefaultsHandler()
+	open := NewOpenProjectHandler(manager)
+	recent := NewRecentProjectHandler(manager)
+	e.POST("/api/v1/projects", projects.Create)
+	e.GET("/api/v1/projects/:project_uuid", story.ShowProject)
+	e.GET("/api/v1/project-defaults", defaults.Show)
+	e.GET("/api/v1/open-projects", open.Index)
+	e.POST("/api/v1/open-projects", open.Create)
+	e.PUT("/api/v1/open-projects/:project_uuid", open.Update)
+	e.DELETE("/api/v1/open-projects/:project_uuid", open.Delete)
+	e.GET("/api/v1/recent-projects", recent.Index)
+	e.PATCH("/api/v1/recent-projects/:project_uuid", recent.Update)
+	e.DELETE("/api/v1/recent-projects/:project_uuid", recent.Delete)
+	return e, manager
+}
+
+func TestOpenProjectsAreIndependentAndClosedProjectsReturnProjectNotOpen(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	firstResponse := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "API First", "parent_path": t.TempDir()})
+	secondResponse := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "API Second", "parent_path": t.TempDir()})
+	if firstResponse.Code != http.StatusCreated || secondResponse.Code != http.StatusCreated {
+		t.Fatalf("create statuses = %d/%d, bodies = %s / %s", firstResponse.Code, secondResponse.Code, firstResponse.Body.String(), secondResponse.Body.String())
+	}
+	firstUUID := envelopeData(t, firstResponse)["uuid"].(string)
+	secondUUID := envelopeData(t, secondResponse)["uuid"].(string)
+	openResponse := requestJSON(t, e, http.MethodGet, "/api/v1/open-projects", nil)
+	if openResponse.Code != http.StatusOK || !strings.Contains(openResponse.Body.String(), firstUUID) || !strings.Contains(openResponse.Body.String(), secondUUID) {
+		t.Fatalf("open projects = %d %s", openResponse.Code, openResponse.Body.String())
+	}
+	for _, projectUUID := range []string{firstUUID, secondUUID} {
+		response := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+projectUUID, nil)
+		if response.Code != http.StatusOK {
+			t.Fatalf("project %s status = %d body = %s", projectUUID, response.Code, response.Body.String())
+		}
+	}
+	if response := requestJSON(t, e, http.MethodDelete, "/api/v1/open-projects/"+firstUUID, nil); response.Code != http.StatusOK {
+		t.Fatalf("close first = %d %s", response.Code, response.Body.String())
+	}
+	closedProject := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+firstUUID, nil)
+	if closedProject.Code != http.StatusConflict || !strings.Contains(closedProject.Body.String(), `"code":"project_not_open"`) {
+		t.Fatalf("closed project = %d %s", closedProject.Code, closedProject.Body.String())
+	}
+	remainingProject := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+secondUUID, nil)
+	if remainingProject.Code != http.StatusOK {
+		t.Fatalf("remaining project = %d %s", remainingProject.Code, remainingProject.Body.String())
+	}
+	unknownProject := requestJSON(t, e, http.MethodGet, "/api/v1/projects/01989abc-def0-7000-8000-000000000099", nil)
+	if unknownProject.Code != http.StatusNotFound || !strings.Contains(unknownProject.Body.String(), `"code":"project_not_found"`) {
+		t.Fatalf("unknown project = %d %s", unknownProject.Code, unknownProject.Body.String())
+	}
+}
+
+func TestProjectDefaultsHandlerReturnsResolvedParentAndErrors(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "Documents", "Lumi")
+	handler := NewProjectDefaultsHandler()
+	handler.resolveParentPath = func() (string, error) { return parent, nil }
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler
+	e.GET("/api/v1/project-defaults", handler.Show)
+
+	response := requestJSON(t, e, http.MethodGet, "/api/v1/project-defaults", nil)
+	if response.Code != http.StatusOK {
+		t.Fatalf("defaults status = %d, body = %s", response.Code, response.Body.String())
+	}
+	data := envelopeData(t, response)
+	if data["parent_path"] != parent || strings.Contains(response.Body.String(), `"id"`) {
+		t.Fatalf("defaults body = %s", response.Body.String())
+	}
+
+	handler.resolveParentPath = func() (string, error) {
+		return "", &project.Error{
+			Code: project.CodeDefaultProjectParentUnavailable, Message: "无法确定默认项目目录",
+			Details: "请检查系统 Documents 目录是否可用。", Err: errors.New("known folder unavailable"),
+		}
+	}
+	failed := requestJSON(t, e, http.MethodGet, "/api/v1/project-defaults", nil)
+	if failed.Code != http.StatusInternalServerError || !strings.Contains(failed.Body.String(), `"code":"default_project_parent_unavailable"`) || !strings.Contains(failed.Body.String(), `"data":null`) {
+		t.Fatalf("failed defaults status = %d, body = %s", failed.Code, failed.Body.String())
+	}
+}
+
+func TestProjectHandlersCreateOpenMissingAndRelocate(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	parent := t.TempDir()
+	createResponse := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "API Book", "parent_path": parent})
+	if createResponse.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+	created := envelopeData(t, createResponse)
+	projectUUID := created["uuid"].(string)
+	rootPath := created["root_path"].(string)
+	if strings.Contains(createResponse.Body.String(), `"id"`) {
+		t.Fatalf("create response leaked internal id: %s", createResponse.Body.String())
+	}
+
+	closed := requestJSON(t, e, http.MethodDelete, "/api/v1/open-projects/"+projectUUID, nil)
+	if closed.Code != http.StatusOK {
+		t.Fatalf("close status = %d, body = %s", closed.Code, closed.Body.String())
+	}
+	movedRoot := filepath.Join(t.TempDir(), "moved")
+	if err := os.Rename(rootPath, movedRoot); err != nil {
+		t.Fatal(err)
+	}
+	list := requestJSON(t, e, http.MethodGet, "/api/v1/recent-projects", nil)
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"status":"recent"`) || !strings.Contains(list.Body.String(), `"available":true`) || strings.Contains(list.Body.String(), project.CodeProjectNotFound) {
+		t.Fatalf("missing list status = %d, body = %s", list.Code, list.Body.String())
+	}
+	openMissing := requestJSON(t, e, http.MethodPut, "/api/v1/open-projects/"+projectUUID, nil)
+	if openMissing.Code != http.StatusNotFound || !strings.Contains(openMissing.Body.String(), project.CodeProjectNotFound) {
+		t.Fatalf("open missing status = %d, body = %s", openMissing.Code, openMissing.Body.String())
+	}
+
+	relocated := requestJSON(t, e, http.MethodPatch, "/api/v1/recent-projects/"+projectUUID, map[string]any{"root_path": movedRoot})
+	if relocated.Code != http.StatusOK || !strings.Contains(relocated.Body.String(), projectUUID) {
+		t.Fatalf("relocate status = %d, body = %s", relocated.Code, relocated.Body.String())
+	}
+	forgotten := requestJSON(t, e, http.MethodDelete, "/api/v1/recent-projects/"+projectUUID, nil)
+	if forgotten.Code != http.StatusOK {
+		t.Fatalf("forget status = %d, body = %s", forgotten.Code, forgotten.Body.String())
+	}
+	if _, err := os.Stat(movedRoot); err != nil {
+		t.Fatalf("forget deleted project directory: %v", err)
+	}
+}
+
+func TestProjectCreateNormalizesPictureBookProfileAndRejectsIrrelevantFields(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	parent := t.TempDir()
+	created := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{
+		"name":        "Interactive Book",
+		"parent_path": parent,
+		"picture_book": map[string]any{
+			"format":           "interactive_picture_book",
+			"interaction_mode": "guess",
+		},
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	data := envelopeData(t, created)
+	pictureBook := data["picture_book"].(map[string]any)
+	ratio := pictureBook["aspect_ratio"].(map[string]any)
+	if pictureBook["format"] != "interactive_picture_book" || pictureBook["interaction_mode"] != "guess" || pictureBook["large_image_minimal_text"] != nil || pictureBook["comic_layout"] != nil || ratio["mode"] != "landscape" || ratio["width"] != float64(4) || ratio["height"] != float64(3) {
+		t.Fatalf("normalized picture_book=%+v", pictureBook)
+	}
+	open := requestJSON(t, e, http.MethodGet, "/api/v1/open-projects", nil)
+	if open.Code != http.StatusOK || !strings.Contains(open.Body.String(), `"status":"open"`) || !strings.Contains(open.Body.String(), `"open":true`) || strings.Contains(open.Body.String(), `"id"`) {
+		t.Fatalf("open projects=%d %s", open.Code, open.Body.String())
+	}
+
+	invalidParent := t.TempDir()
+	invalid := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{
+		"name":        "Invalid Book",
+		"parent_path": invalidParent,
+		"picture_book": map[string]any{
+			"format":           "wordless_picture_book",
+			"interaction_mode": "find_it",
+		},
+	})
+	if invalid.Code != http.StatusUnprocessableEntity || !strings.Contains(invalid.Body.String(), `"code":"invalid_picture_book_profile"`) {
+		t.Fatalf("invalid status=%d body=%s", invalid.Code, invalid.Body.String())
+	}
+	entries, err := os.ReadDir(invalidParent)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("invalid create wrote project directory: entries=%v err=%v", entries, err)
+	}
+}
+
+func TestProjectHandlersReturnErrorEnvelope(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/open-projects", strings.NewReader(`{"unknown":true}`))
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	e.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("invalid request status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	var envelope Envelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Success || envelope.Data != nil || envelope.Error == nil || envelope.Error.Code != "invalid_json" {
+		t.Fatalf("error envelope = %+v", envelope)
+	}
+
+	notFound := requestJSON(t, e, http.MethodPut, "/api/v1/open-projects/01989abc-def0-7000-8000-000000000001", nil)
+	if notFound.Code != http.StatusNotFound || !strings.Contains(notFound.Body.String(), `"data":null`) {
+		t.Fatalf("not found status = %d, body = %s", notFound.Code, notFound.Body.String())
+	}
+	invalidUUID := requestJSON(t, e, http.MethodPut, "/api/v1/open-projects/42", nil)
+	if invalidUUID.Code != http.StatusUnprocessableEntity || !strings.Contains(invalidUUID.Body.String(), `"code":"invalid_uuid"`) {
+		t.Fatalf("invalid UUID status = %d, body = %s", invalidUUID.Code, invalidUUID.Body.String())
+	}
+}
+
+func TestProjectHandlerReturnsOriginalNameAndSuffixedRootPath(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	parent := t.TempDir()
+	canonicalParent, err := filepath.EvalSymlinks(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing := filepath.Join(parent, "API-Book")
+	if err := os.Mkdir(existing, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(existing, "sentinel"), []byte("existing"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	response := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "API Book", "parent_path": parent})
+	if response.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body = %s", response.Code, response.Body.String())
+	}
+	created := envelopeData(t, response)
+	if created["name"] != "API Book" || created["root_path"] != filepath.Join(canonicalParent, "API-Book-2") {
+		t.Fatalf("created = %+v", created)
+	}
+	content, err := os.ReadFile(filepath.Join(existing, "sentinel"))
+	if err != nil || string(content) != "existing" {
+		t.Fatalf("existing candidate content=%q error=%v", content, err)
+	}
+}
+
+func TestProjectHandlerReturnsConflictWhenDirectoryNamesAreExhausted(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	parent := t.TempDir()
+	for number := 1; number <= 1000; number++ {
+		name := "Exhausted"
+		if number > 1 {
+			name += fmt.Sprintf("-%d", number)
+		}
+		if err := os.Mkdir(filepath.Join(parent, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	response := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "Exhausted", "parent_path": parent})
+	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), `"data":null`) || !strings.Contains(response.Body.String(), `"code":"project_directory_name_exhausted"`) {
+		t.Fatalf("exhausted status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func requestJSON(t *testing.T, handler http.Handler, method, path string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	var requestBody *bytes.Reader
+	if body == nil {
+		requestBody = bytes.NewReader(nil)
+	} else {
+		content, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		requestBody = bytes.NewReader(content)
+	}
+	request := httptest.NewRequest(method, path, requestBody)
+	if body != nil {
+		request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	}
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	return recorder
+}
+
+func envelopeData(t *testing.T, recorder *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var envelope struct {
+		Success bool           `json:"success"`
+		Data    map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if !envelope.Success {
+		t.Fatalf("response = %s", recorder.Body.String())
+	}
+	return envelope.Data
+}

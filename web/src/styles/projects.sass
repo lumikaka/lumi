@@ -1,0 +1,568 @@
+@use './design-tokens' as *
+
+.project-index-content
+  width: min(100%, $layout-width)
+  margin: 0 auto
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 320px
+  align-items: start
+  gap: 18px
+
+.project-index-main,
+.project-index-side
+  min-width: 0
+  display: grid
+  gap: 18px
+
+.project-index-side
+  position: sticky
+  top: 18px
+
+.project-index-toolbar
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 14px
+
+  h2
+    margin: 0
+    font-size: 22px
+    line-height: 1.2
+
+.project-index-toolbar__controls
+  min-width: min(100%, 560px)
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  flex-wrap: wrap
+  gap: 8px
+
+.project-index-search,
+.project-index-sort
+  min-height: 38px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface
+
+  input,
+  select
+    min-height: 0
+    padding: 0
+    border: 0
+    border-radius: 0
+    box-shadow: none
+    background: transparent
+
+.project-index-search
+  flex: 1 1 220px
+
+  input
+    width: 100%
+
+.project-index-sort
+  flex: 0 0 auto
+
+  select
+    min-width: 110px
+
+.project-index-table
+  display: grid
+  overflow: visible
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 10px 26px rgba($color-text, .05)
+
+.project-index-row
+  position: relative
+  min-width: 0
+  min-height: 66px
+  padding: 12px 14px
+  display: grid
+  grid-template-columns: minmax(170px, 1.15fr) minmax(112px, .55fr) minmax(130px, .62fr) minmax(180px, 1fr) 44px
+  align-items: center
+  gap: 12px
+  border-bottom: 1px solid $color-border-subtle
+
+  &:last-child
+    border-bottom: 0
+
+.project-index-row--head
+  min-height: 42px
+  color: $color-muted
+  background: $color-surface-subtle
+  font-size: $font-size-small
+  font-weight: 800
+  text-transform: uppercase
+
+.project-index-row--item:hover,
+.project-index-row--item:focus-within,
+.project-index-row--item.is-menu-open
+  background: $color-surface-subtle
+
+.project-index-row--item.is-activatable
+  cursor: pointer
+
+  &:focus-visible
+    outline: 2px solid $color-accent
+    outline-offset: -2px
+
+.project-index-name
+  min-width: 0
+  display: grid
+  gap: 3px
+
+  strong,
+  small
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  strong
+    font-size: 14px
+
+  small
+    color: $color-muted
+    font-size: $font-size-small
+
+.project-index-status
+  width: fit-content
+  padding: 3px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-small
+  font-weight: 800
+
+.project-index-status--open,
+.project-index-status--available,
+.project-index-status--recent
+  color: $color-success
+  background: $color-success-muted
+
+.project-index-status--project_locked
+  color: $color-warning
+  background: $color-warning-muted
+
+.project-index-status--project_not_found,
+.project-index-status--project_permission_denied,
+.project-index-status--project_identity_mismatch,
+.project-index-status--project_format_too_new,
+.project-index-status--project_migration_failed,
+.project-index-status--invalid_project
+  color: $color-danger
+  background: $color-danger-muted
+
+.project-index-date,
+.project-index-path
+  min-width: 0
+  overflow: hidden
+  color: $color-muted
+  font-size: 12px
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.project-index-more
+  position: relative
+  justify-self: end
+
+.project-index-more-button
+  width: 32px
+  height: 32px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface
+
+.project-index-menu
+  position: absolute
+  z-index: 12
+  top: calc(100% + 5px)
+  right: 0
+  width: 180px
+  padding: 5px
+  display: grid
+  gap: 2px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 14px 36px rgba($color-text, .16)
+
+  button
+    min-height: 34px
+    padding: 0 9px
+    justify-content: flex-start
+    border: 0
+    color: $color-text
+    background: transparent
+    font-size: 12px
+
+    &:hover,
+    &:focus-visible
+      color: $color-accent
+      background: $color-surface-subtle
+
+  button.danger-text:hover,
+  button.danger-text:focus-visible
+    color: $color-danger
+    background: $color-danger-muted
+
+.project-index-count
+  margin: 0
+  color: $color-muted
+  font-size: 12px
+  text-align: right
+
+.project-index-current
+  display: grid
+  gap: 12px
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    font-size: 17px
+
+  p,
+  code
+    color: $color-muted
+    font-size: 12px
+    overflow-wrap: anywhere
+
+.project-index-current__badge
+  width: fit-content
+  padding: 3px 7px
+  border-radius: 999px
+  color: $color-success
+  background: $color-success-muted
+  font-size: $font-size-small
+  font-weight: 800
+
+.project-index-current__actions
+  display: flex
+  flex-wrap: wrap
+  gap: 8px
+
+.project-index-local-note
+  display: grid
+  gap: 8px
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    font-size: 16px
+
+  p
+    color: $color-muted
+    font-size: 12px
+    line-height: 1.6
+
+.project-index-alert
+  grid-column: 1 / -1
+
+.project-create-tabs
+  display: flex
+  gap: 4px
+  padding: 3px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  button
+    flex: 1
+    min-height: 34px
+    border: 1px solid transparent
+    color: $color-muted
+    background: transparent
+
+  button:hover,
+  button:focus-visible,
+  button[aria-pressed="true"]
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface
+
+  button[aria-pressed="true"]:hover
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+.project-dialog-form
+  display: grid
+  gap: 13px
+
+  label
+    display: grid
+    gap: 6px
+    font-size: 12px
+    font-weight: 700
+
+.lumi-dialog.project-create-dialog
+  width: min(820px, calc(100vw - 32px))
+
+.picture-book-fields
+  display: grid
+  gap: 12px
+
+.picture-book-fields__heading
+  display: grid
+  gap: 3px
+
+  h3,
+  p
+    margin: 0
+
+  h3
+    font-size: 14px
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+.picture-book-format-cards
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 8px
+
+  button
+    min-width: 0
+    min-height: 78px
+    padding: 10px
+    display: grid
+    grid-template-columns: 22px minmax(0, 1fr)
+    align-content: start
+    gap: 10px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface
+    text-align: left
+
+    > svg
+      margin-top: 1px
+      color: $color-muted
+
+  .picture-book-format-card__copy
+    min-width: 0
+    display: grid
+    gap: 5px
+
+    strong
+      font-size: 13px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 500
+      line-height: 1.45
+
+  button:hover,
+  button:focus-visible
+    border-color: $color-accent
+    color: $color-text
+    background: $color-surface-subtle
+
+    > svg
+      color: $color-accent
+
+  button[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+    box-shadow: inset 0 0 0 1px rgba($color-accent, .15)
+
+    > svg
+      color: $color-accent
+
+    .picture-book-format-card__copy > span
+      color: $color-text
+
+  button[aria-pressed="true"]:hover,
+  button[aria-pressed="true"]:focus-visible
+    border-color: $color-accent
+    color: $color-accent
+    background: rgba($color-accent, .15)
+
+.picture-book-options
+  min-width: 0
+  margin: 0
+  padding: 10px
+  display: grid
+  gap: 9px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+  legend
+    padding: 0 4px
+    font-size: 12px
+    font-weight: 800
+
+.picture-book-choice-row
+  display: flex
+  flex-wrap: wrap
+  gap: 6px
+
+  button
+    min-height: 32px
+    padding: 0 10px
+    border: 1px solid $color-border
+    color: $color-muted
+    background: $color-surface
+    font-size: $font-size-small
+
+  button:hover,
+  button:focus-visible
+    border-color: $color-accent
+    color: $color-text
+    background: $color-surface-subtle
+
+  button[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+  button[aria-pressed="true"]:hover,
+  button[aria-pressed="true"]:focus-visible
+    border-color: $color-accent
+    color: $color-accent
+    background: rgba($color-accent, .15)
+
+.picture-book-custom-ratio
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)
+  align-items: end
+  gap: 8px
+
+  > span
+    padding-bottom: 10px
+    font-weight: 900
+
+  p
+    grid-column: 1 / -1
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+
+  p[role="alert"]
+    color: $color-danger
+
+.picture-book-check
+  padding: 10px
+  grid-template-columns: auto minmax(0, 1fr) !important
+  align-items: start
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+  input
+    margin-top: 2px
+
+  span
+    display: grid
+    gap: 3px
+
+  small
+    color: $color-muted
+    font-weight: 500
+    line-height: 1.45
+
+.picture-book-select
+  padding: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+.project-dialog-field
+  display: grid
+  gap: 6px
+
+  > label
+    font-size: 12px
+    font-weight: 700
+
+.project-path-picker
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  gap: 8px
+
+  input
+    min-width: 0
+
+  button
+    white-space: nowrap
+
+.project-dialog-hint
+  margin: 0
+  color: $color-muted
+  font-size: 12px
+
+@media (max-width: 1080px)
+  .project-index-content
+    grid-template-columns: 1fr
+
+  .project-index-side
+    position: static
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@media (max-width: 780px)
+  .project-index-toolbar
+    align-items: flex-start
+    flex-direction: column
+
+  .project-index-toolbar__controls
+    width: 100%
+    justify-content: stretch
+
+  .project-path-picker
+    grid-template-columns: 1fr
+
+  .picture-book-format-cards
+    grid-template-columns: 1fr
+
+  .project-index-row
+    grid-template-columns: minmax(0, 1fr) auto
+    gap: 8px 12px
+
+  .project-index-row--head
+    display: none
+
+  .project-index-status,
+  .project-index-more
+    justify-self: end
+
+  .project-index-date,
+  .project-index-path
+    grid-column: 1
+
+  .project-index-more
+    grid-column: 2
+    grid-row: 2 / span 2
+
+  .project-index-side
+    grid-template-columns: 1fr
+
+@media (max-width: 560px)
+  .project-index-toolbar__controls
+    display: grid
+    grid-template-columns: 1fr auto
+
+  .project-index-search
+    grid-column: 1 / -1

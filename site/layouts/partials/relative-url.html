@@ -1,0 +1,26 @@
+{{- $page := .Page -}}
+{{- $url := printf "%v" .URL -}}
+{{- if or (hasPrefix $url "http://") (hasPrefix $url "https://") (hasPrefix $url "//") (hasPrefix $url "mailto:") (hasPrefix $url "tel:") (hasPrefix $url "data:") (hasPrefix $url "#") -}}
+  {{- $url -}}
+{{- else -}}
+  {{- $basePath := (urls.Parse $page.Site.BaseURL).Path | default "/" -}}
+  {{- $baseRelative := strings.TrimPrefix "/" $basePath -}}
+  {{- $target := strings.TrimPrefix "./" $url -}}
+  {{- $target = strings.TrimPrefix "/" $target -}}
+  {{- $target = strings.TrimPrefix $baseRelative $target -}}
+
+  {{- $current := strings.TrimPrefix "./" $page.RelPermalink -}}
+  {{- $current = strings.TrimPrefix "/" $current -}}
+  {{- $current = strings.TrimPrefix $baseRelative $current -}}
+  {{- $currentDirectory := path.Dir $current -}}
+  {{- $depth := 0 -}}
+  {{- if ne $currentDirectory "." -}}
+    {{- $depth = len (strings.Split $currentDirectory "/") -}}
+  {{- end -}}
+
+  {{- $prefix := "./" -}}
+  {{- if gt $depth 0 -}}
+    {{- $prefix = strings.Repeat $depth "../" -}}
+  {{- end -}}
+  {{- printf "%s%s" $prefix $target -}}
+{{- end -}}

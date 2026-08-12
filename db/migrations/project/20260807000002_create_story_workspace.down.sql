@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS project_prompt_versions_append_only;
+DROP TABLE IF EXISTS project_prompt_versions;
+DROP TRIGGER IF EXISTS project_story_profiles_content_append_only;
+DROP TABLE IF EXISTS project_story_profiles;
+DROP TRIGGER IF EXISTS chapter_stories_append_only;
+DROP TABLE IF EXISTS chapter_stories;
+DROP TABLE IF EXISTS story_source_items;
+DROP TABLE IF EXISTS story_sources;
+DROP TABLE IF EXISTS chapters;
+ALTER TABLE projects DROP COLUMN revision;
+ALTER TABLE projects DROP COLUMN description;

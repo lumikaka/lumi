@@ -1,0 +1,23 @@
+<header class="site-header" data-site-header>
+  <div class="site-header__inner">
+    <a class="brand" href="{{ partial "relative-url.html" (dict "Page" . "URL" .Site.Home.RelPermalink) }}" aria-label="Lumi">
+      {{ partial "brand-mark.html" . }}
+      <span>Lumi</span>
+    </a>
+    <nav class="site-nav" id="site-navigation" aria-label="{{ i18n "primary_navigation" }}" data-site-nav>
+      <a href="{{ partial "relative-url.html" (dict "Page" . "URL" (printf "%s#features" .Site.Home.RelPermalink)) }}">{{ i18n "nav_features" }}</a>
+      <a href="{{ partial "relative-url.html" (dict "Page" . "URL" (printf "%s#process" .Site.Home.RelPermalink)) }}">{{ i18n "nav_process" }}</a>
+      {{ $docsURL := "docs/" | relLangURL }}
+      <a{{ if eq .Section "docs" }} aria-current="page"{{ end }} href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ i18n "nav_docs" }}</a>
+      <a href="{{ .Site.Params.repositoryURL }}">GitHub</a>
+      <span class="site-nav__language">{{ partial "language-link.html" . }}</span>
+    </nav>
+    <div class="site-header__actions">
+      {{ partial "language-switch.html" . }}
+      <a class="button button--dark header-download" href="{{ .Site.Params.releasesURL }}">{{ i18n "download_lumi" }}</a>
+      <button class="menu-toggle" type="button" aria-controls="site-navigation" aria-expanded="false" aria-label="{{ i18n "open_menu" }}" data-menu-toggle>
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>

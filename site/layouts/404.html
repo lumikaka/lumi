@@ -1,0 +1,12 @@
+{{ define "main" }}
+{{ $docsURL := "docs/" | relLangURL }}
+<main class="error-page" id="main-content">
+  <p class="eyebrow">404</p>
+  <h1>{{ i18n "not_found_title" }}</h1>
+  <p>{{ i18n "not_found_body" }}</p>
+  <div class="button-row">
+    <a class="button button--dark" href="{{ partial "relative-url.html" (dict "Page" . "URL" .Site.Home.RelPermalink) }}">{{ i18n "back_home" }}</a>
+    <a class="button button--light" href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ i18n "nav_docs" }}</a>
+  </div>
+</main>
+{{ end }}

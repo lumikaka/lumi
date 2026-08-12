@@ -1,0 +1,78 @@
+baseURL: https://hxgdzyuyi.github.io/lumi/
+title: Lumi
+timeZone: Asia/Shanghai
+enableRobotsTXT: true
+relativeURLs: true
+canonifyURLs: false
+disableKinds:
+  - taxonomy
+  - term
+  - RSS
+
+defaultContentLanguage: zh-cn
+defaultContentLanguageInSubdir: false
+
+languages:
+  zh-cn:
+    label: 简体中文
+    locale: zh-CN
+    title: Lumi
+    weight: 1
+    hasCJKLanguage: true
+    params:
+      description: Lumi 是专为绘本创作设计的本地优先 AI 工具。
+  en:
+    label: English
+    locale: en-US
+    title: Lumi
+    weight: 2
+    params:
+      description: Lumi is a local-first AI workspace built for picture-book creation.
+
+params:
+  repositoryURL: https://github.com/lumikaka/lumi
+  releasesURL: https://github.com/lumikaka/lumi/releases
+  sourceReference: https://www.readfrog.app/
+
+permalinks:
+  page:
+    docs: /docs/:slug/
+
+outputs:
+  home:
+    - HTML
+    - Search
+
+mediaTypes:
+  application/json:
+    suffixes:
+      - json
+
+outputFormats:
+  Search:
+    mediaType: application/json
+    baseName: search
+    isPlainText: true
+    notAlternative: true
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: false
+  tableOfContents:
+    startLevel: 2
+    endLevel: 3
+    ordered: false
+  highlight:
+    noClasses: false
+
+minify:
+  minifyOutput: true
+
+sitemap:
+  changeFreq: weekly
+  priority: 0.5
+
+caches:
+  images:
+    dir: :cacheDir/images

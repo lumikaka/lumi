@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS workflow_events;
+DROP TABLE IF EXISTS workflow_steps;
+DROP TABLE IF EXISTS workflows;
+DROP TABLE IF EXISTS agent_model_calls;
+DROP TABLE IF EXISTS agent_context_summaries;
+DROP TABLE IF EXISTS agent_tool_executions;
+DROP TABLE IF EXISTS chat_user_input_requests;
+DROP TABLE IF EXISTS chat_events;
+DROP TABLE IF EXISTS chat_items;
+DROP TABLE IF EXISTS chat_runs;
+DROP TABLE IF EXISTS chat_follow_ups;
+DROP TABLE IF EXISTS chat_turns;
+DROP TABLE IF EXISTS chat_threads;

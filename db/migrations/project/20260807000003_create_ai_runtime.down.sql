@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS story_generation_results;
+DROP TABLE IF EXISTS llm_logs;
+DROP TRIGGER IF EXISTS agent_events_append_only_delete;
+DROP TRIGGER IF EXISTS agent_events_append_only_update;
+DROP TABLE IF EXISTS agent_events;
+DROP TABLE IF EXISTS agent_runs;
+DROP TABLE IF EXISTS agent_threads;
+DROP TRIGGER IF EXISTS task_events_append_only_delete;
+DROP TRIGGER IF EXISTS task_events_append_only_update;
+DROP TABLE IF EXISTS task_events;
+DROP TABLE IF EXISTS task_runs;

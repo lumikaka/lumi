@@ -1,0 +1,127 @@
+{{ define "main" }}
+{{ $home := index hugo.Data.home .Site.Language.Lang }}
+{{ $docsURL := "docs/" | relLangURL }}
+<main id="main-content">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__ambient hero__ambient--one" aria-hidden="true"></div>
+    <div class="hero__ambient hero__ambient--two" aria-hidden="true"></div>
+    <div class="hero__copy">
+      <p class="eyebrow">{{ $home.hero.eyebrow }}</p>
+      <h1 id="hero-title">{{ $home.hero.title }}</h1>
+      <p class="hero__description">{{ $home.hero.description }}</p>
+      <div class="button-row button-row--centered">
+        <a class="button button--dark button--large" href="{{ .Site.Params.releasesURL }}">{{ $home.hero.primary }}</a>
+        <a class="button button--light button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ $home.hero.secondary }}</a>
+      </div>
+      <p class="hero__note">{{ $home.hero.note }}</p>
+    </div>
+    <div class="hero__visual">
+      <span class="floating-note floating-note--story">{{ index $home.hero.floating 0 }}</span>
+      <span class="floating-note floating-note--character">{{ index $home.hero.floating 1 }}</span>
+      <span class="floating-note floating-note--edit">{{ index $home.hero.floating 2 }}</span>
+      <span class="floating-note floating-note--local">{{ index $home.hero.floating 3 }}</span>
+      {{ partial "product-demo.html" (dict "Page" . "Kind" "hero") }}
+    </div>
+  </section>
+
+  <section class="process section-shell" id="process" aria-labelledby="process-title">
+    <div class="section-heading section-heading--centered">
+      <p class="eyebrow">{{ $home.process.eyebrow }}</p>
+      <h2 id="process-title">{{ $home.process.title }}</h2>
+      <p>{{ $home.process.description }}</p>
+    </div>
+    <ol class="process-grid">
+      {{ range $index, $step := $home.process.steps }}
+        <li>
+          <span class="process-grid__number">{{ printf "%02d" (add $index 1) }}</span>
+          <h3>{{ $step.title }}</h3>
+          <p>{{ $step.body }}</p>
+        </li>
+      {{ end }}
+    </ol>
+  </section>
+
+  <section class="feature-section section-shell" id="features" aria-labelledby="features-title">
+    <div class="section-heading section-heading--centered">
+      <p class="eyebrow">{{ $home.features_eyebrow }}</p>
+      <h2 id="features-title">{{ $home.features_title }}</h2>
+    </div>
+    <div class="feature-list">
+      {{ range $index, $feature := $home.features }}
+        <article class="feature-row{{ if modBool $index 2 }} feature-row--reverse{{ end }}">
+          <div class="feature-row__copy">
+            <p class="eyebrow">{{ $feature.eyebrow }}</p>
+            <h3>{{ $feature.title }}</h3>
+            <p>{{ $feature.body }}</p>
+            <ul class="check-list">
+              {{ range $feature.bullets }}<li>{{ . }}</li>{{ end }}
+            </ul>
+          </div>
+          <div class="feature-row__visual">
+            {{ partial "product-demo.html" (dict "Page" $ "Kind" $feature.demo) }}
+          </div>
+        </article>
+      {{ end }}
+    </div>
+  </section>
+
+  <section class="modes section-shell" aria-labelledby="modes-title">
+    <div class="section-heading">
+      <p class="eyebrow">{{ $home.modes.eyebrow }}</p>
+      <h2 id="modes-title">{{ $home.modes.title }}</h2>
+      <p>{{ $home.modes.description }}</p>
+    </div>
+    <div class="mode-grid">
+      {{ range $home.modes.items }}
+        <article>
+          <span class="mode-grid__badge">{{ .badge }}</span>
+          <h3>{{ .title }}</h3>
+          <p>{{ .body }}</p>
+          <strong>{{ .best_for }}</strong>
+        </article>
+      {{ end }}
+    </div>
+  </section>
+
+  <section class="trust section-shell" aria-labelledby="trust-title">
+    <div class="trust__copy">
+      <p class="eyebrow">{{ $home.trust.eyebrow }}</p>
+      <h2 id="trust-title">{{ $home.trust.title }}</h2>
+      <p>{{ $home.trust.body }}</p>
+      <ul class="check-list check-list--light">
+        {{ range $home.trust.bullets }}<li>{{ . }}</li>{{ end }}
+      </ul>
+    </div>
+    <div class="trust__visual">
+      {{ partial "product-demo.html" (dict "Page" . "Kind" "local") }}
+    </div>
+  </section>
+
+  <section class="faq section-shell" aria-labelledby="faq-title">
+    <div class="section-heading section-heading--centered">
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-title">{{ $home.faq_title }}</h2>
+    </div>
+    <div class="faq-list">
+      {{ range $home.faq }}
+        <details>
+          <summary>{{ .question }}<span aria-hidden="true">+</span></summary>
+          <p>{{ .answer }}</p>
+        </details>
+      {{ end }}
+    </div>
+  </section>
+
+  <section class="closing-cta section-shell" aria-labelledby="closing-title">
+    <div>
+      <p class="eyebrow">Lumi</p>
+      <h2 id="closing-title">{{ $home.closing.title }}</h2>
+      <p>{{ $home.closing.body }}</p>
+    </div>
+    <div class="button-row">
+      <a class="button button--dark button--large" href="{{ .Site.Params.releasesURL }}">{{ $home.hero.primary }}</a>
+      <a class="button button--light button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ $home.hero.secondary }}</a>
+    </div>
+  </section>
+</main>
+{{ end }}

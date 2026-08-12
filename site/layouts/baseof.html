@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="{{ .Site.Language.Locale | default .Site.Language.Lang }}" data-page-kind="{{ .Kind }}">
+  <head>
+    {{ partial "head.html" . }}
+  </head>
+  <body class="page page--{{ .Type | default .Kind }}">
+    <a class="skip-link" href="#main-content">{{ i18n "skip_to_content" }}</a>
+    {{ block "site-header" . }}{{ partial "site-header.html" . }}{{ end }}
+    {{ block "main" . }}{{ end }}
+    {{ block "site-footer" . }}{{ partial "site-footer.html" . }}{{ end }}
+    {{ partial "search-dialog.html" . }}
+  </body>
+</html>

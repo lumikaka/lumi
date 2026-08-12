@@ -1,0 +1,602 @@
+@use './design-tokens' as *
+
+.settings-layout,
+.content-page,
+.not-found
+  width: min(100%, 980px)
+  margin: 0 auto
+  display: grid
+  gap: 18px
+
+.health-card
+  display: flex
+  flex-direction: column
+  justify-content: space-between
+
+.health-card__status
+  display: flex
+  align-items: center
+  gap: 12px
+
+  p
+    margin: 0 0 5px
+    color: $color-muted
+    font-size: 12px
+
+  strong
+    font-size: 17px
+
+.health-card__dot
+  width: 12px
+  height: 12px
+  border-radius: 50%
+  background: #d7a64b
+  box-shadow: 0 0 0 5px rgba(#d7a64b, .13)
+
+.health-card--online .health-card__dot
+  background: $color-success
+  box-shadow: 0 0 0 5px rgba($color-success, .14)
+
+.health-card--offline .health-card__dot
+  background: $color-danger
+  box-shadow: 0 0 0 5px rgba($color-danger, .14)
+
+.health-card__details
+  padding-top: 20px
+  display: grid
+  grid-template-columns: 1fr auto
+  gap: 6px 20px
+  border-top: 1px solid rgba($color-text, .08)
+  font-size: 12px
+
+  span
+    color: $color-muted
+
+  b
+    font-weight: 650
+
+.health-card__retry
+  align-self: flex-start
+  padding: 8px 12px
+  border: 0
+  border-radius: 999px
+  color: $color-surface
+  background: $color-danger
+  font-size: 13px
+  font-weight: 650
+
+  &:hover,
+  &:focus-visible
+    color: $color-surface
+    background: #8f1b13
+
+.health-card--compact
+  max-width: 520px
+  margin-top: 40px
+  padding: 20px 22px
+  border: 1px solid rgba($color-text, .11)
+  border-radius: 18px
+  background: rgba($color-surface, .7)
+
+.provider-settings
+  width: min(100%, 860px)
+  margin: 0 auto
+  display: grid
+  gap: 18px
+
+.provider-heading
+  padding: 18px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  h1
+    margin: 0
+    font-family: $font-family-base
+    font-size: 24px
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+
+  p
+    max-width: 760px
+    margin: 6px 0 0
+    color: $color-muted
+    font-size: 13px
+    line-height: 1.55
+
+  > span
+    flex: 0 0 auto
+    padding: 5px 9px
+    border-radius: 999px
+    color: $color-success
+    background: $color-success-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+.provider-heading > .provider-heading__inactive
+  color: $color-muted
+  background: $color-surface-muted
+
+.provider-list-section
+  padding: 18px
+  display: grid
+  gap: 14px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+.provider-list-heading
+  h2,
+  p
+    margin: 0
+
+  h2
+    font-family: $font-family-base
+    font-size: 17px
+    font-weight: 800
+
+  p
+    margin-top: 4px
+    color: $color-muted
+    font-size: 13px
+
+.provider-list
+  display: grid
+  gap: 10px
+
+.provider-list-item
+  width: 100%
+  min-height: 104px
+  padding: 16px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 20px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  color: $color-text
+  text-align: left
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-accent, .48)
+    color: $color-text
+    background: $color-accent-muted
+    box-shadow: 0 0 0 3px rgba($color-accent, .07)
+
+.provider-list-item--active
+  border-color: rgba($color-success, .34)
+  background: $color-success-muted
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-success, .58)
+    color: $color-text
+    background: #e4f7e9
+    box-shadow: 0 0 0 3px rgba($color-success, .07)
+
+.provider-list-item__content
+  min-width: 0
+  display: grid
+  gap: 4px
+
+.provider-list-item__title
+  display: flex
+  align-items: center
+  flex-wrap: wrap
+  gap: 8px
+
+  strong
+    font-size: 16px
+    font-weight: 800
+
+.provider-recommended
+  padding: 2px 6px
+  border-radius: 999px
+  color: $color-accent
+  background: $color-accent-muted
+  font-size: $font-size-micro
+  font-weight: 800
+
+.provider-list-item__description,
+.provider-list-item__requirements
+  font-size: 12px
+
+.provider-list-item__description
+  color: $color-muted
+
+.provider-list-item__requirements
+  color: rgba($color-text, .52)
+
+.provider-list-item__aside
+  flex: 0 0 auto
+  display: flex
+  align-items: center
+  gap: 10px
+  color: $color-muted
+
+.provider-status
+  padding: 4px 8px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-small
+  font-weight: 750
+
+.provider-status--ready
+  color: $color-success
+  background: $color-success-muted
+
+.provider-status--warning
+  color: $color-warning
+  background: $color-warning-muted
+
+.provider-dialog
+  width: min(580px, calc(100vw - 32px))
+
+.provider-dialog__body
+  max-height: min(64vh, 620px)
+  overflow-y: auto
+
+.provider-config-grid
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 12px
+
+  label
+    display: grid
+    gap: 5px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  > p,
+  > .provider-actions
+    grid-column: 1 / -1
+
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: 12px
+
+.provider-api-key-field
+  grid-column: 1 / -1
+
+.provider-field-hint
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 500
+
+.provider-field-hint--danger
+  color: $color-danger
+
+.provider-dialog__actions
+  position: sticky
+  bottom: 0
+
+.provider-dialog__reset
+  margin-right: auto
+
+.content-page
+  padding: 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  h1
+    margin: 0
+    font-family: $font-family-base
+    font-size: 28px
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+
+.content-page__intro
+  margin: -8px 0 0
+  color: $color-muted
+  font-size: 14px
+
+.principle-list
+  display: grid
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  gap: 12px
+
+  article
+    padding: 14px
+    display: grid
+    grid-template-columns: auto minmax(0, 1fr)
+    gap: 10px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  b
+    color: $color-action
+    font-size: $font-size-small
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    font-family: $font-family-base
+    font-size: 15px
+
+  p
+    margin-top: 4px
+    color: $color-muted
+    font-size: 12px
+
+.not-found
+  place-items: center
+  align-content: center
+  min-height: calc(100vh - 122px)
+  padding: 32px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  text-align: center
+
+  > span
+    color: $color-action
+    font-size: 12px
+    font-weight: 900
+
+  h1,
+  p
+    margin: 0
+
+  h1
+    font-family: $font-family-base
+    font-size: 28px
+
+  p
+    color: $color-muted
+
+@media (max-width: 780px)
+  .principle-list
+    grid-template-columns: 1fr
+
+  .provider-heading
+    align-items: flex-start
+    flex-direction: column
+
+@media (max-width: 560px)
+  .provider-list-item
+    align-items: flex-start
+    flex-direction: column
+    gap: 12px
+
+  .provider-list-item__aside
+    width: 100%
+    justify-content: space-between
+
+  .provider-config-grid
+    grid-template-columns: 1fr
+
+  .provider-config-grid > p,
+  .provider-config-grid > .provider-actions
+    grid-column: 1
+
+  .provider-api-key-field
+    grid-column: 1
+
+  .provider-dialog__actions
+    > button
+      flex: 1 1 auto
+
+  .provider-dialog__reset
+    flex-basis: 100% !important
+    margin-right: 0
+
+.local-account-page
+  width: min(100%, 1080px)
+  margin: 0 auto
+  display: grid
+  gap: 18px
+
+.local-account-heading
+  padding: 18px
+  display: flex
+  align-items: flex-start
+  gap: 13px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  h1,
+  p
+    margin: 0
+
+  h1
+    color: $color-text
+    font-size: 24px
+    line-height: 1.25
+
+  p:not(.eyebrow)
+    margin-top: 5px
+    color: $color-muted
+    font-size: 13px
+
+.local-account-heading__icon
+  flex: 0 0 auto
+  width: 40px
+  height: 40px
+  display: grid
+  place-items: center
+  border-radius: 50%
+  color: $color-accent
+  background: $color-accent-muted
+
+.local-account-layout
+  min-width: 0
+  display: grid
+  grid-template-columns: 200px minmax(0, 1fr)
+  align-items: start
+  gap: 18px
+
+.local-account-nav
+  padding: 7px
+  display: grid
+  gap: 4px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  a
+    min-height: 40px
+    padding: 0 10px
+    display: flex
+    align-items: center
+    gap: 9px
+    border-radius: $radius-sm
+    color: $color-text
+    font-size: 13px
+    font-weight: 750
+
+    svg
+      color: $color-muted
+
+    &:hover,
+    &:focus-visible,
+    &.active
+      color: $color-accent
+      background: $color-accent-muted
+
+      svg
+        color: $color-accent
+
+  a.active:hover
+    box-shadow: inset 0 0 0 1px rgba($color-accent, .24)
+
+.local-account-panel
+  min-width: 0
+  padding: 20px
+  display: grid
+  gap: 20px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > header
+    display: flex
+    align-items: flex-start
+    gap: 11px
+
+    > svg
+      flex: 0 0 auto
+      margin-top: 2px
+      color: $color-accent
+
+    h2,
+    p
+      margin: 0
+
+    h2
+      color: $color-text
+      font-size: 18px
+
+    p
+      margin-top: 4px
+      color: $color-muted
+      font-size: 12px
+      line-height: 1.55
+
+.local-account-language-form
+  max-width: 420px
+  display: grid
+  gap: 12px
+
+  label
+    display: grid
+    gap: 6px
+    color: $color-muted
+    font-size: 12px
+    font-weight: 750
+
+  button
+    justify-self: start
+
+.local-account-success
+  margin: 0
+  color: $color-success
+  font-size: 12px
+  font-weight: 750
+
+.local-account-logs
+  min-width: 0
+  display: grid
+  gap: 12px
+
+.local-account-current-project
+  margin: 0
+  padding: 9px 12px
+  display: flex
+  align-items: center
+  gap: 8px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface
+  font-size: $font-size-small
+
+  strong
+    min-width: 0
+    overflow: hidden
+    color: $color-text
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.local-account-logs .project-overview--standalone
+  width: 100%
+
+.local-account-empty
+  min-height: 260px
+  padding: 28px
+  display: grid
+  place-items: center
+  align-content: center
+  gap: 9px
+  border: 1px dashed $color-border
+  border-radius: $radius-md
+  color: $color-muted
+  background: $color-surface
+  text-align: center
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    color: $color-text
+    font-size: 18px
+
+  p
+    font-size: 13px
+
+  .button-link
+    margin-top: 4px
+
+@media (max-width: 720px)
+  .local-account-layout
+    grid-template-columns: 1fr
+
+  .local-account-nav
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  .local-account-nav a
+    justify-content: center
+
+@media (max-width: 480px)
+  .local-account-heading
+    padding: 15px
+
+  .local-account-panel
+    padding: 16px

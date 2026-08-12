@@ -1,0 +1,168 @@
+- id: skip_to_content
+  translation: Skip to content
+- id: primary_navigation
+  translation: Primary navigation
+- id: footer_navigation
+  translation: Footer navigation
+- id: nav_features
+  translation: Features
+- id: nav_process
+  translation: Workflow
+- id: nav_docs
+  translation: Guides
+- id: download_lumi
+  translation: Download Lumi
+- id: releases
+  translation: Downloads & releases
+- id: open_menu
+  translation: Open menu
+- id: switch_language
+  translation: 切换到简体中文
+- id: footer_tagline
+  translation: A local-first AI workspace made for picture books.
+- id: footer_local_first
+  translation: Keep your story, artwork, and project under your control.
+- id: search_docs
+  translation: Search guides
+- id: close_search
+  translation: Close search
+- id: search_placeholder
+  translation: Search installation, storyboards, export…
+- id: search_start
+  translation: Type a keyword to search the Lumi guides.
+- id: search_loading
+  translation: Loading the guide index…
+- id: search_no_results
+  translation: No matching guide. Try another keyword.
+- id: search_failed
+  translation: The guide index could not be loaded. Browse the navigation instead.
+- id: search_result_count
+  translation: Found %d results
+- id: search_result_label
+  translation: results found
+- id: docs_navigation
+  translation: Guide navigation
+- id: close_docs_navigation
+  translation: Close guide navigation
+- id: docs_group_start
+  translation: Get started
+- id: docs_group_create
+  translation: Make your first picture book
+- id: docs_group_manage
+  translation: Projects & troubleshooting
+- id: docs_overview
+  translation: Guide overview
+- id: read_tutorial
+  translation: Read guide
+- id: on_this_page
+  translation: On this page
+- id: breadcrumbs
+  translation: Breadcrumbs
+- id: tutorial_pagination
+  translation: Guide pagination
+- id: previous
+  translation: Previous
+- id: next
+  translation: Next
+- id: not_found_title
+  translation: There is no story on this page yet
+- id: not_found_body
+  translation: The link may have changed. Return to Lumi or continue from the guide index.
+- id: back_home
+  translation: Back home
+- id: demo_local
+  translation: Local project
+- id: demo_project
+  translation: Moonlight Mail
+- id: demo_saved
+  translation: Saved on this device
+- id: demo_preview
+  translation: Preview book
+- id: demo_story
+  translation: Story & chapters
+- id: demo_chapter_one
+  translation: Chapter 1 · Departure
+- id: demo_chapter_two
+  translation: Chapter 2 · Starlight Station
+- id: demo_new_chapter
+  translation: New chapter
+- id: demo_story_title
+  translation: Moonlight Mail
+- id: demo_story_line_one
+  translation: Milo lifts the silver mailbag and follows the road made of moonlight.
+- id: demo_story_line_two
+  translation: Tonight, one very late letter must reach the top of the mountain.
+- id: demo_premise
+  translation: Premise
+- id: demo_premise_items
+  translation: Characters, places & props
+- id: demo_add_item
+  translation: Add premise item
+- id: demo_character
+  translation: Milo
+- id: demo_character_note
+  translation: Character · orange scarf
+- id: demo_scene
+  translation: Starlight Station
+- id: demo_scene_note
+  translation: Place · deep blue night
+- id: demo_prop
+  translation: Silver mailbag
+- id: demo_prop_note
+  translation: Prop · crescent clasp
+- id: demo_comic
+  translation: Comic
+- id: demo_storyboard
+  translation: Editable storyboard
+- id: demo_frame_1
+  translation: Follow the moonlight
+- id: demo_frame_2
+  translation: Cross the pines
+- id: demo_frame_3
+  translation: Reach the station
+- id: demo_ready
+  translation: Current image ready
+- id: demo_project_folder
+  translation: Self-contained project folder
+- id: demo_versions
+  translation: Restorable versions
+- id: demo_current_version
+  translation: Current version
+- id: demo_previous_version
+  translation: Revised scene two
+- id: demo_first_draft
+  translation: First generation
+- id: demo_just_now
+  translation: Saved just now
+- id: demo_earlier
+  translation: 18 minutes ago
+- id: demo_yesterday
+  translation: Yesterday
+- id: demo_overview
+  translation: Project overview
+- id: demo_in_progress
+  translation: In progress
+- id: demo_chapters
+  translation: Chapters
+- id: demo_frames
+  translation: Book frames
+- id: demo_next_step
+  translation: Next step
+- id: demo_continue_storyboard
+  translation: Continue the first storyboard
+- id: demo_continue_body
+  translation: Story, references, and images live in one project.
+- id: demo_enter_workspace
+  translation: Open workspace
+- id: demo_hero_alt
+  translation: Lumi project overview for the Moonlight Mail picture book
+- id: demo_story_alt
+  translation: Lumi story and chapter editing interface
+- id: demo_premise_alt
+  translation: Lumi character, place, and prop reference interface
+- id: demo_storyboard_alt
+  translation: Lumi storyboard and image-candidate interface
+- id: demo_preview_alt
+  translation: Lumi continuous chapter preview showing current picture-book frames in reading order
+- id: demo_local_alt
+  translation: Lumi local project folder and restorable version interface

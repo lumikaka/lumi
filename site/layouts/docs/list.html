@@ -1,0 +1,26 @@
+{{ define "main" }}
+{{ $current := . }}
+<main class="docs-layout" id="main-content">
+  {{ partial "docs-sidebar.html" . }}
+  <article class="docs-article docs-article--index">
+    {{ partial "docs-mobile-tools.html" . }}
+    <header class="docs-article__header">
+      <p class="eyebrow">Lumi Docs</p>
+      <h1>{{ .Title }}</h1>
+      {{ with .Description }}<p>{{ . }}</p>{{ end }}
+    </header>
+    <div class="prose">{{ .Content }}</div>
+    <div class="docs-card-grid">
+      {{ range (where .Site.RegularPages "Section" "docs").ByWeight }}
+        <a class="docs-card" href="{{ partial "relative-url.html" (dict "Page" $current "URL" .RelPermalink) }}">
+          <span>{{ i18n (printf "docs_group_%s" (.Params.docs_group | default "start")) }}</span>
+          <h2>{{ .Title }}</h2>
+          <p>{{ .Description }}</p>
+          <strong>{{ i18n "read_tutorial" }} →</strong>
+        </a>
+      {{ end }}
+    </div>
+  </article>
+  <aside class="docs-toc docs-toc--empty" aria-hidden="true"></aside>
+</main>
+{{ end }}

@@ -1,0 +1,46 @@
+@use './design-tokens' as *
+
+.desktop-session-block
+  min-height: 100vh
+  padding: 24px
+  display: grid
+  place-items: center
+  color: $color-text
+  background: $color-surface-muted
+  font-family: $font-family-base
+
+  section
+    width: min(480px, 100%)
+    padding: 30px
+    display: grid
+    gap: 10px
+    border: 1px solid $color-border
+    border-radius: $radius-lg
+    background: $color-surface
+    box-shadow: 0 20px 54px rgba($color-text, .12)
+
+  span,
+  small
+    color: $color-muted
+    font-size: $font-size-small
+
+  span
+    font-weight: 800
+    letter-spacing: .08em
+    text-transform: uppercase
+
+  h1,
+  p,
+  strong
+    margin: 0
+
+  h1
+    font-size: 24px
+    line-height: 1.25
+
+  p
+    color: $color-muted
+
+  strong
+    margin-top: 6px
+
