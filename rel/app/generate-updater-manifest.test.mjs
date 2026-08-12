@@ -5,7 +5,7 @@ import { generateUpdaterManifest } from "./generate-updater-manifest.mjs";
 
 const input = {
   version: "1.2.3",
-  repository: "hxgdzyuyi/lumi",
+  repository: "lumikaka/lumi",
   pubDate: "2026-08-12T03:00:00Z",
   macosSignature: "mac-signature\n",
   windowsSignature: "windows-signature\n",
