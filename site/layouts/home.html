@@ -41,6 +41,26 @@
     </ol>
   </section>
 
+  <section class="formats section-shell" id="picture-book-formats" aria-labelledby="picture-book-formats-title">
+    <div class="section-heading section-heading--centered">
+      <p class="eyebrow">{{ $home.formats.eyebrow }}</p>
+      <h2 id="picture-book-formats-title">{{ $home.formats.title }}</h2>
+      <p>{{ $home.formats.description }}</p>
+    </div>
+    <ul class="format-grid">
+      {{ range $home.formats.items }}
+        <li class="format-card format-card--{{ .key }}">
+          {{ partial "picture-book-format-visual.html" .key }}
+          <div class="format-card__copy">
+            <h3>{{ .title }}</h3>
+            <p>{{ .body }}</p>
+          </div>
+          <span class="format-card__detail">{{ .detail }}</span>
+        </li>
+      {{ end }}
+    </ul>
+  </section>
+
   <section class="feature-section section-shell" id="features" aria-labelledby="features-title">
     <div class="section-heading section-heading--centered">
       <p class="eyebrow">{{ $home.features_eyebrow }}</p>

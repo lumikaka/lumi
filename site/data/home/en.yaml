@@ -29,6 +29,32 @@ process:
     - title: Preview and export
       body: Read the chapter as a sequence, then export one chapter or the whole project.
 
+formats:
+  eyebrow: Five picture-book formats
+  title: One story can take five different forms
+  description: Choose the narrative form that fits your project. Lumi then applies the matching page structure, canvas rules, and generation prompts.
+  items:
+    - key: classic
+      title: Classic picture book
+      body: Pair one dominant illustration with a small amount of story text so words and images carry the narrative together.
+      detail: Multiple canvas ratios · optional minimal text
+    - key: wordless
+      title: Wordless picture book
+      body: Let actions, expressions, and scene changes carry the whole story, with every page speaking through images.
+      detail: Continuous visual storytelling
+    - key: interactive
+      title: Interactive picture book
+      body: Place one concise, age-appropriate question or instruction on each page so children can join the story.
+      detail: Find it · choose · guess · follow along
+    - key: comic
+      title: Comic story
+      body: Use multiple panels, speech bubbles, and continuous action to move the plot forward at a tighter pace.
+      detail: Four-panel or page-comic layouts
+    - key: vertical
+      title: Vertical strip
+      body: Use a fixed 1:3 canvas so shots and story beats unfold in one continuous top-to-bottom flow.
+      detail: Designed for vertical mobile reading
+
 features_eyebrow: One connected workspace
 features_title: Keep the process moving—and keep a way back
 features:

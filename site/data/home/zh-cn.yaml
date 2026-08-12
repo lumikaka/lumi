@@ -29,6 +29,32 @@ process:
     - title: 连续预览与导出
       body: 检查整章阅读节奏，导出单章或完整项目 ZIP。
 
+formats:
+  eyebrow: 五种绘本形式
+  title: 同一个故事，可以长成五种不同的绘本
+  description: 创建项目时选择最适合的叙事方式，Lumi 会为它固定对应的页面结构、画面比例与生成规则。
+  items:
+    - key: classic
+      title: 经典图文
+      body: 一幅主画面配少量正文，让图像和文字一起推动故事。
+      detail: 支持多种画面比例与大图少字
+    - key: wordless
+      title: 无字绘本
+      body: 完全依靠动作、表情和场景变化推进故事，让每一页都用画面说话。
+      detail: 纯视觉连续叙事
+    - key: interactive
+      title: 互动绘本
+      body: 每页加入一条简短、适龄的互动问题或指令，让孩子参与故事。
+      detail: 找一找 · 做选择 · 猜一猜 · 跟着做
+    - key: comic
+      title: 漫画故事
+      body: 用多格画面、气泡对白与连续动作，呈现更紧凑的情节推进。
+      detail: 四格漫画或页漫版式
+    - key: vertical
+      title: 条漫
+      body: 使用固定 1:3 纵向画幅，让镜头与剧情按从上到下的节奏连续展开。
+      detail: 为手机纵向阅读优化
+
 features_eyebrow: 一个完整工作台
 features_title: 让创作连续，也让每一次尝试都能回头
 features:

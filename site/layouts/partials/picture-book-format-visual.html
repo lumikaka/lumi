@@ -1,0 +1,33 @@
+{{ $kind := . }}
+<div class="format-preview format-preview--{{ $kind }}" aria-hidden="true">
+  {{ if eq $kind "classic" }}
+    <div class="format-preview__sheet format-preview__sheet--classic">
+      <div class="format-preview__scene">
+        <span class="format-preview__moon"></span>
+        <span class="format-preview__hill"></span>
+        <span class="format-preview__character"></span>
+      </div>
+      <div class="format-preview__lines"><span></span><span></span><span></span></div>
+    </div>
+  {{ else if eq $kind "wordless" }}
+    <div class="format-preview__sheet format-preview__sheet--wordless">
+      <span></span><span></span><span></span>
+    </div>
+  {{ else if eq $kind "interactive" }}
+    <div class="format-preview__sheet format-preview__sheet--interactive">
+      <div class="format-preview__scene">
+        <span class="format-preview__star"></span>
+        <span class="format-preview__character"></span>
+      </div>
+      <div class="format-preview__question"><b>?</b><span></span><span></span><span></span></div>
+    </div>
+  {{ else if eq $kind "comic" }}
+    <div class="format-preview__sheet format-preview__sheet--comic">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  {{ else }}
+    <div class="format-preview__sheet format-preview__sheet--vertical">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  {{ end }}
+</div>
