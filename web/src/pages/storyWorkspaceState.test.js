@@ -45,6 +45,12 @@ test('chapter menus and dialogs expose keyboard state and explicit selected hove
   assert.match(styles, /chapters-more-button\[aria-expanded="true"\]:hover/)
 })
 
+test('chapter dialog submit actions always use an explicit button variant', () => {
+  const layout = readFileSync(new URL('./ChaptersWorkspace.jsx', import.meta.url), 'utf8')
+  assert.match(layout, /danger \? 'story-button story-button--danger' : 'story-button'/)
+  assert.doesNotMatch(layout, /danger \? 'button-danger' : ''/)
+})
+
 test('chapter toolbar defaults to a desktop row and only stacks at the mobile breakpoint', () => {
   const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8')
   const desktopStart = styles.indexOf('.chapters-toolbar')

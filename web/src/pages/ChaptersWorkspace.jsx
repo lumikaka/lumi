@@ -523,7 +523,7 @@ function DialogActions({ busy, submitDisabled, pendingLabel, submitLabel, onCanc
   return (
     <div className="chapter-dialog-actions">
       <button type="button" className="button-secondary" disabled={busy} onClick={onCancel}>{t('common.action.cancel')}</button>
-      <button type="submit" className={danger ? 'button-danger' : ''} disabled={busy || submitDisabled}>{busy ? pendingLabel : submitLabel}</button>
+      <button type="submit" className={danger ? 'story-button story-button--danger' : 'story-button'} disabled={busy || submitDisabled}>{busy ? pendingLabel : submitLabel}</button>
     </div>
   )
 }
