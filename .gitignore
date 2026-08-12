@@ -8,6 +8,7 @@
 /coverage.out
 
 # Desktop packaging
+/rel/app/node_modules/
 /rel/app/src-tauri/backend-darwin/
 /rel/app/src-tauri/backend-windows/
 /rel/app/src-tauri/icons/windows-generated/

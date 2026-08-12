@@ -316,6 +316,36 @@
     font-size: 12px
     font-weight: 700
 
+.project-create-priority-fields
+  padding: 12px
+  display: grid
+  gap: 13px
+  border: 1px solid rgba($color-accent, .24)
+  border-radius: $radius-md
+  background: $color-accent-muted
+
+  .project-dialog-field > label
+    color: $color-text
+    font-size: 13px
+
+  input,
+  textarea
+    background: $color-surface
+
+.project-field-required,
+.project-field-error
+  color: $color-danger
+
+.project-field-error
+  margin: 0
+  font-size: $font-size-small
+  font-weight: 600
+
+.project-dialog-form input[aria-invalid="true"],
+.project-dialog-form textarea[aria-invalid="true"]
+  border-color: $color-danger
+  box-shadow: 0 0 0 3px rgba($color-danger, .1)
+
 .lumi-dialog.project-create-dialog
   width: min(820px, calc(100vw - 32px))
 
@@ -495,6 +525,7 @@
   gap: 6px
 
   > label
+    display: block
     font-size: 12px
     font-weight: 700
 

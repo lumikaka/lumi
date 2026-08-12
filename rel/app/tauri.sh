@@ -65,17 +65,20 @@ main() {
       (
         cd "$tauri_dir"
         cargo fmt --check
-        cargo test --target "$target"
-        cargo test --features desktop-updater --target "$target"
+        cargo test --release --target "$target"
+        cargo test --release --features desktop-updater --target "$target"
       )
       build_tauri "$@"
       verify_bundle
       ;;
+    backend)
+      build_backend
+      ;;
+    bundle)
+      build_tauri "$@"
+      ;;
     *)
-      (
-        cd "$tauri_dir"
-        cargo tauri "$command" "$@"
-      )
+      pnpm --dir "$root_dir" exec tauri "$command" "$@"
       ;;
   esac
 }
@@ -133,15 +136,12 @@ build_tauri() {
     updater_args=(--features desktop-updater)
   fi
 
-  (
-    cd "$tauri_dir"
-    cargo tauri build \
-      --config "$config_json" \
-      --target "$target" \
-      --bundles app \
-      "${updater_args[@]}" \
-      "$@"
-  )
+  pnpm --dir "$root_dir" exec tauri build \
+    --config "$config_json" \
+    --target "$target" \
+    --bundles app \
+    "${updater_args[@]}" \
+    "$@"
 }
 
 verify_bundle() {

@@ -21,6 +21,20 @@ on:
         required: false
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
         required: false
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/desktop-macos.yml"
+      - ".github/workflows/desktop-release.yml"
+      - "Makefile"
+      - "go.mod"
+      - "go.sum"
+      - "cmd/**"
+      - "db/**"
+      - "internal/**"
+      - "rel/app/**"
+      - "web/**"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -33,11 +47,11 @@ permissions:
 
 concurrency:
   group: desktop-macos-${{ github.ref }}-${{ inputs.release_tag || '' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
 
 jobs:
   build:
-    name: Build and release macOS Apple Silicon app
+    name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'Warm macOS Apple Silicon desktop cache' || 'Build and release macOS Apple Silicon app' }}
     runs-on: macos-15
     env:
       APPLE_SIGNING_IDENTITY: "${{ vars.APPLE_SIGNING_IDENTITY || '-' }}"
@@ -48,12 +62,13 @@ jobs:
       CARGO_TERM_COLOR: always
 
     steps:
-      - name: Resolve and validate release version
+      - name: Resolve desktop build mode
         id: release
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
           INPUT_BUILD_UPDATER: ${{ inputs.build_updater }}
           INPUT_CHECKOUT_REF: ${{ inputs.checkout_ref }}
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
@@ -61,23 +76,34 @@ jobs:
           set -euo pipefail
 
           tag="$INPUT_RELEASE_TAG"
+          warmup="false"
           if [ -n "$INPUT_CHECKOUT_REF" ]; then
             checkout_ref="$INPUT_CHECKOUT_REF"
             updater="$INPUT_BUILD_UPDATER"
+          elif [ "$EVENT_NAME" = "push" ] && [ "$EVENT_REF" = "refs/heads/master" ]; then
+            tag=""
+            version="0.0.0"
+            checkout_ref="$EVENT_SHA"
+            updater="true"
+            warmup="true"
           else
             checkout_ref="$EVENT_REF"
             updater="false"
           fi
 
-          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            echo "Release tag must look like v0.1.0." >&2
-            exit 1
+          if [ "$warmup" != "true" ]; then
+            if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+              echo "Release tag must look like v0.1.0." >&2
+              exit 1
+            fi
+            version="${tag#v}"
           fi
 
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "ref=${checkout_ref}" >> "$GITHUB_OUTPUT"
           echo "updater=${updater}" >> "$GITHUB_OUTPUT"
+          echo "warmup=${warmup}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout build ref
         uses: actions/checkout@v6
@@ -122,7 +148,9 @@ jobs:
         with:
           node-version: 26
           cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          cache-dependency-path: |
+            web/pnpm-lock.yaml
+            rel/app/pnpm-lock.yaml
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -135,8 +163,11 @@ jobs:
         with:
           workspaces: rel/app/src-tauri
           key: aarch64-apple-darwin
+          cache-bin: false
+          save-if: ${{ steps.release.outputs.warmup == 'true' }}
 
       - name: Import optional Apple signing certificate
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -171,15 +202,12 @@ jobs:
             "$keychain_path"
           security list-keychains -d user -s "$keychain_path"
 
-      - name: Install pinned Tauri CLI
+      - name: Install pinned desktop dependencies
         shell: bash
         run: |
           set -euo pipefail
-          installed_version="$(cargo-tauri --version 2>/dev/null || true)"
-          if [ "$installed_version" != "tauri-cli 2.8.0" ]; then
-            cargo install tauri-cli --version "=2.8.0" --locked
-          fi
-          test "$(cargo-tauri --version)" = "tauri-cli 2.8.0"
+          pnpm --dir rel/app install --frozen-lockfile
+          test "$(pnpm --dir rel/app exec tauri --version)" = "tauri-cli 2.8.0"
 
       - name: Test desktop launcher
         shell: bash
@@ -187,17 +215,26 @@ jobs:
         run: |
           set -euo pipefail
           cargo fmt --check
-          cargo test --locked --target aarch64-apple-darwin
-          cargo test --locked --features desktop-updater --target aarch64-apple-darwin
+          if [ "${{ steps.release.outputs.updater }}" = "true" ]; then
+            cargo test --locked --release --features desktop-updater --target aarch64-apple-darwin
+          else
+            cargo test --locked --release --target aarch64-apple-darwin
+          fi
+
+      - name: Build frontend and macOS backend
+        shell: bash
+        run: ./rel/app/tauri.sh backend
 
       - name: Build Lumi app
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: bash
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
           LUMI_DESKTOP_UPDATER: ${{ steps.release.outputs.updater == 'true' && '1' || '0' }}
-        run: make desktop-build
+        run: ./rel/app/tauri.sh bundle
 
       - name: Verify bundle and signing
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -213,6 +250,7 @@ jobs:
           codesign -dv --verbose=2 "$app_path"
 
       - name: Smoke test packaged app
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -280,6 +318,7 @@ jobs:
           exit 1
 
       - name: Package release assets
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -289,7 +328,7 @@ jobs:
           shasum -a 256 Lumi-macos-aarch64.app.zip > Lumi-macos-aarch64.app.zip.sha256
 
       - name: Package updater assets
-        if: ${{ steps.release.outputs.updater == 'true' }}
+        if: ${{ steps.release.outputs.warmup != 'true' && steps.release.outputs.updater == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -305,6 +344,7 @@ jobs:
           cp "${updater_bundle}.sig" Lumi-macos-aarch64.app.tar.gz.sig
 
       - name: Upload workflow artifact
+        if: ${{ steps.release.outputs.warmup != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: Lumi-macos-aarch64

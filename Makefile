@@ -7,6 +7,7 @@ TAG_REMOTE ?= origin
 deps:
 	go mod download
 	pnpm --dir web install --frozen-lockfile
+	pnpm --dir rel/app install --frozen-lockfile
 
 dev-api:
 	go tool air

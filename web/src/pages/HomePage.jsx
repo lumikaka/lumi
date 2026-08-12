@@ -11,6 +11,7 @@ import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { createYoloWorkflow } from '../api/chat.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
+import { projectCreationErrors } from './projectCreationForm.js'
 import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 import {
   createProject,
@@ -62,8 +63,13 @@ export default function HomePage() {
   const [targetProject, setTargetProject] = useState(null)
   const [relocatePath, setRelocatePath] = useState('')
   const [storyPrompt, setStoryPrompt] = useState('')
+  const [createValidationAttempted, setCreateValidationAttempted] = useState(false)
   const [openMenuUuid, setOpenMenuUuid] = useState('')
   const [actionError, setActionError] = useState(null)
+  const nameInputRef = useRef(null)
+  const storyPromptInputRef = useRef(null)
+  const parentPathInputRef = useRef(null)
+  const createFormRef = useRef(null)
   const openMenuRef = useRef(null)
   const openMenuTriggerRef = useRef(null)
 
@@ -85,6 +91,7 @@ export default function HomePage() {
     setParentPathDirty(false)
     setGenerationLanguage('zh-Hans')
     setStoryPrompt('')
+    setCreateValidationAttempted(false)
     setPictureBookDraft(defaultPictureBookDraft())
   }
   const closeDialog = () => {
@@ -141,6 +148,23 @@ export default function HomePage() {
 
 	const pageError = actionError || projectDefaultsQuery.error || recentQuery.error || openProjectsQuery.error
   const pending = createMutation.isPending || yoloMutation.isPending || openPathMutation.isPending || selectDirectoryMutation.isPending || relocateMutation.isPending || forgetMutation.isPending
+  const currentCreateErrors = createValidationAttempted ? projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid }) : {}
+  const selectCreateMode = (mode) => { setCreateMode(mode); setCreateValidationAttempted(false) }
+  const submitCreateForm = (event) => {
+    event.preventDefault()
+    if (pending) return
+    const errors = projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid })
+    setCreateValidationAttempted(true)
+    if (Object.keys(errors).length) {
+      if (errors.name) nameInputRef.current?.focus()
+      else if (errors.storyPrompt) storyPromptInputRef.current?.focus()
+      else if (errors.parentPath) parentPathInputRef.current?.focus()
+      else createFormRef.current?.querySelector('.picture-book-custom-ratio input')?.focus()
+      return
+    }
+    if (createMode === 'yolo') yoloMutation.mutate()
+    else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook })
+  }
   const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
   const openExistingDialog = () => { setActionError(null); setDialog('open') }
 
@@ -214,15 +238,29 @@ export default function HomePage() {
       </div>
 
       {dialog === 'create' ? <Modal className="project-create-dialog" title={t('projects.dialog.create.title')} description={t('projects.dialog.create.description')} dismissDisabled={pending} onClose={closeDialog}>
-        <div className="project-create-tabs"><button type="button" aria-pressed={createMode === 'manual'} onClick={() => setCreateMode('manual')}>{t('projects.create.manual')}</button><button type="button" aria-pressed={createMode === 'yolo'} onClick={() => setCreateMode('yolo')}>{t('projects.create.yolo')}</button></div>
-		<form className="project-dialog-form" onSubmit={(event) => { event.preventDefault(); if (createMode === 'yolo') yoloMutation.mutate(); else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook }) }}>
-          <label>{t('projects.field.name')}<input value={name} onChange={(event) => setName(event.target.value)} placeholder={t('projects.field.name_placeholder')} required autoFocus /></label>
-          <label>{t('projects.field.parent_path')}<input value={parentPath} onChange={(event) => { setParentPath(event.target.value); setParentPathDirty(true) }} placeholder={t('projects.field.parent_path_placeholder')} required /></label>
+        <div className="project-create-tabs"><button type="button" aria-pressed={createMode === 'manual'} onClick={() => selectCreateMode('manual')}>{t('projects.create.manual')}</button><button type="button" aria-pressed={createMode === 'yolo'} onClick={() => selectCreateMode('yolo')}>{t('projects.create.yolo')}</button></div>
+		<form ref={createFormRef} className="project-dialog-form" noValidate onSubmit={submitCreateForm}>
+          <div className="project-create-priority-fields">
+            <div className="project-dialog-field">
+              <label htmlFor="new-project-name">{t('projects.field.name')}<span className="project-field-required" aria-hidden="true"> *</span></label>
+              <input ref={nameInputRef} id="new-project-name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t('projects.field.name_placeholder')} required autoFocus aria-invalid={currentCreateErrors.name ? 'true' : undefined} aria-describedby={currentCreateErrors.name ? 'new-project-name-error' : undefined} />
+              {currentCreateErrors.name ? <p className="project-field-error" id="new-project-name-error" role="alert">{t(currentCreateErrors.name)}</p> : null}
+            </div>
+            {createMode === 'yolo' ? <div className="project-dialog-field">
+              <label htmlFor="new-project-story-idea">{t('projects.field.story_idea')}<span className="project-field-required" aria-hidden="true"> *</span></label>
+              <textarea ref={storyPromptInputRef} id="new-project-story-idea" rows="5" value={storyPrompt} onChange={(event) => setStoryPrompt(event.target.value)} placeholder={t('projects.field.story_idea_placeholder')} required aria-invalid={currentCreateErrors.storyPrompt ? 'true' : undefined} aria-describedby={currentCreateErrors.storyPrompt ? 'new-project-story-idea-error' : undefined} />
+              {currentCreateErrors.storyPrompt ? <p className="project-field-error" id="new-project-story-idea-error" role="alert">{t(currentCreateErrors.storyPrompt)}</p> : null}
+            </div> : null}
+          </div>
+          <div className="project-dialog-field">
+            <label htmlFor="new-project-parent-path">{t('projects.field.parent_path')}<span className="project-field-required" aria-hidden="true"> *</span></label>
+            <input ref={parentPathInputRef} id="new-project-parent-path" value={parentPath} onChange={(event) => { setParentPath(event.target.value); setParentPathDirty(true) }} placeholder={t('projects.field.parent_path_placeholder')} required aria-invalid={currentCreateErrors.parentPath ? 'true' : undefined} aria-describedby={currentCreateErrors.parentPath ? 'new-project-parent-path-error' : undefined} />
+            {currentCreateErrors.parentPath ? <p className="project-field-error" id="new-project-parent-path-error" role="alert">{t(currentCreateErrors.parentPath)}</p> : null}
+          </div>
 		  <label>{t('projects.field.generation_language')}<select value={generationLanguage} onChange={(event) => setGenerationLanguage(event.target.value)}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
 		  <PictureBookProfileFields value={pictureBookDraft} onChange={setPictureBookDraft} />
-          {createMode === 'yolo' ? <label>{t('projects.field.story_idea')}<textarea rows="5" value={storyPrompt} onChange={(event) => setStoryPrompt(event.target.value)} placeholder={t('projects.field.story_idea_placeholder')} required /></label> : null}
           <p className="project-dialog-hint">{createMode === 'yolo' ? t('projects.create.yolo_hint') : t('projects.create.manual_hint', { path: defaultProjectParentPath || t('projects.create.default_path_loading') })}</p>
-		  <div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={pending} onClick={closeDialog}>{t('common.action.cancel')}</button><button type="submit" disabled={pending || projectDefaultsQuery.isPending || projectDefaultsQuery.isError || !pictureBookValid || !name.trim() || !parentPath.trim() || (createMode === 'yolo' && !storyPrompt.trim())}>{t(pending ? 'projects.create.creating' : createMode === 'yolo' ? 'projects.create.start' : 'projects.create.enter')}</button></div>
+		  <div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={pending} onClick={closeDialog}>{t('common.action.cancel')}</button><button type="submit" disabled={pending}>{t(pending ? 'projects.create.creating' : createMode === 'yolo' ? 'projects.create.start' : 'projects.create.enter')}</button></div>
         </form>
       </Modal> : null}
 
