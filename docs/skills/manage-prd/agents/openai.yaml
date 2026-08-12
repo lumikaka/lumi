@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage PRD"
+  short_description: "按 domain 与可复制 feature 创建和维护项目 PRD"
+  default_prompt: "使用 $manage-prd 创建或更新当前项目的 PRD，并保持 feature 粒度与项目规范一致。"

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#6c4b1e" flood-opacity=".18"/></filter>
+    <linearGradient id="p" x1=".1" y1=".1" x2=".9" y2=".9"><stop stop-color="#ffe6a1"/><stop offset="1" stop-color="#efbd5d"/></linearGradient>
+  </defs>
+  <path filter="url(#s)" d="M111 64C167 23 345 23 401 64c53 39 81 208 42 281-32 61-139 94-187 94S101 406 69 345C30 272 58 103 111 64Z" fill="url(#p)" stroke="#bd7c25" stroke-width="15"/>
+  <path d="M130 92c47-30 205-30 252 0 40 27 64 176 32 229-27 45-116 74-158 74s-131-29-158-74C66 268 90 119 130 92Z" fill="#ffe39a" stroke="#d69a36" stroke-width="7" stroke-dasharray="19 13"/>
+  <path d="m256 165 28 58 64 9-46 45 11 63-57-30-57 30 11-63-46-45 64-9 28-58Z" fill="#315e91" stroke="#1e4776" stroke-width="10" stroke-linejoin="round"/>
+</svg>

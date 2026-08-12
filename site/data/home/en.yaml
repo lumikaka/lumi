@@ -1,0 +1,106 @@
+hero:
+  eyebrow: AI made for picture books
+  title: Turn one small idea into a picture book you can truly make your own
+  description: Lumi keeps your story, visual references, storyboards, image candidates, and exports inside one local project. AI helps you move forward; you still decide how the story is told and which version stays.
+  primary: Download Lumi
+  secondary: Read the guides
+  note: Available for Apple Silicon Macs and Windows x64 · AI features require a model provider
+  floating:
+    - Your story, your call
+    - Characters stay consistent
+    - Every step stays editable
+    - Your work stays local
+
+process:
+  eyebrow: From spark to storybook
+  title: Make the whole picture book without carrying context between tools
+  description: Work manually at every step or ask AI for a first pass. Generated content never becomes the final choice for you.
+  steps:
+    - title: Share the story spark
+      body: Begin with one sentence, then define the hero, wish, obstacle, and change.
+    - title: Shape the story and chapters
+      body: Write, import, or generate chapters while keeping earlier versions available.
+    - title: Build visual references
+      body: Organize characters, places, props, and the overall art direction for reuse.
+    - title: Break it into storyboards
+      body: Turn prose into editable visual beats and tune framing, action, and rhythm.
+    - title: Generate and choose images
+      body: Bring premise references into generation and choose from saved candidates.
+    - title: Preview and export
+      body: Read the chapter as a sequence, then export one chapter or the whole project.
+
+features_eyebrow: One connected workspace
+features_title: Keep the process moving—and keep a way back
+features:
+  - eyebrow: One story, not scattered context
+    title: Keep the story profile and every chapter in the same place
+    body: Write by hand, import an existing draft, continue with AI, or plan several chapters without repeatedly moving context between chat and documents.
+    bullets:
+      - Maintain the story profile and chapter prose separately
+      - Import TXT and Markdown drafts
+      - Compare and restore prose versions
+    demo: story
+  - eyebrow: A consistent visual world
+    title: Turn characters, places, and props into shared references
+    body: Keep the visual foundation of the book in the Premise workspace. Upload existing art or generate references, then reuse them in later scenes.
+    bullets:
+      - Organize characters, places, and props
+      - Keep multiple image versions for one premise item
+      - Select relevant references for each storyboard frame
+    demo: premise
+  - eyebrow: Every frame remains editable
+    title: Storyboards, prompts, and image candidates are never one-shot results
+    body: Each visual beat has its own storyboard and image candidates. Fix the storytelling first, generate the frame, and choose another version without rebuilding the chapter.
+    bullets:
+      - Tune framing, movement, dialogue, and order
+      - Generate one frame or a selected batch
+      - Make any saved candidate the current image
+    demo: storyboard
+  - eyebrow: Experiments do not erase the past
+    title: Save versions—and preserve room to change your mind
+    body: Lumi keeps history for prose, storyboards, images, and prompts. Background work and the current project state return after a refresh or reopen.
+    bullets:
+      - Preview and restore chapter-comic snapshots
+      - Inspect and retry failed background tasks
+      - Always see which version is current
+    demo: local
+
+modes:
+  eyebrow: Two ways to begin
+  title: See a first draft quickly or control every step
+  description: Both paths end in the same editable workspace. There is no locked, one-click final book.
+  items:
+    - badge: Fast start
+      title: YOLO quick creation
+      body: Enter a minimal story idea and let Lumi prepare the story, profile, references, storyboard, and first image before you refine them.
+      best_for: Best for families and creators who want to see the shape of a story quickly
+    - badge: Detailed control
+      title: Manual creation
+      body: Start with an empty project or an existing draft and decide exactly when to write, import, generate, and accept a result.
+      best_for: Best for creators with a clear idea or a step-by-step process
+
+trust:
+  eyebrow: Local first
+  title: Your project is a folder you control—not an island inside a website
+  body: Each picture book lives in a folder you choose. Move it, copy it, or back it up as a unit. Lumi remembers recent locations but does not upload the complete project to a Lumi cloud.
+  bullets:
+    - Story, images, and the project database stay together
+    - Provider secrets are protected by operating-system secure storage
+    - Only the content required for a generation is sent to your chosen provider
+
+faq_title: A few things to know before you begin
+faq:
+  - question: Can I use Lumi if I cannot draw?
+    answer: Yes. Start by describing the protagonist, goal, and change. Lumi can draft the story, premise, and storyboard, while you choose, edit, and regenerate the result.
+  - question: Which operating systems are supported?
+    answer: Current desktop builds support Apple Silicon Macs and Windows x64. The installation guide covers downloads, checksums, and the system prompts you may see on first launch.
+  - question: Which AI providers can Lumi use?
+    answer: Lumi currently connects to Alibaba Cloud Model Studio or Cloudflare AI Gateway. Provider usage may be billed by that provider; Lumi does not resell model usage.
+  - question: Where is my picture-book project stored?
+    answer: The project stays in a local folder you choose, including STORY.md, the project database, images, and required internal files. Back up or move the folder as one unit.
+  - question: What if I do not like a generated result?
+    answer: Edit the story or storyboard, generate another image, switch candidates, and preview or restore history where the workspace supports it. A new attempt does not need to erase the last one.
+
+closing:
+  title: Give tonight’s story a world of its own
+  body: Download Lumi and begin with one idea—or take ten minutes to follow the first-picture-book guide.

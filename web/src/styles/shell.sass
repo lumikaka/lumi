@@ -1,0 +1,662 @@
+@use './design-tokens' as *
+
+.app-route-shell,
+.project-shell
+  min-height: 100vh
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  background: $color-surface-muted
+
+.project-topbar
+  position: sticky
+  top: 0
+  z-index: 30
+  min-height: $topbar-height
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)
+  align-items: center
+  gap: 14px
+  padding: 7px 16px
+  border-bottom: 1px solid $color-border
+  background: $color-surface
+
+.project-topbar--index
+  grid-template-columns: minmax(0, 1fr) auto
+
+.project-topbar__context
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 10px
+
+.project-logo
+  flex: 0 0 auto
+  width: 40px
+  height: 34px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-surface
+  background: transparent
+
+  span
+    width: 24px
+    height: 24px
+    display: grid
+    place-items: center
+    border-radius: 7px
+    background: $color-action
+    font-size: 13px
+    font-weight: 900
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: $color-border
+    background: $color-surface-subtle
+
+.project-topbar__title
+  position: relative
+  flex: 1 1 auto
+  min-width: 0
+
+  h1
+    margin: 0
+    min-width: 0
+    overflow: hidden
+    color: $color-text
+    font-size: 18px
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.project-switcher-button
+  max-width: 100%
+  min-width: 0
+  min-height: 32px
+  padding: 0 8px
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  font-size: inherit
+  font-weight: 800
+
+  span
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  svg
+    flex: 0 0 auto
+    color: $color-muted
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: $color-border
+    background: $color-surface-subtle
+
+.project-switcher-popover
+  position: absolute
+  top: calc(100% + 9px)
+  left: 0
+  z-index: 45
+  width: min(360px, calc(100vw - 24px))
+  max-height: min(420px, 70vh)
+  padding: 10px
+  display: grid
+  gap: 5px
+  overflow: auto
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 18px 44px rgba($color-text, .16)
+
+.project-switcher-option
+  min-height: 48px
+  padding: 7px 10px
+  display: grid
+  grid-template-columns: 20px minmax(0, 1fr)
+  align-items: center
+  gap: 10px
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  text-align: left
+
+  svg
+    color: $color-muted
+
+  &:hover,
+  &:focus-visible,
+  &.is-active
+    border-color: transparent
+    color: $color-accent
+    background: $color-surface-subtle
+
+.project-switcher-option__copy
+  min-width: 0
+  display: grid
+  gap: 2px
+
+.project-switcher-option.is-active:hover
+  border-color: $color-accent
+  color: $color-accent
+  background: $color-accent-muted
+
+.project-switcher-option__title,
+.project-switcher-option__meta
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.project-switcher-option__title
+  font-size: 14px
+  font-weight: 800
+
+.project-switcher-option__meta
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 700
+
+.project-topbar__nav
+  justify-self: center
+  display: flex
+  align-items: center
+  gap: 4px
+  padding: 3px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  a
+    min-height: 30px
+    padding: 0 10px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border-radius: $radius-sm
+    color: $color-muted
+    font-size: 12px
+    font-weight: 800
+
+    &:hover,
+    &:focus-visible,
+    &.is-active
+      color: $color-text
+      background: $color-surface
+      box-shadow: 0 0 0 1px $color-border
+
+  a.is-active:hover
+    color: $color-accent
+    background: $color-accent-muted
+
+.project-topbar__actions
+  justify-self: end
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+
+.account-menu
+  position: relative
+  flex: 0 0 auto
+  display: inline-flex
+  justify-content: flex-end
+
+.account-menu__trigger
+  width: 34px
+  height: 34px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface-subtle
+
+  &[aria-expanded="true"]:hover
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+.account-menu__icon
+  position: relative
+  width: 22px
+  height: 22px
+  display: block
+
+  &::before,
+  &::after
+    content: ""
+    position: absolute
+    left: 50%
+    background: currentColor
+    transform: translateX(-50%)
+
+  &::before
+    top: 2px
+    width: 9px
+    height: 9px
+    border-radius: 50%
+
+  &::after
+    bottom: 2px
+    width: 18px
+    height: 8px
+    border-radius: 12px 12px 3px 3px
+
+.account-menu__dropdown
+  position: absolute
+  top: calc(100% + 8px)
+  right: 0
+  z-index: 70
+  width: 244px
+  padding: 8px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 18px 42px rgba($color-text, .14)
+
+.account-menu__identity
+  margin-bottom: 6px
+  padding: 9px 10px 10px
+  display: grid
+  gap: 2px
+  border-bottom: 1px solid $color-border-subtle
+
+  strong,
+  span
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  strong
+    color: $color-text
+    font-size: 13px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.account-menu__item
+  width: 100%
+  min-height: 38px
+  padding: 0 10px
+  display: flex
+  align-items: center
+  gap: 9px
+  border: 0
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  font-size: 13px
+  font-weight: 700
+  text-align: left
+
+  svg
+    flex: 0 0 auto
+    color: $color-muted
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent
+    background: $color-accent-muted
+
+    svg
+      color: $color-accent
+
+.account-menu__divider
+  height: 1px
+  margin: 6px 0
+  background: $color-border-subtle
+
+.project-topbar__action,
+.project-topbar__icon-button
+  min-height: 32px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 6px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface
+  font-size: 12px
+  font-weight: 800
+
+  &:hover,
+  &:focus-visible,
+  &.is-active
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+.project-topbar__icon-button
+  width: 34px
+  padding: 0
+
+.project-topbar__icon-button.is-active:hover
+  border-color: #1d4ed8
+  color: #1d4ed8
+  background: #dce8ff
+
+.project-menu-drawer
+  position: fixed
+  z-index: 80
+  inset: 0
+  display: block
+
+.project-menu-drawer__backdrop
+  position: absolute
+  inset: 0
+  width: 100%
+  border: 0
+  border-radius: 0
+  background: rgba($color-text, .24)
+
+.project-menu-drawer__panel
+  position: relative
+  z-index: 1
+  width: min(86vw, 326px)
+  height: 100%
+  display: grid
+  align-content: start
+  overflow: auto
+  border-right: 1px solid $color-border
+  background: $color-surface
+  box-shadow: 18px 0 42px rgba($color-text, .18)
+  animation: project-drawer-slide-in 140ms ease-out
+
+.project-menu-drawer__header
+  min-height: 64px
+  padding: 12px 14px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  border-bottom: 1px solid $color-border
+
+.project-menu-drawer__brand
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 10px
+
+  > span
+    width: 28px
+    height: 28px
+    display: grid
+    place-items: center
+    border-radius: 8px
+    color: $color-surface
+    background: $color-action
+    font-size: 14px
+    font-weight: 900
+
+  p,
+  h2
+    margin: 0
+    letter-spacing: 0
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+    line-height: 1.1
+    text-transform: uppercase
+
+  h2
+    margin-top: 2px
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    color: $color-text
+    font-size: 16px
+    line-height: 1.15
+
+.project-menu-drawer__close
+  flex: 0 0 auto
+  width: 34px
+  height: 34px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+  cursor: pointer
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface-subtle
+
+.project-menu-drawer__nav
+  padding: 10px
+  display: grid
+  gap: 4px
+
+.project-menu-drawer__link
+  min-height: 42px
+  padding: 0 10px
+  display: grid
+  grid-template-columns: 20px minmax(0, 1fr)
+  align-items: center
+  gap: 10px
+  border-radius: $radius-sm
+  color: $color-text
+  font-size: 14px
+  font-weight: 750
+
+  svg
+    color: $color-muted
+
+  > span
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  &:hover,
+  &:focus-visible,
+  &.is-active
+    color: $color-accent
+    background: $color-surface-subtle
+
+    svg
+      color: $color-accent
+
+.project-menu-drawer__project-link
+  width: 100%
+  min-height: 52px
+  padding-block: 7px
+  border: 0
+  background: transparent
+  text-align: left
+
+.project-menu-drawer__project-copy
+  display: grid
+  gap: 2px
+
+.project-menu-drawer__project-title,
+.project-menu-drawer__project-meta
+  min-width: 0
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.project-menu-drawer__project-title
+  color: inherit
+
+.project-menu-drawer__project-meta
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 700
+  line-height: 1.25
+
+.project-menu-drawer__section
+  margin-top: 4px
+  padding-top: 10px
+  border-top: 1px solid $color-border-subtle
+
+  h3
+    margin: 0
+    padding: 0 20px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+    text-transform: uppercase
+
+.project-menu-drawer__link.is-active:hover
+  color: $color-accent
+  background: $color-accent-muted
+
+@keyframes project-drawer-slide-in
+  from
+    transform: translateX(-16px)
+    opacity: .88
+
+  to
+    transform: translateX(0)
+    opacity: 1
+
+.project-workbench
+  min-height: 0
+  height: calc(100vh - $topbar-height)
+  display: grid
+  grid-template-columns: minmax(0, 1fr) $chat-width
+
+.project-workbench--chat-collapsed
+  grid-template-columns: minmax(0, 1fr) $chat-collapsed-width
+
+.project-workbench--solo
+  grid-template-columns: minmax(0, 1fr)
+
+.project-workbench__content
+  min-width: 0
+  min-height: 0
+  padding: 18px 18px 28px
+  overflow: auto
+
+.app-page-content
+  min-width: 0
+  min-height: 0
+  padding: 18px 18px 32px
+  overflow: auto
+
+.workspace-group-nav
+  width: min(100%, $layout-width)
+  margin: 0 auto 12px
+  display: flex
+  justify-content: flex-end
+
+.workspace-group-nav--overview
+  width: min(100%, 1120px)
+  justify-content: flex-start
+
+.project-chat-overlay
+  position: fixed
+  z-index: 70
+  inset: 0
+  display: grid
+  place-items: stretch
+
+.project-chat-overlay__backdrop
+  position: absolute
+  inset: 0
+  width: 100%
+  height: 100%
+  border: 0
+  border-radius: 0
+  background: rgba($color-text, .28)
+  cursor: default
+
+.project-chat-overlay__panel
+  position: relative
+  z-index: 1
+  min-width: 0
+  min-height: 0
+  width: 100%
+  height: 100%
+  margin: 0
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: 0
+  background: $color-surface
+  box-shadow: 0 18px 48px rgba($color-text, .2)
+  animation: chat-overlay-in 140ms ease-out
+
+@media (max-width: 1280px)
+  .project-workbench
+    grid-template-columns: minmax(0, 1fr) 320px
+
+  .project-workbench--chat-collapsed
+    grid-template-columns: minmax(0, 1fr) $chat-collapsed-width
+
+@media (max-width: 980px)
+  .project-topbar
+    grid-template-columns: minmax(0, 1fr) auto
+
+  .project-topbar__context
+    grid-column: 1
+    grid-row: 1
+
+  .project-topbar__actions
+    grid-column: 2
+    grid-row: 1
+
+  .project-topbar__nav
+    grid-column: 1 / -1
+    grid-row: 2
+    width: 100%
+
+    a
+      flex: 1
+
+  .project-workbench,
+  .project-workbench--chat-collapsed
+    height: auto
+    min-height: calc(100vh - $topbar-height)
+    grid-template-columns: minmax(0, 1fr)
+
+  .project-workbench__content
+    overflow: visible
+
+@media (max-width: 640px)
+  .project-topbar
+    padding-inline: 10px
+
+  .project-topbar__action span
+    display: none
+
+  .project-workbench__content,
+  .app-page-content
+    padding: 14px 10px 24px

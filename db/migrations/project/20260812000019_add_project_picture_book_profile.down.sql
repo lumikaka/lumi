@@ -1,0 +1,2 @@
+DROP TRIGGER IF EXISTS project_picture_book_profiles_immutable;
+DROP TABLE project_picture_book_profiles;

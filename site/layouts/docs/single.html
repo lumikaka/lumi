@@ -1,0 +1,23 @@
+{{ define "main" }}
+{{ $docsURL := "docs/" | relLangURL }}
+<main class="docs-layout" id="main-content">
+  {{ partial "docs-sidebar.html" . }}
+  <article class="docs-article">
+    {{ partial "docs-mobile-tools.html" . }}
+    <nav class="breadcrumbs" aria-label="{{ i18n "breadcrumbs" }}">
+      <a href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ i18n "nav_docs" }}</a><span aria-hidden="true">/</span><span>{{ .Title }}</span>
+    </nav>
+    <header class="docs-article__header">
+      <p class="eyebrow">{{ i18n (printf "docs_group_%s" (.Params.docs_group | default "start")) }}</p>
+      <h1>{{ .Title }}</h1>
+      {{ with .Description }}<p>{{ . }}</p>{{ end }}
+    </header>
+    <div class="prose">{{ .Content }}</div>
+    {{ partial "docs-pagination.html" . }}
+  </article>
+  <aside class="docs-toc" aria-label="{{ i18n "on_this_page" }}">
+    <p>{{ i18n "on_this_page" }}</p>
+    {{ .TableOfContents }}
+  </aside>
+</main>
+{{ end }}

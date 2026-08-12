@@ -1,0 +1,35 @@
+.DS_Store
+.env
+*.log
+
+# Go
+/build/
+/tmp/
+/coverage.out
+
+# Desktop packaging
+/rel/app/src-tauri/backend-darwin/
+/rel/app/src-tauri/backend-windows/
+/rel/app/src-tauri/icons/windows-generated/
+/rel/app/src-tauri/target/
+
+# SQLite
+/db/*.sqlite3
+/db/*.sqlite3-*
+/db/*.db
+/db/*.db-*
+
+# Frontend
+.pnpm-store/
+/web/node_modules/
+/web/dist/
+/web/.env.local
+
+# Hugo site
+/site/.hugo_build.lock
+/site/public/
+/site/resources/_gen/
+
+# Editors
+.idea/
+.vscode/

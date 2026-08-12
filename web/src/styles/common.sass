@@ -1,0 +1,368 @@
+@use './design-tokens' as *
+
+*,
+*::before,
+*::after
+  box-sizing: border-box
+
+html
+  min-width: 320px
+  min-height: 100%
+  background: $color-surface-muted
+
+body
+  margin: 0
+  min-width: 320px
+  min-height: 100vh
+  color: $color-text
+  background: $color-surface-muted
+  font-family: $font-family-base
+  font-size: $font-size-body
+  line-height: $line-height-body
+  -webkit-font-smoothing: antialiased
+
+button,
+input,
+select,
+textarea
+  font: inherit
+
+button,
+a
+  -webkit-tap-highlight-color: transparent
+
+a
+  color: $color-link
+  text-decoration: none
+
+button
+  cursor: pointer
+
+button:disabled
+  cursor: not-allowed
+  opacity: .58
+
+code
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace
+
+:focus-visible
+  outline: 2px solid $color-accent
+  outline-offset: 2px
+
+input,
+select,
+textarea
+  width: 100%
+  min-width: 0
+  padding: 9px 10px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  outline: none
+  color: $color-text
+  background: $color-surface
+  transition: border-color 120ms ease, box-shadow 120ms ease
+
+  &:focus
+    border-color: $color-accent
+    box-shadow: 0 0 0 3px rgba($color-accent, .12)
+
+textarea
+  resize: vertical
+
+label
+  color: $color-muted
+
+button:not([class]),
+.story-button,
+.button-link
+  min-height: 38px
+  padding: 0 14px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  border: 1px solid $color-accent
+  border-radius: $radius-sm
+  color: $color-surface
+  background: $color-accent
+  font-size: 13px
+  font-weight: 750
+  line-height: 1
+  text-decoration: none
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease
+
+  &:hover,
+  &:focus-visible
+    border-color: #1d4ed8
+    color: $color-surface
+    background: #1d4ed8
+
+.button-secondary,
+.story-button--secondary
+  min-height: 38px
+  padding: 0 14px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface
+  font-size: 13px
+  font-weight: 750
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+.button-quiet,
+.story-button--subtle
+  min-height: 34px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 6px
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+  font-size: 13px
+  font-weight: 700
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface-subtle
+
+.button-danger,
+.story-button--danger
+  border-color: rgba($color-danger, .34)
+  color: $color-danger
+  background: $color-surface
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-danger
+    color: $color-danger
+    background: $color-danger-muted
+
+.danger-text
+  color: $color-danger
+
+.danger-text:hover,
+.danger-text:focus-visible
+  color: $color-danger
+  background: $color-danger-muted
+
+.story-layout
+  width: min(100%, $layout-width)
+  margin: 0 auto
+  display: grid
+  gap: 18px
+
+.story-panel
+  min-width: 0
+  padding: 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+.story-eyebrow,
+.eyebrow
+  margin: 0 0 5px
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 800
+  line-height: 1.2
+  letter-spacing: .08em
+  text-transform: uppercase
+
+.story-workspace-toolbar,
+.workspace-section-heading,
+.editor-header
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+
+  h1,
+  h2
+    margin: 0
+    color: $color-text
+    font-family: $font-family-base
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+
+  h1
+    font-size: 24px
+
+  h2
+    font-size: 22px
+
+  p
+    margin: 5px 0 0
+    color: $color-muted
+    font-size: 13px
+    line-height: 1.55
+
+.story-form
+  display: grid
+  gap: 14px
+
+  label
+    display: grid
+    gap: 6px
+    font-size: 12px
+    font-weight: 700
+
+.story-alert,
+.workspace-notice,
+.project-alert,
+.provider-error,
+.chat-error
+  margin: 0
+  padding: 11px 12px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 10px
+  border: 1px solid rgba($color-danger, .28)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-danger-muted
+  font-size: 13px
+
+.story-alert--error,
+.workspace-notice--error
+  border-color: rgba($color-danger, .28)
+
+.story-muted,
+.workspace-loading
+  margin: 0
+  color: $color-muted
+  font-size: 13px
+
+.story-empty,
+.workspace-empty,
+.project-empty
+  margin: 0
+  padding: 28px 18px
+  border: 1px dashed $color-border
+  border-radius: $radius-md
+  color: $color-muted
+  background: $color-surface
+  text-align: center
+
+  h2
+    margin: 8px 0 4px
+    color: $color-text
+    font-family: $font-family-base
+    font-size: 18px
+
+  p
+    margin: 0
+    font-size: 13px
+
+.story-tabs,
+.workspace-group-tabs
+  display: flex
+  align-items: center
+  gap: 4px
+  padding: 3px
+  overflow-x: auto
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  a,
+  button
+    min-height: 30px
+    padding: 0 10px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid transparent
+    border-radius: $radius-sm
+    color: $color-muted
+    background: transparent
+    font-size: 12px
+    font-weight: 800
+    white-space: nowrap
+
+    &:hover,
+    &:focus-visible,
+    &.is-active,
+    &[aria-pressed="true"]
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface
+
+  a.is-active:hover,
+  button[aria-pressed="true"]:hover
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+dialog
+  max-width: calc(100vw - 32px)
+  padding: 0
+  border: 1px solid $color-border
+  border-radius: $radius-lg
+  color: $color-text
+  background: $color-surface
+  box-shadow: 0 24px 70px rgba($color-text, .2)
+
+dialog::backdrop
+  background: rgba($color-text, .32)
+
+.lumi-dialog
+  width: min(620px, calc(100vw - 32px))
+
+.lumi-dialog__header
+  padding: 16px 18px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 16px
+  border-bottom: 1px solid $color-border
+
+  h2
+    margin: 0
+    font-size: 19px
+    line-height: 1.25
+
+  p
+    margin: 4px 0 0
+    color: $color-muted
+    font-size: 12px
+
+.lumi-dialog__body
+  padding: 18px
+  display: grid
+  gap: 14px
+
+.lumi-dialog__actions
+  padding: 12px 18px
+  display: flex
+  justify-content: flex-end
+  flex-wrap: wrap
+  gap: 8px
+  border-top: 1px solid $color-border
+  background: $color-surface-subtle
+
+@media (prefers-reduced-motion: reduce)
+  *,
+  *::before,
+  *::after
+    scroll-behavior: auto !important
+    animation-duration: .01ms !important
+    animation-iteration-count: 1 !important
+    transition-duration: .01ms !important
+

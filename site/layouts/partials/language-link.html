@@ -1,0 +1,6 @@
+{{ $current := . }}
+{{ range .AllTranslations }}
+  {{ if ne .Language.Lang $.Site.Language.Lang }}
+    <a href="{{ partial "relative-url.html" (dict "Page" $current "URL" .RelPermalink) }}" hreflang="{{ .Language.Locale | default .Language.Lang }}">{{ .Language.Label | default .Language.Lang }}</a>
+  {{ end }}
+{{ end }}

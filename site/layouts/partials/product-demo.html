@@ -1,0 +1,66 @@
+{{ $kind := .Kind | default "hero" }}
+{{ $page := .Page }}
+{{ $screenshotKind := $kind }}
+{{ if eq $kind "hero" }}
+  {{ $screenshotKind = "overview" }}
+{{ else if eq $kind "storyboard" }}
+  {{ $screenshotKind = "comic" }}
+{{ end }}
+{{ $screenshot := resources.Get (printf "images/screenshots/%s.%s.webp" $screenshotKind $page.Site.Language.Lang) }}
+
+{{ if $screenshot }}
+  {{ $screenshot800 := $screenshot.Resize "800x webp q82" }}
+  {{ $screenshot1200 := $screenshot.Resize "1200x webp q84" }}
+  <figure class="product-demo product-demo--{{ $kind }} product-demo--screenshot">
+    <div class="product-demo__chrome" aria-hidden="true">
+      <span></span><span></span><span></span>
+      <strong>Lumi</strong>
+      <em>{{ i18n "demo_local" }}</em>
+    </div>
+    <div class="product-demo__capture">
+      <img
+        src="{{ partial "relative-url.html" (dict "Page" $page "URL" $screenshot1200.RelPermalink) }}"
+        srcset="{{ partial "relative-url.html" (dict "Page" $page "URL" $screenshot800.RelPermalink) }} 800w, {{ partial "relative-url.html" (dict "Page" $page "URL" $screenshot1200.RelPermalink) }} 1200w, {{ partial "relative-url.html" (dict "Page" $page "URL" $screenshot.RelPermalink) }} {{ $screenshot.Width }}w"
+        sizes="(max-width: 767px) calc(100vw - 30px), (max-width: 960px) min(760px, calc(100vw - 48px)), 1080px"
+        width="{{ $screenshot1200.Width }}"
+        height="{{ $screenshot1200.Height }}"
+        alt="{{ i18n (printf "demo_%s_alt" $kind) }}"
+        decoding="async"
+        {{ if eq $kind "hero" }}fetchpriority="high"{{ else }}loading="lazy"{{ end }}
+      >
+    </div>
+  </figure>
+{{ else }}
+  <div class="product-demo product-demo--{{ $kind }}" role="img" aria-label="{{ i18n (printf "demo_%s_alt" $kind) }}">
+    <div class="product-demo__chrome" aria-hidden="true">
+      <span></span><span></span><span></span>
+      <strong>Lumi</strong>
+      <em>{{ i18n "demo_local" }}</em>
+    </div>
+    <div class="product-demo__app" aria-hidden="true">
+      <aside class="demo-rail">
+        <div class="demo-rail__brand">{{ partial "brand-mark.html" $page }}</div>
+        <span class="is-active"></span><span></span><span></span><span></span>
+      </aside>
+      <div class="demo-workspace">
+        <header class="demo-topbar">
+          <div><b>{{ i18n "demo_project" }}</b><small>{{ i18n "demo_saved" }}</small></div>
+          <span>{{ i18n "demo_preview" }}</span>
+        </header>
+        <div class="demo-local">
+          <div class="demo-files">
+            <small>{{ i18n "demo_project_folder" }}</small>
+            <b>Moonlight-Mail/</b>
+            <span>├─ STORY.md</span><span>├─ project.sqlite</span><span>├─ assets/</span><span>└─ .lumi/</span>
+          </div>
+          <div class="demo-history">
+            <small>{{ i18n "demo_versions" }}</small>
+            <div class="is-current"><i></i><p><b>{{ i18n "demo_current_version" }}</b><span>{{ i18n "demo_just_now" }}</span></p></div>
+            <div><i></i><p><b>{{ i18n "demo_previous_version" }}</b><span>{{ i18n "demo_earlier" }}</span></p></div>
+            <div><i></i><p><b>{{ i18n "demo_first_draft" }}</b><span>{{ i18n "demo_yesterday" }}</span></p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{{ end }}

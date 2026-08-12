@@ -1,0 +1,498 @@
+name: Desktop Windows
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      checkout_ref:
+        required: true
+        type: string
+      build_updater:
+        required: true
+        type: boolean
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY:
+        required: false
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+        required: false
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Preview bundle version, for example v0.1.2; the selected branch is built without updater artifacts"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}-${{ inputs.release_tag || '' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and release unsigned Windows x64 installer
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Resolve and validate release version
+        id: release
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_REF_NAME: ${{ github.ref_name }}
+          EVENT_REF_TYPE: ${{ github.ref_type }}
+          INPUT_BUILD_UPDATER: ${{ inputs.build_updater }}
+          INPUT_CHECKOUT_REF: ${{ inputs.checkout_ref }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          if ($env:EVENT_NAME -eq 'pull_request') {
+            $tag = ''
+            $version = "0.0.0-pr.$($env:PR_NUMBER)"
+            $checkoutRef = $env:EVENT_REF
+            $updater = 'false'
+          } else {
+            $tag = $env:INPUT_RELEASE_TAG
+            $version = $tag.TrimStart('v')
+            if ([string]::IsNullOrWhiteSpace($env:INPUT_CHECKOUT_REF)) {
+              $checkoutRef = $env:EVENT_REF
+              $updater = 'false'
+            } else {
+              $checkoutRef = $env:INPUT_CHECKOUT_REF
+              $updater = if ($env:INPUT_BUILD_UPDATER -eq 'true') { 'true' } else { 'false' }
+            }
+          }
+
+          if ($env:EVENT_NAME -ne 'pull_request' -and $tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$') {
+            throw 'Release tag must look like v0.1.0.'
+          }
+
+          "tag=$tag" | Add-Content -Path $env:GITHUB_OUTPUT
+          "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
+          "ref=$checkoutRef" | Add-Content -Path $env:GITHUB_OUTPUT
+          "updater=$updater" | Add-Content -Path $env:GITHUB_OUTPUT
+
+      - name: Checkout build ref
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.ref }}
+          persist-credentials: false
+
+      - name: Validate desktop assets and unsigned Windows config
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $iconPath = 'rel/app/src-tauri/icons/icon.png'
+          $iconBytes = [System.IO.File]::ReadAllBytes($iconPath)
+          if ($iconBytes.Length -le 25 -or $iconBytes[25] -ne 6) {
+            throw "Tauri source icon must be an RGBA PNG (PNG color type 6): $iconPath"
+          }
+
+          $configPath = 'rel/app/src-tauri/tauri.windows.conf.json'
+          $config = Get-Content -Raw $configPath | ConvertFrom-Json
+          if (@($config.bundle.targets).Count -ne 1 -or $config.bundle.targets[0] -ne 'nsis') {
+            throw 'Windows bundle targets must contain only nsis.'
+          }
+          if (@($config.bundle.icon).Count -ne 1 -or $config.bundle.icon[0] -ne 'icons/windows-generated/icon.ico') {
+            throw 'Windows bundle icon must use the ICO generated in CI.'
+          }
+          if ($config.bundle.windows.nsis.installMode -ne 'currentUser') {
+            throw 'The Windows NSIS installer must use currentUser mode.'
+          }
+          if ($config.bundle.windows.nsis.installerIcon -ne 'icons/windows-generated/icon.ico') {
+            throw 'Windows NSIS installer icon must use the ICO generated in CI.'
+          }
+          if ($config.bundle.windows.webviewInstallMode.type -ne 'skip') {
+            throw 'The browser-based desktop launcher must not install an unused WebView2 runtime.'
+          }
+          if ($config.bundle.createUpdaterArtifacts -ne $false) {
+            throw 'Windows updater artifacts must remain disabled.'
+          }
+          foreach ($property in @('certificateThumbprint', 'digestAlgorithm', 'signCommand', 'timestampUrl', 'tsp')) {
+            if ($config.bundle.windows.PSObject.Properties.Name -contains $property) {
+              throw "Windows signing property must not be configured: $property"
+            }
+          }
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test Go backend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go test ./...
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Go tests failed.'
+          }
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.16.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rel/app/src-tauri
+          key: x86_64-pc-windows-msvc
+
+      - name: Install pinned Tauri CLI and generate Windows icon
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $installedVersion = cargo tauri --version 2>$null
+          if ($LASTEXITCODE -ne 0 -or "$installedVersion".Trim() -ne 'tauri-cli 2.8.0') {
+            cargo install tauri-cli --version '=2.8.0' --locked
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to install tauri-cli 2.8.0.'
+            }
+          }
+          $installedVersion = cargo tauri --version
+          if ($LASTEXITCODE -ne 0 -or "$installedVersion".Trim() -ne 'tauri-cli 2.8.0') {
+            throw "Unexpected Tauri CLI version: $installedVersion"
+          }
+
+          Push-Location 'rel/app/src-tauri'
+          try {
+            cargo tauri icon icons/icon.png --output icons/windows-generated
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to generate the Windows icon.'
+            }
+          } finally {
+            Pop-Location
+          }
+          if (-not (Test-Path 'rel/app/src-tauri/icons/windows-generated/icon.ico' -PathType Leaf)) {
+            throw 'Tauri did not generate icons/windows-generated/icon.ico.'
+          }
+
+      - name: Test desktop launcher
+        shell: pwsh
+        working-directory: rel/app/src-tauri
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo fmt --check
+          if ($LASTEXITCODE -ne 0) {
+            throw 'cargo fmt --check failed.'
+          }
+          cargo test --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows desktop launcher default-feature tests failed.'
+          }
+          cargo test --locked --features desktop-updater --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows desktop launcher updater-feature tests failed.'
+          }
+
+      - name: Build frontend and Windows backend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          pnpm --dir web install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) {
+            throw 'pnpm install failed.'
+          }
+          pnpm --dir web run build
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Frontend build failed.'
+          }
+
+          New-Item -ItemType Directory -Force 'rel/app/src-tauri/backend-windows' | Out-Null
+          $env:CGO_ENABLED = '0'
+          $env:GOOS = 'windows'
+          $env:GOARCH = 'amd64'
+          go build -trimpath -tags embed_frontend -ldflags="-s -w" -o rel/app/src-tauri/backend-windows/lumi_web.exe ./cmd/lumi_web
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows backend build failed.'
+          }
+
+          $backendPath = 'rel/app/src-tauri/backend-windows/lumi_web.exe'
+          $bytes = [System.IO.File]::ReadAllBytes($backendPath)
+          if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) {
+            throw 'Windows backend does not have an MZ header.'
+          }
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw ('Windows backend machine type is 0x{0:x4}, expected x64 0x8664.' -f $machine)
+          }
+          if ((Get-AuthenticodeSignature $backendPath).Status -ne 'NotSigned') {
+            throw 'Windows backend must remain unsigned.'
+          }
+
+      - name: Build unsigned NSIS installer
+        shell: pwsh
+        env:
+          LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
+          LUMI_DESKTOP_UPDATER: ${{ steps.release.outputs.updater }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $buildUpdater = $env:LUMI_DESKTOP_UPDATER -eq 'true'
+          if ($buildUpdater -and (
+            [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY) -or
+            [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)
+          )) {
+            throw 'TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD are required for updater artifacts.'
+          }
+
+          $buildConfig = @{
+            version = $env:LUMI_DESKTOP_VERSION
+            bundle = @{
+              createUpdaterArtifacts = $buildUpdater
+              resources = @{
+                'backend-windows/' = 'backend/'
+              }
+            }
+          }
+          $configPath = Join-Path $env:RUNNER_TEMP 'lumi-windows-build.json'
+          $buildConfig | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 $configPath
+
+          Push-Location 'rel/app/src-tauri'
+          try {
+            if ($buildUpdater) {
+              cargo tauri build --config $configPath --target x86_64-pc-windows-msvc --bundles nsis --features desktop-updater
+            } else {
+              cargo tauri build --config $configPath --target x86_64-pc-windows-msvc --bundles nsis
+            }
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Tauri Windows build failed.'
+            }
+          } finally {
+            Pop-Location
+          }
+
+      - name: Verify and package release assets
+        shell: pwsh
+        env:
+          LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $bundleDirectory = 'rel/app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis'
+          $installers = @(Get-ChildItem -Path $bundleDirectory -Filter '*-setup.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected one NSIS installer in $bundleDirectory, found $($installers.Count)."
+          }
+
+          $launcherPath = 'rel/app/src-tauri/target/x86_64-pc-windows-msvc/release/lumi.exe'
+          if (-not (Test-Path $launcherPath -PathType Leaf)) {
+            throw "Tauri launcher is missing: $launcherPath"
+          }
+          $expectedVersion = ($env:LUMI_DESKTOP_VERSION -split '[-+]')[0]
+          $productVersion = (Get-Item $launcherPath).VersionInfo.ProductVersion
+          if ([string]::IsNullOrWhiteSpace($productVersion) -or -not $productVersion.StartsWith($expectedVersion)) {
+            throw "Launcher version '$productVersion' does not match '$expectedVersion'."
+          }
+
+          Copy-Item $installers[0].FullName 'Lumi-windows-x64-setup.exe' -Force
+          if ('${{ steps.release.outputs.updater }}' -eq 'true') {
+            $updaterSignature = "$($installers[0].FullName).sig"
+            if (-not (Test-Path $updaterSignature -PathType Leaf)) {
+              throw "Windows updater signature is missing: $updaterSignature"
+            }
+            Copy-Item $updaterSignature 'Lumi-windows-x64-setup.exe.sig' -Force
+          }
+          foreach ($path in @(
+            'Lumi-windows-x64-setup.exe',
+            $launcherPath,
+            'rel/app/src-tauri/backend-windows/lumi_web.exe'
+          )) {
+            $signature = Get-AuthenticodeSignature $path
+            if ($signature.Status -ne 'NotSigned') {
+              throw "$path has unexpected Authenticode status $($signature.Status)."
+            }
+          }
+
+          $hash = (Get-FileHash 'Lumi-windows-x64-setup.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Lumi-windows-x64-setup.exe" | Set-Content -Encoding ascii 'Lumi-windows-x64-setup.exe.sha256'
+
+      - name: Smoke test installed application
+        shell: pwsh
+        env:
+          LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $installerPath = Join-Path $PWD 'Lumi-windows-x64-setup.exe'
+          $installDirectory = Join-Path $env:LOCALAPPDATA 'Lumi'
+          $launcherPath = Join-Path $installDirectory 'lumi.exe'
+          $backendPath = Join-Path $installDirectory 'backend\lumi_web.exe'
+          $uninstallerPath = Join-Path $installDirectory 'uninstall.exe'
+          $startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Lumi.lnk'
+          $appDataDirectory = Join-Path $env:LOCALAPPDATA 'dev.lumi.Lumi'
+          $databasePath = Join-Path $appDataDirectory 'lumi.sqlite'
+          $cacheDirectory = Join-Path $appDataDirectory 'cache'
+          $logPath = Join-Path $appDataDirectory 'logs\lumi.log'
+          $appProcess = $null
+
+          if ($appDataDirectory.StartsWith($installDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or [StringComparer]::OrdinalIgnoreCase.Equals($appDataDirectory, $installDirectory)) {
+            throw "Application data directory must not be inside the install directory: $appDataDirectory"
+          }
+
+          try {
+            $installer = Start-Process -FilePath $installerPath -ArgumentList '/S' -Wait -PassThru
+            if ($installer.ExitCode -ne 0) {
+              throw "NSIS installer exited with code $($installer.ExitCode)."
+            }
+            foreach ($path in @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut)) {
+              if (-not (Test-Path $path -PathType Leaf)) {
+                throw "Installed file is missing: $path"
+              }
+            }
+            foreach ($path in @($launcherPath, $backendPath)) {
+              $signature = Get-AuthenticodeSignature $path
+              if ($signature.Status -ne 'NotSigned') {
+                throw "$path has unexpected Authenticode status $($signature.Status)."
+              }
+            }
+
+            $expectedVersion = ($env:LUMI_DESKTOP_VERSION -split '[-+]')[0]
+            $productVersion = (Get-Item $launcherPath).VersionInfo.ProductVersion
+            if ([string]::IsNullOrWhiteSpace($productVersion) -or -not $productVersion.StartsWith($expectedVersion)) {
+              throw "Installed launcher version '$productVersion' does not match '$expectedVersion'."
+            }
+
+            $startingLines = if (Test-Path $logPath) { @(Get-Content $logPath).Count } else { 0 }
+            $appProcess = Start-Process -FilePath $launcherPath -PassThru
+
+            $url = $null
+            for ($attempt = 0; $attempt -lt 120; $attempt++) {
+              if (Test-Path $logPath) {
+                $newLog = (@(Get-Content $logPath | Select-Object -Skip $startingLines) -join "`n")
+                $matches = [regex]::Matches($newLog, 'Lumi backend ready at (http://127\.0\.0\.1:[0-9]+)')
+                if ($matches.Count -gt 0) {
+                  $url = $matches[$matches.Count - 1].Groups[1].Value
+                  break
+                }
+              }
+              Start-Sleep -Seconds 1
+            }
+            if ([string]::IsNullOrWhiteSpace($url)) {
+              if (Test-Path $logPath) { Get-Content $logPath -Tail 200 | Write-Host }
+              throw 'Packaged Lumi app did not report a ready loopback URL.'
+            }
+
+            $health = Invoke-RestMethod -Method Get -Uri "$url/api/v1/health"
+            if ($health.success -ne $true -or $health.data.status -ne 'ok' -or $health.data.database -ne 'connected') {
+              throw "Unexpected health response: $($health | ConvertTo-Json -Compress -Depth 5)"
+            }
+            if (-not (Test-Path $databasePath -PathType Leaf)) {
+              throw "Application database is missing from Windows LocalAppData: $databasePath"
+            }
+            if (-not (Test-Path $cacheDirectory -PathType Container)) {
+              throw "Application cache directory is missing from Windows LocalAppData: $cacheDirectory"
+            }
+
+            $backendProcesses = @(
+              Get-CimInstance Win32_Process -Filter "Name = 'lumi_web.exe'" |
+                Where-Object { [StringComparer]::OrdinalIgnoreCase.Equals($_.ExecutablePath, $backendPath) }
+            )
+            if ($backendProcesses.Count -ne 1) {
+              throw "Expected one installed lumi_web.exe process, found $($backendProcesses.Count)."
+            }
+            $backendProcess = $backendProcesses[0]
+            if ($backendProcess.CommandLine -match 'desktop_token|LUMI_DESKTOP_ACCESS_TOKEN') {
+              throw 'Desktop access token information leaked into the backend command line.'
+            }
+
+            $uri = [Uri]$url
+            $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $backendProcess.ProcessId)
+            if (-not ($listeners | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -eq $uri.Port })) {
+              throw "Backend is not listening on the expected loopback URL $url."
+            }
+            if ($listeners | Where-Object { $_.LocalAddress -ne '127.0.0.1' }) {
+              throw 'Backend opened a listener outside IPv4 loopback.'
+            }
+
+            $browserOpened = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              $newLog = (@(Get-Content $logPath | Select-Object -Skip $startingLines) -join "`n")
+              if ($newLog.Contains("opened Lumi in system browser at $url")) {
+                $browserOpened = $true
+                break
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $browserOpened) {
+              throw 'Packaged Lumi app did not invoke the system browser.'
+            }
+
+            $newLog = (@(Get-Content $logPath | Select-Object -Skip $startingLines) -join "`n")
+            if ($newLog -match '#desktop_token=|LUMI_DESKTOP_ACCESS_TOKEN') {
+              throw 'Desktop access token information leaked into the launcher log.'
+            }
+          } finally {
+            if ($null -ne $appProcess) {
+              Get-Process -Id $appProcess.Id -ErrorAction SilentlyContinue | Stop-Process -Force
+            }
+            Get-Process -Name 'lumi_web' -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 1
+            if (Test-Path $uninstallerPath -PathType Leaf) {
+              $uninstaller = Start-Process -FilePath $uninstallerPath -ArgumentList '/S' -Wait -PassThru
+              if ($uninstaller.ExitCode -ne 0) {
+                throw "NSIS uninstaller exited with code $($uninstaller.ExitCode)."
+              }
+            }
+          }
+
+          $installedFiles = @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut)
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            $leftovers = @($installedFiles | Where-Object { Test-Path $_ })
+            if ($leftovers.Count -eq 0) {
+              break
+            }
+            Start-Sleep -Seconds 1
+          }
+          $leftovers = @($installedFiles | Where-Object { Test-Path $_ })
+          if ($leftovers.Count -gt 0) {
+            throw "Silent uninstall left installed files: $($leftovers -join ', ')"
+          }
+          foreach ($path in @($databasePath, $cacheDirectory, $logPath)) {
+            if (-not (Test-Path $path)) {
+              throw "Silent uninstall removed user data: $path"
+            }
+          }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Lumi-windows-x64
+          path: |
+            Lumi-windows-x64-setup.exe
+            Lumi-windows-x64-setup.exe.sha256
+            Lumi-windows-x64-setup.exe.sig
+          if-no-files-found: error

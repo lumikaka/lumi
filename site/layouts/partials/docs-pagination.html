@@ -1,0 +1,18 @@
+{{ $current := . }}
+{{ $pages := (where .Site.RegularPages "Section" "docs").ByWeight }}
+{{ $previous := false }}
+{{ $next := false }}
+{{ $found := false }}
+{{ range $pages }}
+  {{ if $found }}
+    {{ if not $next }}{{ $next = . }}{{ end }}
+  {{ else if eq .RelPermalink $current.RelPermalink }}
+    {{ $found = true }}
+  {{ else }}
+    {{ $previous = . }}
+  {{ end }}
+{{ end }}
+<nav class="docs-pagination" aria-label="{{ i18n "tutorial_pagination" }}">
+  {{ with $previous }}<a href="{{ partial "relative-url.html" (dict "Page" $current "URL" .RelPermalink) }}"><small>← {{ i18n "previous" }}</small><strong>{{ .Title }}</strong></a>{{ else }}<span></span>{{ end }}
+  {{ with $next }}<a class="docs-pagination__next" href="{{ partial "relative-url.html" (dict "Page" $current "URL" .RelPermalink) }}"><small>{{ i18n "next" }} →</small><strong>{{ .Title }}</strong></a>{{ end }}
+</nav>

@@ -1,0 +1,15 @@
+{{- $pages := where .Site.RegularPages "Section" "docs" -}}
+{{- $languageRoot := .Site.Home.RelPermalink -}}
+[
+{{- range $index, $page := $pages.ByWeight -}}
+  {{- if $index }},{{ end }}
+  {{- dict
+    "title" $page.Title
+    "description" ($page.Description | default $page.Summary | plainify)
+    "headings" (findRE `<h[2-3][^>]*>(.*?)</h[2-3]>` $page.Content)
+    "content" ($page.Plain | htmlUnescape)
+    "url" (strings.TrimPrefix $languageRoot $page.RelPermalink)
+    "group" (i18n (printf "docs_group_%s" ($page.Params.docs_group | default "start")))
+    | jsonify -}}
+{{- end }}
+]

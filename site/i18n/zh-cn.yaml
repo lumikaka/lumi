@@ -1,0 +1,168 @@
+- id: skip_to_content
+  translation: 跳到正文
+- id: primary_navigation
+  translation: 主导航
+- id: footer_navigation
+  translation: 页脚导航
+- id: nav_features
+  translation: 产品能力
+- id: nav_process
+  translation: 创作流程
+- id: nav_docs
+  translation: 教程
+- id: download_lumi
+  translation: 下载 Lumi
+- id: releases
+  translation: 下载与版本
+- id: open_menu
+  translation: 打开菜单
+- id: switch_language
+  translation: Switch to English
+- id: footer_tagline
+  translation: 专为绘本创作设计的本地优先 AI 工具。
+- id: footer_local_first
+  translation: 让故事、画面与项目都留在你的掌控中。
+- id: search_docs
+  translation: 搜索教程
+- id: close_search
+  translation: 关闭搜索
+- id: search_placeholder
+  translation: 搜索安装、分镜、导出……
+- id: search_start
+  translation: 输入关键词，搜索 Lumi 使用教程。
+- id: search_loading
+  translation: 正在载入教程索引……
+- id: search_no_results
+  translation: 没有找到相关教程，请换一个关键词。
+- id: search_failed
+  translation: 教程索引载入失败，请从左侧目录浏览。
+- id: search_result_count
+  translation: 找到 %d 条结果
+- id: search_result_label
+  translation: 条结果
+- id: docs_navigation
+  translation: 教程目录
+- id: close_docs_navigation
+  translation: 关闭教程目录
+- id: docs_group_start
+  translation: 开始使用
+- id: docs_group_create
+  translation: 完成第一本绘本
+- id: docs_group_manage
+  translation: 项目与排障
+- id: docs_overview
+  translation: 教程总览
+- id: read_tutorial
+  translation: 阅读教程
+- id: on_this_page
+  translation: 本页内容
+- id: breadcrumbs
+  translation: 面包屑导航
+- id: tutorial_pagination
+  translation: 教程前后页
+- id: previous
+  translation: 上一篇
+- id: next
+  translation: 下一篇
+- id: not_found_title
+  translation: 这页暂时没有故事
+- id: not_found_body
+  translation: 链接可能已经变化。回到 Lumi 首页，或从教程目录继续寻找。
+- id: back_home
+  translation: 返回首页
+- id: demo_local
+  translation: 本地项目
+- id: demo_project
+  translation: 月亮邮差
+- id: demo_saved
+  translation: 已保存到本机
+- id: demo_preview
+  translation: 预览绘本
+- id: demo_story
+  translation: 故事与章节
+- id: demo_chapter_one
+  translation: 第一章 · 出发
+- id: demo_chapter_two
+  translation: 第二章 · 星光车站
+- id: demo_new_chapter
+  translation: 新建章节
+- id: demo_story_title
+  translation: 月亮邮差
+- id: demo_story_line_one
+  translation: 小狐狸米洛第一次背起银色邮包，沿着月光铺成的小路出发。
+- id: demo_story_line_two
+  translation: 今晚，他要把一封迟到很久的信送到山顶。
+- id: demo_premise
+  translation: 设定
+- id: demo_premise_items
+  translation: 角色、场景与道具
+- id: demo_add_item
+  translation: 新增设定项
+- id: demo_character
+  translation: 米洛
+- id: demo_character_note
+  translation: 角色 · 暖橙围巾
+- id: demo_scene
+  translation: 星光车站
+- id: demo_scene_note
+  translation: 场景 · 蓝色夜空
+- id: demo_prop
+  translation: 银色邮包
+- id: demo_prop_note
+  translation: 道具 · 月牙搭扣
+- id: demo_comic
+  translation: 漫画
+- id: demo_storyboard
+  translation: 可编辑分镜
+- id: demo_frame_1
+  translation: 沿月光出发
+- id: demo_frame_2
+  translation: 穿过松林
+- id: demo_frame_3
+  translation: 抵达车站
+- id: demo_ready
+  translation: 当前画面已就绪
+- id: demo_project_folder
+  translation: 自包含项目目录
+- id: demo_versions
+  translation: 可恢复版本
+- id: demo_current_version
+  translation: 当前版本
+- id: demo_previous_version
+  translation: 调整了第二幕分镜
+- id: demo_first_draft
+  translation: 首次生成
+- id: demo_just_now
+  translation: 刚刚保存
+- id: demo_earlier
+  translation: 18 分钟前
+- id: demo_yesterday
+  translation: 昨天
+- id: demo_overview
+  translation: 项目概览
+- id: demo_in_progress
+  translation: 创作中
+- id: demo_chapters
+  translation: 章节
+- id: demo_frames
+  translation: 绘本画面
+- id: demo_next_step
+  translation: 下一步
+- id: demo_continue_storyboard
+  translation: 继续完成第一章分镜
+- id: demo_continue_body
+  translation: 故事、设定与画面都在同一个项目里。
+- id: demo_enter_workspace
+  translation: 进入工作台
+- id: demo_hero_alt
+  translation: Lumi 月亮邮差绘本项目概览界面演示
+- id: demo_story_alt
+  translation: Lumi 故事与章节编辑界面演示
+- id: demo_premise_alt
+  translation: Lumi 角色、场景和道具设定界面演示
+- id: demo_storyboard_alt
+  translation: Lumi 漫画分镜与画面候选界面演示
+- id: demo_preview_alt
+  translation: Lumi 章节连续预览，按阅读顺序展示当前绘本画面
+- id: demo_local_alt
+  translation: Lumi 本地项目目录与版本恢复界面演示

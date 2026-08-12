@@ -1,0 +1,239 @@
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Bundle version, for example v0.1.5; an existing Tag is required only when publishing"
+        required: true
+        type: string
+      publish_release:
+        description: "Publish an existing Tag; leave off to build the selected branch without updater artifacts"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}-${{ inputs.release_tag || '' }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Resolve desktop release
+    runs-on: ubuntu-24.04
+    outputs:
+      checkout_ref: ${{ steps.source.outputs.checkout_ref }}
+      publish: ${{ steps.release.outputs.publish }}
+      stable: ${{ steps.release.outputs.stable }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Resolve and validate release
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_REF_NAME: ${{ github.ref_name }}
+          EVENT_REF_TYPE: ${{ github.ref_type }}
+          INPUT_PUBLISH_RELEASE: ${{ inputs.publish_release }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "push" ] && [ "$EVENT_REF_TYPE" = "tag" ]; then
+            tag="$EVENT_REF_NAME"
+            checkout_ref="refs/tags/${tag}"
+            publish="true"
+          else
+            tag="$INPUT_RELEASE_TAG"
+            if [ "$INPUT_PUBLISH_RELEASE" = "true" ]; then
+              checkout_ref="refs/tags/${tag}"
+              publish="true"
+            else
+              checkout_ref="$EVENT_REF"
+              publish="false"
+            fi
+          fi
+
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "Release tag must look like v0.1.5 or v0.2.0-beta.1." >&2
+            exit 1
+          fi
+
+          stable="false"
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            stable="true"
+          fi
+
+          echo "checkout_ref=${checkout_ref}" >> "$GITHUB_OUTPUT"
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+          echo "stable=${stable}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout resolved release source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.checkout_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate checkout and freeze commit
+        id: source
+        shell: bash
+        env:
+          RELEASE_PUBLISH: ${{ steps.release.outputs.publish }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          checkout_commit="$(git rev-parse HEAD)"
+          if [ "$RELEASE_PUBLISH" = "true" ]; then
+            tag_commit="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+            if [ "$checkout_commit" != "$tag_commit" ]; then
+              echo "Checkout ${checkout_commit} does not match ${RELEASE_TAG} (${tag_commit})." >&2
+              exit 1
+            fi
+          fi
+          echo "checkout_ref=${checkout_commit}" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: macOS Apple Silicon
+    needs: prepare
+    uses: ./.github/workflows/desktop-macos.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+      build_updater: ${{ needs.prepare.outputs.publish == 'true' }}
+    secrets: inherit
+
+  windows:
+    name: Windows x64
+    needs: prepare
+    uses: ./.github/workflows/desktop-windows.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+      build_updater: ${{ needs.prepare.outputs.publish == 'true' }}
+    secrets: inherit
+
+  publish:
+    name: Publish complete desktop release
+    if: ${{ needs.prepare.outputs.publish == 'true' }}
+    needs: [prepare, macos, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: Lumi-macos-aarch64
+          path: artifacts/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: Lumi-windows-x64
+          path: artifacts/windows
+
+      - name: Test updater manifest generator
+        run: node --test rel/app/generate-updater-manifest.test.mjs
+
+      - name: Assemble and validate release assets
+        id: assets
+        shell: bash
+        env:
+          RELEASE_STABLE: ${{ needs.prepare.outputs.stable }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          required_assets=(
+            artifacts/macos/Lumi-macos-aarch64.app.zip
+            artifacts/macos/Lumi-macos-aarch64.app.zip.sha256
+            artifacts/macos/Lumi-macos-aarch64.app.tar.gz
+            artifacts/macos/Lumi-macos-aarch64.app.tar.gz.sig
+            artifacts/windows/Lumi-windows-x64-setup.exe
+            artifacts/windows/Lumi-windows-x64-setup.exe.sha256
+            artifacts/windows/Lumi-windows-x64-setup.exe.sig
+          )
+          for asset in "${required_assets[@]}"; do
+            if [ ! -s "$asset" ]; then
+              echo "Required desktop release asset is missing or empty: $asset" >&2
+              exit 1
+            fi
+          done
+
+          mkdir release-assets
+          cp artifacts/macos/* release-assets/
+          cp artifacts/windows/* release-assets/
+
+          if [ "$RELEASE_STABLE" = "true" ]; then
+            node rel/app/generate-updater-manifest.mjs \
+              --version "$RELEASE_VERSION" \
+              --repository "$GITHUB_REPOSITORY" \
+              --pub-date "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              --macos-signature release-assets/Lumi-macos-aarch64.app.tar.gz.sig \
+              --windows-signature release-assets/Lumi-windows-x64-setup.exe.sig \
+              --output release-assets/latest.json
+
+            jq -e \
+              --arg version "$RELEASE_VERSION" \
+              '.version == $version and
+               (.platforms["darwin-aarch64"].url | startswith("https://")) and
+               (.platforms["darwin-aarch64"].signature | length > 0) and
+               (.platforms["windows-x86_64"].url | startswith("https://")) and
+               (.platforms["windows-x86_64"].signature | length > 0)' \
+              release-assets/latest.json >/dev/null
+          fi
+
+          find release-assets -maxdepth 1 -type f -print | sort
+
+      - name: Create draft, upload assets, and publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_STABLE: ${{ needs.prepare.outputs.stable }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          notes="Desktop builds for ${RELEASE_TAG}. The macOS build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen."
+          release_state="missing"
+          if release_json="$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease 2>/dev/null)"; then
+            if [ "$(jq -r '.isDraft' <<<"$release_json")" = "true" ]; then
+              release_state="draft"
+            else
+              echo "Release ${RELEASE_TAG} is already published and is immutable; create a new patch Tag." >&2
+              exit 1
+            fi
+          fi
+
+          if [ "$release_state" = "missing" ]; then
+            create_args=(--verify-tag --title "$RELEASE_TAG" --notes "$notes" --draft)
+            if [ "$RELEASE_STABLE" != "true" ]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${create_args[@]}"
+          fi
+
+          mapfile -t assets < <(find release-assets -maxdepth 1 -type f ! -name latest.json -print | sort)
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          if [ "$RELEASE_STABLE" = "true" ]; then
+            gh release upload "$RELEASE_TAG" release-assets/latest.json --clobber
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
+          else
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
+          fi

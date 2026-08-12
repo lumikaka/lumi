@@ -1,0 +1,23 @@
+<dialog class="search-dialog" data-search-dialog aria-labelledby="search-title"
+  data-loading="{{ i18n "search_loading" }}"
+  data-empty="{{ i18n "search_no_results" }}"
+  data-failed="{{ i18n "search_failed" }}"
+  data-result-label="{{ i18n "search_result_label" }}">
+  <div class="search-dialog__panel">
+    <header>
+      <div>
+        <p class="eyebrow">Lumi Docs</p>
+        <h2 id="search-title">{{ i18n "search_docs" }}</h2>
+      </div>
+      <button class="icon-button" type="button" aria-label="{{ i18n "close_search" }}" data-search-close>×</button>
+    </header>
+    <label class="search-field">
+      <span class="sr-only">{{ i18n "search_docs" }}</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+      <input id="docs-search-input" name="q" type="search" autocomplete="off" placeholder="{{ i18n "search_placeholder" }}" data-search-input>
+      <kbd>Esc</kbd>
+    </label>
+    <p class="search-status" data-search-status>{{ i18n "search_start" }}</p>
+    <ol class="search-results" data-search-results></ol>
+  </div>
+</dialog>

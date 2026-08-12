@@ -1,0 +1,8842 @@
+@use 'sass:color'
+@use './design-tokens' as *
+
+$ink: $color-text
+$muted: $color-muted
+$paper: $color-surface-muted
+$cream: $color-surface-subtle
+$orange: $color-action
+$coral: $color-accent-muted
+$sage: $color-success
+
+.workspace-main
+  width: min(100%, $layout-width)
+  margin: 0 auto
+  min-width: 0
+  padding: 0
+  background: transparent
+
+  h1, h2, h3
+    font-family: $font-family-base
+    letter-spacing: 0
+
+.project-action__number
+  color: $orange
+  font-family: Georgia, serif
+
+.asset-control-grid
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 1rem
+
+  > form, > div
+    padding: 18px
+    display: grid
+    gap: .9rem
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    box-shadow: none
+
+  h2, p
+    margin: 0
+
+.asset-maintenance-card > div:last-child
+  display: flex
+  gap: .65rem
+  flex-wrap: wrap
+
+.scan-summary
+  display: grid
+  gap: .2rem
+  padding: .85rem
+  border: 1px solid rgba($color-success, .2)
+  border-radius: $radius-sm
+  background: $color-success-muted
+
+.asset-grid
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr))
+  gap: 1rem
+
+  > .workspace-empty
+    grid-column: 1 / -1
+
+.asset-card
+  min-width: 0
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > img, > .asset-card__placeholder
+    display: block
+    width: 100%
+    aspect-ratio: 4 / 3
+    object-fit: cover
+    background: $color-surface-muted
+
+  > div:last-child
+    padding: 1rem
+
+  h2
+    margin: .45rem 0 .25rem
+    font-size: 1rem
+
+  p, code
+    overflow-wrap: anywhere
+    color: #667068
+    font-size: .75rem
+
+.asset-card__placeholder
+  display: grid !important
+  place-content: center
+  text-align: center
+  gap: .25rem
+
+.asset-card__placeholder--missing, .asset-card__placeholder--corrupt, .asset-card__placeholder--quarantined
+  background: #f7e7df !important
+  color: #923d26
+
+.production-asset-image
+  min-height: 100px
+  padding: 12px
+  display: grid
+  place-content: center
+  gap: 8px
+  text-align: center
+  color: #833f2c
+  background: #f7e7df
+
+  strong, small
+    overflow-wrap: anywhere
+    font-size: $font-size-small
+
+  button
+    padding: 6px 8px
+    font-size: $font-size-small
+
+.asset-card > .production-asset-image
+  width: 100%
+  aspect-ratio: 4 / 3
+
+.asset-status
+  display: inline-flex
+  padding: .18rem .48rem
+  border-radius: 999px
+  background: #e9eee9
+  font-size: $font-size-micro
+  text-transform: uppercase
+
+.asset-status--ready
+  color: #1f6842
+  background: #e0f2e8
+
+.workspace-section-heading button[aria-pressed="true"]
+  background: #223d2f
+  color: #fff
+
+.workspace-section-heading button[aria-pressed="true"]:hover
+  background: #315e47
+
+.production-workspace
+  width: min(100%, $layout-width)
+  margin: 0 auto
+  gap: 18px
+
+  h2
+    margin: 0
+    font-family: $font-family-base
+    font-weight: 500
+
+  select
+    min-width: 0
+    padding: 11px 12px
+    border: 1px solid rgba($ink, .16)
+    border-radius: 10px
+    color: $ink
+    background: white
+
+.production-task-strip
+  min-width: 190px
+  padding: 9px
+  display: grid
+  gap: 6px
+  border-radius: 10px
+  background: rgba($orange, .08)
+  font-size: $font-size-small
+
+  > div
+    display: flex
+    justify-content: space-between
+
+  progress
+    width: 100%
+
+.premise-workspace
+  position: relative
+  width: min(100%, $layout-width)
+  min-width: 0
+  margin: 0 auto
+  display: grid
+  gap: 14px
+
+.premise-visually-hidden
+  position: absolute !important
+  width: 1px !important
+  height: 1px !important
+  padding: 0 !important
+  overflow: hidden
+  clip: rect(0, 0, 0, 0)
+  white-space: nowrap
+  border: 0 !important
+
+.premise-toolbar
+  position: relative
+  z-index: 12
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+.premise-toolbar__tabs
+  min-width: 0
+  padding: 3px
+  display: flex
+  align-items: center
+  gap: 2px
+  overflow-x: auto
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface-subtle
+  scrollbar-width: none
+
+  &::-webkit-scrollbar
+    display: none
+
+  .premise-toolbar__tab
+    flex: 0 0 auto
+    min-width: 0
+    min-height: 34px
+    padding: 0 8px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+    border: 0
+    border-radius: $radius-sm
+    color: $color-muted
+    background: transparent
+    font-size: 16px
+    font-weight: 700
+    line-height: 1
+
+    span
+      min-width: 0
+      height: auto
+      padding: 0
+      display: inline
+      border-radius: 0
+      color: inherit
+      background: transparent
+      font-size: $font-size-small
+      font-weight: 800
+      opacity: .68
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+    &.is-pending
+      color: rgba($color-text, .48)
+
+.premise-toolbar__tabs button[aria-selected="true"]
+  color: $color-text
+  background: $color-surface
+  box-shadow: 0 0 0 1px $color-border
+
+.premise-toolbar__tabs button[aria-selected="true"]:hover,
+.premise-toolbar__tabs button[aria-selected="true"]:focus-visible
+  color: $color-text
+  background: $color-surface
+  box-shadow: 0 0 0 1px rgba($color-accent, .58)
+
+.premise-add
+  position: relative
+  flex: 0 0 auto
+
+.premise-add__trigger
+  min-height: 38px
+  padding: 0 13px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  border: 1px solid #e95519
+  border-radius: $radius-sm
+  color: $color-surface
+  background: $color-action
+  box-shadow: 0 2px 7px rgba($color-action, .22)
+  font-size: 13px
+  font-weight: 800
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: #c9410b
+    color: $color-surface
+    background: #e95318
+
+.premise-add__trigger[aria-expanded="true"]:hover,
+.premise-add__trigger[aria-expanded="true"]:focus-visible
+  border-color: #a93408
+  background: #d44710
+
+.premise-add__menu
+  position: absolute
+  top: calc(100% + 7px)
+  right: 0
+  z-index: 20
+  width: 270px
+  padding: 6px
+  display: grid
+  gap: 2px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 16px 40px rgba($color-text, .16)
+
+  > .premise-add__item
+    width: 100%
+    min-height: 54px
+    padding: 8px 10px
+    display: grid
+    grid-template-columns: 20px minmax(0, 1fr)
+    align-items: center
+    gap: 9px
+    border: 1px solid transparent
+    border-radius: $radius-sm
+    color: $color-text
+    background: transparent
+    text-align: left
+
+    > svg
+      color: $color-muted
+
+    > span
+      min-width: 0
+      display: grid
+      gap: 2px
+
+    strong,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      font-size: 13px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 600
+
+    &:hover,
+    &:focus-visible
+      border-color: transparent
+      color: #9d380d
+      background: #fff5ef
+
+      > svg
+        color: $color-action
+
+.premise-running-state,
+.premise-decision-notice
+  min-height: 36px
+  padding: 8px 11px
+  display: flex
+  align-items: center
+  gap: 8px
+  border: 1px solid rgba($color-warning, .2)
+  border-radius: $radius-sm
+  color: $color-warning
+  background: $color-warning-muted
+  font-size: $font-size-small
+  font-weight: 700
+
+.premise-running-state > span
+  width: 8px
+  height: 8px
+  flex: 0 0 auto
+  border-radius: 999px
+  background: $color-action
+  box-shadow: 0 0 0 4px rgba($color-action, .14)
+  animation: premise-pulse 1.3s ease-in-out infinite
+
+@keyframes premise-pulse
+  0%, 100%
+    opacity: .45
+  50%
+    opacity: 1
+
+.premise-decision-notice
+  justify-content: space-between
+  border-color: rgba($color-accent, .2)
+  color: #1e4f9b
+  background: $color-accent-muted
+
+  .premise-decision-notice__close
+    width: 26px
+    height: 26px
+    padding: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid transparent
+    border-radius: $radius-sm
+    color: inherit
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      border-color: rgba($color-accent, .3)
+      background: rgba($color-accent, .08)
+
+.premise-content-panel
+  min-width: 0
+  min-height: 440px
+  padding: 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+.premise-content-heading
+  margin-bottom: 14px
+  display: flex
+  align-items: flex-end
+  justify-content: space-between
+  gap: 20px
+
+  > div
+    display: flex
+    align-items: center
+    gap: 8px
+
+    h1
+      margin: 0
+      color: $color-text
+      font-size: 18px
+      font-weight: 800
+      line-height: 1.25
+
+    > span
+      min-width: 23px
+      height: 23px
+      padding: 0 7px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      border-radius: 999px
+      color: $color-muted
+      background: $color-surface-muted
+      font-size: $font-size-small
+      font-weight: 800
+
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+
+.premise-content-heading--assets
+  align-items: center
+
+  > div
+    display: block
+
+    h2
+      margin: 0
+      color: $color-text
+      font-size: 20px
+      font-weight: 700
+      line-height: 1.25
+
+  > span
+    color: $color-muted
+    font-size: 13px
+    font-weight: 800
+
+.premise-content-eyebrow
+  margin: 0 0 5px
+  color: $color-muted
+  font-size: 12px
+  font-weight: 800
+  text-transform: uppercase
+
+.premise-content-heading--actions
+  align-items: center
+
+  > div:first-child
+    min-width: 0
+    display: grid
+    gap: 4px
+
+    > div
+      display: flex
+      align-items: center
+      gap: 8px
+
+    p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+
+  > div:last-child
+    flex: 0 0 auto
+    display: flex
+    gap: 7px
+
+    > button:not(.button-secondary)
+      min-height: 38px
+      padding: 0 13px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      gap: 6px
+      border: 1px solid $color-action
+      border-radius: $radius-sm
+      color: $color-surface
+      background: $color-action
+      font-size: 12px
+      font-weight: 800
+
+      &:hover,
+      &:focus-visible
+        border-color: #c9410b
+        background: #e95318
+
+.premise-content-heading--batch > div:first-child > .premise-content-eyebrow
+  margin: 0 0 1px
+  color: $color-muted
+  font-size: 12px
+  font-weight: 800
+  text-transform: uppercase
+
+.premise-asset-filter
+  margin-bottom: 15px
+  display: grid
+  gap: 8px
+
+.premise-asset-filter__label
+  color: $color-muted
+  font-size: 12px
+  font-weight: 800
+  text-transform: uppercase
+
+.premise-tag-filters
+  display: flex
+  align-items: center
+  gap: 8px
+  flex-wrap: wrap
+  overflow-x: auto
+  scrollbar-width: none
+
+  &::-webkit-scrollbar
+    display: none
+
+  .premise-tag-filter
+    flex: 0 0 auto
+    min-height: 32px
+    padding: 0 12px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: 13px
+    font-weight: 800
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+.premise-tag-filters button[aria-pressed="true"]
+  border-color: $color-accent
+  color: $color-accent
+  background: $color-accent-muted
+
+.premise-tag-filters button[aria-pressed="true"]:hover,
+.premise-tag-filters button[aria-pressed="true"]:focus-visible
+  border-color: #1d4ed8
+  color: #1d4ed8
+  background: #dbeafe
+
+.premise-card-grid
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr))
+  gap: 12px
+
+.premise-asset-tile
+  min-width: 0
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease
+
+  &:hover,
+  &:focus-within
+    border-color: rgba($color-action, .48)
+    box-shadow: 0 7px 20px rgba($color-text, .09)
+    transform: translateY(-1px)
+
+.premise-asset-tile__image
+  position: relative
+  aspect-ratio: 1
+  overflow: hidden
+  background: $color-surface-muted
+
+  > .premise-asset-tile__surface
+    width: 100%
+    height: 100%
+    padding: 0
+    display: block
+    border: 0
+    color: $color-text
+    background: transparent
+
+    > img
+      width: 100%
+      height: 100%
+      display: block
+      object-fit: contain
+      background: $color-surface-muted
+
+    > .production-asset-image,
+    > .asset-card__placeholder
+      width: 100%
+      height: 100%
+      aspect-ratio: 1
+
+.premise-asset-tile__actions
+  position: absolute
+  top: 7px
+  right: 7px
+  display: flex
+  gap: 4px
+  opacity: 0
+  transform: translateY(-3px)
+  transition: opacity 130ms ease, transform 130ms ease
+
+  .premise-icon-button
+    width: 30px
+    height: 30px
+    padding: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid rgba($color-text, .12)
+    border-radius: $radius-sm
+    color: $color-text
+    background: rgba($color-surface, .94)
+    box-shadow: 0 3px 10px rgba($color-text, .12)
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-action
+      color: #9d380d
+      background: #fff6f1
+
+    &.is-danger:hover,
+    &.is-danger:focus-visible
+      border-color: $color-danger
+      color: $color-danger
+      background: $color-danger-muted
+
+.premise-asset-tile:hover .premise-asset-tile__actions,
+.premise-asset-tile:focus-within .premise-asset-tile__actions
+  opacity: 1
+  transform: translateY(0)
+
+.premise-asset-tile__title
+  width: 100%
+  min-height: 54px
+  padding: 10px 11px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 8px
+  border: 0
+  color: $color-text
+  background: $color-surface
+  text-align: left
+
+  strong
+    min-width: 0
+    overflow: hidden
+    font-size: 13px
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  span
+    flex: 0 0 auto
+    color: $color-muted
+    font-size: $font-size-small
+
+  &:hover,
+  &:focus-visible
+    color: #9d380d
+    background: #fffaf7
+
+.premise-asset-tile--trashed .premise-asset-tile__image
+  filter: grayscale(.72)
+  opacity: .78
+
+.premise-card-skeleton
+  aspect-ratio: .82
+  overflow: hidden
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-md
+  background: linear-gradient(100deg, $color-surface-muted 20%, #fff 40%, $color-surface-muted 60%)
+  background-size: 220% 100%
+  animation: premise-shimmer 1.25s linear infinite
+
+@keyframes premise-shimmer
+  to
+    background-position-x: -220%
+
+.premise-empty-state
+  min-height: 330px
+  padding: 36px 16px
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  text-align: center
+  color: $color-muted
+
+  > svg
+    margin-bottom: 12px
+    color: rgba($color-text, .28)
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    color: $color-text
+    font-size: 16px
+
+  p
+    max-width: 480px
+    margin-top: 6px
+    font-size: 12px
+
+  > div
+    margin-top: 16px
+    display: flex
+    flex-wrap: wrap
+    justify-content: center
+    gap: 8px
+
+.premise-style-editor
+  margin-bottom: 14px
+  padding: 14px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface-subtle
+
+  label
+    display: grid
+    gap: 6px
+    font-size: $font-size-small
+    font-weight: 750
+
+  > div
+    display: flex
+    justify-content: flex-end
+    gap: 7px
+
+.premise-batch-loading
+  padding: 32px
+  color: $color-muted
+  text-align: center
+  font-size: 12px
+
+.premise-batch-list
+  display: grid
+  gap: 10px
+
+.premise-history-pagination
+  padding: 14px 0 4px
+  display: flex
+  align-items: center
+  justify-content: center
+  gap: 8px
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+
+.premise-batch-card
+  padding: 14px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface-subtle
+
+  > header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    time
+      color: $color-muted
+      font-size: $font-size-micro
+
+  > small
+    display: -webkit-box
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-small
+    -webkit-box-orient: vertical
+    -webkit-line-clamp: 1
+
+  &.is-expanded
+    border-color: rgba($color-action, .3)
+    background: $color-surface
+
+  &.is-ignored
+    border-style: dashed
+    background: rgba($color-surface-muted, .72)
+
+    > .premise-batch-card__summary,
+    > small
+      color: rgba($color-text, .56)
+
+.premise-batch-card__toggle
+  min-width: 0
+  padding: 0
+  display: inline-flex
+  align-items: center
+  gap: 8px
+  border: 0
+  color: $color-text
+  background: transparent
+
+  > svg
+    flex: 0 0 auto
+    color: $color-muted
+    transition: transform 130ms ease
+
+  > span
+    color: $color-text
+    font-size: 13px
+    font-weight: 800
+
+  &:hover,
+  &:focus-visible
+    color: #9d380d
+
+    > svg
+      color: $color-action
+
+.premise-batch-card__toggle[aria-expanded="true"] > svg
+  color: $color-action
+  transform: rotate(90deg)
+
+.premise-batch-card__toggle[aria-expanded="true"]:hover,
+.premise-batch-card__toggle[aria-expanded="true"]:focus-visible
+  color: #7f2b08
+
+  > svg
+    color: #c9410b
+
+.premise-batch-card__summary
+  width: 100%
+  margin: 0
+  padding: 0
+  display: -webkit-box
+  overflow: hidden
+  border: 0
+  color: $color-text
+  background: transparent
+  font-size: 12px
+  line-height: 1.55
+  text-align: left
+  -webkit-box-orient: vertical
+  -webkit-line-clamp: 3
+
+  &:hover,
+  &:focus-visible
+    color: #8f350f
+
+.premise-batch-card__summary[aria-expanded="true"]
+  -webkit-line-clamp: 1
+
+.premise-batch-card__summary[aria-expanded="true"]:hover,
+.premise-batch-card__summary[aria-expanded="true"]:focus-visible
+  color: #71300f
+
+.premise-batch-status
+  padding: 3px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: rgba($color-text, .07)
+  font-size: $font-size-micro
+  font-weight: 800
+
+.premise-batch-status--generating,
+.premise-batch-status--splitting
+  color: #9d380d
+  background: #fff0e8
+
+.premise-batch-status--ready
+  color: #174f9d
+  background: $color-accent-muted
+
+.premise-batch-status--completed
+  color: $color-success
+  background: $color-success-muted
+
+.premise-batch-status--failed
+  color: $color-danger
+  background: $color-danger-muted
+
+.premise-batch-status--ignored
+  color: $color-muted
+  background: rgba($color-text, .09)
+
+.premise-batch-card__actions
+  display: flex
+  flex-wrap: wrap
+  justify-content: flex-end
+  gap: 6px
+
+  button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 5px
+
+.premise-batch-ignore:not(:disabled)
+  color: $color-muted
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
+    background: $color-surface-muted
+
+.premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled)
+  color: #174f9d
+
+.premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled):hover,
+.premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled):focus-visible
+  color: #103e7d
+  background: $color-accent-muted
+
+.premise-batch-detail
+  padding-top: 13px
+  display: grid
+  gap: 12px
+  border-top: 1px solid $color-border-subtle
+
+  > dl
+    margin: 0
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1px
+    overflow: hidden
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-border-subtle
+
+    > div
+      min-width: 0
+      padding: 8px 9px
+      display: grid
+      gap: 2px
+      background: $color-surface
+
+    dt
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 750
+      text-transform: uppercase
+
+    dd
+      min-width: 0
+      margin: 0
+      overflow-wrap: anywhere
+      color: $color-text
+      font-size: $font-size-small
+
+    code
+      color: inherit
+      font-size: $font-size-small
+
+  > details
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface
+
+    summary
+      padding: 8px 9px
+      color: $color-muted
+      cursor: pointer
+      font-size: $font-size-small
+      font-weight: 750
+
+    pre
+      max-height: 180px
+      margin: 0
+      padding: 0 9px 9px
+      overflow: auto
+      color: $color-text
+      font-size: $font-size-small
+      white-space: pre-wrap
+
+.premise-batch-detail__text
+  display: grid
+  gap: 5px
+
+  strong
+    font-size: $font-size-small
+
+  p
+    margin: 0
+    color: $color-text
+    font-size: 12px
+    line-height: 1.6
+    white-space: pre-wrap
+
+.premise-batch-detail__empty
+  margin: 0
+  padding: 18px
+  border: 1px dashed $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  font-size: $font-size-small
+  text-align: center
+
+.premise-setting-grid
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr))
+  gap: 10px
+
+.premise-setting-card
+  min-width: 0
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > img,
+  > .production-asset-image
+    width: 100%
+    aspect-ratio: 3 / 2
+    display: block
+    object-fit: contain
+    background: $color-surface-muted
+
+  > div:not(.production-task-strip)
+    padding: 10px
+    display: grid
+    gap: 8px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 750
+
+    > small
+      display: -webkit-box
+      overflow: hidden
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.45
+      -webkit-box-orient: vertical
+      -webkit-line-clamp: 2
+
+    > div
+      display: flex
+      flex-wrap: wrap
+      gap: 6px
+
+  &.is-current
+    border-color: rgba($color-action, .48)
+    box-shadow: 0 0 0 2px rgba($color-action, .08)
+
+.premise-setting-card.is-current:hover,
+.premise-setting-card.is-current:focus-within
+  border-color: $color-action
+  box-shadow: 0 0 0 3px rgba($color-action, .13)
+
+.premise-setting-card button[aria-pressed="true"]
+  border-color: #f3a17f
+  color: #9d380d
+  background: #fff1e9
+
+.premise-setting-card button[aria-pressed="true"]:hover,
+.premise-setting-card button[aria-pressed="true"]:focus-visible
+  border-color: $color-action
+  color: #7f2b08
+  background: #ffe5d7
+
+.premise-setting-import
+  margin-top: 14px
+  padding: 12px
+  display: grid
+  grid-template-columns: minmax(170px, 1fr) minmax(200px, 1fr) auto
+  align-items: center
+  gap: 10px
+  border: 1px dashed $color-border
+  border-radius: $radius-md
+
+  > div
+    display: grid
+    gap: 2px
+
+    strong
+      font-size: 12px
+
+    span
+      color: $color-muted
+      font-size: $font-size-small
+
+.premise-drop-overlay
+  position: fixed
+  z-index: 90
+  inset: 68px 18px 18px
+  display: flex
+  align-items: center
+  justify-content: center
+  gap: 12px
+  border: 2px dashed $color-action
+  border-radius: $radius-lg
+  color: #9d380d
+  background: rgba(#fff7f2, .94)
+  font-size: 16px
+  font-weight: 800
+  pointer-events: none
+
+.premise-dialog-backdrop
+  position: fixed
+  z-index: 80
+  inset: 0
+  padding: 24px
+  display: grid
+  place-items: center
+  overflow: auto
+  background: rgba($color-text, .38)
+  backdrop-filter: blur(2px)
+
+.premise-dialog
+  width: min(100%, 650px)
+  max-height: calc(100dvh - 48px)
+  overflow: auto
+  border: 1px solid $color-border
+  border-radius: $radius-lg
+  background: $color-surface
+  box-shadow: 0 24px 70px rgba($color-text, .22)
+
+  > header
+    position: sticky
+    top: 0
+    z-index: 2
+    padding: 16px 18px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 14px
+    border-bottom: 1px solid $color-border-subtle
+    background: rgba($color-surface, .97)
+
+    p,
+    h2
+      margin: 0
+
+    p
+      color: $color-action
+      font-size: $font-size-small
+      font-weight: 850
+      letter-spacing: .08em
+
+    h2
+      margin-top: 3px
+      font-size: 18px
+      font-weight: 800
+
+.premise-dialog__intro
+  margin: 0
+  padding: 16px 18px 0
+  color: $color-muted
+  font-size: 12px
+  line-height: 1.6
+
+.premise-batch-dialog > form
+  padding: 16px 18px 18px
+  display: grid
+  gap: 13px
+
+  > label
+    display: grid
+    gap: 6px
+    color: $color-text
+    font-size: $font-size-small
+    font-weight: 750
+
+  details
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+
+    summary
+      padding: 9px 10px
+      color: $color-text
+      cursor: pointer
+      font-size: $font-size-small
+      font-weight: 750
+
+    textarea
+      margin: 0 10px 10px
+      width: calc(100% - 20px)
+
+  footer
+    padding-top: 4px
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+.premise-story-import
+  display: flex
+  align-items: center
+  gap: 9px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+
+.premise-upload-dialog
+  width: min(100%, 790px)
+
+  > form
+    padding: 0 18px 18px
+
+    > footer
+      position: sticky
+      bottom: -18px
+      z-index: 2
+      margin: 14px -18px -18px
+      padding: 12px 18px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+      border-top: 1px solid $color-border
+      background: rgba($color-surface, .97)
+
+      > span
+        color: $color-muted
+        font-size: $font-size-small
+
+      > div
+        display: flex
+        gap: 8px
+
+.premise-upload-dropzone
+  width: calc(100% - 36px)
+  min-height: 76px
+  margin: 16px 18px
+  padding: 12px
+  display: grid
+  grid-template-columns: 28px minmax(0, 1fr)
+  align-items: center
+  gap: 1px 10px
+  border: 1px dashed rgba($color-action, .46)
+  border-radius: $radius-md
+  color: $color-text
+  background: #fffaf7
+  text-align: left
+
+  svg
+    grid-row: 1 / 3
+    color: $color-action
+
+  strong
+    font-size: 12px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-action
+    color: #9d380d
+    background: #fff3ec
+
+.premise-upload-list
+  display: grid
+  gap: 10px
+
+  fieldset
+    position: relative
+    min-width: 0
+    margin: 0
+    padding: 12px
+    display: grid
+    grid-template-columns: 108px minmax(0, 1fr)
+    gap: 12px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+
+    legend
+      padding: 0 5px
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 750
+
+    > img
+      width: 108px
+      aspect-ratio: 1
+      object-fit: contain
+      border-radius: $radius-sm
+      background: $color-surface-muted
+
+.premise-upload-fields
+  min-width: 0
+  display: grid
+  grid-template-columns: 140px minmax(0, 1fr)
+  gap: 8px
+
+  label
+    min-width: 0
+    display: grid
+    gap: 4px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  .is-wide
+    grid-column: 1 / -1
+
+.premise-upload-tags
+  display: flex
+  flex-wrap: wrap
+  gap: 4px
+
+  .premise-upload-tag
+    min-height: 24px
+    padding: 0 7px
+    border: 1px solid $color-border
+    border-radius: 999px
+    color: $color-muted
+    background: $color-surface
+    font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-action
+      color: #9d380d
+      background: #fff7f2
+
+.premise-upload-remove
+  position: absolute
+  top: 7px
+  right: 7px
+  width: 27px
+  height: 27px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-danger
+    color: $color-danger
+    background: $color-danger-muted
+
+.premise-dialog-backdrop--detail
+  place-items: center
+
+.premise-detail-dialog
+  width: min(100%, 880px)
+
+.premise-detail-layout
+  padding: 18px
+  display: grid
+  grid-template-columns: minmax(260px, .9fr) minmax(280px, 1.1fr)
+  gap: 18px
+
+.premise-detail-preview
+  min-width: 0
+  aspect-ratio: 1
+  overflow: hidden
+  border-radius: $radius-md
+  background: $color-surface-muted
+
+  > img,
+  > .production-asset-image,
+  > .asset-card__placeholder
+    width: 100%
+    height: 100%
+    aspect-ratio: 1
+    object-fit: contain
+
+.premise-detail-form
+  display: grid
+  align-content: start
+  gap: 10px
+
+  label
+    display: grid
+    gap: 5px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+.premise-variant-section
+  padding: 0 18px 18px
+
+  > header
+    margin-bottom: 10px
+    display: flex
+    align-items: center
+    gap: 7px
+
+    > div
+      margin-right: auto
+      display: flex
+      align-items: center
+      gap: 7px
+
+      h3
+        margin: 0
+        font-size: 14px
+
+      span
+        color: $color-muted
+        font-size: $font-size-small
+
+    label
+      position: relative
+      overflow: hidden
+
+      input
+        position: absolute
+        opacity: 0
+
+  > p
+    color: $color-muted
+    font-size: $font-size-small
+
+  > div
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))
+    gap: 8px
+
+    article
+      min-width: 0
+      padding: 7px
+      display: grid
+      gap: 5px
+      border: 1px solid $color-border
+      border-radius: $radius-md
+
+      > img,
+      > .production-asset-image
+        width: 100%
+        aspect-ratio: 1
+        object-fit: contain
+        border-radius: $radius-sm
+        background: $color-surface-muted
+
+      strong,
+      small
+        font-size: $font-size-small
+
+      small
+        color: $color-muted
+
+.premise-variant-section button[aria-pressed="true"]
+  border-color: #f3a17f
+  color: #9d380d
+  background: #fff1e9
+
+.premise-variant-section button[aria-pressed="true"]:hover,
+.premise-variant-section button[aria-pressed="true"]:focus-visible
+  border-color: $color-action
+  color: #7f2b08
+  background: #ffe5d7
+
+.premise-panel-loading
+  margin: 0
+  padding: 34px 12px
+  color: $color-muted
+  font-size: 12px
+  text-align: center
+
+.premise-thread-list
+  display: grid
+  gap: 7px
+
+.premise-thread-item
+  width: 100%
+  min-width: 0
+  min-height: 62px
+  padding: 9px 11px
+  display: grid
+  grid-template-columns: 34px minmax(0, 1fr) auto
+  align-items: center
+  gap: 10px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  color: $color-text
+  background: $color-surface
+  text-align: left
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-action, .48)
+    background: #fffaf7
+    box-shadow: 0 5px 16px rgba($color-text, .07)
+
+  > span:nth-child(2)
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    strong,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      font-size: 13px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+
+.premise-thread-item__icon
+  width: 34px
+  height: 34px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border-radius: $radius-sm
+  color: $color-action
+  background: #fff1e9
+
+.premise-thread-status
+  padding: 4px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-micro
+  font-style: normal
+  font-weight: 800
+
+.premise-thread-status--busy,
+.premise-thread-status--waiting_for_input
+  color: #9d380d
+  background: #fff0e8
+
+.premise-thread-status--failed,
+.premise-thread-status--cancelled,
+.premise-thread-status--interrupted
+  color: $color-danger
+  background: $color-danger-muted
+
+.premise-prompt-layout
+  min-width: 0
+  display: grid
+  grid-template-columns: 210px minmax(0, 1fr)
+  gap: 14px
+
+  > nav
+    min-width: 0
+    display: grid
+    align-content: start
+    gap: 5px
+
+    button
+      min-width: 0
+      padding: 10px
+      display: grid
+      gap: 3px
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-text
+      background: transparent
+      text-align: left
+
+      strong,
+      small
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      strong
+        font-size: 12px
+
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-border
+        background: $color-surface-muted
+
+.premise-prompt-layout > nav button[aria-pressed="true"]
+  border-color: rgba($color-action, .35)
+  color: #9d380d
+  background: #fff4ee
+
+.premise-prompt-layout > nav button[aria-pressed="true"]:hover,
+.premise-prompt-layout > nav button[aria-pressed="true"]:focus-visible
+  border-color: $color-action
+  color: #7f2b08
+  background: #ffe9dd
+
+.premise-prompt-editor
+  min-width: 0
+  padding: 14px
+  display: grid
+  gap: 11px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface-subtle
+
+  > header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 12px
+
+    h2,
+    p
+      margin: 0
+
+    h2
+      font-size: 15px
+
+    p
+      margin-top: 3px
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.45
+
+    > span
+      flex: 0 0 auto
+      padding: 4px 7px
+      border-radius: 999px
+      color: $color-muted
+      background: $color-surface-muted
+      font-size: $font-size-small
+      font-weight: 750
+
+  > textarea
+    min-height: 230px
+    font-size: 12px
+    line-height: 1.6
+
+  > footer
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+
+.premise-prompt-history
+  padding-top: 12px
+  display: grid
+  gap: 7px
+  border-top: 1px solid $color-border-subtle
+
+  > h3
+    margin: 0
+    font-size: 12px
+
+  > article
+    min-width: 0
+    padding: 9px
+    display: grid
+    grid-template-columns: minmax(0, 1fr) auto
+    gap: 6px 10px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface
+
+    > div
+      min-width: 0
+      display: flex
+      align-items: center
+      gap: 7px
+
+      strong
+        font-size: $font-size-small
+
+      small
+        overflow: hidden
+        color: $color-muted
+        font-size: $font-size-micro
+        text-overflow: ellipsis
+        white-space: nowrap
+
+    > p
+      grid-column: 1 / -1
+      margin: 0
+      display: -webkit-box
+      overflow: hidden
+      color: $color-text
+      font-size: $font-size-small
+      line-height: 1.5
+      white-space: pre-wrap
+      -webkit-box-orient: vertical
+      -webkit-line-clamp: 3
+
+    > span
+      align-self: center
+      color: $color-success
+      font-size: $font-size-small
+      font-weight: 750
+
+.premise-detail-header-actions
+  display: flex
+  align-items: center
+  gap: 7px
+
+  > button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 5px
+
+@media (max-width: 860px)
+  .premise-toolbar
+    align-items: stretch
+
+  .premise-toolbar__tabs
+    flex: 1 1 auto
+
+  .premise-setting-import
+    grid-template-columns: 1fr auto
+
+    > div
+      grid-column: 1 / -1
+
+  .premise-detail-layout
+    grid-template-columns: minmax(220px, .8fr) minmax(240px, 1.2fr)
+
+  .premise-prompt-layout
+    grid-template-columns: 180px minmax(0, 1fr)
+
+@media (max-width: 760px)
+  .premise-workspace
+    gap: 10px
+
+  .premise-toolbar
+    flex-direction: column
+
+  .premise-toolbar__tabs
+    width: 100%
+
+  .premise-add,
+  .premise-add__trigger
+    width: 100%
+
+  .premise-add__menu
+    width: 100%
+
+  .premise-content-panel
+    min-height: 360px
+    padding: 14px
+
+  .premise-content-heading
+    align-items: flex-start
+    flex-direction: column
+    gap: 5px
+
+  .premise-content-heading--actions
+    > div:last-child
+      width: 100%
+
+      > button
+        flex: 1 1 auto
+
+  .premise-card-grid
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr))
+    gap: 9px
+
+  .premise-asset-tile__actions
+    opacity: 1
+    transform: none
+
+  .premise-batch-card > header
+    align-items: flex-start
+    flex-direction: column
+
+  .premise-setting-grid
+    grid-template-columns: 1fr
+
+  .premise-batch-detail > dl
+    grid-template-columns: 1fr
+
+  .premise-setting-import
+    grid-template-columns: 1fr
+
+    > div
+      grid-column: auto
+
+  .premise-dialog-backdrop
+    padding: 10px
+    place-items: end center
+
+  .premise-dialog
+    max-height: calc(100dvh - 20px)
+    border-radius: $radius-lg $radius-lg 0 0
+
+  .premise-upload-list fieldset
+    grid-template-columns: 82px minmax(0, 1fr)
+
+    > img
+      width: 82px
+
+  .premise-upload-fields
+    grid-template-columns: 1fr
+
+    .is-wide
+      grid-column: auto
+
+  .premise-detail-layout
+    grid-template-columns: 1fr
+
+  .premise-detail-preview
+    max-height: 360px
+
+  .premise-thread-item
+    grid-template-columns: 32px minmax(0, 1fr)
+
+    > em
+      grid-column: 2
+      justify-self: start
+
+  .premise-prompt-layout
+    grid-template-columns: 1fr
+
+    > nav
+      grid-template-columns: repeat(3, minmax(0, 1fr))
+
+  .premise-prompt-editor > footer
+    align-items: stretch
+    flex-direction: column
+
+  .premise-detail-header-actions > .button-secondary
+    width: 34px
+    overflow: hidden
+    color: transparent
+
+    > svg
+      flex: 0 0 auto
+      color: $color-text
+
+  .premise-variant-section > header
+    align-items: stretch
+    flex-wrap: wrap
+
+    > div
+      width: 100%
+
+  .premise-drop-overlay
+    inset: 64px 10px 10px
+
+@media (max-width: 480px)
+  .premise-toolbar__tabs button
+    padding: 0 8px
+
+  .premise-card-grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  .premise-upload-list fieldset
+    grid-template-columns: 1fr
+
+    > img
+      width: 100%
+      max-height: 210px
+
+  .premise-upload-dialog > form > footer
+    align-items: stretch
+    flex-direction: column
+
+    > div
+      display: grid
+      grid-template-columns: 1fr 1fr
+
+.comic-header-actions
+  display: flex
+  gap: 8px
+  align-items: center
+
+.comic-state
+  padding: 7px 10px
+  border-radius: 999px
+  color: $muted
+  background: rgba($ink, .07)
+  font-size: $font-size-micro
+  text-transform: uppercase
+
+.comic-state--ready
+  color: #365c3e
+  background: rgba($sage, .18)
+
+.comic-layout
+  display: grid
+  grid-template-columns: 190px minmax(0, 1fr) 190px
+  gap: 14px
+  align-items: start
+
+.comic-section-list, .comic-history > section, .comic-meta-card, .storyboard-editor-card, .comic-image-card
+  padding: 16px
+  border: 1px solid rgba($ink, .11)
+  border-radius: 16px
+  background: rgba(white, .7)
+
+.comic-section-list
+  border-color: $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  > header, .comic-section-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+
+  > header
+    margin-bottom: 10px
+
+.comic-section-row
+  margin-top: 6px
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  > button:first-child
+    width: 100%
+    padding: 9px
+    display: grid
+    grid-template-columns: 24px 1fr
+    gap: 3px 6px
+    border-color: transparent
+    color: $ink
+    text-align: left
+    background: transparent
+
+    span
+      grid-row: 1 / 3
+      color: $orange
+
+    small
+      color: $muted
+
+  > div
+    display: flex
+
+    button
+      padding: 5px
+
+.comic-section-row > button[aria-pressed="true"]
+  border-color: rgba($color-accent, .38)
+  color: $color-accent
+  background: $color-accent-muted
+
+.comic-section-row > button[aria-pressed="true"]:hover
+  border-color: $color-accent
+  color: $color-accent
+  background: #dce8ff
+
+.comic-editor
+  min-width: 0
+  display: flex
+  flex-direction: column
+  gap: 12px
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+.comic-meta-card, .storyboard-editor-card, .comic-image-card
+  display: flex
+  flex-direction: column
+  gap: 10px
+
+  > header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+
+    .eyebrow
+      margin-bottom: 4px
+
+.storyboard-editor-card button[aria-pressed="true"]
+  color: white
+  background: $ink
+
+.storyboard-editor-card button[aria-pressed="true"]:hover
+  color: white
+  background: #443d38
+
+.variant-chip-row
+  display: flex
+  flex-wrap: wrap
+  gap: 5px
+
+  button
+    padding: 6px 8px
+    border-color: rgba($ink, .15)
+    color: $muted
+    background: transparent
+    font-size: $font-size-small
+
+.variant-chip-row button[aria-pressed="true"]
+  border-color: $sage
+  color: white
+  background: $sage
+
+.variant-chip-row button[aria-pressed="true"]:hover
+  border-color: color.adjust($sage, $lightness: -8%)
+  color: white
+  background: color.adjust($sage, $lightness: -8%)
+
+.comic-image-card > header img
+  width: 100px
+  height: auto
+  object-fit: contain
+  border-radius: 9px
+
+.comic-image-card > header .production-asset-image
+  width: 100px
+  aspect-ratio: 1 / 1.5
+  border-radius: 9px
+
+.image-action-row
+  display: flex
+  flex-wrap: wrap
+  gap: 8px
+  align-items: end
+
+  label
+    color: $muted
+    font-size: $font-size-small
+
+.image-variant-grid
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr))
+  gap: 8px
+
+  article
+    display: grid
+    gap: 5px
+
+  img
+    width: 100%
+    aspect-ratio: 1 / 1.5
+    object-fit: contain
+    border-radius: 8px
+
+  .production-asset-image
+    width: 100%
+    aspect-ratio: 1 / 1.5
+    border-radius: 8px
+
+.image-variant-grid button[aria-pressed="true"]
+  border-color: $orange
+  background: $orange
+
+.image-variant-grid button[aria-pressed="true"]:hover
+  border-color: color.adjust($orange, $lightness: -8%)
+  background: color.adjust($orange, $lightness: -8%)
+
+.comic-history
+  display: flex
+  flex-direction: column
+  gap: 10px
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  section
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+  header, article
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+  article
+    padding-top: 8px
+    border-top: 1px solid rgba($ink, .08)
+    font-size: $font-size-small
+
+    a
+      color: $orange
+
+@media (max-width: 1050px)
+  .comic-layout
+    grid-template-columns: 170px minmax(0, 1fr)
+
+  .comic-history
+    grid-column: 1 / -1
+    display: grid
+    grid-template-columns: 1fr 1fr
+
+@media (max-width: 760px)
+  .comic-layout
+    grid-template-columns: 1fr
+
+  .comic-history
+    grid-column: auto
+    grid-template-columns: 1fr
+
+.workspace-stack
+  width: min(100%, $layout-width)
+  margin: 0 auto
+  display: flex
+  flex-direction: column
+  gap: 18px
+
+.project-overview
+  width: min(100%, 1120px)
+  margin: 0 auto
+  display: grid
+  gap: 18px
+
+.project-overview-grid
+  min-width: 0
+  display: grid
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px)
+  gap: 18px
+  align-items: start
+
+.project-overview-main
+  min-width: 0
+  display: grid
+  gap: 18px
+
+.overview-card,
+.overview-progress-card
+  min-width: 0
+  padding: 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  h1,
+  h2
+    margin: 0
+    color: $color-text
+    font-family: $font-family-base
+    font-size: 18px
+    font-weight: 800
+    line-height: 1.3
+
+.overview-card__header
+  margin-bottom: 16px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 18px
+
+  .eyebrow
+    margin: 0 0 4px
+
+  > span
+    color: $color-muted
+    font-size: 12px
+    font-weight: 700
+
+.overview-card__action
+  flex: 0 0 auto
+  min-height: 30px
+  padding: 0 9px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface
+  font-size: 12px
+  font-weight: 800
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+.overview-project-description,
+.overview-story-copy,
+.overview-style-copy
+  margin: 0
+  color: $color-text
+  font-size: 15px
+  line-height: 1.65
+  overflow-wrap: anywhere
+
+.overview-project-description
+  color: $color-muted
+  font-size: 13px
+
+.overview-story-copy
+  max-width: 760px
+  font-size: 17px
+  line-height: 1.6
+
+.overview-style-copy
+  white-space: pre-wrap
+
+.overview-story-copy.is-empty,
+.overview-style-copy.is-empty,
+.overview-card__loading
+  color: $color-muted
+
+.overview-card__loading
+  margin: 0
+  font-size: 13px
+
+.overview-language-card
+  form
+    display: grid
+    gap: 4px
+
+  .overview-card__header
+    margin-bottom: 12px
+
+    p
+      margin: 5px 0 0
+      color: $color-muted
+      font-size: 12px
+
+  label
+    display: grid
+    gap: 6px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+  select
+    max-width: 320px
+
+.overview-model-card .overview-card__header p
+  margin: 5px 0 0
+  color: $color-muted
+  font-size: 12px
+
+.overview-model-settings
+  display: grid
+  gap: 10px
+
+.overview-model-setting
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  &.is-invalid
+    border-color: rgba(174, 75, 58, .46)
+    background: rgba(174, 75, 58, .055)
+
+  label
+    display: grid
+    grid-template-columns: minmax(110px, .34fr) minmax(0, 1fr)
+    align-items: center
+    gap: 10px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 750
+
+  select
+    min-width: 0
+    width: 100%
+
+  dl
+    margin: 0
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 8px
+
+    div
+      min-width: 0
+      display: grid
+      gap: 2px
+
+    dt
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 700
+
+    dd
+      margin: 0
+      overflow: hidden
+      font-size: 12px
+      font-weight: 800
+      text-overflow: ellipsis
+      white-space: nowrap
+
+.overview-model-setting__title
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 12px
+
+  h3
+    margin: 0
+    font-size: 14px
+
+  span
+    display: block
+    margin-top: 3px
+    color: $color-muted
+    font-size: $font-size-small
+
+.overview-model-setting__warning
+  margin: 0
+  color: #93453a
+  font-size: 12px
+  line-height: 1.45
+
+.overview-model-facts
+  margin: 0
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 10px
+
+  div
+    min-width: 0
+    padding: 10px 11px
+    display: grid
+    gap: 3px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  dd
+    margin: 0
+    overflow: hidden
+    font-size: 12px
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-project-facts
+  margin: 18px 0 0
+  display: grid
+  grid-template-columns: repeat(4, minmax(0, 1fr))
+  gap: 10px
+
+  div
+    min-width: 0
+    padding: 10px 11px
+    display: grid
+    gap: 3px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  dd
+    margin: 0
+    overflow: hidden
+    color: $color-text
+    font-size: 13px
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-card--project .overview-card__header + .overview-project-facts
+  margin-top: 0
+
+.overview-picture-book-card
+  .overview-card__header p
+    margin: 5px 0 0
+    color: $color-muted
+    font-size: 12px
+
+  .overview-project-facts
+    margin-top: 0
+
+.overview-picture-book-compatibility
+  margin-top: 12px
+  padding: 10px 11px
+  display: grid
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr)
+  gap: 3px 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface-subtle
+  font-size: 12px
+
+  strong
+    color: $color-text
+
+  small
+    grid-column: 2
+    color: inherit
+
+  &.is-compatible
+    border-color: rgba(53, 126, 87, .36)
+    background: rgba(53, 126, 87, .06)
+
+  &.is-unsupported
+    border-color: rgba(174, 75, 58, .46)
+    color: #93453a
+    background: rgba(174, 75, 58, .055)
+
+.overview-card__meta
+  margin-top: 16px
+  padding-top: 12px
+  display: flex
+  align-items: center
+  gap: 10px
+  border-top: 1px solid $color-border-subtle
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 700
+
+  a
+    color: $color-text
+
+    &:hover,
+    &:focus-visible
+      color: $color-accent
+
+.overview-edit-form
+  display: grid
+  gap: 13px
+
+  label
+    display: grid
+    gap: 6px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+.overview-form-actions
+  display: flex
+  flex-wrap: wrap
+  gap: 8px
+
+.overview-work-links
+  display: grid
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  gap: 8px
+
+  a
+    min-width: 0
+    min-height: 104px
+    padding: 13px
+    display: flex
+    flex-direction: column
+    gap: 4px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface-subtle
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+  strong
+    margin-top: auto
+    font-size: 13px
+
+  small
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-small
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-progress-card
+  position: sticky
+  top: 0
+  display: grid
+  gap: 16px
+
+.overview-progress-grid
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 10px
+
+  article
+    min-width: 0
+    padding: 11px
+    display: grid
+    gap: 2px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  strong
+    overflow: hidden
+    color: $color-text
+    font-size: 22px
+    line-height: 1.1
+    text-overflow: ellipsis
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.overview-profile-card
+  .overview-card__header p,
+  .overview-card__header + p
+    margin: 5px 0 0
+    color: $color-muted
+    font-size: 12px
+
+.overview-profile-source
+  min-height: 360px
+  max-height: 62vh
+  margin: 0
+  padding: 18px
+  overflow: auto
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface-subtle
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+  font-size: 14px
+  line-height: 1.7
+  white-space: pre-wrap
+  overflow-wrap: anywhere
+
+.overview-profile-facts
+  margin: 14px 0 0
+  display: grid
+  grid-template-columns: repeat(4, minmax(0, 1fr))
+  gap: 10px
+
+  div
+    min-width: 0
+    padding: 10px 11px
+    display: grid
+    gap: 2px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  dd
+    margin: 0
+    overflow: hidden
+    font-size: 12px
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-profile-history
+  > .overview-card__header
+    margin-bottom: 10px
+
+  > div
+    display: grid
+
+  article
+    min-width: 0
+    padding: 11px 0
+    display: grid
+    grid-template-columns: 54px minmax(120px, 1fr) auto auto
+    gap: 12px
+    align-items: center
+    border-top: 1px solid $color-border-subtle
+    font-size: $font-size-small
+
+    span,
+    small,
+    time
+      overflow: hidden
+      color: $color-muted
+      text-overflow: ellipsis
+      white-space: nowrap
+
+.lumi-dialog.overview-profile-dialog
+  width: min(960px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+
+  > form
+    max-height: calc(100vh - 34px)
+    display: grid
+    grid-template-rows: auto minmax(0, 1fr) auto
+
+.overview-profile-dialog__body
+  min-height: 0
+  overflow: auto
+
+  .editor-toolbar
+    margin: 0
+    padding: 0
+
+  .story-editor,
+  .markdown-preview
+    min-height: 52vh
+
+.overview-prompt-panel,
+.overview-exports-panel
+  display: grid
+  gap: 18px
+
+  > .overview-card__header
+    margin-bottom: 0
+
+    p
+      margin: 5px 0 0
+      color: $color-muted
+      font-size: 12px
+
+.overview-llm-panel
+  display: grid
+  gap: 16px
+
+  > .overview-card__header
+    margin-bottom: 0
+
+    p
+      margin: 5px 0 0
+      color: $color-muted
+      font-size: 12px
+
+.overview-llm-table-wrap
+  min-width: 0
+  overflow-x: auto
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+.overview-llm-filters
+  padding: 12px
+  display: grid
+  grid-template-columns: repeat(4, minmax(0, 1fr))
+  align-items: end
+  gap: 9px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+.overview-llm-filter
+  min-width: 0
+  display: grid
+  gap: 5px
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+  input,
+  select
+    width: 100%
+
+.overview-llm-filter--keyword
+  grid-column: span 2
+
+.overview-llm-filter-actions
+  display: flex
+  gap: 7px
+
+  > button
+    flex: 1 1 auto
+
+.overview-llm-table
+  width: 100%
+  min-width: 840px
+  border-collapse: collapse
+  background: $color-surface
+  font-size: $font-size-small
+
+  th,
+  td
+    padding: 10px 12px
+    border-bottom: 1px solid $color-border-subtle
+    text-align: left
+    white-space: nowrap
+
+  th
+    color: $color-muted
+    background: $color-surface-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+  tbody tr:last-child td
+    border-bottom: 0
+
+  tbody tr[role="button"]
+    cursor: pointer
+    transition: background 120ms ease
+
+    &:hover,
+    &:focus-visible
+      outline: none
+      background: $color-accent-muted
+
+  td
+    color: $color-text
+
+    strong,
+    small
+      display: block
+
+    strong
+      max-width: 180px
+      overflow: hidden
+      text-overflow: ellipsis
+
+    small
+      margin-top: 2px
+      color: $color-muted
+      font-size: $font-size-small
+
+.overview-llm-empty
+  margin: 16px 0
+  color: $color-muted
+  text-align: center
+
+.overview-llm-status
+  padding: 4px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-micro
+  font-weight: 800
+
+.overview-llm-status--pending
+  color: #8b5f1e
+  background: rgba(#d7a64b, .17)
+
+.overview-llm-status--completed
+  color: #1f6842
+  background: #e0f2e8
+
+.overview-llm-status--failed,
+.overview-llm-status--cancelled
+  color: #94463f
+  background: rgba(#c95f54, .14)
+
+.overview-llm-pagination
+  display: flex
+  align-items: center
+  justify-content: center
+  gap: 12px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+@media (max-width: 900px)
+  .overview-llm-filters
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@media (max-width: 560px)
+  .overview-llm-filters
+    grid-template-columns: minmax(0, 1fr)
+
+  .overview-llm-filter--keyword
+    grid-column: auto
+
+.lumi-dialog.overview-llm-dialog
+  width: min(980px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+
+  > .lumi-dialog__header code
+    display: block
+    margin-top: 5px
+    color: $color-muted
+    font-size: $font-size-small
+
+.overview-llm-dialog__body
+  max-height: calc(100vh - 150px)
+  overflow: auto
+
+.overview-llm-detail-facts
+  margin: 0
+  display: grid
+  grid-template-columns: repeat(4, minmax(0, 1fr))
+  gap: 9px
+
+  div
+    min-width: 0
+    padding: 10px
+    display: grid
+    gap: 3px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+  dd
+    margin: 0
+    overflow: hidden
+    font-size: $font-size-small
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-llm-context
+  margin-top: 16px
+
+  h3
+    margin: 0 0 8px
+    font-size: 12px
+
+  dl
+    margin: 0
+    display: grid
+    gap: 6px
+
+  div
+    min-width: 0
+    display: grid
+    grid-template-columns: 110px minmax(0, 1fr)
+    gap: 10px
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+
+  dd
+    margin: 0
+    overflow: hidden
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+    font-size: $font-size-small
+    text-overflow: ellipsis
+
+.overview-llm-payload-note
+  margin: 14px 0 0
+  color: $color-muted
+  font-size: $font-size-small
+
+.overview-llm-payloads
+  margin-top: 16px
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 10px
+
+  article
+    min-width: 0
+    padding: 12px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+
+  h3
+    margin: 0 0 8px
+    font-size: 12px
+
+  pre
+    min-height: 100px
+    max-height: 360px
+    margin: 0
+    overflow: auto
+    color: $color-muted
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+    font-size: $font-size-small
+    line-height: 1.55
+    white-space: pre-wrap
+    overflow-wrap: anywhere
+
+.overview-llm-payload-heading
+  margin-bottom: 8px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 10px
+
+  h3
+    margin: 0
+
+  button
+    flex: 0 0 auto
+
+.lumi-dialog.overview-llm-reader-dialog
+  width: min(860px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+
+.overview-llm-reader-dialog__body
+  max-height: calc(100vh - 150px)
+  overflow: auto
+
+.overview-llm-readable-log
+  margin: 0
+  padding: 18px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface-subtle
+  font-family: inherit
+  font-size: 15px
+  line-height: 1.75
+  tab-size: 2
+  white-space: pre-wrap
+  overflow-wrap: anywhere
+
+.overview-llm-cost-note
+  margin: 14px 0 0
+  color: $color-muted
+  font-size: $font-size-small
+
+.overview-prompt-key
+  padding: 12px
+  display: flex
+  align-items: end
+  gap: 8px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  label
+    width: min(420px, 100%)
+    display: grid
+    gap: 5px
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.overview-prompt-editor
+  padding: 14px
+  display: grid
+  gap: 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+  > header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    > div
+      min-width: 0
+      display: flex
+      align-items: center
+      gap: 9px
+
+  h2
+    overflow: hidden
+    font-size: 15px
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  .story-editor
+    min-height: 300px
+
+.overview-prompt-status
+  padding: 4px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-micro
+  font-weight: 800
+
+.overview-prompt-status--saved
+  color: $color-success
+  background: $color-success-muted
+
+.overview-prompt-history
+  display: grid
+  gap: 10px
+
+  > header
+    display: flex
+    align-items: baseline
+    justify-content: space-between
+    gap: 12px
+
+    h2
+      font-size: 15px
+
+    span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 800
+
+  > div
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 10px
+
+.overview-prompt-version
+  min-width: 0
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > header,
+  > header > div,
+  > footer
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+  > header > div
+    justify-content: flex-start
+
+  span,
+  small,
+  code
+    color: $color-muted
+    font-size: $font-size-small
+
+  p
+    max-height: 110px
+    margin: 0
+    overflow: hidden
+    white-space: pre-wrap
+    font-size: $font-size-small
+    line-height: 1.55
+
+  > footer > span
+    font-weight: 800
+
+.overview-prompt-version--current
+  border-color: rgba($color-accent, .32)
+  background: $color-accent-muted
+
+.overview-export-toolbar
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  padding-top: 4px
+
+  > div
+    min-width: 0
+    display: flex
+    align-items: baseline
+    gap: 8px
+
+  h2
+    font-size: 15px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+  form
+    display: flex
+    align-items: end
+    justify-content: flex-end
+    gap: 8px
+
+    label
+      display: grid
+      gap: 5px
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 700
+
+    select
+      min-width: 220px
+
+.overview-export-toolbar--chapter
+  margin-top: 6px
+  padding-top: 18px
+  border-top: 1px solid $color-border
+
+.overview-export-empty
+  min-height: 24px
+  margin: 0
+  display: flex
+  align-items: center
+  color: $color-muted
+  font-size: 13px
+
+.overview-export-pagination
+  display: flex
+  align-items: center
+  justify-content: center
+  gap: 10px
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+
+.overview-export-table
+  min-width: 0
+  overflow: hidden
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface
+
+  > ul
+    margin: 0
+    padding: 0
+    display: grid
+    list-style: none
+
+    > li
+      min-width: 0
+      padding: 11px 12px
+      display: grid
+      grid-template-columns: minmax(200px, 2fr) 90px minmax(250px, 1.5fr) minmax(72px, auto)
+      gap: 12px
+      align-items: center
+
+      & + li
+        border-top: 1px solid $color-border-subtle
+
+.overview-export-table__head
+  padding: 8px 12px
+  display: grid
+  grid-template-columns: minmax(200px, 2fr) 90px minmax(250px, 1.5fr) minmax(72px, auto)
+  gap: 12px
+  border-bottom: 1px solid $color-border-subtle
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-small
+  font-weight: 800
+
+.overview-export-file
+  min-width: 0
+  display: grid
+  gap: 3px
+
+  strong,
+  span
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  strong
+    font-size: 12px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+
+.overview-export-metrics
+  margin: 0
+  display: grid
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  gap: 8px
+
+  div
+    min-width: 0
+    display: grid
+    gap: 2px
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+
+  dd
+    margin: 0
+    overflow: hidden
+    font-size: $font-size-small
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.overview-export-row-action
+  display: flex
+  justify-content: flex-end
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+
+.overview-export-status
+  width: fit-content
+  padding: 4px 7px
+  border-radius: 999px
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-micro
+  font-weight: 800
+
+.overview-export-status--ready
+  color: $color-success
+  background: $color-success-muted
+
+.overview-export-status--failed
+  color: $color-danger
+  background: $color-danger-muted
+
+.overview-export-status--queued,
+.overview-export-status--running
+  color: $color-warning
+  background: $color-warning-muted
+
+.overview-export-error
+  grid-column: 1 / -1
+  margin: 0
+  color: $color-danger
+  font-size: $font-size-small
+
+.lumi-dialog.comic-export-dialog
+  width: min(720px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+  overflow: hidden
+
+.comic-export-dialog__body
+  max-height: calc(100vh - 156px)
+  overflow: auto
+
+.comic-export-dialog__pending,
+.comic-export-dialog__empty,
+.comic-export-dialog__summary
+  padding: 14px
+  display: grid
+  gap: 7px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  strong,
+  p
+    margin: 0
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.55
+
+.comic-export-dialog__empty
+  border-color: rgba($color-warning, .3)
+  background: $color-warning-muted
+
+.comic-export-dialog__pending progress
+  width: 100%
+
+.comic-export-dialog__facts
+  margin: 0
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 1px
+  overflow: hidden
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-border-subtle
+
+  div
+    min-width: 0
+    padding: 10px 12px
+    display: grid
+    gap: 3px
+    background: $color-surface
+
+  dt
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 800
+
+  dd
+    min-width: 0
+    margin: 0
+    overflow: hidden
+    font-size: $font-size-small
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  code
+    font-size: inherit
+
+  .comic-export-dialog__hash
+    grid-column: 1 / -1
+
+    dd
+      overflow: visible
+      overflow-wrap: anywhere
+      text-overflow: clip
+      white-space: normal
+
+.comic-export-dialog__progress
+  padding: 12px
+  display: grid
+  gap: 8px
+  border-radius: $radius-sm
+  background: $color-accent-muted
+
+  > div
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    font-size: $font-size-small
+
+  progress
+    width: 100%
+    accent-color: $color-accent
+
+.comic-export-dialog__hint
+  margin: 0
+  color: $color-muted
+  font-size: $font-size-small
+  line-height: 1.55
+
+.comic-export-dialog__missing
+  max-height: min(360px, 45vh)
+  margin: 0
+  padding: 0
+  display: grid
+  overflow: auto
+  list-style: none
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+  li
+    min-width: 0
+    padding: 9px 11px
+    display: flex
+    align-items: baseline
+    gap: 10px
+
+    & + li
+      border-top: 1px solid $color-border-subtle
+
+  strong
+    flex: 0 0 auto
+    font-size: $font-size-small
+
+  span
+    min-width: 0
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-small
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.comic-export-dialog .lumi-dialog__actions .button-link
+  flex: 0 0 auto
+
+.premise-danger-button
+  border-color: rgba($color-danger, .35)
+  color: $color-danger
+  background: $color-danger-muted
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled)
+    border-color: $color-danger
+    color: $color-surface
+    background: $color-danger
+
+.premise-delete-dialog__warning
+  margin: 0
+  padding: 10px 12px
+  border: 1px solid rgba($color-danger, .22)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-danger-muted
+  font-size: $font-size-small
+  line-height: 1.55
+
+.comic-premise-warning
+  padding: 11px 12px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 14px
+  border: 1px solid rgba($color-warning, .34)
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-warning-muted
+
+  > div
+    min-width: 0
+    display: grid
+    gap: 3px
+
+  strong
+    font-size: $font-size-small
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.45
+
+  a
+    flex: 0 0 auto
+
+.comic-premise-warning--compact
+  margin: 0 0 9px
+
+.workspace-loading
+  padding: 50px
+  color: $muted
+  text-align: center
+
+.workspace-activation-error
+  max-width: 680px
+  margin: 48px auto
+  display: grid
+  gap: 12px
+  border: 1px solid rgba($color-danger, .22)
+  border-radius: 16px
+  background: rgba($color-danger, .05)
+
+  strong
+    color: $color-danger
+    font-size: 16px
+
+  div
+    display: flex
+    justify-content: center
+    gap: 10px
+
+.workspace-hero-card
+  min-height: 0
+  padding: 18px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 220px
+  gap: 35px
+  align-items: center
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  h1
+    margin: 0
+    font-family: $font-family-base
+    font-size: 26px
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+
+  p:not(.eyebrow)
+    max-width: 560px
+    margin: 9px 0 16px
+    color: $color-muted
+    font-size: 13px
+    line-height: 1.55
+
+.workspace-metrics
+  display: grid
+  grid-template-columns: 1fr
+  gap: 8px
+
+  article
+    padding: 12px
+    display: flex
+    align-items: baseline
+    justify-content: space-between
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  strong
+    font-family: $font-family-base
+    font-size: 20px
+    font-weight: 800
+
+  span
+    color: $muted
+    font-size: $font-size-small
+    letter-spacing: .08em
+    text-transform: uppercase
+
+.project-meta-form
+  max-width: 620px
+  padding: 14px
+  display: grid
+  gap: 14px
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  label
+    display: grid
+    gap: 6px
+    color: $muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  > div
+    display: flex
+    gap: 7px
+
+.next-actions
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 12px
+
+  a
+    min-height: 118px
+    padding: 16px
+    display: flex
+    flex-direction: column
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    text-decoration: none
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+      transform: none
+
+  span
+    color: $color-muted
+    font-family: $font-family-base
+    font-size: $font-size-small
+    font-weight: 800
+
+  strong
+    margin-top: auto
+    font-family: $font-family-base
+    font-size: 16px
+    font-weight: 800
+
+  small
+    margin-top: 5px
+    color: $muted
+
+.workspace-section-heading, .editor-header
+  padding: 0 0 14px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 20px
+  border-bottom: 1px solid $color-border
+
+  h1
+    margin: 0
+    font-family: $font-family-base
+    font-size: 24px
+    font-weight: 800
+    line-height: 1.2
+    letter-spacing: 0
+
+  p:not(.eyebrow)
+    margin: 8px 0 0
+    color: $color-muted
+    font-size: 13px
+
+  > span
+    color: $muted
+    font-size: 12px
+
+  > div:last-child
+    display: flex
+    align-items: center
+    gap: 8px
+
+.workspace-notice
+  padding: 15px 17px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 18px
+  border: 1px solid rgba($color-warning, .28)
+  border-radius: $radius-sm
+  color: $color-warning
+  background: $color-warning-muted
+
+  > div
+    display: flex
+    flex-direction: column
+    gap: 3px
+
+  span
+    color: $muted
+    font-size: $font-size-small
+
+.workspace-notice--error
+  border-color: rgba($color-danger, .28)
+  color: $color-danger
+  background: $color-danger-muted
+
+.chapter-create-grid
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 12px
+
+  form
+    padding: 18px
+    display: grid
+    grid-template-columns: 30px minmax(0, 1fr)
+    gap: 15px 10px
+    align-content: start
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    box-shadow: none
+
+    > label, > button, > small
+      grid-column: 2
+
+  h2
+    margin: 0
+    font-family: $font-family-base
+    font-size: 22px
+    font-weight: 500
+
+  p
+    margin: 5px 0 0
+    color: $muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+  label
+    display: grid
+    gap: 6px
+    color: $muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.field-error, .danger-text
+  color: #a2443c !important
+
+.chapters-page
+  position: relative
+  width: 100%
+  min-width: 0
+
+.chapters-page--with-next-step
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px))
+
+.chapters-panel
+  width: min(100%, 920px)
+  margin: 4px auto 0
+  padding: 24px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+.chapters-toolbar
+  min-width: 0
+  margin-bottom: 20px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+
+  h1
+    margin: 0
+    color: $color-text
+    font-size: 26px
+    font-weight: 800
+    line-height: 1.2
+
+.chapters-toolbar__actions
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+
+.chapters-count
+  min-width: 34px
+  min-height: 30px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: 12px
+  font-weight: 750
+
+.chapters-compact-button
+  min-height: 30px
+  padding: 0 10px
+  gap: 6px
+  white-space: nowrap
+  font-size: 12px
+
+.chapter-create-menu
+  position: relative
+  display: inline-flex
+
+.chapter-create-menu__trigger[aria-expanded="true"]
+  border-color: $color-accent
+  color: $color-accent
+  background: $color-accent-muted
+
+.chapter-create-menu__trigger[aria-expanded="true"]:hover,
+.chapter-create-menu__trigger[aria-expanded="true"]:focus-visible
+  border-color: #1d4ed8
+  color: #1d4ed8
+  background: #dce8ff
+
+.chapter-create-menu__dropdown
+  position: absolute
+  z-index: 26
+  top: calc(100% + 6px)
+  right: 0
+  min-width: 250px
+  padding: 6px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 16px 34px rgba($color-text, .16)
+
+  button
+    width: 100%
+    min-height: 38px
+    padding: 0 10px
+    display: flex
+    align-items: center
+    justify-content: flex-start
+    gap: 8px
+    border: 0
+    border-radius: $radius-sm
+    color: $color-text
+    background: transparent
+    font-size: 13px
+    font-weight: 750
+    text-align: left
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+.chapters-loading,
+.chapters-empty
+  min-height: 112px
+  margin: 0
+  display: grid
+  place-items: center
+  color: $color-muted
+  font-size: 13px
+
+.chapters-list
+  display: grid
+  gap: 10px
+
+.chapters-list-item
+  position: relative
+  min-width: 0
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 40px
+  align-items: stretch
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+  transition: border-color 120ms ease, background 120ms ease
+
+  &:hover,
+  &:focus-within
+    border-color: $color-accent
+
+.chapters-list-item__link
+  min-width: 0
+  min-height: 68px
+  padding: 18px 22px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: center
+  gap: 12px
+  border-radius: $radius-sm 0 0 $radius-sm
+  color: $color-text
+  background: transparent
+  text-decoration: none
+
+  &:hover,
+  &:focus-visible
+    outline: none
+    color: $color-accent
+    background: $color-accent-muted
+    box-shadow: inset 0 0 0 2px rgba($color-accent, .2)
+
+  strong
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-size: 17px
+    font-weight: 800
+    line-height: 1.25
+
+.chapter-status
+  justify-self: end
+  min-height: 28px
+  padding: 5px 10px
+  display: inline-flex
+  align-items: center
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: 12px
+  font-weight: 750
+  white-space: nowrap
+
+.chapter-status--queued,
+.chapter-status--running,
+.chapter-status--waiting_for_input
+  border-color: rgba($color-warning, .22)
+  color: $color-warning
+  background: $color-warning-muted
+
+.chapter-status--failed,
+.chapter-status--cancelled,
+.chapter-status--interrupted
+  border-color: rgba($color-danger, .22)
+  color: $color-danger
+  background: $color-danger-muted
+
+.chapter-status--ready,
+.chapter-status--completed
+  border-color: rgba($color-success, .2)
+  color: $color-success
+  background: $color-success-muted
+
+.chapters-row-actions
+  position: relative
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  border-left: 1px solid $color-border
+
+.chapters-more-button
+  width: 34px
+  min-height: 34px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 0
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
+
+.chapters-more-button[aria-expanded="true"]
+  color: $color-text
+  background: $color-surface-muted
+
+.chapters-more-button[aria-expanded="true"]:hover,
+.chapters-more-button[aria-expanded="true"]:focus-visible
+  color: $color-accent
+  background: $color-accent-muted
+
+.chapters-row-menu
+  position: absolute
+  z-index: 24
+  top: calc(100% + 8px)
+  right: 0
+  min-width: 112px
+  padding: 4px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+  box-shadow: 0 12px 32px rgba($color-text, .16)
+
+  button
+    width: 100%
+    min-height: 34px
+    padding: 0 10px
+    display: flex
+    align-items: center
+    justify-content: flex-start
+    gap: 6px
+    border: 0
+    border-radius: $radius-sm
+    color: $color-danger
+    background: transparent
+    font-size: 12px
+    font-weight: 750
+    text-align: left
+
+    &:hover,
+    &:focus-visible
+      color: $color-danger
+      background: $color-danger-muted
+
+.chapter-operation-summary,
+.chapter-error
+  margin: 0 0 14px
+  padding: 11px 12px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 12px
+  border: 1px solid rgba($color-success, .22)
+  border-radius: $radius-sm
+  color: $color-success
+  background: $color-success-muted
+  font-size: 12px
+
+  > div
+    min-width: 0
+    display: grid
+    gap: 3px
+
+  span
+    color: $color-muted
+
+  > button
+    flex: 0 0 auto
+    width: 26px
+    min-height: 26px
+    padding: 0
+    border: 0
+    border-radius: $radius-sm
+    color: $color-muted
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: rgba($color-text, .07)
+
+  ul
+    margin: 6px 0 0
+    padding: 0
+    display: grid
+    gap: 4px
+    list-style: none
+
+  li
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    small
+      flex: 0 0 auto
+      color: $color-muted
+
+.chapter-error
+  border-color: rgba($color-danger, .24)
+  color: $color-danger
+  background: $color-danger-muted
+
+  span
+    color: #7f1d1d
+
+.chapter-dialog-backdrop
+  position: fixed
+  z-index: 80
+  inset: 0
+  padding: 24px
+  display: grid
+  place-items: center
+  overflow: auto
+  background: rgba($color-text, .38)
+  backdrop-filter: blur(2px)
+
+.chapter-dialog
+  width: min(100%, 680px)
+  max-height: calc(100dvh - 48px)
+  overflow: auto
+  border: 1px solid $color-border
+  border-radius: $radius-lg
+  background: $color-surface
+  box-shadow: 0 24px 70px rgba($color-text, .22)
+
+  > header
+    position: sticky
+    z-index: 2
+    top: 0
+    padding: 16px 18px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 14px
+    border-bottom: 1px solid $color-border-subtle
+    background: rgba($color-surface, .97)
+
+    p,
+    h2
+      margin: 0
+
+    p
+      color: $color-action
+      font-size: $font-size-small
+      font-weight: 800
+      letter-spacing: .08em
+      text-transform: uppercase
+
+    h2
+      margin-top: 3px
+      color: $color-text
+      font-size: 18px
+      font-weight: 800
+
+.chapter-dialog--compact
+  width: min(100%, 480px)
+
+.chapter-dialog__close
+  flex: 0 0 auto
+  width: 30px
+  min-height: 30px
+  padding: 0
+  border: 0
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
+
+.chapter-dialog__body
+  padding: 18px
+
+.chapter-dialog-form
+  display: grid
+  gap: 14px
+
+  > label
+    display: grid
+    gap: 6px
+    color: $color-text
+    font-size: 12px
+    font-weight: 700
+
+    small
+      color: $color-muted
+      font-weight: 500
+      line-height: 1.5
+
+  > .chapter-error
+    margin: 0
+
+.chapter-dialog-hint
+  margin: 0
+  color: $color-muted
+  font-size: 12px
+  line-height: 1.6
+
+.chapter-field-error
+  margin: 0
+  color: $color-danger
+  font-size: 12px
+
+.chapter-dialog-tabs
+  margin-bottom: 18px
+  padding: 4px
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 6px
+  border-radius: $radius-md
+  background: $color-surface-muted
+
+  button
+    min-height: 38px
+    border: 0
+    border-radius: $radius-sm
+    color: $color-muted
+    background: transparent
+    font-size: 13px
+    font-weight: 750
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: rgba($color-surface, .72)
+
+  button[aria-selected="true"]
+    color: $color-text
+    background: $color-surface
+    box-shadow: 0 1px 3px rgba($color-text, .12)
+
+  button[aria-selected="true"]:hover,
+  button[aria-selected="true"]:focus-visible
+    color: $color-accent
+    background: $color-accent-muted
+    box-shadow: 0 1px 3px rgba($color-text, .12), inset 0 0 0 1px rgba($color-accent, .24)
+
+.chapter-dialog-actions
+  padding-top: 2px
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+
+.chapter-file-list
+  margin: 0
+  padding: 0
+  display: grid
+  gap: 6px
+  list-style: none
+
+  li
+    min-width: 0
+    padding: 7px 9px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface-muted
+    font-size: 12px
+
+  span
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  small
+    flex: 0 0 auto
+    color: $color-muted
+
+.chapters-next-step
+  position: fixed
+  z-index: 24
+  left: 50%
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px))
+  transform: translateX(-50%)
+  max-width: calc(100vw - 32px)
+  min-height: 48px
+  display: inline-flex
+  align-items: stretch
+  border: 1px solid rgba($color-action, .46)
+  border-radius: $radius-lg
+  background: $color-surface
+  box-shadow: 0 12px 32px rgba($color-text, .18)
+
+  > a
+    min-width: 0
+    min-height: 48px
+    padding: 0 12px 0 18px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 10px
+    border-radius: $radius-lg 0 0 $radius-lg
+    color: $color-text
+    font-size: 13px
+    font-weight: 800
+
+    svg
+      flex: 0 0 auto
+      color: $color-action
+
+    &:hover,
+    &:focus-visible
+      outline: none
+      color: $color-action
+      background: $color-surface-muted
+      box-shadow: inset 0 0 0 2px rgba($color-accent, .22)
+
+  > button
+    flex: 0 0 auto
+    width: 44px
+    min-height: 48px
+    padding: 0
+    border: 0
+    border-left: 1px solid $color-border-subtle
+    border-radius: 0 $radius-lg $radius-lg 0
+    color: $color-muted
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      outline: none
+      color: $color-text
+      background: $color-surface-muted
+
+.chapter-list, .trash-list
+  display: grid
+  gap: 8px
+
+.chapter-row
+  padding: 14px 16px
+  display: grid
+  grid-template-columns: 92px minmax(0, 1fr) auto auto
+  gap: 14px
+  align-items: center
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+  text-decoration: none
+
+  &:hover,
+  &:focus-within
+    border-color: $color-accent
+    background: $color-accent-muted
+
+  code
+    color: $orange
+    font-size: $font-size-small
+
+  div
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 3px
+
+  span, b
+    color: $muted
+    font-size: $font-size-small
+
+.workspace-empty
+  min-height: 170px
+  padding: 28px
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  border: 1px dashed rgba($ink, .16)
+  border-radius: 18px
+  color: $muted
+  text-align: center
+
+  > span
+    color: $orange
+    font-size: 23px
+
+  h2
+    margin: 10px 0 5px
+    color: $ink
+    font-family: $font-family-base
+    font-weight: 500
+
+  p
+    margin: 0
+
+.editor-header
+  align-items: center
+
+  a
+    color: $muted
+    font-size: $font-size-small
+    text-decoration: none
+
+  .eyebrow
+    margin: 9px 0 5px
+
+.chapter-title-input
+  padding: 0
+  border: 0
+  border-radius: 0
+  background: transparent
+  box-shadow: none !important
+  font-family: $font-family-base
+  font-size: clamp(32px, 5vw, 48px)
+  font-weight: 800
+
+.save-state
+  padding: 6px 9px
+  border-radius: 999px
+  color: $muted
+  background: rgba($muted, .09)
+  font-size: $font-size-micro
+  font-weight: 800
+
+.save-state--saving
+  color: #8b5f1e
+  background: rgba(#d7a64b, .17)
+
+.save-state--saved
+  color: #4d6549
+  background: rgba($sage, .15)
+
+.save-state--failed, .save-state--conflict
+  color: #94463f
+  background: rgba(#c95f54, .14)
+
+.chapter-editor-layout, .prompt-layout
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 220px
+  gap: 12px
+  align-items: start
+
+.editor-card, .version-history, .prompt-history
+  min-width: 0
+  padding: 16px
+  border: 1px solid rgba($ink, .1)
+  border-radius: 18px
+  background: rgba(white, .72)
+
+.editor-toolbar
+  min-height: 36px
+  margin-bottom: 12px
+  padding: 14px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  color: $muted
+  font-size: $font-size-small
+
+.view-toggle, .format-toggle
+  display: inline-flex
+  padding: 3px
+  gap: 2px
+  border-radius: 9px
+  background: rgba($ink, .05)
+
+  button
+    padding: 6px 9px
+    border-color: transparent
+    color: $muted
+    background: transparent
+    font-size: $font-size-small
+
+  button:hover
+    border-color: transparent
+    color: $ink
+    background: rgba(white, .72)
+
+  button[aria-pressed="true"]
+    border-color: rgba($ink, .08)
+    color: $ink
+    background: white
+
+  button[aria-pressed="true"]:hover
+    border-color: rgba($orange, .28)
+    color: #633716
+    background: rgba($cream, .8)
+
+.view-toggle
+  background: $color-surface-subtle
+
+  button[aria-pressed="true"]
+    color: $color-text
+    background: $color-surface
+
+  button[aria-pressed="true"]:hover
+    color: $color-accent
+    background: $color-accent-muted
+
+.story-editor
+  min-height: 520px
+  padding: 20px
+  border-color: $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+  font-size: 14px
+  line-height: 1.8
+
+.story-editor--profile
+  min-height: 560px
+
+.story-editor--prompt
+  min-height: 340px
+
+.markdown-preview
+  min-height: 520px
+  padding: 12px 22px 40px
+  border-color: $color-border
+  border-radius: $radius-md
+  color: #332d29
+  background: $color-surface
+  line-height: 1.8
+
+  h1, h2, h3
+    font-family: $font-family-base
+    font-weight: 500
+
+  h1
+    font-size: 36px
+
+  p
+    white-space: pre-wrap
+
+  blockquote
+    margin-left: 0
+    padding-left: 16px
+    border-left: 3px solid $coral
+    color: $muted
+
+.markdown-preview__space
+  height: 8px
+
+.markdown-preview__bullet
+  display: flex
+  gap: 10px
+
+  span
+    color: $orange
+
+.markdown-preview__empty
+  padding: 60px 20px
+  color: $muted
+  text-align: center
+
+.version-history
+  padding: 12px
+  display: grid
+  gap: 7px
+  border-color: $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  > div
+    margin-bottom: 5px
+    display: flex
+    align-items: center
+    justify-content: space-between
+
+  h2
+    margin: 0
+    font-family: $font-family-base
+    font-size: 18px
+    font-weight: 500
+
+  article
+    padding: 11px
+    display: grid
+    grid-template-columns: auto 1fr
+    gap: 3px 8px
+    border-radius: 10px
+    background: rgba($cream, .42)
+
+  strong, span, small
+    font-size: $font-size-small
+
+  span, small
+    color: $muted
+
+  small
+    grid-column: 1 / -1
+
+.story-conflict
+  padding: 18px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto auto
+  gap: 12px
+  align-items: center
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  p
+    margin: 4px 0 0
+    color: $muted
+    font-size: $font-size-small
+
+.projection-badge
+  padding: 5px 8px
+  border-radius: 999px
+  background: rgba($muted, .1)
+
+.projection-badge--synced
+  color: #4d6549
+  background: rgba($sage, .15)
+
+.projection-badge--conflict, .projection-badge--pending
+  color: #94463f
+  background: rgba(#c95f54, .14)
+
+.prompt-key-form
+  padding: 14px
+  display: flex
+  align-items: end
+  gap: 8px
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  label
+    width: min(380px, 100%)
+    display: grid
+    gap: 5px
+    color: $muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.prompt-history
+  max-height: 650px
+  overflow: auto
+  display: grid
+  gap: 8px
+
+.prompt-version
+  padding: 12px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  > div
+    display: flex
+    justify-content: space-between
+
+  p
+    max-height: 90px
+    overflow: hidden
+    white-space: pre-wrap
+    color: $muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+  small
+    color: rgba($muted, .78)
+    font-family: ui-monospace, monospace
+    font-size: $font-size-micro
+
+  button
+    width: 100%
+    margin-top: 10px
+    padding: 7px
+    font-size: $font-size-small
+
+.prompt-version--current
+  border-color: rgba($color-accent, .35)
+  background: $color-accent-muted
+
+.trash-list article
+  padding: 15px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto auto
+  gap: 8px
+  align-items: center
+  border: 1px solid rgba($ink, .09)
+  border-radius: 14px
+  background: rgba(white, .66)
+
+  > div
+    display: grid
+    gap: 3px
+
+  code
+    color: $orange
+    font-size: $font-size-small
+
+  small
+    color: $muted
+    font-size: $font-size-small
+
+.story-trash-empty-button
+  display: inline-flex
+  align-items: center
+  gap: 6px
+
+.lumi-dialog.story-trash-empty-dialog
+  width: min(520px, calc(100vw - 32px))
+
+.story-trash-empty-warning
+  margin: 0
+  padding: 12px
+  border: 1px solid rgba($color-danger, .22)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-danger-muted
+
+.button-danger
+  border-color: #a64941
+  background: #a64941
+
+  &:hover
+    border-color: #8d3d36
+    background: #8d3d36
+
+.generation-panel
+  padding: 14px
+  display: grid
+  gap: 14px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+  > header
+    display: flex
+    align-items: center
+    justify-content: space-between
+
+  .eyebrow
+    margin-bottom: 5px
+
+  h2
+    margin: 0
+    font-family: $font-family-base
+    font-size: 22px
+    font-weight: 500
+
+.generation-form
+  display: grid
+  grid-template-columns: minmax(180px, .65fr) minmax(180px, .65fr) minmax(0, 1.5fr) auto
+  gap: 10px
+  align-items: end
+
+  label
+    display: grid
+    gap: 6px
+    color: $muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  select, textarea
+    width: 100%
+    padding: 11px 12px
+    border: 1px solid rgba($ink, .16)
+    border-radius: 10px
+    outline: none
+    color: $ink
+    background: rgba(white, .82)
+    font: inherit
+
+    &:focus
+      border-color: $orange
+      box-shadow: 0 0 0 3px rgba($orange, .12)
+
+  textarea
+    resize: vertical
+
+.generation-unconfigured
+  display: grid
+  grid-template-columns: auto 1fr auto
+  gap: 12px
+  align-items: center
+  color: $muted
+  font-size: 12px
+
+  strong
+    color: $ink
+
+  a
+    color: #71421e
+    text-underline-offset: 4px
+
+.task-status
+  padding: 6px 9px
+  border-radius: 999px
+  color: $muted
+  background: rgba($muted, .1)
+  font-size: $font-size-micro
+  font-weight: 800
+
+.task-status--queued, .task-status--running, .task-status--waiting_for_input
+  color: #8b5f1e
+  background: rgba(#d7a64b, .17)
+
+.task-status--completed
+  color: #4d6549
+  background: rgba($sage, .16)
+
+.task-status--failed, .task-status--cancelled, .task-status--interrupted
+  color: #94463f
+  background: rgba(#c95f54, .14)
+
+.task-runtime
+  display: grid
+  gap: 8px
+
+  > div
+    display: flex
+    align-items: center
+    gap: 12px
+    color: $muted
+    font-size: $font-size-small
+
+    small
+      margin-left: auto
+
+  progress
+    width: 100%
+    height: 7px
+    overflow: hidden
+    border: 0
+    border-radius: 999px
+    accent-color: $orange
+
+  p
+    margin: 0
+    display: flex
+    gap: 8px
+    color: #94463f
+    font-size: $font-size-small
+
+  code
+    color: #82423c
+
+@media (max-width: 1100px)
+  .project-overview-grid
+    grid-template-columns: 1fr
+
+  .overview-progress-card
+    position: static
+
+@media (max-width: 980px)
+
+  .chapter-editor-layout, .prompt-layout
+    grid-template-columns: 1fr
+
+  .asset-control-grid
+    grid-template-columns: 1fr
+
+  .version-history
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+
+  .generation-form
+    grid-template-columns: 1fr 1fr
+
+  .generation-prompt
+    grid-column: 1 / -1
+
+@media (max-width: 720px)
+  .overview-project-facts,
+  .overview-work-links
+    grid-template-columns: 1fr
+
+  .overview-profile-facts,
+  .overview-model-facts,
+  .overview-llm-detail-facts,
+  .overview-prompt-history > div
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  .overview-language-card select
+    max-width: none
+
+  .overview-model-setting
+    label,
+    dl
+      grid-template-columns: 1fr
+
+  .overview-model-setting__title
+    align-items: stretch
+    flex-direction: column
+
+  .overview-llm-payloads
+    grid-template-columns: 1fr
+
+  .overview-profile-history article
+    grid-template-columns: 48px minmax(0, 1fr) auto
+
+    time
+      display: none
+
+  .overview-prompt-key,
+  .overview-prompt-editor > header,
+  .overview-export-toolbar,
+  .overview-export-toolbar form
+    align-items: stretch
+    flex-direction: column
+
+  .overview-prompt-key label,
+  .overview-export-toolbar form label,
+  .overview-export-toolbar form select,
+  .overview-export-toolbar button
+    width: 100%
+
+  .overview-export-table__head
+    display: none
+
+  .overview-export-table > ul > li
+    grid-template-columns: 1fr
+    align-items: stretch
+
+  .overview-export-metrics
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+
+  .overview-export-row-action
+    justify-content: stretch
+
+    > a
+      width: 100%
+      justify-content: center
+
+  .comic-export-dialog__facts
+    grid-template-columns: 1fr
+
+  .workspace-hero-card, .chapter-create-grid, .next-actions
+    grid-template-columns: 1fr
+
+  .workspace-section-heading, .editor-header
+    align-items: flex-start
+    flex-direction: column
+
+  .story-conflict
+    grid-template-columns: 1fr
+
+  .chapter-row
+    grid-template-columns: 80px minmax(0, 1fr) auto
+
+    > span:last-child
+      display: none
+
+  .trash-list article
+    grid-template-columns: 1fr 1fr
+
+    > div
+      grid-column: 1 / -1
+
+  .generation-form
+    grid-template-columns: 1fr
+
+  .generation-unconfigured
+    grid-template-columns: 1fr
+
+  .task-runtime > div
+    align-items: flex-start
+    flex-wrap: wrap
+
+  .task-runtime > div small
+    margin-left: 0
+
+  .generation-prompt
+    grid-column: auto
+
+@media (max-width: 480px)
+  .overview-project-facts,
+  .overview-progress-grid,
+  .overview-profile-facts,
+  .overview-prompt-history > div
+    grid-template-columns: 1fr
+
+  .overview-card,
+  .overview-progress-card
+    padding: 15px
+
+  .overview-profile-source
+    min-height: 300px
+    padding: 14px
+
+  .overview-profile-history article
+    grid-template-columns: 44px minmax(0, 1fr)
+
+    small
+      grid-column: 1 / -1
+
+  .overview-export-metrics
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@media (max-width: 760px)
+  .chapters-panel
+    margin-top: 0
+    padding: 24px
+
+  .chapters-toolbar
+    display: grid
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 296px)
+    align-items: center
+
+  .chapters-toolbar__actions
+    display: grid
+    grid-template-columns: minmax(0, 1fr)
+    align-items: stretch
+
+  .chapters-count
+    justify-self: start
+
+  .chapters-compact-button,
+  .chapter-create-menu,
+  .chapter-create-menu__trigger
+    width: 100%
+
+  .chapter-create-menu__dropdown
+    right: 0
+    left: 0
+    min-width: 0
+
+  .chapters-list-item__link
+    min-height: 60px
+    padding: 14px 16px
+
+    strong
+      font-size: 15px
+
+  .chapter-status
+    min-height: 26px
+    padding: 4px 8px
+    font-size: $font-size-small
+
+  .chapter-dialog-backdrop
+    padding: 10px
+
+  .chapter-dialog
+    width: calc(100vw - 20px)
+    max-height: calc(100dvh - 20px)
+
+  .chapters-next-step
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px))
+    width: calc(100vw - 28px)
+    max-width: none
+
+    > a
+      flex: 1 1 auto
+
+@media (max-width: 560px)
+  .chapters-panel
+    padding: 16px
+
+  .chapters-toolbar
+    grid-template-columns: minmax(0, 1fr)
+    align-items: stretch
+
+  .chapters-toolbar__actions
+    width: 100%
+
+// Chapter production workbench uses a two-pane editing stage while
+// keeping Lumi's local-first shell and persistent project ChatArea.
+.project-workbench__content:has(.chapter-workbench)
+  padding: 0
+  overflow: hidden
+
+.workspace-main:has(.chapter-workbench)
+  width: 100%
+  max-width: none
+  height: 100%
+
+.chapter-workbench
+  min-width: 0
+  height: 100%
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  color: $color-text
+  background: $color-surface-muted
+
+.chapter-workbench__header
+  position: relative
+  z-index: 3
+  min-height: 66px
+  padding: 0 18px
+  display: grid
+  grid-template-columns: 1fr auto 1fr
+  align-items: center
+  gap: 18px
+  border-bottom: 1px solid $color-border
+  background: $color-surface
+
+.chapter-workbench__header-actions
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 8px
+
+.chapter-workbench__back,
+.chapter-workbench__history,
+.chapter-workbench__preview-link
+  min-height: 34px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  white-space: nowrap
+  text-decoration: none
+
+.chapter-workbench__back
+  padding: 0 9px
+  border-radius: $radius-sm
+  color: $color-muted
+  font-size: 12px
+  font-weight: 800
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+
+.chapter-workbench__preview-link
+  font-size: $font-size-small
+
+// Read-only long-comic route. It intentionally uses the full content column
+// and omits ChatArea to keep the chapter preview surface focused.
+.project-workbench__content:has(.chapter-preview)
+  padding: 0
+  overflow: hidden
+
+.workspace-main:has(.chapter-preview)
+  width: 100%
+  max-width: none
+  height: 100%
+
+.chapter-preview
+  min-height: 0
+  height: 100%
+  padding: 18px 18px 42px
+  overflow: auto
+  background: $color-surface-muted
+
+.chapter-preview__header
+  width: min(100%, 980px)
+  margin: 0 auto 18px
+  display: grid
+  grid-template-columns: auto minmax(0, 1fr) auto
+  align-items: center
+  gap: 16px
+
+.chapter-preview__back
+  min-height: 34px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  text-decoration: none
+
+.chapter-preview__title
+  min-width: 0
+  text-align: center
+
+  p,
+  h1
+    margin: 0
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 900
+    letter-spacing: .08em
+    text-transform: uppercase
+
+  h1
+    overflow-wrap: anywhere
+    font-size: 28px
+    line-height: 1.18
+    letter-spacing: 0
+
+.chapter-preview__stats
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+  flex-wrap: wrap
+
+  span
+    min-height: 30px
+    padding: 0 10px
+    display: inline-flex
+    align-items: center
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: 12px
+    font-weight: 800
+    white-space: nowrap
+
+.chapter-preview__strip
+  width: min(100%, 760px)
+  margin: 0 auto
+  display: grid
+  gap: 16px
+
+.chapter-preview__pager
+  width: min(100%, 980px)
+  margin: 0 auto
+  display: grid
+  gap: 12px
+
+  > .chapter-preview__section
+    width: 100%
+
+.chapter-preview__pager-controls
+  min-height: 40px
+  display: grid
+  grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr)
+  align-items: center
+  gap: 12px
+
+  button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+
+  button:first-child
+    justify-self: start
+
+  button:last-child
+    justify-self: end
+
+  strong
+    color: $color-muted
+    font-size: 12px
+    text-align: center
+
+.chapter-preview__section
+  min-width: 0
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 1px 0 rgba($color-text, .03)
+
+  > header
+    min-width: 0
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    > div
+      min-width: 0
+
+    p,
+    h2
+      margin: 0
+
+    p
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: 900
+      letter-spacing: .06em
+      text-transform: uppercase
+
+    h2
+      overflow-wrap: anywhere
+      font-size: 17px
+      line-height: 1.25
+      letter-spacing: 0
+
+    a
+      flex: 0 0 auto
+      width: 34px
+      height: 34px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-accent
+      background: $color-surface-subtle
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        background: $color-accent-muted
+
+.chapter-preview__media
+  width: 100%
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > img
+    width: 100%
+    height: 100%
+    display: block
+    object-fit: contain
+
+.chapter-preview__placeholder
+  height: 100%
+  display: grid
+  place-items: center
+  align-content: center
+  gap: 10px
+  color: $color-muted
+  font-size: 13px
+  font-weight: 800
+  text-align: center
+
+  span
+    padding: 0 16px
+    overflow-wrap: anywhere
+
+.chapter-preview__empty
+  width: min(100%, 640px)
+  margin: 32px auto 0
+  padding: 32px
+  display: grid
+  place-items: center
+  gap: 12px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  color: $color-muted
+  background: $color-surface
+  text-align: center
+
+  h2,
+  p
+    margin: 0
+
+.chapter-workbench__tabs
+  grid-column: 2
+  display: flex
+  align-self: stretch
+  justify-content: center
+  gap: 24px
+
+  button
+    position: relative
+    min-width: 92px
+    padding: 0 5px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+    border: 0
+    border-radius: 0
+    color: $color-muted
+    background: transparent
+    font-size: 13px
+    font-weight: 800
+
+    &::after
+      content: ""
+      position: absolute
+      right: 0
+      bottom: -1px
+      left: 0
+      height: 2px
+      background: transparent
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-subtle
+
+    &[aria-pressed="true"]
+      color: $color-text
+      background: transparent
+
+      &::after
+        background: $color-text
+
+    &[aria-pressed="true"]:hover
+      color: $color-accent
+      background: $color-accent-muted
+
+      &::after
+        background: $color-accent
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+.chapter-workbench__tabs > button:not(.button-secondary):not(.button-quiet)
+  border: 0
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    border: 0
+    color: $color-text
+    background: $color-surface-subtle
+
+  &[aria-pressed="true"]
+    border: 0
+    color: $color-text
+    background: transparent
+
+  &[aria-pressed="true"]:hover
+    border: 0
+    color: $color-accent
+    background: $color-accent-muted
+
+.chapter-comic-workbench
+  min-width: 0
+  min-height: 0
+  height: 100%
+  display: grid
+  grid-template-rows: minmax(0, 1fr) auto
+  overflow: hidden
+
+  > .localized-error,
+  > .error-notice
+    position: absolute
+    z-index: 8
+    top: 72px
+    left: 50%
+    width: min(560px, calc(100vw - 40px))
+    transform: translateX(-50%)
+
+.chapter-comic-skeleton
+  min-width: 0
+  min-height: 0
+  height: 100%
+  display: grid
+  grid-template-rows: minmax(0, 1fr) 164px
+  overflow: hidden
+  background: $color-surface
+
+.chapter-comic-skeleton__stage
+  min-height: 0
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  > section
+    min-width: 0
+    padding: 18px
+    display: grid
+    align-content: start
+    gap: 13px
+    border-right: 1px solid $color-border
+
+    &:last-child
+      border-right: 0
+      background: $color-surface-muted
+
+  span,
+  i,
+  div
+    display: block
+    border-radius: $radius-sm
+    background: linear-gradient(90deg, $color-surface-muted 25%, $color-border-subtle 50%, $color-surface-muted 75%)
+    background-size: 200% 100%
+    animation: chapter-workbench-shimmer 1.35s ease-in-out infinite
+
+  span
+    width: 36%
+    height: 18px
+
+  i
+    width: 100%
+    height: 13px
+
+    &:nth-child(3)
+      width: 88%
+
+    &:nth-child(5)
+      width: 72%
+
+  div
+    width: min(78%, 380px)
+    aspect-ratio: 1 / 1.25
+    place-self: center
+    margin-top: 32px
+
+.chapter-comic-skeleton > footer
+  padding: 48px 14px 14px
+  display: grid
+  grid-template-columns: repeat(6, minmax(100px, 1fr))
+  gap: 8px
+  border-top: 1px solid $color-border
+
+  span
+    display: block
+    height: 82px
+    border-radius: $radius-sm
+    background: linear-gradient(90deg, $color-surface-muted 25%, $color-border-subtle 50%, $color-surface-muted 75%)
+    background-size: 200% 100%
+    animation: chapter-workbench-shimmer 1.35s ease-in-out infinite
+
+@keyframes chapter-workbench-shimmer
+  0%
+    background-position: 100% 0
+
+  100%
+    background-position: -100% 0
+
+.chapter-workbench__notice
+  position: absolute
+  z-index: 8
+  top: 76px
+  left: 50%
+  padding: 8px 12px
+  display: inline-flex
+  align-items: center
+  gap: 7px
+  border: 1px solid rgba($color-success, .24)
+  border-radius: 999px
+  color: $color-success
+  background: $color-success-muted
+  box-shadow: 0 8px 26px rgba($color-text, .1)
+  font-size: $font-size-small
+  font-weight: 800
+  transform: translateX(-50%)
+
+.chapter-comic-workbench__stage
+  min-width: 0
+  min-height: 0
+  display: grid
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)
+  border-bottom: 1px solid $color-border
+
+.storyboard-workbench,
+.section-preview
+  min-width: 0
+  min-height: 0
+  display: grid
+  background: $color-surface
+
+.storyboard-workbench
+  grid-template-rows: auto minmax(0, 1fr)
+  border-right: 1px solid $color-border
+
+.storyboard-workbench__header,
+.section-preview__header
+  min-height: 52px
+  padding: 9px 14px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  border-bottom: 1px solid $color-border-subtle
+
+  > div:first-child
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 1px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+    letter-spacing: .04em
+
+  strong
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-size: 13px
+
+.storyboard-workbench__header > div:last-child,
+.section-preview__stepper
+  display: flex
+  align-items: center
+  gap: 6px
+
+.storyboard-workbench__header button
+  min-height: 32px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  font-size: $font-size-small
+
+.storyboard-workbench__editor
+  position: relative
+  min-width: 0
+  min-height: 0
+  display: flex
+  flex-direction: column
+  overflow: hidden
+
+.storyboard-workbench__editor > textarea
+  width: 100%
+  flex: 1 1 auto
+  min-height: 0
+  padding: 20px 50px 48px 22px
+  resize: none
+  border: 0
+  border-radius: 0
+  color: #2f343a
+  background: #fcfcfb
+  box-shadow: none
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
+  font-size: 13px
+  line-height: 1.85
+
+  &:focus
+    background: $color-surface
+    box-shadow: inset 0 0 0 2px rgba($color-accent, .12)
+
+.storyboard-workbench__ai
+  position: absolute
+  z-index: 2
+  top: 8px
+  right: 8px
+  width: 30px
+  height: 30px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid rgba($color-accent, .28)
+  border-radius: $radius-sm
+  color: $color-accent
+  background: rgba($color-surface, .96)
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-accent, .5)
+    color: $color-accent
+    background: rgba($color-accent, .08)
+
+  &:disabled
+    opacity: .55
+
+.storyboard-search
+  position: relative
+  flex: 0 0 auto
+  min-height: 87px
+  padding: 8px 36px 8px 10px
+  display: flex
+  align-items: center
+  gap: 6px
+  flex-wrap: wrap
+  border-top: 1px solid $color-border
+  background: $color-surface
+  font-size: $font-size-small
+
+  > input:not([type])
+    width: 180px
+    min-height: 32px
+    padding: 6px 9px
+
+  > button:not(.storyboard-search__close)
+    height: 28px
+    min-height: 28px
+    padding: 0 9px
+    border: 1px solid $color-border
+    border-radius: 2px
+    color: $color-text
+    background: $color-surface-muted
+    font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+  > label
+    min-height: 28px
+    display: inline-flex
+    align-items: center
+    gap: 4px
+    color: $color-text
+    white-space: nowrap
+
+  input[aria-invalid="true"]
+    border-color: $color-danger
+
+.storyboard-search__close
+  position: absolute
+  top: 4px
+  right: 4px
+  width: 28px
+  padding: 0 !important
+  border: 0 !important
+  background: transparent !important
+  font-size: 18px !important
+
+.section-preview
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto
+
+.section-preview__stepper
+  padding: 2px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  button
+    width: 28px
+    height: 26px
+    padding: 0
+
+  span
+    min-width: 36px
+    text-align: center
+
+.section-preview__tabs
+  min-height: 40px
+  padding: 5px 12px 0
+  display: flex
+  align-items: flex-end
+  gap: 18px
+  border-bottom: 1px solid $color-border-subtle
+  background: $color-surface
+
+  button
+    position: relative
+    min-height: 35px
+    padding: 0 2px
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    border: 0
+    border-radius: 0
+    color: $color-muted
+    background: transparent
+    font-size: $font-size-small
+    font-weight: 800
+
+    &::after
+      content: ""
+      position: absolute
+      right: 0
+      bottom: -1px
+      left: 0
+      height: 2px
+      background: transparent
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-subtle
+
+    &[aria-pressed="true"]
+      color: $color-text
+      background: transparent
+
+      &::after
+        background: $color-text
+
+    &[aria-pressed="true"]:hover
+      color: $color-accent
+      background: $color-accent-muted
+
+      &::after
+        background: $color-accent
+
+    span
+      min-width: 17px
+      padding: 1px 5px
+      border-radius: 999px
+      color: inherit
+      background: $color-surface-muted
+      font-size: $font-size-micro
+
+.section-preview__tabs > button:not(.button-secondary):not(.button-quiet)
+  border: 0
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    border: 0
+    color: $color-text
+    background: $color-surface-subtle
+
+  &[aria-pressed="true"]
+    border: 0
+    color: $color-text
+    background: transparent
+
+  &[aria-pressed="true"]:hover
+    border: 0
+    color: $color-accent
+    background: $color-accent-muted
+
+.section-preview__canvas
+  min-height: 0
+  padding: 12px
+  overflow: auto
+  display: grid
+  place-items: center
+  background: #f3f3f1
+
+  > img,
+  .section-preview__reference > img,
+  .production-asset-image
+    width: min(100%, 420px)
+    height: 100%
+    max-height: 100%
+    object-fit: contain
+    border-radius: $radius-sm
+    background: $color-surface
+    box-shadow: 0 4px 20px rgba($color-text, .08)
+
+.section-preview__empty
+  width: min(100%, 360px)
+  padding: 30px
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  gap: 8px
+  color: $color-muted
+  text-align: center
+
+  strong
+    color: $color-text
+    font-size: 13px
+
+  p
+    margin: 0
+    font-size: $font-size-small
+    line-height: 1.6
+
+.section-preview__reference
+  width: 100%
+  height: 100%
+  min-height: 0
+  display: grid
+  grid-template-rows: minmax(0, 1fr) auto
+  place-items: center
+  gap: 8px
+
+  p
+    width: 100%
+    margin: 0
+    padding: 9px 11px
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: $font-size-small
+
+.section-preview__candidate-grid
+  width: 100%
+  align-self: start
+  display: grid
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))
+  gap: 10px
+
+  article
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    &.is-current
+      border-color: $color-accent
+      box-shadow: 0 0 0 2px rgba($color-accent, .1)
+
+  img,
+  .production-asset-image
+    width: 100%
+    aspect-ratio: 1 / 1
+    object-fit: contain
+
+  footer
+    padding: 8px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+    button
+      min-height: 28px
+      padding: 0 8px
+      font-size: $font-size-small
+
+.section-preview__actions
+  min-height: 48px
+  padding: 7px 12px
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 7px
+  border-top: 1px solid $color-border-subtle
+  background: $color-surface
+
+  button,
+  a,
+  label
+    min-height: 32px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+    font-size: $font-size-small
+
+.section-preview__import
+  cursor: pointer
+
+  input
+    position: absolute
+    width: 1px
+    height: 1px
+    overflow: hidden
+    opacity: 0
+
+.section-preview > .production-task-strip
+  margin: 0
+  border-width: 1px 0 0
+  border-radius: 0
+
+.section-timeline
+  min-height: 164px
+  padding: 10px 14px 13px
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr)
+  gap: 7px
+  background: $color-surface
+
+.section-timeline__header
+  min-height: 32px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+  > div
+    display: flex
+    align-items: center
+    gap: 8px
+
+  strong
+    font-size: 12px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+
+  button
+    min-height: 28px
+    padding: 0 9px
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    font-size: $font-size-small
+
+  button[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+  button[aria-pressed="true"]:hover
+    border-color: $color-action
+    color: #8f3a16
+    background: #fff2ec
+
+.section-timeline__hint
+  margin: 0
+  color: $color-muted
+  font-size: $font-size-small
+
+.section-timeline__batch
+  min-height: 34px
+  padding: 5px 8px
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+  border-radius: $radius-sm
+  background: $color-accent-muted
+
+  span
+    margin-right: auto
+    color: $color-accent
+    font-size: $font-size-small
+    font-weight: 800
+
+.section-timeline__track
+  min-width: 0
+  display: grid
+  grid-auto-columns: minmax(132px, 1fr)
+  grid-auto-flow: column
+  gap: 8px
+  overflow-x: auto
+
+.section-timeline-card
+  position: relative
+  min-width: 0
+  min-height: 84px
+  display: grid
+  grid-template-rows: minmax(0, 1fr) 4px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+
+  &.is-active
+    border-color: $color-text
+    box-shadow: 0 0 0 1px $color-text
+
+  &.is-checked
+    border-color: $color-accent
+    background: $color-accent-muted
+
+  > input
+    position: absolute
+    z-index: 2
+    top: 6px
+    right: 6px
+
+.section-timeline-card__main
+  min-width: 0
+  padding: 9px 10px
+  display: flex
+  flex-direction: column
+  align-items: flex-start
+  gap: 3px
+  border: 0
+  border-radius: $radius-sm $radius-sm 0 0
+  color: $color-text
+  background: transparent
+  text-align: left
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
+
+  &[aria-pressed="true"]
+    color: $color-text
+    background: transparent
+
+  &[aria-pressed="true"]:hover
+    color: $color-accent
+    background: $color-accent-muted
+
+  span
+    color: #9b3c13
+    font-size: $font-size-small
+    font-weight: 900
+
+  strong
+    width: 100%
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-size: $font-size-small
+
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+
+.section-timeline-card__status
+  display: grid
+  grid-template-columns: 1fr 1fr
+  gap: 2px
+  padding: 0 4px 4px
+
+  i
+    height: 3px
+    border-radius: 999px
+    background: $color-border
+
+    &.is-ready
+      background: $color-success
+
+.section-timeline-card__manage
+  position: absolute
+  z-index: 3
+  right: 3px
+  bottom: 7px
+  left: 3px
+  height: 26px
+  padding: 2px 4px
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 1px
+  border-radius: $radius-sm
+  color: $color-muted
+  background: rgba($color-surface, .94)
+
+  > svg
+    margin-right: auto
+
+  button
+    width: 23px
+    height: 22px
+    padding: 0
+
+.section-meta-editor
+  position: absolute
+  z-index: 6
+  right: 18px
+  bottom: 174px
+  width: min(420px, calc(100vw - 40px))
+  padding: 9px
+  display: flex
+  align-items: flex-end
+  gap: 6px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 12px 32px rgba($color-text, .14)
+
+  label
+    min-width: 0
+    flex: 1
+    display: grid
+    gap: 3px
+    color: $color-muted
+    font-size: $font-size-small
+
+  input
+    min-height: 32px
+
+  button
+    min-height: 32px
+
+.chapter-workbench__empty
+  min-height: 420px
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  gap: 8px
+  text-align: center
+
+  h2,
+  p
+    margin: 0
+
+  p
+    color: $color-muted
+
+  button
+    margin-top: 8px
+    display: inline-flex
+    align-items: center
+    gap: 6px
+
+.chapter-workbench-dialog
+  overflow: hidden
+
+.chapter-history-dialog
+  width: min(1180px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+
+.storyboard-candidates-dialog__body
+  max-height: min(680px, calc(100vh - 170px))
+  overflow: auto
+
+.chapter-history-dialog__body
+  min-height: 0
+  height: min(690px, calc(100vh - 190px))
+  padding: 0
+  display: grid
+  grid-template-columns: 270px minmax(0, 1fr)
+  overflow: hidden
+
+.chapter-history-dialog__list,
+.chapter-history-dialog__preview
+  min-width: 0
+  min-height: 0
+  overflow: auto
+
+.chapter-history-dialog__list
+  padding: 12px
+  display: flex
+  flex-direction: column
+  gap: 8px
+  border-right: 1px solid $color-border
+  background: $color-surface-subtle
+
+.chapter-history-dialog__preview
+  padding: 18px
+
+.chapter-history-dialog__actions
+  border-top: 1px solid $color-border
+
+.chapter-history-row
+  width: 100%
+  padding: 12px
+  display: flex
+  align-items: stretch
+  flex-direction: column
+  gap: 5px
+  color: $color-text
+  text-align: left
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+
+  &:hover
+    border-color: rgba($color-action, .42)
+    background: rgba($color-action, .05)
+
+  &.is-selected,
+  &[aria-pressed="true"]
+    border-color: rgba($color-action, .58)
+    background: rgba($color-action, .1)
+    box-shadow: inset 3px 0 0 $color-action
+
+  &.is-selected:hover,
+  &[aria-pressed="true"]:hover
+    border-color: $color-action
+    background: rgba($color-action, .15)
+
+  > span
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+  strong
+    color: $color-action
+
+  em
+    overflow: hidden
+    color: $color-text
+    font-style: normal
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  small
+    color: $color-muted
+
+.chapter-snapshot-detail
+  display: grid
+  gap: 18px
+
+  > header
+    display: grid
+    grid-template-columns: minmax(0, 1fr) auto
+    align-items: start
+    gap: 18px
+
+    h3,
+    p
+      margin: 0
+
+    h3
+      margin-top: 3px
+      font-size: 24px
+
+    dl
+      margin: 0
+      display: flex
+      gap: 16px
+
+      div
+        display: grid
+        gap: 2px
+
+      dt
+        color: $color-muted
+        font-size: $font-size-small
+
+      dd
+        margin: 0
+        font-weight: 800
+
+.chapter-snapshot-detail__sections
+  display: grid
+  gap: 14px
+
+.chapter-snapshot-section
+  padding: 16px
+  display: grid
+  gap: 14px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > header
+    display: flex
+    align-items: center
+    gap: 9px
+
+    strong
+      color: $color-action
+
+    span
+      font-weight: 800
+
+  .markdown-preview
+    max-height: 320px
+    overflow: auto
+
+.chapter-snapshot-section__empty
+  margin: 0
+  color: $color-muted
+
+.chapter-snapshot-section__media
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 12px
+
+.chapter-snapshot-media
+  min-width: 0
+  margin: 0
+  display: grid
+  grid-template-columns: 112px minmax(0, 1fr)
+  align-items: center
+  gap: 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  overflow: hidden
+  background: $color-surface-subtle
+
+  > img,
+  > .production-asset-image,
+  > .chapter-snapshot-media__placeholder
+    width: 112px
+    height: 92px
+    object-fit: contain
+
+  figcaption
+    min-width: 0
+    padding: 10px 10px 10px 0
+    display: grid
+    gap: 4px
+
+    span
+      overflow: hidden
+      color: $color-muted
+      font-size: $font-size-small
+      text-overflow: ellipsis
+      white-space: nowrap
+
+.chapter-snapshot-media__placeholder
+  display: grid
+  place-content: center
+  justify-items: center
+  gap: 6px
+  color: $color-muted
+  text-align: center
+  background: rgba($color-border, .28)
+
+  span
+    padding: 0 6px
+    font-size: $font-size-small
+
+.storyboard-candidates-dialog
+  width: min(860px, calc(100vw - 32px))
+
+.storyboard-candidates-dialog__body
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  > article
+    min-width: 0
+    padding: 12px
+    display: grid
+    gap: 9px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-subtle
+
+    &.is-current
+      border-color: $color-accent
+      background: $color-accent-muted
+
+    > header
+      display: flex
+      align-items: center
+      justify-content: space-between
+
+    pre
+      max-height: 310px
+      margin: 0
+      padding: 10px
+      overflow: auto
+      white-space: pre-wrap
+      border-radius: $radius-sm
+      background: $color-surface
+      font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace
+
+.chapter-workbench__body,
+.chapter-prompts-workbench
+  min-height: 0
+  height: 100%
+  padding: 18px
+  overflow: auto
+
+.chapter-workbench__body
+  background: $color-surface-muted
+
+.chapter-workbench__body-header
+  padding: 16px 18px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  .chapter-title-input
+    font-size: clamp(24px, 3vw, 36px)
+
+.chapter-body-generation
+  padding: 11px 13px
+  display: grid
+  grid-template-columns: minmax(180px, 1fr) auto auto auto
+  align-items: center
+  gap: 9px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > div:first-child
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+  strong
+    font-size: 12px
+
+  small
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-small
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  details
+    position: relative
+
+    &[open] textarea
+      position: absolute
+      z-index: 4
+      top: calc(100% + 7px)
+      right: 0
+      width: min(460px, calc(100vw - 50px))
+      min-height: 130px
+      padding: 11px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+      box-shadow: 0 12px 28px rgba($color-text, .14)
+
+  summary
+    min-height: 32px
+    padding: 0 10px
+    display: inline-flex
+    align-items: center
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface
+    cursor: pointer
+    font-size: $font-size-small
+    font-weight: 800
+    list-style: none
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+  > button
+    min-height: 32px
+    font-size: $font-size-small
+
+  > progress
+    grid-column: 1 / -1
+    width: 100%
+    height: 4px
+
+  > .error-notice,
+  > .localized-error
+    grid-column: 1 / -1
+
+.chapter-prompts-workbench
+  background: $color-surface-muted
+
+  > header
+    width: min(100%, 1040px)
+    margin: 0 auto 14px
+    padding: 16px 18px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 20px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    h1,
+    p
+      margin: 0
+
+    h1
+      font-size: 20px
+
+    p
+      margin-top: 4px
+      color: $color-muted
+      font-size: 12px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+
+  > div
+    width: min(100%, 1040px)
+    margin: 0 auto
+    display: grid
+    gap: 12px
+
+.chapter-prompts-skeleton
+  width: min(100%, 1040px) !important
+  margin: 0 auto !important
+  display: grid
+  gap: 12px
+
+  article
+    min-height: 250px
+    padding: 15px
+    display: grid
+    align-content: start
+    gap: 12px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+  span,
+  i
+    display: block
+    border-radius: $radius-sm
+    background: linear-gradient(90deg, $color-surface-muted 25%, $color-border-subtle 50%, $color-surface-muted 75%)
+    background-size: 200% 100%
+    animation: chapter-workbench-shimmer 1.35s ease-in-out infinite
+
+  span
+    width: 34%
+    height: 18px
+
+  i
+    width: 100%
+    height: 13px
+
+    &:last-child
+      width: 72%
+
+.chapter-prompt-card
+  padding: 15px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  > header,
+  > footer
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+  > header > div
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+  code
+    overflow-wrap: anywhere
+    font-size: 12px
+    font-weight: 800
+
+  span,
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+
+  textarea
+    min-height: 220px
+    padding: 14px
+    resize: vertical
+    border-color: $color-border
+    border-radius: $radius-sm
+    background: #fcfcfb
+    font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace
+
+.chapter-prompt-card__history
+  display: grid
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+  gap: 8px
+  padding-top: 10px
+  border-top: 1px solid $color-border-subtle
+
+  > article
+    padding: 10px
+    display: grid
+    gap: 7px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+    &.is-current
+      border-color: rgba($color-success, .3)
+      background: $color-success-muted
+
+    header
+      display: flex
+      justify-content: space-between
+
+    p
+      max-height: 150px
+      margin: 0
+      overflow: auto
+      white-space: pre-wrap
+      font-size: $font-size-small
+
+@media (max-width: 1100px)
+  .chapter-workbench__header
+    grid-template-columns: auto minmax(0, 1fr)
+
+  .chapter-workbench__tabs
+    grid-column: 2
+    justify-self: end
+    gap: 10px
+
+  .chapter-workbench__history
+    padding-inline: 8px
+    font-size: 0
+
+  .chapter-comic-workbench__stage
+    grid-template-columns: minmax(0, 1fr) minmax(360px, .85fr)
+
+@media (max-width: 1100px)
+  .project-workbench__content:has(.chapter-workbench)
+    overflow: auto
+
+  .workspace-main:has(.chapter-workbench),
+  .chapter-workbench
+    height: auto
+    min-height: 100%
+
+  .chapter-workbench__header
+    position: relative
+    top: auto
+    min-height: auto
+    padding: 8px 10px 0
+    grid-template-columns: 1fr
+    gap: 5px
+
+  .chapter-workbench__header-actions
+    justify-content: space-between
+
+  .chapter-workbench__back,
+  .chapter-workbench__history,
+  .chapter-workbench__preview-link
+    flex: 1
+
+  .chapter-workbench__history
+    padding-inline: 10px
+    font-size: $font-size-small
+
+  .chapter-workbench__tabs
+    grid-column: 1
+    width: 100%
+    justify-self: stretch
+    justify-content: stretch
+    gap: 2px
+
+    button
+      min-height: 42px
+      min-width: 0
+      flex: 1
+      font-size: $font-size-small
+
+  .chapter-comic-workbench
+    height: auto
+    overflow: visible
+
+  .chapter-comic-workbench__stage
+    grid-template-columns: 1fr
+
+  .chapter-comic-skeleton
+    height: auto
+    grid-template-rows: auto 176px
+
+  .chapter-comic-skeleton__stage
+    grid-template-columns: 1fr
+
+    > section
+      min-height: 400px
+      border-right: 0
+      border-bottom: 1px solid $color-border
+
+  .storyboard-workbench
+    min-height: 520px
+    border-right: 0
+    border-bottom: 1px solid $color-border
+
+  .section-preview
+    min-height: 400px
+
+  .section-timeline
+    min-height: 176px
+
+  .section-timeline__track
+    grid-auto-columns: minmax(140px, 42vw)
+
+  .section-meta-editor
+    position: static
+    grid-column: 1
+    grid-row: 4
+    right: auto
+    bottom: auto
+    left: auto
+    width: 100%
+    max-height: none
+
+  .chapter-editor-layout,
+  .prompt-layout
+    grid-template-columns: 1fr
+
+@media (max-width: 980px)
+  .project-workbench__content:has(.chapter-workbench)
+    overflow: visible
+
+@media screen and (max-width: 760px)
+  .chapter-preview
+    padding: 14px 12px 32px
+
+  .chapter-preview__header
+    grid-template-columns: 1fr
+    align-items: stretch
+    gap: 12px
+
+  .chapter-preview__title
+    text-align: left
+
+    h1
+      font-size: 24px
+
+  .chapter-preview__stats
+    justify-content: flex-start
+
+  .chapter-preview__back
+    width: 100%
+
+  .chapter-preview__pager-controls
+    grid-template-columns: 1fr 1fr
+
+    strong
+      grid-column: 1 / -1
+      grid-row: 1
+
+    button
+      grid-row: 2
+
+@media (max-width: 560px)
+  .storyboard-search
+    align-items: stretch
+
+    > input:not([type])
+      width: 100%
+      max-width: none
+      flex: 1 1 100%
+
+  .storyboard-workbench__header,
+  .section-preview__header,
+  .section-timeline__header,
+  .chapter-prompt-card > header,
+  .chapter-prompt-card > footer
+    align-items: stretch
+    flex-direction: column
+
+  .storyboard-workbench__header > div:last-child,
+  .section-timeline__header > div:last-child
+    width: 100%
+    flex-wrap: wrap
+
+  .storyboard-workbench__header button
+    flex: 1
+
+  .section-preview__actions
+    align-items: stretch
+    flex-direction: column
+
+    button,
+    a,
+    label
+      width: 100%
+
+  .storyboard-candidates-dialog__body
+    grid-template-columns: 1fr
+
+  .chapter-history-row
+    grid-template-columns: 1fr
+
+  .chapter-workbench__body,
+  .chapter-prompts-workbench
+    padding: 10px
+
+  .chapter-body-generation
+    grid-template-columns: 1fr
+
+    details,
+    summary,
+    > button
+      width: 100%
+
+// Final chapter-detail surface. These rules intentionally live
+// after the legacy workspace styles so the local-only controls can remain in
+// the DOM without changing the reference layout at rest.
+.project-workbench__content:has(.chapter-workbench)
+  padding: 18px 18px 28px
+  overflow: auto
+
+.workspace-main:has(.chapter-workbench)
+  width: min(100%, 1680px)
+  max-width: 1680px
+  height: auto
+
+.chapter-workbench
+  min-width: 0
+  min-height: 720px
+  height: clamp(720px, calc(100vh - 90px), 900px)
+  display: grid
+  grid-template-rows: 42px minmax(0, 1fr)
+  gap: 10px
+  color: $color-text
+  background: transparent
+
+.chapter-workbench__header
+  position: relative
+  top: auto
+  z-index: 3
+  min-width: 0
+  min-height: 42px
+  height: 42px
+  padding: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+  border: 0
+  background: transparent
+
+.chapter-workbench__header-controls
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 10px
+
+.chapter-workbench__back,
+.chapter-workbench__history,
+.chapter-workbench__preview-link
+  min-height: 40px
+  height: 40px
+  padding: 0 14px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 7px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface
+  font-size: 14px
+  font-weight: 800
+  line-height: 1
+  white-space: nowrap
+  text-decoration: none
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-accent, .48)
+    color: $color-accent
+    background: $color-accent-muted
+
+.chapter-workbench__tabs
+  width: fit-content
+  min-width: 0
+  height: 40px
+  padding: 3px
+  display: flex
+  align-items: stretch
+  justify-content: center
+  gap: 2px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  button
+    min-width: 0
+    min-height: 32px
+    height: 32px
+    padding: 0 9px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+    border: 0
+    border-radius: 4px
+    color: $color-muted
+    background: transparent
+    font-size: 13px
+    font-weight: 800
+    white-space: nowrap
+
+    &::after
+      content: none
+
+    &:hover,
+    &:focus-visible
+      border: 0
+      color: $color-text
+      background: $color-surface-muted
+
+    &[aria-selected="true"]
+      border: 0
+      color: $color-text
+      background: $color-surface
+      box-shadow: 0 1px 2px rgba($color-text, .08)
+
+    &[aria-selected="true"]:hover,
+    &[aria-selected="true"]:focus-visible
+      color: $color-accent
+      background: $color-accent-muted
+
+  span
+    color: inherit
+    font-size: $font-size-micro
+    font-weight: 700
+
+.chapter-workbench__panel
+  min-width: 0
+  min-height: 0
+  height: 100%
+
+.chapter-comic-workbench
+  position: relative
+  min-width: 0
+  min-height: 0
+  height: 100%
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  grid-template-rows: minmax(0, 1fr) 128px
+  gap: 18px
+  overflow: visible
+
+  &:has(.section-timeline__track.is-managing),
+  &:has(.section-timeline__track.is-multi-selecting)
+    grid-template-rows: minmax(0, 1fr) 156px
+
+  > .localized-error,
+  > .error-notice
+    position: absolute
+    z-index: 8
+    top: 8px
+    left: 50%
+    width: min(560px, calc(100vw - 40px))
+    transform: translateX(-50%)
+
+.chapter-comic-workbench__stage
+  display: contents
+
+.storyboard-workbench,
+.section-preview,
+.section-timeline,
+.chapter-workbench__body,
+.chapter-prompts-workbench
+  min-width: 0
+  min-height: 0
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: none
+
+.storyboard-workbench
+  grid-column: 1
+  grid-row: 1
+  padding: 18px
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  gap: 12px
+  border-right: 1px solid $color-border
+  border-bottom: 1px solid $color-border
+
+.storyboard-workbench__header,
+.section-preview__header
+  min-width: 0
+  min-height: 32px
+  height: auto
+  padding: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 8px
+  border: 0
+  background: transparent
+
+  h2
+    margin: 0
+    font-size: 20px
+    line-height: 1.2
+    letter-spacing: 0
+
+.storyboard-workbench__actions,
+.section-preview__header-actions,
+.section-preview__title,
+.section-preview__navigation
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 6px
+
+.storyboard-workbench__actions
+  justify-content: flex-end
+  flex-wrap: wrap
+
+  button
+    min-height: 32px
+    height: 32px
+    padding: 0 10px
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    font-size: 12px
+
+.storyboard-workbench__editor
+  position: relative
+  min-width: 0
+  min-height: 0
+  display: flex
+  overflow: hidden
+
+.storyboard-code-editor
+  min-width: 0
+  min-height: 0
+  height: 100%
+  flex: 1 1 auto
+  overflow: auto
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: #fcfcfb
+
+  &:focus-within
+    border-color: $color-accent
+    box-shadow: 0 0 0 3px rgba($color-accent, .12)
+
+  &[data-disabled="true"]
+    background: $color-surface-subtle
+
+  .cm-editor,
+  .cm-scroller
+    min-height: 0
+    height: 100%
+
+  .cm-editor
+    outline: none
+    background: transparent
+
+  .cm-scroller
+    font-family: $font-family-base
+
+  .cm-content
+    min-height: 100%
+    padding: 14px 48px 14px 14px
+    color: $color-text
+    font-family: $font-family-base
+    font-size: 16px
+    line-height: 1.4
+    letter-spacing: 0
+
+  .cm-line
+    padding: 0 2px 0 6px
+
+  &[data-disabled="true"] .cm-content
+    color: $color-muted
+
+  .cm-placeholder
+    color: $color-muted
+
+  .cm-editor .cm-panel.cm-search
+    box-sizing: border-box
+    width: 100%
+    display: flex
+    align-items: center
+    flex-wrap: wrap
+    gap: 6px
+    padding: 8px 36px 8px 10px
+    border-top: 1px solid $color-border
+    background: $color-surface
+    color: $color-text
+    font-family: $font-family-base
+    font-size: 12px
+    line-height: 1.4
+
+    > *
+      margin: 0
+
+    br
+      width: 0
+      height: 0
+      flex-basis: 100%
+
+    .cm-textfield
+      box-sizing: border-box
+      min-width: 180px
+      max-width: min(100%, 300px)
+      min-height: 32px
+      padding: 6px 9px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      outline: none
+      background: $color-surface
+      color: $color-text
+      font: inherit
+
+      &:focus
+        border-color: $color-accent
+        box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
+    .cm-button
+      min-height: 32px
+      padding: 5px 9px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+      background-image: none
+      color: $color-text
+      font: inherit
+      font-weight: 700
+      cursor: pointer
+
+      &:hover,
+      &:focus-visible
+        border-color: rgba($color-accent, .48)
+        background: $color-accent-muted
+
+    label
+      display: inline-flex
+      align-items: center
+      gap: 3px
+      color: $color-muted
+      font-size: 12px
+      white-space: nowrap
+
+    [name="close"]
+      position: absolute
+      top: 7px
+      right: 7px
+      width: 26px
+      min-height: 26px
+      padding: 0
+      border: 0
+      border-radius: $radius-sm
+      background: transparent
+      color: $color-muted
+      font: inherit
+      font-size: 18px
+
+      &:hover,
+      &:focus-visible
+        background: $color-surface-muted
+        color: $color-text
+
+  .cm-searchMatch
+    background: rgba($color-action, .22)
+
+  .cm-searchMatch-selected
+    background: rgba($color-accent, .28)
+    outline: 1px solid rgba($color-accent, .48)
+
+.storyboard-workbench__ai
+  top: 10px
+  right: 10px
+
+.section-preview
+  grid-column: 2
+  grid-row: 1 / 3
+  position: relative
+  padding: 18px
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  gap: 10px
+  overflow: hidden
+
+.section-preview__header
+  overflow-x: auto
+  overflow-y: hidden
+  scrollbar-width: none
+
+  &::-webkit-scrollbar
+    display: none
+
+.section-preview__title
+  flex: 0 0 auto
+
+  h2
+    max-width: 94px
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.section-preview__navigation
+  padding: 2px
+
+  button
+    width: 30px
+    min-width: 30px
+    height: 30px
+    min-height: 30px
+    padding: 0
+
+.section-preview__tabs
+  flex: 0 0 auto
+  min-height: 34px
+  height: 34px
+  padding: 2px
+  display: flex
+  align-items: stretch
+  gap: 1px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > button:not(.button-secondary):not(.button-quiet)
+    min-height: 28px
+    height: 28px
+    padding: 0 7px
+    border: 0
+    border-radius: 4px
+    color: $color-muted
+    background: transparent
+    font-size: 12px
+    font-weight: 800
+    white-space: nowrap
+
+    &::after
+      content: none
+
+    &:hover,
+    &:focus-visible
+      border: 0
+      color: $color-text
+      background: $color-surface-muted
+
+    &[aria-selected="true"]
+      border: 0
+      color: $color-text
+      background: $color-surface
+      box-shadow: 0 1px 2px rgba($color-text, .08)
+
+    &[aria-selected="true"]:hover,
+    &[aria-selected="true"]:focus-visible
+      color: $color-accent
+      background: $color-accent-muted
+
+  span
+    min-width: auto
+    padding: 0
+    color: inherit
+    background: transparent
+    font-size: $font-size-micro
+
+.section-preview__header-actions
+  flex: 0 0 auto
+
+  button,
+  a
+    min-height: 32px
+    height: 32px
+    padding: 0 9px
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    font-size: 12px
+    white-space: nowrap
+
+.section-preview__canvas
+  min-width: 0
+  min-height: 0
+  padding: 0
+  overflow: auto
+  display: block
+  background: transparent
+
+  > img,
+  > .production-asset-image,
+  .section-preview__reference > img,
+  .section-preview__reference > .production-asset-image
+    width: 100%
+    height: auto
+    max-width: none
+    max-height: none
+    display: block
+    object-fit: contain
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+    box-shadow: none
+
+.section-preview__reference
+  width: 100%
+  height: auto
+  display: grid
+  grid-template-rows: auto auto
+
+.section-preview__candidate-view
+  min-width: 0
+  display: grid
+  gap: 10px
+
+.comic-section-visual
+  width: 100%
+  margin: 0
+  padding: 10px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+.comic-section-visual__media
+  width: 100%
+  min-height: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+
+  > img,
+  > .production-asset-image
+    width: 100%
+    height: auto
+    display: block
+
+.comic-section-visual__media-button
+  padding: 0
+  color: $color-text
+  cursor: pointer
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-accent, .58)
+    color: $color-text
+    background: $color-surface
+    box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
+.comic-section-visual__meta
+  min-width: 0
+  display: flex
+  align-items: center
+  flex-wrap: wrap
+  gap: 6px
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 700
+
+  > span
+    min-width: 0
+    max-width: 100%
+    padding: 3px 8px
+    overflow: hidden
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.comic-section-visual__files
+  display: flex
+  flex-wrap: wrap
+  gap: 6px
+
+  > span
+    padding: 3px 8px
+    border: 1px solid rgba($color-accent, .22)
+    border-radius: 999px
+    color: $color-accent
+    background: $color-accent-muted
+    font-size: $font-size-small
+    font-weight: 750
+
+.comic-section-visual__reason
+  margin: 0
+  color: $color-muted
+  font-size: $font-size-small
+  line-height: 1.55
+
+.lumi-dialog.section-image-dialog,
+.lumi-dialog.section-image-variant-dialog
+  max-height: calc(100dvh - 32px)
+  padding: 18px
+  display: grid
+  gap: 14px
+  overflow: hidden
+
+.lumi-dialog.section-image-dialog
+  width: min(920px, calc(100vw - 32px))
+
+.section-image-dialog__header
+  min-width: 0
+  padding: 0
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 12px
+  border: 0
+
+  h2
+    max-width: min(780px, calc(100vw - 130px))
+    margin: 0
+    overflow: hidden
+    font-size: 22px
+    line-height: 1.25
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.section-image-dialog__close
+  flex: 0 0 auto
+  width: 34px
+  height: 34px
+  min-height: 34px
+  padding: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface
+  font-size: 22px
+  font-weight: 400
+  line-height: 1
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-text
+    background: $color-surface-subtle
+
+.section-image-dialog__media,
+.section-image-variant-dialog__media
+  min-width: 0
+  min-height: 0
+  overflow: auto
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > img
+    width: 100%
+    height: auto
+    display: block
+
+  > .production-asset-image
+    width: 100%
+    min-height: 180px
+
+.section-image-dialog__media
+  max-height: calc(100dvh - 173px)
+
+.section-image-dialog__footer
+  min-width: 0
+  min-height: 40px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+  .comic-section-visual__meta
+    min-width: 0
+
+  > a
+    flex: 0 0 auto
+    min-height: 40px
+
+.lumi-dialog.section-image-variant-dialog
+  width: min(1180px, calc(100vw - 32px))
+
+.section-image-variant-dialog__body
+  min-width: 0
+  min-height: 0
+  height: min(562px, calc(100dvh - 126px))
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 360px
+  gap: 16px
+
+.section-image-variant-dialog__side
+  min-width: 0
+  min-height: 0
+  overflow: auto
+  display: grid
+  align-content: start
+  gap: 12px
+
+.section-image-variant-dialog__actions
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 8px
+
+  > a,
+  > button
+    flex: 0 0 auto
+    min-height: 40px
+
+.section-image-variant-dialog__status
+  min-width: 0
+  margin-right: auto
+  overflow: hidden
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 800
+  text-overflow: ellipsis
+  white-space: nowrap
+
+  &.is-current
+    color: $color-accent
+
+.section-image-variant-dialog__info
+  margin: 0
+  display: grid
+  gap: 8px
+
+  > div
+    min-width: 0
+    padding: 10px
+    display: grid
+    gap: 4px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+  dt
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 800
+
+  dd
+    min-width: 0
+    margin: 0
+    overflow-wrap: anywhere
+    font-size: $font-size-small
+    font-weight: 750
+
+@media (max-width: 860px)
+  .lumi-dialog.section-image-variant-dialog
+    overflow: auto
+
+  .section-image-variant-dialog__body
+    height: auto
+    grid-template-columns: minmax(0, 1fr)
+
+  .section-image-variant-dialog__media
+    max-height: 52dvh
+
+  .section-image-variant-dialog__side
+    overflow: visible
+
+.section-preview__candidate-tools
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 7px
+
+  label,
+  button
+    min-height: 32px
+    padding: 0 10px
+    font-size: 12px
+
+.image-ratio-notice
+  min-width: 0
+  padding: 10px 12px
+  display: grid
+  gap: 3px
+  border: 1px solid rgba($color-success, .28)
+  border-radius: $radius-sm
+  color: $color-text
+  background: rgba($color-success, .08)
+  font-size: $font-size-small
+
+  strong
+    font-weight: 850
+
+  span,
+  small
+    overflow-wrap: anywhere
+    color: $color-muted
+
+  &.is-warning
+    border-color: rgba($color-warning, .38)
+    background: rgba($color-warning, .1)
+
+    strong
+      color: $color-warning
+
+.section-preview__candidate-grid
+  grid-template-columns: minmax(0, 1fr)
+  gap: 10px
+
+.section-image-variant-item
+  min-width: 0
+  padding: 10px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: center
+  gap: 12px
+  overflow: visible !important
+  border: 1px solid $color-border-subtle !important
+  border-radius: $radius-md
+  background: $color-surface
+
+  &.is-current
+    grid-template-columns: minmax(0, 1fr)
+    border-color: rgba($color-accent, .28) !important
+    background: $color-accent-muted
+    box-shadow: none !important
+
+  > .production-asset-image
+    min-height: 120px
+
+.section-image-variant-item__details
+  min-width: 0
+  min-height: 0
+  padding: 0
+  display: grid
+  grid-template-columns: 88px minmax(0, 1fr)
+  align-items: center
+  gap: 12px
+  border: 0
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  text-align: left
+
+  &:hover,
+  &:focus-visible
+    border: 0
+    color: $color-text
+    background: rgba($color-accent, .07)
+    box-shadow: 0 0 0 2px rgba($color-accent, .16)
+
+.section-image-variant-item:not(.is-current) .section-image-variant-item__details
+  min-height: 212px
+
+.section-image-variant-item.is-current .section-image-variant-item__details
+  min-height: 132px
+
+.section-image-variant-item__media
+  width: 88px
+  height: 118px
+  display: grid
+  overflow: hidden
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > img
+    width: 100% !important
+    height: 100% !important
+    aspect-ratio: auto !important
+    object-fit: contain !important
+
+.section-image-variant-item__body
+  min-width: 0
+  display: grid
+  align-content: center
+  gap: 7px
+
+  > strong
+    min-width: 0
+    overflow: hidden
+    font-size: 14px
+    font-weight: 850
+    line-height: 1.35
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.section-variant-item__meta
+  min-width: 0
+  display: flex
+  flex-wrap: wrap
+  gap: 6px
+
+  > span
+    min-width: 0
+    max-width: 100%
+    padding: 2px 7px
+    overflow: hidden
+    border: 1px solid rgba($color-border, .8)
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface-subtle
+    font-size: $font-size-small
+    font-weight: 800
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.section-variant-item__select
+  flex: 0 0 auto
+  width: 115px
+  min-height: 40px
+  white-space: nowrap
+
+.section-preview__task
+  position: absolute
+  z-index: 5
+  right: 18px
+  bottom: 18px
+  left: 18px
+  max-height: 110px
+  overflow: auto
+  border-radius: $radius-sm
+  box-shadow: 0 10px 28px rgba($color-text, .14)
+
+  .production-task-strip
+    margin: 0
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+
+.section-timeline
+  grid-column: 1
+  grid-row: 2
+  height: 128px
+  padding: 10px 12px
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  gap: 7px
+  overflow: hidden
+
+  &:has(.section-timeline__track.is-managing),
+  &:has(.section-timeline__track.is-multi-selecting)
+    height: 156px
+
+.section-timeline__header
+  min-width: 0
+  min-height: 28px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 10px
+
+  h2
+    margin: 0
+    font-size: 16px
+    line-height: 1.15
+
+.section-timeline__actions
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 6px
+  flex-wrap: nowrap
+
+  span
+    color: $color-muted
+    font-size: 12px
+
+  button
+    min-height: 28px
+    height: 28px
+    padding: 0 8px
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    font-size: 12px
+    white-space: nowrap
+
+  button[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
+  button[aria-pressed="true"]:hover,
+  button[aria-pressed="true"]:focus-visible
+    border-color: #1d4ed8
+    color: #1d4ed8
+    background: #dce8ff
+
+  button.section-timeline__batch-action
+    border: 1px solid $color-action
+    border-radius: $radius-sm
+    color: $color-surface
+    background: $color-action
+    font-weight: 800
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled)
+      border-color: #dc4d16
+      color: $color-surface
+      background: #e85a1f
+
+    &:active:not(:disabled)
+      border-color: #c94310
+      background: #d94d18
+
+    &:disabled
+      border-color: $color-action
+      color: $color-surface
+      background: $color-action
+      cursor: not-allowed
+      opacity: .45
+
+.section-timeline__hint
+  display: none
+
+.section-timeline__track
+  min-width: 0
+  display: grid
+  grid-auto-flow: column
+  grid-auto-columns: 88px
+  gap: 8px
+  overflow-x: auto
+  overflow-y: hidden
+  padding-bottom: 2px
+  scrollbar-gutter: stable
+
+.section-timeline-card
+  position: relative
+  min-width: 88px
+  width: 88px
+  min-height: 70px
+  height: 70px
+  display: block
+  overflow: visible
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, opacity 150ms ease
+
+  &:has(.section-timeline-card__main:hover),
+  &:focus-within
+    border-color: $color-accent
+    background: $color-accent-muted
+
+  &.is-active
+    border-color: $color-accent
+    background: $color-accent-muted
+    box-shadow: none
+
+  &.is-active:has(.section-timeline-card__main:hover),
+  &.is-active:focus-within
+    border-color: #1d4ed8
+    background: #dce8ff
+
+  &.is-checked
+    border-color: $color-action
+    color: $color-action
+    background: rgba($color-action, .08)
+
+  &.is-checked:has(.section-timeline-card__main:hover),
+  &.is-checked:focus-within
+    border-color: #dc4d16
+    background: #fff0e8
+
+  &.is-active.is-checked
+    box-shadow: 0 0 0 2px rgba($color-accent, .38)
+
+  &.is-active.is-checked:has(.section-timeline-card__main:hover),
+  &.is-active.is-checked:focus-within
+    box-shadow: 0 0 0 2px rgba($color-accent, .58)
+
+  &.is-dragging
+    border-style: dashed
+    border-color: $color-action
+    background: rgba($color-action, .05)
+    box-shadow: none
+    opacity: .36
+
+  &.is-pending
+    opacity: .58
+
+  &.is-drop-before::before,
+  &.is-drop-after::after
+    content: ''
+    position: absolute
+    z-index: 5
+    top: 7px
+    bottom: 7px
+    width: 3px
+    border-radius: 999px
+    background: $color-action
+    box-shadow: 0 0 0 3px rgba($color-action, .12)
+    pointer-events: none
+
+  &.is-drop-before::before
+    left: -5px
+
+  &.is-drop-after::after
+    right: -5px
+
+  &.is-processing .section-timeline-card__main:disabled
+    cursor: not-allowed
+    opacity: .5
+
+.section-timeline__track.is-managing .section-timeline-card,
+.section-timeline__track.is-multi-selecting .section-timeline-card
+  min-height: 98px
+  height: 98px
+
+.section-timeline__track.is-managing .section-timeline-card__copy
+  padding-top: 28px
+
+.section-timeline-card__main
+  width: 100%
+  height: 100%
+  min-width: 0
+  padding: 6px 7px 8px
+  display: grid
+  align-content: start
+  justify-items: center
+  gap: 5px
+  overflow: hidden
+  border: 0
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  text-align: center
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent
+    background: transparent
+
+  &[aria-pressed="true"]
+    color: $color-action
+    background: transparent
+
+  &[aria-pressed="true"]:hover,
+  &[aria-pressed="true"]:focus-visible
+    color: #dc4d16
+    background: transparent
+
+  &:disabled:hover,
+  &:disabled:focus-visible
+    color: $color-muted
+    background: transparent
+
+.section-timeline-card__check
+  position: relative
+  width: 18px
+  height: 18px
+  flex: 0 0 auto
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface
+
+  &::after
+    content: ''
+    position: absolute
+    top: 2px
+    left: 5px
+    width: 5px
+    height: 9px
+    border: solid $color-surface
+    border-width: 0 2px 2px 0
+    opacity: 0
+    transform: rotate(45deg)
+
+.section-timeline-card.is-checked .section-timeline-card__check
+  border-color: $color-action
+  background: $color-action
+
+  &::after
+    opacity: 1
+
+.section-timeline-card.is-checked:has(.section-timeline-card__main:hover) .section-timeline-card__check,
+.section-timeline-card.is-checked:focus-within .section-timeline-card__check
+  border-color: #dc4d16
+  background: #dc4d16
+
+.section-timeline-card__copy
+  width: 100%
+  min-width: 0
+  display: grid
+  justify-items: center
+  gap: 5px
+  padding-bottom: 5px
+  color: inherit
+
+  strong
+    width: 100%
+    min-width: 0
+    display: -webkit-box
+    overflow: hidden
+    white-space: normal
+    -webkit-line-clamp: 2
+    -webkit-box-orient: vertical
+    color: inherit
+    font-size: 12px
+    font-weight: 800
+    line-height: 1.15
+
+  > span
+    width: 100%
+    min-width: 0
+    display: -webkit-box
+    overflow: hidden
+    white-space: normal
+    -webkit-line-clamp: 3
+    -webkit-box-orient: vertical
+    color: inherit
+    font-size: $font-size-small
+    font-weight: 700
+    line-height: 1.35
+    opacity: .74
+
+.section-timeline-card .section-timeline-card__copy
+  color: $color-text
+
+.section-timeline-card.is-active .section-timeline-card__copy
+  color: $color-accent
+
+.section-timeline-card.is-active:has(.section-timeline-card__main:hover) .section-timeline-card__copy,
+.section-timeline-card.is-active:focus-within .section-timeline-card__copy
+  color: #1d4ed8
+
+.section-timeline-card.is-checked .section-timeline-card__copy
+  color: $color-action
+
+.section-timeline-card.is-checked:has(.section-timeline-card__main:hover) .section-timeline-card__copy,
+.section-timeline-card.is-checked:focus-within .section-timeline-card__copy
+  color: #dc4d16
+
+.section-timeline-card__status
+  position: absolute
+  right: 10px
+  bottom: 6px
+  left: 10px
+  height: 2px
+  padding: 0
+  display: block
+  border-radius: 999px
+  background: $color-border
+  pointer-events: none
+
+  &.is-processing
+    background: linear-gradient(90deg, rgba($color-accent, .28), $color-accent, rgba($color-accent, .28))
+    background-size: 200% 100%
+    animation: chapter-workbench-image-indicator 1100ms linear infinite
+
+  &.is-completed
+    background: rgba($color-success, .62)
+
+  &.is-failed
+    background: rgba($color-danger, .72)
+
+@keyframes chapter-workbench-image-indicator
+  from
+    background-position: 100% 0
+  to
+    background-position: -100% 0
+
+.section-timeline-card__drag,
+.section-timeline-card__delete
+  position: absolute
+  z-index: 3
+  top: 6px
+  width: 24px
+  height: 24px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid rgba($color-danger, .35)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-surface
+  cursor: pointer
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled)
+    border-color: $color-danger
+    color: $color-danger
+    background: rgba($color-danger, .08)
+
+  &:disabled,
+  &:disabled:hover,
+  &:disabled:focus-visible
+    border-color: rgba($color-danger, .25)
+    color: $color-danger
+    background: $color-surface
+    cursor: not-allowed
+    opacity: .45
+
+.section-timeline-card__drag
+  left: 6px
+  border-color: $color-border
+  color: $color-muted
+  cursor: grab
+  touch-action: none
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled)
+    border-color: $color-action
+    color: $color-action
+    background: rgba($color-action, .08)
+
+  &:active:not(:disabled)
+    cursor: grabbing
+
+  &:disabled,
+  &:disabled:hover,
+  &:disabled:focus-visible
+    border-color: $color-border
+    color: $color-muted
+
+.section-timeline-card__delete
+  right: 6px
+
+.section-timeline-card__drag-preview
+  position: fixed
+  z-index: 80
+  box-sizing: border-box
+  min-width: 0
+  min-height: 0
+  padding: 36px 7px 12px
+  display: grid
+  align-content: start
+  justify-items: center
+  gap: 5px
+  border: 1px solid $color-action
+  border-radius: $radius-sm
+  color: $color-action
+  background: $color-surface-muted
+  text-align: center
+  pointer-events: none
+  box-shadow: 0 16px 34px rgba($color-text, .18)
+  opacity: .96
+  transform: rotate(-1deg) scale(1.02)
+  transform-origin: center center
+  will-change: left, top
+
+  .section-timeline-card__copy
+    color: $color-text
+
+.section-meta-editor
+  right: auto
+  bottom: 166px
+  left: 0
+  width: min(453px, calc(50% - 9px))
+
+.chapter-comic-skeleton
+  min-width: 0
+  min-height: 0
+  height: 100%
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  grid-template-rows: minmax(0, 1fr) 128px
+  gap: 18px
+  overflow: hidden
+  background: transparent
+
+.chapter-comic-skeleton__stage
+  display: contents
+
+  > section
+    min-width: 0
+    min-height: 0
+    padding: 18px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    &:first-child
+      grid-column: 1
+      grid-row: 1
+
+    &:last-child
+      grid-column: 2
+      grid-row: 1 / 3
+
+.chapter-comic-skeleton > footer
+  grid-column: 1
+  grid-row: 2
+  padding: 45px 12px 10px
+  display: grid
+  grid-template-columns: repeat(4, 88px)
+  gap: 8px
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface
+
+  span
+    height: 70px
+
+.chapter-workbench__body
+  height: 100%
+  padding: 18px
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr)
+  gap: 12px
+  overflow: hidden
+
+.chapter-workbench__reader-header
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 18px
+
+  p,
+  h2
+    margin: 0
+
+  p
+    color: $color-muted
+    font-size: 12px
+    font-weight: 900
+    letter-spacing: .06em
+
+  h2
+    margin-top: 3px
+    font-size: 20px
+    line-height: 1.25
+
+.chapter-workbench__reader-actions
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+  flex-wrap: wrap
+
+  button,
+  .story-status-pill
+    min-height: 32px
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    font-size: 12px
+
+.chapter-workbench__reader-content
+  min-width: 0
+  min-height: 0
+  overflow: auto
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: #fcfcfb
+
+  pre
+    min-height: 100%
+    margin: 0
+    padding: 18px
+    color: $color-text
+    font-family: $font-family-base
+    font-size: 16px
+    line-height: 1.75
+    white-space: pre-wrap
+    overflow-wrap: anywhere
+
+.chapter-prompts-workbench
+  height: 100%
+  padding: 18px
+  display: grid
+  grid-template-rows: auto minmax(0, 1fr)
+  gap: 12px
+  overflow: hidden
+
+  > header,
+  > .chapter-prompts-workbench__header
+    width: 100%
+    margin: 0
+    padding: 0
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 16px
+    border: 0
+    background: transparent
+
+    h1,
+    h2,
+    p
+      margin: 0
+
+    h2
+      font-size: 20px
+
+    p
+      margin-top: 3px
+      color: $color-muted
+      font-size: 12px
+
+  > div
+    width: 100%
+    margin: 0
+    display: grid
+    gap: 12px
+    align-content: start
+    overflow: auto
+    padding-right: 2px
+
+.chapter-prompts-workbench__actions
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+
+  button
+    min-height: 32px
+    padding: 0 11px
+    font-size: 12px
+
+.chapter-prompt-card
+  padding: 14px
+  gap: 10px
+  border-radius: $radius-sm
+
+  > header
+    align-items: flex-start
+
+    > div
+      flex-direction: row
+      align-items: center
+      gap: 8px
+
+      &:last-child
+        justify-content: flex-end
+        flex-wrap: wrap
+
+    h3
+      margin: 0
+      font-size: 15px
+
+    button
+      min-height: 30px
+      padding: 0 9px
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      font-size: 12px
+
+  textarea
+    min-height: 150px
+    padding: 12px
+    resize: vertical
+    border-color: $color-border
+    border-radius: $radius-sm
+    background: #fcfcfb
+    font: 14px/1.55 $font-family-base
+
+.story-status-pill--custom
+  border-color: rgba($color-accent, .28)
+  color: $color-accent
+  background: $color-accent-muted
+
+.chapter-body-editor-dialog
+  width: min(920px, calc(100vw - 32px))
+  max-height: min(840px, calc(100vh - 32px))
+  overflow: hidden
+
+.chapter-body-editor-dialog__body
+  min-height: 0
+  max-height: calc(100vh - 132px)
+  display: grid
+  grid-template-columns: minmax(0, 1fr) 140px
+  gap: 12px
+  overflow: auto
+
+  > .localized-error,
+  > .workspace-notice,
+  > .chapter-body-editor-dialog__toolbar,
+  > .chapter-body-editor-dialog__content,
+  > .markdown-preview,
+  > .chapter-body-editor-dialog__secondary,
+  > footer
+    grid-column: 1 / -1
+
+  > label
+    display: grid
+    gap: 5px
+    color: $color-muted
+    font-size: 12px
+    font-weight: 800
+
+.chapter-body-editor-dialog__toolbar,
+.chapter-body-editor-dialog__body > footer,
+.lumi-dialog__actions
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 8px
+
+.chapter-body-editor-dialog__content
+  textarea
+    min-height: 320px
+    padding: 14px
+    resize: vertical
+    font: 15px/1.65 $font-family-base
+
+.chapter-body-editor-dialog__secondary
+  padding: 10px 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  summary
+    cursor: pointer
+    font-size: 12px
+    font-weight: 800
+
+  &[open]
+    display: grid
+    gap: 12px
+
+.chapter-body-editor-dialog__history
+  display: grid
+  gap: 6px
+
+  h3
+    margin: 0
+    font-size: 14px
+
+  article
+    padding: 7px 9px
+    display: grid
+    grid-template-columns: auto minmax(0, 1fr) auto
+    gap: 8px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface
+    font-size: 12px
+
+.comic-storyboard-generation-dialog
+  width: min(560px, calc(100vw - 32px))
+
+@media (prefers-reduced-motion: reduce)
+  .section-timeline-card__status.is-processing
+    animation: none
+    background: rgba($color-accent, .72)
+
+@media (max-width: 1100px)
+  .project-workbench__content:has(.chapter-workbench)
+    overflow: auto
+
+  .workspace-main:has(.chapter-workbench),
+  .chapter-workbench
+    height: auto
+    min-height: 0
+
+  .chapter-workbench
+    grid-template-rows: auto auto
+
+  .chapter-workbench__header
+    min-height: 42px
+    height: auto
+    padding: 0
+    display: flex
+
+  .chapter-workbench__header-controls
+    justify-content: flex-end
+
+  .chapter-workbench__tabs
+    width: fit-content
+
+  .chapter-comic-workbench,
+  .chapter-comic-skeleton
+    height: auto
+    display: grid
+    grid-template-columns: minmax(0, 1fr)
+    grid-template-rows: auto auto auto
+    gap: 18px
+    overflow: visible
+
+  .chapter-comic-workbench:has(.section-timeline__track.is-managing),
+  .chapter-comic-workbench:has(.section-timeline__track.is-multi-selecting)
+    grid-template-rows: auto auto auto auto
+
+  .chapter-comic-workbench__stage,
+  .chapter-comic-skeleton__stage
+    display: contents
+
+  .storyboard-workbench,
+  .chapter-comic-skeleton__stage > section:first-child
+    grid-column: 1
+    grid-row: 1
+    min-height: 520px
+
+  .section-preview,
+  .chapter-comic-skeleton__stage > section:last-child
+    grid-column: 1
+    grid-row: 2
+    min-height: 640px
+
+  .section-timeline,
+  .chapter-comic-skeleton > footer
+    grid-column: 1
+    grid-row: 3
+    width: 100%
+    height: 128px
+
+  .section-meta-editor
+    position: static
+    grid-column: 1
+    grid-row: 4
+    right: auto
+    bottom: auto
+    left: auto
+    width: 100%
+    max-height: none
+
+  .chapter-workbench__body,
+  .chapter-prompts-workbench
+    min-height: 640px
+    height: auto
+
+@media (max-width: 760px)
+  .project-workbench__content:has(.chapter-workbench)
+    padding: 14px 12px 28px
+
+  .chapter-workbench__header
+    align-items: stretch
+    flex-direction: column
+    gap: 8px
+
+  .chapter-workbench__back
+    align-self: flex-start
+
+  .chapter-workbench__header-controls
+    width: 100%
+    align-items: stretch
+    flex-direction: column
+
+  .chapter-workbench__history,
+  .chapter-workbench__preview-link
+    width: 100%
+
+  .chapter-workbench__tabs
+    width: 100%
+
+    button
+      flex: 1 1 0
+      padding-inline: 5px
+
+  .storyboard-workbench,
+  .section-preview,
+  .chapter-workbench__body,
+  .chapter-prompts-workbench
+    padding: 12px
+
+  .storyboard-workbench__header,
+  .chapter-workbench__reader-header,
+  .chapter-prompts-workbench > header,
+  .chapter-prompt-card > header
+    align-items: stretch
+    flex-direction: column
+
+  .storyboard-workbench__actions,
+  .chapter-workbench__reader-actions,
+  .chapter-prompts-workbench__actions
+    width: 100%
+    justify-content: stretch
+
+    button
+      flex: 1 1 120px
+
+  .section-preview__header
+    align-items: stretch
+    flex-wrap: wrap
+    overflow: visible
+
+  .section-preview__title,
+  .section-preview__tabs,
+  .section-preview__header-actions
+    width: 100%
+
+  .section-preview__tabs button,
+  .section-preview__header-actions button,
+  .section-preview__header-actions a
+    flex: 1 1 0
+    justify-content: center
+
+  .section-timeline
+    height: auto
+    min-height: 175px
+
+  .section-timeline:has(.section-timeline__track.is-managing),
+  .section-timeline:has(.section-timeline__track.is-multi-selecting)
+    height: auto
+
+  .section-timeline__header
+    align-items: stretch
+    flex-direction: column
+
+  .section-timeline__actions
+    justify-content: flex-start
+    flex-wrap: wrap
+
+  .chapter-body-editor-dialog__body
+    grid-template-columns: 1fr
+
+  .chapter-body-editor-dialog__body > *
+    grid-column: 1
+
+  .chapter-body-editor-dialog__history article
+    grid-template-columns: 1fr
+
+@media (max-width: 560px)
+  .storyboard-code-editor .cm-editor .cm-panel.cm-search
+    align-items: stretch
+
+    br
+      display: none
+
+    .cm-textfield
+      width: 100%
+      max-width: none
+      flex: 1 1 100%
+
+  .chapter-prompt-card > header > div:last-child,
+  .section-preview__candidate-tools
+    width: 100%
+    align-items: stretch
+    flex-direction: column
+
+    button,
+    label
+      width: 100%
+
+.prompt-catalog-editor
+  display: grid
+  gap: 18px
+
+.prompt-catalog-editor__intro,
+.prompt-group
+  border: 1px solid $color-border
+  border-radius: $radius-lg
+  background: $color-surface
+  box-shadow: 0 12px 32px rgba($color-text, .045)
+
+.prompt-catalog-editor__intro
+  padding: 22px 24px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 18px
+
+  h1,
+  p
+    margin: 0
+
+  h1
+    font-size: 22px
+
+  p
+    margin-top: 6px
+    color: $color-muted
+    font-size: 13px
+
+  > span
+    min-width: 34px
+    padding: 5px 9px
+    border-radius: 999px
+    background: $color-accent-muted
+    color: $color-accent
+    text-align: center
+    font-size: 12px
+    font-weight: 800
+
+.prompt-catalog-editor__loading
+  padding: 42px
+  border: 1px dashed $color-border
+  border-radius: $radius-lg
+  color: $color-muted
+  text-align: center
+
+.prompt-group
+  overflow: hidden
+
+.prompt-group__header
+  padding: 18px 20px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 18px
+  border-bottom: 1px solid $color-border-subtle
+  background: $color-surface-subtle
+
+  > div:first-child
+    min-width: 0
+
+    > div
+      display: flex
+      align-items: center
+      gap: 9px
+
+    h2,
+    p
+      margin: 0
+
+    h2
+      font-size: 17px
+
+    span
+      padding: 2px 7px
+      border-radius: 999px
+      background: $color-surface-muted
+      color: $color-muted
+      font-size: 12px
+      font-weight: 800
+
+    p
+      margin-top: 5px
+      color: $color-muted
+      font-size: 12px
+
+.prompt-group__actions,
+.prompt-card__actions
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+  flex-wrap: wrap
+
+.prompt-group__actions button,
+.prompt-card__actions button
+  min-height: 34px
+  padding: 7px 10px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 6px
+  font-size: 12px
+
+.prompt-group__list
+  display: grid
+  gap: 0
+
+.prompt-card
+  min-width: 0
+  padding: 20px
+  display: grid
+  gap: 12px
+
+  & + &
+    border-top: 1px solid $color-border-subtle
+
+  textarea
+    width: 100%
+    min-height: 132px
+    max-height: 620px
+    padding: 14px 15px
+    resize: vertical
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    color: $color-text
+    font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
+    tab-size: 2
+
+    &:focus
+      outline: 2px solid rgba($color-accent, .15)
+      border-color: $color-accent
+
+.prompt-card__header
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 16px
+
+.prompt-card__identity
+  min-width: 0
+  display: grid
+  gap: 5px
+
+  > div
+    display: flex
+    align-items: center
+    gap: 7px
+    flex-wrap: wrap
+
+  h3
+    margin: 0
+    font-size: 15px
+
+  code
+    color: $color-muted
+    font-size: 12px
+
+.prompt-status-pill,
+.prompt-type-pill
+  padding: 3px 7px
+  border: 1px solid $color-border
+  border-radius: 999px
+  background: $color-surface-muted
+  color: $color-muted
+  font-size: 12px
+  font-style: normal
+  font-weight: 800
+  line-height: 1.2
+
+.prompt-status-pill--modified
+  border-color: rgba($color-action, .28)
+  background: rgba($color-action, .09)
+  color: color.scale($color-action, $lightness: -25%)
+
+.prompt-type-pill--fragment
+  border-color: rgba($color-accent, .22)
+  background: $color-accent-muted
+  color: $color-accent
+
+.prompt-type-pill--preset
+  border-color: rgba($color-success, .24)
+  background: $color-success-muted
+  color: $color-success
+
+.prompt-card__description
+  margin: -4px 0 0
+  color: $color-muted
+  font-size: 12px
+
+.prompt-card__footer
+  display: grid
+  gap: 7px
+
+.prompt-card__meta
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 12px
+  color: $color-muted
+  font-size: 12px
+
+.prompt-card__warning,
+.prompt-card__error
+  margin: 0
+  padding: 8px 10px
+  border-radius: $radius-sm
+  font-size: 12px
+
+.prompt-card__warning
+  background: $color-warning-muted
+  color: $color-warning
+
+.prompt-card__error
+  background: $color-danger-muted
+  color: $color-danger
+
+.prompt-candidates-dialog
+  width: min(920px, calc(100vw - 32px))
+  max-height: min(880px, calc(100vh - 32px))
+
+.prompt-candidates-dialog__body
+  display: grid
+  gap: 14px
+
+.prompt-candidates-dialog__loading
+  margin: 0
+  padding: 24px
+  color: $color-muted
+  text-align: center
+
+.prompt-candidate-list
+  display: grid
+  gap: 12px
+
+  article
+    padding: 13px
+    display: grid
+    gap: 10px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-subtle
+
+    &.is-current
+      border-color: rgba($color-success, .36)
+      box-shadow: inset 3px 0 0 $color-success
+
+    > header,
+    > footer
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+
+    > header div
+      display: flex
+      align-items: center
+      gap: 8px
+
+    > header span,
+    time,
+    > footer
+      color: $color-muted
+      font-size: 12px
+
+    pre
+      max-height: 290px
+      margin: 0
+      padding: 12px
+      overflow: auto
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      background: $color-surface
+      white-space: pre-wrap
+      overflow-wrap: anywhere
+      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
+
+.prompt-candidates-dialog__pagination
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+  span
+    color: $color-muted
+    font-size: 12px
+
+@media (max-width: 760px)
+  .chapter-history-dialog
+    width: min(100vw - 16px, 744px)
+    max-height: calc(100vh - 16px)
+
+  .chapter-history-dialog__body
+    height: calc(100vh - 184px)
+    grid-template-columns: 1fr
+    grid-template-rows: minmax(150px, 32%) minmax(0, 1fr)
+
+  .chapter-history-dialog__list
+    border-right: 0
+    border-bottom: 1px solid $color-border
+
+  .chapter-history-dialog__preview
+    padding: 14px
+
+  .chapter-snapshot-detail > header
+    grid-template-columns: 1fr
+
+    dl
+      flex-wrap: wrap
+
+  .chapter-snapshot-section__media
+    grid-template-columns: 1fr
+
+  .chapter-history-dialog__actions
+    button
+      flex: 1 1 0
+
+  .prompt-catalog-editor__intro,
+  .prompt-group__header,
+  .prompt-card__header,
+  .prompt-card__meta
+    align-items: stretch
+    flex-direction: column
+
+  .prompt-group__actions,
+  .prompt-card__actions
+    width: 100%
+    justify-content: stretch
+
+    button
+      flex: 1 1 140px
+
+  .prompt-card
+    padding: 16px 14px
+
+  .prompt-candidates-dialog__pagination
+    align-items: stretch
+    flex-direction: column
+
+    button
+      width: 100%

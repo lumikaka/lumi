@@ -1,0 +1,36 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f5ef">
+{{ $page := . }}
+{{ $description := .Description | default .Site.Params.description }}
+{{ $title := cond .IsHome .Site.Title (printf "%s | %s" .Title .Site.Title) }}
+<title>{{ $title }}</title>
+<meta name="description" content="{{ $description }}">
+<link rel="canonical" href="{{ .Permalink }}">
+{{ range .AllTranslations }}
+  <link rel="alternate" hreflang="{{ .Language.Locale | default .Language.Lang }}" href="{{ .Permalink }}">
+{{ end }}
+<link rel="alternate" hreflang="x-default" href="{{ .Site.Home.Permalink }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lumi">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ .Permalink }}">
+{{ $og := resources.Get (printf "images/og/cover-%s.svg" .Site.Language.Lang) }}
+{{ with $og }}<meta property="og:image" content="{{ .Permalink }}">{{ end }}
+<meta name="twitter:card" content="summary_large_image">
+{{ $icon := resources.Get "images/lumi-mark.svg" }}
+{{ with $icon }}
+  <link rel="icon" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}" type="image/svg+xml">
+{{ end }}
+{{ $appleIcon := resources.Get "images/apple-touch-icon.png" }}
+{{ with $appleIcon }}<link rel="apple-touch-icon" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}" sizes="180x180">{{ end }}
+{{ $font := resources.Get "fonts/InterVariable.woff2" | fingerprint }}
+<link rel="preload" href="{{ partial "relative-url.html" (dict "Page" $page "URL" $font.RelPermalink) }}" as="font" type="font/woff2" crossorigin>
+{{ $styleOptions := dict "targetPath" "css/site.css" "outputStyle" "compressed" "enableSourceMap" false }}
+{{ $styleContext := dict "fontURL" (printf "../fonts/%s" (path.Base $font.RelPermalink)) }}
+{{ $styles := resources.Get "scss/site.scss" | resources.ExecuteAsTemplate "scss/site.generated.scss" $styleContext | toCSS $styleOptions | fingerprint }}
+<link rel="stylesheet" href="{{ partial "relative-url.html" (dict "Page" $page "URL" $styles.RelPermalink) }}" integrity="{{ $styles.Data.Integrity }}">
+{{ $script := resources.Get "js/site.js" | minify | fingerprint }}
+{{ $searchURL := "search.json" | relLangURL }}
+<script defer src="{{ partial "relative-url.html" (dict "Page" $page "URL" $script.RelPermalink) }}" integrity="{{ $script.Data.Integrity }}" data-search-url="{{ partial "relative-url.html" (dict "Page" $page "URL" $searchURL) }}"></script>

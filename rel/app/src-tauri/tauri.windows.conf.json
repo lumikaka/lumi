@@ -1,0 +1,16 @@
+{
+  "bundle": {
+    "targets": ["nsis"],
+    "icon": ["icons/windows-generated/icon.ico"],
+    "createUpdaterArtifacts": false,
+    "windows": {
+      "webviewInstallMode": {
+        "type": "skip"
+      },
+      "nsis": {
+        "installerIcon": "icons/windows-generated/icon.ico",
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

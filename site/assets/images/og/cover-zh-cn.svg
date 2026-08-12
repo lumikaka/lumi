@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f7f5ef"/>
+  <circle cx="1060" cy="80" r="190" fill="#dcecf8"/>
+  <circle cx="98" cy="580" r="210" fill="#fff1bd"/>
+  <g transform="translate(82 72) scale(.27)"><path d="M111 64C167 23 345 23 401 64c53 39 81 208 42 281-32 61-139 94-187 94S101 406 69 345C30 272 58 103 111 64Z" fill="#f3c86b" stroke="#bd7c25" stroke-width="15"/><path d="m256 165 28 58 64 9-46 45 11 63-57-30-57 30 11-63-46-45 64-9 28-58Z" fill="#315e91"/></g>
+  <text x="235" y="170" font-family="Inter,system-ui,sans-serif" font-size="58" font-weight="750" fill="#171715">Lumi</text>
+  <text x="82" y="320" font-family="Inter,'PingFang SC',system-ui,sans-serif" font-size="72" font-weight="700" fill="#171715">把一个想法，做成一本绘本</text>
+  <text x="86" y="404" font-family="Inter,'PingFang SC',system-ui,sans-serif" font-size="30" fill="#68645b">故事 · 设定 · 分镜 · 画面 · 导出，都在同一个本地项目</text>
+  <rect x="86" y="474" width="220" height="62" rx="31" fill="#171715"/><text x="134" y="516" font-family="Inter,'PingFang SC',system-ui,sans-serif" font-size="24" font-weight="650" fill="white">专注绘本创作</text>
+</svg>

@@ -1,0 +1,28 @@
+{{ $current := . }}
+{{ $pages := (where .Site.RegularPages "Section" "docs").ByWeight }}
+<aside class="docs-sidebar" id="docs-navigation" aria-label="{{ i18n "docs_navigation" }}" data-docs-sidebar>
+  <div class="docs-sidebar__top">
+    <a class="brand" href="{{ partial "relative-url.html" (dict "Page" $current "URL" .Site.Home.RelPermalink) }}">{{ partial "brand-mark.html" . }}<span>Lumi</span></a>
+    <button class="icon-button docs-sidebar__close" type="button" aria-label="{{ i18n "close_docs_navigation" }}" data-docs-close>×</button>
+  </div>
+  <button class="docs-search-button" type="button" data-search-open><span>⌕</span>{{ i18n "search_docs" }}<kbd>⌘ K</kbd></button>
+  <nav>
+    {{ range $group := slice "start" "create" "manage" }}
+      <section>
+        <h2>{{ i18n (printf "docs_group_%s" $group) }}</h2>
+        {{ if eq $group "start" }}
+          {{ $docsURL := "docs/" | relLangURL }}
+          <a{{ if $current.IsSection }} aria-current="page"{{ end }} href="{{ partial "relative-url.html" (dict "Page" $current "URL" $docsURL) }}">{{ i18n "docs_overview" }}</a>
+        {{ end }}
+        {{ range (where $pages "Params.docs_group" $group) }}
+          <a{{ if eq .RelPermalink $current.RelPermalink }} aria-current="page"{{ end }} href="{{ partial "relative-url.html" (dict "Page" $current "URL" .RelPermalink) }}">{{ .Title }}</a>
+        {{ end }}
+      </section>
+    {{ end }}
+  </nav>
+  <div class="docs-sidebar__footer">
+    {{ partial "language-switch.html" . }}
+    <a href="{{ .Site.Params.repositoryURL }}">GitHub</a>
+  </div>
+</aside>
+<button class="docs-backdrop" type="button" aria-label="{{ i18n "close_docs_navigation" }}" data-docs-backdrop></button>

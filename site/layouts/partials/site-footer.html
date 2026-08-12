@@ -1,0 +1,19 @@
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__brand">
+      <a class="brand" href="{{ partial "relative-url.html" (dict "Page" . "URL" .Site.Home.RelPermalink) }}">
+        {{ partial "brand-mark.html" . }}
+        <span>Lumi</span>
+      </a>
+      <p>{{ i18n "footer_tagline" }}</p>
+    </div>
+    <nav aria-label="{{ i18n "footer_navigation" }}">
+      {{ $docsURL := "docs/" | relLangURL }}
+      <a href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ i18n "nav_docs" }}</a>
+      <a href="{{ .Site.Params.releasesURL }}">{{ i18n "releases" }}</a>
+      <a href="{{ .Site.Params.repositoryURL }}">GitHub</a>
+      {{ partial "language-link.html" . }}
+    </nav>
+    <p class="site-footer__copyright">© {{ now.Year }} Lumi. {{ i18n "footer_local_first" }}</p>
+  </div>
+</footer>
