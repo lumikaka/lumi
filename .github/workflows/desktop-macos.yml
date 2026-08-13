@@ -227,7 +227,7 @@ jobs:
           }
           trap cleanup EXIT
 
-          open -n "$app_path"
+          open -n --env LOG_LEVEL=info "$app_path"
 
           url=""
           for _ in $(seq 1 120); do

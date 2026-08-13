@@ -120,7 +120,11 @@ func TestRepairContentRestoresExactMissingOrDamagedAsset(t *testing.T) {
 	if _, err := service.RepairContent(ctx, asset.UUID, bytes.NewReader(content)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.OpenContent(ctx, asset.UUID); err != nil {
+	reopened, err := service.OpenContent(ctx, asset.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reopened.File.Close(); err != nil {
 		t.Fatal(err)
 	}
 	differentImage := image.NewRGBA(image.Rect(0, 0, 5, 3))
