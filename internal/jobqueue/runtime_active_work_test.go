@@ -9,6 +9,18 @@ import (
 	_ "github.com/libtnb/sqlite"
 )
 
+func TestProjectQueueConfigAllowsFiveConcurrentProductionTasks(t *testing.T) {
+	queues := projectQueueConfig()
+	if got := queues[QueueProduction].MaxWorkers; got != 5 {
+		t.Fatalf("production max workers = %d, want 5", got)
+	}
+	for _, queue := range []string{QueueStory, QueueAssetMaintenance, QueueAgent} {
+		if got := queues[queue].MaxWorkers; got != 1 {
+			t.Fatalf("%s max workers = %d, want 1", queue, got)
+		}
+	}
+}
+
 func TestHasActiveProjectWorkCoversRuntimeDomains(t *testing.T) {
 	db, err := sql.Open("sqlite", "file:active-work-test?mode=memory&cache=shared")
 	if err != nil {

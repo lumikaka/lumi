@@ -103,6 +103,15 @@ type projectRuntime struct {
 	workCancels map[string]context.CancelFunc
 }
 
+func projectQueueConfig() map[string]river.QueueConfig {
+	return map[string]river.QueueConfig{
+		QueueStory:            {MaxWorkers: 1},
+		QueueAssetMaintenance: {MaxWorkers: 1},
+		QueueProduction:       {MaxWorkers: 5},
+		QueueAgent:            {MaxWorkers: 1},
+	}
+}
+
 func (manager *Manager) StartProject(ctx context.Context, store *project.Store) error {
 	if manager == nil || manager.providers == nil {
 		return taskError(CodeProjectRuntimeUnavailable, "AI 运行时未配置", "Provider 服务不可用。", nil)
@@ -186,7 +195,7 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 	}
 	logger := slog.Default().With("component", "river", "project_uuid", store.ProjectUUID(), "river_version", RiverVersion)
 	client, err := river.NewClient(driver, &river.Config{
-		Queues: map[string]river.QueueConfig{QueueStory: {MaxWorkers: 1}, QueueAssetMaintenance: {MaxWorkers: 1}, QueueProduction: {MaxWorkers: 1}, QueueAgent: {MaxWorkers: 1}}, Workers: workers,
+		Queues: projectQueueConfig(), Workers: workers,
 		MaxAttempts: 3, PollOnly: true, FetchPollInterval: 200 * time.Millisecond,
 		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: 6 * time.Minute,
 		SoftStopTimeout: 5 * time.Second,
