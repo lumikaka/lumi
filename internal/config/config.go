@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/url"
 	"os"
@@ -21,6 +22,7 @@ const (
 	defaultFrontendURL      = "http://localhost:5801"
 	defaultViteDevServerURL = "http://127.0.0.1:5802"
 	desktopAccessTokenEnv   = "LUMI_DESKTOP_ACCESS_TOKEN"
+	logLevelEnv             = "LOG_LEVEL"
 )
 
 var resolveDefaultAppDataDir = platformpath.DefaultAppDataDir
@@ -51,6 +53,7 @@ func (authentication *DesktopAuthentication) MatchesToken(token string) bool {
 
 type Config struct {
 	Environment      string
+	LogLevel         slog.Level
 	Address          string
 	FrontendURL      string
 	ViteDevServerURL string
@@ -67,6 +70,10 @@ func Load() (Config, error) {
 	if !strings.EqualFold(strings.TrimSpace(environment), "production") {
 		_ = godotenv.Load()
 		environment = getEnv("APP_ENV", defaultEnvironment)
+	}
+	logLevel, err := loadLogLevel(environment)
+	if err != nil {
+		return Config{}, err
 	}
 	dataDirectory := strings.TrimSpace(os.Getenv("LUMI_DATA_DIR"))
 	if dataDirectory == "" {
@@ -87,6 +94,7 @@ func Load() (Config, error) {
 
 	return Config{
 		Environment:      environment,
+		LogLevel:         logLevel,
 		Address:          getEnv("APP_ADDRESS", defaultAddress),
 		FrontendURL:      getEnv("FRONTEND_URL", defaultFrontendURL),
 		ViteDevServerURL: getEnv("VITE_DEV_SERVER_URL", defaultViteDevServerURL),
@@ -99,6 +107,9 @@ func Load() (Config, error) {
 func (cfg Config) Validate() error {
 	if strings.TrimSpace(cfg.Environment) == "" {
 		return fmt.Errorf("APP_ENV cannot be empty")
+	}
+	if !validLogLevel(cfg.LogLevel) {
+		return fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, or error")
 	}
 	if strings.TrimSpace(cfg.Address) == "" {
 		return fmt.Errorf("APP_ADDRESS cannot be empty")
@@ -124,6 +135,33 @@ func (cfg Config) Validate() error {
 		}
 	}
 	return nil
+}
+
+func loadLogLevel(environment string) (slog.Level, error) {
+	raw, exists := os.LookupEnv(logLevelEnv)
+	if !exists || raw == "" {
+		if strings.EqualFold(strings.TrimSpace(environment), "production") {
+			return slog.LevelWarn, nil
+		}
+		return slog.LevelInfo, nil
+	}
+
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "debug":
+		return slog.LevelDebug, nil
+	case "info":
+		return slog.LevelInfo, nil
+	case "warn":
+		return slog.LevelWarn, nil
+	case "error":
+		return slog.LevelError, nil
+	default:
+		return 0, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, or error")
+	}
+}
+
+func validLogLevel(level slog.Level) bool {
+	return level == slog.LevelDebug || level == slog.LevelInfo || level == slog.LevelWarn || level == slog.LevelError
 }
 
 // SQLiteFileURI encodes a local path without letting a Windows drive letter

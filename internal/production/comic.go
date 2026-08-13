@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -12,6 +13,10 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// MaxGeneratedComicSections is the public generation contract shared by the
+// task input validator and the atomic projection that installs model output.
+const MaxGeneratedComicSections = 24
 
 type comicStateRecord struct {
 	ID                   int64 `gorm:"primaryKey"`
@@ -231,8 +236,8 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 // storyboard. Repeating the same output is idempotent, which lets a River retry
 // finish task projection after the content transaction already committed.
 func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID string, generated []GeneratedComicSection) ([]ComicSection, error) {
-	if len(generated) < 1 || len(generated) > 6 {
-		return nil, domainError(CodeValidation, "Comic storyboard 数量无效", "sections 必须包含 1 到 6 项。", nil)
+	if len(generated) < 1 || len(generated) > MaxGeneratedComicSections {
+		return nil, domainError(CodeValidation, "Comic storyboard 数量无效", fmt.Sprintf("sections 必须包含 1 到 %d 项。", MaxGeneratedComicSections), nil)
 	}
 	for index := range generated {
 		generated[index].Title = strings.TrimSpace(generated[index].Title)

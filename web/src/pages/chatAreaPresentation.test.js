@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { chatComposerMode, chatTurnElapsedMs, groupChatItemsByTurn, isChatSteeringShortcut, shouldShowAssistantPending, suggestedChatThreadTitle } from './chatAreaPresentation.js'
+import {
+  captureChatScrollAnchor,
+  chatComposerMode,
+  chatThreadCountLabel,
+  chatTurnElapsedMs,
+  groupChatItemsByTurn,
+  isChatSteeringShortcut,
+  projectChatSearchWithoutLegacyScope,
+  restoreChatScrollAnchor,
+  shouldLoadEarlierChatItems,
+  shouldShowAssistantPending,
+  suggestedChatThreadTitle,
+  threadContextCopyKey,
+  threadDisplayTitle,
+  workflowDisplayTitle,
+} from './chatAreaPresentation.js'
 
 test('composer supports send, queue, stop and steering behavior', () => {
   assert.equal(chatComposerMode(), 'disabled')
@@ -16,6 +31,29 @@ test('composer supports send, queue, stop and steering behavior', () => {
 test('new thread titles use the first-message suggestion', () => {
   assert.equal(suggestedChatThreadTitle('  月光邮局\n 需要一位新店员  '), '月光邮局 需要一位新店员')
   assert.equal(suggestedChatThreadTitle('星'.repeat(61)), '星'.repeat(60))
+})
+
+test('thread pagination count shows progress until every thread is loaded', () => {
+  assert.equal(chatThreadCountLabel(20, 45), '20 / 45')
+  assert.equal(chatThreadCountLabel(45, 45), '45')
+  assert.equal(chatThreadCountLabel(0, 0), '0')
+})
+
+test('mixed project threads retain localized workflow titles and existing context copy', () => {
+  const t = (key) => `translated:${key}`
+  const workflow = { kind: 'comic_storyboard_generation', title: 'internal' }
+  assert.equal(workflowDisplayTitle(workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
+  assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
+  assert.equal(threadContextCopyKey({ scope: 'project' }, null), 'premise.threads.scene.project')
+  assert.equal(threadContextCopyKey({ scope: 'premise', scene: 'asset_reference' }, null), 'premise.threads.scene.reference')
+  assert.equal(threadContextCopyKey({ scope: 'project', scene: 'storyboard_reference' }, null), 'chat.scene.storyboard.title')
+})
+
+test('legacy chat scope is removed without dropping active thread or workspace state', () => {
+  const next = projectChatSearchWithoutLegacyScope('?chat_scope=premise&chat_thread_uuid=thread-uuid&workspace_tab=body')
+  assert.equal(next.has('chat_scope'), false)
+  assert.equal(next.get('chat_thread_uuid'), 'thread-uuid')
+  assert.equal(next.get('workspace_tab'), 'body')
 })
 
 test('chat items are grouped and ordered by public turn UUID and queue sequence', () => {
@@ -47,4 +85,43 @@ test('assistant pending only exists before real runtime output and exposes long 
   assert.equal(shouldShowAssistantPending(turn, [{ role: 'assistant', item_type: 'assistant_message' }]), false)
   assert.equal(shouldShowAssistantPending(turn, [{ role: 'tool', item_type: 'tool_call' }]), false)
   assert.equal(chatTurnElapsedMs(turn, Date.parse('2026-08-11T00:00:11.000Z')), 11_000)
+})
+
+test('chat history autoloads only near the top when an earlier page is available', () => {
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 71, hasPreviousPage: true, isFetchingPreviousPage: false }), true)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 72, hasPreviousPage: true, isFetchingPreviousPage: false }), false)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasPreviousPage: false, isFetchingPreviousPage: false }), false)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasPreviousPage: true, isFetchingPreviousPage: true }), false)
+})
+
+test('chat history restores the visible turn after prepending an earlier page', () => {
+  const firstTurn = { dataset: { turnUuid: 'turn-1' }, getBoundingClientRect: () => ({ top: 20, bottom: 90 }) }
+  const visibleTurn = { dataset: { turnUuid: 'turn-2' }, getBoundingClientRect: () => ({ top: 120, bottom: 190 }) }
+  const container = {
+    scrollHeight: 500,
+    scrollTop: 40,
+    getBoundingClientRect: () => ({ top: 100 }),
+    querySelectorAll: () => [firstTurn, visibleTurn],
+  }
+
+  const anchor = captureChatScrollAnchor(container)
+  assert.deepEqual(anchor, { turnUuid: 'turn-2', offset: 20, scrollHeight: 500 })
+
+  visibleTurn.getBoundingClientRect = () => ({ top: 150, bottom: 220 })
+  restoreChatScrollAnchor(container, anchor)
+  assert.equal(container.scrollTop, 70)
+})
+
+test('chat history falls back to the scroll height delta when its turn anchor is unavailable', () => {
+  const container = {
+    scrollHeight: 700,
+    scrollTop: 40,
+    getBoundingClientRect: () => ({ top: 100 }),
+    querySelectorAll: () => [],
+  }
+  const anchor = captureChatScrollAnchor({ ...container, scrollHeight: 500 })
+  restoreChatScrollAnchor(container, anchor)
+  assert.equal(container.scrollTop, 240)
+  assert.equal(captureChatScrollAnchor(null), null)
+  restoreChatScrollAnchor(null, anchor)
 })

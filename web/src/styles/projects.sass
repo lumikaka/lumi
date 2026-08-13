@@ -184,16 +184,25 @@
   background: transparent
 
   &:hover,
-  &:focus-visible,
+  &:focus-visible
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface
+
   &[aria-expanded="true"]
     border-color: $color-border
     color: $color-text
     background: $color-surface
 
+  &[aria-expanded="true"]:hover
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+
 .project-index-menu
   position: absolute
   z-index: 12
-  top: calc(100% + 5px)
+  top: calc(100% + 4px)
   right: 0
   width: 180px
   padding: 5px
@@ -202,26 +211,41 @@
   border: 1px solid $color-border
   border-radius: $radius-md
   background: $color-surface
-  box-shadow: 0 14px 36px rgba($color-text, .16)
+  box-shadow: 0 12px 28px rgba($color-text, .14)
 
-  button
+  button.project-index-menu__item
+    width: 100%
     min-height: 34px
-    padding: 0 9px
+    padding: 0 10px
+    display: flex
+    align-items: center
     justify-content: flex-start
     border: 0
+    border-radius: $radius-sm
     color: $color-text
     background: transparent
-    font-size: 12px
+    font-size: 13px
+    font-weight: 550
+    line-height: 1.2
+    text-align: left
 
     &:hover,
     &:focus-visible
-      color: $color-accent
-      background: $color-surface-subtle
+      color: $color-text
+      background: $color-surface-muted
 
-  button.danger-text:hover,
-  button.danger-text:focus-visible
+  button.project-index-menu__item--danger
     color: $color-danger
-    background: $color-danger-muted
+
+    &:hover,
+    &:focus-visible
+      color: $color-danger
+      background: $color-danger-muted
+
+.project-index-menu__separator
+  height: 1px
+  margin: 3px 5px 2px
+  background: $color-border-subtle
 
 .project-index-count
   margin: 0
@@ -348,6 +372,70 @@
 
 .lumi-dialog.project-create-dialog
   width: min(820px, calc(100vw - 32px))
+
+.project-overall-style
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  background: $color-surface-subtle
+
+  summary
+    min-height: 42px
+    padding: 10px 12px
+    display: flex
+    align-items: center
+    gap: 8px
+    cursor: pointer
+    list-style: none
+    font-size: 13px
+    font-weight: 800
+
+    &::-webkit-details-marker
+      display: none
+
+    &::before
+      content: ''
+      width: 0
+      height: 0
+      border-top: 5px solid transparent
+      border-bottom: 5px solid transparent
+      border-left: 6px solid $color-muted
+      transition: transform .16s ease
+
+    small
+      margin-left: auto
+      padding: 3px 7px
+      border-radius: 999px
+      color: $color-muted
+      background: $color-surface
+      font-size: $font-size-small
+      font-weight: 700
+
+  &[open] summary::before
+    transform: rotate(90deg)
+
+.project-overall-style__editor
+  padding: 0 12px 12px
+  display: grid
+  gap: 8px
+
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+  > label
+    font-size: 12px
+    font-weight: 700
+
+  textarea
+    min-height: 170px
+    resize: vertical
+    background: $color-surface
+
+  > div
+    display: flex
+    justify-content: flex-end
 
 .picture-book-fields
   display: grid

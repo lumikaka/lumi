@@ -9,8 +9,8 @@ test('unavailable local projects stay recoverable without an open action', () =>
 })
 
 test('active and recent project rows expose the correct local actions', () => {
-	assert.deepEqual(projectRowActions({ open: true, available: true }), ['enter', 'forget'])
-	assert.deepEqual(projectRowActions({ open: false, available: true, status: 'recent' }), ['enter', 'relocate', 'forget'])
+	assert.deepEqual(projectRowActions({ open: true, available: true }), ['enter', 'reveal', 'forget'])
+	assert.deepEqual(projectRowActions({ open: false, available: true, status: 'recent' }), ['enter', 'reveal', 'relocate', 'forget'])
 })
 
 test('project rows use the available action that enters the workspace', () => {
@@ -33,6 +33,8 @@ test('project page presents creation, open, relocation and forget dialogs', () =
   assert.match(source, /projects\.dialog\.open\.title/)
   assert.match(source, /selectDirectoryMutation\.mutate\(existingPath\)/)
   assert.match(source, /projects\.open\.choose_folder/)
+  assert.match(source, /revealDirectoryMutation\.mutate\(project\.root_path\)/)
+  assert.match(source, /projects\.action\.reveal/)
   assert.doesNotMatch(source, /安全关闭|closeCurrentProject/)
 })
 
@@ -58,4 +60,17 @@ test('YOLO creation prioritizes its name and story idea and validates on submit'
   assert.match(source, /const errors = projectCreationErrors/)
   assert.match(source, /<button type="submit" disabled=\{pending\}>/)
   assert.doesNotMatch(source, /disabled=\{pending \|\| projectDefaultsQuery\.isPending/)
+})
+
+test('both creation modes use a collapsed editable overall style initialized from server defaults', () => {
+  const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  assert.match(source, /default_overall_styles/)
+  assert.match(source, /<details ref=\{overallStyleDetailsRef\} className="project-overall-style">/)
+  assert.doesNotMatch(source, /<details[^>]*project-overall-style[^>]*\sopen(?:=|\s|>)/)
+  assert.match(source, /projects\.field\.overall_style_default/)
+  assert.match(source, /projects\.field\.overall_style_custom/)
+  assert.match(source, /setOverallStyleDirty\(true\)/)
+  assert.match(source, /setOverallStyle\(defaultOverallStyle\); setOverallStyleDirty\(false\)/)
+  assert.match(source, /createProject\(\{ name, parentPath, generationLanguage, pictureBook, overallStyle \}\)/)
+  assert.match(source, /createMutation\.mutate\(\{ name, parentPath, generationLanguage, pictureBook, overallStyle \}\)/)
 })

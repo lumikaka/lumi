@@ -29,7 +29,7 @@ func (handler *AgentHandler) ListThreads(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	result, err := handler.agents.ListThreadsPage(c.Request().Context(), c.Param("project_uuid"), c.QueryParam("scope"), page, perPage)
+	result, err := handler.agents.ListThreadsPage(c.Request().Context(), c.Param("project_uuid"), page, perPage)
 	if err != nil {
 		return agentAPIError(err)
 	}

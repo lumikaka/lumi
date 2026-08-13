@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"lumi/internal/promptcatalog"
 )
 
 func TestNormalizePictureBookInputAppliesFormatDefaults(t *testing.T) {
@@ -144,5 +146,39 @@ func TestInteractivePictureBookReloadsWithoutTreatingInternalAspectAsInput(t *te
 	}
 	if !reflect.DeepEqual(reopened.PictureBook, created.PictureBook) {
 		t.Fatalf("reopened profile=%+v, want %+v", reopened.PictureBook, created.PictureBook)
+	}
+}
+
+func TestCreatePersistsLanguageDefaultOverallStyleWhenInputIsBlank(t *testing.T) {
+	ctx := context.Background()
+	manager, _ := testManager(t)
+	created, err := manager.CreateWithInput(ctx, CreateInput{
+		Name:               "English Style",
+		GenerationLanguage: "en",
+		OverallStyle:       " \n ",
+	}, ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := promptcatalog.DefaultProjectStyle("en")
+	if err := manager.WithStore(ctx, created.UUID, func(store *Store) error {
+		var premiseStyle string
+		if err := store.DB().Table("premise_profiles").Select("default_style").Where("project_id = ?", store.project.ID).Scan(&premiseStyle).Error; err != nil {
+			return err
+		}
+		var prompt struct {
+			Value      string `gorm:"column:prompt"`
+			VersionNo  int
+			SourceType string
+		}
+		if err := store.DB().Table("project_prompt_versions").Select("prompt, version_no, source_type").Where("project_id = ? AND prompt_group = ? AND prompt_key = ?", store.project.ID, "premise_style", "project_overall_style").Scan(&prompt).Error; err != nil {
+			return err
+		}
+		if premiseStyle != want || prompt.Value != want || prompt.VersionNo != 1 || prompt.SourceType != "project_created" {
+			t.Fatalf("premise=%q prompt=%+v want=%q", premiseStyle, prompt, want)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 }

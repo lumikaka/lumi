@@ -105,9 +105,13 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	if premiseThreadResponse.Code != http.StatusCreated || !strings.Contains(premiseThreadResponse.Body.String(), `"scope":"premise"`) || !strings.Contains(premiseThreadResponse.Body.String(), `"scene":"premise_asset_generation"`) {
 		t.Fatalf("create premise thread = %d %s", premiseThreadResponse.Code, premiseThreadResponse.Body.String())
 	}
-	premiseList := requestJSON(t, e, http.MethodGet, base+"/chat_threads?scope=premise", nil)
-	if premiseList.Code != http.StatusOK || !strings.Contains(premiseList.Body.String(), `"title":"单项生成"`) || strings.Contains(premiseList.Body.String(), `"title":"项目助手"`) {
-		t.Fatalf("premise thread list = %d %s", premiseList.Code, premiseList.Body.String())
+	projectList := requestJSON(t, e, http.MethodGet, base+"/chat_threads?scope=premise", nil)
+	if projectList.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"title":"单项生成"`) || !strings.Contains(projectList.Body.String(), `"title":"项目助手"`) || !strings.Contains(projectList.Body.String(), `"total":2`) {
+		t.Fatalf("project thread list with legacy scope = %d %s", projectList.Code, projectList.Body.String())
+	}
+	unfilteredProjectList := requestJSON(t, e, http.MethodGet, base+"/chat_threads", nil)
+	if unfilteredProjectList.Code != http.StatusOK || !strings.Contains(unfilteredProjectList.Body.String(), `"title":"单项生成"`) || !strings.Contains(unfilteredProjectList.Body.String(), `"title":"项目助手"`) || !strings.Contains(unfilteredProjectList.Body.String(), `"total":2`) {
+		t.Fatalf("project thread list = %d %s", unfilteredProjectList.Code, unfilteredProjectList.Body.String())
 	}
 	storyboardThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "分镜引用", "scope": "project", "scene": "storyboard_reference", "subject_uuid": storyboardSection.UUID})
 	if storyboardThreadResponse.Code != http.StatusCreated || !strings.Contains(storyboardThreadResponse.Body.String(), `"scene":"storyboard_reference"`) || !strings.Contains(storyboardThreadResponse.Body.String(), storyboardSection.UUID) {
@@ -140,12 +144,16 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	workflowSteps := envelopeData(t, workflowResponse)["steps"].([]any)
 	workflowStepUUID := workflowSteps[0].(map[string]any)["uuid"].(string)
 	filteredWorkflowLogsResponse := requestJSON(t, e, http.MethodGet, base+"/workflows/"+workflowUUID+"/llm-logs?page=1&per_page=20&workflow_step_uuid="+workflowStepUUID, nil)
-	for name, response := range map[string]string{"thread": threadResponse.Body.String(), "premise_thread": premiseThreadResponse.Body.String(), "premise_list": premiseList.Body.String(), "storyboard_thread": storyboardThreadResponse.Body.String(), "turn": turnResponse.Body.String(), "follow_up": followResponse.Body.String(), "steer_fallback": steerFallbackResponse.Body.String(), "items": itemsResponse.Body.String(), "events": eventsResponse.Body.String(), "workflow": workflowResponse.Body.String(), "workflow_runs": workflowRunsResponse.Body.String(), "workflow_events": workflowEventsResponse.Body.String(), "workflow_logs": workflowLogsResponse.Body.String(), "filtered_workflow_logs": filteredWorkflowLogsResponse.Body.String()} {
+	allProjectThreads := requestJSON(t, e, http.MethodGet, base+"/chat_threads?per_page=20", nil)
+	if allProjectThreads.Code != http.StatusOK || !strings.Contains(allProjectThreads.Body.String(), `"title":"项目助手"`) || !strings.Contains(allProjectThreads.Body.String(), `"title":"单项生成"`) || !strings.Contains(allProjectThreads.Body.String(), `"title":"分镜引用"`) || !strings.Contains(allProjectThreads.Body.String(), `"total":4`) {
+		t.Fatalf("mixed project threads = %d %s", allProjectThreads.Code, allProjectThreads.Body.String())
+	}
+	for name, response := range map[string]string{"thread": threadResponse.Body.String(), "premise_thread": premiseThreadResponse.Body.String(), "project_list": projectList.Body.String(), "unfiltered_project_list": unfilteredProjectList.Body.String(), "all_project_threads": allProjectThreads.Body.String(), "storyboard_thread": storyboardThreadResponse.Body.String(), "turn": turnResponse.Body.String(), "follow_up": followResponse.Body.String(), "steer_fallback": steerFallbackResponse.Body.String(), "items": itemsResponse.Body.String(), "events": eventsResponse.Body.String(), "workflow": workflowResponse.Body.String(), "workflow_runs": workflowRunsResponse.Body.String(), "workflow_events": workflowEventsResponse.Body.String(), "workflow_logs": workflowLogsResponse.Body.String(), "filtered_workflow_logs": filteredWorkflowLogsResponse.Body.String()} {
 		if strings.Contains(response, `"id":`) || strings.Contains(response, "river_job_id") || strings.Contains(response, "http-agent-secret") || strings.Contains(response, "root_path") {
 			t.Fatalf("%s response leaked internal data: %s", name, response)
 		}
 	}
-	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || eventsResponse.Code != http.StatusOK || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(premiseList.Body.String(), `"pagination"`) {
+	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || eventsResponse.Code != http.StatusOK || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
 		t.Fatalf("items=%d events=%d workflow=%d runs=%d workflow_events=%d logs=%d filtered_logs=%d", itemsResponse.Code, eventsResponse.Code, workflowResponse.Code, workflowRunsResponse.Code, workflowEventsResponse.Code, workflowLogsResponse.Code, filteredWorkflowLogsResponse.Code)
 	}
 }

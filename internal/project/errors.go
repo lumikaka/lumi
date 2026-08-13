@@ -17,6 +17,7 @@ const (
 	CodeProjectDirectoryNameExhausted   = "project_directory_name_exhausted"
 	CodeInvalidPictureBook              = "invalid_picture_book_profile"
 	CodePictureBookImmutable            = "picture_book_profile_immutable"
+	CodeInvalidOverallStyle             = "invalid_overall_style"
 )
 
 type Error struct {

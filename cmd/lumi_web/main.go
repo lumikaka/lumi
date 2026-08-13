@@ -54,6 +54,7 @@ func run(args []string, output io.Writer) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel})))
 	appStore, err := appstore.Open(cfg.AppDataDir, cfg.DatabaseDSN)
 	if err != nil {
 		return err

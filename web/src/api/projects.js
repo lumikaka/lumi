@@ -20,8 +20,8 @@ export async function getProjectDefaults() {
   return apiRequest('/api/v1/project-defaults')
 }
 
-export async function createProject({ name, parentPath, generationLanguage = 'zh-Hans', pictureBook }) {
-  return apiRequest('/api/v1/projects', jsonRequest('POST', { name, parent_path: parentPath, generation_language: generationLanguage, picture_book: pictureBook }))
+export async function createProject({ name, parentPath, generationLanguage = 'zh-Hans', pictureBook, overallStyle = '' }) {
+  return apiRequest('/api/v1/projects', jsonRequest('POST', { name, parent_path: parentPath, generation_language: generationLanguage, picture_book: pictureBook, overall_style: overallStyle }))
 }
 
 export async function preflightImageGeneration(pictureBook) {
@@ -42,6 +42,10 @@ export async function openProjectPath(rootPath) {
 
 export async function selectProjectDirectory(initialPath = '') {
   return apiRequest('/api/v1/directory-selections', jsonRequest('POST', { initial_path: initialPath }))
+}
+
+export async function revealProjectDirectory(rootPath) {
+  return apiRequest('/api/v1/directory-openings', jsonRequest('POST', { root_path: rootPath }))
 }
 
 export async function relocateRecentProject({ uuid, rootPath }) {

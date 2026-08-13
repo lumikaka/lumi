@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"lumi/internal/agent"
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/directoryopener"
 	"lumi/internal/directorypicker"
 	"lumi/internal/files"
 	"lumi/internal/httpapi"
@@ -47,7 +49,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpapi.ErrorHandler
 	e.Use(middleware.RequestID())
-	e.Use(middleware.Logger())
+	e.Use(requestLogger(slog.Default()))
 	e.Use(middleware.Recover())
 	e.Use(desktopAuthentication(cfg.DesktopAuth))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -72,6 +74,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	}
 	api.GET("/ws", realtime.NewWebSocketHandler(realtimeHub, cfg.FrontendURL).Serve)
 	directorySelectionHandler := httpapi.NewDirectorySelectionHandler(directorypicker.NewNative())
+	directoryOpeningHandler := httpapi.NewDirectoryOpeningHandler(directoryopener.NewNative())
 	projectHandler := httpapi.NewProjectHandler(projects)
 	projectDefaultsHandler := httpapi.NewProjectDefaultsHandler()
 	imagePreflightHandler := httpapi.NewImageGenerationPreflightHandler(providerService)
@@ -103,6 +106,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.PATCH("/site-settings", siteSettingsHandler.Update)
 	api.POST("/site-settings/resets", siteSettingsHandler.Reset)
 	api.POST("/directory-selections", directorySelectionHandler.Create)
+	api.POST("/directory-openings", directoryOpeningHandler.Create)
 	api.GET("/project-defaults", projectDefaultsHandler.Show)
 	api.POST("/projects", projectHandler.Create)
 	api.POST("/image-generation-preflights", imagePreflightHandler.Create)
@@ -257,6 +261,56 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService,
 		lifecycleCancel: lifecycleCancel, lifecycleDone: lifecycleDone,
 	}, nil
+}
+
+func requestLogger(logger *slog.Logger) echo.MiddlewareFunc {
+	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		HandleError:      true,
+		LogLatency:       true,
+		LogRemoteIP:      true,
+		LogHost:          true,
+		LogMethod:        true,
+		LogURI:           true,
+		LogRequestID:     true,
+		LogUserAgent:     true,
+		LogStatus:        true,
+		LogError:         true,
+		LogContentLength: true,
+		LogResponseSize:  true,
+		LogValuesFunc: func(c echo.Context, values middleware.RequestLoggerValues) error {
+			level := requestLogLevel(values.Status, values.Error)
+			attributes := []slog.Attr{
+				slog.String("method", values.Method),
+				slog.String("uri", values.URI),
+				slog.Int("status", values.Status),
+				slog.Duration("latency", values.Latency),
+				slog.String("host", values.Host),
+				slog.String("bytes_in", values.ContentLength),
+				slog.Int64("bytes_out", values.ResponseSize),
+				slog.String("user_agent", values.UserAgent),
+				slog.String("remote_ip", values.RemoteIP),
+				slog.String("request_id", values.RequestID),
+			}
+			if values.Error != nil {
+				attributes = append(attributes, slog.String("error", values.Error.Error()))
+			}
+			logger.LogAttrs(c.Request().Context(), level, "http request", attributes...)
+			return nil
+		},
+	})
+}
+
+func requestLogLevel(status int, err error) slog.Level {
+	if status < http.StatusBadRequest && err != nil {
+		return slog.LevelError
+	}
+	if status >= http.StatusInternalServerError {
+		return slog.LevelError
+	}
+	if status >= http.StatusBadRequest {
+		return slog.LevelWarn
+	}
+	return slog.LevelInfo
 }
 
 func openProjectChangedPayload(event project.LifecycleEvent) map[string]any {

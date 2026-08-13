@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"lumi/internal/project"
+	"lumi/internal/promptcatalog"
 
 	"github.com/labstack/echo/v4"
 )
@@ -21,15 +22,25 @@ func NewProjectHandler(manager *project.Manager) *ProjectHandler {
 }
 
 type ProjectDefaultsHandler struct {
-	resolveParentPath func() (string, error)
+	resolveParentPath    func() (string, error)
+	resolveOverallStyles func() map[string]string
 }
 
 func NewProjectDefaultsHandler() *ProjectDefaultsHandler {
-	return &ProjectDefaultsHandler{resolveParentPath: project.DefaultNewProjectParentPath}
+	return &ProjectDefaultsHandler{
+		resolveParentPath: project.DefaultNewProjectParentPath,
+		resolveOverallStyles: func() map[string]string {
+			return map[string]string{
+				promptcatalog.LanguageChinese: promptcatalog.DefaultProjectStyle(promptcatalog.LanguageChinese),
+				promptcatalog.LanguageEnglish: promptcatalog.DefaultProjectStyle(promptcatalog.LanguageEnglish),
+			}
+		},
+	}
 }
 
 type projectDefaultsData struct {
-	ParentPath string `json:"parent_path"`
+	ParentPath           string            `json:"parent_path"`
+	DefaultOverallStyles map[string]string `json:"default_overall_styles"`
 }
 
 func (handler *ProjectDefaultsHandler) Show(c echo.Context) error {
@@ -37,7 +48,7 @@ func (handler *ProjectDefaultsHandler) Show(c echo.Context) error {
 	if err != nil {
 		return projectAPIError(err)
 	}
-	return Success(c, http.StatusOK, projectDefaultsData{ParentPath: parentPath})
+	return Success(c, http.StatusOK, projectDefaultsData{ParentPath: parentPath, DefaultOverallStyles: handler.resolveOverallStyles()})
 }
 
 type createProjectRequest struct {
@@ -45,6 +56,7 @@ type createProjectRequest struct {
 	ParentPath         string                    `json:"parent_path"`
 	GenerationLanguage string                    `json:"generation_language"`
 	PictureBook        *project.PictureBookInput `json:"picture_book"`
+	OverallStyle       string                    `json:"overall_style"`
 }
 
 func (handler *ProjectHandler) Create(c echo.Context) error {
@@ -52,7 +64,7 @@ func (handler *ProjectHandler) Create(c echo.Context) error {
 	if err := decodeJSON(c, &request); err != nil {
 		return err
 	}
-	created, err := handler.manager.CreateWithInput(c.Request().Context(), project.CreateInput{Name: request.Name, GenerationLanguage: request.GenerationLanguage, PictureBook: request.PictureBook}, project.ExplicitNewProjectParent(request.ParentPath))
+	created, err := handler.manager.CreateWithInput(c.Request().Context(), project.CreateInput{Name: request.Name, GenerationLanguage: request.GenerationLanguage, PictureBook: request.PictureBook, OverallStyle: request.OverallStyle}, project.ExplicitNewProjectParent(request.ParentPath))
 	if err != nil {
 		return projectAPIError(err)
 	}

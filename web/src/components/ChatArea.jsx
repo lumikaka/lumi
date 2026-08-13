@@ -35,7 +35,6 @@ import {
   getChatThread,
   listChatEvents,
   listChatItems,
-  listChatThreads,
   listChatTurns,
   listFollowUps,
   listUserInputRequests,
@@ -52,12 +51,18 @@ import {
 } from '../api/chat.js'
 import { createAssetUpload } from '../api/assets.js'
 import {
+  captureChatScrollAnchor,
   chatComposerMode,
+  chatThreadCountLabel,
   chatTurnElapsedMs,
   groupChatItemsByTurn,
   isChatSteeringShortcut,
+  restoreChatScrollAnchor,
+  shouldLoadEarlierChatItems,
   shouldShowAssistantPending,
   suggestedChatThreadTitle,
+  threadDisplayTitle,
+  workflowDisplayTitle,
 } from '../pages/chatAreaPresentation.js'
 import {
   MAX_PROJECT_CHAT_IMAGE_REFERENCES,
@@ -69,6 +74,7 @@ import {
   selectProjectChatImageFiles,
 } from '../pages/projectChatAttachments.js'
 import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent, workflowControls } from '../pages/chatWorkspaceState.js'
+import { flattenProjectThreads, useProjectThreads } from '../pages/projectThreads.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import SafeMarkdown from './SafeMarkdown.jsx'
@@ -96,11 +102,6 @@ const stepCopy = {
   comic_storyboard: 'chat.workflow.step.comic_storyboard',
 }
 
-const workflowKindCopy = {
-  comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
-  comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
-}
-
 const chatEventCopy = {
   turn_queued: 'chat.events.type.turn_queued',
   run_started: 'chat.events.type.run_started',
@@ -115,6 +116,8 @@ const chatEventCopy = {
   steering_queued: 'chat.events.type.steering_queued',
   abort_requested: 'chat.events.type.abort_requested',
 }
+
+const MESSAGE_PAGE_LIMIT = 30
 
 function CollapseButton({ overlay, onToggle }) {
   const { t } = useI18n()
@@ -593,7 +596,13 @@ function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, 
   const [openMenuUuid, setOpenMenuUuid] = useState('')
   const listRef = useRef(null)
   const sentinelRef = useRef(null)
+  const isAutoLoadingRef = useRef(false)
   const workflowByThread = useMemo(() => new Map(workflows.map((workflow) => [workflow.thread_uuid, workflow])), [workflows])
+  const threadCount = chatThreadCountLabel(threads.length, total)
+
+  useEffect(() => {
+    if (!loadingMore) isAutoLoadingRef.current = false
+  }, [loadingMore])
 
   useEffect(() => {
     if (!openMenuUuid) return undefined
@@ -608,17 +617,24 @@ function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, 
   }, [openMenuUuid])
 
   useEffect(() => {
-    if (!hasMore || loadingMore || !sentinelRef.current || typeof IntersectionObserver === 'undefined') return undefined
-    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) onLoadMore() }, { root: listRef.current, rootMargin: '80px' })
-    observer.observe(sentinelRef.current)
+    if (!hasMore || loadingMore || loading || typeof IntersectionObserver === 'undefined') return undefined
+    const root = listRef.current
+    const target = sentinelRef.current
+    if (!root || !target) return undefined
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting || isAutoLoadingRef.current) return
+      isAutoLoadingRef.current = true
+      onLoadMore()
+    }, { root, rootMargin: '48px 0px', threshold: 0.01 })
+    observer.observe(target)
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, onLoadMore])
+  }, [hasMore, loading, loadingMore, onLoadMore])
 
   return (
     <div className="chat-panel">
       <header className="chat-panel__header">
         <div><p>{t('chat.title')}</p><h2>{t('chat.threads')}</h2></div>
-        <div className="chat-panel__header-actions"><span>{total ?? threads.length}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
+        <div className="chat-panel__header-actions"><span>{threadCount}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
       </header>
       <div className="chat-thread-list" ref={listRef}>
         <div className="chat-thread-row chat-thread-row--new">
@@ -637,7 +653,7 @@ function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, 
             {openMenuUuid === thread.uuid ? <div className="chat-thread__menu" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); onOpenThread(thread.uuid) }}>{t('chat.thread.open')}</button><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); copyText(thread.uuid) }}>{t('chat.thread.copy_uuid')}</button></div> : null}
           </div>
         ))}
-        <div className="chat-thread-list__sentinel" ref={sentinelRef}>{hasMore ? <button type="button" className="button-quiet" disabled={loadingMore} onClick={onLoadMore}>{t(loadingMore ? 'chat.thread.loading_more' : 'chat.thread.load_more')}</button> : null}</div>
+        {hasMore || loadingMore ? <div className="chat-thread-list__sentinel" ref={sentinelRef}><button type="button" className="button-quiet" disabled={!hasMore || loadingMore} onClick={onLoadMore}>{t(loadingMore ? 'chat.thread.loading_more' : 'chat.thread.load_more')}</button></div> : null}
       </div>
     </div>
   )
@@ -720,7 +736,6 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedScope = searchParams.get('chat_scope') || ''
   const requestedScene = searchParams.get('chat_scene') || ''
   const requestedSubjectUuid = searchParams.get('chat_subject_uuid') || ''
   const requestedSubjectTitle = searchParams.get('chat_subject_title') || ''
@@ -736,19 +751,13 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const [queueNotice, setQueueNotice] = useState('')
   useEffect(() => setQueueNotice(''), [selectedThreadUuid])
 
-  const threadsQuery = useInfiniteQuery({
-    queryKey: ['chat-threads', projectUuid, requestedScope, 'pages'],
-    queryFn: ({ pageParam }) => listChatThreads(projectUuid, { scope: requestedScope, page: pageParam, perPage: 30 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.pagination.current_page < lastPage.pagination.last_page ? lastPage.pagination.current_page + 1 : undefined,
-    enabled: expanded,
-  })
+  const threadsQuery = useProjectThreads(projectUuid, expanded)
   const workflowsQuery = useQuery({
     queryKey: ['workflows', projectUuid],
     queryFn: () => listWorkflows(projectUuid),
     enabled: expanded,
   })
-  const threads = useMemo(() => uniqueByUUID(threadsQuery.data?.pages?.flatMap((page) => page.items || []) || []), [threadsQuery.data])
+  const threads = useMemo(() => flattenProjectThreads(threadsQuery.data?.pages), [threadsQuery.data])
   const threadTotal = threadsQuery.data?.pages?.[0]?.pagination?.total || threads.length
   const workflows = workflowsQuery.data?.items || []
 
@@ -762,7 +771,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     if (requestedNewThread) {
       setShowCreate(true)
     }
-  }, [requestedNewThread, requestedScene, requestedScope, requestedSubjectTitle, searchParams, t])
+  }, [requestedNewThread, requestedScene, requestedSubjectTitle, searchParams, t])
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
@@ -845,7 +854,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   }, [addAttachmentFiles, attachments])
   const itemsQuery = useInfiniteQuery({
     queryKey: ['chat-items', projectUuid, selectedThreadUuid, 'pages'],
-    queryFn: ({ pageParam }) => listChatItems(projectUuid, selectedThreadUuid, { before: pageParam, limit: 50 }),
+    queryFn: ({ pageParam }) => listChatItems(projectUuid, selectedThreadUuid, { before: pageParam, limit: MESSAGE_PAGE_LIMIT }),
     initialPageParam: '',
     getPreviousPageParam: (firstPage) => firstPage.cursor_pagination?.has_more ? firstPage.cursor_pagination.prev_cursor : undefined,
     getNextPageParam: () => undefined,
@@ -870,7 +879,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       const text = inputText.trim()
       const thread = await createChatThread(projectUuid, {
         title: suggestedChatThreadTitle(text),
-        scope: requestedScope || 'project',
+        scope: 'project',
       })
       try {
         await createChatTurn(projectUuid, thread.uuid, { input_text: text })
@@ -890,6 +899,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       next.delete('chat_scene')
       next.delete('chat_subject_uuid')
       next.delete('chat_subject_title')
+      next.delete('chat_scope')
       setSearchParams(next, { replace: true })
       setShowCreate(false)
       if (!turnError) setInputText('')
@@ -924,7 +934,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       setShowCreate(false)
       setError(turnError)
       const next = new URLSearchParams(searchParams)
-      next.set('chat_scope', thread.scope || sceneThreadScope(requestedScene))
+      next.delete('chat_scope')
       next.set('chat_thread_uuid', thread.uuid)
       next.delete('workflow_uuid')
       next.delete('chat_new')
@@ -976,6 +986,8 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const inlineRequestUuids = useMemo(() => new Set(items.map((item) => requestByItemUuid.get(item.uuid)?.uuid).filter(Boolean)), [items, requestByItemUuid])
   const activeTurn = turns.find((item) => ['queued', 'in_progress', 'waiting_for_input'].includes(item.status)) || null
   const messagesRef = useRef(null)
+  const scrollAnchorRef = useRef(null)
+  const isLoadingEarlierRef = useRef(false)
   const initializedMessageThreadRef = useRef('')
   useEffect(() => {
     if (!selectedThreadUuid || !items.length || initializedMessageThreadRef.current === selectedThreadUuid) return
@@ -985,15 +997,33 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       if (container) container.scrollTop = container.scrollHeight
     })
   }, [items.length, selectedThreadUuid])
+
+  useEffect(() => {
+    if (!scrollAnchorRef.current || !messagesRef.current) return
+    const anchor = scrollAnchorRef.current
+    scrollAnchorRef.current = null
+    requestAnimationFrame(() => restoreChatScrollAnchor(messagesRef.current, anchor))
+  }, [items.length])
+
   const loadEarlierMessages = useCallback(async () => {
-    const container = messagesRef.current
-    const previousHeight = container?.scrollHeight || 0
-    const previousTop = container?.scrollTop || 0
-    await itemsQuery.fetchPreviousPage()
-    requestAnimationFrame(() => {
-      if (container) container.scrollTop = previousTop + container.scrollHeight - previousHeight
-    })
+    if (!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage || isLoadingEarlierRef.current) return
+    isLoadingEarlierRef.current = true
+    scrollAnchorRef.current = captureChatScrollAnchor(messagesRef.current)
+    try {
+      await itemsQuery.fetchPreviousPage()
+    } finally {
+      isLoadingEarlierRef.current = false
+    }
   }, [itemsQuery])
+
+  const handleMessagesScroll = useCallback(() => {
+    if (!shouldLoadEarlierChatItems({
+      scrollTop: messagesRef.current?.scrollTop,
+      hasPreviousPage: itemsQuery.hasPreviousPage,
+      isFetchingPreviousPage: itemsQuery.isFetchingPreviousPage,
+    })) return
+    void loadEarlierMessages()
+  }, [itemsQuery.hasPreviousPage, itemsQuery.isFetchingPreviousPage, loadEarlierMessages])
 
   const toggleExpanded = () => {
     if (onToggle) onToggle()
@@ -1011,6 +1041,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     next.delete('chat_scene')
     next.delete('chat_subject_uuid')
     next.delete('chat_subject_title')
+    next.delete('chat_scope')
     setSearchParams(next, { replace: true })
   }
   const startNewThread = () => {
@@ -1026,6 +1057,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     next.delete('chat_scene')
     next.delete('chat_subject_uuid')
     next.delete('chat_subject_title')
+    next.delete('chat_scope')
     setSearchParams(next, { replace: true })
   }
   const chooseThread = (uuid) => {
@@ -1040,8 +1072,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     next.delete('chat_scene')
     next.delete('chat_subject_uuid')
     next.delete('chat_subject_title')
-    const chosen = threads.find((thread) => thread.uuid === uuid)
-    if (chosen?.scope) next.set('chat_scope', chosen.scope)
+    next.delete('chat_scope')
     setSearchParams(next, { replace: true })
   }
   const cancelDraftScene = () => {
@@ -1052,6 +1083,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     next.delete('chat_scene')
     next.delete('chat_subject_uuid')
     next.delete('chat_subject_title')
+    next.delete('chat_scope')
     setSearchParams(next, { replace: true })
   }
   const send = (mode) => {
@@ -1088,8 +1120,8 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
           <div className="chat-detail-actions"><span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span><CollapseButton overlay={overlay} onToggle={toggleExpanded} /></div>
         </header>
         <div className="chat-detail-body">
-          <div className="chat-messages" aria-live="polite" ref={messagesRef}>
-            {itemsQuery.hasPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
+          <div className="chat-messages" aria-live="polite" ref={messagesRef} onScroll={handleMessagesScroll}>
+            {itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
             {selectedThread?.scene ? <section className="chat-scene-card chat-scene-card--compact"><div><Bot size={16} aria-hidden="true" /><span><strong>{sceneCopy[selectedThread.scene]?.titleKey ? t(sceneCopy[selectedThread.scene].titleKey) : t('common.status.unknown_with_code', { code: selectedThread.scene })}</strong>{selectedThread.subject_uuid ? <small>{selectedThread.subject_uuid}</small> : null}</span></div></section> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
             <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} />
@@ -1144,17 +1176,6 @@ function currentProjectAPIActivityKey(content) {
   } catch {
     return null
   }
-}
-
-function workflowDisplayTitle(workflow, t) {
-  const copyKey = workflowKindCopy[workflow?.kind]
-  return copyKey ? t(copyKey) : workflow?.title || t('chat.workflow.title')
-}
-
-function threadDisplayTitle(thread, workflow, t) {
-  const copyKey = workflowKindCopy[workflow?.kind || thread?.title]
-  if (copyKey) return t(copyKey)
-  return workflow ? workflowDisplayTitle(workflow, t) : thread?.title || t('chat.threads')
 }
 
 function sceneThreadTitle(t, scene, subjectTitle = '') {

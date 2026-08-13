@@ -44,7 +44,8 @@ import {
 import LumiDialog from '../components/LumiDialog.jsx'
 import { Notice, ProductionImage, ProductionTaskStrip } from './ProductionWorkspaces.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
-import { PremisePromptsPanel, PremiseThreadsPanel, usePremiseThreads } from './PremiseSupportPanels.jsx'
+import { PremisePromptsPanel, PremiseThreadsPanel } from './PremiseSupportPanels.jsx'
+import { useProjectThreads } from './projectThreads.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import {
@@ -114,6 +115,7 @@ export default function PremiseWorkspace({ projectUuid }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const addMenuRef = useRef(null)
   const fileInputRef = useRef(null)
+  const uploadTitleRefs = useRef(new Map())
   const uploadUrlsRef = useRef([])
   const [error, setError] = useState(null)
   const [decisionNotice, setDecisionNotice] = useState('')
@@ -128,6 +130,7 @@ export default function PremiseWorkspace({ projectUuid }) {
   const [settingFile, setSettingFile] = useState(null)
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [uploadDrafts, setUploadDrafts] = useState([])
+  const [uploadTitleFocusId, setUploadTitleFocusId] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
   const [historyAsset, setHistoryAsset] = useState(null)
@@ -161,7 +164,7 @@ export default function PremiseWorkspace({ projectUuid }) {
     queryFn: () => getStoryProfile(projectUuid),
     enabled: batchDialogOpen,
   })
-  const premiseThreadsQuery = usePremiseThreads(projectUuid)
+  const projectThreadsQuery = useProjectThreads(projectUuid)
 
   const refresh = useCallback(() => {
     ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-variants', 'production-tasks', 'story-project', 'asset-scans', 'asset-maintenance-tasks'].forEach((key) => {
@@ -176,6 +179,15 @@ export default function PremiseWorkspace({ projectUuid }) {
   useEffect(() => {
     uploadUrlsRef.current = uploadDrafts.map((draft) => draft.previewUrl)
   }, [uploadDrafts])
+
+  useEffect(() => {
+    if (!uploadTitleFocusId) return
+    const input = uploadTitleRefs.current.get(uploadTitleFocusId)
+    if (!input) return
+    input.focus()
+    input.select()
+    setUploadTitleFocusId('')
+  }, [uploadTitleFocusId, uploadDrafts])
 
   useEffect(() => () => {
     uploadUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
@@ -400,13 +412,15 @@ export default function PremiseWorkspace({ projectUuid }) {
     setAddMenuOpen(false)
   }
 
-  const addUploadFiles = (files) => {
+  const addUploadFiles = (files, { editTitle = false } = {}) => {
     const images = Array.from(files || []).filter((file) => file.type.startsWith('image/'))
     if (!images.length) {
       setDecisionNotice('premise.upload.images_only')
       return
     }
-    setUploadDrafts((current) => [...current, ...images.map((file) => createUploadDraft(file, t('premise.assets.untitled')))])
+    const drafts = images.map((file) => createUploadDraft(file, t('premise.assets.untitled')))
+    setUploadDrafts((current) => [...current, ...drafts])
+    if (editTitle) setUploadTitleFocusId(drafts[0].id)
     setUploadDialogOpen(true)
     setAddMenuOpen(false)
   }
@@ -443,7 +457,7 @@ export default function PremiseWorkspace({ projectUuid }) {
 
   const updateChatQuery = ({ threadUuid = '', scene = '', subject = null } = {}) => {
     const next = new URLSearchParams(searchParams)
-    next.set('chat_scope', 'premise')
+    next.delete('chat_scope')
     next.delete('workflow_uuid')
     if (threadUuid) {
       next.set('chat_thread_uuid', threadUuid)
@@ -513,7 +527,7 @@ export default function PremiseWorkspace({ projectUuid }) {
     { key: 'assets', labelKey: 'premise.tab.assets', count: activeAssets.length },
     { key: 'trash', labelKey: 'projects.tab.trash', count: trashedAssets.length },
     { key: 'batches', labelKey: 'premise.tab.batches', count: sourceTotal },
-    { key: 'threads', labelKey: 'premise.threads.title', count: premiseThreadsQuery.data?.pages?.[0]?.pagination?.total || 0 },
+    { key: 'threads', labelKey: 'premise.threads.title', count: projectThreadsQuery.data?.pages?.[0]?.pagination?.total || 0 },
     { key: 'prompts', labelKey: 'projects.tab.prompts' },
     { key: 'llm_logs', labelKey: 'premise.tab.llm_logs' },
   ]
@@ -531,7 +545,7 @@ export default function PremiseWorkspace({ projectUuid }) {
       onPaste={(event) => {
         if (isEditableTarget(event.target)) return
         const files = Array.from(event.clipboardData?.files || []).filter((file) => file.type.startsWith('image/'))
-        if (files.length) { event.preventDefault(); addUploadFiles(files) }
+        if (files.length) { event.preventDefault(); addUploadFiles(files, { editTitle: true }) }
       }}
     >
       <header className="premise-toolbar">
@@ -780,7 +794,7 @@ export default function PremiseWorkspace({ projectUuid }) {
                     <img src={draft.previewUrl} alt={t('premise.upload.preview')} />
                     <div className="premise-upload-fields">
                       <label>{t('premise.upload.type')}<select value={draft.assetType} onChange={(event) => updateUploadDraft(draft.id, 'assetType', event.target.value)}>{Object.entries(ASSET_TYPE_COPY).map(([value, key]) => <option value={value} key={value}>{t(key)}</option>)}</select></label>
-                      <label>{t('common.label.title')}<input value={draft.title} onChange={(event) => updateUploadDraft(draft.id, 'title', event.target.value)} required /></label>
+                      <label>{t('common.label.title')}<input ref={(element) => { if (element) uploadTitleRefs.current.set(draft.id, element); else uploadTitleRefs.current.delete(draft.id) }} value={draft.title} onChange={(event) => updateUploadDraft(draft.id, 'title', event.target.value)} required /></label>
                       <label className="is-wide">{t('premise.upload.summary')}<input value={draft.summary} onChange={(event) => updateUploadDraft(draft.id, 'summary', event.target.value)} placeholder={t('common.label.optional')} /></label>
                       <label className="is-wide">{t('premise.upload.tags')}<input value={draft.tags} onChange={(event) => updateUploadDraft(draft.id, 'tags', event.target.value)} placeholder={t('premise.upload.tags_placeholder')} /></label>
                       {tags.length ? <div className="premise-upload-tags is-wide">{tags.slice(0, 10).map((tag) => <button type="button" className="premise-upload-tag" key={tag} onClick={() => appendDraftTag(draft.id, tag)}>#{tag}</button>)}</div> : null}

@@ -11,7 +11,12 @@ import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { createYoloWorkflow } from '../api/chat.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
-import { projectCreationErrors } from './projectCreationForm.js'
+import {
+  overallStyleForLanguage,
+  overallStyleUsesDefault,
+  projectCreationErrors,
+  projectDefaultOverallStyle,
+} from './projectCreationForm.js'
 import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 import {
   createProject,
@@ -21,6 +26,7 @@ import {
   listRecentProjects,
   openProjectPath,
   preflightImageGeneration,
+  revealProjectDirectory,
   relocateRecentProject,
   selectProjectDirectory,
 } from '../api/projects.js'
@@ -58,6 +64,8 @@ export default function HomePage() {
   const [parentPath, setParentPath] = useState('')
   const [parentPathDirty, setParentPathDirty] = useState(false)
   const [generationLanguage, setGenerationLanguage] = useState('zh-Hans')
+  const [overallStyle, setOverallStyle] = useState('')
+  const [overallStyleDirty, setOverallStyleDirty] = useState(false)
   const [pictureBookDraft, setPictureBookDraft] = useState(defaultPictureBookDraft)
   const [existingPath, setExistingPath] = useState('')
   const [targetProject, setTargetProject] = useState(null)
@@ -69,6 +77,8 @@ export default function HomePage() {
   const nameInputRef = useRef(null)
   const storyPromptInputRef = useRef(null)
   const parentPathInputRef = useRef(null)
+  const overallStyleDetailsRef = useRef(null)
+  const overallStyleInputRef = useRef(null)
   const createFormRef = useRef(null)
   const openMenuRef = useRef(null)
   const openMenuTriggerRef = useRef(null)
@@ -77,6 +87,9 @@ export default function HomePage() {
   const openProjectsQuery = useQuery({ queryKey: projectQueryKeys.openProjects(), queryFn: listOpenProjects })
   const projectDefaultsQuery = useQuery({ queryKey: ['project-defaults'], queryFn: getProjectDefaults })
   const defaultProjectParentPath = projectDefaultsQuery.data?.parent_path || ''
+  const defaultOverallStyles = projectDefaultsQuery.data?.default_overall_styles || null
+  const defaultOverallStyle = projectDefaultOverallStyle(defaultOverallStyles, generationLanguage)
+  const usingDefaultOverallStyle = overallStyleUsesDefault(overallStyle, defaultOverallStyle)
   const pictureBook = useMemo(() => pictureBookPayload(pictureBookDraft), [pictureBookDraft])
   const pictureBookValid = pictureBookDraftIsValid(pictureBookDraft)
 
@@ -84,12 +97,19 @@ export default function HomePage() {
     if (!parentPathDirty && defaultProjectParentPath) setParentPath(defaultProjectParentPath)
   }, [defaultProjectParentPath, parentPathDirty])
 
+  useEffect(() => {
+    setOverallStyle((currentStyle) => overallStyleForLanguage({ currentStyle, dirty: overallStyleDirty, defaultOverallStyles, generationLanguage }))
+  }, [defaultOverallStyles, generationLanguage, overallStyleDirty])
+
   const resetCreationFields = () => {
+    const resetLanguage = 'zh-Hans'
     setCreateMode('yolo')
     setName('')
     setParentPath(defaultProjectParentPath)
     setParentPathDirty(false)
-    setGenerationLanguage('zh-Hans')
+    setGenerationLanguage(resetLanguage)
+    setOverallStyle(projectDefaultOverallStyle(defaultOverallStyles, resetLanguage))
+    setOverallStyleDirty(false)
     setStoryPrompt('')
     setCreateValidationAttempted(false)
     setPictureBookDraft(defaultPictureBookDraft())
@@ -111,12 +131,17 @@ export default function HomePage() {
     },
     onError: setActionError,
   })
+  const revealDirectoryMutation = useMutation({
+    mutationFn: revealProjectDirectory,
+    onSuccess: () => setActionError(null),
+    onError: setActionError,
+  })
   const relocateMutation = useProjectMutation(queryClient, setActionError, relocateRecentProject, () => closeDialog())
   const forgetMutation = useProjectMutation(queryClient, setActionError, forgetRecentProject, () => closeDialog())
   const yoloMutation = useMutation({
     mutationFn: async () => {
 			await preflightImageGeneration(pictureBook)
-			const project = await createProject({ name, parentPath, generationLanguage, pictureBook })
+			const project = await createProject({ name, parentPath, generationLanguage, pictureBook, overallStyle })
       const workflow = await createYoloWorkflow(project.uuid, {
         title: name,
         story_prompt: storyPrompt,
@@ -148,22 +173,25 @@ export default function HomePage() {
 
 	const pageError = actionError || projectDefaultsQuery.error || recentQuery.error || openProjectsQuery.error
   const pending = createMutation.isPending || yoloMutation.isPending || openPathMutation.isPending || selectDirectoryMutation.isPending || relocateMutation.isPending || forgetMutation.isPending
-  const currentCreateErrors = createValidationAttempted ? projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid }) : {}
+  const currentCreateErrors = createValidationAttempted ? projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid, overallStyle }) : {}
   const selectCreateMode = (mode) => { setCreateMode(mode); setCreateValidationAttempted(false) }
   const submitCreateForm = (event) => {
     event.preventDefault()
     if (pending) return
-    const errors = projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid })
+    const errors = projectCreationErrors({ name, parentPath, storyPrompt, createMode, pictureBookValid, overallStyle })
     setCreateValidationAttempted(true)
     if (Object.keys(errors).length) {
       if (errors.name) nameInputRef.current?.focus()
       else if (errors.storyPrompt) storyPromptInputRef.current?.focus()
       else if (errors.parentPath) parentPathInputRef.current?.focus()
-      else createFormRef.current?.querySelector('.picture-book-custom-ratio input')?.focus()
+      else if (errors.overallStyle) {
+        if (overallStyleDetailsRef.current) overallStyleDetailsRef.current.open = true
+        overallStyleInputRef.current?.focus()
+      } else createFormRef.current?.querySelector('.picture-book-custom-ratio input')?.focus()
       return
     }
     if (createMode === 'yolo') yoloMutation.mutate()
-    else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook })
+    else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook, overallStyle })
   }
   const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
   const openExistingDialog = () => { setActionError(null); setDialog('open') }
@@ -217,6 +245,7 @@ export default function HomePage() {
                   setOpenMenuUuid((uuid) => uuid === project.uuid ? '' : project.uuid)
                 }}
                 onEnter={() => { setOpenMenuUuid(''); enterProject(project) }}
+                onReveal={() => { setOpenMenuUuid(''); revealDirectoryMutation.mutate(project.root_path) }}
                 onRelocate={() => { setTargetProject(project); setRelocatePath(project.root_path || ''); setDialog('relocate'); setOpenMenuUuid('') }}
                 onForget={() => { setTargetProject(project); setDialog('forget'); setOpenMenuUuid('') }}
                 formatDateTime={formatDateTime}
@@ -258,6 +287,16 @@ export default function HomePage() {
             {currentCreateErrors.parentPath ? <p className="project-field-error" id="new-project-parent-path-error" role="alert">{t(currentCreateErrors.parentPath)}</p> : null}
           </div>
 		  <label>{t('projects.field.generation_language')}<select value={generationLanguage} onChange={(event) => setGenerationLanguage(event.target.value)}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
+		  <details ref={overallStyleDetailsRef} className="project-overall-style">
+		    <summary><span>{t('projects.field.overall_style')}</span><small>{t(usingDefaultOverallStyle ? 'projects.field.overall_style_default' : 'projects.field.overall_style_custom')}</small></summary>
+		    <div className="project-overall-style__editor">
+		      <p>{t('projects.field.overall_style_hint')}</p>
+		      <label htmlFor="new-project-overall-style">{t('projects.field.overall_style')}</label>
+		      <textarea ref={overallStyleInputRef} id="new-project-overall-style" rows="8" value={overallStyle} onChange={(event) => { setOverallStyle(event.target.value); setOverallStyleDirty(true) }} placeholder={t('projects.field.overall_style_placeholder')} aria-invalid={currentCreateErrors.overallStyle ? 'true' : undefined} aria-describedby={currentCreateErrors.overallStyle ? 'new-project-overall-style-error' : undefined} />
+		      {currentCreateErrors.overallStyle ? <p className="project-field-error" id="new-project-overall-style-error" role="alert">{t(currentCreateErrors.overallStyle)}</p> : null}
+		      <div><button className="button-secondary" type="button" onClick={() => { setOverallStyle(defaultOverallStyle); setOverallStyleDirty(false) }}>{t('projects.field.overall_style_restore')}</button></div>
+		    </div>
+		  </details>
 		  <PictureBookProfileFields value={pictureBookDraft} onChange={setPictureBookDraft} />
           <p className="project-dialog-hint">{createMode === 'yolo' ? t('projects.create.yolo_hint') : t('projects.create.manual_hint', { path: defaultProjectParentPath || t('projects.create.default_path_loading') })}</p>
 		  <div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={pending} onClick={closeDialog}>{t('common.action.cancel')}</button><button type="submit" disabled={pending}>{t(pending ? 'projects.create.creating' : createMode === 'yolo' ? 'projects.create.start' : 'projects.create.enter')}</button></div>
@@ -273,7 +312,7 @@ export default function HomePage() {
   )
 }
 
-export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onRelocate, onForget, formatDateTime, t }) {
+export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onReveal, onRelocate, onForget, formatDateTime, t }) {
   const actions = projectRowActions(project)
   const primaryAction = projectRowPrimaryAction(project)
   const onActivate = primaryAction === 'enter' ? onEnter : undefined
@@ -297,7 +336,12 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       <span className="project-index-path" title={project.root_path}>{project.root_path}</span>
       <div className="project-index-more" ref={menuRef} onClick={(event) => event.stopPropagation()}>
         <button className="project-index-more-button" type="button" aria-label={t('projects.row.more_label', { name: project.name })} aria-expanded={menuOpen} onClick={onToggleMenu}><MoreHorizontal size={18} /></button>
-        {menuOpen ? <div className="project-index-menu" role="menu">{actions.includes('enter') ? <button type="button" role="menuitem" onClick={onEnter}>{t('projects.action.enter')}</button> : null}{actions.includes('relocate') ? <button type="button" role="menuitem" onClick={onRelocate}>{t('projects.action.relocate')}</button> : null}{actions.includes('forget') ? <button className="danger-text" type="button" role="menuitem" onClick={onForget}>{t('projects.action.forget')}</button> : null}</div> : null}
+        {menuOpen ? <div className="project-index-menu" role="menu">
+          {actions.includes('enter') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onEnter}>{t('projects.action.enter')}</button> : null}
+          {actions.includes('reveal') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onReveal}>{t('projects.action.reveal')}</button> : null}
+          {actions.includes('relocate') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onRelocate}>{t('projects.action.relocate')}</button> : null}
+          {actions.includes('forget') ? <><span className="project-index-menu__separator" role="separator" /><button className="project-index-menu__item project-index-menu__item--danger" type="button" role="menuitem" onClick={onForget}>{t('projects.action.forget')}</button></> : null}
+        </div> : null}
       </div>
     </article>
   )

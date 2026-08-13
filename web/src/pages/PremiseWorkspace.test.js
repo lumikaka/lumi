@@ -5,6 +5,7 @@ import test from 'node:test'
 const source = readFileSync(new URL('./PremiseWorkspace.jsx', import.meta.url), 'utf8')
 const supportSource = readFileSync(new URL('./PremiseSupportPanels.jsx', import.meta.url), 'utf8')
 const chatSource = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
+const projectThreadsSource = readFileSync(new URL('./projectThreads.js', import.meta.url), 'utf8')
 const layoutSource = readFileSync(new URL('../components/ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8')
 const chatStyles = readFileSync(new URL('../styles/chat.sass', import.meta.url), 'utf8')
@@ -21,21 +22,22 @@ test('premise toolbar keeps workspace navigation and the exact three creation ch
   assert.doesNotMatch(source, /pending: true|showPendingCapability/)
 })
 
-test('premise-scoped tools, single generation and card reference share ChatArea routing', () => {
-  assert.match(source, /next\.set\('chat_scope', 'premise'\)/)
+test('project thread lists are shared while premise scenes keep scoped ChatArea routing', () => {
+  assert.match(source, /next\.delete\('chat_scope'\)/)
   assert.match(source, /openChatScene\('asset_reference', asset\)/)
   assert.match(source, /<PremiseThreadsPanel/)
   assert.match(source, /<PremisePromptsPanel/)
   assert.match(source, /scope="premise" title=\{t\('premise\.llm_logs\.title'\)\}/)
-  assert.match(supportSource, /listChatThreads\(projectUuid, \{ scope: 'premise', page: pageParam, perPage: 30 \}\)/)
-  assert.match(supportSource, /useInfiniteQuery/)
+  assert.match(supportSource, /useProjectThreads\(projectUuid\)/)
+  assert.match(projectThreadsSource, /listChatThreads\(projectUuid, \{ page: pageParam, perPage: PROJECT_THREADS_PAGE_SIZE \}\)/)
   assert.match(supportSource, /pagination\?\.total/)
-  assert.match(supportSource, /seen\.has\(thread\.uuid\)/)
+  assert.match(projectThreadsSource, /seen\.has\(thread\.uuid\)/)
   assert.match(supportSource, /fetchNextPage/)
   assert.match(supportSource, /isFetchNextPageError[\s\S]*premise\.history\.retry_more/)
   assert.match(supportSource, /threadsQuery\.refetch\(\)/)
-  assert.match(supportSource, /queryKey: \['chat-threads', projectUuid, 'premise'\]/)
-  assert.match(chatSource, /queryKey: \['chat-threads', projectUuid, requestedScope, 'pages'\]/)
+  assert.match(projectThreadsSource, /return \['chat-threads', projectUuid, 'pages'\]/)
+  assert.match(chatSource, /useProjectThreads\(projectUuid, expanded\)/)
+  assert.doesNotMatch(chatSource, /requestedScope/)
   assert.match(supportSource, /<PromptCatalogEditor projectUuid=\{projectUuid\} groups=\{\['premise', 'premise_style'\]\}/)
   assert.match(chatSource, /scene: requestedScene/)
   assert.match(chatSource, /subject_uuid: requestedSubjectUuid/)
@@ -74,6 +76,13 @@ test('premise upload supports multiple files, drag, paste, previews and safe par
   assert.match(source, /return !completedDraftIds\.includes\(draft\.id\)/)
   assert.match(source, /createAssetUpload\(projectUuid, \{ purpose: 'premise_asset'/)
   assert.match(source, /createPremiseAsset\(projectUuid/)
+})
+
+test('pasting an image into blank workspace selects its generated title for immediate editing', () => {
+  assert.match(source, /addUploadFiles\(files, \{ editTitle: true \}\)/)
+  assert.match(source, /uploadTitleRefs\.current\.get\(uploadTitleFocusId\)/)
+  assert.match(source, /input\.focus\(\)[\s\S]*input\.select\(\)/)
+  assert.match(source, /ref=\{\(element\) => \{ if \(element\) uploadTitleRefs\.current\.set\(draft\.id, element\)/)
 })
 
 test('premise selected states retain explicit combined hover feedback', () => {

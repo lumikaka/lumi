@@ -43,7 +43,7 @@ test('chat resources use project-scoped UUID routes and snake_case payloads', as
     await respondUserInput('project uuid', 'thread uuid', 'request uuid', { selected_option_uuids: ['option-uuid'] })
   } finally { global.fetch = original }
 
-  assert.equal(calls[0][0], '/api/v1/projects/project%20uuid/chat_threads?scope=premise&page=1&per_page=30')
+  assert.equal(calls[0][0], '/api/v1/projects/project%20uuid/chat_threads?page=1&per_page=30')
   assert.equal(calls[1][0], '/api/v1/projects/project%20uuid/chat_threads')
   assert.deepEqual(JSON.parse(calls[1][1].body), { title: 'Asset', scope: 'premise', scene: 'asset_reference', subject_uuid: 'asset-uuid' })
   assert.equal(calls[2][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/turns')

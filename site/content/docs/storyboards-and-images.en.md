@@ -14,7 +14,7 @@ The Comic workspace breaks a chapter into visual sections. Each section has a cu
 
 1. Open the target chapter and choose comic-storyboard generation.
 2. Describe the desired frame count, pacing, dialogue density, and emotional focus.
-3. Set the maximum section count. The current range is 1–12 and the default is 6. More frames are not automatically better; picture books need room for page turns and repeated reading.
+3. Set the maximum section count. The current range is 1–24 and the default is 6. More frames are not automatically better; picture books need room for page turns and repeated reading.
 4. Submit and wait. The task uses the chapter, prompt, and model settings frozen when it was created; a retry does not silently switch inputs.
 
 If the project has no usable premise items, Lumi shows a warning. Storyboard and image generation remain available, but characters, props, and places may be less consistent.

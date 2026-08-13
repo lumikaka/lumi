@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"lumi/internal/modelsettings"
+	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/story"
@@ -47,8 +48,8 @@ func (manager *Manager) CreateStoryWorkflow(ctx context.Context, projectUUID, ki
 		if input.MaxSectionCount == nil {
 			value := 6
 			input.MaxSectionCount = &value
-		} else if *input.MaxSectionCount < 1 || *input.MaxSectionCount > 12 {
-			return Task{}, taskError(CodeInvalidTask, "漫画 Section 上限无效", "max_section_count 必须在 1 到 12 之间。", nil)
+		} else if *input.MaxSectionCount < 1 || *input.MaxSectionCount > production.MaxGeneratedComicSections {
+			return Task{}, taskError(CodeInvalidTask, "漫画 Section 上限无效", fmt.Sprintf("max_section_count 必须在 1 到 %d 之间。", production.MaxGeneratedComicSections), nil)
 		}
 	}
 	if input.ChapterCount == 0 {

@@ -51,7 +51,7 @@
 ## 关键 API 与迁移
 
 - Migration：`20260811000016_add_project_chat_image_references`，包含 up/down、外键、顺序约束、唯一约束与索引。
-- 会话历史：`GET /api/v1/projects/:project_uuid/chat_threads?page=&per_page=&scope=`；Premise Tab 固定 `scope=premise`。
+- 会话历史：`GET /api/v1/projects/:project_uuid/chat_threads?page=&per_page=`；右侧 ChatArea 与 Premise“会话”Tab 共享当前 Project 的全部未归档 threads，旧 `scope` 查询参数不再产生过滤效果。
 - 消息历史：`GET /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/items?before=&after=&limit=`。
 - 会话运行事件：`GET /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/events?after=&limit=`。
 - 单条排队引导：`POST /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups/:follow_up_uuid/steerings`。

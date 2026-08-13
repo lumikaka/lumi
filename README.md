@@ -177,11 +177,14 @@ Go 会优先处理 `/api`；开发环境的其他前端请求和 Vite HMR WebSoc
 | 变量 | 默认值 |
 |---|---|
 | `APP_ENV` | `development` |
+| `LOG_LEVEL` | development/test 为 `info`，production 为 `warn`；可设为 `debug`、`info`、`warn` 或 `error` |
 | `APP_ADDRESS` | `127.0.0.1:5801`，默认只监听 loopback |
 | `FRONTEND_URL` | `http://localhost:5801` |
 | `VITE_DEV_SERVER_URL` | `http://127.0.0.1:5802` |
 | `LUMI_DATA_DIR` | macOS/Linux：development 为 `~/.lumi_dev`、production 为 `~/.lumi`；Windows：development 为 `%LOCALAPPDATA%\dev.lumi.Lumi-dev`、production 为 `%LOCALAPPDATA%\dev.lumi.Lumi` |
 | `DATABASE_DSN` | 可选测试覆盖；默认是 `{LUMI_DATA_DIR}/lumi.sqlite`，启用 foreign keys、WAL、NORMAL synchronous 与 5 秒 busy timeout |
+
+HTTP 请求按响应状态分级：1xx–3xx 为 Info，4xx 为 Warning，5xx 为 Error；显式设置 `LOG_LEVEL` 会覆盖环境默认值，无效值会阻止服务启动。
 
 应用数据目录只包含全局 `lumi.sqlite` 与可删除的 `cache/`。`lumi.sqlite` 保存 Provider 的非敏感配置和加密 secret envelope；Cloudflare API Token / 百炼 API Key 使用操作系统 Keychain 中的根密钥加密。章节、故事、设定、资产和项目任务不得进入全局库。
 
@@ -300,7 +303,7 @@ make desktop-check
 rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app
 ```
 
-首次启动可在 Finder 中打开 `Lumi.app`，或运行 `open rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app`。启动后可以从菜单栏的 Lumi 托盘菜单重新打开页面、复制 Access URL、查看 `~/Library/Logs/Lumi/lumi.log` 或退出应用。生产数据仍保存在 `~/.lumi`；安装包不改变项目目录或数据库格式。
+首次启动可在 Finder 中打开 `Lumi.app`，或运行 `open rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app`。启动后可以从菜单栏的 Lumi 托盘菜单重新打开页面、复制 Access URL、查看 `~/Library/Logs/Lumi/lumi.log` 或退出应用。release 包默认只记录 Warning/Error；日志达到 5 MiB 后轮转并保留 `lumi.log.1`、`lumi.log.2` 两个备份。生产数据仍保存在 `~/.lumi`；安装包不改变项目目录或数据库格式。
 
 从 GitHub Release 下载时，解压 `Lumi-macos-aarch64.app.zip` 后得到的真正应用是 `Lumi.app`。从 Actions 页面下载的 `Lumi-macos-aarch64` workflow artifact 是一个容器，里面还有 `Lumi-macos-aarch64.app.zip` 和 SHA-256 文件，需要再解压内层 ZIP；不要把 artifact 容器目录改名为或当作 `.app` 打开。如果确认文件来自本仓库 Release 且 SHA-256 一致，但 macOS 仍因未公证而阻止 `Lumi.app`，请在首次尝试打开后前往“系统设置 → 隐私与安全性”，使用“仍要打开”。
 
@@ -317,7 +320,7 @@ Lumi-windows-x64-setup.exe.sha256
 
 可以在 PowerShell 中运行 `Get-FileHash .\Lumi-windows-x64-setup.exe -Algorithm SHA256`，将结果与 `.sha256` 文件比较。从 Actions 页面下载的 `Lumi-windows-x64` artifact 是包含上述两个文件的 ZIP 容器。
 
-安装程序采用 NSIS 当前用户模式，不要求管理员权限，默认安装到 `%LOCALAPPDATA%\Lumi`。应用数据保存在独立的 `%LOCALAPPDATA%\dev.lumi.Lumi`，日志位于 `%LOCALAPPDATA%\dev.lumi.Lumi\logs\lumi.log`；卸载应用不会删除这些用户数据。早期预览包可能创建的 `%USERPROFILE%\.lumi` 不会被读取或自动迁移。Windows 安装程序、Tauri 启动器和 `lumi_web.exe` 均没有 Authenticode 签名，因此 Microsoft Defender SmartScreen 可能显示“Windows 已保护你的电脑”；仅应在确认下载来源和 SHA-256 后选择继续运行。
+安装程序采用 NSIS 当前用户模式，不要求管理员权限，默认安装到 `%LOCALAPPDATA%\Lumi`。应用数据保存在独立的 `%LOCALAPPDATA%\dev.lumi.Lumi`，日志位于 `%LOCALAPPDATA%\dev.lumi.Lumi\logs\lumi.log`；release 包默认只记录 Warning/Error，达到 5 MiB 后轮转并保留 `.1`、`.2` 两个备份。卸载应用不会删除这些用户数据。早期预览包可能创建的 `%USERPROFILE%\.lumi` 不会被读取或自动迁移。Windows 安装程序、Tauri 启动器和 `lumi_web.exe` 均没有 Authenticode 签名，因此 Microsoft Defender SmartScreen 可能显示“Windows 已保护你的电脑”；仅应在确认下载来源和 SHA-256 后选择继续运行。
 
 Windows workflow 不读取 Azure Secret，不安装或调用 `trusted-signing-cli`，也不配置 Authenticode 证书或时间戳服务。该产物仍是可验证的真正 unsigned 构建，不是对 Windows 签名检查的绕过。Tauri updater 使用独立的 Minisign 密钥验证更新包，不能替代 Authenticode，也不会消除 SmartScreen 提示。
 

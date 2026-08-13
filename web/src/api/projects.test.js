@@ -6,6 +6,7 @@ import {
 	getProjectDefaults,
 	ensureProjectOpen,
 	openProjectPath,
+  revealProjectDirectory,
   relocateRecentProject,
   preflightImageGeneration,
   preflightProjectImageGeneration,
@@ -23,14 +24,14 @@ test('project API models create and open flows with snake_case JSON', async (t) 
   t.mock.method(globalThis, 'fetch', async () => success({ uuid: '019-project' }))
 
   const pictureBook = { format: 'classic_picture_book', aspect_ratio: { mode: 'landscape' }, large_image_minimal_text: false }
-  await createProject({ name: 'Moon', parentPath: '/books', pictureBook })
+  await createProject({ name: 'Moon', parentPath: '/books', pictureBook, overallStyle: 'paper collage' })
 	await ensureProjectOpen('019-recent')
   await openProjectPath('/books/moon')
   await selectProjectDirectory('/books')
 
   const calls = globalThis.fetch.mock.calls.map((call) => call.arguments)
   assert.equal(calls[0][0], '/api/v1/projects')
-  assert.deepEqual(JSON.parse(calls[0][1].body), { name: 'Moon', parent_path: '/books', generation_language: 'zh-Hans', picture_book: pictureBook })
+  assert.deepEqual(JSON.parse(calls[0][1].body), { name: 'Moon', parent_path: '/books', generation_language: 'zh-Hans', picture_book: pictureBook, overall_style: 'paper collage' })
 	assert.equal(calls[1][0], '/api/v1/open-projects/019-recent')
 	assert.equal(calls[1][1].method, 'PUT')
 	assert.equal(calls[1][1].body, undefined)
@@ -39,12 +40,13 @@ test('project API models create and open flows with snake_case JSON', async (t) 
   assert.deepEqual(JSON.parse(calls[3][1].body), { initial_path: '/books' })
 })
 
-test('project API reads platform project defaults', async (t) => {
-  t.mock.method(globalThis, 'fetch', async () => success({ parent_path: 'platform documents/Lumi' }))
+test('project API reads platform project and overall-style defaults', async (t) => {
+  const defaultOverallStyles = { 'zh-Hans': '默认画风', en: 'Default style' }
+  t.mock.method(globalThis, 'fetch', async () => success({ parent_path: 'platform documents/Lumi', default_overall_styles: defaultOverallStyles }))
 
   const defaults = await getProjectDefaults()
 
-  assert.deepEqual(defaults, { parent_path: 'platform documents/Lumi' })
+  assert.deepEqual(defaults, { parent_path: 'platform documents/Lumi', default_overall_styles: defaultOverallStyles })
   assert.equal(globalThis.fetch.mock.calls[0].arguments[0], '/api/v1/project-defaults')
 })
 
@@ -67,4 +69,13 @@ test('project API relocates by public UUID and new root path', async (t) => {
   assert.equal(path, '/api/v1/recent-projects/019-recent')
   assert.equal(options.method, 'PATCH')
   assert.deepEqual(JSON.parse(options.body), { root_path: '/moved/moon' })
+})
+
+test('project API opens a local project location', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => success(null))
+  await revealProjectDirectory('/books/moon')
+  const [path, options] = globalThis.fetch.mock.calls[0].arguments
+  assert.equal(path, '/api/v1/directory-openings')
+  assert.equal(options.method, 'POST')
+  assert.deepEqual(JSON.parse(options.body), { root_path: '/books/moon' })
 })

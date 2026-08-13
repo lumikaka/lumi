@@ -187,6 +187,11 @@ func newAgentHarness(t *testing.T, responses ...llm.ChatResponse) *agentHarness 
 
 func newAgentHarnessWithPictureBook(t *testing.T, pictureBook *project.PictureBookInput, responses ...llm.ChatResponse) *agentHarness {
 	t.Helper()
+	return newAgentHarnessWithCreateInput(t, project.CreateInput{Name: "Agent Test", PictureBook: pictureBook}, responses...)
+}
+
+func newAgentHarnessWithCreateInput(t *testing.T, input project.CreateInput, responses ...llm.ChatResponse) *agentHarness {
+	t.Helper()
 	ctx := context.Background()
 	dataDir := filepath.Join(t.TempDir(), "app")
 	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
@@ -199,10 +204,7 @@ func newAgentHarnessWithPictureBook(t *testing.T, pictureBook *project.PictureBo
 		t.Fatal(err)
 	}
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
-	created, err := projects.CreateWithInput(ctx, project.CreateInput{
-		Name:        "Agent Test",
-		PictureBook: pictureBook,
-	}, project.ExplicitNewProjectParent(t.TempDir()))
+	created, err := projects.CreateWithInput(ctx, input, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,13 +378,16 @@ func TestPremiseThreadScopesAndSceneToolsStayBoundToSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projectThreads, err := harness.service.ListThreads(ctx, harness.project.UUID, ThreadScopeProject)
-	if err != nil || len(projectThreads) != 1 || projectThreads[0].UUID != projectThread.UUID {
-		t.Fatalf("project threads=%+v err=%v", projectThreads, err)
+	threads, err := harness.service.ListThreads(ctx, harness.project.UUID)
+	if err != nil || len(threads) != 3 {
+		t.Fatalf("project threads=%+v err=%v", threads, err)
 	}
-	premiseThreads, err := harness.service.ListThreads(ctx, harness.project.UUID, ThreadScopePremise)
-	if err != nil || len(premiseThreads) != 2 || premiseThreads[0].Scope != ThreadScopePremise {
-		t.Fatalf("premise threads=%+v err=%v", premiseThreads, err)
+	threadScopes := map[string]string{}
+	for _, thread := range threads {
+		threadScopes[thread.UUID] = thread.Scope
+	}
+	if threadScopes[projectThread.UUID] != ThreadScopeProject || threadScopes[generationThread.UUID] != ThreadScopePremise || threadScopes[referenceThread.UUID] != ThreadScopePremise {
+		t.Fatalf("project thread scopes=%+v", threadScopes)
 	}
 	if referenceThread.SubjectUUID != asset.UUID || referenceThread.Scene != SceneAssetReference {
 		t.Fatalf("reference thread=%+v", referenceThread)
@@ -736,11 +741,18 @@ func TestThreadPaginationAndWorkflowDiagnosticsExposeOnlyPublicData(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	page, err := harness.service.ListThreadsPage(ctx, harness.project.UUID, "", 1, 2)
+	archived, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "已归档", Scope: ThreadScopePremise, ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_threads").Where("uuid=?", archived.UUID).Update("archived_at", time.Now().UTC()).Error; err != nil {
+		t.Fatal(err)
+	}
+	page, err := harness.service.ListThreadsPage(ctx, harness.project.UUID, 1, 2)
 	if err != nil || len(page.Items) != 2 || page.Pagination.Total != 3 || page.Pagination.LastPage != 2 {
 		t.Fatalf("thread page=%+v err=%v", page, err)
 	}
-	second, err := harness.service.ListThreadsPage(ctx, harness.project.UUID, "", 2, 2)
+	second, err := harness.service.ListThreadsPage(ctx, harness.project.UUID, 2, 2)
 	if err != nil || len(second.Items) != 1 || second.Items[0].UUID == page.Items[0].UUID {
 		t.Fatalf("second thread page=%+v err=%v", second, err)
 	}
@@ -1639,6 +1651,28 @@ func TestYoloWorkflowFreezesEffectivePromptSet(t *testing.T) {
 		if snapshot.Prompts[identity] != expected {
 			t.Fatalf("Yolo prompt %s=%q, want %q", identity, snapshot.Prompts[identity], expected)
 		}
+	}
+}
+
+func TestYoloWorkflowFreezesOverallStyleSelectedAtProjectCreation(t *testing.T) {
+	const selectedStyle = "CREATION YOLO STYLE · layered paper collage"
+	harness := newAgentHarnessWithCreateInput(t, project.CreateInput{
+		Name:         "Creation Style Test",
+		PictureBook:  &project.PictureBookInput{Format: project.PictureBookVertical},
+		OverallStyle: selectedStyle,
+	})
+	workflow, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, CreateYoloInput{
+		Title: "创建画风快照", StoryPrompt: "测试创建时画风。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "yolo-creation-style",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal(workflow.InputSnapshot, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if got := snapshot.Prompts["premise_style/project_overall_style"]; got != selectedStyle {
+		t.Fatalf("frozen creation style=%q, want %q", got, selectedStyle)
 	}
 }
 

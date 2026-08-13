@@ -1,10 +1,9 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use std::fs::{self, OpenOptions};
-use std::io::{self, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-#[cfg(feature = "desktop-updater")]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -25,6 +24,9 @@ const TRAY_ID: &str = "lumi-tray";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const HEALTH_INTERVAL: Duration = Duration::from_millis(150);
 const DESKTOP_ACCESS_TOKEN_ENV: &str = "LUMI_DESKTOP_ACCESS_TOKEN";
+const LOG_LEVEL_ENV: &str = "LOG_LEVEL";
+const LOG_MAX_BYTES: u64 = 5 * 1024 * 1024;
+const LOG_BACKUP_COUNT: usize = 2;
 #[cfg(target_os = "windows")]
 const BACKEND_BINARY_NAME: &str = "lumi_web.exe";
 #[cfg(not(target_os = "windows"))]
@@ -41,6 +43,205 @@ const OPEN_TARGET_ENV: &str = "LUMI_OPEN_TARGET";
 const OPEN_TARGET_SCRIPT: &str =
     "$target = $env:LUMI_OPEN_TARGET; Remove-Item Env:LUMI_OPEN_TARGET; Start-Process -FilePath $target";
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+impl LogLevel {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Debug => "debug",
+            Self::Info => "info",
+            Self::Warn => "warn",
+            Self::Error => "error",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Debug => "DEBUG",
+            Self::Info => "INFO",
+            Self::Warn => "WARN",
+            Self::Error => "ERROR",
+        }
+    }
+}
+
+fn parse_log_level(value: Option<&str>, default: LogLevel) -> Result<LogLevel, String> {
+    let Some(value) = value else {
+        return Ok(default);
+    };
+    if value.is_empty() {
+        return Ok(default);
+    }
+    match value.trim().to_ascii_lowercase().as_str() {
+        "debug" => Ok(LogLevel::Debug),
+        "info" => Ok(LogLevel::Info),
+        "warn" => Ok(LogLevel::Warn),
+        "error" => Ok(LogLevel::Error),
+        _ => Err("LOG_LEVEL must be one of debug, info, warn, or error".to_owned()),
+    }
+}
+
+fn configured_log_level() -> Result<LogLevel, String> {
+    let default = if cfg!(debug_assertions) {
+        LogLevel::Info
+    } else {
+        LogLevel::Warn
+    };
+    let value = match std::env::var(LOG_LEVEL_ENV) {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(std::env::VarError::NotUnicode(_)) => {
+            return Err("LOG_LEVEL must contain valid Unicode".to_owned())
+        }
+    };
+    parse_log_level(value.as_deref(), default)
+}
+
+#[derive(Clone)]
+struct DesktopLogger {
+    inner: Arc<DesktopLoggerInner>,
+}
+
+struct DesktopLoggerInner {
+    path: PathBuf,
+    threshold: LogLevel,
+    max_bytes: u64,
+    backup_count: usize,
+    write_lock: Mutex<()>,
+    rotation_error_reported: AtomicBool,
+}
+
+impl DesktopLogger {
+    fn new(path: PathBuf, threshold: LogLevel) -> io::Result<Self> {
+        Self::with_rotation(path, threshold, LOG_MAX_BYTES, LOG_BACKUP_COUNT)
+    }
+
+    fn with_rotation(
+        path: PathBuf,
+        threshold: LogLevel,
+        max_bytes: u64,
+        backup_count: usize,
+    ) -> io::Result<Self> {
+        ensure_parent_dir(&path)?;
+        OpenOptions::new().create(true).append(true).open(&path)?;
+        Ok(Self {
+            inner: Arc::new(DesktopLoggerInner {
+                path,
+                threshold,
+                max_bytes,
+                backup_count,
+                write_lock: Mutex::new(()),
+                rotation_error_reported: AtomicBool::new(false),
+            }),
+        })
+    }
+
+    fn path(&self) -> &Path {
+        &self.inner.path
+    }
+
+    fn threshold(&self) -> LogLevel {
+        self.inner.threshold
+    }
+
+    fn log(&self, level: LogLevel, message: &str) {
+        if level < self.inner.threshold {
+            return;
+        }
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|value| value.as_secs())
+            .unwrap_or(0);
+        let line = format!("[{timestamp}] [{}] {message}\n", level.label());
+        let _guard = self.inner.write_lock.lock().unwrap();
+        if let Err(error) = self.append(line.as_bytes()) {
+            eprintln!("failed to write Lumi log: {error}");
+        }
+    }
+
+    fn append(&self, line: &[u8]) -> io::Result<()> {
+        let current_size = fs::metadata(&self.inner.path)
+            .map(|metadata| metadata.len())
+            .or_else(|error| {
+                if error.kind() == io::ErrorKind::NotFound {
+                    Ok(0)
+                } else {
+                    Err(error)
+                }
+            })?;
+        if current_size > 0
+            && current_size.saturating_add(line.len() as u64) > self.inner.max_bytes
+        {
+            if let Err(error) = self.rotate() {
+                if !self
+                    .inner
+                    .rotation_error_reported
+                    .swap(true, Ordering::Relaxed)
+                {
+                    eprintln!("failed to rotate Lumi log: {error}");
+                }
+            }
+        }
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.inner.path)?
+            .write_all(line)
+    }
+
+    fn rotate(&self) -> io::Result<()> {
+        if self.inner.backup_count == 0 {
+            return fs::write(&self.inner.path, b"");
+        }
+        let oldest = backup_log_path(&self.inner.path, self.inner.backup_count);
+        if oldest.exists() {
+            fs::remove_file(oldest)?;
+        }
+        for index in (1..self.inner.backup_count).rev() {
+            let source = backup_log_path(&self.inner.path, index);
+            if source.exists() {
+                fs::rename(source, backup_log_path(&self.inner.path, index + 1))?;
+            }
+        }
+        if self.inner.path.exists() {
+            fs::rename(&self.inner.path, backup_log_path(&self.inner.path, 1))?;
+        }
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.inner.path)?;
+        Ok(())
+    }
+}
+
+fn backup_log_path(path: &Path, index: usize) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(format!(".{index}"));
+    PathBuf::from(value)
+}
+
+fn backend_log_level(message: &str) -> LogLevel {
+    for field in message.split_whitespace() {
+        match field {
+            "level=DEBUG" => return LogLevel::Debug,
+            "level=INFO" => return LogLevel::Info,
+            "level=WARN" => return LogLevel::Warn,
+            "level=ERROR" => return LogLevel::Error,
+            _ => {}
+        }
+    }
+    // The Go process is configured with the same threshold. Output from a
+    // dependency that bypasses slog is therefore expected to be warning or
+    // error output rather than an unfiltered informational stream.
+    LogLevel::Warn
+}
+
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -52,14 +253,15 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             let log_path = log_path(app.handle())?;
-            ensure_parent_dir(&log_path)?;
-            write_log(&log_path, "starting Lumi desktop launcher");
+            let log_level = configured_log_level().map_err(io::Error::other)?;
+            let logger = DesktopLogger::new(log_path, log_level)?;
+            logger.log(LogLevel::Info, "starting Lumi desktop launcher");
 
             let port = select_port()?;
             let base_url = app_url(port);
             let access_token = generate_access_token().map_err(io::Error::other)?;
             let access_url = desktop_access_url(&base_url, &access_token);
-            let state = LauncherState::new(base_url, access_url, log_path.clone());
+            let state = LauncherState::new(base_url, access_url, logger.clone());
             app.manage(state);
 
             #[cfg(feature = "desktop-updater")]
@@ -73,7 +275,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn_blocking(move || {
-                launch_and_monitor_backend(handle, port, access_token, log_path);
+                launch_and_monitor_backend(handle, port, access_token, logger);
             });
 
             #[cfg(feature = "desktop-updater")]
@@ -109,13 +311,13 @@ struct LauncherState {
     terminating: Mutex<bool>,
     base_url: String,
     access_url: String,
-    log_path: PathBuf,
+    logger: DesktopLogger,
     #[cfg(feature = "desktop-updater")]
     update_check_in_progress: Arc<AtomicBool>,
 }
 
 impl LauncherState {
-    fn new(base_url: String, access_url: String, log_path: PathBuf) -> Self {
+    fn new(base_url: String, access_url: String, logger: DesktopLogger) -> Self {
         Self {
             child: Arc::new(Mutex::new(None)),
             ready: Mutex::new(false),
@@ -123,7 +325,7 @@ impl LauncherState {
             terminating: Mutex::new(false),
             base_url,
             access_url,
-            log_path,
+            logger,
             #[cfg(feature = "desktop-updater")]
             update_check_in_progress: Arc::new(AtomicBool::new(false)),
         }
@@ -140,10 +342,13 @@ impl LauncherState {
     fn request_open(&self) {
         if *self.ready.lock().unwrap() {
             match open_system_url(&self.access_url) {
-                Ok(()) => write_log(&self.log_path, &browser_opened_log_message(&self.base_url)),
-                Err(error) => {
-                    write_log(&self.log_path, &format!("failed to open browser: {error}"))
-                }
+                Ok(()) => self.logger.log(
+                    LogLevel::Info,
+                    &browser_opened_log_message(&self.base_url),
+                ),
+                Err(error) => self
+                    .logger
+                    .log(LogLevel::Warn, &format!("failed to open browser: {error}")),
             }
             return;
         }
@@ -170,9 +375,11 @@ impl LauncherState {
         let mut guard = self.child.lock().unwrap();
         if let Some(child) = guard.as_mut() {
             match stop_child(child) {
-                Ok(()) => write_log(&self.log_path, "terminated Lumi backend"),
-                Err(error) => write_log(
-                    &self.log_path,
+                Ok(()) => self
+                    .logger
+                    .log(LogLevel::Info, "terminated Lumi backend"),
+                Err(error) => self.logger.log(
+                    LogLevel::Error,
                     &format!("failed to terminate Lumi backend: {error}"),
                 ),
             }
@@ -189,12 +396,12 @@ impl LauncherState {
         if self.is_terminating() {
             drop(guard);
             match stop_child(&mut child) {
-                Ok(()) => write_log(
-                    &self.log_path,
+                Ok(()) => self.logger.log(
+                    LogLevel::Info,
                     "terminated Lumi backend started during shutdown",
                 ),
-                Err(error) => write_log(
-                    &self.log_path,
+                Err(error) => self.logger.log(
+                    LogLevel::Error,
                     &format!("failed to terminate backend started during shutdown: {error}"),
                 ),
             }
@@ -267,13 +474,17 @@ fn build_tray(app_handle: &AppHandle) -> tauri::Result<()> {
             "copy-url" => {
                 let state = app.state::<LauncherState>();
                 if let Err(error) = app.clipboard().write_text(state.access_url.clone()) {
-                    write_log(&state.log_path, &format!("failed to copy URL: {error}"));
+                    state
+                        .logger
+                        .log(LogLevel::Warn, &format!("failed to copy URL: {error}"));
                 }
             }
             "view-logs" => {
                 let state = app.state::<LauncherState>();
-                if let Err(error) = open_system_target(&state.log_path) {
-                    write_log(&state.log_path, &format!("failed to open logs: {error}"));
+                if let Err(error) = open_system_target(state.logger.path()) {
+                    state
+                        .logger
+                        .log(LogLevel::Warn, &format!("failed to open logs: {error}"));
                 }
             }
             #[cfg(feature = "desktop-updater")]
@@ -343,6 +554,13 @@ impl UpdateFailure {
         matches!(self, Self::Install(_)) || origin.reports_errors()
     }
 
+    fn log_level(&self) -> LogLevel {
+        match self {
+            Self::Check(_) => LogLevel::Warn,
+            Self::Install(_) => LogLevel::Error,
+        }
+    }
+
     fn title(&self) -> &'static str {
         match self {
             Self::Check(_) => "Update Check Failed",
@@ -386,8 +604,9 @@ fn check_for_updates(app: AppHandle, origin: UpdateCheckOrigin) {
     tauri::async_runtime::spawn(async move {
         let _guard = guard;
         if let Err(error) = run_update_check(&app, origin).await {
-            let log_path = app.state::<LauncherState>().log_path.clone();
-            write_log(&log_path, &error.to_string());
+            app.state::<LauncherState>()
+                .logger
+                .log(error.log_level(), &error.to_string());
             if error.reports_to_user(origin) {
                 show_error(&app, error.title(), error.user_message());
             }
@@ -438,34 +657,39 @@ async fn run_update_check(app: &AppHandle, origin: UpdateCheckOrigin) -> Result<
         return Ok(());
     }
 
-    let log_path = app.state::<LauncherState>().log_path.clone();
-    write_log(
-        &log_path,
+    let logger = app.state::<LauncherState>().logger.clone();
+    logger.log(
+        LogLevel::Info,
         &format!("downloading Lumi update {}", update.version),
     );
-    let finished_log_path = log_path.clone();
+    let finished_logger = logger.clone();
     update
         .download_and_install(
             |_, _| {},
-            move || write_log(&finished_log_path, "finished downloading Lumi update"),
+            move || finished_logger.log(LogLevel::Info, "finished downloading Lumi update"),
         )
         .await
         .map_err(UpdateFailure::install)?;
 
-    write_log(&log_path, "installed Lumi update; restarting");
+    logger.log(LogLevel::Info, "installed Lumi update; restarting");
     app.state::<LauncherState>().terminate();
     app.restart();
 }
 
-fn launch_and_monitor_backend(app: AppHandle, port: u16, access_token: String, log_path: PathBuf) {
+fn launch_and_monitor_backend(
+    app: AppHandle,
+    port: u16,
+    access_token: String,
+    logger: DesktopLogger,
+) {
     if app.state::<LauncherState>().is_terminating() {
         return;
     }
 
-    let child = match start_backend(&app, port, &access_token, &log_path) {
+    let child = match start_backend(&app, port, &access_token, &logger) {
         Ok(child) => child,
         Err(error) => {
-            startup_failed(&app, &log_path, error);
+            startup_failed(&app, &logger, error);
             return;
         }
     };
@@ -477,23 +701,23 @@ fn launch_and_monitor_backend(app: AppHandle, port: u16, access_token: String, l
 
     if let Err(error) = wait_until_ready(&child_slot, port, STARTUP_TIMEOUT) {
         app.state::<LauncherState>().terminate();
-        startup_failed(&app, &log_path, error);
+        startup_failed(&app, &logger, error);
         return;
     }
 
-    write_log(
-        &log_path,
+    logger.log(
+        LogLevel::Info,
         &format!("Lumi backend ready at {}", app_url(port)),
     );
     app.state::<LauncherState>().mark_ready();
-    monitor_backend(app, child_slot, log_path);
+    monitor_backend(app, child_slot, logger);
 }
 
 fn start_backend(
     app: &AppHandle,
     port: u16,
     access_token: &str,
-    log_path: &Path,
+    logger: &DesktopLogger,
 ) -> Result<Child, String> {
     let backend_path = if cfg!(debug_assertions) {
         std::env::var_os("LUMI_DESKTOP_BACKEND")
@@ -520,19 +744,29 @@ fn start_backend(
         .map_err(|error| format!("failed to resolve the user home directory: {error}"))?;
     let address = format!("127.0.0.1:{port}");
     let frontend_url = app_url(port);
-    write_log(log_path, &format!("starting Lumi backend on {address}"));
+    logger.log(
+        LogLevel::Info,
+        &format!("starting Lumi backend on {address}"),
+    );
 
     let mut command = Command::new(&backend_path);
-    configure_backend_command(&mut command, &home, &address, &frontend_url, access_token);
+    configure_backend_command(
+        &mut command,
+        &home,
+        &address,
+        &frontend_url,
+        access_token,
+        logger.threshold(),
+    );
     let mut child = command
         .spawn()
         .map_err(|error| format!("failed to start {}: {error}", backend_path.display()))?;
 
     if let Some(stdout) = child.stdout.take() {
-        spawn_output_thread(stdout, log_path.to_path_buf(), "stdout");
+        spawn_output_thread(stdout, logger.clone(), "stdout");
     }
     if let Some(stderr) = child.stderr.take() {
-        spawn_output_thread(stderr, log_path.to_path_buf(), "stderr");
+        spawn_output_thread(stderr, logger.clone(), "stderr");
     }
     Ok(child)
 }
@@ -553,6 +787,7 @@ fn configure_backend_command(
     address: &str,
     frontend_url: &str,
     access_token: &str,
+    log_level: LogLevel,
 ) {
     command
         .current_dir(home)
@@ -560,6 +795,7 @@ fn configure_backend_command(
         .env("APP_ADDRESS", address)
         .env("FRONTEND_URL", frontend_url)
         .env(DESKTOP_ACCESS_TOKEN_ENV, access_token)
+        .env(LOG_LEVEL_ENV, log_level.as_str())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -609,7 +845,7 @@ fn wait_until_ready(
     }
 }
 
-fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, log_path: PathBuf) {
+fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, logger: DesktopLogger) {
     loop {
         if app.state::<LauncherState>().is_terminating() {
             return;
@@ -633,17 +869,19 @@ fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, log_pa
         match status {
             Some(Ok(status)) => {
                 let code = status.code().unwrap_or(1);
-                write_log(
-                    &log_path,
-                    &format!("Lumi backend exited with status {code}"),
-                );
+                let level = if code == 0 {
+                    LogLevel::Warn
+                } else {
+                    LogLevel::Error
+                };
+                logger.log(level, &format!("Lumi backend exited with status {code}"));
                 if code != 0 {
                     show_error(
                         &app,
                         "Lumi Exited",
                         format!(
                             "The Lumi backend exited with code {code}.\n\nLogs: {}",
-                            log_path.display()
+                            logger.path().display()
                         ),
                     );
                 }
@@ -651,7 +889,10 @@ fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, log_pa
                 return;
             }
             Some(Err(error)) => {
-                write_log(&log_path, &format!("failed to monitor backend: {error}"));
+                logger.log(
+                    LogLevel::Error,
+                    &format!("failed to monitor backend: {error}"),
+                );
                 app.exit(1);
                 return;
             }
@@ -660,12 +901,15 @@ fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, log_pa
     }
 }
 
-fn startup_failed(app: &AppHandle, log_path: &Path, error: String) {
-    write_log(log_path, &format!("Lumi startup failed: {error}"));
+fn startup_failed(app: &AppHandle, logger: &DesktopLogger, error: String) {
+    logger.log(
+        LogLevel::Error,
+        &format!("Lumi startup failed: {error}"),
+    );
     show_error(
         app,
         "Lumi Failed to Start",
-        format!("{error}\n\nLogs: {}", log_path.display()),
+        format!("{error}\n\nLogs: {}", logger.path().display()),
     );
     app.exit(1);
 }
@@ -855,21 +1099,30 @@ fn open_system_url(target: &str) -> io::Result<()> {
     open_system_target(target)
 }
 
-fn spawn_output_thread<R>(mut stream: R, log_path: PathBuf, label: &'static str)
+fn spawn_output_thread<R>(stream: R, logger: DesktopLogger, label: &'static str)
 where
     R: Read + Send + 'static,
 {
     std::thread::spawn(move || {
-        let mut buffer = [0_u8; 4096];
+        let mut reader = BufReader::new(stream);
+        let mut buffer = Vec::new();
         loop {
-            match stream.read(&mut buffer) {
+            buffer.clear();
+            match reader.read_until(b'\n', &mut buffer) {
                 Ok(0) => break,
                 Ok(count) => {
                     let text = String::from_utf8_lossy(&buffer[..count]);
-                    write_log(&log_path, &format!("[{label}] {}", text.trim_end()));
+                    let message = text.trim_end();
+                    if message.is_empty() {
+                        continue;
+                    }
+                    logger.log(backend_log_level(message), &format!("[{label}] {message}"));
                 }
                 Err(error) => {
-                    write_log(&log_path, &format!("failed to read {label}: {error}"));
+                    logger.log(
+                        LogLevel::Warn,
+                        &format!("failed to read {label}: {error}"),
+                    );
                     break;
                 }
             }
@@ -901,23 +1154,28 @@ fn ensure_parent_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn write_log(path: &Path, message: &str) {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|value| value.as_secs())
-        .unwrap_or(0);
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "[{timestamp}] {message}");
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::thread;
+
+    fn unique_log_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "lumi-{label}-{}-{}.log",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    fn remove_log_family(path: &Path) {
+        let _ = fs::remove_file(path);
+        for index in 1..=LOG_BACKUP_COUNT {
+            let _ = fs::remove_file(backup_log_path(path, index));
+        }
+    }
 
     #[cfg(unix)]
     fn long_running_test_command() -> Command {
@@ -982,6 +1240,123 @@ mod tests {
     }
 
     #[test]
+    fn log_level_parser_supports_defaults_and_overrides() {
+        assert_eq!(
+            parse_log_level(None, LogLevel::Warn).unwrap(),
+            LogLevel::Warn
+        );
+        assert_eq!(
+            parse_log_level(Some(""), LogLevel::Info).unwrap(),
+            LogLevel::Info
+        );
+        assert_eq!(
+            parse_log_level(Some(" DeBuG "), LogLevel::Warn).unwrap(),
+            LogLevel::Debug
+        );
+        assert_eq!(
+            parse_log_level(Some("ERROR"), LogLevel::Info).unwrap(),
+            LogLevel::Error
+        );
+        assert!(parse_log_level(Some("trace"), LogLevel::Info).is_err());
+        assert!(parse_log_level(Some("   "), LogLevel::Info).is_err());
+    }
+
+    #[test]
+    fn backend_log_level_reads_slog_text_output() {
+        assert_eq!(
+            backend_log_level("time=x level=DEBUG msg=x"),
+            LogLevel::Debug
+        );
+        assert_eq!(
+            backend_log_level("time=x level=INFO msg=x"),
+            LogLevel::Info
+        );
+        assert_eq!(
+            backend_log_level("time=x level=WARN msg=x"),
+            LogLevel::Warn
+        );
+        assert_eq!(
+            backend_log_level("time=x level=ERROR msg=x"),
+            LogLevel::Error
+        );
+        assert_eq!(backend_log_level("dependency warning"), LogLevel::Warn);
+    }
+
+    #[test]
+    fn desktop_logger_filters_below_threshold_and_creates_active_file() {
+        let path = unique_log_path("level-filter");
+        let logger = DesktopLogger::with_rotation(path.clone(), LogLevel::Warn, 1024, 2).unwrap();
+
+        logger.log(LogLevel::Info, "hidden-info");
+        logger.log(LogLevel::Warn, "visible-warning");
+        logger.log(LogLevel::Error, "visible-error");
+
+        let contents = fs::read_to_string(&path).unwrap();
+        assert!(!contents.contains("hidden-info"));
+        assert!(contents.contains("[WARN] visible-warning"));
+        assert!(contents.contains("[ERROR] visible-error"));
+        remove_log_family(&path);
+    }
+
+    #[test]
+    fn desktop_logger_rotates_two_backups_without_truncating_records() {
+        let path = unique_log_path("rotation");
+        let logger = DesktopLogger::with_rotation(path.clone(), LogLevel::Info, 1, 2).unwrap();
+
+        logger.log(LogLevel::Info, "first-marker");
+        logger.log(LogLevel::Info, "second-marker");
+        logger.log(LogLevel::Info, "third-marker");
+        logger.log(LogLevel::Info, "fourth-marker");
+
+        let active = fs::read_to_string(&path).unwrap();
+        let first_backup = fs::read_to_string(backup_log_path(&path, 1)).unwrap();
+        let second_backup = fs::read_to_string(backup_log_path(&path, 2)).unwrap();
+        assert!(active.contains("fourth-marker"));
+        assert!(first_backup.contains("third-marker"));
+        assert!(second_backup.contains("second-marker"));
+        assert!(!active.contains("first-marker"));
+        assert!(!first_backup.contains("first-marker"));
+        assert!(!second_backup.contains("first-marker"));
+        remove_log_family(&path);
+    }
+
+    #[test]
+    fn desktop_logger_serializes_concurrent_writes_during_rotation() {
+        let path = unique_log_path("concurrent-rotation");
+        let logger = DesktopLogger::with_rotation(path.clone(), LogLevel::Info, 220, 2).unwrap();
+        let workers = (0..4)
+            .map(|worker| {
+                let logger = logger.clone();
+                thread::spawn(move || {
+                    for entry in 0..20 {
+                        logger.log(LogLevel::Info, &format!("writer-{worker}-entry-{entry}"));
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        for worker in workers {
+            worker.join().unwrap();
+        }
+
+        let mut line_count = 0;
+        for candidate in [
+            path.clone(),
+            backup_log_path(&path, 1),
+            backup_log_path(&path, 2),
+        ] {
+            let contents = fs::read_to_string(candidate).unwrap();
+            for line in contents.lines() {
+                line_count += 1;
+                assert!(line.starts_with('['));
+                assert!(line.contains("] [INFO] writer-"));
+                assert_eq!(line.matches("writer-").count(), 1);
+            }
+        }
+        assert!(line_count > 0);
+        remove_log_family(&path);
+    }
+
+    #[test]
     fn desktop_access_tokens_are_random_url_safe_values() {
         let first = generate_access_token().unwrap();
         let second = generate_access_token().unwrap();
@@ -1021,6 +1396,7 @@ mod tests {
             "127.0.0.1:49152",
             "http://127.0.0.1:49152",
             "secret-token",
+            LogLevel::Warn,
         );
         let environment = command
             .get_envs()
@@ -1029,6 +1405,10 @@ mod tests {
         assert_eq!(
             environment.get(std::ffi::OsStr::new(DESKTOP_ACCESS_TOKEN_ENV)),
             Some(&std::ffi::OsString::from("secret-token"))
+        );
+        assert_eq!(
+            environment.get(std::ffi::OsStr::new(LOG_LEVEL_ENV)),
+            Some(&std::ffi::OsString::from("warn"))
         );
         assert!(!command
             .get_args()
@@ -1109,11 +1489,13 @@ mod tests {
     #[test]
     fn update_failures_only_hide_startup_check_errors() {
         let check_failure = UpdateFailure::check("offline");
+        assert_eq!(check_failure.log_level(), LogLevel::Warn);
         assert!(!check_failure.reports_to_user(UpdateCheckOrigin::Startup));
         assert!(check_failure.reports_to_user(UpdateCheckOrigin::Manual));
         assert_eq!(check_failure.title(), "Update Check Failed");
 
         let install_failure = UpdateFailure::install("signature rejected");
+        assert_eq!(install_failure.log_level(), LogLevel::Error);
         assert!(install_failure.reports_to_user(UpdateCheckOrigin::Startup));
         assert!(install_failure.reports_to_user(UpdateCheckOrigin::Manual));
         assert_eq!(install_failure.title(), "Update Failed");
@@ -1130,7 +1512,7 @@ mod tests {
         let state = LauncherState::new(
             base_url.clone(),
             desktop_access_url(&base_url, "secret-token"),
-            log_path,
+            DesktopLogger::new(log_path, LogLevel::Info).unwrap(),
         );
 
         let guard = state.begin_update_check().unwrap();
@@ -1337,7 +1719,11 @@ mod tests {
         ));
         let base_url = app_url(49152);
         let access_url = desktop_access_url(&base_url, "secret-token");
-        let state = LauncherState::new(base_url, access_url, log_path);
+        let state = LauncherState::new(
+            base_url,
+            access_url,
+            DesktopLogger::new(log_path, LogLevel::Info).unwrap(),
+        );
         state.terminate();
 
         let child = long_running_test_command().spawn().unwrap();

@@ -31,8 +31,9 @@ test('workflow controls cover retry and cancellation states', () => {
 
 test('ChatArea presents comic storyboard workflows with localized kind and step copy', () => {
   const chatArea = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
+  const presentation = readFileSync(new URL('./chatAreaPresentation.js', import.meta.url), 'utf8')
   const messages = readFileSync(new URL('../i18n/messages/chat.js', import.meta.url), 'utf8')
-  assert.match(chatArea, /comic_storyboard_generation: 'chat\.workflow\.kind\.comic_storyboard_generation'/)
+  assert.match(presentation, /comic_storyboard_generation: 'chat\.workflow\.kind\.comic_storyboard_generation'/)
   assert.match(chatArea, /comic_storyboard: 'chat\.workflow\.step\.comic_storyboard'/)
   assert.match(messages, /'chat\.workflow\.kind\.comic_storyboard_generation': \['漫画分镜生成', 'Comic storyboard generation'\]/)
   assert.match(messages, /'chat\.workflow\.step\.comic_storyboard': \['生成漫画分镜', 'Generate comic storyboard'\]/)

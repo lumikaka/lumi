@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lumi/internal/agent"
+	"lumi/internal/production"
 )
 
 func TestComicMomentCountPlanTracksSectionLimitDeterministically(t *testing.T) {
@@ -20,6 +21,7 @@ func TestComicMomentCountPlanTracksSectionLimitDeterministically(t *testing.T) {
 		{limit: 1, want: []int{2}},
 		{limit: 6, want: []int{2, 3, 1, 2, 3, 1}},
 		{limit: 12, want: []int{2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1}},
+		{limit: 24, want: []int{2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1}},
 	}
 	for _, test := range tests {
 		if got := comicMomentCountPlan(test.limit); !reflect.DeepEqual(got, test.want) {
@@ -41,6 +43,7 @@ func TestComicStoryboardSectionLimitDefaultsValidatesAndFreezes(t *testing.T) {
 		{name: "one", value: intPointer(1), want: 1},
 		{name: "six", value: intPointer(6), want: 6},
 		{name: "twelve", value: intPointer(12), want: 12},
+		{name: "maximum", value: intPointer(production.MaxGeneratedComicSections), want: production.MaxGeneratedComicSections},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -67,21 +70,52 @@ func TestComicStoryboardSectionLimitDefaultsValidatesAndFreezes(t *testing.T) {
 
 	harness := newQueueHarness(t)
 	chapter := harness.createChapter(t, "vol01.ch01")
-	for _, invalid := range []int{0, 13} {
+	for _, invalid := range []int{0, production.MaxGeneratedComicSections + 1} {
 		_, err := harness.queue.CreateStoryWorkflow(context.Background(), harness.project.UUID, KindComicStoryboardGeneration, chapter.UUID, CreateStoryWorkflowInput{
 			ProviderUUID: harness.provider.UUID, MaxSectionCount: &invalid, IdempotencyKey: "comic-invalid-" + jsonNumber(invalid),
 		})
 		var queueErr *Error
-		if !errors.As(err, &queueErr) || queueErr.Code != CodeInvalidTask {
+		if !errors.As(err, &queueErr) || queueErr.Code != CodeInvalidTask || !strings.Contains(queueErr.Details, jsonNumber(production.MaxGeneratedComicSections)) {
 			t.Fatalf("max_section_count=%d error=%v", invalid, err)
 		}
+	}
+}
+
+func TestComicStoryboardResponseProjectsContractMaximum(t *testing.T) {
+	harness := newQueueHarness(t)
+	chapter := harness.createChapter(t, "vol01.ch01")
+	sections := make([]map[string]any, production.MaxGeneratedComicSections)
+	for index := range sections {
+		sections[index] = map[string]any{
+			"section_no": index + 1,
+			"title":      "Page " + jsonNumber(index+1),
+			"storyboard": "Storyboard " + jsonNumber(index+1),
+		}
+	}
+	raw, err := json.Marshal(map[string]any{
+		"chapter_code": chapter.ChapterCode,
+		"title":        "Contract maximum pages",
+		"sections":     sections,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := harness.runtime(t).applyStoryWorkflowResponse(context.Background(), taskRecord{Kind: KindComicStoryboardGeneration}, storyGenerationSnapshot{
+		ChapterUUID: chapter.UUID, ChapterCode: chapter.ChapterCode, MaxSectionCount: production.MaxGeneratedComicSections,
+	}, string(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sectionUUIDs, ok := payload["section_uuids"].([]string)
+	if !ok || len(sectionUUIDs) != production.MaxGeneratedComicSections {
+		t.Fatalf("storyboard payload=%+v", payload)
 	}
 }
 
 func TestComicStoryboardRetryKeepsFrozenLimitAndPlan(t *testing.T) {
 	harness := newQueueHarness(t)
 	chapter := harness.createChapter(t, "vol01.ch01")
-	limit := 12
+	limit := production.MaxGeneratedComicSections
 	created, err := harness.queue.CreateStoryWorkflow(context.Background(), harness.project.UUID, KindComicStoryboardGeneration, chapter.UUID, CreateStoryWorkflowInput{
 		ProviderUUID: harness.provider.UUID, Prompt: "[retry]", MaxSectionCount: &limit, IdempotencyKey: "comic-limit-retry",
 	})
@@ -113,7 +147,7 @@ func TestComicStoryboardRetryKeepsFrozenLimitAndPlan(t *testing.T) {
 	if err := json.Unmarshal(retried.InputSnapshot, &after); err != nil {
 		t.Fatal(err)
 	}
-	if before.MaxSectionCount != 12 || !reflect.DeepEqual(before.MomentCountPlan, after.MomentCountPlan) || after.MaxSectionCount != before.MaxSectionCount {
+	if before.MaxSectionCount != production.MaxGeneratedComicSections || !reflect.DeepEqual(before.MomentCountPlan, after.MomentCountPlan) || after.MaxSectionCount != before.MaxSectionCount {
 		t.Fatalf("retry drifted before=%+v after=%+v", before, after)
 	}
 	waitTaskStatus(t, harness.queue, harness.project.UUID, created.UUID, StatusCompleted)

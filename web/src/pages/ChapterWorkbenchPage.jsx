@@ -585,7 +585,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       }
     }
     updateSearchParams(searchParams, setSearchParams, {
-      chat_scope: 'project',
+      chat_scope: null,
       chat_thread_uuid: null,
       workflow_uuid: null,
       chat_new: '1',

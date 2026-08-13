@@ -128,3 +128,15 @@ test('comic storyboard creation refreshes ChatArea lists without auto-opening th
   }
   assert.doesNotMatch(mutation, /setSelectedThreadUuid|chat_thread_uuid|workflow_uuid/)
 })
+
+test('comic storyboard generation keeps default 6 and exposes the 24-page contract maximum', () => {
+  const source = readFileSync(new URL('./StoryWorkspacePage.jsx', import.meta.url), 'utf8')
+  const messages = readFileSync(new URL('../i18n/messages/comic.js', import.meta.url), 'utf8')
+  assert.match(source, /const DEFAULT_COMIC_SECTION_COUNT = 6/)
+  assert.match(source, /const MAX_COMIC_SECTION_COUNT = 24/)
+  assert.match(source, /useState\(DEFAULT_COMIC_SECTION_COUNT\)/)
+  assert.match(source, /max=\{MAX_COMIC_SECTION_COUNT\}/)
+  assert.match(source, /setComicMaxSectionCount\(DEFAULT_COMIC_SECTION_COUNT\)/)
+  assert.match(messages, /范围 1～24，默认 6/)
+  assert.match(messages, /From 1 to 24, default 6/)
+})

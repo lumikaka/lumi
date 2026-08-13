@@ -140,16 +140,12 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 	return service.GetThread(ctx, projectUUID, threadUUID)
 }
 
-func (service *Service) ListThreads(ctx context.Context, projectUUID, scope string) ([]Thread, error) {
-	page, err := service.ListThreadsPage(ctx, projectUUID, scope, 1, 100)
+func (service *Service) ListThreads(ctx context.Context, projectUUID string) ([]Thread, error) {
+	page, err := service.ListThreadsPage(ctx, projectUUID, 1, 100)
 	return page.Items, err
 }
 
-func (service *Service) ListThreadsPage(ctx context.Context, projectUUID, scope string, currentPage, perPage int) (ThreadPage, error) {
-	scope = strings.ToLower(strings.TrimSpace(scope))
-	if scope != "" && scope != ThreadScopeProject && scope != ThreadScopePremise {
-		return ThreadPage{}, domainError(CodeValidation, "Thread scope 无效", "scope 只支持 project 或 premise。", nil)
-	}
+func (service *Service) ListThreadsPage(ctx context.Context, projectUUID string, currentPage, perPage int) (ThreadPage, error) {
 	if currentPage < 1 {
 		currentPage = 1
 	}
@@ -166,9 +162,6 @@ func (service *Service) ListThreadsPage(ctx context.Context, projectUUID, scope 
 			return err
 		}
 		query := store.DB().WithContext(ctx).Where("project_id=? AND archived_at IS NULL", pid)
-		if scope != "" {
-			query = query.Where("scope = ?", scope)
-		}
 		if err := query.Model(&threadRecord{}).Count(&result.Pagination.Total).Error; err != nil {
 			return err
 		}

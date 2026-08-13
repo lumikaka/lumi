@@ -501,7 +501,7 @@ func TestBatchPlanAndComicStoryboardWorkflowsApplyFrozenOutputs(t *testing.T) {
 		t.Fatalf("sections=%+v err=%v", sections, err)
 	}
 	agents := agent.NewService(harness.projects, harness.queue.providers, nil, harness.queue, nil)
-	threads, err := agents.ListThreads(context.Background(), harness.project.UUID, agent.ThreadScopeProject)
+	threads, err := agents.ListThreads(context.Background(), harness.project.UUID)
 	if err != nil || len(threads) != 1 || threads[0].SubjectUUID != chapter.UUID || threads[0].Status != agent.ThreadCompleted {
 		t.Fatalf("storyboard ChatArea threads=%+v err=%v", threads, err)
 	}

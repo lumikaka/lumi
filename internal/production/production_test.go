@@ -120,6 +120,56 @@ func TestOverallStylePromptAndLegacyPremiseStayInSync(t *testing.T) {
 	}
 }
 
+func TestCreateGeneratedSectionsSupportsContractMaximum(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Contract maximum pages"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := make([]GeneratedComicSection, MaxGeneratedComicSections)
+	for index := range generated {
+		generated[index] = GeneratedComicSection{
+			Title:        fmt.Sprintf("Page %d", index+1),
+			StoryboardMD: fmt.Sprintf("Storyboard %d", index+1),
+		}
+	}
+	sections, err := h.service.CreateGeneratedSections(ctx, chapter.UUID, generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sections) != MaxGeneratedComicSections {
+		t.Fatalf("generated sections=%d, want %d", len(sections), MaxGeneratedComicSections)
+	}
+	for index, section := range sections {
+		if section.SectionNo != index+1 || section.Title != generated[index].Title || section.CurrentStoryboard == nil || section.CurrentStoryboard.ContentMD != generated[index].StoryboardMD {
+			t.Fatalf("section %d=%+v", index+1, section)
+		}
+	}
+}
+
+func TestCreateGeneratedSectionsRejectsAboveContractMaximumAtomically(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Too many pages"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := make([]GeneratedComicSection, MaxGeneratedComicSections+1)
+	for index := range generated {
+		generated[index] = GeneratedComicSection{Title: fmt.Sprintf("Page %d", index+1), StoryboardMD: "Storyboard"}
+	}
+	_, err = h.service.CreateGeneratedSections(ctx, chapter.UUID, generated)
+	var domainErr *Error
+	if !errors.As(err, &domainErr) || domainErr.Code != CodeValidation || domainErr.Details != fmt.Sprintf("sections 必须包含 1 到 %d 项。", MaxGeneratedComicSections) {
+		t.Fatalf("over-limit error=%v", err)
+	}
+	sections, listErr := h.service.ListSections(ctx, chapter.UUID)
+	if listErr != nil || len(sections) != 0 {
+		t.Fatalf("over-limit write was not atomic: sections=%+v error=%v", sections, listErr)
+	}
+}
+
 func TestPremiseTagsVariantsAndCurrentPointers(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

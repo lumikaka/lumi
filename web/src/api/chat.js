@@ -13,9 +13,8 @@ function threadPath(projectUuid, threadUuid = '', suffix = '') {
   return projectPath(projectUuid, `/chat_threads${resource}${suffix}`)
 }
 
-export function listChatThreads(projectUuid, { scope = '', page = 1, perPage = 30 } = {}) {
+export function listChatThreads(projectUuid, { page = 1, perPage = 30 } = {}) {
   const search = new URLSearchParams()
-  if (scope) search.set('scope', scope)
   search.set('page', String(page))
   search.set('per_page', String(perPage))
   const query = search.size ? `?${search}` : ''

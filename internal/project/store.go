@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -257,8 +258,16 @@ func migrateProjectWith(ctx context.Context, root string, header *Header, now ti
 	return latest, projectError(CodeMigrationFailed, "项目 migration 失败", details, migrationFailure)
 }
 
-func initializeStore(ctx context.Context, root, projectUUID, projectName, generationLanguage, actorUUID string, pictureBook PictureBookProfile, now time.Time, lock *projectLock) (*Store, error) {
+func initializeStore(ctx context.Context, root, projectUUID, projectName, generationLanguage, actorUUID string, pictureBook PictureBookProfile, overallStyle string, now time.Time, lock *projectLock) (*Store, error) {
 	latest, err := migrateProject(ctx, root, nil, now)
+	if err != nil {
+		return nil, err
+	}
+	premiseUUID, err := newUUIDv7()
+	if err != nil {
+		return nil, err
+	}
+	styleVersionUUID, err := newUUIDv7()
 	if err != nil {
 		return nil, err
 	}
@@ -271,11 +280,26 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 		SchemaVersion: int64(latest), Revision: 1, CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 	}
 	actor := Actor{UUID: actorUUID, Name: "本地创作者", Kind: "local_user", CreatedAt: now.UTC(), UpdatedAt: now.UTC()}
+	styleHash := fmt.Sprintf("%x", sha256.Sum256([]byte(overallStyle)))
 	if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&project).Error; err != nil {
 			return err
 		}
 		if err := tx.Create(&actor).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec(`
+			INSERT INTO premise_profiles(uuid, project_id, default_style, revision, created_at, updated_at)
+			VALUES(?, ?, ?, 0, ?, ?)
+		`, premiseUUID, project.ID, overallStyle, now.UTC(), now.UTC()).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec(`
+			INSERT INTO project_prompt_versions(
+				uuid, project_id, actor_id, prompt_group, prompt_key, version_no,
+				prompt, prompt_hash, source_type, created_at
+			) VALUES(?, ?, ?, 'premise_style', 'project_overall_style', 1, ?, ?, 'project_created', ?)
+		`, styleVersionUUID, project.ID, actor.ID, overallStyle, styleHash, now.UTC()).Error; err != nil {
 			return err
 		}
 		return tx.Create(&pictureBookProfileRecord{

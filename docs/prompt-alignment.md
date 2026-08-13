@@ -19,7 +19,7 @@
 | story | next_story_chapter | story_md, previous_chapter_json, guidance_prompt, next_chapter_code | Builtin；`deep_seek_story_generator.ex:293` | Chapter generation 的 `prompt_key=next_story_chapter` | 已实现；上下文与任务快照测试 |
 | story | profile_from_chapters | chapters_json | Builtin；`deep_seek_story_generator.ex:197`；runner profile regeneration | `story_profile_from_chapters`、Profile “从现有章节反推” | 已实现；英文最终请求与落盘测试 |
 | chapter | json_system | 无 | Builtin chapter group | Comic storyboard worker/Yolo | 已实现；严格 JSON system 请求测试 |
-| chapter | comic_storyboard | chapter_context_json, story_md, input_text, moment_count_plan, chapter_code, max_section_count, max_moments_per_section | Builtin；`deep_seek_story_generator.ex:325`；runner comic storyboard | `comic_storyboard_generation`、Comic “AI 生成分镜”、Yolo | 已实现；1–6 sections、连续编号、原子落盘测试 |
+| chapter | comic_storyboard | chapter_context_json, story_md, input_text, moment_count_plan, chapter_code, max_section_count, max_moments_per_section | Builtin；`deep_seek_story_generator.ex:325`；runner comic storyboard | `comic_storyboard_generation`、Comic “AI 生成分镜”、Yolo | 已实现；普通生成 1–24 sections（默认 6），Yolo 1–6 sections；连续编号、原子落盘测试 |
 | chapter | section_premise_selection | max_files, section_id, titles, storyboard | Builtin；`section_image_generator.ex:177-224` | Comic image task 的文本模型选择阶段 | 已实现；冻结候选、严格原名/UUID/上限、选择结果重试复用测试 |
 | chapter | before_image | 无 | Builtin `@before_image_prompt` | 作为 section_image 规范正文的一部分，同时可单独版本管理 | 已实现；中英文目录漂移测试 |
 | chapter | section_image | style_prompt, reference_usage_text, section_id, storyboard | Builtin；`section_image_generator.ex:242` | Comic image task | 已实现；最终 image prompt、1:3、实际参考图字节测试 |

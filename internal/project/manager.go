@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lumi/internal/appstore"
+	"lumi/internal/promptcatalog"
 )
 
 type Runtime interface {
@@ -98,6 +99,7 @@ type CreateInput struct {
 	Name               string
 	GenerationLanguage string
 	PictureBook        *PictureBookInput
+	OverallStyle       string
 }
 
 func NewManager(app *appstore.Store) *Manager {
@@ -388,6 +390,13 @@ func (manager *Manager) CreateWithInput(ctx context.Context, input CreateInput, 
 	if err != nil {
 		return Summary{}, err
 	}
+	overallStyle := strings.TrimSpace(input.OverallStyle)
+	if len([]rune(overallStyle)) > 12000 {
+		return Summary{}, projectError(CodeInvalidOverallStyle, "整体画风提示词过长", "overall_style 最多 12000 个字符。", nil)
+	}
+	if overallStyle == "" {
+		overallStyle = strings.TrimSpace(promptcatalog.DefaultProjectStyle(generationLanguage))
+	}
 	parent, err := selector.SelectNewProjectParent(ctx)
 	if err != nil {
 		return Summary{}, err
@@ -422,7 +431,7 @@ func (manager *Manager) CreateWithInput(ctx context.Context, input CreateInput, 
 	if err != nil {
 		return Summary{}, err
 	}
-	store, err := initializeStore(ctx, root, projectUUID, name, generationLanguage, actorUUID, pictureBook, now, lock)
+	store, err := initializeStore(ctx, root, projectUUID, name, generationLanguage, actorUUID, pictureBook, overallStyle, now, lock)
 	if err != nil {
 		_ = lock.Close()
 		return Summary{}, err

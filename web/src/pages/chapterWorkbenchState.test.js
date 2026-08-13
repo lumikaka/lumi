@@ -23,17 +23,17 @@ import {
   toggleTimelineSelection,
 } from './chapterWorkbenchState.js'
 
-test('chapter workbench normalizes shareable tab state without dropping ChatArea scope', () => {
+test('chapter workbench normalizes shareable tab state without dropping an open ChatArea thread', () => {
   assert.equal(normalizedChapterTab('body'), 'body')
   assert.equal(normalizedChapterTab('unknown'), 'storyboard')
   assert.equal(normalizedPreviewTab('reference'), 'reference')
   assert.equal(normalizedPreviewTab('unknown'), 'current')
 
-  const next = patchWorkbenchSearch('?chat_scope=project&preview_tab=reference', {
+  const next = patchWorkbenchSearch('?chat_thread_uuid=thread-uuid&preview_tab=reference', {
     workspace_tab: 'prompts',
     preview_tab: null,
   })
-  assert.equal(next.get('chat_scope'), 'project')
+  assert.equal(next.get('chat_thread_uuid'), 'thread-uuid')
   assert.equal(next.get('workspace_tab'), 'prompts')
   assert.equal(next.has('preview_tab'), false)
 })
@@ -246,6 +246,7 @@ test('storyboard AI draft routes through project ChatArea with a bound public Se
 
 test('manual Section image workflows appear in ChatArea without changing the selected thread', () => {
   const chatArea = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
+  const presentation = readFileSync(new URL('./chatAreaPresentation.js', import.meta.url), 'utf8')
   const realtime = readFileSync(new URL('../realtime/projectRealtimeQueries.js', import.meta.url), 'utf8')
   const messages = readFileSync(new URL('../i18n/messages/chat.js', import.meta.url), 'utf8')
 
@@ -253,7 +254,7 @@ test('manual Section image workflows appear in ChatArea without changing the sel
     assert.match(chatArea, new RegExp(`${step}: 'chat\\.workflow\\.step\\.${step}'`))
   }
   assert.match(chatArea, /pending: 'chat\.workflow\.status\.queued'/)
-  assert.match(chatArea, /comic_section_image_generation: 'chat\.workflow\.kind\.comic_section_image_generation'/)
+  assert.match(presentation, /comic_section_image_generation: 'chat\.workflow\.kind\.comic_section_image_generation'/)
   assert.match(chatArea, /threadDisplayTitle\(thread, workflowByThread\.get\(thread\.uuid\), t\)/)
   assert.match(messages, /'chat\.workflow\.kind\.comic_section_image_generation': \['漫画片段图片生成', 'Comic section image generation'\]/)
   assert.match(realtime, /event\.startsWith\('production_task:'\)/)

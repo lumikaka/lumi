@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestLoadUsesDefaults(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "APP_ADDRESS", "FRONTEND_URL", "VITE_DEV_SERVER_URL", "LUMI_DATA_DIR", "DATABASE_DSN", desktopAccessTokenEnv} {
+	for _, key := range []string{"APP_ENV", "APP_ADDRESS", "FRONTEND_URL", "VITE_DEV_SERVER_URL", "LUMI_DATA_DIR", "DATABASE_DSN", logLevelEnv, desktopAccessTokenEnv} {
 		t.Setenv(key, "")
 	}
 	dataDir, err := platformpath.DefaultAppDataDir(defaultEnvironment)
@@ -40,6 +41,7 @@ func TestLoadUsesDefaults(t *testing.T) {
 
 func TestLoadReadsEnvironment(t *testing.T) {
 	t.Setenv("APP_ENV", "test")
+	t.Setenv(logLevelEnv, "")
 	t.Setenv("APP_ADDRESS", ":15801")
 	t.Setenv("FRONTEND_URL", "https://lumi.example")
 	t.Setenv("VITE_DEV_SERVER_URL", "http://vite.example:5802")
@@ -59,10 +61,78 @@ func TestLoadReadsEnvironment(t *testing.T) {
 	}
 }
 
+func TestLoadUsesEnvironmentSpecificLogLevelDefaults(t *testing.T) {
+	for _, scenario := range []struct {
+		environment string
+		want        slog.Level
+	}{
+		{environment: "development", want: slog.LevelInfo},
+		{environment: "test", want: slog.LevelInfo},
+		{environment: "production", want: slog.LevelWarn},
+		{environment: "PRODUCTION", want: slog.LevelWarn},
+	} {
+		t.Run(scenario.environment, func(t *testing.T) {
+			t.Setenv("APP_ENV", scenario.environment)
+			t.Setenv("LUMI_DATA_DIR", t.TempDir())
+			unsetEnv(t, logLevelEnv)
+
+			got, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.LogLevel != scenario.want {
+				t.Fatalf("LogLevel = %s, want %s", got.LogLevel, scenario.want)
+			}
+		})
+	}
+}
+
+func TestLoadLogLevelOverride(t *testing.T) {
+	for _, scenario := range []struct {
+		value string
+		want  slog.Level
+	}{
+		{value: "debug", want: slog.LevelDebug},
+		{value: "INFO", want: slog.LevelInfo},
+		{value: " Warn ", want: slog.LevelWarn},
+		{value: "error", want: slog.LevelError},
+	} {
+		t.Run(scenario.value, func(t *testing.T) {
+			t.Setenv("APP_ENV", "production")
+			t.Setenv("LUMI_DATA_DIR", t.TempDir())
+			t.Setenv(logLevelEnv, scenario.value)
+
+			got, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.LogLevel != scenario.want {
+				t.Fatalf("LogLevel = %s, want %s", got.LogLevel, scenario.want)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsInvalidLogLevel(t *testing.T) {
+	for _, value := range []string{"trace", "   "} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("APP_ENV", "production")
+			t.Setenv("LUMI_DATA_DIR", t.TempDir())
+			t.Setenv(logLevelEnv, value)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "debug, info, warn, or error") {
+				t.Fatalf("Load() error = %v", err)
+			}
+		})
+	}
+}
+
 func TestLoadReturnsDefaultAppDataResolutionFailure(t *testing.T) {
 	for _, key := range []string{"APP_ENV", "LUMI_DATA_DIR", "DATABASE_DSN"} {
 		t.Setenv(key, "")
 	}
+	t.Setenv(logLevelEnv, "")
 	previous := resolveDefaultAppDataDir
 	resolveDefaultAppDataDir = func(string) (string, error) { return "", errors.New("local data unavailable") }
 	t.Cleanup(func() { resolveDefaultAppDataDir = previous })
@@ -85,6 +155,7 @@ func TestProductionLoadIgnoresDotEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("APP_ENV", "production")
+	t.Setenv(logLevelEnv, "")
 	unsetEnv(t, "LUMI_DATA_DIR")
 	unsetEnv(t, "DATABASE_DSN")
 
@@ -107,6 +178,7 @@ func TestProductionLoadIgnoresDotEnv(t *testing.T) {
 func TestLoadConsumesDesktopAccessToken(t *testing.T) {
 	const token = "runtime-desktop-token"
 	t.Setenv(desktopAccessTokenEnv, token)
+	t.Setenv(logLevelEnv, "")
 
 	got, err := Load()
 	if err != nil {

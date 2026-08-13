@@ -42,6 +42,9 @@ import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { assetKindLabel, projectionStateLabel, sourceTypeLabel, statusLabel as localizedStatusLabel, taskKindLabel } from '../i18n/labels.js'
 
+const DEFAULT_COMIC_SECTION_COUNT = 6
+const MAX_COMIC_SECTION_COUNT = 24
+
 function ErrorNotice({ error, onDismiss }) {
   return <LocalizedErrorMessage error={error} onDismiss={onDismiss} />
 }
@@ -154,7 +157,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
   const [editorOpen, setEditorOpen] = useState(false)
   const [comicGenerationOpen, setComicGenerationOpen] = useState(false)
   const [comicGenerationPrompt, setComicGenerationPrompt] = useState('')
-  const [comicMaxSectionCount, setComicMaxSectionCount] = useState(6)
+  const [comicMaxSectionCount, setComicMaxSectionCount] = useState(DEFAULT_COMIC_SECTION_COUNT)
   const pageMode = Boolean(projectQuery.data?.picture_book?.format && projectQuery.data.picture_book.format !== 'vertical_strip')
   const initializedUuid = useRef('')
   const revisionRef = useRef(0)
@@ -222,7 +225,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
       queryClient.invalidateQueries({ queryKey: ['workflows', projectUuid] })
       setComicGenerationOpen(false)
       setComicGenerationPrompt('')
-      setComicMaxSectionCount(6)
+      setComicMaxSectionCount(DEFAULT_COMIC_SECTION_COUNT)
       setError(null)
     },
     onError: setError,
@@ -312,7 +315,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
           pending={comicGenerationMutation.isPending}
           error={comicGenerationMutation.error}
           pageMode={pageMode}
-          onClose={() => { setComicGenerationOpen(false); setComicGenerationPrompt(''); setComicMaxSectionCount(6) }}
+          onClose={() => { setComicGenerationOpen(false); setComicGenerationPrompt(''); setComicMaxSectionCount(DEFAULT_COMIC_SECTION_COUNT) }}
           onSubmit={() => comicGenerationMutation.mutate()}
         /> : null}
       </section>
@@ -365,7 +368,7 @@ function ComicStoryboardGenerationDialog({ prompt, setPrompt, maxSectionCount, s
       <form className="lumi-dialog__body" onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
         <ErrorNotice error={error} />
         <label>{t('comic.workbench.body.storyboard_requirements')}<textarea name="comic_storyboard_requirements" rows="6" value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label>
-        <label>{t(pageMode ? 'comic.workbench.body.max_pages' : 'comic.workbench.body.max_sections')}<input name="max_section_count" type="number" min="1" max="12" step="1" value={maxSectionCount} onChange={(event) => setMaxSectionCount(event.target.value)} /><small>{t(pageMode ? 'comic.workbench.body.max_pages_body' : 'comic.workbench.body.max_sections_body')}</small></label>
+        <label>{t(pageMode ? 'comic.workbench.body.max_pages' : 'comic.workbench.body.max_sections')}<input name="max_section_count" type="number" min="1" max={MAX_COMIC_SECTION_COUNT} step="1" value={maxSectionCount} onChange={(event) => setMaxSectionCount(event.target.value)} /><small>{t(pageMode ? 'comic.workbench.body.max_pages_body' : 'comic.workbench.body.max_sections_body')}</small></label>
         <footer className="lumi-dialog__actions"><button type="button" className="button-secondary" disabled={pending} onClick={onClose}>{t('common.action.cancel')}</button><button type="submit" disabled={pending}><RefreshCw size={14} aria-hidden="true" />{t(pending ? 'common.status.processing' : 'comic.workbench.body.confirm_regenerate')}</button></footer>
       </form>
     </LumiDialog>

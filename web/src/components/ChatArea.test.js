@@ -3,12 +3,15 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const source = readFileSync(new URL('./ChatArea.jsx', import.meta.url), 'utf8')
+const projectThreadsSource = readFileSync(new URL('../pages/projectThreads.js', import.meta.url), 'utf8')
 
 test('new thread opens a composer draft and persists the first message without a title form', () => {
   assert.match(source, /function NewThreadDraft[\s\S]*?<ChatComposer/)
   assert.match(source, /if \(showCreate\)[\s\S]*?<NewThreadDraft/)
   assert.match(source, /const createThreadMutation = useMutation\(\{[\s\S]*?suggestedChatThreadTitle\(text\)[\s\S]*?createChatTurn\(projectUuid, thread\.uuid/)
   assert.doesNotMatch(source, /NewThreadDetail|chat\.thread\.title_field/)
+  assert.match(source, /title: suggestedChatThreadTitle\(text\),[\s\S]*?scope: 'project'/)
+  assert.doesNotMatch(source, /requestedScope/)
 })
 
 test('image scenes upload references and block sends until every attachment is ready', () => {
@@ -33,13 +36,24 @@ test('running image and current-project API tools expose method-specific progres
 
 test('second-stage chat parity includes safe markdown, paged history, queue steering and diagnostics', () => {
   assert.match(source, /<SafeMarkdown value=\{item\.content\}/)
-  assert.match(source, /const threadsQuery = useInfiniteQuery\(\{[\s\S]*?queryKey: \['chat-threads', projectUuid, requestedScope, 'pages'\]/)
+  assert.match(source, /const threadsQuery = useProjectThreads\(projectUuid, expanded\)/)
+  assert.match(projectThreadsSource, /queryKey: projectThreadsQueryKey\(projectUuid\)/)
+  assert.match(projectThreadsSource, /return \['chat-threads', projectUuid, 'pages'\]/)
+  assert.match(projectThreadsSource, /listChatThreads\(projectUuid, \{ page: pageParam, perPage: PROJECT_THREADS_PAGE_SIZE \}\)/)
   assert.match(source, /const itemsQuery = useInfiniteQuery\(\{[\s\S]*?queryKey: \['chat-items', projectUuid, selectedThreadUuid, 'pages'\]/)
   assert.match(source, /const eventsQuery = useInfiniteQuery\(\{[\s\S]*?queryKey: \['chat-events', projectUuid, selectedThreadUuid, 'pages'\]/)
   assert.match(source, /const eventsQuery = useInfiniteQuery\(\{[\s\S]*?'chat-events'[\s\S]*?listChatEvents\(projectUuid, selectedThreadUuid, \{ after: pageParam, limit: 100 \}\)/)
   assert.match(source, /<ThreadEventDiagnostics events=\{events\}[\s\S]*?eventsQuery\.fetchNextPage\(\)/)
   assert.match(source, /function ThreadEventDiagnostics[\s\S]*?prettyDiagnosticJSON\(event\.payload\)/)
-  assert.match(source, /previousHeight[\s\S]*?container\.scrollHeight - previousHeight/)
+  assert.match(projectThreadsSource, /PROJECT_THREADS_PAGE_SIZE = 20/)
+  assert.match(source, /const MESSAGE_PAGE_LIMIT = 30/)
+  assert.match(source, /rootMargin: '48px 0px'[\s\S]*?threshold: 0\.01/)
+  assert.match(source, /isAutoLoadingRef\.current = true[\s\S]*?onLoadMore\(\)/)
+  assert.match(source, /chatThreadCountLabel\(threads\.length, total\)/)
+  assert.match(source, /onScroll=\{handleMessagesScroll\}/)
+  assert.match(source, /isLoadingEarlierRef\.current = true[\s\S]*?finally[\s\S]*?isLoadingEarlierRef\.current = false/)
+  assert.match(source, /captureChatScrollAnchor\(messagesRef\.current\)[\s\S]*?itemsQuery\.fetchPreviousPage\(\)/)
+  assert.match(source, /restoreChatScrollAnchor\(messagesRef\.current, anchor\)/)
   assert.match(source, /draggable=\{!pending[\s\S]*?aria-grabbed/)
   assert.match(source, /steerFollowUp\(projectUuid, selectedThreadUuid, uuid\)/)
   assert.match(source, /function WorkflowDiagnostics[\s\S]*?'workflow-runs'[\s\S]*?'workflow-events'[\s\S]*?'workflow-llm-logs'/)

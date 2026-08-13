@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { projectCreationErrors } from './projectCreationForm.js'
+import {
+  MAX_OVERALL_STYLE_CHARACTERS,
+  overallStyleForLanguage,
+  overallStyleUsesDefault,
+  projectCreationErrors,
+  projectDefaultOverallStyle,
+} from './projectCreationForm.js'
 
 test('YOLO project creation reports every missing priority field', () => {
   assert.deepEqual(projectCreationErrors({
@@ -36,5 +42,23 @@ test('project creation preserves picture-book validation', () => {
     pictureBookValid: false,
   }), {
     pictureBook: 'projects.picture_book.custom.invalid',
+  })
+})
+
+test('untouched overall style follows generation language while edited style is preserved', () => {
+  const defaults = { 'zh-Hans': '默认中文画风', en: 'Default English style' }
+  assert.equal(projectDefaultOverallStyle(defaults, 'zh-Hans'), '默认中文画风')
+  assert.equal(overallStyleForLanguage({ currentStyle: '默认中文画风', dirty: false, defaultOverallStyles: defaults, generationLanguage: 'en' }), 'Default English style')
+  assert.equal(overallStyleForLanguage({ currentStyle: 'My custom style', dirty: true, defaultOverallStyles: defaults, generationLanguage: 'en' }), 'My custom style')
+  assert.equal(overallStyleUsesDefault('', defaults.en), true)
+  assert.equal(overallStyleUsesDefault('Default English style', defaults.en), true)
+  assert.equal(overallStyleUsesDefault('My custom style', defaults.en), false)
+})
+
+test('overall style validation counts Unicode characters and enforces the backend limit', () => {
+  const base = { name: '月亮邮差', parentPath: '/tmp/Lumi', storyPrompt: '', createMode: 'manual', pictureBookValid: true }
+  assert.deepEqual(projectCreationErrors({ ...base, overallStyle: '🎨'.repeat(MAX_OVERALL_STYLE_CHARACTERS) }), {})
+  assert.deepEqual(projectCreationErrors({ ...base, overallStyle: '🎨'.repeat(MAX_OVERALL_STYLE_CHARACTERS + 1) }), {
+    overallStyle: 'projects.validation.overall_style_too_long',
   })
 })

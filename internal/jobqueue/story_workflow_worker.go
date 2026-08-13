@@ -158,7 +158,7 @@ func (runtime *projectRuntime) applyStoryWorkflowResponse(ctx context.Context, r
 // Snapshots created before max_section_count was introduced decode the field
 // as zero. Keep those durable tasks executable with the historical limit.
 func normalizedComicMaxSectionCount(value int) int {
-	if value < 1 || value > 12 {
+	if value < 1 || value > production.MaxGeneratedComicSections {
 		return 6
 	}
 	return value

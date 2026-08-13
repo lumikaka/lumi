@@ -1,7 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,7 +18,74 @@ import (
 	"lumi/internal/project"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
+
+func TestRequestLogLevel(t *testing.T) {
+	for _, scenario := range []struct {
+		status int
+		err    error
+		want   slog.Level
+	}{
+		{status: http.StatusNoContent, want: slog.LevelInfo},
+		{status: http.StatusFound, want: slog.LevelInfo},
+		{status: http.StatusNotFound, want: slog.LevelWarn},
+		{status: http.StatusUnprocessableEntity, want: slog.LevelWarn},
+		{status: http.StatusInternalServerError, want: slog.LevelError},
+		{status: http.StatusOK, err: errors.New("unexpected"), want: slog.LevelError},
+	} {
+		if got := requestLogLevel(scenario.status, scenario.err); got != scenario.want {
+			t.Errorf("requestLogLevel(%d, %v) = %s, want %s", scenario.status, scenario.err, got, scenario.want)
+		}
+	}
+}
+
+func TestRequestLoggerFiltersAndClassifiesByLevel(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		threshold slog.Level
+		status    int
+		wantLog   bool
+		wantLevel string
+	}{
+		{name: "info includes success", threshold: slog.LevelInfo, status: http.StatusNoContent, wantLog: true, wantLevel: "INFO"},
+		{name: "warn excludes success", threshold: slog.LevelWarn, status: http.StatusNoContent},
+		{name: "warn includes client error", threshold: slog.LevelWarn, status: http.StatusNotFound, wantLog: true, wantLevel: "WARN"},
+		{name: "error excludes client error", threshold: slog.LevelError, status: http.StatusNotFound},
+		{name: "error includes server error", threshold: slog.LevelError, status: http.StatusInternalServerError, wantLog: true, wantLevel: "ERROR"},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			var output bytes.Buffer
+			logger := slog.New(slog.NewJSONHandler(&output, &slog.HandlerOptions{Level: scenario.threshold}))
+			e := echo.New()
+			e.Use(middleware.RequestID())
+			e.Use(requestLogger(logger))
+			e.GET("/logging-test", func(c echo.Context) error { return c.NoContent(scenario.status) })
+
+			request := httptest.NewRequest(http.MethodGet, "/logging-test", nil)
+			request.Header.Set(echo.HeaderXRequestID, "test-request-id")
+			e.ServeHTTP(httptest.NewRecorder(), request)
+
+			if scenario.wantLog != (output.Len() > 0) {
+				t.Fatalf("logged = %t, output = %q", output.Len() > 0, output.String())
+			}
+			if !scenario.wantLog {
+				return
+			}
+			for _, fragment := range []string{
+				`"level":"` + scenario.wantLevel + `"`,
+				`"method":"GET"`,
+				`"status":` + fmt.Sprint(scenario.status),
+				`"request_id":"test-request-id"`,
+				`"latency":`,
+			} {
+				if !strings.Contains(output.String(), fragment) {
+					t.Errorf("log %q does not contain %q", output.String(), fragment)
+				}
+			}
+		})
+	}
+}
 
 func TestHealthAndUnknownAPI(t *testing.T) {
 	dataDir := t.TempDir()

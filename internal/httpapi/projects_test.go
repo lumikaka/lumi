@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"lumi/internal/appstore"
 	"lumi/internal/config"
 	"lumi/internal/project"
+	"lumi/internal/promptcatalog"
 
 	"github.com/labstack/echo/v4"
 )
@@ -100,7 +102,8 @@ func TestProjectDefaultsHandlerReturnsResolvedParentAndErrors(t *testing.T) {
 		t.Fatalf("defaults status = %d, body = %s", response.Code, response.Body.String())
 	}
 	data := envelopeData(t, response)
-	if data["parent_path"] != parent || strings.Contains(response.Body.String(), `"id"`) {
+	styles := data["default_overall_styles"].(map[string]any)
+	if data["parent_path"] != parent || styles["zh-Hans"] != promptcatalog.DefaultProjectStyle("zh-Hans") || styles["en"] != promptcatalog.DefaultProjectStyle("en") || strings.Contains(response.Body.String(), `"id"`) {
 		t.Fatalf("defaults body = %s", response.Body.String())
 	}
 
@@ -161,11 +164,13 @@ func TestProjectHandlersCreateOpenMissingAndRelocate(t *testing.T) {
 }
 
 func TestProjectCreateNormalizesPictureBookProfileAndRejectsIrrelevantFields(t *testing.T) {
-	e, _ := projectAPIHarness(t)
+	e, manager := projectAPIHarness(t)
 	parent := t.TempDir()
+	customStyle := "纸雕拼贴、可见纤维、柔和侧光"
 	created := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{
-		"name":        "Interactive Book",
-		"parent_path": parent,
+		"name":          "Interactive Book",
+		"parent_path":   parent,
+		"overall_style": customStyle,
 		"picture_book": map[string]any{
 			"format":           "interactive_picture_book",
 			"interaction_mode": "guess",
@@ -179,6 +184,25 @@ func TestProjectCreateNormalizesPictureBookProfileAndRejectsIrrelevantFields(t *
 	ratio := pictureBook["aspect_ratio"].(map[string]any)
 	if pictureBook["format"] != "interactive_picture_book" || pictureBook["interaction_mode"] != "guess" || pictureBook["large_image_minimal_text"] != nil || pictureBook["comic_layout"] != nil || ratio["mode"] != "landscape" || ratio["width"] != float64(4) || ratio["height"] != float64(3) {
 		t.Fatalf("normalized picture_book=%+v", pictureBook)
+	}
+	if err := manager.WithStore(context.Background(), data["uuid"].(string), func(store *project.Store) error {
+		var premiseStyle string
+		var promptRecord struct {
+			Prompt     string
+			SourceType string
+		}
+		if err := store.DB().Table("premise_profiles").Select("default_style").Scan(&premiseStyle).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("project_prompt_versions").Select("prompt, source_type").Where("prompt_group = ? AND prompt_key = ?", "premise_style", "project_overall_style").Scan(&promptRecord).Error; err != nil {
+			return err
+		}
+		if premiseStyle != customStyle || promptRecord.Prompt != customStyle || promptRecord.SourceType != "project_created" {
+			t.Fatalf("persisted styles=%q/%q source=%q", premiseStyle, promptRecord.Prompt, promptRecord.SourceType)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 	open := requestJSON(t, e, http.MethodGet, "/api/v1/open-projects", nil)
 	if open.Code != http.StatusOK || !strings.Contains(open.Body.String(), `"status":"open"`) || !strings.Contains(open.Body.String(), `"open":true`) || strings.Contains(open.Body.String(), `"id"`) {
@@ -200,6 +224,20 @@ func TestProjectCreateNormalizesPictureBookProfileAndRejectsIrrelevantFields(t *
 	entries, err := os.ReadDir(invalidParent)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("invalid create wrote project directory: entries=%v err=%v", entries, err)
+	}
+
+	tooLongParent := t.TempDir()
+	tooLong := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{
+		"name":          "Too Much Style",
+		"parent_path":   tooLongParent,
+		"overall_style": strings.Repeat("画", 12001),
+	})
+	if tooLong.Code != http.StatusUnprocessableEntity || !strings.Contains(tooLong.Body.String(), `"code":"invalid_overall_style"`) {
+		t.Fatalf("long style status=%d body=%s", tooLong.Code, tooLong.Body.String())
+	}
+	entries, err = os.ReadDir(tooLongParent)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("long style create wrote project directory: entries=%v err=%v", entries, err)
 	}
 }
 

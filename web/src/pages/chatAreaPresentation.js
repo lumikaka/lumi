@@ -14,6 +14,77 @@ export function suggestedChatThreadTitle(input = '') {
   return [...normalized].slice(0, 60).join('')
 }
 
+export function chatThreadCountLabel(loaded, total) {
+  return total > loaded ? `${loaded} / ${total}` : `${loaded}`
+}
+
+const workflowKindCopy = {
+  comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
+  comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
+}
+
+export function workflowDisplayTitle(workflow, t) {
+  const copyKey = workflowKindCopy[workflow?.kind]
+  return copyKey ? t(copyKey) : workflow?.title || t('chat.workflow.title')
+}
+
+export function threadDisplayTitle(thread, workflow, t) {
+  const copyKey = workflowKindCopy[workflow?.kind || thread?.title]
+  if (copyKey) return t(copyKey)
+  return workflow ? workflowDisplayTitle(workflow, t) : thread?.title || t('chat.threads')
+}
+
+export function threadContextCopyKey(thread, workflow) {
+  if (workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
+  if (workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
+  if (thread?.scene === 'premise_asset_generation') return 'premise.threads.scene.generate'
+  if (thread?.scene === 'asset_reference') return 'premise.threads.scene.reference'
+  if (thread?.scene === 'storyboard_reference') return 'chat.scene.storyboard.title'
+  return thread?.scope === 'premise' ? 'premise.threads.scene.chat' : 'premise.threads.scene.project'
+}
+
+export function projectChatSearchWithoutLegacyScope(search = '') {
+  const next = new URLSearchParams(search)
+  next.delete('chat_scope')
+  return next
+}
+
+export function shouldLoadEarlierChatItems({ scrollTop, hasPreviousPage, isFetchingPreviousPage } = {}) {
+  return Boolean(hasPreviousPage && !isFetchingPreviousPage && Number(scrollTop) < 72)
+}
+
+export function captureChatScrollAnchor(container) {
+  if (!container) return null
+  const containerRect = container.getBoundingClientRect()
+  const turns = Array.from(container.querySelectorAll('[data-turn-uuid]'))
+  const anchorTurn = turns.find((turn) => turn.getBoundingClientRect().bottom >= containerRect.top + 1)
+
+  if (!anchorTurn) return { scrollHeight: container.scrollHeight }
+
+  return {
+    turnUuid: anchorTurn.dataset.turnUuid,
+    offset: anchorTurn.getBoundingClientRect().top - containerRect.top,
+    scrollHeight: container.scrollHeight,
+  }
+}
+
+export function restoreChatScrollAnchor(container, anchor) {
+  if (!container || !anchor) return
+
+  if (anchor.turnUuid) {
+    const anchorTurn = Array.from(container.querySelectorAll('[data-turn-uuid]'))
+      .find((turn) => turn.dataset.turnUuid === anchor.turnUuid)
+    if (anchorTurn) {
+      const containerRect = container.getBoundingClientRect()
+      const nextOffset = anchorTurn.getBoundingClientRect().top - containerRect.top
+      container.scrollTop += nextOffset - anchor.offset
+      return
+    }
+  }
+
+  if (anchor.scrollHeight) container.scrollTop += container.scrollHeight - anchor.scrollHeight
+}
+
 export function groupChatItemsByTurn(items = [], turns = []) {
   const groups = new Map()
 
