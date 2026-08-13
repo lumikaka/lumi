@@ -41,7 +41,6 @@ import {
   updatePremiseAsset,
   updatePremiseSource,
 } from '../api/production.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import LumiDialog from '../components/LumiDialog.jsx'
 import { Notice, ProductionImage, ProductionTaskStrip } from './ProductionWorkspaces.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
@@ -156,7 +155,6 @@ export default function PremiseWorkspace({ projectUuid }) {
   const tasksQuery = useQuery({
     queryKey: ['production-tasks', projectUuid],
     queryFn: () => listProductionTasks(projectUuid),
-    refetchInterval: (query) => query.state.data?.items?.some((task) => ['queued', 'running'].includes(task.status)) ? 1200 : false,
   })
   const storyProfileQuery = useQuery({
     queryKey: ['story-profile', projectUuid],
@@ -170,10 +168,6 @@ export default function PremiseWorkspace({ projectUuid }) {
       queryClient.invalidateQueries({ queryKey: [key, projectUuid] })
     })
   }, [projectUuid, queryClient])
-
-  useProjectRealtime(projectUuid, useCallback((event) => {
-    if (event.startsWith('premise:') || event.startsWith('production_') || event === 'production:resource_changed' || event === 'phx_reconnected') refresh()
-  }, [refresh]))
 
   useEffect(() => {
     if (premiseQuery.data) setStyle(premiseQuery.data.default_style || '')

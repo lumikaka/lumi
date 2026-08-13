@@ -102,6 +102,45 @@ test('system subscribers share one join and receive broadcasts', () => {
   socket.disconnect()
 })
 
+test('channel message subscribers receive every business event and ignore stale joins', () => {
+  const { socket, connections } = harness()
+  const channel = socket.channel('project:01989abc-def0-7000-8000-000000000001')
+  const received = []
+  const cleanup = channel.onMessage((event, payload) => received.push([event, payload.status]))
+  channel.join()
+  connections[0].open()
+  const join = connections[0].sent.find((frame) => frame.event === 'phx_join')
+  reply(connections[0], join)
+
+  connections[0].serverFrame({
+    topic: join.topic,
+    event: 'future_domain:changed',
+    payload: { status: 'ready' },
+    ref: null,
+    join_ref: join.join_ref,
+  })
+  connections[0].serverFrame({
+    topic: join.topic,
+    event: 'task:progress',
+    payload: { status: 'running' },
+    ref: null,
+    join_ref: 'stale-join-ref',
+  })
+  assert.deepEqual(received, [['future_domain:changed', 'ready']])
+
+  cleanup()
+  connections[0].serverFrame({
+    topic: join.topic,
+    event: 'task:completed',
+    payload: { status: 'completed' },
+    ref: null,
+    join_ref: join.join_ref,
+  })
+  assert.deepEqual(received, [['future_domain:changed', 'ready']])
+  channel.leave()
+  socket.disconnect()
+})
+
 test('active channel reconnects and rejoins with a new join_ref', async () => {
   const { socket, connections } = harness()
   const channel = socket.channel('system')

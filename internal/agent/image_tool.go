@@ -88,7 +88,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Select("COALESCE(MAX(attempt),0)+1").Where("chat_run_id=? AND request_type=?", tc.Run.ID, llmlog.RequestImage).Scan(&attempt).Error; err != nil {
 		return nil, err
 	}
-	logHandle, err := llmlog.Begin(ctx, store, llmlog.StartInput{ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID, SourceType: llmlog.SourceProjectChat, Scenario: "project_chat_asset_image_generation", RequestType: llmlog.RequestImage, Attempt: attempt, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: model, InputSummary: prompt, RequestPayload: requestPayload})
+	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID, SourceType: llmlog.SourceProjectChat, Scenario: "project_chat_asset_image_generation", RequestType: llmlog.RequestImage, Attempt: attempt, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: model, InputSummary: prompt, RequestPayload: requestPayload})
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 			generateErr = err
 		}
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, logHandle, llmlog.FinishInput{OutputSummary: response.RevisedPrompt, Response: responsePayload, Err: generateErr})
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{OutputSummary: response.RevisedPrompt, Response: responsePayload, Err: generateErr})
 	if generateErr != nil {
 		if finishErr != nil {
 			generateErr = errors.Join(generateErr, finishErr)

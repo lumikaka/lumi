@@ -89,7 +89,6 @@ function LLMLogDetailDialog({ projectUuid, log, onClose }) {
   const detailsQuery = useQuery({
     queryKey: ['project-llm-log', projectUuid, log.uuid],
     queryFn: () => getProjectLLMLog(projectUuid, log.uuid),
-    refetchInterval: (query) => query.state.data?.status === 'pending' ? 2000 : false,
   })
 
   const detail = detailsQuery.data
@@ -194,7 +193,6 @@ export default function ProjectLLMLogsPanel({ projectUuid, scope = '', title, de
   const logsQuery = useQuery({
     queryKey: ['project-llm-logs', projectUuid, scope, page, filters],
     queryFn: () => listProjectLLMLogs(projectUuid, { page, perPage: pageSize, scope, ...filters }),
-    refetchInterval: (query) => query.state.data?.items?.some((item) => item.status === 'pending') ? 2000 : false,
   })
   const logs = logsQuery.data?.items || []
   const pagination = logsQuery.data?.pagination || { per_page: pageSize, current_page: page, last_page: 1, total: 0 }

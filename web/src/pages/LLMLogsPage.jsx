@@ -10,7 +10,7 @@ import LocalAccountSettingsNav from '../components/LocalAccountSettingsNav.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
-import { useProjectPresence } from '../realtime/useProjectPresence.js'
+import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 
 export default function LLMLogsPage() {
 	const { t } = useI18n()
@@ -27,7 +27,7 @@ export default function LLMLogsPage() {
 		if (project) projects.set(project.uuid, project)
 		return Array.from(projects.values())
 	}, [openProjectsQuery.data, project, recentProjectsQuery.data])
-	useProjectPresence(project ? projectUuid : '')
+	useProjectRealtimeSync(project ? projectUuid : '')
 	const selectProject = (uuid) => {
 		const next = new URLSearchParams(searchParams)
 		if (uuid) next.set('project_uuid', uuid)

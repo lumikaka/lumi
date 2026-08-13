@@ -50,7 +50,6 @@ import {
   steerFollowUp,
   updateFollowUp,
 } from '../api/chat.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import { createAssetUpload } from '../api/assets.js'
 import {
   chatComposerMode,
@@ -743,13 +742,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.pagination.current_page < lastPage.pagination.last_page ? lastPage.pagination.current_page + 1 : undefined,
     enabled: expanded,
-    refetchInterval: (query) => query.state.data?.pages?.some((page) => page.items?.some((item) => ACTIVE_CHAT_STATUSES.has(item.status))) ? 1500 : false,
   })
   const workflowsQuery = useQuery({
     queryKey: ['workflows', projectUuid],
     queryFn: () => listWorkflows(projectUuid),
     enabled: expanded,
-    refetchInterval: (query) => query.state.data?.items?.some((item) => ACTIVE_WORKFLOW_STATUSES.has(item.status)) ? 1500 : false,
   })
   const threads = useMemo(() => uniqueByUUID(threadsQuery.data?.pages?.flatMap((page) => page.items || []) || []), [threadsQuery.data])
   const threadTotal = threadsQuery.data?.pages?.[0]?.pagination?.total || threads.length
@@ -868,16 +865,6 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const invalidate = useCallback((payload = { thread_uuid: selectedThreadUuid }) => {
     agentQueryKeysForEvent(projectUuid, payload).forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
   }, [projectUuid, queryClient, selectedThreadUuid])
-  useProjectRealtime(projectUuid, useCallback((event, payload) => {
-    if (event === 'phx_reconnected') {
-      queryClient.invalidateQueries({ queryKey: ['chat-threads', projectUuid] })
-      queryClient.invalidateQueries({ queryKey: ['workflows', projectUuid] })
-      if (selectedThreadUuid) invalidate({ thread_uuid: selectedThreadUuid })
-      return
-    }
-    invalidate(payload)
-  }, [invalidate, projectUuid, queryClient, selectedThreadUuid]))
-
   const createThreadMutation = useMutation({
     mutationFn: async () => {
       const text = inputText.trim()

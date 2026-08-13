@@ -101,7 +101,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err != nil {
 			return err
 		}
-		logHandle, err := llmlog.Begin(ctx, store, llmlog.StartInput{
+		logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
 			ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID,
 			SourceType: llmlog.SourceProjectChat, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: tc.Run.StepCount + 1,
 			ProviderUUID: tc.Run.ProviderUUID, ProviderType: resolved.ProviderType, Model: tc.Run.Model,
@@ -115,7 +115,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err == nil {
 			responsePayload, err = llmlog.EncodeChatResponse(response, request.APIKey)
 		}
-		finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, logHandle, llmlog.FinishInput{
+		finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
 			OutputSummary: response.Message.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
 			FinishReason: response.FinishReason, Response: responsePayload, Err: err,
 		})

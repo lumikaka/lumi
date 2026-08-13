@@ -43,6 +43,7 @@ class TopicChannel {
     this.topic = topic
     this.params = params
     this.handlers = new Map()
+    this.messageHandlers = new Set()
     this.refCount = 0
     this.status = 'closed'
     this.joinPush = null
@@ -98,6 +99,7 @@ class TopicChannel {
     this.joinPush = null
     this.joinRef = null
     this.handlers.clear()
+    this.messageHandlers.clear()
     this.socket.removeChannel(this)
   }
 
@@ -153,6 +155,7 @@ class TopicChannel {
   dispatch(event, payload, joinRef) {
     if (joinRef && this.joinRef && joinRef !== this.joinRef) return
     this.emit(event, payload)
+    Array.from(this.messageHandlers).forEach((handler) => handler(event, payload))
   }
 
   addHandler(event, handler) {
@@ -165,6 +168,14 @@ class TopicChannel {
     const handlers = this.handlers.get(event)
     handlers?.delete(handler)
     if (handlers?.size === 0) this.handlers.delete(event)
+  }
+
+  addMessageHandler(handler) {
+    this.messageHandlers.add(handler)
+  }
+
+  removeMessageHandler(handler) {
+    this.messageHandlers.delete(handler)
   }
 
   emit(event, payload) {
@@ -189,6 +200,16 @@ class ChannelLease {
     return () => this.entry.removeHandler(event, guarded)
   }
 
+  onMessage(handler) {
+    if (typeof handler !== 'function') return () => {}
+    const guarded = (event, payload) => {
+      if (this.active) handler(event, payload)
+    }
+    this.handlers.push([null, guarded])
+    this.entry.addMessageHandler(guarded)
+    return () => this.entry.removeMessageHandler(guarded)
+  }
+
 	join() {
 		if (this.active) {
 			return this.entry.status === 'joined'
@@ -202,7 +223,10 @@ class ChannelLease {
   leave() {
     if (!this.active) return settledPush('ok', {})
     this.active = false
-    this.handlers.forEach(([event, handler]) => this.entry.removeHandler(event, handler))
+    this.handlers.forEach(([event, handler]) => {
+      if (event == null) this.entry.removeMessageHandler(handler)
+      else this.entry.removeHandler(event, handler)
+    })
     this.handlers = []
     this.entry.release()
     return settledPush('ok', {})

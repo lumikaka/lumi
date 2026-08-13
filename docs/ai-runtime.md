@@ -56,7 +56,7 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 ## Chat 与 Workflow 诊断读取
 
-ChatArea 不靠 WebSocket 消息作为事实源：WS 只触发与 `thread_uuid` / `workflow_uuid` 对应的查询失效，断线重连后从 `project.sqlite` 重新读取。会话列表使用页码分页，消息与 workflow runs/events 使用 cursor，关联 LLM logs 使用页码分页，避免长历史一次性读取。点击 workflow step/run 时使用公开 UUIDv7 `workflow_step_uuid` 筛选关联调用；服务端同时校验该步骤属于当前 project 和 workflow。
+ChatArea 不靠 WebSocket 消息作为事实源：WS 只触发与 `thread_uuid` / `workflow_uuid` 对应的查询失效，业务状态不使用定时 HTTP 轮询；首次 join、重新 join 和窗口重新聚焦后从 `project.sqlite` 重新读取。LLM 日志在 pending 与终态提交后发布 `llm_log:changed`，payload 仅含 project/log UUIDv7 与状态。会话列表使用页码分页，消息与 workflow runs/events 使用 cursor，关联 LLM logs 使用页码分页，避免长历史一次性读取。点击 workflow step/run 时使用公开 UUIDv7 `workflow_step_uuid` 筛选关联调用；服务端同时校验该步骤属于当前 project 和 workflow。
 
 Workflow 的公开 DTO、workflow/chat event payload 与 item metadata 在返回前递归净化：移除内部 `id`/`*_id`、路径、Authorization、cookie、credential、password、API key 和 token 字段，并校验所有 `*_uuid` 为 UUIDv7。ChatArea 将 chat events 作为可展开的 cursor 事件流显示，不再只请求后丢弃。普通错误 UI 只显示本地化错误码说明；模型调用诊断只展示安全摘要、模型、状态、tokens、耗时和关联公开 UUID，不渲染底层技术错误或供应商原始报文。
 

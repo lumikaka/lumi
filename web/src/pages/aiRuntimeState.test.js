@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { latestTaskForResource, shouldPollTasks, taskControls } from './aiRuntimeState.js'
+import { latestTaskForResource, taskControls } from './aiRuntimeState.js'
 
 test('task recovery selects the newest persisted task for the chapter', () => {
   const items = [
@@ -10,7 +10,6 @@ test('task recovery selects the newest persisted task for the chapter', () => {
     { uuid: 'old', resource_uuid: 'chapter-a', status: 'failed' },
   ]
   assert.equal(latestTaskForResource(items, 'chapter-a').uuid, 'new')
-  assert.equal(shouldPollTasks(items), true)
 })
 
 test('task controls expose cancel and explicit retry only in stable states', () => {

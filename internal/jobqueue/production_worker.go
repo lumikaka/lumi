@@ -454,7 +454,7 @@ func (runtime *projectRuntime) callProductionText(ctx context.Context, record pr
 	if err != nil {
 		return llm.Response{}, err
 	}
-	handle, err := llmlog.Begin(ctx, runtime.store, llmlog.StartInput{
+	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{
 		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
 		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: record.Attempt,
 		ProviderUUID: snapshot.ProviderUUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: request.Prompt,
@@ -471,7 +471,7 @@ func (runtime *projectRuntime) callProductionText(ctx context.Context, record pr
 			callErr = err
 		}
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, handle, llmlog.FinishInput{
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, handle, llmlog.FinishInput{
 		OutputSummary: response.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
 		FinishReason: response.FinishReason, Response: responsePayload, Err: callErr,
 	})
@@ -497,7 +497,7 @@ func (runtime *projectRuntime) callProductionImage(ctx context.Context, record p
 	if err != nil {
 		return imagegen.Response{}, err
 	}
-	handle, err := llmlog.Begin(ctx, runtime.store, llmlog.StartInput{
+	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{
 		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
 		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestImage, Attempt: record.Attempt,
 		ProviderUUID: snapshot.ProviderUUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: inputSummary,
@@ -518,7 +518,7 @@ func (runtime *projectRuntime) callProductionImage(ctx context.Context, record p
 			callErr = err
 		}
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, handle, llmlog.FinishInput{OutputSummary: outputSummary, Response: responsePayload, Err: callErr})
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, handle, llmlog.FinishInput{OutputSummary: outputSummary, Response: responsePayload, Err: callErr})
 	if finishErr != nil {
 		if callErr != nil {
 			callErr = errors.Join(callErr, finishErr)

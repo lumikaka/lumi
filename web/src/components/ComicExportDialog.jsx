@@ -21,10 +21,7 @@ import {
   comicExportSnapshotMetrics,
   retryableComicExportStatuses,
 } from '../pages/comicExportState.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import LumiDialog from './LumiDialog.jsx'
-
-const operationPollInterval = 1200
 
 export default function ComicExportDialog({ projectUuid, request, onClose }) {
   const { formatDateTime, formatNumber, t } = useI18n()
@@ -129,7 +126,6 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
     queryFn: () => getProductionTask(projectUuid, taskUuid),
     enabled: Boolean(taskUuid),
     initialData: operation?.task,
-    refetchInterval: (query) => activeComicExportStatuses.has(query.state.data?.status) ? operationPollInterval : false,
   })
   const task = taskQuery.data || operation?.task
 
@@ -146,7 +142,6 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
     },
     enabled: Boolean(taskUuid && snapshotHash),
     initialData: operation?.export,
-    refetchInterval: activeComicExportStatuses.has(task?.status) ? operationPollInterval : false,
   })
   const exportRecord = exportQuery.data || operation?.export
   const operationState = comicExportOperationState(task, exportRecord)
@@ -160,13 +155,6 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
     queryClient.invalidateQueries({ queryKey: exportQueryKey })
     refreshHistory()
   }, [exportQueryKey, queryClient, refreshHistory, task?.status, taskUuid])
-
-  useProjectRealtime(projectUuid, useCallback((event, payload) => {
-    if (event !== 'phx_reconnected' && payload?.task_uuid !== taskUuid) return
-    if (taskUuid) queryClient.invalidateQueries({ queryKey: taskQueryKey })
-    if (snapshotHash) queryClient.invalidateQueries({ queryKey: exportQueryKey })
-    refreshHistory()
-  }, [exportQueryKey, queryClient, refreshHistory, snapshotHash, taskQueryKey, taskUuid]))
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelProductionTask(projectUuid, taskUuid),

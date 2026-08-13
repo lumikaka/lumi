@@ -765,7 +765,7 @@ func TestThreadPaginationAndWorkflowDiagnosticsExposeOnlyPublicData(t *testing.T
 	if err := harness.store.DB().Where("workflow_id=?", workflowRow.ID).Order("position").Find(&workflowSteps).Error; err != nil || len(workflowSteps) < 2 {
 		t.Fatalf("workflow steps=%+v err=%v", workflowSteps, err)
 	}
-	if _, err := llmlog.Begin(ctx, harness.store, llmlog.StartInput{
+	if _, err := llmlog.Begin(ctx, harness.store, nil, llmlog.StartInput{
 		ProjectID: workflowRow.ProjectID, WorkflowID: workflowRow.ID, WorkflowStepID: workflowSteps[0].ID,
 		SourceType: llmlog.SourceWorkflow, Scenario: "diagnostics_filter", RequestType: llmlog.RequestText, Attempt: 1,
 		ProviderUUID: harness.provider.UUID, ProviderType: harness.provider.ProviderType, Model: harness.provider.DefaultModel,

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-import { agentQueryKeysForEvent, shouldPollAgentState, workflowControls } from './chatWorkspaceState.js'
+import { agentQueryKeysForEvent, workflowControls } from './chatWorkspaceState.js'
 
 test('realtime payload invalidates persistent thread and workflow recovery queries', () => {
   assert.deepEqual(agentQueryKeysForEvent('project-uuid', { thread_uuid: 'thread-uuid', workflow_uuid: 'workflow-uuid' }), [
@@ -24,10 +24,7 @@ test('realtime payload invalidates persistent thread and workflow recovery queri
   assert.deepEqual(agentQueryKeysForEvent('project-uuid', {}), [])
 })
 
-test('polling and workflow controls cover disconnect, retry and cancellation states', () => {
-  assert.equal(shouldPollAgentState([{ status: 'waiting_for_input' }], []), true)
-  assert.equal(shouldPollAgentState([], [{ status: 'running' }]), true)
-  assert.equal(shouldPollAgentState([{ status: 'idle' }], [{ status: 'completed' }]), false)
+test('workflow controls cover retry and cancellation states', () => {
   assert.deepEqual(workflowControls({ status: 'failed' }), { canCancel: false, canRetry: true })
   assert.deepEqual(workflowControls({ status: 'running' }), { canCancel: true, canRetry: false })
 })

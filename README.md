@@ -168,7 +168,7 @@ make dev-api
 
 Go 会优先处理 `/api`；开发环境的其他前端请求和 Vite HMR WebSocket 会转发到 `5802`。Vite 未运行时，前端请求返回 `502 Bad Gateway`，API 仍可使用。
 
-应用实时通信采用 `topic/event/payload/ref/join_ref` Channel 信封，提供 join、leave、heartbeat、自动重连和按 topic 广播。`system` 用于应用状态；同一连接可以同时订阅任意已打开项目的 `project:<project_uuid>`，每个 topic 独立持有 Presence lease。WebSocket 只负责即时提示，断线后由 REST task/event cursor 恢复事实状态；若项目已被空闲回收，URL 会先幂等重开再重新 join。
+应用实时通信采用 `topic/event/payload/ref/join_ref` Channel 信封，提供 join、leave、heartbeat、自动重连和按 topic 广播。`system` 用于应用状态；同一连接可以同时订阅任意已打开项目的 `project:<project_uuid>`，每个 topic 独立持有 Presence lease。WebSocket 只负责即时提示，业务状态不使用定时 HTTP 轮询；客户端在首次 join、重新 join 和窗口重新聚焦时通过 REST task/event cursor 校准 SQLite 事实状态。若项目已被空闲回收，URL 会先幂等重开再重新 join。
 
 ### 配置
 

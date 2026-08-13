@@ -26,7 +26,6 @@ export function usePremiseThreads(projectUuid, enabled = true) {
       ? lastPage.pagination.current_page + 1
       : undefined,
     enabled,
-    refetchInterval: (query) => query.state.data?.pages?.some((page) => page.items?.some((thread) => ['busy', 'waiting_for_input'].includes(thread.status))) ? 1500 : false,
   })
 }
 

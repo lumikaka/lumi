@@ -4,6 +4,8 @@ REST API，路径格式遵循资源化设计，按语义使用 GET、POST、PUT/
 
 应用级实时通信统一使用 `/api/v1/ws` 和 `topic/event/payload/ref/join_ref` 信封，实时 payload 只允许公开 UUIDv7，不得包含内部 `id`。
 
+业务状态同步必须由 WebSocket 变更提示触发 TanStack Query 失效并通过 REST 重读 SQLite 事实状态，不得使用定时 HTTP 轮询，且应在首次 join、重新 join 和窗口重新聚焦时校准。
+
 ## 数据库表 ID 规范
 
 - 数据库内部：字段名使用 `id`。主键、外键、JOIN 及关联关系均使用 `bigint` 自增 ID。

@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { listRecentProjects } from '../api/projects.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
-import { useProjectPresence } from '../realtime/useProjectPresence.js'
+import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -22,7 +22,7 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
 	const [collapsed, setCollapsed] = useState(() => readCollapsed(projectUuid))
   const [overlayOpen, setOverlayOpen] = useState(false)
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
-  useProjectPresence(projectUuid)
+  useProjectRealtimeSync(projectUuid)
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return undefined

@@ -11,12 +11,15 @@ test('project routes activate before rendering their workspace', () => {
   assert.match(gate, /projects\.all/)
 })
 
-test('project workspace owns a realtime presence lease', () => {
+test('project workspace owns realtime presence and query synchronization', () => {
   const layout = readFileSync(new URL('./ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
-  const presence = readFileSync(new URL('../realtime/useProjectPresence.js', import.meta.url), 'utf8')
-  assert.match(layout, /useProjectPresence\(projectUuid\)/)
-  assert.match(presence, /channel\.join\(\)/)
-  assert.match(presence, /channel\.leave\(\)/)
+  const realtime = readFileSync(new URL('../realtime/useProjectRealtimeSync.js', import.meta.url), 'utf8')
+  assert.match(layout, /useProjectRealtimeSync\(projectUuid\)/)
+  assert.match(realtime, /channel\.onMessage\(handleMessage\)/)
+  assert.match(realtime, /channel\.on\('phx_joined', resyncProject\)/)
+  assert.match(realtime, /channel\.join\(\)/)
+  assert.match(realtime, /channel\.leave\(\)/)
+  assert.match(realtime, /window\.addEventListener\('focus'/)
 })
 
 test('system lifecycle events refresh open and recent project state', () => {

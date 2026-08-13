@@ -36,7 +36,3 @@ export function agentQueryKeysForEvent(projectUuid, payload = {}) {
   }
   return keys
 }
-
-export function shouldPollAgentState(threads = [], workflows = []) {
-  return threads.some((item) => ACTIVE_CHAT_STATUSES.has(item.status)) || workflows.some((item) => ACTIVE_WORKFLOW_STATUSES.has(item.status))
-}

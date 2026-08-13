@@ -4,10 +4,6 @@ export function latestTaskForResource(items, resourceUuid) {
   return (items || []).find((task) => task.resource_uuid === resourceUuid) || null
 }
 
-export function shouldPollTasks(items) {
-  return (items || []).some((task) => ACTIVE_TASK_STATUSES.has(task.status))
-}
-
 export function taskControls(task) {
   if (!task) return { canCancel: false, canRetry: false }
   return {

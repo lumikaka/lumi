@@ -24,8 +24,7 @@ import {
   listChapters,
   trashChapter,
 } from '../api/story.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
-import { ACTIVE_TASK_STATUSES, shouldPollTasks } from './aiRuntimeState.js'
+import { ACTIVE_TASK_STATUSES } from './aiRuntimeState.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import {
@@ -104,7 +103,6 @@ export default function ChaptersWorkspace({ projectUuid }) {
   const tasksQuery = useQuery({
     queryKey: ['story-tasks', projectUuid],
     queryFn: () => listTasks(projectUuid, { limit: 100 }),
-    refetchInterval: (query) => shouldPollTasks(query.state.data?.items) ? 1500 : false,
   })
 
   const items = chaptersQuery.data?.items || []
@@ -133,10 +131,6 @@ export default function ChaptersWorkspace({ projectUuid }) {
     queryClient.invalidateQueries({ queryKey: ['story-project', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
   }, [projectUuid, queryClient])
-
-  useProjectRealtime(projectUuid, useCallback((event) => {
-    if (event.startsWith('task:') || event === 'story:chapter_changed' || event === 'phx_reconnected') refresh()
-  }, [refresh]))
 
   useEffect(() => {
     setNextStepDismissed(readNextStepDismissed(projectUuid))

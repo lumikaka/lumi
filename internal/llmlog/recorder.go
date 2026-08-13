@@ -24,7 +24,12 @@ const (
 	SourceWorkflow        = "workflow"
 	RequestText           = "text"
 	RequestImage          = "image"
+	EventChanged          = "llm_log:changed"
 )
+
+type EventPublisher interface {
+	Broadcast(topic, event string, payload any)
+}
 
 type StartInput struct {
 	ProjectID           int64
@@ -65,7 +70,7 @@ type FinishInput struct {
 	Err               error
 }
 
-func Begin(ctx context.Context, store *project.Store, input StartInput) (Handle, error) {
+func Begin(ctx context.Context, store *project.Store, events EventPublisher, input StartInput) (Handle, error) {
 	if store == nil || input.ProjectID <= 0 || input.Attempt <= 0 || strings.TrimSpace(input.SourceType) == "" || strings.TrimSpace(input.Scenario) == "" || strings.TrimSpace(input.RequestType) == "" || strings.TrimSpace(input.ProviderUUID) == "" || strings.TrimSpace(input.Model) == "" || len(input.RequestPayload) == 0 || !json.Valid(input.RequestPayload) {
 		return Handle{}, fmt.Errorf("invalid AI call log input")
 	}
@@ -105,10 +110,12 @@ func Begin(ctx context.Context, store *project.Store, input StartInput) (Handle,
 	if err := tx.Commit(); err != nil {
 		return Handle{}, err
 	}
-	return Handle{ID: logID, UUID: value.String(), RequestType: input.RequestType, StartedAt: time.Now()}, nil
+	handle := Handle{ID: logID, UUID: value.String(), RequestType: input.RequestType, StartedAt: time.Now()}
+	emitChanged(events, store.ProjectUUID(), handle.UUID, "pending")
+	return handle, nil
 }
 
-func Finish(ctx context.Context, store *project.Store, handle Handle, input FinishInput) error {
+func Finish(ctx context.Context, store *project.Store, events EventPublisher, handle Handle, input FinishInput) error {
 	if store == nil || handle.ID <= 0 {
 		return fmt.Errorf("invalid AI call log handle")
 	}
@@ -147,7 +154,20 @@ func Finish(ctx context.Context, store *project.Store, handle Handle, input Fini
 	if result.RowsAffected != 1 {
 		return fmt.Errorf("AI call log %s is not pending", handle.UUID)
 	}
+	emitChanged(events, store.ProjectUUID(), handle.UUID, status)
 	return nil
+}
+
+func emitChanged(events EventPublisher, projectUUID, logUUID, status string) {
+	if events == nil {
+		return
+	}
+	defer func() { _ = recover() }()
+	events.Broadcast("project:"+projectUUID, EventChanged, map[string]any{
+		"project_uuid": projectUUID,
+		"log_uuid":     logUUID,
+		"status":       status,
+	})
 }
 
 func Summarize(value string, limit int) string {

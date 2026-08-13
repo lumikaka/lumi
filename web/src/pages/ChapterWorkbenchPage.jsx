@@ -47,7 +47,6 @@ import { getChapter, getStoryProject, listChapterStories } from '../api/story.js
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { sourceTypeLabel, statusLabel } from '../i18n/labels.js'
 import { useI18n } from '../i18n/useI18n.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import MarkdownEditor from '../components/MarkdownEditor.jsx'
 import MarkdownPreview from '../components/MarkdownPreview.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
@@ -335,7 +334,6 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
   const tasksQuery = useQuery({
     queryKey: ['production-tasks', projectUuid],
     queryFn: () => listProductionTasks(projectUuid),
-    refetchInterval: (query) => query.state.data?.items?.some((task) => ['queued', 'running'].includes(task.status)) ? 1200 : false,
   })
   const comicStateQuery = useQuery({ queryKey: ['comic-state', projectUuid, chapterUuid], queryFn: () => getComicState(projectUuid, chapterUuid) })
   const storyboards = storyboardsQuery.data?.items || []
@@ -369,14 +367,6 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['comic-exports', projectUuid] })
   }, [projectUuid, queryClient])
-  useProjectRealtime(projectUuid, useCallback((event, payload) => {
-    if (event.startsWith('premise:')) queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
-    if (event === 'phx_reconnected' || event.startsWith('premise:') || (payload?.chapter_uuid === chapterUuid && (event.startsWith('comic:') || event.startsWith('task:')))) {
-      refreshComic()
-      refreshTasks()
-    }
-  }, [chapterUuid, projectUuid, queryClient, refreshComic, refreshTasks]))
-
   const selectSection = (sectionUuid) => updateSearchParams(searchParams, setSearchParams, { section_uuid: sectionUuid })
 	const selectImageFile = async (file) => {
 		setImageFile(file)

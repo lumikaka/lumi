@@ -11,7 +11,6 @@ import WorkspaceGroupTabs from '../components/WorkspaceGroupTabs.jsx'
 import { workspaceSectionForPath } from '../components/workspaceNavigation.js'
 import { cancelTask, createChapterGeneration, createComicStoryboardGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, listTasks, retryTask } from '../api/ai.js'
 import { createAssetUpload, createIntegrityScan, finalizeAssetUpload, listAssetMaintenanceTasks, listAssets, listIntegrityScans, reconcileAssets, restoreAsset, trashAsset } from '../api/assets.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import {
   getChapter,
   emptyChapterTrash,
@@ -30,7 +29,7 @@ import {
   updateStoryProfile,
 } from '../api/story.js'
 import { saveStateForError } from './storyWorkspaceState.js'
-import { ACTIVE_TASK_STATUSES, latestTaskForResource, shouldPollTasks, taskControls } from './aiRuntimeState.js'
+import { ACTIVE_TASK_STATUSES, latestTaskForResource, taskControls } from './aiRuntimeState.js'
 import PremiseWorkspace from './PremiseWorkspace.jsx'
 import { ComicWorkspace } from './ProductionWorkspaces.jsx'
 import { OverviewExportsPanel, OverviewSummaryPanel } from './ProjectOverviewPanels.jsx'
@@ -83,20 +82,12 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
   const tasksQuery = useQuery({
     queryKey: ['story-tasks', projectUuid],
     queryFn: () => listTasks(projectUuid, { limit: 100 }),
-    refetchInterval: (query) => shouldPollTasks(query.state.data?.items) ? 1500 : false,
   })
   const latest = latestTaskForResource(tasksQuery.data?.items, chapterUuid)
 
   const refreshTasks = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
   }, [projectUuid, queryClient])
-  const realtimeEvent = useCallback((event, payload) => {
-    if (payload?.resource_uuid === chapterUuid || payload?.chapter_uuid === chapterUuid) refreshTasks()
-    if (event === 'story:chapter_changed' && payload?.chapter_uuid === chapterUuid) onCompleted?.(payload.task_uuid)
-    if (event === 'phx_reconnected') refreshTasks()
-  }, [chapterUuid, onCompleted, refreshTasks])
-  useProjectRealtime(projectUuid, realtimeEvent)
-
   useEffect(() => {
     if (latest?.status === 'completed' && latest.uuid !== completedRef.current) {
       completedRef.current = latest.uuid
@@ -439,7 +430,6 @@ function StoryProfilePanel({ projectUuid }) {
   const tasksQuery = useQuery({
     queryKey: ['story-tasks', projectUuid],
     queryFn: () => listTasks(projectUuid, { limit: 100 }),
-    refetchInterval: (query) => shouldPollTasks(query.state.data?.items) ? 1500 : false,
   })
   const [storyMD, setStoryMD] = useState('')
   const [editing, setEditing] = useState(false)
@@ -459,17 +449,6 @@ function StoryProfilePanel({ projectUuid }) {
     queryClient.invalidateQueries({ queryKey: ['story-profile-history', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] })
   }, [profileTask?.status, profileTask?.uuid, projectUuid, queryClient])
-
-  useProjectRealtime(projectUuid, useCallback((event) => {
-    if (event === 'story:profile_changed' || event.startsWith('task:') || event === 'phx_reconnected') {
-      queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
-    }
-    if (event === 'story:profile_changed') {
-      queryClient.invalidateQueries({ queryKey: ['story-profile', projectUuid] })
-      queryClient.invalidateQueries({ queryKey: ['story-profile-history', projectUuid] })
-      queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] })
-    }
-  }, [projectUuid, queryClient]))
 
   useEffect(() => {
     if (!editing && profileQuery.data && loadedRevision.current !== profileQuery.data.revision) {
@@ -621,16 +600,13 @@ function AssetsPanel({ projectUuid }) {
   const [showTrash, setShowTrash] = useState(false)
   const [error, setError] = useState(null)
   const assetsQuery = useQuery({ queryKey: ['assets', projectUuid, showTrash], queryFn: () => listAssets(projectUuid, { deleted: showTrash }) })
-  const scansQuery = useQuery({ queryKey: ['asset-scans', projectUuid], queryFn: () => listIntegrityScans(projectUuid), refetchInterval: (query) => query.state.data?.items?.some((item) => ['queued', 'running'].includes(item.status)) ? 1200 : false })
-  const tasksQuery = useQuery({ queryKey: ['asset-maintenance-tasks', projectUuid], queryFn: () => listAssetMaintenanceTasks(projectUuid), refetchInterval: (query) => query.state.data?.items?.some((item) => ['queued', 'running'].includes(item.status)) ? 1200 : false })
+  const scansQuery = useQuery({ queryKey: ['asset-scans', projectUuid], queryFn: () => listIntegrityScans(projectUuid) })
+  const tasksQuery = useQuery({ queryKey: ['asset-maintenance-tasks', projectUuid], queryFn: () => listAssetMaintenanceTasks(projectUuid) })
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['assets', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['asset-scans', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['asset-maintenance-tasks', projectUuid] })
   }, [projectUuid, queryClient])
-  useProjectRealtime(projectUuid, useCallback((event) => {
-    if (event.startsWith('asset/') || event.startsWith('upload/') || event.startsWith('integrity_scan/') || event.startsWith('task:') || event === 'phx_reconnected') refresh()
-  }, [refresh]))
   const uploadMutation = useMutation({
     mutationFn: async () => {
       const upload = await createAssetUpload(projectUuid, { purpose, displayName, file })

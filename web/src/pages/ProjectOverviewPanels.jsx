@@ -306,12 +306,10 @@ export function OverviewExportsPanel({ projectUuid }) {
   const projectExportsQuery = useQuery({
     queryKey: ['comic-exports', projectUuid, 'project', projectPage],
     queryFn: () => listComicExports(projectUuid, { page: projectPage, perPage: exportPageSize, scope: 'project' }),
-    refetchInterval: (query) => query.state.data?.items?.some((item) => pendingExportStatuses.has(item.status)) ? 1500 : false,
   })
   const chapterExportsQuery = useQuery({
     queryKey: ['comic-exports', projectUuid, 'chapter', chapterPage],
     queryFn: () => listComicExports(projectUuid, { page: chapterPage, perPage: exportPageSize, scope: 'chapter' }),
-    refetchInterval: (query) => query.state.data?.items?.some((item) => pendingExportStatuses.has(item.status)) ? 1500 : false,
   })
   const chapters = chaptersQuery.data?.items || []
   const chapterTitles = useMemo(() => new Map(chapters.map((chapter) => [chapter.uuid, `${chapter.chapter_code} · ${chapter.title || t('projects.unnamed_chapter')}`])), [chapters, t])

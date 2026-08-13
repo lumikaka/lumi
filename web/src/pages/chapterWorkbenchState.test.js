@@ -58,9 +58,11 @@ test('chapter workbench distinguishes loading, error, and empty section states',
 
 test('comic readiness warning stays non-blocking and refreshes for premise realtime changes', () => {
   const source = readFileSync(new URL('./ChapterWorkbenchPage.jsx', import.meta.url), 'utf8')
+  const realtime = readFileSync(new URL('../realtime/projectRealtimeQueries.js', import.meta.url), 'utf8')
   assert.match(source, /comicStateQuery\.data && !comicStateQuery\.data\.has_premise_assets/)
   assert.ok((source.match(/<PremiseAssetsWarning/g) || []).length >= 2)
-  assert.match(source, /event\.startsWith\('premise:'\)[\s\S]*\['comic-state', projectUuid, chapterUuid\]/)
+  assert.match(realtime, /event\.startsWith\('premise:'\)[\s\S]*addComic\(\)/)
+  assert.match(realtime, /const comicKeys = \[[^\]]*'comic-state'/)
   assert.match(source, /const search = searchParams\.toString\(\)/)
   assert.match(source, /pathname: `\/projects\/\$\{encodeURIComponent\(projectUuid\)\}\/premise`/)
   assert.doesNotMatch(source, /disabled=\{[^}]*has_premise_assets/)
@@ -244,7 +246,7 @@ test('storyboard AI draft routes through project ChatArea with a bound public Se
 
 test('manual Section image workflows appear in ChatArea without changing the selected thread', () => {
   const chatArea = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
-  const realtime = readFileSync(new URL('../realtime/useProjectRealtime.js', import.meta.url), 'utf8')
+  const realtime = readFileSync(new URL('../realtime/projectRealtimeQueries.js', import.meta.url), 'utf8')
   const messages = readFileSync(new URL('../i18n/messages/chat.js', import.meta.url), 'utf8')
 
   for (const step of ['select_reference_assets', 'save_section_premise', 'generate_section_image', 'save_section_image']) {
@@ -254,6 +256,6 @@ test('manual Section image workflows appear in ChatArea without changing the sel
   assert.match(chatArea, /comic_section_image_generation: 'chat\.workflow\.kind\.comic_section_image_generation'/)
   assert.match(chatArea, /threadDisplayTitle\(thread, workflowByThread\.get\(thread\.uuid\), t\)/)
   assert.match(messages, /'chat\.workflow\.kind\.comic_section_image_generation': \['漫画片段图片生成', 'Comic section image generation'\]/)
-  assert.match(realtime, /'production_task:queued'/)
+  assert.match(realtime, /event\.startsWith\('production_task:'\)/)
   assert.doesNotMatch(chatArea, /production_task:queued[\s\S]*setSelectedThreadUuid/)
 })

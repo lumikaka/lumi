@@ -14,7 +14,6 @@ import {
   retryProductionTask, selectImageVariant, selectStoryboard, updateComicSection, updatePremiseAsset,
 } from '../api/production.js'
 import ComicExportDialog from '../components/ComicExportDialog.jsx'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import { activeTaskFor, moveSection } from './productionWorkspaceState.js'
 import { comicExportDialogRequest } from './comicExportState.js'
 import { readImageFileDimensions } from './pictureBookProfile.js'
@@ -80,8 +79,8 @@ export function ComicWorkspace({ projectUuid }) {
   const imagesQuery = useQuery({ queryKey: ['comic-images', projectUuid, chapterUuid, selectedUuid], queryFn: () => listImageVariants(projectUuid, chapterUuid, selectedUuid), enabled: Boolean(chapterUuid && selectedUuid) })
   const snapshotsQuery = useQuery({ queryKey: ['comic-snapshots', projectUuid, chapterUuid], queryFn: () => listComicSnapshots(projectUuid, chapterUuid), enabled: Boolean(chapterUuid) })
   const exportsQuery = useQuery({ queryKey: ['comic-exports', projectUuid, 'recent'], queryFn: () => listComicExports(projectUuid, { page: 1, perPage: 6 }) })
-  const tasksQuery = useQuery({ queryKey: ['production-tasks', projectUuid], queryFn: () => listProductionTasks(projectUuid), refetchInterval: (query) => query.state.data?.items?.some((task) => ['queued', 'running'].includes(task.status)) ? 1200 : false })
-  const storyTasksQuery = useQuery({ queryKey: ['story-tasks', projectUuid], queryFn: () => listTasks(projectUuid, { limit: 100 }), refetchInterval: (query) => query.state.data?.items?.some((task) => ['queued', 'running'].includes(task.status)) ? 1200 : false })
+  const tasksQuery = useQuery({ queryKey: ['production-tasks', projectUuid], queryFn: () => listProductionTasks(projectUuid) })
+  const storyTasksQuery = useQuery({ queryKey: ['story-tasks', projectUuid], queryFn: () => listTasks(projectUuid, { limit: 100 }) })
   const premiseAssetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid) })
   const sections = sectionsQuery.data?.items || []
   const selected = sections.find((item) => item.uuid === selectedUuid) || sections[0]
@@ -91,7 +90,6 @@ export function ComicWorkspace({ projectUuid }) {
   useEffect(() => { if (selected && selected.uuid !== selectedUuid) setSelectedUuid(selected.uuid) }, [selected?.uuid, selectedUuid])
   useEffect(() => { if (selected) { setTitle(selected.title || ''); setDescription(selected.description_md || ''); setStoryboard(selected.current_storyboard?.content_md || '') } }, [selected?.uuid, selected?.revision])
   const refresh = useCallback(() => { ['comic-sections', 'comic-state', 'comic-storyboards', 'comic-images', 'comic-snapshots', 'comic-exports', 'production-tasks'].forEach((key) => queryClient.invalidateQueries({ queryKey: [key, projectUuid] })) }, [projectUuid, queryClient])
-  useProjectRealtime(projectUuid, useCallback((event) => { if (event.startsWith('comic:') || event.startsWith('production_') || event === 'production:resource_changed' || event === 'phx_reconnected') refresh() }, [refresh]))
   const createSection = useMutation({ mutationFn: () => createComicSection(projectUuid, chapterUuid, { title: `${t(pageMode ? 'comic.page' : 'comic.section')} ${sections.length + 1}`, description_md: '', storyboard_md: '' }), onSuccess: (item) => { setSelectedUuid(item.uuid); refresh() }, onError: setError })
   const saveSection = useMutation({ mutationFn: () => updateComicSection(projectUuid, chapterUuid, selected.uuid, { title, description_md: description, expected_revision: selected.revision }), onSuccess: refresh, onError: setError })
   const saveStoryboard = useMutation({ mutationFn: () => createStoryboard(projectUuid, chapterUuid, selected.uuid, { content_md: storyboard, source_type: 'manual', expected_revision: selected.revision }), onSuccess: refresh, onError: setError })

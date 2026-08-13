@@ -1,11 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 
 import { getProjectModelSettings, updateProjectModelSettings } from '../api/ai.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
-import { useProjectRealtime } from '../realtime/useProjectRealtime.js'
 import { INHERIT_MODEL_VALUE, modelOptionsForSetting, modelSelectionValue, parseModelSelection } from '../pages/modelSettingsState.js'
 
 const definitions = [
@@ -34,12 +33,6 @@ export default function ProjectModelSettingsCard({ projectUuid }) {
   const [error, setError] = useState(null)
   const queryKey = ['project-model-settings', projectUuid]
   const settingsQuery = useQuery({ queryKey, queryFn: () => getProjectModelSettings(projectUuid), retry: false })
-  const refresh = useCallback(() => queryClient.invalidateQueries({ queryKey }), [queryClient, projectUuid])
-
-  useProjectRealtime(projectUuid, useCallback((event) => {
-    if (event === 'project:model_settings_changed' || event === 'phx_reconnected') refresh()
-  }, [refresh]))
-
   const update = useMutation({
     mutationFn: ({ key, selection }) => updateProjectModelSettings(projectUuid, settingsQuery.data.revision, { [key]: selection }),
     onSuccess: (value) => {

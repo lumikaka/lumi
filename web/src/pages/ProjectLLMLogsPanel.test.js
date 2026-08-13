@@ -39,7 +39,7 @@ test('failed AI calls render diagnostics as React text fields', () => {
 test('log dialog loads full payload details on demand and falls back to legacy summaries', () => {
   assert.match(source, /getProjectLLMLog\(projectUuid, log\.uuid\)/)
   assert.match(source, /queryKey: \['project-llm-log', projectUuid, log\.uuid\]/)
-  assert.match(source, /query\.state\.data\?\.status === 'pending' \? 2000 : false/)
+  assert.doesNotMatch(source, /refetchInterval/)
   assert.match(source, /detail\?\.request_payload/)
   assert.match(source, /detail\?\.response/)
   assert.match(source, /log\.input_summary/)

@@ -45,7 +45,7 @@ test('all new comic export entry points open the shared operation dialog while h
   assert.match(dialog, /cancelProductionTask/)
   assert.match(dialog, /retryProductionTask/)
   assert.match(dialog, /output_asset\.content_url/)
-  assert.match(dialog, /operationPollInterval = 1200/)
+  assert.doesNotMatch(dialog, /refetchInterval/)
   assert.match(dialog, /loadActiveOperation/)
   assert.match(dialog, /nextError\?\.code === 'task_conflict'/)
   assert.match(dialog, /onClick=\{onClose\}/)
