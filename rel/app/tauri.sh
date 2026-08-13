@@ -65,17 +65,11 @@ main() {
       (
         cd "$tauri_dir"
         cargo fmt --check
-        cargo test --release --target "$target"
-        cargo test --release --features desktop-updater --target "$target"
+        cargo test --target "$target"
+        cargo test --features desktop-updater --target "$target"
       )
       build_tauri "$@"
       verify_bundle
-      ;;
-    backend)
-      build_backend
-      ;;
-    bundle)
-      build_tauri "$@"
       ;;
     *)
       pnpm --dir "$root_dir" exec tauri "$command" "$@"

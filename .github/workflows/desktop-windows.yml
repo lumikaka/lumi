@@ -17,20 +17,6 @@ on:
         required: false
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
         required: false
-  push:
-    branches:
-      - master
-    paths:
-      - ".github/workflows/desktop-release.yml"
-      - ".github/workflows/desktop-windows.yml"
-      - "Makefile"
-      - "go.mod"
-      - "go.sum"
-      - "cmd/**"
-      - "db/**"
-      - "internal/**"
-      - "rel/app/**"
-      - "web/**"
   pull_request:
   workflow_dispatch:
     inputs:
@@ -44,24 +30,25 @@ permissions:
 
 concurrency:
   group: desktop-windows-${{ github.ref }}-${{ inputs.release_tag || '' }}
-  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+  cancel-in-progress: false
 
 jobs:
   build:
-    name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'Warm Windows x64 desktop cache' || 'Build and release unsigned Windows x64 installer' }}
+    name: Build and release unsigned Windows x64 installer
     runs-on: windows-2022
     timeout-minutes: 90
     env:
       CARGO_TERM_COLOR: always
 
     steps:
-      - name: Resolve desktop build mode
+      - name: Resolve and validate release version
         id: release
         shell: pwsh
         env:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_REF: ${{ github.ref }}
-          EVENT_SHA: ${{ github.sha }}
+          EVENT_REF_NAME: ${{ github.ref_name }}
+          EVENT_REF_TYPE: ${{ github.ref_type }}
           INPUT_BUILD_UPDATER: ${{ inputs.build_updater }}
           INPUT_CHECKOUT_REF: ${{ inputs.checkout_ref }}
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
@@ -69,39 +56,24 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          $tag = $env:INPUT_RELEASE_TAG
-          $warmup = 'false'
-
-          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_CHECKOUT_REF)) {
-            $version = $tag.TrimStart('v')
-            $checkoutRef = $env:INPUT_CHECKOUT_REF
-            $updater = if ($env:INPUT_BUILD_UPDATER -eq 'true') { 'true' } else { 'false' }
-            $testDefault = if ($updater -eq 'true') { 'false' } else { 'true' }
-            $testUpdater = $updater
-          } elseif ($env:EVENT_NAME -eq 'pull_request') {
+          if ($env:EVENT_NAME -eq 'pull_request') {
             $tag = ''
             $version = "0.0.0-pr.$($env:PR_NUMBER)"
             $checkoutRef = $env:EVENT_REF
             $updater = 'false'
-            $testDefault = 'true'
-            $testUpdater = 'true'
-          } elseif ($env:EVENT_NAME -eq 'push' -and $env:EVENT_REF -eq 'refs/heads/master') {
-            $tag = ''
-            $version = '0.0.0'
-            $checkoutRef = $env:EVENT_SHA
-            $updater = 'true'
-            $warmup = 'true'
-            $testDefault = 'false'
-            $testUpdater = 'true'
           } else {
+            $tag = $env:INPUT_RELEASE_TAG
             $version = $tag.TrimStart('v')
-            $checkoutRef = $env:EVENT_REF
-            $updater = 'false'
-            $testDefault = 'true'
-            $testUpdater = 'false'
+            if ([string]::IsNullOrWhiteSpace($env:INPUT_CHECKOUT_REF)) {
+              $checkoutRef = $env:EVENT_REF
+              $updater = 'false'
+            } else {
+              $checkoutRef = $env:INPUT_CHECKOUT_REF
+              $updater = if ($env:INPUT_BUILD_UPDATER -eq 'true') { 'true' } else { 'false' }
+            }
           }
 
-          if ($warmup -ne 'true' -and $env:EVENT_NAME -ne 'pull_request' -and $tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$') {
+          if ($env:EVENT_NAME -ne 'pull_request' -and $tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$') {
             throw 'Release tag must look like v0.1.0.'
           }
 
@@ -109,9 +81,6 @@ jobs:
           "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
           "ref=$checkoutRef" | Add-Content -Path $env:GITHUB_OUTPUT
           "updater=$updater" | Add-Content -Path $env:GITHUB_OUTPUT
-          "warmup=$warmup" | Add-Content -Path $env:GITHUB_OUTPUT
-          "test_default=$testDefault" | Add-Content -Path $env:GITHUB_OUTPUT
-          "test_updater=$testUpdater" | Add-Content -Path $env:GITHUB_OUTPUT
 
       - name: Checkout build ref
         uses: actions/checkout@v6
@@ -197,10 +166,8 @@ jobs:
         with:
           workspaces: rel/app/src-tauri
           key: x86_64-pc-windows-msvc
-          cache-bin: false
-          save-if: ${{ steps.release.outputs.warmup == 'true' }}
 
-      - name: Install pinned desktop dependencies and generate Windows icon
+      - name: Install pinned Tauri CLI and generate Windows icon
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -208,7 +175,7 @@ jobs:
 
           pnpm --dir rel/app install --frozen-lockfile
           if ($LASTEXITCODE -ne 0) {
-            throw 'Failed to install desktop dependencies.'
+            throw 'Failed to install Tauri CLI dependencies.'
           }
 
           $installedVersion = pnpm --dir rel/app exec tauri --version
@@ -233,18 +200,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw 'cargo fmt --check failed.'
           }
-
-          if ('${{ steps.release.outputs.test_default }}' -eq 'true') {
-            cargo test --locked --release --target x86_64-pc-windows-msvc
-            if ($LASTEXITCODE -ne 0) {
-              throw 'Windows desktop launcher default-feature tests failed.'
-            }
+          cargo test --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows desktop launcher default-feature tests failed.'
           }
-          if ('${{ steps.release.outputs.test_updater }}' -eq 'true') {
-            cargo test --locked --release --features desktop-updater --target x86_64-pc-windows-msvc
-            if ($LASTEXITCODE -ne 0) {
-              throw 'Windows desktop launcher updater-feature tests failed.'
-            }
+          cargo test --locked --features desktop-updater --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows desktop launcher updater-feature tests failed.'
           }
 
       - name: Build frontend and Windows backend
@@ -285,7 +247,6 @@ jobs:
           }
 
       - name: Build unsigned NSIS installer
-        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: pwsh
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
@@ -325,7 +286,6 @@ jobs:
           }
 
       - name: Verify and package release assets
-        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: pwsh
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
@@ -371,7 +331,6 @@ jobs:
           "$hash  Lumi-windows-x64-setup.exe" | Set-Content -Encoding ascii 'Lumi-windows-x64-setup.exe.sha256'
 
       - name: Smoke test installed application
-        if: ${{ steps.release.outputs.warmup != 'true' }}
         shell: pwsh
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
@@ -519,7 +478,6 @@ jobs:
           }
 
       - name: Upload workflow artifact
-        if: ${{ steps.release.outputs.warmup != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: Lumi-windows-x64
