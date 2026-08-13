@@ -175,8 +175,7 @@ impl DesktopLogger {
                     Err(error)
                 }
             })?;
-        if current_size > 0
-            && current_size.saturating_add(line.len() as u64) > self.inner.max_bytes
+        if current_size > 0 && current_size.saturating_add(line.len() as u64) > self.inner.max_bytes
         {
             if let Err(error) = self.rotate() {
                 if !self
@@ -342,10 +341,9 @@ impl LauncherState {
     fn request_open(&self) {
         if *self.ready.lock().unwrap() {
             match open_system_url(&self.access_url) {
-                Ok(()) => self.logger.log(
-                    LogLevel::Info,
-                    &browser_opened_log_message(&self.base_url),
-                ),
+                Ok(()) => self
+                    .logger
+                    .log(LogLevel::Info, &browser_opened_log_message(&self.base_url)),
                 Err(error) => self
                     .logger
                     .log(LogLevel::Warn, &format!("failed to open browser: {error}")),
@@ -375,9 +373,7 @@ impl LauncherState {
         let mut guard = self.child.lock().unwrap();
         if let Some(child) = guard.as_mut() {
             match stop_child(child) {
-                Ok(()) => self
-                    .logger
-                    .log(LogLevel::Info, "terminated Lumi backend"),
+                Ok(()) => self.logger.log(LogLevel::Info, "terminated Lumi backend"),
                 Err(error) => self.logger.log(
                     LogLevel::Error,
                     &format!("failed to terminate Lumi backend: {error}"),
@@ -902,10 +898,7 @@ fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, logger
 }
 
 fn startup_failed(app: &AppHandle, logger: &DesktopLogger, error: String) {
-    logger.log(
-        LogLevel::Error,
-        &format!("Lumi startup failed: {error}"),
-    );
+    logger.log(LogLevel::Error, &format!("Lumi startup failed: {error}"));
     show_error(
         app,
         "Lumi Failed to Start",
@@ -1119,10 +1112,7 @@ where
                     logger.log(backend_log_level(message), &format!("[{label}] {message}"));
                 }
                 Err(error) => {
-                    logger.log(
-                        LogLevel::Warn,
-                        &format!("failed to read {label}: {error}"),
-                    );
+                    logger.log(LogLevel::Warn, &format!("failed to read {label}: {error}"));
                     break;
                 }
             }
@@ -1267,14 +1257,8 @@ mod tests {
             backend_log_level("time=x level=DEBUG msg=x"),
             LogLevel::Debug
         );
-        assert_eq!(
-            backend_log_level("time=x level=INFO msg=x"),
-            LogLevel::Info
-        );
-        assert_eq!(
-            backend_log_level("time=x level=WARN msg=x"),
-            LogLevel::Warn
-        );
+        assert_eq!(backend_log_level("time=x level=INFO msg=x"), LogLevel::Info);
+        assert_eq!(backend_log_level("time=x level=WARN msg=x"), LogLevel::Warn);
         assert_eq!(
             backend_log_level("time=x level=ERROR msg=x"),
             LogLevel::Error
