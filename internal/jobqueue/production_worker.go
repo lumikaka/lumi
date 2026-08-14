@@ -788,7 +788,7 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	_ = appendProductionEventTx(ctx, tx, record.ID, "task_failed", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "status": StatusFailed, "error_code": code, "error_message": message}, now)
 	_, _ = tx.ExecContext(ctx, `UPDATE premise_generation_steps SET status='failed',error_code=?,completed_at=? WHERE task_uuid=? AND status<>'completed'`, code, now, record.UUID)
 	_, _ = tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='failed',error_code=?,completed_at=? WHERE task_uuid=? AND status<>'completed'`, code, now, record.UUID)
-	_, _ = tx.ExecContext(ctx, `UPDATE comic_exports SET status='failed',error_code=?,completed_at=? WHERE task_uuid=? AND status NOT IN ('ready','cancelled')`, code, now, record.UUID)
+	_, _ = tx.ExecContext(ctx, `UPDATE comic_exports SET status='failed',error_code=?,completed_at=?,expires_at=? WHERE task_uuid=? AND status IN ('queued','running')`, code, now, production.ExportExpiresAt(now), record.UUID)
 	if err := failComicWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
@@ -817,7 +817,7 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 	}
 	_, _ = tx.ExecContext(ctx, `UPDATE premise_generation_steps SET status='cancelled',completed_at=? WHERE task_uuid=? AND status<>'completed'`, now, record.UUID)
 	_, _ = tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='cancelled',completed_at=? WHERE task_uuid=? AND status<>'completed'`, now, record.UUID)
-	_, _ = tx.ExecContext(ctx, `UPDATE comic_exports SET status='cancelled',completed_at=? WHERE task_uuid=? AND status<>'ready'`, now, record.UUID)
+	_, _ = tx.ExecContext(ctx, `UPDATE comic_exports SET status='cancelled',completed_at=?,expires_at=? WHERE task_uuid=? AND status IN ('queued','running')`, now, production.ExportExpiresAt(now), record.UUID)
 	if err := cancelComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
@@ -858,7 +858,7 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 	if _, err := tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued' WHERE task_uuid=? AND status='running'`, record.UUID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued' WHERE task_uuid=? AND status='running'`, record.UUID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',expires_at=NULL WHERE task_uuid=? AND status='running'`, record.UUID); err != nil {
 		return err
 	}
 	if err := appendProductionEventTx(ctx, tx, record.ID, "task_paused", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "status": StatusQueued, "attempt": attempt, "reason": "runtime_stopped"}, now); err != nil {
@@ -912,7 +912,7 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		if _, err := tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status='failed'`, record.UUID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status='failed'`, record.UUID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',error_code='',completed_at=NULL,expires_at=NULL WHERE task_uuid=? AND status='failed'`, record.UUID); err != nil {
 			return err
 		}
 		if err := appendProductionEventTx(ctx, tx, record.ID, "retry_scheduled", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "status": StatusQueued, "attempt": event.Job.Attempt}, now); err != nil {

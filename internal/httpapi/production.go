@@ -57,6 +57,10 @@ func productionAPIError(err error) error {
 	switch domainErr.Code {
 	case production.CodeNotFound:
 		status = http.StatusNotFound
+	case production.CodeExportExpired:
+		status = http.StatusGone
+	case production.CodeExportUnavailable:
+		status = http.StatusConflict
 	case production.CodeConflict, production.CodeStateConflict, production.CodeExportEmpty,
 		production.CodeExportIncomplete, production.CodeExportChanged, production.CodeDeleteBlocked, production.CodeSnapshotBusy:
 		status = http.StatusConflict
@@ -726,6 +730,32 @@ func (handler *ProductionHandler) CreateExport(c echo.Context) error {
 		return productionAPIError(err)
 	}
 	return Success(c, http.StatusCreated, operation)
+}
+
+func (handler *ProductionHandler) ExportContent(c echo.Context) error {
+	err := handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
+		content, err := production.NewService(store, handler.events).OpenExportContent(c.Request().Context(), c.Param("export_uuid"))
+		if err != nil {
+			return err
+		}
+		defer content.File.Close()
+		headers := c.Response().Header()
+		headers.Set(echo.HeaderContentType, "application/zip")
+		headers.Set(echo.HeaderContentLength, strconv.FormatInt(content.ByteSize, 10))
+		headers.Set("ETag", content.ETag)
+		headers.Set("Last-Modified", content.LastModified.Format(http.TimeFormat))
+		headers.Set("Expires", content.ExpiresAt.Format(http.TimeFormat))
+		headers.Set("Accept-Ranges", "bytes")
+		headers.Set("X-Content-Type-Options", "nosniff")
+		headers.Set("Cache-Control", "private, no-store")
+		headers.Set("Content-Disposition", `attachment; filename="comic-export.zip"; filename*=`+filesContentDisposition(content.Filename))
+		http.ServeContent(c.Response(), c.Request(), content.Filename, content.LastModified, content.File)
+		return nil
+	})
+	if err != nil {
+		return productionAPIError(err)
+	}
+	return nil
 }
 func (handler *ProductionHandler) ListProductionTasks(c echo.Context) error {
 	limit, err := positiveIntQuery(c, "limit", 50)

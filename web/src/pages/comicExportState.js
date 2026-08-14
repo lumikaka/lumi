@@ -12,7 +12,7 @@ export const activeComicExportStatuses = new Set(['queued', 'running'])
 export const retryableComicExportStatuses = new Set(['failed', 'interrupted', 'cancelled'])
 
 export function comicExportOperationState(task, exportRecord) {
-  if (exportRecord?.status === 'ready' && exportRecord?.output_asset) return 'ready'
+  if (exportRecord?.status === 'ready' && exportRecord?.download_url) return 'ready'
   const status = task?.status || exportRecord?.status || 'queued'
   if (status === 'completed') return 'finalizing'
   return status

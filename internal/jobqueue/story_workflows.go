@@ -273,8 +273,8 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 	if _, _, err := createAgentAuditTx(ctx, tx, runtime.projectID, taskID, taskUUID, resourceUUID, providerUUID, model, summary, now); err != nil {
 		return Task{}, err
 	}
-	if kind == KindComicStoryboardGeneration {
-		if err := createComicStoryboardWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, now); err != nil {
+	if isProjectedStoryTaskWorkflow(kind) {
+		if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, kind, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, now); err != nil {
 			return Task{}, err
 		}
 	}
@@ -294,8 +294,8 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 	task, err := manager.GetTask(ctx, runtime.projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcast("task:queued", task)
-		if kind == KindComicStoryboardGeneration {
-			runtime.broadcastComicStoryboardWorkflow("workflow:queued", taskUUID)
+		if isProjectedStoryTaskWorkflow(kind) {
+			runtime.broadcastStoryTaskWorkflow("workflow:queued", taskUUID)
 		}
 	}
 	return task, err

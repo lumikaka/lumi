@@ -122,25 +122,9 @@ func (runtime *projectRuntime) applyStoryWorkflowResponse(ctx context.Context, r
 		return map[string]any{"project_uuid": runtime.projectUUID, "chapter_uuids": chapterUUIDs}, nil
 
 	case KindComicStoryboardGeneration:
-		maxSectionCount := normalizedComicMaxSectionCount(snapshot.MaxSectionCount)
-		var output struct {
-			ChapterCode string `json:"chapter_code"`
-			Title       string `json:"title"`
-			Sections    []struct {
-				SectionNo  int    `json:"section_no"`
-				Title      string `json:"title"`
-				Storyboard string `json:"storyboard"`
-			} `json:"sections"`
-		}
-		if err := json.Unmarshal([]byte(raw), &output); err != nil || output.ChapterCode != snapshot.ChapterCode || len(output.Sections) < 1 || len(output.Sections) > maxSectionCount {
-			return nil, invalidStoryWorkflowContent("模型返回的 Comic storyboard JSON 无效。", err)
-		}
-		generated := make([]production.GeneratedComicSection, len(output.Sections))
-		for index, section := range output.Sections {
-			if section.SectionNo != index+1 || strings.TrimSpace(section.Title) == "" || strings.TrimSpace(section.Storyboard) == "" {
-				return nil, invalidStoryWorkflowContent("Comic sections 必须连续编号并包含 title/storyboard。", nil)
-			}
-			generated[index] = production.GeneratedComicSection{Title: section.Title, StoryboardMD: section.Storyboard}
+		generated, err := parseComicStoryboardResponse(raw, snapshot)
+		if err != nil {
+			return nil, err
 		}
 		sections, err := production.NewService(runtime.store, runtime.manager.hub).CreateGeneratedSections(ctx, snapshot.ChapterUUID, generated)
 		if err != nil {
@@ -153,6 +137,30 @@ func (runtime *projectRuntime) applyStoryWorkflowResponse(ctx context.Context, r
 		return map[string]any{"project_uuid": runtime.projectUUID, "chapter_uuid": snapshot.ChapterUUID, "section_uuids": sectionUUIDs}, nil
 	}
 	return nil, fmt.Errorf("unsupported story workflow kind %q", record.Kind)
+}
+
+func parseComicStoryboardResponse(raw string, snapshot storyGenerationSnapshot) ([]production.GeneratedComicSection, error) {
+	maxSectionCount := normalizedComicMaxSectionCount(snapshot.MaxSectionCount)
+	var output struct {
+		ChapterCode string `json:"chapter_code"`
+		Title       string `json:"title"`
+		Sections    []struct {
+			SectionNo  int    `json:"section_no"`
+			Title      string `json:"title"`
+			Storyboard string `json:"storyboard"`
+		} `json:"sections"`
+	}
+	if err := json.Unmarshal([]byte(raw), &output); err != nil || output.ChapterCode != snapshot.ChapterCode || len(output.Sections) < 1 || len(output.Sections) > maxSectionCount {
+		return nil, invalidStoryWorkflowContent("模型返回的 Comic storyboard JSON 无效。", err)
+	}
+	generated := make([]production.GeneratedComicSection, len(output.Sections))
+	for index, section := range output.Sections {
+		if section.SectionNo != index+1 || strings.TrimSpace(section.Title) == "" || strings.TrimSpace(section.Storyboard) == "" {
+			return nil, invalidStoryWorkflowContent("Comic sections 必须连续编号并包含 title/storyboard。", nil)
+		}
+		generated[index] = production.GeneratedComicSection{Title: section.Title, StoryboardMD: section.Storyboard}
+	}
+	return generated, nil
 }
 
 // Snapshots created before max_section_count was introduced decode the field
@@ -211,8 +219,8 @@ func (runtime *projectRuntime) completeStoryWorkflowTask(ctx context.Context, re
 	if err := appendAgentEventTx(ctx, tx, threadID, &runID, "run_completed", payload, now); err != nil {
 		return err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := completeComicStoryboardWorkflowTx(ctx, tx, record.UUID, resultPayload, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := completeStoryTaskWorkflowTx(ctx, tx, record.UUID, resultPayload, now); err != nil {
 			return err
 		}
 	}
@@ -222,8 +230,8 @@ func (runtime *projectRuntime) completeStoryWorkflowTask(ctx context.Context, re
 	task := record.DTO()
 	task.Status, task.Progress, task.CompletedAt, task.UpdatedAt = StatusCompleted, 100, &now, now
 	runtime.broadcast("task:completed", task)
-	if record.Kind == KindComicStoryboardGeneration {
-		runtime.broadcastComicStoryboardWorkflow("workflow:step_changed", record.UUID)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:step_changed", record.UUID)
 	}
 	if runtime.manager.hub != nil {
 		event := "story:chapters_changed"

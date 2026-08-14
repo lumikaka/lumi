@@ -90,6 +90,8 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
 
   const refreshTasks = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
+    queryClient.invalidateQueries({ queryKey: ['chat-threads', projectUuid] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', projectUuid] })
   }, [projectUuid, queryClient])
   useEffect(() => {
     if (latest?.status === 'completed' && latest.uuid !== completedRef.current) {
@@ -104,7 +106,7 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
       parameters: { temperature: 0.7 },
       idempotency_key: `chapter-generation-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     }),
-    onSuccess: (task) => { queryClient.setQueryData(['story-tasks', projectUuid], (current) => ({ items: [task, ...(current?.items || []).filter((item) => item.uuid !== task.uuid)] })); setError(null) },
+    onSuccess: (task) => { queryClient.setQueryData(['story-tasks', projectUuid], (current) => ({ items: [task, ...(current?.items || []).filter((item) => item.uuid !== task.uuid)] })); refreshTasks(); setError(null) },
     onError: setError,
   })
   const cancelMutation = useMutation({ mutationFn: () => cancelTask(projectUuid, latest.uuid), onSuccess: refreshTasks, onError: setError })

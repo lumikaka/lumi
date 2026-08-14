@@ -27,11 +27,11 @@
   min-width: 0
   display: flex
   align-items: center
-  gap: 10px
+  gap: 4px
 
 .project-logo
   flex: 0 0 auto
-  width: 40px
+  width: 34px
   height: 34px
   padding: 0
   display: inline-flex
@@ -42,15 +42,11 @@
   color: $color-surface
   background: transparent
 
-  span
+  img
     width: 24px
     height: 24px
-    display: grid
-    place-items: center
-    border-radius: 7px
-    background: $color-action
-    font-size: 13px
-    font-weight: 900
+    display: block
+    object-fit: contain
 
   &:hover,
   &:focus-visible,
@@ -405,16 +401,11 @@
   align-items: center
   gap: 10px
 
-  > span
+  > img
     width: 28px
     height: 28px
-    display: grid
-    place-items: center
-    border-radius: 8px
-    color: $color-surface
-    background: $color-action
-    font-size: 14px
-    font-weight: 900
+    display: block
+    object-fit: contain
 
   p,
   h2

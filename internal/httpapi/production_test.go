@@ -1,21 +1,26 @@
 package httpapi
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/story"
 
 	"github.com/labstack/echo/v4"
 )
 
-func productionAPIHarness(t *testing.T) (*echo.Echo, string, story.Chapter) {
+func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, story.Chapter) {
 	t.Helper()
 	dataDir := filepath.Join(t.TempDir(), "app")
 	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
@@ -51,14 +56,15 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, string, story.Chapter) {
 	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/storyboard-variants", handler.CreateStoryboard)
 	e.GET("/api/v1/projects/:project_uuid/comic-exports/readiness", handler.ExportReadiness)
 	e.GET("/api/v1/projects/:project_uuid/comic-exports", handler.ListExports)
+	e.GET("/media/projects/:project_uuid/comic-exports/:export_uuid/content", handler.ExportContent)
 	e.DELETE("/api/v1/projects/:project_uuid/premise-assets/trash", handler.EmptyPremiseAssetTrash)
 	e.DELETE("/api/v1/projects/:project_uuid/premise-assets/:premise_asset_uuid/permanent", handler.PermanentlyDeletePremiseAsset)
 	t.Cleanup(func() { _ = manager.Close(); _ = app.Close() })
-	return e, created.UUID, chapter
+	return e, manager, created.UUID, chapter
 }
 
 func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
-	e, projectUUID, chapter := productionAPIHarness(t)
+	e, _, projectUUID, chapter := productionAPIHarness(t)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectUUID+"/premise-sources", strings.NewReader(`{"source_text":"A lantern city","style_snapshot":"ink","source_type":"manual","parameters":{"temperature":0.2}}`))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
@@ -147,6 +153,65 @@ func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
 	e.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusUnprocessableEntity || !strings.Contains(recorder.Body.String(), `"success":false`) {
 		t.Fatalf("permanent delete validation status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestComicExportContentSupportsRangeETagAndExpiry(t *testing.T) {
+	e, manager, projectUUID, _ := productionAPIHarness(t)
+	const (
+		exportUUID   = "01900000-0000-7000-8000-000000000401"
+		taskUUID     = "01900000-0000-7000-8000-000000000402"
+		snapshotHash = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	)
+	content := []byte("0123456789")
+	digest := sha256.Sum256(content)
+	expiresAt := time.Now().UTC().Add(time.Hour)
+	if err := manager.WithCurrentStore(t.Context(), projectUUID, func(store *project.Store) error {
+		relative := production.ExportRelativePath(exportUUID, "project", "", snapshotHash, production.ExportSnapshot{})
+		target, err := store.ResolvePath(relative)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, content, 0o644); err != nil {
+			return err
+		}
+		return store.DB().Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,expires_at,byte_size,content_sha256,created_at,completed_at) VALUES(?,(SELECT id FROM projects WHERE uuid=?),?,'project','zip','ready','{}',?,?,7,?,?,?,datetime('now'),datetime('now'))`, exportUUID, projectUUID, taskUUID, snapshotHash, relative, expiresAt, len(content), fmt.Sprintf("%x", digest[:])).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	path := "/media/projects/" + projectUUID + "/comic-exports/" + exportUUID + "/content"
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("Range", "bytes=2-5")
+	recorder := httptest.NewRecorder()
+	e.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusPartialContent || recorder.Body.String() != "2345" {
+		t.Fatalf("range status=%d body=%q", recorder.Code, recorder.Body.String())
+	}
+	if recorder.Header().Get("ETag") != `"sha256-`+fmt.Sprintf("%x", digest[:])+`"` || recorder.Header().Get("Accept-Ranges") != "bytes" || !strings.Contains(recorder.Header().Get("Content-Disposition"), "filename*=UTF-8''") {
+		t.Fatalf("download headers=%v", recorder.Header())
+	}
+
+	if err := manager.WithCurrentStore(t.Context(), projectUUID, func(store *project.Store) error {
+		return store.DB().Exec(`UPDATE comic_exports SET expires_at=? WHERE uuid=?`, time.Now().UTC().Add(-time.Second), exportUUID).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	expired := requestJSON(t, e, http.MethodGet, path, nil)
+	if expired.Code != http.StatusGone || !strings.Contains(expired.Body.String(), `"code":"comic_export_expired"`) {
+		t.Fatalf("expired status=%d body=%s", expired.Code, expired.Body.String())
+	}
+	if err := manager.WithCurrentStore(t.Context(), projectUUID, func(store *project.Store) error {
+		return store.DB().Exec(`DELETE FROM comic_exports WHERE uuid=?`, exportUUID).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	missing := requestJSON(t, e, http.MethodGet, path, nil)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing status=%d body=%s", missing.Code, missing.Body.String())
 	}
 }
 

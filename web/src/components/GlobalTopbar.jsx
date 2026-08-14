@@ -94,7 +94,7 @@ export default function GlobalTopbar({
             aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen(true)}
           >
-            <span aria-hidden="true">L</span>
+            <img src="/favicon.png" alt="" aria-hidden="true" />
           </button>
           <div className="project-topbar__title" ref={switcherRef}>
             {projectUuid && availableProjects.length ? (
@@ -155,7 +155,7 @@ export default function GlobalTopbar({
           <button className="project-menu-drawer__backdrop" type="button" aria-label={t('common.navigation.close')} onClick={() => setDrawerOpen(false)} />
           <aside className="project-menu-drawer__panel">
             <header className="project-menu-drawer__header">
-              <div className="project-menu-drawer__brand"><span aria-hidden="true">L</span><div><p>Lumi</p><h2 id={drawerTitleId}>{t('common.navigation.title')}</h2></div></div>
+              <div className="project-menu-drawer__brand"><img src="/favicon.png" alt="" aria-hidden="true" /><div><p>Lumi</p><h2 id={drawerTitleId}>{t('common.navigation.title')}</h2></div></div>
               <button ref={drawerCloseRef} className="project-menu-drawer__close" type="button" aria-label={t('common.navigation.close')} onClick={() => setDrawerOpen(false)}><X size={18} /></button>
             </header>
             <nav className="project-menu-drawer__nav" aria-label={t('common.navigation.main')}>

@@ -16,6 +16,7 @@ import {
   threadContextCopyKey,
   threadDisplayTitle,
   workflowDisplayTitle,
+  workflowProgressPercent,
 } from './chatAreaPresentation.js'
 
 test('composer supports send, queue, stop and steering behavior', () => {
@@ -47,6 +48,21 @@ test('mixed project threads retain localized workflow titles and existing contex
   assert.equal(threadContextCopyKey({ scope: 'project' }, null), 'premise.threads.scene.project')
   assert.equal(threadContextCopyKey({ scope: 'premise', scene: 'asset_reference' }, null), 'premise.threads.scene.reference')
   assert.equal(threadContextCopyKey({ scope: 'project', scene: 'storyboard_reference' }, null), 'chat.scene.storyboard.title')
+})
+
+test('chapter workflows use prompt-aware localized titles with chapter context', () => {
+  const t = (key, values = {}) => `${key}:${values.code || values.count || ''}`
+  assert.equal(workflowDisplayTitle({ kind: 'story_chapter_generation', input_snapshot: { prompt_key: 'story_chapter', chapter_code: 'vol01.ch02' } }, t), 'chat.workflow.kind.story_chapter_with_code:vol01.ch02')
+  assert.equal(workflowDisplayTitle({ kind: 'story_chapter_generation', input_snapshot: JSON.stringify({ prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' }) }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
+  assert.equal(workflowDisplayTitle({ kind: 'story_chapter_batch_plan', input_snapshot: { chapter_count: 4 } }, t), 'chat.workflow.kind.chapter_batch_plan_with_count:4')
+  assert.equal(threadDisplayTitle({ title: 'internal' }, { kind: 'story_chapter_generation', input_snapshot: { prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' } }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
+})
+
+test('workflow progress aggregates persisted step percentages', () => {
+  assert.equal(workflowProgressPercent({ steps: [{ status: 'running', progress: 37 }] }), 37)
+  assert.equal(workflowProgressPercent({ steps: [{ status: 'completed', progress: 0 }, { status: 'running', progress: 50 }] }), 75)
+  assert.equal(workflowProgressPercent({ status: 'completed', steps: [] }), 100)
+  assert.equal(workflowProgressPercent({ steps: [{ status: 'running', progress: 140 }, { status: 'queued', progress: -5 }] }), 50)
 })
 
 test('legacy chat scope is removed without dropping active thread or workspace state', () => {

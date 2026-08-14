@@ -409,6 +409,39 @@ func TestStoryGenerationPersistsAuditedIdempotentResult(t *testing.T) {
 	if counts.Agents != 1 || counts.Logs != 1 || counts.Results != 1 {
 		t.Fatalf("audit counts = %+v", counts)
 	}
+	agents := agent.NewService(harness.projects, harness.queue.providers, nil, harness.queue, nil)
+	threads, err := agents.ListThreads(context.Background(), harness.project.UUID)
+	if err != nil || len(threads) != 1 || threads[0].SubjectUUID != chapter.UUID || threads[0].Status != agent.ThreadCompleted {
+		t.Fatalf("chapter ChatArea thread=%+v err=%v", threads, err)
+	}
+	workflows, err := agents.ListWorkflows(context.Background(), harness.project.UUID)
+	if err != nil || len(workflows) != 1 {
+		t.Fatalf("chapter workflows=%+v err=%v", workflows, err)
+	}
+	workflow := workflows[0]
+	if workflow.Kind != agent.WorkflowStoryChapter || workflow.ThreadUUID != threads[0].UUID || workflow.Status != agent.WorkflowCompleted || len(workflow.Steps) != 1 {
+		t.Fatalf("chapter workflow=%+v", workflow)
+	}
+	step := workflow.Steps[0]
+	if step.StepKey != agent.WorkflowStepStoryChapter || step.TaskUUID != created.UUID || step.ResourceUUID != chapter.UUID || step.Status != agent.WorkflowCompleted || step.Progress != 100 {
+		t.Fatalf("chapter workflow step=%+v", step)
+	}
+	var publicSnapshot map[string]any
+	if err := json.Unmarshal(workflow.InputSnapshot, &publicSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if len(publicSnapshot) != 6 || publicSnapshot["project_uuid"] != harness.project.UUID || publicSnapshot["task_uuid"] != created.UUID || publicSnapshot["chapter_uuid"] != chapter.UUID || publicSnapshot["chapter_code"] != chapter.ChapterCode || publicSnapshot["prompt_key"] != "story_chapter" || publicSnapshot["model_source"] == "" {
+		t.Fatalf("chapter public workflow snapshot=%+v", publicSnapshot)
+	}
+	for _, forbidden := range []string{"prompt", "system_prompt", "path", "id"} {
+		if _, exists := publicSnapshot[forbidden]; exists {
+			t.Fatalf("chapter workflow snapshot exposed %s: %+v", forbidden, publicSnapshot)
+		}
+	}
+	runs, err := agents.ListWorkflowRuns(context.Background(), harness.project.UUID, workflow.UUID, "", 20)
+	if err != nil || len(runs.Items) != 1 || runs.Items[0].Progress != 100 || runs.Items[0].TaskUUID != created.UUID {
+		t.Fatalf("chapter workflow runs=%+v err=%v", runs, err)
+	}
 	var requestPayload, responsePayload string
 	if err := runtime.store.DB().Raw(`SELECT request_payload,response FROM llm_logs LIMIT 1`).Row().Scan(&requestPayload, &responsePayload); err != nil {
 		t.Fatal(err)
@@ -502,19 +535,39 @@ func TestBatchPlanAndComicStoryboardWorkflowsApplyFrozenOutputs(t *testing.T) {
 	}
 	agents := agent.NewService(harness.projects, harness.queue.providers, nil, harness.queue, nil)
 	threads, err := agents.ListThreads(context.Background(), harness.project.UUID)
-	if err != nil || len(threads) != 1 || threads[0].SubjectUUID != chapter.UUID || threads[0].Status != agent.ThreadCompleted {
-		t.Fatalf("storyboard ChatArea threads=%+v err=%v", threads, err)
+	if err != nil || len(threads) != 2 {
+		t.Fatalf("Story ChatArea threads=%+v err=%v", threads, err)
 	}
 	workflows, err := agents.ListWorkflows(context.Background(), harness.project.UUID)
-	if err != nil || len(workflows) != 1 {
-		t.Fatalf("storyboard workflows=%+v err=%v", workflows, err)
+	if err != nil || len(workflows) != 2 {
+		t.Fatalf("Story workflows=%+v err=%v", workflows, err)
 	}
-	workflow := workflows[0]
-	if workflow.Kind != agent.WorkflowComicStoryboard || workflow.ThreadUUID != threads[0].UUID || workflow.Status != agent.WorkflowCompleted || len(workflow.Steps) != 1 {
+	var workflow, batchWorkflow agent.Workflow
+	for _, candidate := range workflows {
+		switch candidate.Kind {
+		case agent.WorkflowComicStoryboard:
+			workflow = candidate
+		case agent.WorkflowStoryChapterBatchPlan:
+			batchWorkflow = candidate
+		}
+	}
+	if batchWorkflow.UUID == "" || batchWorkflow.Status != agent.WorkflowCompleted || len(batchWorkflow.Steps) != 1 || batchWorkflow.Steps[0].StepKey != agent.WorkflowStepChapterBatchPlan || batchWorkflow.Steps[0].TaskUUID != batch.UUID || batchWorkflow.Steps[0].Progress != 100 {
+		t.Fatalf("batch workflow projection=%+v", batchWorkflow)
+	}
+	if workflow.UUID == "" || workflow.Status != agent.WorkflowCompleted || len(workflow.Steps) != 1 {
 		t.Fatalf("storyboard workflow projection=%+v", workflow)
 	}
+	var storyboardThread agent.Thread
+	for _, thread := range threads {
+		if thread.UUID == workflow.ThreadUUID {
+			storyboardThread = thread
+		}
+	}
+	if storyboardThread.SubjectUUID != chapter.UUID || storyboardThread.Status != agent.ThreadCompleted {
+		t.Fatalf("storyboard ChatArea thread=%+v", storyboardThread)
+	}
 	step := workflow.Steps[0]
-	if step.StepKey != agent.WorkflowStepComicStoryboard || step.TaskUUID != comic.UUID || step.ResourceUUID != chapter.UUID || step.Status != agent.WorkflowCompleted || !strings.Contains(string(step.Output), sections[0].UUID) {
+	if step.StepKey != agent.WorkflowStepComicStoryboard || step.TaskUUID != comic.UUID || step.ResourceUUID != chapter.UUID || step.Status != agent.WorkflowCompleted || step.Progress != 100 || !strings.Contains(string(step.Output), sections[0].UUID) {
 		t.Fatalf("storyboard workflow step=%+v", step)
 	}
 	runs, err := agents.ListWorkflowRuns(context.Background(), harness.project.UUID, workflow.UUID, "", 20)
@@ -714,6 +767,10 @@ func TestRunningStoryGenerationCancellationPreservesCurrentStory(t *testing.T) {
 	if err != nil || len(versions) != 1 {
 		t.Fatalf("versions after cancellation = %+v, error = %v", versions, err)
 	}
+	workflowStatus, stepStatus, threadStatus := storyTaskWorkflowState(t, harness, created.UUID)
+	if workflowStatus != StatusCancelled || stepStatus != StatusCancelled || threadStatus != StatusCancelled {
+		t.Fatalf("direct task cancellation workflow=%s/%s/%s", workflowStatus, stepStatus, threadStatus)
+	}
 }
 
 func TestCancelledStoryGenerationCanBeExplicitlyRetried(t *testing.T) {
@@ -864,6 +921,14 @@ func TestFailedStoryGenerationCanBeExplicitlyRetriedOnce(t *testing.T) {
 	completed := waitTaskStatus(t, harness.queue, harness.project.UUID, created.UUID, StatusCompleted)
 	if completed.Attempt != 2 {
 		t.Fatalf("completed retry = %+v", completed)
+	}
+	var projectionCounts struct{ Threads, Workflows int64 }
+	if err := runtime.store.DB().Raw(`SELECT (SELECT COUNT(*) FROM chat_threads) AS threads,(SELECT COUNT(*) FROM workflows) AS workflows`).Scan(&projectionCounts).Error; err != nil {
+		t.Fatal(err)
+	}
+	workflowStatus, stepStatus, threadStatus := storyTaskWorkflowState(t, harness, created.UUID)
+	if projectionCounts.Threads != 1 || projectionCounts.Workflows != 1 || workflowStatus != StatusCompleted || stepStatus != StatusCompleted || threadStatus != StatusCompleted {
+		t.Fatalf("direct retry chapter projection counts=%+v state=%s/%s/%s", projectionCounts, workflowStatus, stepStatus, threadStatus)
 	}
 	retriedRequest := harness.fakeModel.requestSnapshot()
 	if !strings.Contains(retriedRequest.SystemPrompt, "项目语言：简体中文") || strings.Contains(retriedRequest.Prompt, "CUSTOM") {

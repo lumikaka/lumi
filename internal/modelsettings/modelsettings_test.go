@@ -97,6 +97,38 @@ func TestProjectAndScenarioModelInheritance(t *testing.T) {
 	}
 }
 
+func TestBailianQwen38MaxIsSelectable(t *testing.T) {
+	h := newSettingsHarness(t)
+	resolver := NewResolver(h.providers)
+	view, err := resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := make([]string, 0, 2)
+	for _, option := range view.Options.TextModels {
+		if option.ProviderUUID == h.bailian.UUID {
+			models = append(models, option.Model)
+		}
+	}
+	if len(models) != 2 || models[0] != provider.BailianTextModel || models[1] != provider.BailianTextModelQwen38Max {
+		t.Fatalf("Bailian text models=%v", models)
+	}
+
+	view, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: 0, Changes: map[string]*Selection{
+		ProjectText: {ProviderUUID: h.bailian.UUID, Model: provider.BailianTextModelQwen38Max},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if effective := view.Settings[ProjectText].Effective; effective == nil || effective.ProviderUUID != h.bailian.UUID || effective.Model != provider.BailianTextModelQwen38Max {
+		t.Fatalf("effective project text model=%+v", effective)
+	}
+	resolved, err := resolver.Resolve(h.ctx, h.store, ProjectText, KindText, "", "")
+	if err != nil || resolved.Model != provider.BailianTextModelQwen38Max {
+		t.Fatalf("resolved=%+v err=%v", resolved, err)
+	}
+}
+
 func TestUnavailableAndMismatchedModelsAreSafe(t *testing.T) {
 	h := newSettingsHarness(t)
 	resolver := NewResolver(h.providers)

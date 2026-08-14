@@ -132,3 +132,7 @@ export function cancelWorkflow(projectUuid, workflowUuid) {
 export function retryWorkflow(projectUuid, workflowUuid) {
   return apiRequest(projectPath(projectUuid, `/workflows/${encodeURIComponent(workflowUuid)}/retries`), jsonRequest('POST'))
 }
+
+export function resolveWorkflowConflict(projectUuid, workflowUuid, payload) {
+  return apiRequest(projectPath(projectUuid, `/workflows/${encodeURIComponent(workflowUuid)}/conflict-resolutions`), jsonRequest('POST', payload))
+}

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, History, RotateCcw, Save, Sparkles, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, History, RotateCcw, Save, Sparkles, X } from 'lucide-react'
 
 import { createPromptVersion, listPromptCatalog, listPromptVersions, restorePromptVersion } from '../api/story.js'
 import LumiDialog from './LumiDialog.jsx'
@@ -133,18 +133,32 @@ function PromptCard({ projectUuid, definition, draft, setDraft, applyPreset, ope
   )
 }
 
-function PromptGroupSection({ projectUuid, group, definitions, drafts, setDraft, resetGroup, applyPreset, openCandidates }) {
+function PromptGroupSection({ projectUuid, group, sectionId, definitions, drafts, collapsed, setCollapsed, setDraft, resetGroup, applyPreset, openCandidates }) {
   const { t } = useI18n()
+  const groupLabel = t(`story.prompts.group.${group}`)
+  const contentId = `${sectionId}-content`
+  const toggleLabel = t(collapsed ? 'story.prompts.expand_group' : 'story.prompts.collapse_group', { group: groupLabel })
 
   return (
-    <section className="prompt-group" data-prompt-group={group}>
+    <section className={`prompt-group${collapsed ? ' is-collapsed' : ''}`} id={sectionId} data-prompt-group={group}>
       <header className="prompt-group__header">
-        <div><div><h2>{t(`story.prompts.group.${group}`)}</h2><span>{definitions.length}</span></div><p>{t(`story.prompts.group.${group}.description`)}</p></div>
+        <div>
+          <div>
+            <h2>
+              <button type="button" className="button-quiet prompt-group__toggle" aria-expanded={!collapsed} aria-controls={contentId} aria-label={toggleLabel} onClick={() => setCollapsed(!collapsed)}>
+                {collapsed ? <ChevronRight size={20} strokeWidth={2.4} aria-hidden="true" /> : <ChevronDown size={20} strokeWidth={2.4} aria-hidden="true" />}
+                <span>{groupLabel}</span>
+              </button>
+            </h2>
+            <span className="prompt-group__count">{definitions.length}</span>
+          </div>
+          <p>{t(`story.prompts.group.${group}.description`)}</p>
+        </div>
         <div className="prompt-group__actions">
           <button type="button" className="button-secondary" onClick={() => resetGroup(definitions)}><RotateCcw size={14} aria-hidden="true" />{t('story.prompts.restore_group_default')}</button>
         </div>
       </header>
-      <div className="prompt-group__list">
+      <div className="prompt-group__list" id={contentId} hidden={collapsed}>
         {definitions.map((definition) => {
           const identity = promptIdentity(definition)
           const draft = drafts[identity] ?? definition.effective_value ?? ''
@@ -160,8 +174,10 @@ function PromptGroupSection({ projectUuid, group, definitions, drafts, setDraft,
 export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, showHeader = true, className = '' }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
+  const anchorPrefix = `prompt-catalog-${useId().replace(/:/g, '')}`
   const [drafts, setDrafts] = useState({})
   const [candidate, setCandidate] = useState(null)
+  const [collapsedGroups, setCollapsedGroups] = useState(() => new Set(groupOrder))
   const serverValues = useRef({})
   const catalogQuery = useQuery({ queryKey: ['prompt-catalog', projectUuid], queryFn: () => listPromptCatalog(projectUuid) })
   const catalog = catalogQuery.data?.items || []
@@ -177,6 +193,13 @@ export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, 
   }, [catalogQuery.data])
 
   const grouped = useMemo(() => Object.fromEntries(visibleGroups.map((group) => [group, visibleCatalog.filter((definition) => definition.prompt_group === group)])), [visibleCatalog, visibleGroups])
+  const visibleSections = visibleGroups.filter((group) => grouped[group]?.length)
+  const setGroupCollapsed = (group, collapsed) => setCollapsedGroups((current) => {
+    const next = new Set(current)
+    if (collapsed) next.add(group)
+    else next.delete(group)
+    return next
+  })
   const setDraft = (definition, value) => setDrafts((current) => ({ ...current, [promptIdentity(definition)]: value }))
   const resetGroup = (definitions) => setDrafts((current) => resetPromptGroupDrafts(current, definitions))
   const applyPreset = (definition) => {
@@ -198,7 +221,20 @@ export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, 
       {showHeader ? <header className="prompt-catalog-editor__intro"><div><h1>{t('projects.tab.prompts')}</h1><p>{t('story.prompts.description')}</p></div><span>{visibleCatalog.length}</span></header> : null}
       <LocalizedErrorMessage error={catalogQuery.error} />
       {catalogQuery.isLoading ? <div className="prompt-catalog-editor__loading" aria-busy="true">{t('story.prompts.loading_catalog')}</div> : null}
-      {!catalogQuery.isLoading && visibleGroups.map((group) => grouped[group]?.length ? <PromptGroupSection key={group} projectUuid={projectUuid} group={group} definitions={grouped[group]} drafts={drafts} setDraft={setDraft} resetGroup={resetGroup} applyPreset={applyPreset} openCandidates={setCandidate} /> : null)}
+      {!catalogQuery.isLoading && visibleSections.length ? (
+        <nav className="prompt-catalog-editor__toc" aria-label={t('story.prompts.toc.navigation')}>
+          <h2>{t('story.prompts.toc.title')}</h2>
+          <div>
+            {visibleSections.map((group) => (
+              <a key={group} href={`#${anchorPrefix}-${group}`} onClick={() => setGroupCollapsed(group, false)}>
+                <span>{t(`story.prompts.group.${group}`)}</span>
+                <strong>{grouped[group].length}</strong>
+              </a>
+            ))}
+          </div>
+        </nav>
+      ) : null}
+      {!catalogQuery.isLoading && visibleSections.map((group) => <PromptGroupSection key={group} projectUuid={projectUuid} group={group} sectionId={`${anchorPrefix}-${group}`} definitions={grouped[group]} drafts={drafts} collapsed={collapsedGroups.has(group)} setCollapsed={(collapsed) => setGroupCollapsed(group, collapsed)} setDraft={setDraft} resetGroup={resetGroup} applyPreset={applyPreset} openCandidates={setCandidate} />)}
       {candidate ? <PromptCandidatesDialog projectUuid={projectUuid} definition={catalog.find((item) => promptIdentity(item) === promptIdentity(candidate)) || candidate} draft={drafts[promptIdentity(candidate)]} onClose={() => setCandidate(null)} onRestored={restored} /> : null}
     </div>
   )

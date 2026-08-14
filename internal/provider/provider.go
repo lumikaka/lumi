@@ -19,8 +19,9 @@ const (
 	LegacyTypeOpenAICompatible = "openai_compatible"
 	TypeAliyunBailian          = "aliyun_bailian"
 
-	BailianTextModel  = "qwen3.7-plus"
-	BailianImageModel = "qwen-image-3.0"
+	BailianTextModel          = "qwen3.7-plus"
+	BailianTextModelQwen38Max = "qwen3.8-max"
+	BailianImageModel         = "qwen-image-3.0"
 )
 
 type Provider struct {
@@ -47,6 +48,19 @@ type Resolved struct {
 	Provider
 	APIKey            string `json:"-"`
 	ConfigFingerprint string `json:"-"`
+}
+
+// SupportedTextModels returns the selectable text models for a provider, with its default first.
+func SupportedTextModels(item Provider) []string {
+	models := make([]string, 0, 2)
+	defaultModel := strings.TrimSpace(item.DefaultModel)
+	if defaultModel != "" {
+		models = append(models, defaultModel)
+	}
+	if item.ProviderType == TypeAliyunBailian && defaultModel != BailianTextModelQwen38Max {
+		models = append(models, BailianTextModelQwen38Max)
+	}
+	return models
 }
 
 // CreateInput remains an internal bootstrap helper for tests and local callers.

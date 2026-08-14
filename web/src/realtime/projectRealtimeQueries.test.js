@@ -48,6 +48,13 @@ test('production, asset and LLM events invalidate exact and aggregate queries', 
   assert.ok(llm.queryKeys.some((key) => key[0] === 'project-llm-log' && key[2] === 'log-uuid'))
 })
 
+test('comic export cleanup refreshes REST facts without polling', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'comic:exports_changed', { exports_deleted: 2 })
+  assert.equal(result.invalidateAll, false)
+  assert.ok(keyNames(result).includes('comic-exports'))
+  assert.ok(keyNames(result).includes('production-tasks'))
+})
+
 test('unknown business events fall back to a project resync while protocol events do not', () => {
   assert.deepEqual(projectRealtimeInvalidation(projectUuid, 'future_domain:changed', {}), { queryKeys: [], invalidateAll: true })
   assert.deepEqual(projectRealtimeInvalidation(projectUuid, 'phx_close', {}), { queryKeys: [], invalidateAll: false })

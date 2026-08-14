@@ -154,7 +154,7 @@ func (manager *Manager) RetryDomainTask(ctx context.Context, projectUUID, kind, 
 }
 
 func storyDomainTaskKind(kind string) bool {
-	return kind == KindStoryChapterGeneration || kind == KindComicStoryboardGeneration
+	return kind == KindStoryChapterGeneration || kind == KindStoryChapterBatchPlan || kind == KindComicStoryboardGeneration
 }
 
 func storyDomainTask(task Task) agent.DomainTask {

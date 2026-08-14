@@ -142,6 +142,13 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		}
 		payload, applyErr := runtime.applyStoryWorkflowResponse(workCtx, record, snapshot, response.Content)
 		if applyErr != nil {
+			var conflict *production.GeneratedSectionsConflict
+			if record.Kind == KindComicStoryboardGeneration && errors.As(applyErr, &conflict) {
+				if waitErr := runtime.waitForComicStoryboardOverwrite(context.WithoutCancel(ctx), record, conflict, job.Attempt); waitErr != nil {
+					return runtime.handleWorkError(ctx, record, waitErr, job.Attempt, job.MaxAttempts)
+				}
+				return nil
+			}
 			return runtime.handleWorkError(ctx, record, applyErr, job.Attempt, job.MaxAttempts)
 		}
 		if err := runtime.completeStoryWorkflowTask(workCtx, record, payload); err != nil {
@@ -216,8 +223,8 @@ func (runtime *projectRuntime) markRunning(ctx context.Context, record taskRecor
 	if err := appendAgentEventTx(ctx, tx, threadID, &runID, "run_started", map[string]any{"task_uuid": record.UUID, "chapter_uuid": record.ResourceUUID, "status": StatusRunning, "attempt": attempt}, now); err != nil {
 		return 0, 0, err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := markComicStoryboardWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := markStoryTaskWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
 			return 0, 0, err
 		}
 	}
@@ -227,8 +234,8 @@ func (runtime *projectRuntime) markRunning(ctx context.Context, record taskRecor
 	updated := record.DTO()
 	updated.Status, updated.Progress, updated.Attempt, updated.StartedAt, updated.UpdatedAt = StatusRunning, 5, attempt, &now, now
 	runtime.broadcast("task:running", updated)
-	if record.Kind == KindComicStoryboardGeneration {
-		runtime.broadcastComicStoryboardWorkflow("workflow:step_changed", record.UUID)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:step_changed", record.UUID)
 	}
 	return threadID, runID, nil
 }
@@ -259,6 +266,9 @@ func (runtime *projectRuntime) recordProgress(ctx context.Context, record taskRe
 	task := record.DTO()
 	task.Status, task.Progress, task.UpdatedAt = StatusRunning, progress, now
 	runtime.broadcast("task:progress", task)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:step_changed", record.UUID)
+	}
 	return nil
 }
 
@@ -284,6 +294,11 @@ func (runtime *projectRuntime) completeTask(ctx context.Context, record taskReco
 	if chapter.CurrentStory != nil {
 		payload["chapter_story_uuid"] = chapter.CurrentStory.UUID
 	}
+	workflowOutput := map[string]any{"project_uuid": runtime.projectUUID, "chapter_uuid": chapter.UUID}
+	if chapter.CurrentStory != nil {
+		workflowOutput["chapter_story_uuid"] = chapter.CurrentStory.UUID
+	}
+	payload["result"] = workflowOutput
 	if err := appendTaskEventTx(ctx, tx, record.ID, "task_completed", payload, now); err != nil {
 		return err
 	}
@@ -300,12 +315,20 @@ func (runtime *projectRuntime) completeTask(ctx context.Context, record taskReco
 	if err := appendAgentEventTx(ctx, tx, threadID, &runID, "run_completed", payload, now); err != nil {
 		return err
 	}
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := completeStoryTaskWorkflowTx(ctx, tx, record.UUID, workflowOutput, now); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	task := record.DTO()
 	task.Status, task.Progress, task.CompletedAt, task.UpdatedAt = StatusCompleted, 100, &now, now
 	runtime.broadcast("task:completed", task)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:step_changed", record.UUID)
+	}
 	if runtime.manager.hub != nil {
 		runtime.manager.hub.Broadcast(realtime.ProjectTopic(runtime.projectUUID), "story:chapter_changed", payload)
 	}
@@ -356,8 +379,8 @@ func (runtime *projectRuntime) pauseTask(ctx context.Context, record taskRecord,
 	if err := appendTaskEventTx(ctx, tx, record.ID, "task_paused", payload, now); err != nil {
 		return err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := queueComicStoryboardWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := queueStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return err
 		}
 	}
@@ -367,8 +390,8 @@ func (runtime *projectRuntime) pauseTask(ctx context.Context, record taskRecord,
 	task := record.DTO()
 	task.Status, task.Progress, task.Attempt, task.UpdatedAt = StatusQueued, 0, attempt, now
 	runtime.broadcast("task:queued", task)
-	if record.Kind == KindComicStoryboardGeneration {
-		runtime.broadcastComicStoryboardWorkflow("workflow:queued", record.UUID)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:queued", record.UUID)
 	}
 	return nil
 }
@@ -387,8 +410,8 @@ func (runtime *projectRuntime) failTask(ctx context.Context, record taskRecord, 
 	if err := appendTaskEventTx(ctx, tx, record.ID, "task_failed", payload, now); err != nil {
 		return err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := failComicStoryboardWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := failStoryTaskWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 			return err
 		}
 	}
@@ -404,8 +427,8 @@ func (runtime *projectRuntime) failTask(ctx context.Context, record taskRecord, 
 	task := record.DTO()
 	task.Status, task.Progress, task.Attempt, task.ErrorCode, task.ErrorMessage, task.CompletedAt, task.UpdatedAt = StatusFailed, 0, attempt, code, message, &now, now
 	runtime.broadcast("task:failed", task)
-	if record.Kind == KindComicStoryboardGeneration {
-		runtime.broadcastComicStoryboardWorkflow("workflow:failed", record.UUID)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:failed", record.UUID)
 	}
 	return nil
 }
@@ -423,8 +446,8 @@ func (runtime *projectRuntime) cancelTaskProjection(ctx context.Context, record 
 	if err := appendTaskEventTx(ctx, tx, record.ID, "task_cancelled", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "chapter_uuid": record.ResourceUUID, "status": StatusCancelled}, now); err != nil {
 		return err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := cancelComicStoryboardWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := cancelStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return err
 		}
 	}
@@ -434,8 +457,8 @@ func (runtime *projectRuntime) cancelTaskProjection(ctx context.Context, record 
 	task := record.DTO()
 	task.Status, task.CompletedAt, task.UpdatedAt = StatusCancelled, &now, now
 	runtime.broadcast("task:cancelled", task)
-	if record.Kind == KindComicStoryboardGeneration {
-		runtime.broadcastComicStoryboardWorkflow("workflow:cancelled", record.UUID)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:cancelled", record.UUID)
 	}
 	return nil
 }
@@ -500,8 +523,8 @@ func (runtime *projectRuntime) projectRiverEvent(ctx context.Context, event *riv
 		if err := appendTaskEventTx(ctx, tx, record.ID, "retry_scheduled", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "chapter_uuid": record.ResourceUUID, "status": StatusQueued, "attempt": event.Job.Attempt}, now); err != nil {
 			return err
 		}
-		if record.Kind == KindComicStoryboardGeneration {
-			if err := queueComicStoryboardWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		if isProjectedStoryTaskWorkflow(record.Kind) {
+			if err := queueStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 				return err
 			}
 		}
@@ -511,8 +534,8 @@ func (runtime *projectRuntime) projectRiverEvent(ctx context.Context, event *riv
 		task := record.DTO()
 		task.Status, task.Progress, task.Attempt, task.UpdatedAt = StatusQueued, 0, event.Job.Attempt, now
 		runtime.broadcast("task:queued", task)
-		if record.Kind == KindComicStoryboardGeneration {
-			runtime.broadcastComicStoryboardWorkflow("workflow:queued", record.UUID)
+		if isProjectedStoryTaskWorkflow(record.Kind) {
+			runtime.broadcastStoryTaskWorkflow("workflow:queued", record.UUID)
 		}
 		return nil
 	}

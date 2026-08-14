@@ -181,11 +181,11 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
     ? (scope === 'chapter' ? 'projects.exports.dialog.chapter_title_pages' : 'projects.exports.dialog.project_title_pages')
     : (scope === 'chapter' ? 'projects.exports.dialog.chapter_title' : 'projects.exports.dialog.project_title'))
   const scopeLabel = scope === 'chapter' ? request.chapterLabel || t(pageMode ? 'projects.exports.chapter_label_pages' : 'projects.exports.chapter_label') : t(pageMode ? 'projects.exports.project_label_pages' : 'projects.exports.project_label')
-  const filename = exportRecord?.filename || exportRecord?.output_asset?.original_filename || t('projects.exports.dialog.pending_filename')
+  const filename = exportRecord?.filename || t('projects.exports.dialog.pending_filename')
   const busy = cancelMutation.isPending || retryMutation.isPending
   const active = activeComicExportStatuses.has(operationState)
   const retryable = retryableComicExportStatuses.has(operationState)
-  const ready = operationState === 'ready' && exportRecord?.output_asset
+  const ready = operationState === 'ready' && exportRecord?.download_url
 
   return (
     <LumiDialog className="comic-export-dialog" onClose={onClose} aria-labelledby="comic-export-dialog-title">
@@ -211,6 +211,8 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
             <div><dt>{t(pageMode ? 'projects.exports.dialog.ready_pages' : 'projects.exports.dialog.ready_sections')}</dt><dd>{formatNumber(metrics.ready)} / {formatNumber(metrics.total)}</dd></div>
             <div><dt>{t(pageMode ? 'projects.exports.dialog.missing_pages' : 'projects.exports.dialog.missing_sections')}</dt><dd>{formatNumber(metrics.missing)}</dd></div>
             <div><dt>{t('projects.exports.created')}</dt><dd>{exportRecord?.created_at ? formatDateTime(exportRecord.created_at) : '—'}</dd></div>
+            <div><dt>{t('projects.exports.retention')}</dt><dd>{t('projects.exports.retention_days', { days: exportRecord?.retention_days || 7 })}</dd></div>
+            <div><dt>{t('projects.exports.expires')}</dt><dd>{exportRecord?.expires_at ? formatDateTime(exportRecord.expires_at) : '—'}</dd></div>
             <div className="comic-export-dialog__hash"><dt>{t('projects.exports.snapshot')}</dt><dd><code>{exportRecord?.snapshot_hash || '—'}</code></dd></div>
           </dl>
           {!ready ? <div className="comic-export-dialog__progress" aria-live="polite"><div><strong>{statusLabel(t, displayState)}</strong><span>{formatNumber(progress)}%</span></div><progress max="100" value={progress} aria-label={t('projects.exports.dialog.progress')} /></div> : null}
@@ -228,7 +230,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
           <button type="button" className="button-secondary" disabled={busy} onClick={onClose}>{t(active ? 'projects.exports.dialog.background' : 'common.action.close')}</button>
           {active ? <button type="button" disabled={busy} onClick={() => cancelMutation.mutate()}>{t(cancelMutation.isPending ? 'projects.exports.dialog.cancelling' : 'common.action.cancel')}</button> : null}
           {retryable ? <button type="button" disabled={busy} onClick={() => retryMutation.mutate()}>{t(retryMutation.isPending ? 'projects.exports.dialog.retrying' : 'common.action.retry')}</button> : null}
-          {ready ? <a className="button-link" href={exportRecord.output_asset.content_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download')}</a> : null}
+          {ready ? <a className="button-link" href={exportRecord.download_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download')}</a> : null}
         </> : null}
       </footer>
     </LumiDialog>

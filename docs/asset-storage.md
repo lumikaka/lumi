@@ -4,7 +4,7 @@
 
 本规范定义 Lumi 项目内图片、文本附件、音视频、压缩包和生成产物的存储边界。目标是让项目文件夹可直接浏览、整体移动、复制、备份和离线打开，同时保证数据库记录与磁盘文件在进程崩溃、生成失败、重复导入和删除恢复后仍可校验、修复。
 
-本规范适用于所有 Story 导入附件、Premise 设定图、设定资产、Comic Section 图片、缩略图和导出流程。业务模块不得直接读写 `assets/`；所有写入、读取 URL、替换、删除、校验和清理必须经过统一 Asset Store。
+本规范适用于所有 Story 导入附件、Premise 设定图、设定资产、Comic Section 图片、缩略图和导出流程。业务模块不得直接读写 `assets/`；其中的写入、读取 URL、替换、删除、校验和清理必须经过统一 Asset Store。漫画导出 ZIP 是明确例外：它只进入项目根 `exports/`，由 Export 领域按固定 7 天保留期管理，不创建 Asset Store File/Object。
 
 本文的目标仓库是 `/Users/qingyang/mine-work/lumi`。该仓库只用于理解旧有 Files/S3 和创作资产行为，不能被本规范的实施修改。
 
@@ -12,7 +12,7 @@
 
 Goal 03.5 已由 `internal/files` 的单一 service 实现。项目 migration 建立 `upload_stashed`、`file_objects`、`files`、integrity scan/finding、GC plan/entry 与 Asset maintenance task 表；Story 文件导入通过具体 `story_source_items.file_id` 引用正式 File。Echo handler、Story service 与 River worker 不直接写 `assets/` 或操作三张核心表。
 
-打开项目时在锁内补齐受管目录并执行有上限的轻量 reconcile，之后才启动 River。耗时维护通过 `asset_maintenance` queue 执行，数据库副作用并发为 1；UI 的 Assets 页面可上传并幂等 finalize、用 `content_url` 预览、查看扫描摘要和触发安全 reconcile。REST/SQLite 是事实源，WebSocket 事件只触发刷新。
+打开项目时在锁内补齐受管目录并执行有上限的轻量 reconcile，之后才启动 River。耗时维护通过 `asset_maintenance` queue 执行，数据库副作用并发为 1；UI 的 Assets 页面可上传并幂等 finalize、用 `content_url` 预览、查看扫描摘要和触发安全 reconcile。漫画 ZIP 由同一项目 Runtime 的独立周期清理 worker 管理。REST/SQLite 是事实源，WebSocket 事件只触发刷新。
 
 ## 目录布局
 
@@ -33,7 +33,7 @@ Goal 03.5 已由 `internal/files` 的单一 service 实现。项目 migration �
 │   └── comic/
 │       └── sections/
 │           └── chapter-01-section-01--019....webp
-├── exports/                    # 可选；用户选择保存到项目内时使用
+├── exports/                    # 漫画 ZIP 的唯一存储位置；固定保留 7 天
 └── .lumi/
     ├── cache/                  # 可删除并重建
     ├── thumbnails/             # 可删除并重建
@@ -47,7 +47,7 @@ Goal 03.5 已由 `internal/files` 的单一 service 实现。项目 migration �
 | 路径 | 是否事实数据 | 规则 |
 |---|---:|---|
 | `assets/` | 是 | 按可读 `key_path` 保存的已提交资产文件，用户可以浏览、复制和备份；项目移动时必须保留 |
-| `exports/` | 否 | 面向用户的派生产物，可删除、重新生成或导出到项目外 |
+| `exports/` | 否 | 漫画 ZIP 的唯一存储位置；按 `comic_exports.expires_at` 精确到期并由后台删除，用户自行放入的其他文件不受影响 |
 | `.lumi/cache/` | 否 | 运行缓存，不得成为唯一数据来源 |
 | `.lumi/thumbnails/` | 否 | 缩略图缓存，可按原对象重建 |
 | `.lumi/tmp/` | 否 | 未提交临时文件；只能由当前项目实例使用 |
@@ -64,6 +64,7 @@ Goal 03.5 已由 `internal/files` 的单一 service 实现。项目 migration �
 6. 所有公开 Asset 使用 UUIDv7；内部表关联只使用自增 `id`。
 7. 所有磁盘路径先经过根目录约束和符号链接检查；不得把用户输入直接拼到文件路径。
 8. 数据库事务与文件系统发布不能组成真正的原子事务，必须通过 pending 状态和 reconcile 实现可恢复提交。
+9. 漫画 ZIP 不做 object 去重，不创建 `files` / `file_objects`；`comic_exports` 中的大小、SHA-256、受控相对路径与到期时间构成其完整性和生命周期事实。
 
 ## 路径规则
 
@@ -167,7 +168,7 @@ comic/sections/chapter-01-section-01--019....webp
 
 业务表必须通过具体 `file_id` 外键引用 `files.id`，例如 `premise_setting_images.file_id`、`premise_asset_variants.file_id` 和 `comic_image_variants.file_id`。不要用弱约束的任意 `resource_type/resource_id` 代替所有业务外键。
 
-Goal 04 的 Premise setting、Premise variant、Comic image variant 与导出归档统一使用 `FinalizeUploadWithBind`/`CommitReader`。领域记录与不可变 File 在 Asset Store 的最终 SQLite 事务中一起可见；后台生成的 bind 还会在同一事务中复核持久化取消状态，取消后的 Provider 返回不能移动业务 current 指针。
+Premise setting、Premise variant 与 Comic image variant 使用 `FinalizeUploadWithBind`/`CommitReader`。领域记录与不可变 File 在 Asset Store 的最终 SQLite 事务中一起可见；后台生成的 bind 还会在同一事务中复核持久化取消状态，取消后的 Provider 返回不能移动业务 current 指针。漫画导出不使用这条提交链路，而是采用 `exports/` 专属的流式、同步和原子 rename 协议。
 
 ### 对外模型
 
@@ -250,7 +251,7 @@ Goal 04 的 Premise setting、Premise variant、Comic image variant 与导出归
 - 替换图片创建新 Asset/variant，再在一个数据库事务中切换 current 指针并写 event。
 - 普通删除先设置逻辑 File/Asset 或业务资源的 `deleted_at`；回收站中的引用继续阻止物理 GC。
 - 永久删除必须先移除或重定向所有具体 `file_id` 业务外键，再删除逻辑 File。
-- 一个 object 没有任何 active、history、trash、snapshot 或 pending export 引用，并超过 grace period 后，才允许 GC 删除磁盘文件和 object row。
+- 一个 object 没有任何 active、history、trash、snapshot 或其他结构化引用，并超过 grace period 后，才允许通用 GC 删除磁盘文件和 object row。
 - GC 必须可 dry-run，输出 UUID、hash、`key_path`、引用摘要和预计回收字节数；不得根据文件修改时间直接删除 `assets/` 中的文件。
 
 ### Premise 资产永久删除边界
@@ -281,11 +282,14 @@ Reconcile 不能自动删除用户可能需要恢复的数据。corrupt、hash �
 ## 导出规则
 
 - 导出使用 Asset metadata 和 snapshot 中的 UUID/顺序读取内容，不遍历目录猜测业务顺序。
-- 导出文件名根据 Chapter、Section 和 title 生成，清理分隔符、控制字符、保留名和超长名称。
-- 导出先写 `{name}.partial` 或临时目录，全部成功后原子 rename 为最终产物。
-- 用户选择项目外目录时，该路径只属于本次导出 operation，不写入项目长期数据；导出历史可保存展示名称和完成状态，但不依赖该绝对路径恢复项目内容。
-- `exports/` 中的内容不参与 object 去重、项目引用或备份完整性判断。
-- Comic ZIP 同时登记为 `purpose=export` 的可校验 derivative，再投影到 `exports/`；immutable snapshot hash 是幂等身份，投影路径不是业务事实。
+- Comic ZIP 只保存到项目根 `exports/`，不允许选择其他长期保存位置，也不写入 `assets/`、`files` 或 `file_objects`。
+- 文件名根据 scope、Chapter、画册类型和 snapshot hash 生成安全前缀，并以 Export UUIDv7 结尾；同一快照到期后重建会得到新路径，不会与旧清理任务争用。
+- ZIP 直接流式写入任务专属 `{name}.zip.part`，对压缩后字节同时计算大小和 SHA-256；文件 `fsync` 成功后原子 rename 为最终 ZIP，再同步 `exports/` 目录。
+- ready、failed、cancelled 从各自终态起固定保留 7 天；重试清空旧 `expires_at`，新的终态重新计算。相同快照只复用 `status=ready AND expires_at>now` 的 ZIP，且复用不续期。
+- 下载只通过 `/media/projects/:project_uuid/comic-exports/:export_uuid/content` 按 Export UUID 解析；支持 Range、ETag 和安全文件名。到期边界立即返回 410，记录清理后返回 404。
+- 每项目 River Runtime 在启动时及每小时运行 active-state 唯一清理任务，每轮最多处理 1000 项。它只删除数据库登记路径、符合 Lumi UUID 命名的无记录旧 ZIP，以及到期 `.part`；用户放入 `exports/` 的其他文件不得删除。单项文件删除失败时保留 `expired` 记录供下轮重试。
+- 保留期本身就是该派生产物的删除宽限期；`exports/` 不参与 Asset object 去重、业务引用或项目核心备份完整性判断。
+- 升级前 `output_file_id` 仅为兼容列。普通 Asset 读取也按关联 Export 的精确到期时间拒绝旧 URL；清理器随后先软删除 `purpose=export` File，再用带审计计划与事务内引用复检的 export-only GC 回收物理 object。object 被其他 File 共享时只删除到期逻辑 File。
 
 ## 项目复制、备份与 migration
 

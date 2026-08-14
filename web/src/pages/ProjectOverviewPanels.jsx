@@ -278,9 +278,11 @@ function OverviewExportTable({ items, loading, emptyTitle, chapterTitles }) {
               <dl className="overview-export-metrics">
                 <div><dt>{t('common.label.format')}</dt><dd>{item.format?.toUpperCase() || 'ZIP'}</dd></div>
                 <div><dt>{t('projects.exports.created')}</dt><dd>{formatDateTime(item.created_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</dd></div>
+                <div><dt>{t('projects.exports.retention')}</dt><dd>{t('projects.exports.retention_days', { days: item.retention_days || 7 })}</dd></div>
+                <div><dt>{t('projects.exports.expires')}</dt><dd>{item.expires_at ? formatDateTime(item.expires_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</dd></div>
                 <div><dt>{t('projects.exports.snapshot')}</dt><dd title={item.snapshot_hash}>{item.snapshot_hash?.slice(0, 10) || '—'}</dd></div>
               </dl>
-              <div className="overview-export-row-action">{item.output_asset ? <a className="button-secondary" href={item.output_asset.content_url}>{t('common.action.download')}</a> : <span>{item.error_code ? t('common.status.unknown_with_code', { code: item.error_code }) : pendingExportStatuses.has(item.status) ? t('projects.exports.processing') : exportStatusLabel(t, item.status)}</span>}</div>
+              <div className="overview-export-row-action">{item.download_url ? <a className="button-secondary" href={item.download_url}>{t('common.action.download')}</a> : <span>{item.error_code ? t('common.status.unknown_with_code', { code: item.error_code }) : pendingExportStatuses.has(item.status) ? t('projects.exports.processing') : exportStatusLabel(t, item.status)}</span>}</div>
               {item.error_code ? <p className="overview-export-error" data-machine-value>{item.error_code}</p> : null}
             </li>
           )

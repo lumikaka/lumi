@@ -193,20 +193,27 @@ type ChapterSnapshotMedia struct {
 }
 
 type Export struct {
-	UUID         string          `json:"uuid"`
-	TaskUUID     string          `json:"task_uuid"`
-	Scope        string          `json:"scope"`
-	ChapterUUID  string          `json:"chapter_uuid,omitempty"`
-	Format       string          `json:"format"`
-	Filename     string          `json:"filename"`
-	Status       string          `json:"status"`
-	Snapshot     json.RawMessage `json:"snapshot"`
-	SnapshotHash string          `json:"snapshot_hash"`
-	OutputAsset  *files.Asset    `json:"output_asset"`
-	RelativePath string          `json:"relative_path,omitempty"`
-	ErrorCode    string          `json:"error_code,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
-	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
+	UUID          string          `json:"uuid"`
+	TaskUUID      string          `json:"task_uuid"`
+	Scope         string          `json:"scope"`
+	ChapterUUID   string          `json:"chapter_uuid,omitempty"`
+	Format        string          `json:"format"`
+	Filename      string          `json:"filename"`
+	Status        string          `json:"status"`
+	Snapshot      json.RawMessage `json:"snapshot"`
+	SnapshotHash  string          `json:"snapshot_hash"`
+	DownloadURL   string          `json:"download_url"`
+	ExpiresAt     *time.Time      `json:"expires_at"`
+	RetentionDays int             `json:"retention_days"`
+	ByteSize      int64           `json:"byte_size"`
+	ContentSHA256 string          `json:"content_sha256"`
+	// OutputAsset is only populated for exports created before ZIPs stopped
+	// being registered in the Asset Store. New clients use DownloadURL.
+	OutputAsset  *files.Asset `json:"output_asset,omitempty"`
+	RelativePath string       `json:"relative_path,omitempty"`
+	ErrorCode    string       `json:"error_code,omitempty"`
+	CreatedAt    time.Time    `json:"created_at"`
+	CompletedAt  *time.Time   `json:"completed_at,omitempty"`
 }
 
 type UpdatePremiseInput struct {

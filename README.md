@@ -212,7 +212,7 @@ HTTP 请求按响应状态分级：1xx–3xx 为 Info，4xx 为 Warning，5xx �
 
 每个已打开项目拥有独立 River client。River 使用该项目 `project.sqlite` 的单连接 `*sql.DB`，有数据库副作用的 queue 保持每项目 `MaxWorkers=1`。项目 migration 与备份完成后才执行官方 River migration；打开另一个项目不会停止现有 worker，只有目标项目回收/关闭或应用退出时才先 soft-stop 对应 worker、再关闭数据库。完整边界与升级 gate 见 [AI 运行时说明](docs/ai-runtime.md)。
 
-所有上传、AI 生成和派生内容先进入 `.lumi/tmp/{uuid}.part`，通过服务端 purpose allowlist、真实 MIME、媒体解码、大小/像素限制和 SHA-256 校验后，提交为 `file_objects` 物理对象与 `files` 逻辑 Asset。业务 API 只使用 Asset UUID 和 `content_url`，二进制由 UUID 解析的 `/media` 路由读取；`assets/` 从不作为静态目录暴露。完整生命周期见 [Asset Store 规范](docs/asset-storage.md)。
+上传、AI 生成图片和长期派生资产先进入 `.lumi/tmp/{uuid}.part`，通过服务端 purpose allowlist、真实 MIME、媒体解码、大小/像素限制和 SHA-256 校验后，提交为 `file_objects` 物理对象与 `files` 逻辑 Asset。业务 API 只使用 Asset UUID 和 `content_url`，二进制由 UUID 解析的 `/media` 路由读取；`assets/` 从不作为静态目录暴露。漫画导出 ZIP 是短期例外：它只流式写入项目根 `exports/`，通过 Export UUID 下载并固定保留 7 天，不进入 Asset Store。完整生命周期见 [Asset Store 规范](docs/asset-storage.md)。
 
 章节正文、Story Profile 和 Prompt 候选采用 append-only 版本。`STORY.md` 是 current Story Profile 的人类可读投影：正常保存使用临时文件与原子 rename；外部修改会进入显式冲突状态，只能由用户选择“导入为新版本”或“以数据库版本重新生成”。
 

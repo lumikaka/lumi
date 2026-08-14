@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const stylesDirectory = fileURLToPath(new URL('.', import.meta.url))
 const tokenSource = readFileSync(new URL('./design-tokens.sass', import.meta.url), 'utf8')
+const commonSource = readFileSync(new URL('./common.sass', import.meta.url), 'utf8')
 
 test('typography tokens keep the body and minimum text baselines', () => {
   assert.match(tokenSource, /^\$font-size-body: 16px$/m)
@@ -27,4 +28,8 @@ test('Sass font literals do not bypass the 12px text baseline', () => {
       assert.ok(pixels === 0 || pixels >= 12, `${file}:${line} uses ${value}; use a typography token instead`)
     }
   }
+})
+
+test('workspace group tabs use the 16px body size shared by the premise toolbar', () => {
+  assert.ok(commonSource.includes('.workspace-group-tabs\n  a,\n  button\n    font-size: $font-size-body'))
 })

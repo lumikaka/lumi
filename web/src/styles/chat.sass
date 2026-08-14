@@ -894,10 +894,21 @@
       font-weight: 800
       letter-spacing: .12em
 
-  progress
-    width: 100%
-    height: 5px
-    accent-color: $color-success
+  .workflow-progress__meter
+    display: grid
+    grid-template-columns: minmax(0, 1fr) auto
+    align-items: center
+    gap: 7px
+
+    progress
+      width: 100%
+      height: 5px
+      accent-color: $color-success
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+      font-variant-numeric: tabular-nums
 
   ol
     margin: 0
@@ -922,6 +933,44 @@
       color: $color-muted
       font-size: $font-size-small
 
+.workflow-conflict-confirmation
+  padding: 10px
+  display: grid
+  gap: 9px
+  border: 1px solid rgba($color-warning, .34)
+  border-radius: $radius-sm
+  background: $color-warning-muted
+
+  > div
+    display: grid
+    gap: 4px
+
+  strong
+    color: $color-warning
+    font-size: 13px
+
+  p,
+  small
+    margin: 0
+    font-size: $font-size-small
+    line-height: 1.45
+
+  p
+    color: $color-text
+
+  small
+    color: $color-muted
+
+  > footer
+    display: flex
+    flex-wrap: wrap
+    gap: 7px
+
+    button
+      min-height: 32px
+      padding: 0 10px
+      font-size: $font-size-small
+
 .workflow-status
   padding: 4px 6px
   border-radius: 999px
@@ -933,6 +982,10 @@
 .workflow-status--queued
   color: $color-accent
   background: $color-accent-muted
+
+.workflow-status--waiting
+  color: $color-warning
+  background: $color-warning-muted
 
 .workflow-status--completed
   color: $color-success

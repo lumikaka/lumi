@@ -40,6 +40,8 @@ River client 和类型只出现在 `internal/jobqueue`。domain、HTTP 和 React
 
 Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂存清理和 GC apply 注册为同一 River client 的 `asset_maintenance` workers。`asset_maintenance_runs` / `asset_maintenance_events` 是其公开 task 投影；River args 只携带 project/task/scan 或 GC plan UUID、kind 和版本，不携带内部 ID、绝对路径或字节。数据库 partial unique index与 River unique args 同时保证每项目每类最多一个 active job。
 
+漫画导出清理由每项目 River client 额外注册 `lumi_comic_export_cleanup_v1` worker。周期任务 `RunOnStart` 并每小时运行，按 project UUID 参数和 active River state 保证不重入；每轮最多处理 1000 条，补偿应用关闭期间错过的到期清理。清理完成只广播 `comic:exports_changed` 刷新提示，前端通过 TanStack Query 失效后重新读取 REST/SQLite，不增加 HTTP 轮询。
+
 普通维护失败在 River 尚有 attempt 时保持 `queued` 产品投影，从而继续占用同类 active 唯一槽；应用停止造成的 context cancellation 也按可恢复中断处理，而不是伪装成用户取消。破坏性的 `asset_gc_apply` 固定只尝试一次，并把 dry-run plan UUID 与 grace period 固化进版本化 input snapshot，每次执行仍重新校验 snapshot hash。
 
 ## Project Chat 同步生图

@@ -44,6 +44,7 @@ import {
   listWorkflowRuns,
   moveFollowUp,
   respondUserInput,
+  resolveWorkflowConflict,
   retryWorkflow,
   steerChatRun,
   steerFollowUp,
@@ -63,6 +64,7 @@ import {
   suggestedChatThreadTitle,
   threadDisplayTitle,
   workflowDisplayTitle,
+  workflowProgressPercent,
 } from '../pages/chatAreaPresentation.js'
 import {
   MAX_PROJECT_CHAT_IMAGE_REFERENCES,
@@ -73,7 +75,7 @@ import {
   selectProjectChatClipboardImages,
   selectProjectChatImageFiles,
 } from '../pages/projectChatAttachments.js'
-import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent, workflowControls } from '../pages/chatWorkspaceState.js'
+import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent, comicStoryboardOverwriteRequest, workflowControls } from '../pages/chatWorkspaceState.js'
 import { flattenProjectThreads, useProjectThreads } from '../pages/projectThreads.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -90,7 +92,7 @@ const turnStatusCopy = {
 }
 
 const workflowStatusCopy = {
-  pending: 'chat.workflow.status.queued', queued: 'chat.workflow.status.queued', running: 'chat.workflow.status.running', completed: 'common.status.completed', failed: 'common.status.failed',
+  pending: 'chat.workflow.status.queued', queued: 'chat.workflow.status.queued', running: 'chat.workflow.status.running', waiting: 'chat.status.waiting_for_input', completed: 'common.status.completed', failed: 'common.status.failed',
   cancelled: 'common.status.cancelled', interrupted: 'common.status.interrupted',
 }
 
@@ -100,6 +102,8 @@ const stepCopy = {
   select_reference_assets: 'chat.workflow.step.select_reference_assets', save_section_premise: 'chat.workflow.step.save_section_premise',
   generate_section_image: 'chat.workflow.step.generate_section_image', save_section_image: 'chat.workflow.step.save_section_image',
   comic_storyboard: 'chat.workflow.step.comic_storyboard',
+  story_chapter: 'chat.workflow.step.story_chapter',
+  chapter_batch_plan: 'chat.workflow.step.chapter_batch_plan',
 }
 
 const chatEventCopy = {
@@ -325,7 +329,7 @@ function TurnActivity({ turn, items }) {
   return <div className="chat-turn__activity" role="status" aria-live="polite"><i aria-hidden="true" /><span>{copy}{longRunning ? <small>{t('chat.activity.long_running')}</small> : null}</span></div>
 }
 
-function WorkflowProgress({ projectUuid, workflow, pending, onCancel, onRetry }) {
+function WorkflowProgress({ projectUuid, workflow, pending, onCancel, onRetry, onResolveConflict }) {
   const { t } = useI18n()
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [diagnosticStepUuid, setDiagnosticStepUuid] = useState('')
@@ -335,7 +339,8 @@ function WorkflowProgress({ projectUuid, workflow, pending, onCancel, onRetry })
   }, [workflow?.uuid])
   if (!workflow) return null
   const controls = workflowControls(workflow)
-  const completed = workflow.steps?.filter((step) => step.status === 'completed').length || 0
+  const overwriteRequest = comicStoryboardOverwriteRequest(workflow)
+  const progress = workflowProgressPercent(workflow)
   const openStepDiagnostics = (stepUuid) => {
     setDiagnosticStepUuid(stepUuid)
     setDiagnosticsOpen(true)
@@ -343,19 +348,32 @@ function WorkflowProgress({ projectUuid, workflow, pending, onCancel, onRetry })
   return (
     <section className="workflow-progress">
       <header><div><span>{t('chat.workflow.title')}</span><strong>{workflowDisplayTitle(workflow, t)}</strong></div><b className={`workflow-status workflow-status--${workflow.status}`}>{workflowStatusCopy[workflow.status] ? t(workflowStatusCopy[workflow.status]) : t('common.status.unknown_with_code', { code: workflow.status })}</b></header>
-      <progress max={workflow.steps?.length || 1} value={completed} />
+      <div className="workflow-progress__meter"><progress max="100" value={progress} aria-label={t('chat.workflow.progress', { progress })} /><small>{progress}%</small></div>
       <ol>{workflow.steps?.map((step) => {
         const title = stepCopy[step.step_key] ? t(stepCopy[step.step_key]) : t('common.status.unknown_with_code', { code: step.step_key })
         return (
           <li key={step.uuid} className={`workflow-step workflow-step--${step.status}`}>
             <button type="button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
               <span aria-hidden="true">{step.status === 'completed' ? '✓' : step.status === 'running' || step.status === 'waiting' ? '●' : step.status === 'failed' ? '!' : '○'}</span>
-              <div><strong>{title}</strong><small>{workflowStatusCopy[step.status] ? t(workflowStatusCopy[step.status]) : t('common.status.unknown_with_code', { code: step.status })}</small></div>
+              <div><strong>{title}</strong><small>{workflowStatusCopy[step.status] ? t(workflowStatusCopy[step.status]) : t('common.status.unknown_with_code', { code: step.status })} · {Math.min(100, Math.max(0, Number(step.progress) || 0))}%</small></div>
               {step.resource_uuid ? <code>{step.resource_uuid.slice(0, 10)}</code> : null}
             </button>
           </li>
         )
       })}</ol>
+      {overwriteRequest ? (
+        <section className="workflow-conflict-confirmation" role="alert">
+          <div>
+            <strong>{t('chat.workflow.conflict.title')}</strong>
+            <p>{t('chat.workflow.conflict.body', { existing: overwriteRequest.existingSectionCount, generated: overwriteRequest.generatedSectionCount })}</p>
+            <small>{t('chat.workflow.conflict.snapshot_notice')}</small>
+          </div>
+          <footer>
+            <button type="button" className="button-secondary" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'keep_existing', overwriteRequest.expectedComicStateRevision)}>{t(pending ? 'chat.workflow.conflict.processing' : 'chat.workflow.conflict.keep_existing')}</button>
+            <button type="button" className="button-danger" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'overwrite', overwriteRequest.expectedComicStateRevision)}>{t(pending ? 'chat.workflow.conflict.processing' : 'chat.workflow.conflict.overwrite')}</button>
+          </footer>
+        </section>
+      ) : null}
       {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code }} compact /> : null}
       <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{t('chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
       <WorkflowDiagnostics projectUuid={projectUuid} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
@@ -409,7 +427,7 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
           <h4>{t('chat.workflow.runs')}</h4>
           {runsQuery.isLoading ? <p>{t('chat.loading')}</p> : null}
           {!runsQuery.isLoading && !runsQuery.error && runs.length === 0 ? <p>{t('chat.workflow.no_runs')}</p> : null}
-          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{stepCopy[run.step_key] ? t(stepCopy[run.step_key]) : t('common.status.unknown_with_code', { code: run.step_key })}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
+          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{stepCopy[run.step_key] ? t(stepCopy[run.step_key]) : t('common.status.unknown_with_code', { code: run.step_key })}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {Math.min(100, Math.max(0, Number(run.progress) || 0))}% · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
           {focusedStep ? (
             <article className="workflow-diagnostics__step-detail">
               <header><strong>{stepCopy[focusedStep.step_key] ? t(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key })}</strong><button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button></header>
@@ -975,6 +993,20 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     mutationFn: ({ workflowUuid, action }) => action === 'cancel' ? cancelWorkflow(projectUuid, workflowUuid) : retryWorkflow(projectUuid, workflowUuid),
     onSuccess: (workflow) => invalidate({ thread_uuid: workflow.thread_uuid, workflow_uuid: workflow.uuid }), onError: setError,
   })
+  const workflowConflictMutation = useMutation({
+    mutationFn: ({ workflowUuid, action, expectedRevision }) => resolveWorkflowConflict(projectUuid, workflowUuid, {
+      action,
+      expected_comic_state_revision: expectedRevision,
+    }),
+    onSuccess: (resolution) => {
+      setError(null)
+      invalidate({ thread_uuid: resolution.thread_uuid, workflow_uuid: resolution.workflow_uuid })
+    },
+    onError: (mutationError, variables) => {
+      setError(mutationError)
+      invalidate({ thread_uuid: selectedThreadUuid, workflow_uuid: variables.workflowUuid })
+    },
+  })
 
   const items = useMemo(() => uniqueByUUID(itemsQuery.data?.pages?.flatMap((page) => page.items || []) || []).sort((left, right) => Number(left.sequence || 0) - Number(right.sequence || 0)), [itemsQuery.data])
   const turns = turnsQuery.data?.items || []
@@ -1124,7 +1156,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
             {itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
             {selectedThread?.scene ? <section className="chat-scene-card chat-scene-card--compact"><div><Bot size={16} aria-hidden="true" /><span><strong>{sceneCopy[selectedThread.scene]?.titleKey ? t(sceneCopy[selectedThread.scene].titleKey) : t('common.status.unknown_with_code', { code: selectedThread.scene })}</strong>{selectedThread.subject_uuid ? <small>{selectedThread.subject_uuid}</small> : null}</span></div></section> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
-            <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} />
+            <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
             {turnGroups.map((group) => <TurnGroup key={group.uuid} group={group} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}

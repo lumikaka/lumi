@@ -467,7 +467,8 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO comic_exports(uuid,project_id,chapter_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,created_at) VALUES(?,?,CASE WHEN ?='chapter' THEN (SELECT id FROM chapters WHERE project_id=? AND uuid=?) ELSE NULL END,?,?,'zip','queued',?,?,?)`, exportUUID, runtime.projectID, input.Scope, runtime.projectID, input.ChapterUUID, taskUUID, input.Scope, string(transactionEncoded), transactionHash, now)
+		relativePath := production.ExportRelativePath(exportUUID, input.Scope, input.ChapterUUID, transactionHash, transactionSnapshot)
+		_, err = tx.ExecContext(ctx, `INSERT INTO comic_exports(uuid,project_id,chapter_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,created_at) VALUES(?,?,CASE WHEN ?='chapter' THEN (SELECT id FROM chapters WHERE project_id=? AND uuid=?) ELSE NULL END,?,?,'zip','queued',?,?,?,7,?)`, exportUUID, runtime.projectID, input.Scope, runtime.projectID, input.ChapterUUID, taskUUID, input.Scope, string(transactionEncoded), transactionHash, relativePath, now)
 		return err
 	})
 	if err != nil {
@@ -749,7 +750,7 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if _, err := tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='cancelled',completed_at=? WHERE task_uuid=? AND status<>'completed'`, now, taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='cancelled',completed_at=? WHERE task_uuid=? AND status<>'ready'`, now, taskUUID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='cancelled',completed_at=?,expires_at=? WHERE task_uuid=? AND status IN ('queued','running')`, now, production.ExportExpiresAt(now), taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := appendProductionEventTx(ctx, tx, record.ID, "task_cancelled", map[string]any{"project_uuid": projectUUID, "task_uuid": taskUUID, "resource_uuid": record.ResourceUUID, "status": StatusCancelled}, now); err != nil {
@@ -804,10 +805,19 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if record.RiverJobID == nil {
 		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "任务缺少 River job", "无法安全重试。", nil)
 	}
+	now := manager.now().UTC()
+	if record.Kind == KindComicExport {
+		var retained bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM comic_exports WHERE task_uuid=? AND status IN ('failed','cancelled') AND expires_at>?)`, taskUUID, now).Scan(&retained); err != nil {
+			return ProductionTask{}, err
+		}
+		if !retained {
+			return ProductionTask{}, taskError(CodeTaskStateConflict, "导出已过期", "失败或取消的导出只保留 7 天；请创建新的导出任务。", nil)
+		}
+	}
 	if _, err := runtime.client.JobRetryTx(ctx, tx, *record.RiverJobID); err != nil {
 		return ProductionTask{}, err
 	}
-	now := manager.now().UTC()
 	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,error_code='',error_message='',cancel_requested_at=NULL,completed_at=NULL,updated_at=? WHERE id=?`, now, record.ID); err != nil {
 		return ProductionTask{}, err
 	}
@@ -817,7 +827,7 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if _, err := tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status IN ('failed','cancelled')`, taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status IN ('failed','cancelled')`, taskUUID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',error_code='',completed_at=NULL,expires_at=NULL WHERE task_uuid=? AND status IN ('failed','cancelled')`, taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := appendProductionEventTx(ctx, tx, record.ID, "retry_requested", map[string]any{"project_uuid": projectUUID, "task_uuid": taskUUID, "resource_uuid": record.ResourceUUID, "status": StatusQueued}, now); err != nil {

@@ -101,6 +101,7 @@ type projectRuntime struct {
 	eventsDone  chan struct{}
 	workMu      sync.Mutex
 	workCancels map[string]context.CancelFunc
+	conflictMu  sync.Mutex
 }
 
 func projectQueueConfig() map[string]river.QueueConfig {
@@ -190,13 +191,15 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 	river.AddWorker(workers, &storyGenerationWorker{runtime: runtime})
 	river.AddWorker(workers, &assetMaintenanceWorker{runtime: runtime})
 	river.AddWorker(workers, &productionWorker{runtime: runtime})
+	river.AddWorker(workers, &comicExportCleanupWorker{runtime: runtime})
 	if manager.agents != nil {
 		river.AddWorker(workers, &agentWorker{runtime: runtime, service: manager.agents})
 	}
 	logger := slog.Default().With("component", "river", "project_uuid", store.ProjectUUID(), "river_version", RiverVersion)
 	client, err := river.NewClient(driver, &river.Config{
 		Queues: projectQueueConfig(), Workers: workers,
-		MaxAttempts: 3, PollOnly: true, FetchPollInterval: 200 * time.Millisecond,
+		PeriodicJobs: []*river.PeriodicJob{comicExportCleanupPeriodicJob(store.ProjectUUID())},
+		MaxAttempts:  3, PollOnly: true, FetchPollInterval: 200 * time.Millisecond,
 		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: 6 * time.Minute,
 		SoftStopTimeout: 5 * time.Second,
 		Logger:          logger,
@@ -449,7 +452,7 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 	if _, err = db.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued' WHERE status='running' AND task_uuid IN (SELECT uuid FROM production_task_runs WHERE project_id=? AND status='queued')`, projectID); err != nil {
 		return err
 	}
-	if _, err = db.ExecContext(ctx, `UPDATE comic_exports SET status='queued' WHERE status='running' AND task_uuid IN (SELECT uuid FROM production_task_runs WHERE project_id=? AND status='queued')`, projectID); err != nil {
+	if _, err = db.ExecContext(ctx, `UPDATE comic_exports SET status='queued',expires_at=NULL WHERE status='running' AND task_uuid IN (SELECT uuid FROM production_task_runs WHERE project_id=? AND status='queued')`, projectID); err != nil {
 		return err
 	}
 	if err := reconcileComicImageWorkflows(ctx, db, projectID, now); err != nil {

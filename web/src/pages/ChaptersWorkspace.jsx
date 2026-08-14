@@ -130,6 +130,8 @@ export default function ChaptersWorkspace({ projectUuid }) {
     queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-project', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
+    queryClient.invalidateQueries({ queryKey: ['chat-threads', projectUuid] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', projectUuid] })
   }, [projectUuid, queryClient])
 
   useEffect(() => {
@@ -256,7 +258,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
       }
       return { created, tasks }
     },
-    onSuccess: ({ created, tasks }) => {
+    onSuccess: ({ tasks }) => {
       queryClient.setQueryData(['story-tasks', projectUuid], (current) => ({
         items: [...tasks, ...(current?.items || []).filter((item) => !tasks.some((task) => task.uuid === item.uuid))],
       }))
@@ -264,9 +266,6 @@ export default function ChaptersWorkspace({ projectUuid }) {
       setError(null)
       setSummary({ type: 'generation', count: tasks.length })
       setActiveDialog('')
-      if (created.length === 1) {
-        navigate({ pathname: `${base}/chapters/${created[0].uuid}`, search: location.search })
-      }
     },
     onError: (mutationError) => { setError(mutationError); refresh() },
   })

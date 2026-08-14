@@ -106,13 +106,17 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 	t.Cleanup(func() { _ = application.Close() })
 
 	websocketRouteFound := false
+	workflowConflictRouteFound := false
 	for _, route := range application.Routes() {
 		if route.Method == http.MethodGet && route.Path == "/api/v1/ws" {
 			websocketRouteFound = true
 		}
+		if route.Method == http.MethodPost && route.Path == "/api/v1/projects/:project_uuid/workflows/:workflow_uuid/conflict-resolutions" {
+			workflowConflictRouteFound = true
+		}
 	}
-	if !websocketRouteFound || application.RealtimeHub() == nil {
-		t.Fatal("application realtime endpoint was not initialized")
+	if !websocketRouteFound || !workflowConflictRouteFound || application.RealtimeHub() == nil {
+		t.Fatal("application realtime or workflow conflict endpoint was not initialized")
 	}
 
 	for _, scenario := range []struct {

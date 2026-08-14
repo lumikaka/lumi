@@ -4,12 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -167,6 +169,86 @@ func TestCreateGeneratedSectionsRejectsAboveContractMaximumAtomically(t *testing
 	sections, listErr := h.service.ListSections(ctx, chapter.UUID)
 	if listErr != nil || len(sections) != 0 {
 		t.Fatalf("over-limit write was not atomic: sections=%+v error=%v", sections, listErr)
+	}
+}
+
+func TestReplaceGeneratedSectionsRequiresFreshRevisionAndKeepsRecoverableHistory(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Overwrite confirmation"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Existing page", StoryboardMD: "Existing storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := []GeneratedComicSection{{Title: "Generated page", StoryboardMD: "Generated storyboard"}}
+	_, err = h.service.CreateGeneratedSections(ctx, chapter.UUID, generated)
+	var conflict *GeneratedSectionsConflict
+	if !errors.As(err, &conflict) || conflict.ExistingCount != 1 || conflict.GeneratedCount != 1 {
+		t.Fatalf("generated conflict=%+v error=%v", conflict, err)
+	}
+	var domainErr *Error
+	if !errors.As(err, &domainErr) || domainErr.Code != CodeConflict {
+		t.Fatalf("generated conflict did not preserve domain classification: %v", err)
+	}
+	updatedTitle := "Edited after confirmation"
+	updated, err := h.service.UpdateSection(ctx, chapter.UUID, existing.UUID, UpdateSectionInput{Title: &updatedTitle, ExpectedRevision: existing.Revision})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.ReplaceGeneratedSections(ctx, chapter.UUID, generated, conflict.ComicStateRevision); !productionErrorIs(err, CodeStateConflict) {
+		t.Fatalf("stale overwrite error=%v", err)
+	}
+	unchanged, err := h.service.ListSections(ctx, chapter.UUID)
+	if err != nil || len(unchanged) != 1 || unchanged[0].UUID != existing.UUID || unchanged[0].Title != updated.Title {
+		t.Fatalf("stale overwrite changed sections=%+v error=%v", unchanged, err)
+	}
+	state, err := h.service.GetComicState(ctx, chapter.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaced, err := h.service.ReplaceGeneratedSections(ctx, chapter.UUID, generated, state.Revision)
+	if err != nil || len(replaced) != 1 || replaced[0].UUID == existing.UUID || replaced[0].Title != generated[0].Title || replaced[0].CurrentStoryboard == nil || replaced[0].CurrentStoryboard.ContentMD != generated[0].StoryboardMD {
+		t.Fatalf("replaced sections=%+v error=%v", replaced, err)
+	}
+	var history struct {
+		Deleted, BeforeSnapshots, AfterSnapshots int64
+	}
+	if err := h.service.store.DB().Raw(`SELECT
+		(SELECT COUNT(*) FROM comic_sections WHERE uuid=? AND deleted_at IS NOT NULL) AS deleted,
+		(SELECT COUNT(*) FROM comic_chapter_snapshots WHERE reason='before_storyboard_overwrite') AS before_snapshots,
+		(SELECT COUNT(*) FROM comic_chapter_snapshots WHERE reason='storyboard_overwritten') AS after_snapshots`, existing.UUID).Scan(&history).Error; err != nil {
+		t.Fatal(err)
+	}
+	if history.Deleted != 1 || history.BeforeSnapshots != 1 || history.AfterSnapshots != 1 {
+		t.Fatalf("overwrite history=%+v", history)
+	}
+	idempotent, err := h.service.ReplaceGeneratedSections(ctx, chapter.UUID, generated, conflict.ComicStateRevision)
+	if err != nil || len(idempotent) != 1 || idempotent[0].UUID != replaced[0].UUID {
+		t.Fatalf("idempotent overwrite=%+v error=%v", idempotent, err)
+	}
+	snapshots, err := h.service.ListChapterSnapshots(ctx, chapter.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var beforeSnapshotUUID string
+	generatedSnapshotFound := false
+	for _, snapshot := range snapshots {
+		if snapshot.Reason == "before_storyboard_overwrite" {
+			beforeSnapshotUUID = snapshot.UUID
+		}
+		if snapshot.Reason == "storyboard_overwritten" && snapshot.Source == "generated" {
+			generatedSnapshotFound = true
+		}
+	}
+	if beforeSnapshotUUID == "" || !generatedSnapshotFound {
+		t.Fatalf("overwrite snapshots=%+v", snapshots)
+	}
+	restored, err := h.service.RestoreChapterSnapshot(ctx, chapter.UUID, beforeSnapshotUUID)
+	if err != nil || len(restored) != 1 || restored[0].UUID != existing.UUID || restored[0].Title != updated.Title || restored[0].CurrentStoryboard == nil || restored[0].CurrentStoryboard.ContentMD != "Existing storyboard" {
+		t.Fatalf("restored pre-overwrite snapshot=%+v error=%v", restored, err)
 	}
 }
 
@@ -615,7 +697,7 @@ func TestExportReadinessCountsMissingSectionsAndFreezesAuditSnapshot(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 3 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || !snapshot.AllowMissingImages || snapshot.ActiveChapterCount != 2 || snapshot.SectionCount != 3 || snapshot.ExportedSectionCount != 1 || snapshot.MissingSectionCount != 2 || len(snapshot.MissingSectionUUIDs) != 2 || len(snapshot.Entries) != 1 {
+	if snapshot.Version != 4 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || !snapshot.AllowMissingImages || snapshot.ActiveChapterCount != 2 || snapshot.SectionCount != 3 || snapshot.ExportedSectionCount != 1 || snapshot.MissingSectionCount != 2 || len(snapshot.MissingSectionUUIDs) != 2 || len(snapshot.Entries) != 1 {
 		t.Fatalf("export snapshot=%+v", snapshot)
 	}
 	secondReadiness, err := h.service.ExportReadiness(ctx, "chapter", second.UUID)
@@ -643,7 +725,7 @@ func TestExportNamingDistinguishesVerticalStripAndPageFormats(t *testing.T) {
 		t.Fatalf("imported section=%+v err=%v", section, err)
 	}
 	fileUUID := section.CurrentImage.Asset.UUID
-	entry := ExportEntry{ChapterCode: "vol01.ch01", ChapterTitle: "Opening", SectionNo: 2, ImageAssetUUID: fileUUID, Extension: "png"}
+	entry := ExportEntry{ChapterCode: "vol01.ch01", ChapterTitle: "第一章", SectionNo: 2, ImageAssetUUID: fileUUID, Extension: "png"}
 	for _, test := range []struct {
 		name       string
 		snapshot   ExportSnapshot
@@ -653,27 +735,28 @@ func TestExportNamingDistinguishesVerticalStripAndPageFormats(t *testing.T) {
 		{
 			name:       "vertical strip",
 			snapshot:   ExportSnapshot{Version: 3, PictureBook: &project.PictureBookProfile{Format: project.PictureBookVertical}, Entries: []ExportEntry{entry}},
-			wantEntry:  "vol01.ch01/Opening/section-002.png",
+			wantEntry:  "vol01.ch01/sections/section-002.png",
 			wantPrefix: "comic-project-",
 		},
 		{
 			name:       "classic page",
 			snapshot:   ExportSnapshot{Version: 3, PictureBook: &project.PictureBookProfile{Format: project.PictureBookClassic}, Entries: []ExportEntry{entry}},
-			wantEntry:  "vol01.ch01/Opening/page-002.png",
+			wantEntry:  "vol01.ch01/sections/section-002.png",
 			wantPrefix: "picture-book-project-",
 		},
 		{
 			name:       "historical snapshot",
 			snapshot:   ExportSnapshot{Version: 2, Entries: []ExportEntry{entry}},
-			wantEntry:  "vol01.ch01/Opening/section-002.png",
+			wantEntry:  "vol01.ch01/sections/section-002.png",
 			wantPrefix: "comic-project-",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			archiveBytes, err := h.service.renderZip(ctx, test.snapshot, nil)
-			if err != nil {
+			var archive bytes.Buffer
+			if err := h.service.writeZip(ctx, &archive, test.snapshot, nil); err != nil {
 				t.Fatal(err)
 			}
+			archiveBytes := archive.Bytes()
 			reader, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
 			if err != nil {
 				t.Fatal(err)
@@ -741,14 +824,45 @@ func TestComicReorderSnapshotRestoreAndExportIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var filesBefore, objectsBefore int64
+	if err := h.service.store.DB().Table("files").Count(&filesBefore).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Table("file_objects").Count(&objectsBefore).Error; err != nil {
+		t.Fatal(err)
+	}
 	firstTaskUUID := insertRunningExportTask(t, h.service)
 	first, err := h.service.CreateExportRecord(ctx, firstTaskUUID, "chapter", chapter.UUID, snapshot, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 	first, err = h.service.RenderAndCommitExport(ctx, first.TaskUUID, nil)
-	if err != nil || first.Status != "ready" || first.OutputAsset == nil {
+	if err != nil || first.Status != "ready" || first.DownloadURL == "" || first.OutputAsset != nil || first.ExpiresAt == nil || first.RetentionDays != 7 || first.ByteSize <= 0 || len(first.ContentSHA256) != 64 {
 		t.Fatalf("first export=%+v err=%v", first, err)
+	}
+	var filesAfter, objectsAfter int64
+	_ = h.service.store.DB().Table("files").Count(&filesAfter).Error
+	_ = h.service.store.DB().Table("file_objects").Count(&objectsAfter).Error
+	if filesAfter != filesBefore || objectsAfter != objectsBefore {
+		t.Fatalf("export created Asset Store rows: files %d->%d objects %d->%d", filesBefore, filesAfter, objectsBefore, objectsAfter)
+	}
+	exportPath, err := h.service.store.ResolvePath(first.RelativePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, statErr := os.Stat(exportPath); statErr != nil || info.Size() != first.ByteSize {
+		t.Fatalf("export file=%s info=%v err=%v", exportPath, info, statErr)
+	}
+	archiveBytes, err := os.ReadFile(exportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archiveDigest := sha256.Sum256(archiveBytes)
+	if int64(len(archiveBytes)) != first.ByteSize || fmt.Sprintf("%x", archiveDigest[:]) != first.ContentSHA256 {
+		t.Fatalf("export digest size=%d/%d sha=%x/%s", len(archiveBytes), first.ByteSize, archiveDigest, first.ContentSHA256)
+	}
+	if _, statErr := os.Stat(exportPath + ".part"); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("part file survived atomic commit: %v", statErr)
 	}
 	if err := h.service.store.DB().Table("production_task_runs").Where("uuid = ?", firstTaskUUID).Updates(map[string]any{"status": "completed", "progress": 100}).Error; err != nil {
 		t.Fatal(err)
@@ -757,6 +871,13 @@ func TestComicReorderSnapshotRestoreAndExportIdempotency(t *testing.T) {
 	progressTaskUUID := insertRunningExportTask(t, h.service)
 	progressExport, err := h.service.CreateExportRecord(ctx, progressTaskUUID, "chapter", chapter.UUID, snapshot, hashJSON([]byte("another-snapshot")))
 	if err != nil {
+		t.Fatal(err)
+	}
+	progressPath, err := h.service.store.ResolvePath(progressExport.RelativePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(progressPath, []byte("unpublished file from an interrupted commit"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.service.RenderAndCommitExport(ctx, progressExport.TaskUUID, func(progress int) error {
@@ -792,7 +913,7 @@ func TestComicReorderSnapshotRestoreAndExportIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if canonical.UUID != first.UUID || canonical.OutputAsset.UUID != first.OutputAsset.UUID {
+	if canonical.UUID != first.UUID || canonical.DownloadURL != first.DownloadURL || !canonical.ExpiresAt.Equal(*first.ExpiresAt) {
 		t.Fatalf("export not idempotent first=%+v canonical=%+v", first, canonical)
 	}
 	recoveredProgress := 0
@@ -803,6 +924,9 @@ func TestComicReorderSnapshotRestoreAndExportIdempotency(t *testing.T) {
 	if err != nil || recovered.UUID != canonical.UUID || recoveredProgress != 95 {
 		t.Fatalf("deleted transient export recovery=%+v progress=%d err=%v", recovered, recoveredProgress, err)
 	}
+	if err := h.service.store.DB().Table("production_task_runs").Where("uuid = ?", secondTaskUUID).Updates(map[string]any{"status": "completed", "progress": 100, "completed_at": time.Now().UTC()}).Error; err != nil {
+		t.Fatal(err)
+	}
 	exports, err := h.service.ListExports(ctx)
 	canonicalCount := 0
 	for _, item := range exports {
@@ -812,6 +936,33 @@ func TestComicReorderSnapshotRestoreAndExportIdempotency(t *testing.T) {
 	}
 	if err != nil || canonicalCount != 1 {
 		t.Fatalf("exports=%v err=%v", exports, err)
+	}
+	boundary := *first.ExpiresAt
+	h.service.now = func() time.Time { return boundary }
+	if err := h.service.store.DB().Table("production_task_runs").Where("uuid = ?", firstTaskUUID).Updates(map[string]any{"status": "running", "completed_at": nil}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.RenderAndCommitExport(ctx, firstTaskUUID, nil); !productionErrorIs(err, CodeExportExpired) {
+		t.Fatalf("expired ready task recovery error=%v", err)
+	}
+	if err := h.service.store.DB().Table("production_task_runs").Where("uuid = ?", firstTaskUUID).Updates(map[string]any{"status": "failed", "completed_at": boundary}).Error; err != nil {
+		t.Fatal(err)
+	}
+	replacementTaskUUID := insertRunningExportTask(t, h.service)
+	replacementRecord, err := h.service.CreateExportRecord(ctx, replacementTaskUUID, "chapter", chapter.UUID, snapshot, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := h.service.RenderAndCommitExport(ctx, replacementRecord.TaskUUID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replacement.UUID == first.UUID || replacement.RelativePath == first.RelativePath || replacement.ExpiresAt == nil || !replacement.ExpiresAt.Equal(boundary.Add(7*24*time.Hour)) {
+		t.Fatalf("expired canonical was reused first=%+v replacement=%+v", first, replacement)
+	}
+	var oldStatus string
+	if err := h.service.store.DB().Table("comic_exports").Where("uuid = ?", first.UUID).Pluck("status", &oldStatus).Error; err != nil || oldStatus != "expired" {
+		t.Fatalf("old canonical status=%q err=%v", oldStatus, err)
 	}
 }
 
@@ -972,6 +1123,317 @@ func TestComicSnapshotDetailSupportsLegacyMediaPlaceholdersAndSafeRestore(t *tes
 	afterRestore, _ := h.service.ListChapterSnapshots(ctx, chapter.UUID)
 	if len(afterRestore) != len(beforeRestore)+1 || afterRestore[0].Reason != "snapshot_restored" || afterRestore[0].SectionCount != 1 {
 		t.Fatalf("restore snapshot history before=%d after=%+v", len(beforeRestore), afterRestore)
+	}
+}
+
+func TestCleanupExpiredExportsRemovesTerminalRowsAndManagedFiles(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	h.service.now = func() time.Time { return now }
+	var projectID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.service.store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	type fixture struct {
+		exportUUID, taskUUID, status, taskStatus, hash, idempotencyKey string
+		due                                                            bool
+	}
+	fixtures := []fixture{
+		{mustUUID(t), mustUUID(t), "ready", "completed", strings.Repeat("a", 64), "cleanup-ready", true},
+		{mustUUID(t), mustUUID(t), "failed", "failed", strings.Repeat("b", 64), "cleanup-failed", true},
+		{mustUUID(t), mustUUID(t), "cancelled", "cancelled", strings.Repeat("c", 64), "cleanup-cancelled", true},
+		{mustUUID(t), mustUUID(t), "queued", "queued", strings.Repeat("d", 64), "cleanup-active", false},
+	}
+	var readyPath string
+	for index, item := range fixtures {
+		completedAt := any(nil)
+		if item.status != "queued" {
+			completedAt = now.Add(-8 * 24 * time.Hour)
+		}
+		if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,completed_at,created_at,updated_at) VALUES(?,?,'comic_export',?,'{}',?,?,100,1,3,?,?,?)`, item.taskUUID, projectID, h.service.store.ProjectUUID(), item.taskStatus, item.idempotencyKey, completedAt, now.Add(-8*24*time.Hour), now.Add(-8*24*time.Hour)).Error; err != nil {
+			t.Fatal(err)
+		}
+		relative := ""
+		byteSize := int64(0)
+		contentHash := ""
+		if item.status == "ready" {
+			content := []byte("ready export")
+			digest := sha256.Sum256(content)
+			contentHash = fmt.Sprintf("%x", digest[:])
+			byteSize = int64(len(content))
+			relative = ExportRelativePath(item.exportUUID, "project", "", item.hash, ExportSnapshot{})
+			var err error
+			readyPath, err = h.service.store.ResolvePath(relative)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Dir(readyPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(readyPath, content, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(readyPath+".part", []byte("stale"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		var expiresAt any
+		if item.due {
+			expiresAt = now.Add(-time.Second)
+		}
+		if err := h.service.store.DB().Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,expires_at,byte_size,content_sha256,error_code,created_at,completed_at) VALUES(?,? ,?,'project','zip',?,'{}',?,?,7,?,?,?,?,?,?)`, item.exportUUID, projectID, item.taskUUID, item.status, item.hash, relative, expiresAt, byteSize, contentHash, map[bool]string{true: "terminal", false: ""}[item.status == "failed"], now.Add(-8*24*time.Hour), completedAt).Error; err != nil {
+			t.Fatalf("insert export %d: %v", index, err)
+		}
+	}
+	orphanTaskUUID := mustUUID(t)
+	if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,completed_at,created_at,updated_at) VALUES(?,?,'comic_export',?,'{}','completed',?,100,1,3,?,?,?)`, orphanTaskUUID, projectID, h.service.store.ProjectUUID(), "cleanup-canonical-reuse-orphan", now.Add(-8*24*time.Hour), now.Add(-8*24*time.Hour), now.Add(-8*24*time.Hour)).Error; err != nil {
+		t.Fatal(err)
+	}
+	var readyTaskID int64
+	if err := h.service.store.DB().Table("production_task_runs").Where("uuid = ?", fixtures[0].taskUUID).Pluck("id", &readyTaskID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Exec(`INSERT INTO production_task_events(uuid,production_task_run_id,sequence,event_type,payload,created_at) VALUES(?,?,1,'task_completed','{}',?)`, mustUUID(t), readyTaskID, now.Add(-8*24*time.Hour)).Error; err != nil {
+		t.Fatal(err)
+	}
+	exportsDir, err := h.service.store.ResolvePath("exports")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userPath := filepath.Join(exportsDir, "my-personal-backup.zip")
+	if err := os.WriteFile(userPath, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	orphanUUID := mustUUID(t)
+	orphanRelative := ExportRelativePath(orphanUUID, "project", "", strings.Repeat("e", 64), ExportSnapshot{}) + ".part"
+	orphanPath, err := h.service.store.ResolvePath(orphanRelative)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(orphanPath, []byte("orphan"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := now.Add(-8 * 24 * time.Hour)
+	if err := os.Chtimes(orphanPath, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	visible, err := h.service.ListExports(ctx)
+	if err != nil || len(visible) != 1 || visible[0].UUID != fixtures[3].exportUUID {
+		t.Fatalf("visible before cleanup=%+v err=%v", visible, err)
+	}
+	result, err := h.service.CleanupExpiredExports(ctx, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ExportsDeleted != 3 || result.TasksDeleted != 4 || result.OrphanFilesDeleted != 1 {
+		t.Fatalf("cleanup result=%+v", result)
+	}
+	for _, path := range []string{readyPath, readyPath + ".part", orphanPath} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("managed export survived cleanup path=%s err=%v", path, err)
+		}
+	}
+	if _, err := os.Stat(userPath); err != nil {
+		t.Fatalf("user file was removed: %v", err)
+	}
+	var exportsRemaining, tasksRemaining, eventsRemaining int64
+	_ = h.service.store.DB().Table("comic_exports").Count(&exportsRemaining).Error
+	_ = h.service.store.DB().Table("production_task_runs").Where("kind = 'comic_export'").Count(&tasksRemaining).Error
+	_ = h.service.store.DB().Table("production_task_events").Count(&eventsRemaining).Error
+	if exportsRemaining != 1 || tasksRemaining != 1 || eventsRemaining != 0 {
+		t.Fatalf("remaining exports=%d tasks=%d events=%d", exportsRemaining, tasksRemaining, eventsRemaining)
+	}
+	if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,created_at,updated_at) VALUES(?,?,'comic_export',?,'{}','completed',?,100,1,3,?,?)`, mustUUID(t), projectID, h.service.store.ProjectUUID(), fixtures[0].idempotencyKey, now, now).Error; err != nil {
+		t.Fatalf("expired idempotency key was not reusable: %v", err)
+	}
+}
+
+func TestCleanupExpiredLegacyExportsInvalidatesAssetsAndPreservesSharedObjects(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	h.service.now = func() time.Time { return now }
+	var projectID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.service.store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	zipBytes := func(label string) []byte {
+		t.Helper()
+		var buffer bytes.Buffer
+		writer := zip.NewWriter(&buffer)
+		entry, err := writer.Create("manifest.txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write([]byte(label)); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return buffer.Bytes()
+	}
+	commitLegacyAsset := func(name string, content []byte) files.Asset {
+		t.Helper()
+		asset, err := h.service.Files().CommitReader(ctx, files.CommitInput{
+			Purpose: "export", OriginalFilename: name, SourceType: "exported", Reader: bytes.NewReader(content),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return asset
+	}
+	exclusiveBytes := zipBytes("exclusive legacy export")
+	sharedBytes := zipBytes("shared legacy export")
+	exclusive := commitLegacyAsset("exclusive.zip", exclusiveBytes)
+	sharedExpired := commitLegacyAsset("shared-expired.zip", sharedBytes)
+	sharedActive := commitLegacyAsset("shared-active.zip", sharedBytes)
+
+	assetPath := func(assetUUID string) string {
+		t.Helper()
+		content, err := h.service.Files().OpenContent(ctx, assetUUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := content.File.Name()
+		if err := content.File.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	exclusiveObjectPath := assetPath(exclusive.UUID)
+	sharedObjectPath := assetPath(sharedExpired.UUID)
+
+	insertLegacyExport := func(asset files.Asset, content []byte, snapshotHash, idempotencyKey string) string {
+		t.Helper()
+		var fileID int64
+		var contentSHA string
+		if err := h.service.store.DB().Raw(`SELECT files.id,objects.sha256 FROM files JOIN file_objects objects ON objects.id=files.file_object_id WHERE files.uuid=?`, asset.UUID).Row().Scan(&fileID, &contentSHA); err != nil {
+			t.Fatal(err)
+		}
+		exportUUID := mustUUID(t)
+		taskUUID := mustUUID(t)
+		snapshot := ExportSnapshot{Version: 2, ProjectUUID: h.service.store.ProjectUUID(), Scope: "project"}
+		snapshotJSON, err := json.Marshal(snapshot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		relativePath := filepath.ToSlash(filepath.Join("exports", safeExportNameForSnapshot("project", "", snapshotHash, snapshot)+".zip"))
+		path, err := h.service.store.ResolvePath(relativePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		completedAt := now.Add(-8 * 24 * time.Hour)
+		if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,completed_at,created_at,updated_at) VALUES(?,?,'comic_export',?,'{}','completed',?,100,1,3,?,?,?)`, taskUUID, projectID, h.service.store.ProjectUUID(), idempotencyKey, completedAt, completedAt, completedAt).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := h.service.store.DB().Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,output_file_id,relative_path,retention_days,expires_at,byte_size,content_sha256,created_at,completed_at) VALUES(?,? ,?,'project','zip','ready',?,?,?, ?,7,?,?,?, ?,?)`, exportUUID, projectID, taskUUID, string(snapshotJSON), snapshotHash, fileID, relativePath, now.Add(-time.Second), len(content), contentSHA, completedAt, completedAt).Error; err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	exclusiveRootPath := insertLegacyExport(exclusive, exclusiveBytes, strings.Repeat("1", 64), "legacy-exclusive")
+	sharedRootPath := insertLegacyExport(sharedExpired, sharedBytes, strings.Repeat("2", 64), "legacy-shared")
+	for _, assetUUID := range []string{exclusive.UUID, sharedExpired.UUID} {
+		if _, err := h.service.Files().GetAsset(ctx, assetUUID, false); err == nil {
+			t.Fatalf("expired legacy Asset URL remained visible before cleanup: %s", assetUUID)
+		}
+	}
+	if _, err := h.service.Files().GetAsset(ctx, sharedActive.UUID, false); err != nil {
+		t.Fatalf("unrelated shared File was hidden at the legacy expiry boundary: %v", err)
+	}
+
+	result, err := h.service.CleanupExpiredExports(ctx, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ExportsDeleted != 2 || result.TasksDeleted != 2 || result.LegacyFilesPurged != 2 {
+		t.Fatalf("legacy cleanup result=%+v", result)
+	}
+	for _, assetUUID := range []string{exclusive.UUID, sharedExpired.UUID} {
+		if _, err := h.service.Files().GetAsset(ctx, assetUUID, false); err == nil {
+			t.Fatalf("expired legacy Asset URL remained visible: %s", assetUUID)
+		}
+	}
+	if _, err := h.service.Files().GetAsset(ctx, sharedActive.UUID, false); err != nil {
+		t.Fatalf("shared active Asset was removed: %v", err)
+	}
+	for _, path := range []string{exclusiveRootPath, sharedRootPath, exclusiveObjectPath} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("exclusive legacy artifact survived path=%s err=%v", path, err)
+		}
+	}
+	if _, err := os.Stat(sharedObjectPath); err != nil {
+		t.Fatalf("shared object was physically removed: %v", err)
+	}
+	var appliedPlans int64
+	if err := h.service.store.DB().Table("asset_gc_plans").Where("status = 'applied'").Count(&appliedPlans).Error; err != nil || appliedPlans != 2 {
+		t.Fatalf("export-only GC audit plans=%d err=%v", appliedPlans, err)
+	}
+}
+
+func TestCleanupExpiredExportsRetriesArtifactDeletionFailures(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	h.service.now = func() time.Time { return now }
+	var projectID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.service.store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	exportUUID, taskUUID := mustUUID(t), mustUUID(t)
+	snapshotHash := strings.Repeat("f", 64)
+	snapshotJSON, err := json.Marshal(ExportSnapshot{Version: 2, ProjectUUID: h.service.store.ProjectUUID(), Scope: "project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	relativePath := ExportRelativePath(exportUUID, "project", "", snapshotHash, ExportSnapshot{})
+	target, err := h.service.store.ResolvePath(relativePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A non-empty directory at the registered file path forces os.Remove to
+	// fail without depending on platform-specific permissions.
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	blocker := filepath.Join(target, "blocker")
+	if err := os.WriteFile(blocker, []byte("retry"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	completedAt := now.Add(-8 * 24 * time.Hour)
+	if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,completed_at,created_at,updated_at) VALUES(?,?,'comic_export',?,'{}','completed',?,100,1,3,?,?,?)`, taskUUID, projectID, h.service.store.ProjectUUID(), "cleanup-retry", completedAt, completedAt, completedAt).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,expires_at,created_at,completed_at) VALUES(?,? ,?,'project','zip','ready',?,?,?,7,?,?,?)`, exportUUID, projectID, taskUUID, string(snapshotJSON), snapshotHash, relativePath, now.Add(-time.Second), completedAt, completedAt).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := h.service.CleanupExpiredExports(ctx, 1000)
+	if err == nil || first.ExportsDeleted != 0 || first.TasksDeleted != 0 || first.ExpiredMarked != 1 {
+		t.Fatalf("first cleanup result=%+v err=%v", first, err)
+	}
+	var status string
+	if err := h.service.store.DB().Table("comic_exports").Where("uuid = ?", exportUUID).Pluck("status", &status).Error; err != nil || status != "expired" {
+		t.Fatalf("failed cleanup status=%q err=%v", status, err)
+	}
+	if err := os.Remove(blocker); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(target); err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.service.CleanupExpiredExports(ctx, 1000)
+	if err != nil || second.ExportsDeleted != 1 || second.TasksDeleted != 1 {
+		t.Fatalf("retried cleanup result=%+v err=%v", second, err)
 	}
 }
 

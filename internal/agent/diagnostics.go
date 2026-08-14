@@ -200,20 +200,12 @@ func (service *Service) ListWorkflowRuns(ctx context.Context, projectUUID, workf
 		if err != nil {
 			return err
 		}
-		type runRow struct {
-			workflowStepRecord
-			Attempt int
-		}
-		query := store.DB().WithContext(ctx).Table("workflow_steps AS steps").
-			Select(`steps.*,CASE WHEN COALESCE(MAX(logs.attempt),0)>0 THEN MAX(logs.attempt) ELSE 1 END AS attempt`).
-			Joins("LEFT JOIN task_runs tasks ON tasks.project_id=? AND tasks.uuid=steps.task_uuid", workflow.ProjectID).
-			Joins("LEFT JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=tasks.id)").
-			Where("steps.workflow_id=?", workflow.ID).Group("steps.id")
+		query := store.DB().WithContext(ctx).Where("workflow_id=?", workflow.ID)
 		if beforePosition > 0 {
-			query = query.Where("steps.position<?", beforePosition)
+			query = query.Where("position<?", beforePosition)
 		}
-		var rows []runRow
-		if err := query.Order("steps.position DESC").Limit(limit + 1).Scan(&rows).Error; err != nil {
+		var rows []workflowStepRecord
+		if err := query.Order("position DESC").Limit(limit + 1).Find(&rows).Error; err != nil {
 			return err
 		}
 		page.CursorPagination.HasMore = len(rows) > limit
@@ -223,8 +215,52 @@ func (service *Service) ListWorkflowRuns(ctx context.Context, projectUUID, workf
 		for left, right := 0, len(rows)-1; left < right; left, right = left+1, right-1 {
 			rows[left], rows[right] = rows[right], rows[left]
 		}
+		attemptByStep := make(map[int64]int, len(rows))
+		stepIDs := make([]int64, 0, len(rows))
 		for _, row := range rows {
-			page.Items = append(page.Items, WorkflowDiagnosticRun{UUID: row.UUID, WorkflowUUID: workflow.UUID, StepUUID: row.UUID, StepKey: row.StepKey, Attempt: row.Attempt, Status: row.Status, TaskUUID: row.TaskUUID, ResourceUUID: row.ResourceUUID, ErrorCode: row.ErrorCode, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt})
+			stepIDs = append(stepIDs, row.ID)
+		}
+		if len(stepIDs) > 0 {
+			var attempts []struct {
+				StepID  int64
+				Attempt int
+			}
+			if err := store.DB().WithContext(ctx).Table("workflow_steps AS steps").
+				Select(`steps.id AS step_id,CASE WHEN COALESCE(MAX(logs.attempt),0)>0 THEN MAX(logs.attempt) ELSE 1 END AS attempt`).
+				Joins("LEFT JOIN task_runs tasks ON tasks.project_id=? AND tasks.uuid=steps.task_uuid", workflow.ProjectID).
+				Joins("LEFT JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=tasks.id)").
+				Where("steps.id IN ?", stepIDs).Group("steps.id").Scan(&attempts).Error; err != nil {
+				return err
+			}
+			for _, attempt := range attempts {
+				attemptByStep[attempt.StepID] = attempt.Attempt
+			}
+		}
+		progressByTask := make(map[string]int, len(rows))
+		taskUUIDs := make([]string, 0, len(rows))
+		for _, row := range rows {
+			if row.TaskUUID != "" {
+				taskUUIDs = append(taskUUIDs, row.TaskUUID)
+			}
+		}
+		if len(taskUUIDs) > 0 {
+			var tasks []struct {
+				UUID     string
+				Progress int
+			}
+			if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", workflow.ProjectID, taskUUIDs).Scan(&tasks).Error; err != nil {
+				return err
+			}
+			for _, task := range tasks {
+				progressByTask[task.UUID] = task.Progress
+			}
+		}
+		for _, row := range rows {
+			progress, found := progressByTask[row.TaskUUID]
+			if !found && row.Status == WorkflowCompleted {
+				progress = 100
+			}
+			page.Items = append(page.Items, WorkflowDiagnosticRun{UUID: row.UUID, WorkflowUUID: workflow.UUID, StepUUID: row.UUID, StepKey: row.StepKey, Attempt: attemptByStep[row.ID], Status: row.Status, Progress: progress, TaskUUID: row.TaskUUID, ResourceUUID: row.ResourceUUID, ErrorCode: row.ErrorCode, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt})
 		}
 		if len(rows) > 0 {
 			page.CursorPagination.PrevCursor = encodeCursor(int64(rows[0].Position))

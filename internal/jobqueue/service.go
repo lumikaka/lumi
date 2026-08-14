@@ -133,6 +133,9 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	}
 	_ = threadID
 	_ = runID
+	if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, projectUUID, KindStoryChapterGeneration, input.ChapterUUID, taskUUID, resolved.UUID, model, modelSource, snapshotJSON, now); err != nil {
+		return Task{}, taskError(CodeTaskPersistenceFailed, "无法创建章节任务 Workflow", "任务、审计记录与队列 job 已一并回滚。", err)
+	}
 	inserted, err := runtime.client.InsertTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, TaskKind: KindStoryChapterGeneration, ResourceUUID: input.ChapterUUID}, &river.InsertOpts{
 		Queue: QueueStory, MaxAttempts: 3,
 		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}},
@@ -152,6 +155,7 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	task, err := manager.GetTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcast("task:queued", task)
+		runtime.broadcastStoryTaskWorkflow("workflow:queued", taskUUID)
 	}
 	return task, err
 }
@@ -383,8 +387,8 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 	if _, err := tx.ExecContext(ctx, `UPDATE agent_threads SET status = ?, updated_at = ? WHERE id IN (SELECT agent_thread_id FROM agent_runs WHERE task_run_id = ?)`, StatusCancelled, now, record.ID); err != nil {
 		return Task{}, err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := cancelComicStoryboardWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := cancelStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return Task{}, err
 		}
 	}
@@ -395,8 +399,8 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 	task, err := manager.GetTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcast("task:cancelled", task)
-		if record.Kind == KindComicStoryboardGeneration {
-			runtime.broadcastComicStoryboardWorkflow("workflow:cancelled", record.UUID)
+		if isProjectedStoryTaskWorkflow(record.Kind) {
+			runtime.broadcastStoryTaskWorkflow("workflow:cancelled", record.UUID)
 		}
 	}
 	return task, err
@@ -451,8 +455,8 @@ func (manager *Manager) RetryTask(ctx context.Context, projectUUID, taskUUID str
 	if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, error_code = '', error_message = '', completed_at = NULL, updated_at = ? WHERE task_run_id = ?`, StatusQueued, now, record.ID); err != nil {
 		return Task{}, err
 	}
-	if record.Kind == KindComicStoryboardGeneration {
-		if err := queueComicStoryboardWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := queueStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return Task{}, err
 		}
 	}
@@ -462,8 +466,8 @@ func (manager *Manager) RetryTask(ctx context.Context, projectUUID, taskUUID str
 	task, err := manager.GetTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcast("task:queued", task)
-		if record.Kind == KindComicStoryboardGeneration {
-			runtime.broadcastComicStoryboardWorkflow("workflow:queued", record.UUID)
+		if isProjectedStoryTaskWorkflow(record.Kind) {
+			runtime.broadcastStoryTaskWorkflow("workflow:queued", record.UUID)
 		}
 	}
 	return task, err

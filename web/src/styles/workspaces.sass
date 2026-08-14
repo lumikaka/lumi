@@ -8502,6 +8502,7 @@ $sage: $color-success
   gap: 18px
 
 .prompt-catalog-editor__intro,
+.prompt-catalog-editor__toc,
 .prompt-group
   border: 1px solid $color-border
   border-radius: $radius-lg
@@ -8537,6 +8538,66 @@ $sage: $color-success
     font-size: 12px
     font-weight: 800
 
+.prompt-catalog-editor__toc
+  padding: 16px 18px
+  display: grid
+  gap: 11px
+
+  h2
+    margin: 0
+    color: $color-muted
+    font-size: 12px
+    font-weight: 800
+    letter-spacing: .08em
+
+  > div
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(154px, 1fr))
+    gap: 8px
+
+  a
+    min-width: 0
+    min-height: 38px
+    padding: 8px 10px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 10px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-md
+    background: $color-surface-subtle
+    color: $color-text
+    text-decoration: none
+    font-size: 13px
+    font-weight: 700
+    transition: border-color .16s ease, background-color .16s ease, color .16s ease
+
+    &:hover
+      border-color: rgba($color-accent, .32)
+      background: $color-accent-muted
+      color: $color-accent
+
+    &:focus-visible
+      outline: 2px solid rgba($color-accent, .24)
+      outline-offset: 2px
+      border-color: $color-accent
+
+    span
+      min-width: 0
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      min-width: 24px
+      padding: 2px 6px
+      border-radius: 999px
+      background: $color-surface-muted
+      color: $color-muted
+      text-align: center
+      font-size: 12px
+      font-weight: 800
+
 .prompt-catalog-editor__loading
   padding: 42px
   border: 1px dashed $color-border
@@ -8546,6 +8607,10 @@ $sage: $color-success
 
 .prompt-group
   overflow: hidden
+  scroll-margin-top: 86px
+
+  &.is-collapsed .prompt-group__header
+    border-bottom: 0
 
 .prompt-group__header
   padding: 18px 20px
@@ -8571,7 +8636,7 @@ $sage: $color-success
     h2
       font-size: 17px
 
-    span
+    .prompt-group__count
       padding: 2px 7px
       border-radius: 999px
       background: $color-surface-muted
@@ -8602,9 +8667,42 @@ $sage: $color-success
   gap: 6px
   font-size: 12px
 
+.button-quiet.prompt-group__toggle
+  width: auto
+  height: auto
+  min-height: 28px
+  padding: 0
+  flex: 0 1 auto
+  gap: 8px
+  border: 0
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  font: inherit
+  line-height: 1.2
+
+  &:hover
+    border-color: transparent
+    color: $color-accent
+    background: transparent
+
+  &:focus-visible
+    outline: 2px solid rgba($color-accent, .24)
+    outline-offset: 2px
+    border-color: transparent
+    color: $color-accent
+    background: transparent
+
+  svg
+    display: block
+    flex: 0 0 auto
+
 .prompt-group__list
   display: grid
   gap: 0
+
+  &[hidden]
+    display: none
 
 .prompt-card
   min-width: 0

@@ -334,6 +334,7 @@ jobs:
         shell: pwsh
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
+          LOG_LEVEL: info
         run: |
           $ErrorActionPreference = 'Stop'
 

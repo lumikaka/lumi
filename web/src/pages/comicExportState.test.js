@@ -18,7 +18,7 @@ test('empty comic export errors remain distinguishable from network failures', (
 test('comic export dialog projects stable operation states and frozen snapshot metrics', () => {
   assert.equal(comicExportOperationState({ status: 'running' }, { status: 'running' }), 'running')
   assert.equal(comicExportOperationState({ status: 'completed' }, { status: 'running' }), 'finalizing')
-  assert.equal(comicExportOperationState({ status: 'completed' }, { status: 'ready', output_asset: { uuid: 'asset' } }), 'ready')
+  assert.equal(comicExportOperationState({ status: 'completed' }, { status: 'ready', download_url: '/media/export' }), 'ready')
   assert.deepEqual(comicExportSnapshotMetrics(null, { snapshot: { version: 2, section_count: 5, exported_section_count: 4, missing_section_count: 1 } }), { version: 2, total: 5, ready: 4, missing: 1 })
 })
 
@@ -40,11 +40,12 @@ test('all new comic export entry points open the shared operation dialog while h
     assert.match(source, /<ComicExportDialog/)
     assert.match(source, /comicExportDialogRequest/)
   }
-  assert.match(overview, /item\.output_asset\.content_url/)
-  assert.match(comic, /item\.output_asset\.content_url/)
+  assert.match(overview, /item\.download_url/)
+  assert.match(comic, /item\.download_url/)
   assert.match(dialog, /cancelProductionTask/)
   assert.match(dialog, /retryProductionTask/)
-  assert.match(dialog, /output_asset\.content_url/)
+  assert.match(dialog, /exportRecord\.download_url/)
+  for (const source of [overview, comic, dialog]) assert.doesNotMatch(source, /output_asset/)
   assert.doesNotMatch(dialog, /refetchInterval/)
   assert.match(dialog, /loadActiveOperation/)
   assert.match(dialog, /nextError\?\.code === 'task_conflict'/)

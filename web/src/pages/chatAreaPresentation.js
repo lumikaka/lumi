@@ -21,26 +21,66 @@ export function chatThreadCountLabel(loaded, total) {
 const workflowKindCopy = {
   comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
   comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
+  story_chapter_generation: 'chat.workflow.kind.story_chapter_generation',
+  story_chapter_batch_plan: 'chat.workflow.kind.story_chapter_batch_plan',
 }
 
 export function workflowDisplayTitle(workflow, t) {
+  const snapshot = workflowSnapshot(workflow)
+  if (workflow?.kind === 'story_chapter_generation') {
+    const key = snapshot.prompt_key === 'next_story_chapter'
+      ? 'chat.workflow.kind.next_story_chapter'
+      : 'chat.workflow.kind.story_chapter'
+    return snapshot.chapter_code ? t(`${key}_with_code`, { code: snapshot.chapter_code }) : t(key)
+  }
+  if (workflow?.kind === 'story_chapter_batch_plan') {
+    return snapshot.chapter_count
+      ? t('chat.workflow.kind.chapter_batch_plan_with_count', { count: snapshot.chapter_count })
+      : t('chat.workflow.kind.chapter_batch_plan')
+  }
   const copyKey = workflowKindCopy[workflow?.kind]
   return copyKey ? t(copyKey) : workflow?.title || t('chat.workflow.title')
 }
 
 export function threadDisplayTitle(thread, workflow, t) {
-  const copyKey = workflowKindCopy[workflow?.kind || thread?.title]
+  if (workflow) return workflowDisplayTitle(workflow, t)
+  const copyKey = workflowKindCopy[thread?.title]
   if (copyKey) return t(copyKey)
-  return workflow ? workflowDisplayTitle(workflow, t) : thread?.title || t('chat.threads')
+  return thread?.title || t('chat.threads')
 }
 
 export function threadContextCopyKey(thread, workflow) {
+  if (workflow?.kind === 'story_chapter_generation') return 'chat.workflow.kind.story_chapter_generation'
+  if (workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
   if (workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
   if (workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
   if (thread?.scene === 'premise_asset_generation') return 'premise.threads.scene.generate'
   if (thread?.scene === 'asset_reference') return 'premise.threads.scene.reference'
   if (thread?.scene === 'storyboard_reference') return 'chat.scene.storyboard.title'
   return thread?.scope === 'premise' ? 'premise.threads.scene.chat' : 'premise.threads.scene.project'
+}
+
+export function workflowProgressPercent(workflow) {
+  const steps = Array.isArray(workflow?.steps) ? workflow.steps : []
+  if (!steps.length) return workflow?.status === 'completed' ? 100 : 0
+  const total = steps.reduce((sum, step) => {
+    if (step?.status === 'completed') return sum + 100
+    const progress = Number(step?.progress)
+    return sum + (Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : 0)
+  }, 0)
+  return Math.round(total / steps.length)
+}
+
+function workflowSnapshot(workflow) {
+  const snapshot = workflow?.input_snapshot
+  if (snapshot && typeof snapshot === 'object') return snapshot
+  if (typeof snapshot !== 'string') return {}
+  try {
+    const parsed = JSON.parse(snapshot)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
 }
 
 export function projectChatSearchWithoutLegacyScope(search = '') {

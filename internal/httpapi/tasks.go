@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"lumi/internal/jobqueue"
+	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/story"
@@ -129,6 +130,18 @@ func (handler *TaskHandler) Retry(c echo.Context) error {
 	return Success(c, http.StatusOK, task)
 }
 
+func (handler *TaskHandler) ResolveComicStoryboardConflict(c echo.Context) error {
+	var request jobqueue.ResolveComicStoryboardConflictInput
+	if err := decodeJSON(c, &request); err != nil {
+		return err
+	}
+	resolution, err := handler.tasks.ResolveComicStoryboardConflict(c.Request().Context(), c.Param("project_uuid"), c.Param("workflow_uuid"), request)
+	if err != nil {
+		return taskAPIError(err)
+	}
+	return Success(c, http.StatusOK, resolution)
+}
+
 func taskAPIError(err error) error {
 	var projectErr *project.Error
 	if errors.As(err, &projectErr) {
@@ -141,6 +154,10 @@ func taskAPIError(err error) error {
 	var storyErr *story.Error
 	if errors.As(err, &storyErr) {
 		return storyAPIError(err)
+	}
+	var productionErr *production.Error
+	if errors.As(err, &productionErr) {
+		return productionAPIError(err)
 	}
 	var domainErr *jobqueue.Error
 	if !errors.As(err, &domainErr) {

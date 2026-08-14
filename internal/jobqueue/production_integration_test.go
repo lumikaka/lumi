@@ -395,7 +395,7 @@ func TestComicExportOperationTracksProgressAndReusesCanonicalSnapshot(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(encoded), `"export"`) || !strings.Contains(string(encoded), `"task"`) || !strings.Contains(string(encoded), `"filename"`) {
+	if !strings.Contains(string(encoded), `"export"`) || !strings.Contains(string(encoded), `"task"`) || !strings.Contains(string(encoded), `"filename"`) || !strings.Contains(string(encoded), `"download_url":""`) || !strings.Contains(string(encoded), `"expires_at":null`) || !strings.Contains(string(encoded), `"retention_days":7`) || !strings.Contains(string(encoded), `"byte_size":0`) || !strings.Contains(string(encoded), `"content_sha256":""`) {
 		t.Fatalf("comic export operation response=%s", encoded)
 	}
 	for _, forbidden := range []string{`"id":`, `"project_id"`, `"chapter_id"`, `"output_file_id"`, `"river_job_id"`} {
@@ -410,7 +410,7 @@ func TestComicExportOperationTracksProgressAndReusesCanonicalSnapshot(t *testing
 	waitProductionStatus(t, harness.queue, harness.project.UUID, operation.Task.UUID, StatusCompleted)
 
 	items, _, err := service.ListExportsPage(ctx, production.ExportFilter{TaskUUID: operation.Task.UUID, SnapshotHash: operation.Export.SnapshotHash, Status: "ready"}, 1, 20)
-	if err != nil || len(items) != 1 || items[0].OutputAsset == nil || items[0].OutputAsset.ContentURL == "" {
+	if err != nil || len(items) != 1 || items[0].DownloadURL == "" || items[0].OutputAsset != nil || items[0].ExpiresAt == nil || items[0].RetentionDays != 7 || items[0].ByteSize <= 0 || len(items[0].ContentSHA256) != 64 {
 		t.Fatalf("ready export items=%+v err=%v", items, err)
 	}
 	events, _, err := harness.queue.ListProductionTaskEvents(ctx, harness.project.UUID, operation.Task.UUID, 0, 0, 100)
@@ -455,7 +455,7 @@ func TestComicExportOperationTracksProgressAndReusesCanonicalSnapshot(t *testing
 		t.Fatalf("resolved canonical export=%+v err=%v", resolved, err)
 	}
 	replayedReuse, err := harness.queue.CreateComicExport(ctx, harness.project.UUID, reuseInput)
-	if err != nil || replayedReuse.Task.UUID != reused.Task.UUID || replayedReuse.Export.UUID != items[0].UUID || replayedReuse.Export.OutputAsset == nil {
+	if err != nil || replayedReuse.Task.UUID != reused.Task.UUID || replayedReuse.Export.UUID != items[0].UUID || replayedReuse.Export.DownloadURL == "" {
 		t.Fatalf("replayed canonical operation=%+v err=%v", replayedReuse, err)
 	}
 }

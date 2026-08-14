@@ -26,13 +26,14 @@ const (
 // Definition describes one project-overridable prompt. DefaultValue is a
 // complete builtin prompt for the requested project language.
 type Definition struct {
-	Group        string   `json:"prompt_group"`
-	Key          string   `json:"prompt_key"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	PromptType   string   `json:"prompt_type"`
-	DefaultValue string   `json:"default_value"`
-	LegacyKeys   []string `json:"legacy_keys,omitempty"`
+	Group                 string   `json:"prompt_group"`
+	Key                   string   `json:"prompt_key"`
+	Title                 string   `json:"title"`
+	Description           string   `json:"description"`
+	PromptType            string   `json:"prompt_type"`
+	DefaultValue          string   `json:"default_value"`
+	LegacyKeys            []string `json:"legacy_keys,omitempty"`
+	PreviousDefaultValues []string `json:"-"`
 }
 
 var placeholderPattern = regexp.MustCompile(`\{\{([^{}]*)\}\}`)

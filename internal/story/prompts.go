@@ -416,14 +416,46 @@ func (service *Service) EnsurePromptCatalogVersions(ctx context.Context, sourceT
 			return err
 		}
 		for _, definition := range service.promptDefinitions(projectRecord.GenerationLanguage) {
-			var count int64
-			if err := tx.WithContext(ctx).Model(&promptVersionRecord{}).
+			var current promptVersionRecord
+			currentErr := tx.WithContext(ctx).
 				Where("project_id = ? AND prompt_group = ? AND prompt_key = ?", projectRecord.ID, definition.Group, definition.Key).
-				Count(&count).Error; err != nil {
-				return err
-			}
-			if count > 0 {
+				Order("version_no DESC").First(&current).Error
+			if currentErr == nil {
+				currentHash := contentHash(strings.TrimSpace(current.Prompt))
+				if currentHash == contentHash(strings.TrimSpace(definition.DefaultValue)) {
+					continue
+				}
+				matchesPreviousDefault := false
+				for _, previous := range definition.PreviousDefaultValues {
+					if currentHash == contentHash(strings.TrimSpace(previous)) {
+						matchesPreviousDefault = true
+						break
+					}
+				}
+				if !matchesPreviousDefault {
+					continue
+				}
+				versionUUID, uuidErr := newUUIDv7()
+				if uuidErr != nil {
+					return uuidErr
+				}
+				value := strings.TrimSpace(definition.DefaultValue)
+				next := promptVersionRecord{UUID: versionUUID, ProjectID: projectRecord.ID, ActorID: actor.ID, PromptGroup: definition.Group, PromptKey: definition.Key, VersionNo: current.VersionNo + 1, Prompt: value, PromptHash: contentHash(value), SourceType: "migration", CreatedAt: now}
+				if createErr := tx.WithContext(ctx).Create(&next).Error; createErr != nil {
+					if uniqueConflict(createErr) {
+						continue
+					}
+					return createErr
+				}
+				if definition.Group == promptcatalog.GroupPremiseStyle && definition.Key == "project_overall_style" {
+					if syncErr := syncPremiseStyleProjection(ctx, tx, projectRecord.ID, value, now); syncErr != nil {
+						return syncErr
+					}
+				}
 				continue
+			}
+			if !errors.Is(currentErr, gorm.ErrRecordNotFound) {
+				return currentErr
 			}
 			value := strings.TrimSpace(definition.DefaultValue)
 			for _, legacyKey := range definition.LegacyKeys {

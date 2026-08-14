@@ -16,6 +16,7 @@ import {
   listWorkflowRuns,
   moveFollowUp,
   respondUserInput,
+  resolveWorkflowConflict,
   retryWorkflow,
   steerChatRun,
   steerFollowUp,
@@ -76,6 +77,7 @@ test('chat and workflow recovery reads use cursors and resource actions', async 
     await listWorkflowRuns('project-uuid', 'workflow-uuid', { before: 'runs-cursor', limit: 10 })
     await listWorkflowEvents('project-uuid', 'workflow-uuid', { before: 'events-cursor', limit: 20 })
     await listWorkflowLLMLogs('project-uuid', 'workflow-uuid', { page: 2, perPage: 10, stepUuid: 'step-uuid' })
+    await resolveWorkflowConflict('project-uuid', 'workflow-uuid', { action: 'overwrite', expected_comic_state_revision: 7 })
   } finally { global.fetch = original }
 
   assert.equal(calls[0][0], '/api/v1/projects/project-uuid/chat_threads/thread-uuid/items?limit=25&before=cursor-a')
@@ -86,4 +88,7 @@ test('chat and workflow recovery reads use cursors and resource actions', async 
   assert.equal(calls[5][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/runs?limit=10&before=runs-cursor')
   assert.equal(calls[6][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/events?limit=20&before=events-cursor')
   assert.equal(calls[7][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/llm-logs?page=2&per_page=10&workflow_step_uuid=step-uuid')
+  assert.equal(calls[8][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/conflict-resolutions')
+  assert.equal(calls[8][1].method, 'POST')
+  assert.deepEqual(JSON.parse(calls[8][1].body), { action: 'overwrite', expected_comic_state_revision: 7 })
 })

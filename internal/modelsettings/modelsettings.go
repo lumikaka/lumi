@@ -261,7 +261,7 @@ func (resolver *Resolver) options(ctx context.Context) (Options, error) {
 	}
 	result := Options{TextModels: []ModelOption{}, ImageModels: []ModelOption{}}
 	for _, item := range providers {
-		if model := strings.TrimSpace(item.DefaultModel); model != "" {
+		for _, model := range provider.SupportedTextModels(item) {
 			result.TextModels = append(result.TextModels, ModelOption{ProviderUUID: item.UUID, ProviderType: item.ProviderType, ProviderName: item.DisplayName, Model: model, Kind: KindText, Ready: item.Ready, Active: item.Active})
 		}
 		if model := strings.TrimSpace(item.DefaultImageModel); model != "" {

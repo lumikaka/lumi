@@ -236,15 +236,8 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 // storyboard. Repeating the same output is idempotent, which lets a River retry
 // finish task projection after the content transaction already committed.
 func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID string, generated []GeneratedComicSection) ([]ComicSection, error) {
-	if len(generated) < 1 || len(generated) > MaxGeneratedComicSections {
-		return nil, domainError(CodeValidation, "Comic storyboard 数量无效", fmt.Sprintf("sections 必须包含 1 到 %d 项。", MaxGeneratedComicSections), nil)
-	}
-	for index := range generated {
-		generated[index].Title = strings.TrimSpace(generated[index].Title)
-		generated[index].StoryboardMD = strings.TrimSpace(generated[index].StoryboardMD)
-		if generated[index].Title == "" || generated[index].StoryboardMD == "" || len([]rune(generated[index].Title)) > 160 || len([]rune(generated[index].StoryboardMD)) > 262144 {
-			return nil, domainError(CodeValidation, "Comic storyboard 内容无效", "每个 section 都需要有效 title 和 storyboard。", nil)
-		}
+	if err := normalizeGeneratedSections(generated); err != nil {
+		return nil, err
 	}
 	var existing []ComicSection
 	existing, err := service.ListSections(ctx, chapterUUID)
@@ -253,11 +246,19 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 	}
 	if len(existing) > 0 {
 		if len(existing) != len(generated) {
-			return nil, domainError(CodeConflict, "章节已有 Comic Sections", "为避免覆盖手工内容，AI storyboard 只能写入空章节。", nil)
+			state, stateErr := service.GetComicState(ctx, chapterUUID)
+			if stateErr != nil {
+				return nil, stateErr
+			}
+			return nil, generatedSectionsConflict("章节已有 Comic Sections", "为避免覆盖手工内容，AI storyboard 只能写入空章节。", len(existing), len(generated), state.Revision)
 		}
 		for index, section := range existing {
 			if section.Title != generated[index].Title || section.CurrentStoryboard == nil || strings.TrimSpace(section.CurrentStoryboard.ContentMD) != generated[index].StoryboardMD {
-				return nil, domainError(CodeConflict, "章节已有不同 Comic Sections", "现有分镜与任务快照结果不同，未执行覆盖。", nil)
+				state, stateErr := service.GetComicState(ctx, chapterUUID)
+				if stateErr != nil {
+					return nil, stateErr
+				}
+				return nil, generatedSectionsConflict("章节已有不同 Comic Sections", "现有分镜与任务快照结果不同，未执行覆盖。", len(existing), len(generated), state.Revision)
 			}
 		}
 		return existing, nil
@@ -306,6 +307,129 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "generated": true})
 	}
 	return items, err
+}
+
+// ReplaceGeneratedSections atomically replaces the active storyboard after an
+// explicit user confirmation. Existing sections are soft-deleted and remain
+// recoverable through the snapshots created immediately before and after the
+// replacement. Repeating an already-applied result is idempotent.
+func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUID string, generated []GeneratedComicSection, expectedStateRevision int64) ([]ComicSection, error) {
+	if err := normalizeGeneratedSections(generated); err != nil {
+		return nil, err
+	}
+	if expectedStateRevision < 0 {
+		return nil, domainError(CodeValidation, "Comic state revision 无效", "expected_comic_state_revision 必须是非负整数。", nil)
+	}
+	changed := false
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
+		if err != nil {
+			return err
+		}
+		var existing []comicSectionRecord
+		if err := tx.Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Order("section_no ASC").Find(&existing).Error; err != nil {
+			return err
+		}
+		matches, err := generatedSectionsMatchTx(tx, existing, generated)
+		if err != nil {
+			return err
+		}
+		if matches {
+			return nil
+		}
+		if state.Revision != expectedStateRevision {
+			return domainError(CodeStateConflict, "Comic Sections 已发生变化", "请刷新并重新确认后再覆盖。", nil)
+		}
+		_, actor, err := service.projectActor(ctx, tx)
+		if err != nil {
+			return err
+		}
+		now := service.now().UTC()
+		if len(existing) > 0 {
+			if err := service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "before_storyboard_overwrite"); err != nil {
+				return err
+			}
+			if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Updates(map[string]any{
+				"deleted_at": now, "revision": gorm.Expr("revision + 1"), "updated_at": now,
+			}).Error; err != nil {
+				return err
+			}
+			for _, row := range existing {
+				if err := appendSectionEvent(tx, row.ID, "section_deleted", map[string]any{"section_uuid": row.UUID, "reason": "storyboard_overwrite"}, now); err != nil {
+					return err
+				}
+			}
+		}
+		for index, item := range generated {
+			sectionUUID, uuidErr := newUUIDv7()
+			if uuidErr != nil {
+				return uuidErr
+			}
+			row := comicSectionRecord{UUID: sectionUUID, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: index + 1, Title: item.Title, CreatedAt: now, UpdatedAt: now}
+			if err := tx.Create(&row).Error; err != nil {
+				return err
+			}
+			variant, err := createStoryboardTx(tx, row, actor.ID, item.StoryboardMD, "generated", now)
+			if err != nil {
+				return err
+			}
+			if err := tx.Model(&row).Update("current_storyboard_variant_id", variant.ID).Error; err != nil {
+				return err
+			}
+			if err := appendSectionEvent(tx, row.ID, "section_created", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "source_type": "generated", "reason": "storyboard_overwrite"}, now); err != nil {
+				return err
+			}
+		}
+		if err := updateComicStateTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		if err := service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "storyboard_overwritten"); err != nil {
+			return err
+		}
+		changed = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	items, err := service.ListSections(ctx, chapterUUID)
+	if err == nil && changed {
+		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "generated": true, "overwritten": true})
+	}
+	return items, err
+}
+
+func normalizeGeneratedSections(generated []GeneratedComicSection) error {
+	if len(generated) < 1 || len(generated) > MaxGeneratedComicSections {
+		return domainError(CodeValidation, "Comic storyboard 数量无效", fmt.Sprintf("sections 必须包含 1 到 %d 项。", MaxGeneratedComicSections), nil)
+	}
+	for index := range generated {
+		generated[index].Title = strings.TrimSpace(generated[index].Title)
+		generated[index].StoryboardMD = strings.TrimSpace(generated[index].StoryboardMD)
+		if generated[index].Title == "" || generated[index].StoryboardMD == "" || len([]rune(generated[index].Title)) > 160 || len([]rune(generated[index].StoryboardMD)) > 262144 {
+			return domainError(CodeValidation, "Comic storyboard 内容无效", "每个 section 都需要有效 title 和 storyboard。", nil)
+		}
+	}
+	return nil
+}
+
+func generatedSectionsMatchTx(tx *gorm.DB, existing []comicSectionRecord, generated []GeneratedComicSection) (bool, error) {
+	if len(existing) != len(generated) {
+		return false, nil
+	}
+	for index, row := range existing {
+		if row.Title != generated[index].Title || row.CurrentStoryboardVariantID == nil {
+			return false, nil
+		}
+		var storyboard storyboardRecord
+		if err := tx.Where("id = ?", *row.CurrentStoryboardVariantID).First(&storyboard).Error; err != nil {
+			return false, err
+		}
+		if strings.TrimSpace(storyboard.ContentMD) != generated[index].StoryboardMD {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionUUID string, input UpdateSectionInput) (ComicSection, error) {
@@ -810,7 +934,7 @@ func chapterSnapshotSummary(row chapterSnapshotRecord, sectionCount int) Chapter
 
 func chapterSnapshotSource(reason string) string {
 	switch reason {
-	case "storyboard_generated", "image_generated":
+	case "storyboard_generated", "storyboard_overwritten", "image_generated":
 		return "generated"
 	case "snapshot_restored":
 		return "restore"

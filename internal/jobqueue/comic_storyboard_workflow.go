@@ -11,7 +11,24 @@ import (
 	"lumi/internal/realtime"
 )
 
-const comicStoryboardWorkflowTitle = agent.WorkflowComicStoryboard
+type storyTaskWorkflowConfig struct {
+	WorkflowKind      string
+	StepKey           string
+	Title             string
+	IdempotencyPrefix string
+}
+
+type storyTaskWorkflowSnapshot struct {
+	ProjectUUID        string   `json:"project_uuid"`
+	TaskUUID           string   `json:"task_uuid"`
+	ChapterUUID        string   `json:"chapter_uuid,omitempty"`
+	ChapterCode        string   `json:"chapter_code,omitempty"`
+	PromptKey          string   `json:"prompt_key,omitempty"`
+	ChapterCount       int      `json:"chapter_count,omitempty"`
+	TargetChapterCodes []string `json:"target_chapter_codes,omitempty"`
+	MaxSectionCount    int      `json:"max_section_count,omitempty"`
+	ModelSource        string   `json:"model_source"`
+}
 
 type comicStoryboardWorkflowSnapshot struct {
 	Version         int    `json:"version"`
@@ -22,7 +39,7 @@ type comicStoryboardWorkflowSnapshot struct {
 	ModelSource     string `json:"model_source"`
 }
 
-type comicStoryboardWorkflowRef struct {
+type storyTaskWorkflowRef struct {
 	ID           int64
 	ThreadID     int64
 	StepID       int64
@@ -30,11 +47,35 @@ type comicStoryboardWorkflowRef struct {
 	ThreadUUID   string
 	StepUUID     string
 	ResourceUUID string
+	WorkflowKind string
+	StepKey      string
 	Status       string
 	StepStatus   string
 }
 
-func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, chapterUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, now time.Time) error {
+func projectedStoryTaskWorkflowConfig(taskKind string) (storyTaskWorkflowConfig, bool) {
+	switch taskKind {
+	case KindStoryChapterGeneration:
+		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowStoryChapter, StepKey: agent.WorkflowStepStoryChapter, Title: agent.WorkflowStoryChapter, IdempotencyPrefix: "story-task:"}, true
+	case KindStoryChapterBatchPlan:
+		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowStoryChapterBatchPlan, StepKey: agent.WorkflowStepChapterBatchPlan, Title: agent.WorkflowStoryChapterBatchPlan, IdempotencyPrefix: "story-task:"}, true
+	case KindComicStoryboardGeneration:
+		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowComicStoryboard, StepKey: agent.WorkflowStepComicStoryboard, Title: agent.WorkflowComicStoryboard, IdempotencyPrefix: "comic-storyboard:"}, true
+	default:
+		return storyTaskWorkflowConfig{}, false
+	}
+}
+
+func isProjectedStoryTaskWorkflow(taskKind string) bool {
+	_, ok := projectedStoryTaskWorkflowConfig(taskKind)
+	return ok
+}
+
+func createStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, taskKind, resourceUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, now time.Time) error {
+	config, ok := projectedStoryTaskWorkflowConfig(taskKind)
+	if !ok {
+		return nil
+	}
 	var frozen storyGenerationSnapshot
 	if err := json.Unmarshal(taskSnapshot, &frozen); err != nil {
 		return err
@@ -51,7 +92,7 @@ func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID 
 	if err != nil {
 		return err
 	}
-	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,'project','',?,?,?)`, threadUUID, projectID, comicStoryboardWorkflowTitle, providerUUID, model, modelSource, chapterUUID, now, now)
+	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,'project','',?,?,?)`, threadUUID, projectID, config.Title, providerUUID, model, modelSource, resourceUUID, now, now)
 	if err != nil {
 		return err
 	}
@@ -59,14 +100,23 @@ func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID 
 	if err != nil {
 		return err
 	}
-	workflowSnapshot, err := json.Marshal(comicStoryboardWorkflowSnapshot{
-		Version: 1, ProjectUUID: projectUUID, ChapterUUID: chapterUUID, StoryTaskUUID: taskUUID,
-		MaxSectionCount: frozen.MaxSectionCount, ModelSource: modelSource,
-	})
+	var workflowSnapshot []byte
+	if taskKind == KindComicStoryboardGeneration {
+		workflowSnapshot, err = json.Marshal(comicStoryboardWorkflowSnapshot{
+			Version: 1, ProjectUUID: projectUUID, ChapterUUID: resourceUUID, StoryTaskUUID: taskUUID,
+			MaxSectionCount: frozen.MaxSectionCount, ModelSource: modelSource,
+		})
+	} else {
+		workflowSnapshot, err = json.Marshal(storyTaskWorkflowSnapshot{
+			ProjectUUID: projectUUID, TaskUUID: taskUUID,
+			ChapterUUID: frozen.ChapterUUID, ChapterCode: frozen.ChapterCode, PromptKey: frozen.PromptKey,
+			ChapterCount: frozen.ChapterCount, TargetChapterCodes: frozen.TargetChapterCodes, ModelSource: modelSource,
+		})
+	}
 	if err != nil {
 		return err
 	}
-	workflowResult, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(?,?,?, ?,?,'queued',1,?,?,?,?,?,?,?,?)`, workflowUUID, projectID, threadID, agent.WorkflowComicStoryboard, comicStoryboardWorkflowTitle, string(workflowSnapshot), "comic-storyboard:"+taskUUID, providerUUID, model, modelSource, agent.WorkflowStepComicStoryboard, now, now)
+	workflowResult, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(?,?,?, ?,?,'queued',1,?,?,?,?,?,?,?,?)`, workflowUUID, projectID, threadID, config.WorkflowKind, config.Title, string(workflowSnapshot), config.IdempotencyPrefix+taskUUID, providerUUID, model, modelSource, config.StepKey, now, now)
 	if err != nil {
 		return err
 	}
@@ -74,11 +124,27 @@ func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID 
 	if err != nil {
 		return err
 	}
-	stepInput, err := json.Marshal(map[string]any{"chapter_uuid": chapterUUID, "max_section_count": frozen.MaxSectionCount})
+	stepInput := map[string]any{}
+	if taskKind == KindComicStoryboardGeneration {
+		stepInput["chapter_uuid"] = resourceUUID
+		stepInput["max_section_count"] = frozen.MaxSectionCount
+	} else {
+		stepInput["kind"] = taskKind
+		stepInput["resource_uuid"] = resourceUUID
+	}
+	if taskKind == KindStoryChapterGeneration {
+		stepInput["chapter_uuid"] = frozen.ChapterUUID
+		stepInput["chapter_code"] = frozen.ChapterCode
+		stepInput["prompt_key"] = frozen.PromptKey
+	} else if taskKind == KindStoryChapterBatchPlan {
+		stepInput["chapter_count"] = frozen.ChapterCount
+		stepInput["target_chapter_codes"] = frozen.TargetChapterCodes
+	}
+	encodedInput, err := json.Marshal(stepInput)
 	if err != nil {
 		return err
 	}
-	stepResult, err := tx.ExecContext(ctx, `INSERT INTO workflow_steps(uuid,workflow_id,step_key,position,status,idempotency_key,task_uuid,resource_uuid,input_json,output_json,created_at,updated_at) VALUES(?,?,?,1,'queued',?,?,?,?,'{}',?,?)`, stepUUID, workflowID, agent.WorkflowStepComicStoryboard, workflowUUID+":"+agent.WorkflowStepComicStoryboard, taskUUID, chapterUUID, string(stepInput), now, now)
+	stepResult, err := tx.ExecContext(ctx, `INSERT INTO workflow_steps(uuid,workflow_id,step_key,position,status,idempotency_key,task_uuid,resource_uuid,input_json,output_json,created_at,updated_at) VALUES(?,?,?,1,'queued',?,?,?,?,'{}',?,?)`, stepUUID, workflowID, config.StepKey, workflowUUID+":"+config.StepKey, taskUUID, resourceUUID, string(encodedInput), now, now)
 	if err != nil {
 		return err
 	}
@@ -86,30 +152,34 @@ func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID 
 	if err != nil {
 		return err
 	}
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, workflowID, &stepID, "workflow_queued", map[string]any{
+	return appendStoryTaskWorkflowEventTx(ctx, tx, workflowID, &stepID, "workflow_queued", map[string]any{
 		"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID,
-		"step_uuid": stepUUID, "task_uuid": taskUUID, "resource_uuid": chapterUUID, "status": agent.WorkflowQueued,
+		"step_uuid": stepUUID, "task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": agent.WorkflowQueued,
 	}, now)
 }
 
-func comicStoryboardWorkflowRefTx(ctx context.Context, tx *sql.Tx, taskUUID string) (comicStoryboardWorkflowRef, bool, error) {
-	var ref comicStoryboardWorkflowRef
-	err := tx.QueryRowContext(ctx, `SELECT w.id,w.thread_id,s.id,w.uuid,t.uuid,s.uuid,s.resource_uuid,w.status,s.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id AND s.step_key=? WHERE w.kind=? AND s.task_uuid=? LIMIT 1`, agent.WorkflowStepComicStoryboard, agent.WorkflowComicStoryboard, taskUUID).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.Status, &ref.StepStatus)
+func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, chapterUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, now time.Time) error {
+	return createStoryTaskWorkflowTx(ctx, tx, projectID, projectUUID, KindComicStoryboardGeneration, chapterUUID, taskUUID, providerUUID, model, modelSource, taskSnapshot, now)
+}
+
+func storyTaskWorkflowRefTx(ctx context.Context, tx *sql.Tx, taskUUID string) (storyTaskWorkflowRef, bool, error) {
+	var ref storyTaskWorkflowRef
+	err := tx.QueryRowContext(ctx, `SELECT w.id,w.thread_id,s.id,w.uuid,t.uuid,s.uuid,s.resource_uuid,w.kind,s.step_key,w.status,s.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.WorkflowKind, &ref.StepKey, &ref.Status, &ref.StepStatus)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ref, false, nil
 	}
 	return ref, err == nil, err
 }
 
-func markComicStoryboardWorkflowRunningTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func markStoryTaskWorkflowRunningTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='running',started_at=COALESCE(started_at,?),completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, now, ref.StepID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,started_at=COALESCE(started_at,?),completed_at=NULL,cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, agent.WorkflowStepComicStoryboard, now, now, ref.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,started_at=COALESCE(started_at,?),completed_at=NULL,cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, now, ref.ID); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
@@ -118,11 +188,31 @@ func markComicStoryboardWorkflowRunningTx(ctx context.Context, tx *sql.Tx, taskU
 	if ref.Status == agent.WorkflowRunning && ref.StepStatus == agent.WorkflowRunning {
 		return nil
 	}
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_started", comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowRunning), now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_started", storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowRunning), now)
 }
 
-func completeComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, output map[string]any, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func markStoryTaskWorkflowWaitingTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
+	if err != nil || !found {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='waiting',updated_at=? WHERE id=?`, now, ref.StepID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,updated_at=? WHERE id=?`, ref.StepKey, now, ref.ID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='waiting_for_input',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
+		return err
+	}
+	if ref.StepStatus == "waiting" {
+		return nil
+	}
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_waiting_for_input", storyTaskWorkflowPayload(ref, taskUUID, StatusWaitingForInput), now)
+}
+
+func completeStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, output map[string]any, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
@@ -133,7 +223,7 @@ func completeComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID
 	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='completed',output_json=?,started_at=COALESCE(started_at,?),completed_at=COALESCE(completed_at,?),error_code='',error_message='',updated_at=? WHERE id=?`, string(encoded), now, now, now, ref.StepID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key=?,completed_at=COALESCE(completed_at,?),cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, agent.WorkflowStepComicStoryboard, now, now, ref.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key=?,completed_at=COALESCE(completed_at,?),cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, now, ref.ID); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='completed',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
@@ -142,15 +232,15 @@ func completeComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID
 	if ref.Status == agent.WorkflowCompleted && ref.StepStatus == agent.WorkflowCompleted {
 		return nil
 	}
-	payload := comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowCompleted)
-	if err := appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_completed", payload, now); err != nil {
+	payload := storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowCompleted)
+	if err := appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_completed", payload, now); err != nil {
 		return err
 	}
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, nil, "workflow_completed", payload, now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, nil, "workflow_completed", payload, now)
 }
 
-func failComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, message string, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func failStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, message string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
@@ -166,13 +256,13 @@ func failComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, co
 	if ref.Status == agent.WorkflowFailed && ref.StepStatus == agent.WorkflowFailed {
 		return nil
 	}
-	payload := comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowFailed)
+	payload := storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowFailed)
 	payload["error_code"] = code
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_failed", payload, now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "step_failed", payload, now)
 }
 
-func cancelComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func cancelStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
@@ -188,18 +278,18 @@ func cancelComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID s
 	if ref.Status == agent.WorkflowCancelled {
 		return nil
 	}
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_cancelled", comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowCancelled), now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_cancelled", storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowCancelled), now)
 }
 
-func queueComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func queueStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',started_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, ref.StepID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',current_step_key=?,cancel_requested_at=NULL,started_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, agent.WorkflowStepComicStoryboard, now, ref.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',current_step_key=?,cancel_requested_at=NULL,started_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, ref.ID); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
@@ -208,11 +298,11 @@ func queueComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID st
 	if ref.Status == agent.WorkflowQueued && ref.StepStatus == agent.WorkflowQueued {
 		return nil
 	}
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_retried", comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowQueued), now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_retried", storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowQueued), now)
 }
 
-func interruptComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, message string, now time.Time) error {
-	ref, found, err := comicStoryboardWorkflowRefTx(ctx, tx, taskUUID)
+func interruptStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, message string, now time.Time) error {
+	ref, found, err := storyTaskWorkflowRefTx(ctx, tx, taskUUID)
 	if err != nil || !found {
 		return err
 	}
@@ -228,18 +318,18 @@ func interruptComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUI
 	if ref.Status == agent.WorkflowInterrupted && ref.StepStatus == agent.WorkflowInterrupted {
 		return nil
 	}
-	payload := comicStoryboardWorkflowPayload(ref, taskUUID, agent.WorkflowInterrupted)
+	payload := storyTaskWorkflowPayload(ref, taskUUID, agent.WorkflowInterrupted)
 	payload["error_code"] = code
-	return appendComicStoryboardWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_interrupted", payload, now)
+	return appendStoryTaskWorkflowEventTx(ctx, tx, ref.ID, &ref.StepID, "workflow_interrupted", payload, now)
 }
 
-func reconcileComicStoryboardWorkflows(ctx context.Context, db *sql.DB, projectID int64, now time.Time) error {
+func reconcileStoryTaskWorkflows(ctx context.Context, db *sql.DB, projectID int64, now time.Time) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status,t.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads t ON t.id=w.thread_id WHERE tasks.project_id=? AND tasks.kind=? AND w.kind=?`, projectID, KindComicStoryboardGeneration, agent.WorkflowComicStoryboard)
+	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status,t.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads t ON t.id=w.thread_id WHERE tasks.project_id=? AND tasks.kind=w.kind AND w.kind IN (?,?,?)`, projectID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard)
 	if err != nil {
 		return err
 	}
@@ -263,38 +353,42 @@ func reconcileComicStoryboardWorkflows(ctx context.Context, db *sql.DB, projectI
 	for _, item := range items {
 		switch item.taskStatus {
 		case StatusQueued:
-			if err := queueComicStoryboardWorkflowTx(ctx, tx, item.taskUUID, now); err != nil {
+			if err := queueStoryTaskWorkflowTx(ctx, tx, item.taskUUID, now); err != nil {
 				return err
 			}
 		case StatusRunning:
-			if err := markComicStoryboardWorkflowRunningTx(ctx, tx, item.taskUUID, now); err != nil {
+			if err := markStoryTaskWorkflowRunningTx(ctx, tx, item.taskUUID, now); err != nil {
+				return err
+			}
+		case StatusWaitingForInput:
+			if err := markStoryTaskWorkflowWaitingTx(ctx, tx, item.taskUUID, now); err != nil {
 				return err
 			}
 		case StatusCompleted:
 			if item.workflowStatus != agent.WorkflowCompleted || item.stepStatus != agent.WorkflowCompleted || item.threadStatus != agent.ThreadCompleted {
-				output, err := comicStoryboardTaskOutputTx(ctx, tx, item.taskID)
+				output, err := storyTaskOutputTx(ctx, tx, item.taskID)
 				if err != nil {
 					return err
 				}
-				if err := completeComicStoryboardWorkflowTx(ctx, tx, item.taskUUID, output, now); err != nil {
+				if err := completeStoryTaskWorkflowTx(ctx, tx, item.taskUUID, output, now); err != nil {
 					return err
 				}
 			}
 		case StatusFailed:
 			if item.workflowStatus != agent.WorkflowFailed || item.stepStatus != agent.WorkflowFailed || item.threadStatus != agent.ThreadFailed {
-				if err := failComicStoryboardWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
+				if err := failStoryTaskWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
 					return err
 				}
 			}
 		case StatusCancelled:
 			if item.workflowStatus != agent.WorkflowCancelled || item.stepStatus != agent.WorkflowCancelled || item.threadStatus != agent.ThreadCancelled {
-				if err := cancelComicStoryboardWorkflowTx(ctx, tx, item.taskUUID, now); err != nil {
+				if err := cancelStoryTaskWorkflowTx(ctx, tx, item.taskUUID, now); err != nil {
 					return err
 				}
 			}
 		case StatusInterrupted:
 			if item.workflowStatus != agent.WorkflowInterrupted || item.stepStatus != agent.WorkflowInterrupted || item.threadStatus != agent.ThreadInterrupted {
-				if err := interruptComicStoryboardWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
+				if err := interruptStoryTaskWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
 					return err
 				}
 			}
@@ -303,7 +397,11 @@ func reconcileComicStoryboardWorkflows(ctx context.Context, db *sql.DB, projectI
 	return tx.Commit()
 }
 
-func comicStoryboardTaskOutputTx(ctx context.Context, tx *sql.Tx, taskID int64) (map[string]any, error) {
+func reconcileComicStoryboardWorkflows(ctx context.Context, db *sql.DB, projectID int64, now time.Time) error {
+	return reconcileStoryTaskWorkflows(ctx, db, projectID, now)
+}
+
+func storyTaskOutputTx(ctx context.Context, tx *sql.Tx, taskID int64) (map[string]any, error) {
 	var payload string
 	err := tx.QueryRowContext(ctx, `SELECT payload FROM task_events WHERE task_run_id=? AND event_type='task_completed' ORDER BY sequence DESC LIMIT 1`, taskID).Scan(&payload)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -321,14 +419,18 @@ func comicStoryboardTaskOutputTx(ctx context.Context, tx *sql.Tx, taskID int64) 
 	return envelope.Result, nil
 }
 
-func comicStoryboardWorkflowPayload(ref comicStoryboardWorkflowRef, taskUUID, status string) map[string]any {
+func comicStoryboardTaskOutputTx(ctx context.Context, tx *sql.Tx, taskID int64) (map[string]any, error) {
+	return storyTaskOutputTx(ctx, tx, taskID)
+}
+
+func storyTaskWorkflowPayload(ref storyTaskWorkflowRef, taskUUID, status string) map[string]any {
 	return map[string]any{
 		"workflow_uuid": ref.UUID, "thread_uuid": ref.ThreadUUID, "step_uuid": ref.StepUUID,
 		"task_uuid": taskUUID, "resource_uuid": ref.ResourceUUID, "status": status,
 	}
 }
 
-func appendComicStoryboardWorkflowEventTx(ctx context.Context, tx *sql.Tx, workflowID int64, stepID *int64, eventType string, payload any, now time.Time) error {
+func appendStoryTaskWorkflowEventTx(ctx context.Context, tx *sql.Tx, workflowID int64, stepID *int64, eventType string, payload any, now time.Time) error {
 	eventUUID, err := newUUIDv7()
 	if err != nil {
 		return err
@@ -341,30 +443,44 @@ func appendComicStoryboardWorkflowEventTx(ctx context.Context, tx *sql.Tx, workf
 	return err
 }
 
-func (runtime *projectRuntime) broadcastComicStoryboardWorkflow(event, taskUUID string) {
+func (runtime *projectRuntime) broadcastStoryTaskWorkflow(event, taskUUID string) {
 	if runtime.manager.hub == nil {
 		return
 	}
 	var workflowUUID, threadUUID, stepUUID, resourceUUID, status string
-	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.uuid,s.resource_uuid,w.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id AND s.step_key=? WHERE w.kind=? AND s.task_uuid=? LIMIT 1`, agent.WorkflowStepComicStoryboard, agent.WorkflowComicStoryboard, taskUUID).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status)
+	var progress int
+	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.uuid,s.resource_uuid,w.status,tasks.progress FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id JOIN task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &progress)
 	if err != nil {
 		return
 	}
-	payload, ok := comicStoryboardRealtimePayload(runtime.projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status)
+	payload, ok := storyTaskRealtimePayload(runtime.projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status, progress)
 	if !ok {
 		return
 	}
 	runtime.manager.hub.Broadcast(realtime.ProjectTopic(runtime.projectUUID), event, payload)
 }
 
-func comicStoryboardRealtimePayload(projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status string) (map[string]any, bool) {
+func (runtime *projectRuntime) broadcastComicStoryboardWorkflow(event, taskUUID string) {
+	runtime.broadcastStoryTaskWorkflow(event, taskUUID)
+}
+
+func storyTaskRealtimePayload(projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status string, progress int) (map[string]any, bool) {
 	for _, value := range []string{projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID} {
 		if !isUUIDv7(value) {
 			return nil, false
 		}
 	}
+	if progress < 0 || progress > 100 {
+		return nil, false
+	}
 	return map[string]any{
 		"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID,
-		"step_uuid": stepUUID, "task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": status,
+		"step_uuid": stepUUID, "task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": status, "progress": progress,
 	}, true
+}
+
+func comicStoryboardRealtimePayload(projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status string) (map[string]any, bool) {
+	payload, ok := storyTaskRealtimePayload(projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status, 0)
+	delete(payload, "progress")
+	return payload, ok
 }

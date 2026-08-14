@@ -32,7 +32,11 @@ const (
 	WorkflowYolo                     = "yolo_project_initialization"
 	WorkflowComicSectionImage        = "comic_section_image_generation"
 	WorkflowComicStoryboard          = "comic_storyboard_generation"
+	WorkflowStoryChapter             = "story_chapter_generation"
+	WorkflowStoryChapterBatchPlan    = "story_chapter_batch_plan"
 	WorkflowStepComicStoryboard      = "comic_storyboard"
+	WorkflowStepStoryChapter         = "story_chapter"
+	WorkflowStepChapterBatchPlan     = "chapter_batch_plan"
 	WorkflowStepSelectReferences     = "select_reference_assets"
 	WorkflowStepSaveSectionPremise   = "save_section_premise"
 	WorkflowStepGenerateSectionImage = "generate_section_image"
@@ -307,6 +311,7 @@ type WorkflowStep struct {
 	StepKey      string          `json:"step_key"`
 	Position     int             `json:"position"`
 	Status       string          `json:"status"`
+	Progress     int             `json:"progress"`
 	TaskUUID     string          `json:"task_uuid,omitempty"`
 	ResourceUUID string          `json:"resource_uuid,omitempty"`
 	Input        json.RawMessage `json:"input"`
@@ -326,6 +331,7 @@ type WorkflowDiagnosticRun struct {
 	StepKey      string     `json:"step_key"`
 	Attempt      int        `json:"attempt"`
 	Status       string     `json:"status"`
+	Progress     int        `json:"progress"`
 	TaskUUID     string     `json:"task_uuid,omitempty"`
 	ResourceUUID string     `json:"resource_uuid,omitempty"`
 	ErrorCode    string     `json:"error_code,omitempty"`

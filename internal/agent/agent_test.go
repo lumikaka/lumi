@@ -414,6 +414,15 @@ func TestPremiseThreadScopesAndSceneToolsStayBoundToSubject(t *testing.T) {
 	if generationTools[currentProjectAPIToolName] || toolDefinitionNames(llmToolDefinitions(projectRow))[currentProjectAPIToolName] {
 		t.Fatal("request_current_project_api leaked outside asset_reference")
 	}
+	generationPrompts, err := loadContextPrompts(ctx, harness.store, generationRow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"get_premise", "default_style", "纯白、无纹理背景", "一个完整主体", "512x512"} {
+		if !strings.Contains(generationPrompts.Scene, expected) {
+			t.Fatalf("premise asset generation prompt is missing %q: %s", expected, generationPrompts.Scene)
+		}
+	}
 	otherUUID, _ := newUUIDv7()
 	if _, err := parseCurrentProjectAPIRequest(toolContext{ProjectUUID: harness.project.UUID, Thread: referenceRow}, map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets/" + otherUUID}); err == nil {
 		t.Fatal("asset reference scene accepted a different target UUID")
@@ -429,7 +438,7 @@ func TestPremiseThreadScopesAndSceneToolsStayBoundToSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{harness.project.UUID, asset.UUID, asset.Title, asset.CurrentVariant.Asset.UUID, premise.DefaultStyle, currentProjectAPIToolName, "POST", "PATCH", "DELETE"} {
+	for _, expected := range []string{harness.project.UUID, asset.UUID, asset.Title, asset.CurrentVariant.Asset.UUID, premise.DefaultStyle, currentProjectAPIToolName, "POST", "PATCH", "DELETE", "类型、标题、简介", "纯白、无纹理背景", "一个完整主体", "512x512"} {
 		if !strings.Contains(prompts.Scene, expected) {
 			t.Fatalf("asset reference prompt is missing %q: %s", expected, prompts.Scene)
 		}
@@ -1146,6 +1155,9 @@ func TestToolArgumentsEnforceSchemaAndUUIDArrays(t *testing.T) {
 	valid := `{"kind":"comic_image_generation","resource_uuid":"` + resourceUUID + `","prompt":"paint","premise_asset_uuids":["` + referenceUUID + `"]}`
 	if _, err := validateToolArguments("start_generation", valid); err != nil {
 		t.Fatalf("valid UUID array rejected: %v", err)
+	}
+	if _, err := validateToolArguments("image_gen", `{"prompt":"single subject on white","size":"512x512"}`); err != nil {
+		t.Fatalf("valid 512x512 image size rejected: %v", err)
 	}
 	for name, raw := range map[string]string{
 		"unknown field":  `{"unexpected":"value"}`,

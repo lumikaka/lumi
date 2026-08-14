@@ -67,7 +67,7 @@ export const settings = defineMessages({
   'settings.provider.region.singapore': ['新加坡（ap-southeast-1）', 'Singapore (ap-southeast-1)'],
   'settings.provider.region.frankfurt': ['法兰克福（eu-central-1）', 'Frankfurt (eu-central-1)'],
   'settings.provider.region.tokyo': ['东京（ap-northeast-1）', 'Tokyo (ap-northeast-1)'],
-  'settings.provider.fixed_models': ['文本模型固定为 {text_model}；图片模型固定为 {image_model}。', 'The text model is fixed to {text_model}; the image model is fixed to {image_model}.'],
+  'settings.provider.fixed_models': ['默认文本模型为 {text_model}（可在项目模型设置中更换）；图片模型固定为 {image_model}。', 'The default text model is {text_model} (changeable in project model settings); the image model is fixed to {image_model}.'],
   'settings.provider.cloudflare_account_id': ['Cloudflare Account ID', 'Cloudflare Account ID'],
   'settings.provider.cloudflare_account_id_placeholder': ['32 位十六进制 Account ID', '32-character hexadecimal Account ID'],
   'settings.provider.cloudflare_endpoint': ['接口地址由 Lumi 固定生成：{endpoint}', 'Lumi derives the endpoint automatically: {endpoint}'],

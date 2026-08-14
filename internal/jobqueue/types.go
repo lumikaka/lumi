@@ -131,6 +131,24 @@ type CreateStoryWorkflowInput struct {
 	IdempotencyKey  string               `json:"idempotency_key"`
 }
 
+const (
+	ComicStoryboardConflictOverwrite    = "overwrite"
+	ComicStoryboardConflictKeepExisting = "keep_existing"
+)
+
+type ResolveComicStoryboardConflictInput struct {
+	Action                     string `json:"action"`
+	ExpectedComicStateRevision *int64 `json:"expected_comic_state_revision"`
+}
+
+type WorkflowConflictResolution struct {
+	WorkflowUUID string `json:"workflow_uuid"`
+	ThreadUUID   string `json:"thread_uuid"`
+	TaskUUID     string `json:"task_uuid"`
+	Action       string `json:"action"`
+	Status       string `json:"status"`
+}
+
 type storyGenerationSnapshot struct {
 	Version            int                         `json:"version"`
 	ProjectUUID        string                      `json:"project_uuid"`
@@ -238,6 +256,13 @@ type productionArgs struct {
 }
 
 func (productionArgs) Kind() string { return "lumi_production_v1" }
+
+type exportCleanupArgs struct {
+	Version     int    `json:"version"`
+	ProjectUUID string `json:"project_uuid" river:"unique"`
+}
+
+func (exportCleanupArgs) Kind() string { return "lumi_comic_export_cleanup_v1" }
 
 type ProductionTask struct {
 	UUID              string          `json:"uuid"`

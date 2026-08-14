@@ -129,6 +129,23 @@ test('comic storyboard creation refreshes ChatArea lists without auto-opening th
   assert.doesNotMatch(mutation, /setSelectedThreadUuid|chat_thread_uuid|workflow_uuid/)
 })
 
+test('chapter AI creation refreshes projections and stays on the chapter list', () => {
+  const chaptersSource = readFileSync(new URL('./ChaptersWorkspace.jsx', import.meta.url), 'utf8')
+  const storySource = readFileSync(new URL('./StoryWorkspacePage.jsx', import.meta.url), 'utf8')
+  const generationStart = chaptersSource.indexOf('const generationMutation')
+  const generation = chaptersSource.slice(generationStart, chaptersSource.indexOf('const deleteMutation', generationStart))
+  const panelStart = storySource.indexOf('function GenerationPanel')
+  const panel = storySource.slice(panelStart, storySource.indexOf('function ChapterEditorPanel', panelStart))
+  for (const source of [chaptersSource.slice(chaptersSource.indexOf('const refresh = useCallback'), generationStart), panel]) {
+    assert.match(source, /\['story-tasks', projectUuid\]/)
+    assert.match(source, /\['chat-threads', projectUuid\]/)
+    assert.match(source, /\['workflows', projectUuid\]/)
+  }
+  assert.match(generation, /prompt_key: mode === 'next' \|\| mode === 'continue' \? 'next_story_chapter' : 'story_chapter'/)
+  assert.doesNotMatch(generation, /navigate\(/)
+  assert.doesNotMatch(generation + panel, /setSelectedThreadUuid|chat_thread_uuid|workflow_uuid/)
+})
+
 test('comic storyboard generation keeps default 6 and exposes the 24-page contract maximum', () => {
   const source = readFileSync(new URL('./StoryWorkspacePage.jsx', import.meta.url), 'utf8')
   const messages = readFileSync(new URL('../i18n/messages/comic.js', import.meta.url), 'utf8')

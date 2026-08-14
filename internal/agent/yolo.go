@@ -262,15 +262,43 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 	if err := store.DB().WithContext(ctx).Where("workflow_id=?", row.ID).Order("position,id").Find(&steps).Error; err != nil {
 		return Workflow{}, err
 	}
+	progressByTask := make(map[string]int, len(steps))
+	taskUUIDs := make([]string, 0, len(steps))
+	for _, step := range steps {
+		if step.TaskUUID != "" {
+			taskUUIDs = append(taskUUIDs, step.TaskUUID)
+		}
+	}
+	if len(taskUUIDs) > 0 {
+		var rows []struct {
+			UUID     string
+			Progress int
+		}
+		if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&rows).Error; err != nil {
+			return Workflow{}, err
+		}
+		for _, task := range rows {
+			progressByTask[task.UUID] = task.Progress
+		}
+	}
 	dto := Workflow{UUID: row.UUID, ProjectUUID: projectUUID, ThreadUUID: threadUUID, Kind: row.Kind, Title: row.Title, Status: row.Status, InputVersion: row.InputVersion, InputSnapshot: sanitizeDiagnosticJSON(row.InputSnapshot), ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, CurrentStepKey: row.CurrentStepKey, ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), CancelRequestedAt: row.CancelRequestedAt, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	for _, step := range steps {
-		dto.Steps = append(dto.Steps, workflowStepDTO(step))
+		progress, found := progressByTask[step.TaskUUID]
+		if !found && step.Status == WorkflowCompleted {
+			progress = 100
+		}
+		dto.Steps = append(dto.Steps, workflowStepDTO(step, progress))
 	}
 	return dto, nil
 }
 
-func workflowStepDTO(row workflowStepRecord) WorkflowStep {
-	return WorkflowStep{UUID: row.UUID, StepKey: row.StepKey, Position: row.Position, Status: row.Status, TaskUUID: row.TaskUUID, ResourceUUID: row.ResourceUUID, Input: sanitizeDiagnosticJSON(row.InputJSON), Output: sanitizeDiagnosticJSON(row.OutputJSON), ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+func workflowStepDTO(row workflowStepRecord, progress int) WorkflowStep {
+	if progress < 0 {
+		progress = 0
+	} else if progress > 100 {
+		progress = 100
+	}
+	return WorkflowStep{UUID: row.UUID, StepKey: row.StepKey, Position: row.Position, Status: row.Status, Progress: progress, TaskUUID: row.TaskUUID, ResourceUUID: row.ResourceUUID, Input: sanitizeDiagnosticJSON(row.InputJSON), Output: sanitizeDiagnosticJSON(row.OutputJSON), ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (service *Service) ExecuteWorkflowStep(ctx context.Context, store *project.Store, stepUUID string) error {
@@ -973,12 +1001,12 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 		}
 		return result, getErr
 	}
-	if workflow.Kind == WorkflowComicStoryboard {
-		taskUUID := comicStoryboardWorkflowTaskUUID(workflow)
+	if taskKind, projected := projectedStoryWorkflowTaskKind(workflow.Kind); projected {
+		taskUUID := projectedStoryWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
-			return Workflow{}, domainError(CodeStateConflict, "漫画分镜 Workflow 缺少 Story 任务", "comic_storyboard 步骤没有关联 task_uuid。", nil)
+			return Workflow{}, domainError(CodeStateConflict, "Story Workflow 缺少任务", "Workflow 步骤没有关联 task_uuid。", nil)
 		}
-		if err := service.queue.CancelDomainTask(ctx, projectUUID, WorkflowComicStoryboard, taskUUID); err != nil {
+		if err := service.queue.CancelDomainTask(ctx, projectUUID, taskKind, taskUUID); err != nil {
 			return Workflow{}, err
 		}
 		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
@@ -1081,12 +1109,12 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		}
 		return result, getErr
 	}
-	if workflow.Kind == WorkflowComicStoryboard {
-		taskUUID := comicStoryboardWorkflowTaskUUID(workflow)
+	if taskKind, projected := projectedStoryWorkflowTaskKind(workflow.Kind); projected {
+		taskUUID := projectedStoryWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
-			return Workflow{}, domainError(CodeStateConflict, "漫画分镜 Workflow 缺少 Story 任务", "comic_storyboard 步骤没有关联 task_uuid。", nil)
+			return Workflow{}, domainError(CodeStateConflict, "Story Workflow 缺少任务", "Workflow 步骤没有关联 task_uuid。", nil)
 		}
-		if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, WorkflowComicStoryboard, taskUUID); taskErr != nil {
+		if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, taskKind, taskUUID); taskErr != nil {
 			return Workflow{}, taskErr
 		}
 		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
@@ -1184,13 +1212,26 @@ func comicWorkflowTaskUUID(workflow Workflow) string {
 	return ""
 }
 
-func comicStoryboardWorkflowTaskUUID(workflow Workflow) string {
+func projectedStoryWorkflowTaskKind(workflowKind string) (string, bool) {
+	switch workflowKind {
+	case WorkflowStoryChapter, WorkflowStoryChapterBatchPlan, WorkflowComicStoryboard:
+		return workflowKind, true
+	default:
+		return "", false
+	}
+}
+
+func projectedStoryWorkflowTaskUUID(workflow Workflow) string {
 	for _, step := range workflow.Steps {
-		if step.StepKey == WorkflowStepComicStoryboard && step.TaskUUID != "" {
+		if step.TaskUUID != "" {
 			return step.TaskUUID
 		}
 	}
 	return ""
+}
+
+func comicStoryboardWorkflowTaskUUID(workflow Workflow) string {
+	return projectedStoryWorkflowTaskUUID(workflow)
 }
 
 func (service *Service) broadcastWorkflow(projectUUID string, workflow Workflow, event, stepUUID string) {
@@ -1198,6 +1239,20 @@ func (service *Service) broadcastWorkflow(projectUUID string, workflow Workflow,
 		return
 	}
 	payload := map[string]any{"project_uuid": projectUUID, "workflow_uuid": workflow.UUID, "thread_uuid": workflow.ThreadUUID, "status": workflow.Status}
+	if _, projected := projectedStoryWorkflowTaskKind(workflow.Kind); projected {
+		for _, step := range workflow.Steps {
+			if step.TaskUUID == "" {
+				continue
+			}
+			payload["task_uuid"] = step.TaskUUID
+			payload["resource_uuid"] = step.ResourceUUID
+			payload["progress"] = step.Progress
+			if stepUUID == "" {
+				stepUUID = step.UUID
+			}
+			break
+		}
+	}
 	if stepUUID != "" {
 		payload["step_uuid"] = stepUUID
 	}

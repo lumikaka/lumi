@@ -8,8 +8,8 @@
 
 | 范围 | 说明 |
 |---|---|
-| 负责 | Premise 生成批次与资产生命周期、Chapter 回收站、章节漫画 Section/分镜/图片、生成上限、快照预览与恢复、章节或项目 ZIP 导出。 |
-| 不负责 | Provider 凭据和模型目录、底层文件发布与物理 GC、Story 正文版本管理、项目外云端协作。 |
+| 负责 | Premise 生成批次与资产生命周期、Chapter 回收站、章节漫画 Section/分镜/图片、生成上限、快照预览与恢复、章节或项目 ZIP 导出及其 7 天保留清理。 |
+| 不负责 | Provider 凭据和模型目录、通用 Asset Store 发布与 GC、Story 正文版本管理、项目外云端协作。 |
 
 ## 核心概念
 
@@ -24,6 +24,10 @@ Chapter 的当前漫画由 active Section、每个 Section 的 current storyboar
 ### 导出就绪度
 
 导出就绪度以 active Chapter、active Section 和 ready current image 为准。全图、部分缺图、零可用图分别进入直接导出、二次确认和禁止导出流程。
+
+### 导出保留边界
+
+漫画 ZIP 是可重新生成的短期派生产物，只保存到项目根 `exports/` 并固定保留 7 天。到期以 `expires_at` 为精确事实边界：REST 立即隐藏并拒绝下载，项目 River Runtime 在启动时及每小时清理文件、Export 与对应终态任务。
 
 ### 逻辑删除与永久删除
 
@@ -47,5 +51,5 @@ Premise 生成批次和漫画导出按稳定服务端顺序分页。Premise 页�
 |---|---|
 | AI 运行时 | 漫画和 Premise 生成在创建任务时解析并冻结 Provider、模型与来源。 |
 | Story | Chapter 是漫画状态、快照和章节级导出的归属资源。 |
-| Asset Store | 设定图、Section 图片和导出 ZIP 通过 `files` / `file_objects` 管理；故事生产不直接操作磁盘。 |
+| Asset Store | 设定图和 Section 图片通过 `files` / `file_objects` 管理。新漫画 ZIP 不进入 Asset Store；旧版 `output_file_id` 只在到期兼容回收时使用受控 export-only GC。 |
 | 实时通信 | `/api/v1/ws` 仅发布公开 UUIDv7 和刷新提示，REST/SQLite 是事实源。 |

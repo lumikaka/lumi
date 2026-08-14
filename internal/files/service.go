@@ -272,7 +272,7 @@ func (service *Service) assetRowByUUID(ctx context.Context, assetUUID string, in
 	}
 	query := service.assetQuery(ctx).Where("f.uuid = ?", assetUUID)
 	if !includeDeleted {
-		query = query.Where("f.deleted_at IS NULL")
+		query = service.excludeExpiredLegacyExports(query.Where("f.deleted_at IS NULL"))
 	}
 	var row assetRow
 	err := query.Take(&row).Error
@@ -284,6 +284,14 @@ func (service *Service) assetRowByUUID(ctx context.Context, assetUUID string, in
 
 func (service *Service) assetQuery(ctx context.Context) *gorm.DB {
 	return service.store.DB().WithContext(ctx).Table("files AS f").Select(`f.*, o.uuid AS object_uuid, o.sha256, o.key_path, o.mime_type, o.canonical_ext, o.byte_size, o.width, o.height, o.duration_ms, o.state AS object_state, o.verified_at, COALESCE(sf.uuid, '') AS source_asset_uuid`).Joins("JOIN file_objects AS o ON o.id = f.file_object_id").Joins("LEFT JOIN files AS sf ON sf.id = f.source_file_id").Where("f.project_id = (SELECT id FROM projects WHERE uuid = ?)", service.store.ProjectUUID())
+}
+
+func (service *Service) excludeExpiredLegacyExports(query *gorm.DB) *gorm.DB {
+	return query.Where(`NOT EXISTS (
+		SELECT 1 FROM comic_exports exports
+		WHERE exports.output_file_id = f.id
+		  AND (exports.status = 'expired' OR (exports.expires_at IS NOT NULL AND exports.expires_at <= ?))
+	)`, service.now().UTC())
 }
 
 func (service *Service) assetDTO(row assetRow) Asset {
@@ -310,7 +318,7 @@ func (service *Service) ListAssets(ctx context.Context, filter AssetFilter) ([]A
 	if filter.TrashedOnly {
 		query = query.Where("f.deleted_at IS NOT NULL")
 	} else if !filter.IncludeTrashed {
-		query = query.Where("f.deleted_at IS NULL")
+		query = service.excludeExpiredLegacyExports(query.Where("f.deleted_at IS NULL"))
 	}
 	if filter.Purpose != "" {
 		if _, err := policyFor(filter.Purpose); err != nil {
