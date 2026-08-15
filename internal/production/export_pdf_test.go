@@ -34,13 +34,76 @@ func TestPDFLayoutClassifiesPictureBookRatios(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			layout := pdfLayoutForPictureBook(test.profile)
-			if layout.Placement != test.placement || layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != 12 || layout.GutterMM != 6 || layout.RendererVersion != 1 {
+			if layout.Placement != test.placement || layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != 12 || layout.GutterMM != 6 || layout.RendererVersion != 2 {
 				t.Fatalf("layout=%+v", layout)
 			}
 			if slots := exportPDFSlots(layout); len(slots) != test.wantSlots {
 				t.Fatalf("slots=%+v", slots)
 			}
 		})
+	}
+}
+
+func TestPDFJPEGCompressionCapsResolutionWithoutUpscaling(t *testing.T) {
+	value := image.NewNRGBA(image.Rect(0, 0, 1000, 750))
+	state := uint32(1)
+	for index := 0; index < len(value.Pix); index += 4 {
+		state = state*1664525 + 1013904223
+		value.Pix[index] = byte(state >> 24)
+		state = state*1664525 + 1013904223
+		value.Pix[index+1] = byte(state >> 24)
+		state = state*1664525 + 1013904223
+		value.Pix[index+2] = byte(state >> 24)
+		value.Pix[index+3] = 255
+	}
+	var original bytes.Buffer
+	if err := png.Encode(&original, value); err != nil {
+		t.Fatal(err)
+	}
+	compressed, err := encodeExportPDFJPEG(value, exportPDFRect{W: 200, H: 150})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := jpeg.DecodeConfig(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Width != 500 || config.Height != 375 {
+		t.Fatalf("compressed dimensions=%dx%d", config.Width, config.Height)
+	}
+	if len(compressed) >= original.Len() {
+		t.Fatalf("compressed=%d original_png=%d", len(compressed), original.Len())
+	}
+
+	small := image.NewRGBA(image.Rect(0, 0, 20, 10))
+	compressed, err = encodeExportPDFJPEG(small, exportPDFRect{W: 500, H: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err = jpeg.DecodeConfig(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Width != 20 || config.Height != 10 {
+		t.Fatalf("small image was upscaled to %dx%d", config.Width, config.Height)
+	}
+}
+
+func TestPDFDownloadFilenameUsesProjectTitleAndChapterCode(t *testing.T) {
+	projectSnapshot := ExportSnapshot{Version: 5, Format: ExportFormatPDF, ProjectTitle: "月光计划", Scope: "project"}
+	if filename := exportPDFDownloadFilename(projectSnapshot, "ignored", ""); filename != "月光计划.pdf" {
+		t.Fatalf("project filename=%q", filename)
+	}
+	chapterSnapshot := ExportSnapshot{
+		Version: 5, Format: ExportFormatPDF, ProjectTitle: "月光/计划", Scope: "chapter",
+		Entries: []ExportEntry{{ChapterCode: "vol01.ch01"}},
+	}
+	if filename := exportPDFDownloadFilename(chapterSnapshot, "ignored", "ignored"); filename != "月光-计划-vol01-ch01.pdf" {
+		t.Fatalf("chapter filename=%q", filename)
+	}
+	legacySnapshot := ExportSnapshot{Version: 5, Format: ExportFormatPDF, Scope: "chapter"}
+	if filename := exportPDFDownloadFilename(legacySnapshot, "旧项目", "vol02.ch03"); filename != "旧项目-vol02-ch03.pdf" {
+		t.Fatalf("legacy filename=%q", filename)
 	}
 }
 
@@ -98,7 +161,7 @@ func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if zipHash != explicitZIPHash || zipSnapshot.Version != 4 || explicitZIP.Format != "" || explicitZIP.PDFLayout != nil {
+	if zipHash != explicitZIPHash || zipSnapshot.Version != 4 || explicitZIP.Format != "" || explicitZIP.ProjectTitle != "" || explicitZIP.PDFLayout != nil {
 		t.Fatalf("zip compatibility hash=%s/%s snapshot=%+v", zipHash, explicitZIPHash, explicitZIP)
 	}
 	for _, entry := range explicitZIP.Entries {
@@ -111,7 +174,7 @@ func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns {
+	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || snapshot.ProjectTitle != h.project.Name || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns || snapshot.PDFLayout.RendererVersion != 2 {
 		t.Fatalf("pdf snapshot=%+v hash=%s", snapshot, pdfHash)
 	}
 	if len(snapshot.Entries) != len(fixtures) {
@@ -132,6 +195,9 @@ func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertPDFDocument(t, output.Bytes(), 2)
+	if !bytes.Contains(output.Bytes(), []byte("DCTDecode")) {
+		t.Fatal("PDF v2 did not embed compressed JPEG image streams")
+	}
 	if len(progress) < 2 || progress[0] != 10 || progress[len(progress)-1] != 80 {
 		t.Fatalf("progress=%v", progress)
 	}

@@ -283,8 +283,8 @@ Reconcile 不能自动删除用户可能需要恢复的数据。corrupt、hash �
 
 - 导出使用 Asset metadata 和 snapshot 中的 UUID/顺序读取内容，不遍历目录猜测业务顺序。
 - Comic ZIP/PDF 只保存到项目根 `exports/`，不允许选择其他长期保存位置，也不写入 `assets/`、`files` 或 `file_objects`。
-- 文件名根据 scope、Chapter、画册类型和 snapshot hash 生成安全前缀，并以 Export UUIDv7 结尾；同一快照到期后重建会得到新路径，不会与旧清理任务争用。
-- ZIP 流式压缩原图；PDF 由纯 Go 渲染器写入 A4 竖版页面。两种格式均写入任务专属 `{name}.{zip|pdf}.part`，对最终字节同时计算大小和 SHA-256；文件 `fsync` 成功后原子 rename，再同步 `exports/` 目录。
+- 内部文件名根据 scope、Chapter、画册类型和 snapshot hash 生成安全前缀，并以 Export UUIDv7 结尾；同一快照到期后重建会得到新路径，不会与旧清理任务争用。PDF 对外展示与下载名不复用内部路径：项目导出使用 `{项目标题}.pdf`，Chapter 导出使用 `{项目标题}-{chapter_code}.pdf`。
+- ZIP 流式压缩原图；PDF 由纯 Go 渲染器写入 A4 竖版页面，并在嵌入前把超出槽位 180 DPI 的图片降采样、铺白透明区域，再以 JPEG 质量 90 编码。两种格式均写入任务专属 `{name}.{zip|pdf}.part`，对最终字节同时计算大小和 SHA-256；文件 `fsync` 成功后原子 rename，再同步 `exports/` 目录。
 - ready、failed、cancelled 从各自终态起固定保留 7 天；重试清空旧 `expires_at`，新的终态重新计算。相同格式与快照只复用 `status=ready AND expires_at>now` 的产物，且复用不续期。
 - 下载只通过 `/media/projects/:project_uuid/comic-exports/:export_uuid/content` 按 Export UUID 解析；支持 Range、ETag 和安全文件名。到期边界立即返回 410，记录清理后返回 404。
 - 每项目 River Runtime 在启动时及每小时运行 active-state 唯一清理任务，每轮最多处理 1000 项。它只删除数据库登记路径、符合 Lumi UUID 命名的无记录旧 ZIP/PDF，以及到期 `.part`；用户放入 `exports/` 的其他文件不得删除。单项文件删除失败时保留 `expired` 记录供下轮重试。

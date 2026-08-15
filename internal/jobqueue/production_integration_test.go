@@ -464,12 +464,12 @@ func TestComicExportOperationTracksProgressAndReusesCanonicalSnapshot(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pdfOperation.Export.Format != production.ExportFormatPDF || !strings.HasSuffix(pdfOperation.Export.Filename, ".pdf") || pdfOperation.Export.SnapshotHash == operation.Export.SnapshotHash {
+	if pdfOperation.Export.Format != production.ExportFormatPDF || pdfOperation.Export.Filename != harness.project.Name+"-vol01-ch31.pdf" || pdfOperation.Export.SnapshotHash == operation.Export.SnapshotHash {
 		t.Fatalf("pdf operation=%+v", pdfOperation)
 	}
 	waitProductionStatus(t, harness.queue, harness.project.UUID, pdfOperation.Task.UUID, StatusCompleted)
 	pdfItems, _, err := service.ListExportsPage(ctx, production.ExportFilter{TaskUUID: pdfOperation.Task.UUID, SnapshotHash: pdfOperation.Export.SnapshotHash, Status: "ready"}, 1, 20)
-	if err != nil || len(pdfItems) != 1 || pdfItems[0].Format != production.ExportFormatPDF || !strings.HasSuffix(pdfItems[0].RelativePath, ".pdf") || pdfItems[0].DownloadURL == "" {
+	if err != nil || len(pdfItems) != 1 || pdfItems[0].Format != production.ExportFormatPDF || pdfItems[0].Filename != harness.project.Name+"-vol01-ch31.pdf" || !strings.HasSuffix(pdfItems[0].RelativePath, ".pdf") || pdfItems[0].DownloadURL == "" {
 		t.Fatalf("pdf items=%+v err=%v", pdfItems, err)
 	}
 	var pdfPath string

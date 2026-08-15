@@ -328,6 +328,7 @@ type ExportSnapshot struct {
 	Version              int                         `json:"version"`
 	Format               string                      `json:"format,omitempty"`
 	ProjectUUID          string                      `json:"project_uuid"`
+	ProjectTitle         string                      `json:"project_title,omitempty"`
 	Scope                string                      `json:"scope"`
 	ChapterUUID          string                      `json:"chapter_uuid,omitempty"`
 	AllowMissingImages   bool                        `json:"allow_missing_images"`

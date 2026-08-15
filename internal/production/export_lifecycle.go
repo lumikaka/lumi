@@ -107,6 +107,16 @@ func (service *Service) OpenExportContent(ctx context.Context, exportUUID string
 	contentType := "application/zip"
 	if format == ExportFormatPDF {
 		contentType = "application/pdf"
+		var snapshot ExportSnapshot
+		if err := jsonUnmarshalExportSnapshot(record.SnapshotJSON, &snapshot); err != nil {
+			_ = file.Close()
+			return ExportContent{}, err
+		}
+		var chapterCode string
+		if record.ChapterID != nil {
+			_ = service.store.DB().WithContext(ctx).Table("chapters").Where("id = ?", *record.ChapterID).Pluck("chapter_code", &chapterCode).Error
+		}
+		filename = exportPDFDownloadFilename(snapshot, p.Name, chapterCode)
 	}
 	return ExportContent{
 		File: file, Filename: filename, ContentType: contentType, ETag: fmt.Sprintf("\"sha256-%s\"", contentHash),

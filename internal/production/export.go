@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"lumi/internal/durablefs"
 	"lumi/internal/project"
@@ -113,7 +114,7 @@ func (service *Service) BuildExportSnapshotForFormat(ctx context.Context, scope,
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
+	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.Name, p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 // BuildExportSnapshotTx repeats export readiness inside the production task
@@ -130,11 +131,12 @@ func (service *Service) BuildExportSnapshotTxForFormat(ctx context.Context, tx *
 		return ExportSnapshot{}, "", err
 	}
 	var projectID int64
-	if err := tx.QueryRowContext(ctx, "SELECT id FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID); err != nil {
+	var projectTitle string
+	if err := tx.QueryRowContext(ctx, "SELECT id,name FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID, &projectTitle); err != nil {
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
+	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectTitle, projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 type exportQueryer interface {
@@ -142,7 +144,7 @@ type exportQueryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID string, projectID int64, scope, chapterUUID string, allowMissingImages bool, format string, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
+func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID, projectTitle string, projectID int64, scope, chapterUUID string, allowMissingImages bool, format string, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
 	readiness, entries, err := queryExportReadiness(ctx, queryer, projectID, scope, chapterUUID)
 	if err != nil {
 		return ExportSnapshot{}, "", err
@@ -172,6 +174,7 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 		}
 		snapshot.Version = 5
 		snapshot.Format = ExportFormatPDF
+		snapshot.ProjectTitle = strings.TrimSpace(projectTitle)
 		layout := pdfLayoutForPictureBook(pictureBook)
 		snapshot.PDFLayout = &layout
 	} else {
@@ -737,9 +740,14 @@ func notifyExportProgress(callback func(int) error, progress int) error {
 	return callback(progress)
 }
 func (service *Service) exportDTO(ctx context.Context, row exportRecord) (Export, error) {
-	var chapterUUID string
+	var chapterUUID, chapterCode string
 	if row.ChapterID != nil {
-		_ = service.store.DB().WithContext(ctx).Table("chapters").Where("id = ?", *row.ChapterID).Pluck("uuid", &chapterUUID).Error
+		var chapter struct {
+			UUID        string
+			ChapterCode string
+		}
+		_ = service.store.DB().WithContext(ctx).Table("chapters").Select("uuid,chapter_code").Where("id = ?", *row.ChapterID).Scan(&chapter).Error
+		chapterUUID, chapterCode = chapter.UUID, chapter.ChapterCode
 	}
 	var snapshot ExportSnapshot
 	_ = json.Unmarshal([]byte(row.SnapshotJSON), &snapshot)
@@ -747,6 +755,9 @@ func (service *Service) exportDTO(ctx context.Context, row exportRecord) (Export
 	filename := safeExportNameForSnapshot(row.Scope, chapterUUID, row.SnapshotHash, snapshot) + "." + extension
 	if base := filepath.Base(filepath.FromSlash(row.RelativePath)); base != "." && base != "" && strings.HasSuffix(strings.ToLower(base), "."+extension) {
 		filename = base
+	}
+	if row.Format == ExportFormatPDF {
+		filename = exportPDFDownloadFilename(snapshot, service.store.ProjectName(), chapterCode)
 	}
 	result := Export{
 		UUID: row.UUID, TaskUUID: row.TaskUUID, Scope: row.Scope, ChapterUUID: chapterUUID,
@@ -845,6 +856,101 @@ func safeExportNameForSnapshot(scope, chapterUUID, hash string, snapshot ExportS
 		hash = hash[:12]
 	}
 	return strings.Join(append(parts, hash), "-")
+}
+
+const (
+	exportPDFDownloadStemMaxBytes = 180
+	exportPDFChapterCodeMaxBytes  = 48
+)
+
+func exportPDFDownloadFilename(snapshot ExportSnapshot, currentProjectTitle, currentChapterCode string) string {
+	projectTitle := strings.TrimSpace(snapshot.ProjectTitle)
+	if projectTitle == "" {
+		projectTitle = currentProjectTitle
+	}
+	projectTitle = safeExportPDFTitle(projectTitle)
+	chapterCode := ""
+	if snapshot.Scope == "chapter" {
+		if len(snapshot.Entries) > 0 {
+			chapterCode = snapshot.Entries[0].ChapterCode
+		}
+		if strings.TrimSpace(chapterCode) == "" {
+			chapterCode = currentChapterCode
+		}
+		chapterCode = safeExportPDFChapterCode(chapterCode)
+		chapterCode = truncateUTF8Bytes(chapterCode, exportPDFChapterCodeMaxBytes)
+	}
+	suffix := ""
+	if chapterCode != "" {
+		suffix = "-" + chapterCode
+	}
+	projectTitle = truncateUTF8Bytes(projectTitle, max(1, exportPDFDownloadStemMaxBytes-len(suffix)))
+	projectTitle = strings.TrimRight(strings.TrimSpace(projectTitle), ". ")
+	if projectTitle == "" {
+		projectTitle = "untitled"
+	}
+	return projectTitle + suffix + ".pdf"
+}
+
+func safeExportPDFTitle(value string) string {
+	var result strings.Builder
+	lastSeparator := false
+	lastSpace := false
+	for _, char := range strings.TrimSpace(value) {
+		if unicode.IsControl(char) || strings.ContainsRune(`/\\:*?"<>|`, char) {
+			if result.Len() > 0 && !lastSeparator {
+				result.WriteByte('-')
+			}
+			lastSeparator, lastSpace = true, false
+			continue
+		}
+		if unicode.IsSpace(char) {
+			if result.Len() > 0 && !lastSpace && !lastSeparator {
+				result.WriteByte(' ')
+			}
+			lastSpace = true
+			continue
+		}
+		result.WriteRune(char)
+		lastSeparator, lastSpace = false, false
+	}
+	cleaned := strings.Trim(strings.TrimSpace(result.String()), ".-")
+	if cleaned == "" {
+		return "untitled"
+	}
+	return cleaned
+}
+
+func safeExportPDFChapterCode(value string) string {
+	var result strings.Builder
+	lastSeparator := false
+	for _, char := range strings.TrimSpace(value) {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			result.WriteRune(char)
+			lastSeparator = false
+			continue
+		}
+		if result.Len() > 0 && !lastSeparator {
+			result.WriteByte('-')
+			lastSeparator = true
+		}
+	}
+	return strings.Trim(result.String(), "-")
+}
+
+func truncateUTF8Bytes(value string, limit int) string {
+	if len(value) <= limit {
+		return value
+	}
+	used := 0
+	for index, char := range value {
+		charBytes := len(string(char))
+		if used+charBytes > limit {
+			return strings.TrimSpace(value[:index])
+		}
+		used += charBytes
+	}
+	return value
 }
 
 // ExportRelativePath is the only storage naming rule used for new exports. The

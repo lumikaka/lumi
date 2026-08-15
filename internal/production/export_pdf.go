@@ -1,12 +1,15 @@
 package production
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"math"
 	"strings"
@@ -14,16 +17,20 @@ import (
 	"lumi/internal/project"
 
 	"github.com/signintech/gopdf"
+	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/webp"
 )
 
 const (
-	exportPDFRendererVersion = 1
-	exportPDFMarginMM        = 12
-	exportPDFGutterMM        = 6
-	exportPDFPageWidth       = 595.0
-	exportPDFPageHeight      = 842.0
-	pointsPerMillimeter      = 72.0 / 25.4
+	exportPDFLegacyRendererVersion = 1
+	exportPDFRendererVersion       = 2
+	exportPDFMarginMM              = 12
+	exportPDFGutterMM              = 6
+	exportPDFPageWidth             = 595.0
+	exportPDFPageHeight            = 842.0
+	pointsPerMillimeter            = 72.0 / 25.4
+	exportPDFRasterDPI             = 180.0
+	exportPDFJPEGQuality           = 90
 )
 
 type exportPDFRect struct {
@@ -52,7 +59,7 @@ func validateExportPDFSnapshot(snapshot ExportSnapshot) (ExportPDFLayout, error)
 		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出快照无效", "PDF 必须使用包含布局的 v5 快照。", nil)
 	}
 	layout := *snapshot.PDFLayout
-	if layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != exportPDFMarginMM || layout.GutterMM != exportPDFGutterMM || layout.RendererVersion != exportPDFRendererVersion {
+	if layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != exportPDFMarginMM || layout.GutterMM != exportPDFGutterMM || (layout.RendererVersion != exportPDFLegacyRendererVersion && layout.RendererVersion != exportPDFRendererVersion) {
 		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出布局无效", "冻结布局不受当前 PDF 渲染器支持。", nil)
 	}
 	switch layout.Placement {
@@ -135,7 +142,7 @@ func (service *Service) writePDF(ctx context.Context, output io.Writer, snapshot
 				if entryIndex >= len(entries) {
 					break
 				}
-				if err := service.drawExportPDFEntry(ctx, pdf, entries[entryIndex], slots[slotIndex]); err != nil {
+				if err := service.drawExportPDFEntry(ctx, pdf, entries[entryIndex], slots[slotIndex], layout.RendererVersion); err != nil {
 					return fmt.Errorf("render section %s: %w", entries[entryIndex].SectionUUID, err)
 				}
 				rendered++
@@ -171,7 +178,7 @@ func groupExportPDFEntries(snapshot ExportSnapshot) ([][]ExportEntry, error) {
 	return groups, nil
 }
 
-func (service *Service) drawExportPDFEntry(ctx context.Context, pdf *gopdf.GoPdf, entry ExportEntry, slot exportPDFRect) error {
+func (service *Service) drawExportPDFEntry(ctx context.Context, pdf *gopdf.GoPdf, entry ExportEntry, slot exportPDFRect, rendererVersion int) error {
 	content, err := service.files.OpenContent(ctx, entry.ImageAssetUUID)
 	if err != nil {
 		return err
@@ -197,6 +204,27 @@ func (service *Service) drawExportPDFEntry(ctx context.Context, pdf *gopdf.GoPdf
 	}
 	pdf.SetFillColor(255, 255, 255)
 	pdf.RectFromUpperLeftWithStyle(slot.X, slot.Y, slot.W, slot.H, "F")
+	if rendererVersion >= exportPDFRendererVersion {
+		decoded, err := decodeExportPDFImage(content.File, mimeType)
+		if err != nil {
+			return err
+		}
+		if decoded.Bounds().Dx() != width || decoded.Bounds().Dy() != height {
+			return domainError(CodeSnapshotInvalid, "PDF 图片尺寸已变化", "图片内容尺寸与冻结尺寸不一致。", nil)
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		compressed, err := encodeExportPDFJPEG(decoded, target)
+		if err != nil {
+			return err
+		}
+		holder, err := gopdf.ImageHolderByReader(bytes.NewReader(compressed))
+		if err != nil {
+			return err
+		}
+		return pdf.ImageByHolder(holder, target.X, target.Y, &gopdf.Rect{W: target.W, H: target.H})
+	}
 
 	switch mimeType {
 	case "image/png", "image/jpeg":
@@ -220,6 +248,45 @@ func (service *Service) drawExportPDFEntry(ctx context.Context, pdf *gopdf.GoPdf
 	default:
 		return domainError(CodeSnapshotInvalid, "PDF 图片格式不支持", "只支持 PNG、JPEG、GIF 或 WebP。", nil)
 	}
+}
+
+func decodeExportPDFImage(reader io.Reader, mimeType string) (image.Image, error) {
+	switch mimeType {
+	case "image/png":
+		return png.Decode(reader)
+	case "image/jpeg":
+		return jpeg.Decode(reader)
+	case "image/gif":
+		return gif.Decode(reader)
+	case "image/webp":
+		return webp.Decode(reader)
+	default:
+		return nil, domainError(CodeSnapshotInvalid, "PDF 图片格式不支持", "只支持 PNG、JPEG、GIF 或 WebP。", nil)
+	}
+}
+
+func encodeExportPDFJPEG(source image.Image, target exportPDFRect) ([]byte, error) {
+	flattened := flattenExportPDFImage(source)
+	maxWidth := max(1, int(math.Ceil(target.W*exportPDFRasterDPI/72)))
+	maxHeight := max(1, int(math.Ceil(target.H*exportPDFRasterDPI/72)))
+	width, height := flattened.Bounds().Dx(), flattened.Bounds().Dy()
+	if width <= 0 || height <= 0 {
+		return nil, fmt.Errorf("invalid PDF source image size: %dx%d", width, height)
+	}
+	scale := math.Min(1, math.Min(float64(maxWidth)/float64(width), float64(maxHeight)/float64(height)))
+	prepared := flattened
+	if scale < 1 {
+		resizedWidth := max(1, int(math.Round(float64(width)*scale)))
+		resizedHeight := max(1, int(math.Round(float64(height)*scale)))
+		resized := image.NewRGBA(image.Rect(0, 0, resizedWidth, resizedHeight))
+		xdraw.CatmullRom.Scale(resized, resized.Bounds(), flattened, flattened.Bounds(), draw.Src, nil)
+		prepared = resized
+	}
+	var encoded bytes.Buffer
+	if err := jpeg.Encode(&encoded, prepared, &jpeg.Options{Quality: exportPDFJPEGQuality}); err != nil {
+		return nil, err
+	}
+	return encoded.Bytes(), nil
 }
 
 func flattenExportPDFImage(source image.Image) image.Image {

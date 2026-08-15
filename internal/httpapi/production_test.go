@@ -226,7 +226,7 @@ func TestComicPDFExportContentUsesPDFHeaders(t *testing.T) {
 	content := []byte("%PDF-1.7\n%%EOF\n")
 	digest := sha256.Sum256(content)
 	expiresAt := time.Now().UTC().Add(time.Hour)
-	snapshot := production.ExportSnapshot{Version: 5, Format: production.ExportFormatPDF, ProjectUUID: projectUUID, Scope: "project"}
+	snapshot := production.ExportSnapshot{Version: 5, Format: production.ExportFormatPDF, ProjectUUID: projectUUID, ProjectTitle: "Lumi PDF", Scope: "project"}
 	snapshotJSON, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +250,7 @@ func TestComicPDFExportContentUsesPDFHeaders(t *testing.T) {
 
 	path := "/media/projects/" + projectUUID + "/comic-exports/" + exportUUID + "/content"
 	recorder := requestJSON(t, e, http.MethodGet, path, nil)
-	if recorder.Code != http.StatusOK || recorder.Header().Get("Content-Type") != "application/pdf" || recorder.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(recorder.Header().Get("Content-Disposition"), "comic-export.pdf") || !strings.Contains(recorder.Header().Get("Content-Disposition"), ".pdf") || recorder.Body.String() != string(content) {
+	if recorder.Code != http.StatusOK || recorder.Header().Get("Content-Type") != "application/pdf" || recorder.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(recorder.Header().Get("Content-Disposition"), "comic-export.pdf") || !strings.Contains(recorder.Header().Get("Content-Disposition"), "filename*=UTF-8''Lumi%20PDF.pdf") || recorder.Body.String() != string(content) {
 		t.Fatalf("pdf status=%d headers=%v body=%q", recorder.Code, recorder.Header(), recorder.Body.String())
 	}
 }

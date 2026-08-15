@@ -45,7 +45,9 @@ The PDF is always A4 portrait. It has no cover and starts laying out images on p
 - Vertical strips place two tall images side by side on each page.
 - Square and other portrait picture books place one image on each page.
 
-Every image is centered in full without cropping, rotation, or stretching. A project PDF never combines images from two chapters on one page; every chapter starts on a new page. GIF exports use the first frame.
+Every image is centered in full without cropping, rotation, or stretching. To keep PDFs from becoming unnecessarily large, Lumi only downsamples images that exceed the resolution needed for A4, capped at 180 DPI, and applies gentle JPEG quality 90 compression; smaller images are never enlarged. A project PDF never combines images from two chapters on one page; every chapter starts on a new page. GIF exports use the first frame.
+
+A whole-project PDF downloads as “Project title.pdf”; a chapter PDF uses “Project title-vol01-ch01.pdf.” Internal UUIDs used for safe storage and cleanup never appear in the downloaded filename. Choose “Original-image ZIP” when you need each source image without lossy recompression.
 
 ## Export the whole project
 
