@@ -338,7 +338,6 @@ type ExportSnapshot struct {
 	MissingSectionUUIDs  []string                    `json:"missing_section_uuids"`
 	Entries              []ExportEntry               `json:"entries"`
 	PictureBook          *project.PictureBookProfile `json:"picture_book,omitempty"`
-	Cover                *ExportCover                `json:"cover,omitempty"`
 	PDFLayout            *ExportPDFLayout            `json:"pdf_layout,omitempty"`
 }
 
@@ -353,12 +352,6 @@ type ExportEntry struct {
 	MIMEType       string `json:"mime_type,omitempty"`
 	Width          int    `json:"width,omitempty"`
 	Height         int    `json:"height,omitempty"`
-}
-
-type ExportCover struct {
-	ProjectName  string `json:"project_name"`
-	ChapterCode  string `json:"chapter_code,omitempty"`
-	ChapterTitle string `json:"chapter_title,omitempty"`
 }
 
 type ExportPDFLayout struct {

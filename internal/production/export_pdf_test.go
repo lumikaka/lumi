@@ -11,7 +11,6 @@ import (
 	"image/png"
 	"math"
 	"regexp"
-	"strings"
 	"testing"
 
 	"lumi/internal/project"
@@ -63,13 +62,9 @@ func TestPDFContainGeometryCentersWithoutCropping(t *testing.T) {
 	}
 }
 
-func TestPDFSnapshotAndRendererSupportChineseAndImageFormats(t *testing.T) {
+func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()
-	projectTitle := strings.Repeat("月光下的纸飞机与远方", 18)
-	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.project.UUID).Update("name", projectTitle).Error; err != nil {
-		t.Fatal(err)
-	}
 	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "月光下的第一章", Content: "Story", ContentFormat: "md"})
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +98,7 @@ func TestPDFSnapshotAndRendererSupportChineseAndImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if zipHash != explicitZIPHash || zipSnapshot.Version != 4 || explicitZIP.Format != "" || explicitZIP.Cover != nil || explicitZIP.PDFLayout != nil {
+	if zipHash != explicitZIPHash || zipSnapshot.Version != 4 || explicitZIP.Format != "" || explicitZIP.PDFLayout != nil {
 		t.Fatalf("zip compatibility hash=%s/%s snapshot=%+v", zipHash, explicitZIPHash, explicitZIP)
 	}
 	for _, entry := range explicitZIP.Entries {
@@ -116,7 +111,7 @@ func TestPDFSnapshotAndRendererSupportChineseAndImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.Cover == nil || snapshot.Cover.ProjectName != projectTitle || snapshot.Cover.ChapterCode != chapter.ChapterCode || snapshot.Cover.ChapterTitle != chapter.Title || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns {
+	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns {
 		t.Fatalf("pdf snapshot=%+v hash=%s", snapshot, pdfHash)
 	}
 	if len(snapshot.Entries) != len(fixtures) {
@@ -136,7 +131,7 @@ func TestPDFSnapshotAndRendererSupportChineseAndImageFormats(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	assertPDFDocument(t, output.Bytes(), 3)
+	assertPDFDocument(t, output.Bytes(), 2)
 	if len(progress) < 2 || progress[0] != 10 || progress[len(progress)-1] != 80 {
 		t.Fatalf("progress=%v", progress)
 	}
@@ -149,7 +144,7 @@ func TestPDFSnapshotAndRendererSupportChineseAndImageFormats(t *testing.T) {
 	if err := h.service.writePDF(ctx, &output, oneUp, nil); err != nil {
 		t.Fatal(err)
 	}
-	assertPDFDocument(t, output.Bytes(), 5)
+	assertPDFDocument(t, output.Bytes(), 4)
 }
 
 func TestProjectPDFNeverPairsDifferentChapters(t *testing.T) {
@@ -177,7 +172,6 @@ func TestProjectPDFNeverPairsDifferentChapters(t *testing.T) {
 	}
 	snapshot := ExportSnapshot{
 		Version: 5, Format: ExportFormatPDF, ProjectUUID: h.project.UUID, Scope: "project", ActiveChapterCount: 2, SectionCount: 2, ExportedSectionCount: 2,
-		Cover:     &ExportCover{ProjectName: "跨章节测试"},
 		PDFLayout: &ExportPDFLayout{PageSize: ExportPDFPageSizeA4Portrait, Placement: ExportPDFTwoUpStacked, MarginMM: 12, GutterMM: 6, RendererVersion: 1},
 		Entries: []ExportEntry{
 			{ChapterUUID: chapter.UUID, ChapterCode: "one", SectionNo: 1, SectionUUID: mustUUID(t), ImageAssetUUID: asset.UUID, MIMEType: asset.MIMEType, Width: width, Height: height, Extension: "png"},
@@ -188,7 +182,7 @@ func TestProjectPDFNeverPairsDifferentChapters(t *testing.T) {
 	if err := h.service.writePDF(ctx, &output, snapshot, nil); err != nil {
 		t.Fatal(err)
 	}
-	assertPDFDocument(t, output.Bytes(), 3)
+	assertPDFDocument(t, output.Bytes(), 2)
 }
 
 func assertPDFDocument(t *testing.T, value []byte, pages int) {

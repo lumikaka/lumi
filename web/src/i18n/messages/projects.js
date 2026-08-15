@@ -265,7 +265,7 @@ export const projects = defineMessages({
   'projects.exports.dialog.format_zip': ['原图 ZIP', 'Original-image ZIP'],
   'projects.exports.dialog.format_zip_body': ['保留每个 Section 的原始图片文件。', 'Keep the original image file for every section.'],
   'projects.exports.dialog.format_pdf': ['A4 PDF', 'A4 PDF'],
-  'projects.exports.dialog.format_pdf_body': ['生成文本封面，并按项目比例自动编排页面。', 'Add a text cover and automatically lay out pages for the project ratio.'],
+  'projects.exports.dialog.format_pdf_body': ['从第 1 页开始，按项目比例自动编排图片。', 'Lay out images from page 1 according to the project ratio.'],
   'projects.exports.dialog.start': ['开始导出', 'Start export'],
   'projects.exports.dialog.scope': ['导出范围', 'Export scope'],
   'projects.exports.dialog.snapshot_version': ['快照版本', 'Snapshot version'],

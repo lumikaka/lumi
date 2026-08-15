@@ -2,7 +2,6 @@ package production
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
@@ -22,17 +21,10 @@ const (
 	exportPDFRendererVersion = 1
 	exportPDFMarginMM        = 12
 	exportPDFGutterMM        = 6
-	exportPDFFontFamily      = "lumi-droid-sans-fallback"
 	exportPDFPageWidth       = 595.0
 	exportPDFPageHeight      = 842.0
-	exportPDFTitleMaxSize    = 36.0
-	exportPDFTitleMinSize    = 20.0
-	exportPDFSubtitleSize    = 16.0
 	pointsPerMillimeter      = 72.0 / 25.4
 )
-
-//go:embed assets/DroidSansFallbackFull.ttf
-var exportPDFFont []byte
 
 type exportPDFRect struct {
 	X float64
@@ -56,8 +48,8 @@ func pdfLayoutForPictureBook(profile project.PictureBookProfile) ExportPDFLayout
 }
 
 func validateExportPDFSnapshot(snapshot ExportSnapshot) (ExportPDFLayout, error) {
-	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || snapshot.Cover == nil || snapshot.PDFLayout == nil {
-		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出快照无效", "PDF 必须使用包含封面和布局的 v5 快照。", nil)
+	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || snapshot.PDFLayout == nil {
+		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出快照无效", "PDF 必须使用包含布局的 v5 快照。", nil)
 	}
 	layout := *snapshot.PDFLayout
 	if layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != exportPDFMarginMM || layout.GutterMM != exportPDFGutterMM || layout.RendererVersion != exportPDFRendererVersion {
@@ -121,13 +113,6 @@ func (service *Service) writePDF(ctx context.Context, output io.Writer, snapshot
 
 	pdf := &gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{PageSize: *gopdf.PageSizeA4})
-	if err := pdf.AddTTFFontData(exportPDFFontFamily, exportPDFFont); err != nil {
-		return fmt.Errorf("load PDF cover font: %w", err)
-	}
-	pdf.AddPage()
-	if err := drawExportPDFCover(pdf, *snapshot.Cover); err != nil {
-		return err
-	}
 	if err := notifyExportProgress(reportProgress, 10); err != nil {
 		return err
 	}
@@ -184,142 +169,6 @@ func groupExportPDFEntries(snapshot ExportSnapshot) ([][]ExportEntry, error) {
 		groups[len(groups)-1] = append(groups[len(groups)-1], entry)
 	}
 	return groups, nil
-}
-
-func drawExportPDFCover(pdf *gopdf.GoPdf, cover ExportCover) error {
-	margin := float64(exportPDFMarginMM) * pointsPerMillimeter
-	width := exportPDFPageWidth - 2*margin
-	height := exportPDFPageHeight - 2*margin
-	pdf.SetFillColor(255, 255, 255)
-	pdf.RectFromUpperLeftWithStyle(0, 0, exportPDFPageWidth, exportPDFPageHeight, "F")
-	title := strings.TrimSpace(cover.ProjectName)
-	if title == "" {
-		title = "Untitled"
-	}
-	subtitle := strings.TrimSpace(cover.ChapterCode)
-	if chapterTitle := strings.TrimSpace(cover.ChapterTitle); chapterTitle != "" {
-		if subtitle != "" {
-			subtitle += " · "
-		}
-		subtitle += chapterTitle
-	}
-
-	var subtitleLines []string
-	if subtitle != "" {
-		if err := pdf.SetFont(exportPDFFontFamily, "", exportPDFSubtitleSize); err != nil {
-			return err
-		}
-		subtitleLines, _ = wrapExportPDFText(pdf, subtitle, width)
-		if len(subtitleLines) > 4 {
-			subtitleLines = truncateExportPDFLines(pdf, subtitleLines, 4, width)
-		}
-	}
-	subtitleLineHeight := exportPDFSubtitleSize * 1.45
-	subtitleHeight := float64(len(subtitleLines)) * subtitleLineHeight
-	gap := 0.0
-	if len(subtitleLines) > 0 {
-		gap = 24
-	}
-
-	titleSize := exportPDFTitleMaxSize
-	var titleLines []string
-	for size := exportPDFTitleMaxSize; size >= exportPDFTitleMinSize; size-- {
-		if err := pdf.SetFont(exportPDFFontFamily, "", size); err != nil {
-			return err
-		}
-		titleLines, _ = wrapExportPDFText(pdf, title, width)
-		titleSize = size
-		if float64(len(titleLines))*size*1.35+gap+subtitleHeight <= height {
-			break
-		}
-	}
-	titleLineHeight := titleSize * 1.35
-	maxTitleLines := int(math.Floor((height - gap - subtitleHeight) / titleLineHeight))
-	if maxTitleLines < 1 {
-		maxTitleLines = 1
-	}
-	if len(titleLines) > maxTitleLines {
-		if err := pdf.SetFont(exportPDFFontFamily, "", titleSize); err != nil {
-			return err
-		}
-		titleLines = truncateExportPDFLines(pdf, titleLines, maxTitleLines, width)
-	}
-	blockHeight := float64(len(titleLines))*titleLineHeight + gap + subtitleHeight
-	y := (exportPDFPageHeight - blockHeight) / 2
-	if err := pdf.SetFont(exportPDFFontFamily, "", titleSize); err != nil {
-		return err
-	}
-	for _, line := range titleLines {
-		pdf.SetXY(margin, y)
-		if err := pdf.CellWithOption(&gopdf.Rect{W: width, H: titleLineHeight}, line, gopdf.CellOption{Align: gopdf.Center | gopdf.Middle}); err != nil {
-			return err
-		}
-		y += titleLineHeight
-	}
-	if len(subtitleLines) == 0 {
-		return nil
-	}
-	y += gap
-	if err := pdf.SetFont(exportPDFFontFamily, "", exportPDFSubtitleSize); err != nil {
-		return err
-	}
-	for _, line := range subtitleLines {
-		pdf.SetXY(margin, y)
-		if err := pdf.CellWithOption(&gopdf.Rect{W: width, H: subtitleLineHeight}, line, gopdf.CellOption{Align: gopdf.Center | gopdf.Middle}); err != nil {
-			return err
-		}
-		y += subtitleLineHeight
-	}
-	return nil
-}
-
-func wrapExportPDFText(pdf *gopdf.GoPdf, value string, maxWidth float64) ([]string, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return []string{""}, nil
-	}
-	lines := []string{}
-	current := ""
-	for _, char := range value {
-		if char == '\n' {
-			lines = append(lines, strings.TrimSpace(current))
-			current = ""
-			continue
-		}
-		candidate := current + string(char)
-		width, err := pdf.MeasureTextWidth(candidate)
-		if err != nil {
-			return nil, err
-		}
-		if width > maxWidth && current != "" {
-			lines = append(lines, strings.TrimSpace(current))
-			current = strings.TrimLeft(string(char), " \t")
-		} else {
-			current = candidate
-		}
-	}
-	if current != "" || len(lines) == 0 {
-		lines = append(lines, strings.TrimSpace(current))
-	}
-	return lines, nil
-}
-
-func truncateExportPDFLines(pdf *gopdf.GoPdf, lines []string, limit int, maxWidth float64) []string {
-	if len(lines) <= limit || limit <= 0 {
-		return lines
-	}
-	result := append([]string(nil), lines[:limit]...)
-	last := strings.TrimSpace(result[len(result)-1])
-	for last != "" {
-		width, err := pdf.MeasureTextWidth(last + "…")
-		if err == nil && width <= maxWidth {
-			break
-		}
-		runes := []rune(last)
-		last = strings.TrimSpace(string(runes[:len(runes)-1]))
-	}
-	result[len(result)-1] = last + "…"
-	return result
 }
 
 func (service *Service) drawExportPDFEntry(ctx context.Context, pdf *gopdf.GoPdf, entry ExportEntry, slot exportPDFRect) error {

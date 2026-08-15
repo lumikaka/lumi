@@ -39,7 +39,7 @@ Lumi checks the current snapshot before creating an export:
 
 ### How Lumi lays out an A4 PDF
 
-The PDF is always A4 portrait. Page 1 is a text cover: a project export shows the project name, while a chapter export also shows the chapter code and title. Remaining pages follow the picture-book ratio frozen when the project was created:
+The PDF is always A4 portrait. It has no cover and starts laying out images on page 1 according to the picture-book ratio frozen when the project was created:
 
 - Landscape and interactive picture books place two images vertically on each page.
 - Vertical strips place two tall images side by side on each page.
@@ -59,4 +59,4 @@ Both the original-image ZIP and A4 PDF are delivery files. They do not include e
 
 ## Check the downloaded result
 
-Extract a ZIP into a new folder and verify filenames, image count, reading order, and that every image opens correctly. For a PDF, verify the cover, page count, chapter breaks, and that every image remains complete. Do not extract a ZIP inside your only project folder, where delivery files could be confused with project assets.
+Extract a ZIP into a new folder and verify filenames, image count, reading order, and that every image opens correctly. For a PDF, verify the page count, chapter breaks, and that every image remains complete. Do not extract a ZIP inside your only project folder, where delivery files could be confused with project assets.

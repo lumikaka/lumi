@@ -113,7 +113,7 @@ func (service *Service) BuildExportSnapshotForFormat(ctx context.Context, scope,
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.Name, p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
+	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 // BuildExportSnapshotTx repeats export readiness inside the production task
@@ -130,12 +130,11 @@ func (service *Service) BuildExportSnapshotTxForFormat(ctx context.Context, tx *
 		return ExportSnapshot{}, "", err
 	}
 	var projectID int64
-	var projectName string
-	if err := tx.QueryRowContext(ctx, "SELECT id,name FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID, &projectName); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT id FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID); err != nil {
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectName, projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
+	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 type exportQueryer interface {
@@ -143,7 +142,7 @@ type exportQueryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID, projectName string, projectID int64, scope, chapterUUID string, allowMissingImages bool, format string, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
+func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID string, projectID int64, scope, chapterUUID string, allowMissingImages bool, format string, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
 	readiness, entries, err := queryExportReadiness(ctx, queryer, projectID, scope, chapterUUID)
 	if err != nil {
 		return ExportSnapshot{}, "", err
@@ -173,11 +172,6 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 		}
 		snapshot.Version = 5
 		snapshot.Format = ExportFormatPDF
-		snapshot.Cover = &ExportCover{ProjectName: projectName}
-		if readiness.Scope == "chapter" && len(entries) > 0 {
-			snapshot.Cover.ChapterCode = entries[0].ChapterCode
-			snapshot.Cover.ChapterTitle = entries[0].ChapterTitle
-		}
 		layout := pdfLayoutForPictureBook(pictureBook)
 		snapshot.PDFLayout = &layout
 	} else {

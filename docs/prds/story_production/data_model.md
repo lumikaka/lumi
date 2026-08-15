@@ -127,7 +127,7 @@ active Section 的 `(chapter_comic_state_id, section_no)` 唯一，列表按 `se
 - `scope` — `chapter` 或 `project`
 - `format` — `zip` 或 `pdf`
 - `status` — `queued`、`running`、`ready`、`failed`、`cancelled`，以及只供清理器使用且不对列表公开的过渡态 `expired`
-- `snapshot_json` / `snapshot_hash` — 合法 JSON 与 64 位 hash；ZIP 继续使用 v4 兼容结构，PDF v5 额外冻结格式、封面、A4 布局、Chapter UUID、图片 MIME 与尺寸
+- `snapshot_json` / `snapshot_hash` — 合法 JSON 与 64 位 hash；ZIP 继续使用 v4 兼容结构，PDF v5 额外冻结格式、A4 布局、Chapter UUID、图片 MIME 与尺寸
 - `output_file_id` — INTEGER FK → `files.id`，只兼容旧版双写导出；新导出始终为空，旧数据清空后可由后续 migration 移除
 - `relative_path` — 项目根目录下 `exports/` 的受控相对路径；新文件名包含 Export UUID，避免过期重建与旧清理器争用
 - `retention_days` — 固定为 7
