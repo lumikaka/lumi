@@ -113,6 +113,13 @@ jobs:
           if ($config.bundle.windows.nsis.installerIcon -ne 'icons/windows-generated/icon.ico') {
             throw 'Windows NSIS installer icon must use the ICO generated in CI.'
           }
+          if ($config.bundle.windows.nsis.installerHooks -ne './windows/hooks.nsh') {
+            throw 'Windows NSIS installer must use the Lumi shortcut cleanup hooks.'
+          }
+          $installerHooksPath = 'rel/app/src-tauri/windows/hooks.nsh'
+          if (-not (Test-Path $installerHooksPath -PathType Leaf)) {
+            throw "Windows NSIS installer hooks are missing: $installerHooksPath"
+          }
           if ($config.bundle.windows.webviewInstallMode.type -ne 'skip') {
             throw 'The browser-based desktop launcher must not install an unused WebView2 runtime.'
           }
@@ -179,7 +186,7 @@ jobs:
           }
 
           $installedVersion = pnpm --dir rel/app exec tauri --version
-          if ($LASTEXITCODE -ne 0 -or "$installedVersion".Trim() -ne 'tauri-cli 2.8.0') {
+          if ($LASTEXITCODE -ne 0 -or "$installedVersion".Trim() -ne 'tauri-cli 2.11.4') {
             throw "Unexpected Tauri CLI version: $installedVersion"
           }
 
@@ -344,6 +351,7 @@ jobs:
           $backendPath = Join-Path $installDirectory 'backend\lumi_web.exe'
           $uninstallerPath = Join-Path $installDirectory 'uninstall.exe'
           $startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Lumi.lnk'
+          $desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Lumi.lnk'
           $appDataDirectory = Join-Path $env:LOCALAPPDATA 'dev.lumi.Lumi'
           $databasePath = Join-Path $appDataDirectory 'lumi.sqlite'
           $cacheDirectory = Join-Path $appDataDirectory 'cache'
@@ -359,7 +367,7 @@ jobs:
             if ($installer.ExitCode -ne 0) {
               throw "NSIS installer exited with code $($installer.ExitCode)."
             }
-            foreach ($path in @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut)) {
+            foreach ($path in @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut, $desktopShortcut)) {
               if (-not (Test-Path $path -PathType Leaf)) {
                 throw "Installed file is missing: $path"
               }
@@ -460,7 +468,7 @@ jobs:
             }
           }
 
-          $installedFiles = @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut)
+          $installedFiles = @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut, $desktopShortcut)
           for ($attempt = 0; $attempt -lt 30; $attempt++) {
             $leftovers = @($installedFiles | Where-Object { Test-Path $_ })
             if ($leftovers.Count -eq 0) {

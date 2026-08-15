@@ -178,7 +178,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --dir rel/app install --frozen-lockfile
-          test "$(pnpm --dir rel/app exec tauri --version)" = "tauri-cli 2.8.0"
+          test "$(pnpm --dir rel/app exec tauri --version)" = "tauri-cli 2.11.4"
 
       - name: Test desktop launcher
         shell: bash

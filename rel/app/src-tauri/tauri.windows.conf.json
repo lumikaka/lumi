@@ -9,7 +9,8 @@
       },
       "nsis": {
         "installerIcon": "icons/windows-generated/icon.ico",
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   }
