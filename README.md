@@ -35,7 +35,7 @@ Lumi 把这些环节放回同一个项目：从一个想法开始，逐步完成
 3. **建立角色与场景设定**：整理人物、地点和道具，上传已有图片，或生成新的设定图与图片版本。
 4. **把章节拆成漫画分镜**：将正文转成可编辑的画面段落，调整顺序、构图、动作、对白和节奏。
 5. **生成并挑选画面**：为单个或多个分镜生成竖版图片，使用设定资产作为参考，并从候选版本中选择最终画面。
-6. **预览与导出**：按章节连续预览绘本画面，确认结果后导出单章或完整项目 ZIP。
+6. **预览与导出**：按章节连续预览绘本画面，确认结果后将单章或完整项目导出为原图 ZIP 或 A4 PDF。
 
 每一步都可以手动完成，也可以让 AI 提供初稿。生成结果不会替你做最终决定，你可以继续编辑、重新生成、切换候选或恢复历史版本。
 
@@ -93,7 +93,7 @@ YOLO 不是不可修改的“一键成品”。它负责把空白页推进到一
 2. macOS 解压后打开 `Lumi.app`；Windows 运行安装程序后从开始菜单打开 Lumi。macOS 版本尚未公证，Windows 版本没有 Authenticode 签名；如果系统拦截首次启动，请先确认文件来自本仓库 Release 并核对 SHA-256，再决定是否继续。
 3. 按首次启动引导连接阿里云百炼或 Cloudflare AI Gateway。
 4. 选择“YOLO 快速创作”，输入最小故事创意；或者选择“手动创建”，从空白项目开始。
-5. 在剧情、章节、设定和漫画工作台中继续修改，完成后从导出页面生成 ZIP。
+5. 在剧情、章节、设定和漫画工作台中继续修改，完成后从导出页面生成原图 ZIP 或 A4 PDF。
 
 <details>
 
@@ -212,7 +212,7 @@ HTTP 请求按响应状态分级：1xx–3xx 为 Info，4xx 为 Warning，5xx �
 
 每个已打开项目拥有独立 River client。River 使用该项目 `project.sqlite` 的单连接 `*sql.DB`，有数据库副作用的 queue 保持每项目 `MaxWorkers=1`。项目 migration 与备份完成后才执行官方 River migration；打开另一个项目不会停止现有 worker，只有目标项目回收/关闭或应用退出时才先 soft-stop 对应 worker、再关闭数据库。完整边界与升级 gate 见 [AI 运行时说明](docs/ai-runtime.md)。
 
-上传、AI 生成图片和长期派生资产先进入 `.lumi/tmp/{uuid}.part`，通过服务端 purpose allowlist、真实 MIME、媒体解码、大小/像素限制和 SHA-256 校验后，提交为 `file_objects` 物理对象与 `files` 逻辑 Asset。业务 API 只使用 Asset UUID 和 `content_url`，二进制由 UUID 解析的 `/media` 路由读取；`assets/` 从不作为静态目录暴露。漫画导出 ZIP 是短期例外：它只流式写入项目根 `exports/`，通过 Export UUID 下载并固定保留 7 天，不进入 Asset Store。完整生命周期见 [Asset Store 规范](docs/asset-storage.md)。
+上传、AI 生成图片和长期派生资产先进入 `.lumi/tmp/{uuid}.part`，通过服务端 purpose allowlist、真实 MIME、媒体解码、大小/像素限制和 SHA-256 校验后，提交为 `file_objects` 物理对象与 `files` 逻辑 Asset。业务 API 只使用 Asset UUID 和 `content_url`，二进制由 UUID 解析的 `/media` 路由读取；`assets/` 从不作为静态目录暴露。漫画导出 ZIP/PDF 是短期例外：它只写入项目根 `exports/`，通过 Export UUID 下载并固定保留 7 天，不进入 Asset Store。完整生命周期见 [Asset Store 规范](docs/asset-storage.md)。
 
 章节正文、Story Profile 和 Prompt 候选采用 append-only 版本。`STORY.md` 是 current Story Profile 的人类可读投影：正常保存使用临时文件与原子 rename；外部修改会进入显式冲突状态，只能由用户选择“导入为新版本”或“以数据库版本重新生成”。
 

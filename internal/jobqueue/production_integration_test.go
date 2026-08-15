@@ -450,13 +450,58 @@ func TestComicExportOperationTracksProgressAndReusesCanonicalSnapshot(t *testing
 	if err != nil || len(canonical) != 1 || canonical[0].UUID != items[0].UUID {
 		t.Fatalf("canonical exports=%+v err=%v", canonical, err)
 	}
-	resolved, err := service.ExportForTaskOrReadySnapshot(ctx, reused.Task.UUID, reused.Export.SnapshotHash)
+	resolved, err := service.ExportForTaskOrReadySnapshot(ctx, reused.Task.UUID, reused.Export.SnapshotHash, production.ExportFormatZIP)
 	if err != nil || resolved.UUID != items[0].UUID {
 		t.Fatalf("resolved canonical export=%+v err=%v", resolved, err)
 	}
 	replayedReuse, err := harness.queue.CreateComicExport(ctx, harness.project.UUID, reuseInput)
 	if err != nil || replayedReuse.Task.UUID != reused.Task.UUID || replayedReuse.Export.UUID != items[0].UUID || replayedReuse.Export.DownloadURL == "" {
 		t.Fatalf("replayed canonical operation=%+v err=%v", replayedReuse, err)
+	}
+
+	pdfInput := CreateExportInput{Scope: "chapter", ChapterUUID: chapter.UUID, Format: "PDF", IdempotencyKey: "comic-export-pdf"}
+	pdfOperation, err := harness.queue.CreateComicExport(ctx, harness.project.UUID, pdfInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pdfOperation.Export.Format != production.ExportFormatPDF || !strings.HasSuffix(pdfOperation.Export.Filename, ".pdf") || pdfOperation.Export.SnapshotHash == operation.Export.SnapshotHash {
+		t.Fatalf("pdf operation=%+v", pdfOperation)
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, pdfOperation.Task.UUID, StatusCompleted)
+	pdfItems, _, err := service.ListExportsPage(ctx, production.ExportFilter{TaskUUID: pdfOperation.Task.UUID, SnapshotHash: pdfOperation.Export.SnapshotHash, Status: "ready"}, 1, 20)
+	if err != nil || len(pdfItems) != 1 || pdfItems[0].Format != production.ExportFormatPDF || !strings.HasSuffix(pdfItems[0].RelativePath, ".pdf") || pdfItems[0].DownloadURL == "" {
+		t.Fatalf("pdf items=%+v err=%v", pdfItems, err)
+	}
+	var pdfPath string
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		var resolveErr error
+		pdfPath, resolveErr = store.ResolvePath(pdfItems[0].RelativePath)
+		return resolveErr
+	}); err != nil {
+		t.Fatal(err)
+	}
+	pdfBytes, err := os.ReadFile(pdfPath)
+	if err != nil || !bytes.HasPrefix(pdfBytes, []byte("%PDF-")) {
+		t.Fatalf("pdf path=%s bytes=%q err=%v", pdfPath, pdfBytes[:min(len(pdfBytes), 8)], err)
+	}
+	pdfReuseInput := CreateExportInput{Scope: "chapter", ChapterUUID: chapter.UUID, Format: production.ExportFormatPDF, IdempotencyKey: "comic-export-pdf-reuse"}
+	pdfReused, err := harness.queue.CreateComicExport(ctx, harness.project.UUID, pdfReuseInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, pdfReused.Task.UUID, StatusCompleted)
+	pdfResolved, err := service.ExportForTaskOrReadySnapshot(ctx, pdfReused.Task.UUID, pdfReused.Export.SnapshotHash, production.ExportFormatPDF)
+	if err != nil || pdfResolved.UUID != pdfItems[0].UUID {
+		t.Fatalf("resolved PDF canonical export=%+v err=%v", pdfResolved, err)
+	}
+	if crossed, crossErr := service.ExportForTaskOrReadySnapshot(ctx, pdfReused.Task.UUID, pdfReused.Export.SnapshotHash, production.ExportFormatZIP); crossErr == nil {
+		t.Fatalf("PDF task unexpectedly resolved as ZIP: %+v", crossed)
+	}
+
+	_, err = harness.queue.CreateComicExport(ctx, harness.project.UUID, CreateExportInput{Scope: "chapter", ChapterUUID: chapter.UUID, Format: "docx", IdempotencyKey: "comic-export-invalid-format"})
+	var formatErr *production.Error
+	if !errors.As(err, &formatErr) || formatErr.Code != production.CodeValidation {
+		t.Fatalf("invalid format error=%v", err)
 	}
 }
 

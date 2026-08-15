@@ -119,20 +119,20 @@ active Section 的 `(chapter_comic_state_id, section_no)` 唯一，列表按 `se
 
 ## 表：comic_exports
 
-保存项目或 Chapter ZIP 导出及其冻结输入。
+保存项目或 Chapter 的原图 ZIP / A4 PDF 导出及其冻结输入。
 
 - `uuid` / `task_uuid` — TEXT NOT NULL UNIQUE，公开 UUIDv7
 - `project_id` — INTEGER NOT NULL FK → `projects.id`
 - `chapter_id` — INTEGER FK → `chapters.id`，项目级导出为空
 - `scope` — `chapter` 或 `project`
-- `format` — 当前仅 `zip`
+- `format` — `zip` 或 `pdf`
 - `status` — `queued`、`running`、`ready`、`failed`、`cancelled`，以及只供清理器使用且不对列表公开的过渡态 `expired`
-- `snapshot_json` / `snapshot_hash` — 合法 JSON 与 64 位 hash
+- `snapshot_json` / `snapshot_hash` — 合法 JSON 与 64 位 hash；ZIP 继续使用 v4 兼容结构，PDF v5 额外冻结格式、封面、A4 布局、Chapter UUID、图片 MIME 与尺寸
 - `output_file_id` — INTEGER FK → `files.id`，只兼容旧版双写导出；新导出始终为空，旧数据清空后可由后续 migration 移除
 - `relative_path` — 项目根目录下 `exports/` 的受控相对路径；新文件名包含 Export UUID，避免过期重建与旧清理器争用
 - `retention_days` — 固定为 7
 - `expires_at` — 终态精确到期时间；queued/running 为空，ready/failed/cancelled 为本次进入终态时间加 7 天，重试时清空
-- `byte_size` / `content_sha256` — ZIP 字节数与 64 位小写 SHA-256；流式写入时同步计算
+- `byte_size` / `content_sha256` — ZIP/PDF 字节数与 64 位小写 SHA-256；写入时同步计算
 - `error_code` — 稳定错误码
 - `created_at` / `completed_at` — 时间字段
 
@@ -146,8 +146,8 @@ active Section 的 `(chapter_comic_state_id, section_no)` 唯一，列表按 `se
 
 1. Section 或 Premise 图片写入新的不可变 variant，再切换 current 指针。
 2. Chapter 关键变更创建 `comic_chapter_snapshots`；恢复时按快照创建 restore variant/状态，再追加一个 `snapshot_restored` 快照。
-3. 导出预检生成就绪度；创建任务时在同一写锁窗口重新检查并冻结 `snapshot_json`。ZIP 只写项目根 `exports/`，不创建新的 `files` / `file_objects`。
+3. 导出预检生成就绪度；用户选择格式后，创建任务在同一写锁窗口重新检查并冻结 `snapshot_json`。ZIP/PDF 只写项目根 `exports/`，不创建新的 `files` / `file_objects`。
 4. Premise 软删除只设置 `deleted_at`；永久删除领域资产和其 variant，但历史仍引用的 File 保留。
 5. 无任何 active、history、trash、snapshot 或 pending export 引用的 File 先逻辑删除，物理 object 仅能在 grace period 后由可审计 GC 回收。
-6. ready、failed、cancelled 从终态起保留 7 天。读取在 `expires_at <= now` 时立即隐藏，唯一 River 清理任务随后删除登记 ZIP/`.part`、Export 和终态 `production_task_runs`；任务外键级联删除事件与日志，原幂等键随任务删除后可再次使用。
+6. ready、failed、cancelled 从终态起保留 7 天。读取在 `expires_at <= now` 时立即隐藏，唯一 River 清理任务随后删除登记 ZIP/PDF、`.part`、Export 和终态 `production_task_runs`；任务外键级联删除事件与日志，原幂等键随任务删除后可再次使用。
 7. 旧 `output_file_id` 到期时先软删除 File，再由带审计计划和事务内引用复检的 export-only GC 删除独占 object；若 object 仍被其他 File 共享，只删除该逻辑 File。

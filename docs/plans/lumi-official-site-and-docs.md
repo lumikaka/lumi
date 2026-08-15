@@ -34,7 +34,7 @@ plan_state: finished
 | `/docs/story-and-chapters/` | `/en/docs/story-and-chapters/` | 故事简介、章节、导入、续写与版本 |
 | `/docs/premise-assets/` | `/en/docs/premise-assets/` | 角色、场景、道具和参考图管理 |
 | `/docs/storyboards-and-images/` | `/en/docs/storyboards-and-images/` | 分镜、参考资产、图片候选与当前画面 |
-| `/docs/preview-and-export/` | `/en/docs/preview-and-export/` | 连续预览、缺图处理与 ZIP 导出 |
+| `/docs/preview-and-export/` | `/en/docs/preview-and-export/` | 连续预览、缺图处理与 ZIP/PDF 导出 |
 | `/docs/local-projects/` | `/en/docs/local-projects/` | 本地项目目录、移动、备份和隐私边界 |
 | `/docs/troubleshooting/` | `/en/docs/troubleshooting/` | 启动拦截、模型配置、失败任务和常见问题 |
 

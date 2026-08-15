@@ -305,6 +305,7 @@ type CreateProductionGenerationInput struct {
 type CreateExportInput struct {
 	Scope              string `json:"scope"`
 	ChapterUUID        string `json:"chapter_uuid,omitempty"`
+	Format             string `json:"format,omitempty"`
 	AllowMissingImages bool   `json:"allow_missing_images"`
 	IdempotencyKey     string `json:"idempotency_key"`
 }

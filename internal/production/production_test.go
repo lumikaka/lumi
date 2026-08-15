@@ -392,13 +392,18 @@ func TestComicExportPaginationFiltersBeforePaging(t *testing.T) {
 			t.Fatalf("conflicting export filter error=%v", err)
 		}
 	}
-	exactItems, pagination, err := h.service.ListExportsPage(ctx, ExportFilter{TaskUUID: chapterRecord.TaskUUID, SnapshotHash: chapterRecord.SnapshotHash, Status: "queued"}, 1, 10)
+	exactItems, pagination, err := h.service.ListExportsPage(ctx, ExportFilter{TaskUUID: chapterRecord.TaskUUID, SnapshotHash: chapterRecord.SnapshotHash, Format: ExportFormatZIP, Status: "queued"}, 1, 10)
 	if err != nil || len(exactItems) != 1 || pagination.Total != 1 || exactItems[0].UUID != chapterRecord.UUID || exactItems[0].Filename == "" {
 		t.Fatalf("exact export filter=%+v pagination=%+v error=%v", exactItems, pagination, err)
+	}
+	mismatchedItems, pagination, err := h.service.ListExportsPage(ctx, ExportFilter{TaskUUID: chapterRecord.TaskUUID, Format: ExportFormatPDF}, 1, 10)
+	if err != nil || len(mismatchedItems) != 0 || pagination.Total != 0 {
+		t.Fatalf("mismatched format filter=%+v pagination=%+v error=%v", mismatchedItems, pagination, err)
 	}
 	invalidFilters := []ExportFilter{
 		{TaskUUID: "not-a-uuid"},
 		{SnapshotHash: "bad-hash"},
+		{Format: "docx"},
 		{Status: "completed"},
 	}
 	for _, filter := range invalidFilters {
@@ -1218,6 +1223,18 @@ func TestCleanupExpiredExportsRemovesTerminalRowsAndManagedFiles(t *testing.T) {
 	if err := os.Chtimes(orphanPath, old, old); err != nil {
 		t.Fatal(err)
 	}
+	pdfOrphanUUID := mustUUID(t)
+	pdfOrphanRelative := ExportRelativePath(pdfOrphanUUID, "project", "", strings.Repeat("f", 64), ExportSnapshot{Version: 5, Format: ExportFormatPDF})
+	pdfOrphanPath, err := h.service.store.ResolvePath(pdfOrphanRelative)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pdfOrphanPath, []byte("%PDF-orphan"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(pdfOrphanPath, old, old); err != nil {
+		t.Fatal(err)
+	}
 
 	visible, err := h.service.ListExports(ctx)
 	if err != nil || len(visible) != 1 || visible[0].UUID != fixtures[3].exportUUID {
@@ -1227,10 +1244,10 @@ func TestCleanupExpiredExportsRemovesTerminalRowsAndManagedFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.ExportsDeleted != 3 || result.TasksDeleted != 4 || result.OrphanFilesDeleted != 1 {
+	if result.ExportsDeleted != 3 || result.TasksDeleted != 4 || result.OrphanFilesDeleted != 2 {
 		t.Fatalf("cleanup result=%+v", result)
 	}
-	for _, path := range []string{readyPath, readyPath + ".part", orphanPath} {
+	for _, path := range []string{readyPath, readyPath + ".part", orphanPath, pdfOrphanPath} {
 		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("managed export survived cleanup path=%s err=%v", path, err)
 		}

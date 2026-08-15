@@ -701,7 +701,7 @@ func (handler *ProductionHandler) ListExports(c echo.Context) error {
 		var operationErr error
 		items, pagination, operationErr = service.ListExportsPage(c.Request().Context(), production.ExportFilter{
 			Scope: c.QueryParam("scope"), ChapterUUID: c.QueryParam("chapter_uuid"), TaskUUID: c.QueryParam("task_uuid"),
-			SnapshotHash: c.QueryParam("snapshot_hash"), Status: c.QueryParam("status"),
+			SnapshotHash: c.QueryParam("snapshot_hash"), Format: c.QueryParam("format"), Status: c.QueryParam("status"),
 		}, page, perPage)
 		return operationErr
 	}); err != nil {
@@ -740,7 +740,7 @@ func (handler *ProductionHandler) ExportContent(c echo.Context) error {
 		}
 		defer content.File.Close()
 		headers := c.Response().Header()
-		headers.Set(echo.HeaderContentType, "application/zip")
+		headers.Set(echo.HeaderContentType, content.ContentType)
 		headers.Set(echo.HeaderContentLength, strconv.FormatInt(content.ByteSize, 10))
 		headers.Set("ETag", content.ETag)
 		headers.Set("Last-Modified", content.LastModified.Format(http.TimeFormat))
@@ -748,7 +748,11 @@ func (handler *ProductionHandler) ExportContent(c echo.Context) error {
 		headers.Set("Accept-Ranges", "bytes")
 		headers.Set("X-Content-Type-Options", "nosniff")
 		headers.Set("Cache-Control", "private, no-store")
-		headers.Set("Content-Disposition", `attachment; filename="comic-export.zip"; filename*=`+filesContentDisposition(content.Filename))
+		fallback := "comic-export.zip"
+		if content.ContentType == "application/pdf" {
+			fallback = "comic-export.pdf"
+		}
+		headers.Set("Content-Disposition", `attachment; filename="`+fallback+`"; filename*=`+filesContentDisposition(content.Filename))
 		http.ServeContent(c.Response(), c.Request(), content.Filename, content.LastModified, content.File)
 		return nil
 	})

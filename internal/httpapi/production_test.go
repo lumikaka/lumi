@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -212,6 +213,45 @@ func TestComicExportContentSupportsRangeETagAndExpiry(t *testing.T) {
 	missing := requestJSON(t, e, http.MethodGet, path, nil)
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("missing status=%d body=%s", missing.Code, missing.Body.String())
+	}
+}
+
+func TestComicPDFExportContentUsesPDFHeaders(t *testing.T) {
+	e, manager, projectUUID, _ := productionAPIHarness(t)
+	const (
+		exportUUID   = "01900000-0000-7000-8000-000000000411"
+		taskUUID     = "01900000-0000-7000-8000-000000000412"
+		snapshotHash = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	)
+	content := []byte("%PDF-1.7\n%%EOF\n")
+	digest := sha256.Sum256(content)
+	expiresAt := time.Now().UTC().Add(time.Hour)
+	snapshot := production.ExportSnapshot{Version: 5, Format: production.ExportFormatPDF, ProjectUUID: projectUUID, Scope: "project"}
+	snapshotJSON, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.WithCurrentStore(t.Context(), projectUUID, func(store *project.Store) error {
+		relative := production.ExportRelativePath(exportUUID, "project", "", snapshotHash, snapshot)
+		target, err := store.ResolvePath(relative)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, content, 0o644); err != nil {
+			return err
+		}
+		return store.DB().Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,expires_at,byte_size,content_sha256,created_at,completed_at) VALUES(?,(SELECT id FROM projects WHERE uuid=?),?,'project','pdf','ready',?,?,?,7,?,?,?,datetime('now'),datetime('now'))`, exportUUID, projectUUID, taskUUID, string(snapshotJSON), snapshotHash, relative, expiresAt, len(content), fmt.Sprintf("%x", digest[:])).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	path := "/media/projects/" + projectUUID + "/comic-exports/" + exportUUID + "/content"
+	recorder := requestJSON(t, e, http.MethodGet, path, nil)
+	if recorder.Code != http.StatusOK || recorder.Header().Get("Content-Type") != "application/pdf" || recorder.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(recorder.Header().Get("Content-Disposition"), "comic-export.pdf") || !strings.Contains(recorder.Header().Get("Content-Disposition"), ".pdf") || recorder.Body.String() != string(content) {
+		t.Fatalf("pdf status=%d headers=%v body=%q", recorder.Code, recorder.Header(), recorder.Body.String())
 	}
 }
 

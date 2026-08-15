@@ -269,8 +269,10 @@ function OverviewExportTable({ items, loading, emptyTitle, chapterTitles }) {
       <ul>
         {items.map((item) => {
           const label = item.scope === 'chapter' ? chapterTitles.get(item.chapter_uuid) || t('projects.exports.chapter_label') : t('projects.exports.project_label')
+          // i18n-exempt: export formats and fallback filenames are machine identifiers, not interface copy.
+          const extension = item.format === 'pdf' ? 'pdf' : 'zip'
           // i18n-exempt: fallback export filenames are machine identifiers, not interface copy.
-          const filename = item.filename || item.relative_path?.split('/').filter(Boolean).at(-1) || `${item.scope === 'chapter' ? 'chapter' : 'project'}-comic.zip`
+          const filename = item.filename || item.relative_path?.split('/').filter(Boolean).at(-1) || `${item.scope === 'chapter' ? 'chapter' : 'project'}-comic.${extension}`
           return (
             <li key={item.uuid}>
               <div className="overview-export-file"><strong>{filename}</strong><span>{label}</span></div>

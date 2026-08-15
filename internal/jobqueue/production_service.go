@@ -441,7 +441,11 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 		return ComicExportOperation{}, err
 	}
 	service := production.NewService(runtime.store, manager.hub)
-	snapshot, hash, err := service.BuildExportSnapshotWithOptions(ctx, input.Scope, input.ChapterUUID, input.AllowMissingImages)
+	input.Format, err = production.NormalizeExportFormat(input.Format)
+	if err != nil {
+		return ComicExportOperation{}, err
+	}
+	snapshot, hash, err := service.BuildExportSnapshotForFormat(ctx, input.Scope, input.ChapterUUID, input.AllowMissingImages, input.Format)
 	if err != nil {
 		return ComicExportOperation{}, err
 	}
@@ -452,7 +456,7 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 	}
 	generation := production.GenerationSnapshot{Version: 1, Kind: KindComicExport, ProjectUUID: projectUUID, ResourceUUID: resourceUUID, ChapterUUID: input.ChapterUUID, Prompt: hash, Parameters: encoded}
 	task, err := manager.createProductionTask(ctx, runtime, generation, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, taskSnapshot []byte, now time.Time) error {
-		transactionSnapshot, transactionHash, err := service.BuildExportSnapshotTx(ctx, tx, input.Scope, input.ChapterUUID, input.AllowMissingImages)
+		transactionSnapshot, transactionHash, err := service.BuildExportSnapshotTxForFormat(ctx, tx, input.Scope, input.ChapterUUID, input.AllowMissingImages, input.Format)
 		if err != nil {
 			return err
 		}
@@ -468,7 +472,7 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 			return err
 		}
 		relativePath := production.ExportRelativePath(exportUUID, input.Scope, input.ChapterUUID, transactionHash, transactionSnapshot)
-		_, err = tx.ExecContext(ctx, `INSERT INTO comic_exports(uuid,project_id,chapter_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,created_at) VALUES(?,?,CASE WHEN ?='chapter' THEN (SELECT id FROM chapters WHERE project_id=? AND uuid=?) ELSE NULL END,?,?,'zip','queued',?,?,?,7,?)`, exportUUID, runtime.projectID, input.Scope, runtime.projectID, input.ChapterUUID, taskUUID, input.Scope, string(transactionEncoded), transactionHash, relativePath, now)
+		_, err = tx.ExecContext(ctx, `INSERT INTO comic_exports(uuid,project_id,chapter_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,created_at) VALUES(?,?,CASE WHEN ?='chapter' THEN (SELECT id FROM chapters WHERE project_id=? AND uuid=?) ELSE NULL END,?,?,?,'queued',?,?,?,7,?)`, exportUUID, runtime.projectID, input.Scope, runtime.projectID, input.ChapterUUID, taskUUID, input.Scope, input.Format, string(transactionEncoded), transactionHash, relativePath, now)
 		return err
 	})
 	if err != nil {
@@ -479,7 +483,7 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 	if json.Unmarshal(task.InputSnapshot, &frozen) == nil && frozen.Kind == KindComicExport && len(frozen.Prompt) == 64 {
 		operationHash = frozen.Prompt
 	}
-	export, err := service.ExportForTaskOrReadySnapshot(ctx, task.UUID, operationHash)
+	export, err := service.ExportForTaskOrReadySnapshot(ctx, task.UUID, operationHash, input.Format)
 	if err != nil {
 		return ComicExportOperation{}, err
 	}

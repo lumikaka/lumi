@@ -27,7 +27,7 @@ process:
     - title: 生成并挑选画面
       body: 带上设定参考生成图片，在多个候选中选择当前版本。
     - title: 连续预览与导出
-      body: 检查整章阅读节奏，导出单章或完整项目 ZIP。
+      body: 检查整章阅读节奏，导出单章或完整项目的原图 ZIP 与 A4 PDF。
 
 formats:
   eyebrow: 五种绘本形式

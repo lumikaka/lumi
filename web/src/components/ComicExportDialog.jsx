@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, X } from 'lucide-react'
+import { Archive, Download, FileText, X } from 'lucide-react'
 
 import {
   cancelProductionTask,
@@ -30,8 +30,10 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
   const [stage, setStage] = useState('checking')
   const [readiness, setReadiness] = useState(null)
   const [operation, setOperation] = useState(null)
+  const [selectedFormat, setSelectedFormat] = useState('')
   const [error, setError] = useState(null)
   const allowMissingRef = useRef(false)
+  const selectedFormatRef = useRef('')
   const scope = request.scope
   const pageMode = Boolean(projectQuery.data?.picture_book?.format && projectQuery.data.picture_book.format !== 'vertical_strip')
   const chapterUuid = scope === 'chapter' ? request.chapterUuid : ''
@@ -47,6 +49,9 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
 
   const adoptOperation = useCallback((next) => {
     setOperation(next)
+    const format = next?.export?.format || 'zip'
+    setSelectedFormat(format)
+    selectedFormatRef.current = format
     setStage('operation')
     setError(null)
     if (next?.task?.uuid) queryClient.setQueryData(['production-task', projectUuid, next.task.uuid], next.task)
@@ -65,6 +70,8 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
   }, [chapterUuid, projectUuid, scope])
 
   const startExport = useCallback(async (allowMissingImages) => {
+    const format = selectedFormatRef.current
+    if (!format) return
     allowMissingRef.current = allowMissingImages
     setStage('creating')
     setError(null)
@@ -72,6 +79,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
       const next = await createComicExport(projectUuid, {
         scope,
         chapter_uuid: chapterUuid,
+        format,
         allow_missing_images: allowMissingImages,
         idempotency_key: request.idempotencyKey,
       })
@@ -109,7 +117,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
         const decision = comicExportReadinessDecision(nextReadiness)
         if (decision === 'blocked') setStage('blocked')
         else if (decision === 'confirm') setStage('confirm')
-        else await startExport(false)
+        else setStage('select')
       } catch (nextError) {
         if (!ignored) {
           setError(nextError)
@@ -119,7 +127,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
     }
     void initialize()
     return () => { ignored = true }
-  }, [adoptOperation, chapterUuid, loadActiveOperation, projectUuid, scope, startExport])
+  }, [adoptOperation, chapterUuid, loadActiveOperation, projectUuid, scope])
 
   const taskQuery = useQuery({
     queryKey: taskQueryKey,
@@ -132,10 +140,11 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
   const exportQuery = useQuery({
     queryKey: exportQueryKey,
     queryFn: async () => {
-      const exact = await listComicExports(projectUuid, { page: 1, perPage: 1, taskUuid })
+      const operationFormat = operation?.export?.format || selectedFormatRef.current
+      const exact = await listComicExports(projectUuid, { page: 1, perPage: 1, taskUuid, format: operationFormat })
       if (exact.items?.[0]) return exact.items[0]
       if (snapshotHash) {
-        const canonical = await listComicExports(projectUuid, { page: 1, perPage: 1, snapshotHash, status: 'ready' })
+        const canonical = await listComicExports(projectUuid, { page: 1, perPage: 1, snapshotHash, format: operationFormat, status: 'ready' })
         if (canonical.items?.[0]) return canonical.items[0]
       }
       return operation?.export || null
@@ -186,6 +195,26 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
   const active = activeComicExportStatuses.has(operationState)
   const retryable = retryableComicExportStatuses.has(operationState)
   const ready = operationState === 'ready' && exportRecord?.download_url
+  const chooseFormat = (format) => {
+    setSelectedFormat(format)
+    selectedFormatRef.current = format
+  }
+  const formatSelector = (
+    <fieldset className="comic-export-dialog__formats">
+      <legend>{t('projects.exports.dialog.format_title')}</legend>
+      <p>{t('projects.exports.dialog.format_hint')}</p>
+      <div role="radiogroup" aria-label={t('projects.exports.dialog.format_title')}>
+        <button type="button" role="radio" className="comic-export-dialog__format-option" aria-checked={selectedFormat === 'zip'} aria-pressed={selectedFormat === 'zip'} onClick={() => chooseFormat('zip')}>
+          <Archive size={22} aria-hidden="true" />
+          <span><strong>{t('projects.exports.dialog.format_zip')}</strong><small>{t('projects.exports.dialog.format_zip_body')}</small></span>
+        </button>
+        <button type="button" role="radio" className="comic-export-dialog__format-option" aria-checked={selectedFormat === 'pdf'} aria-pressed={selectedFormat === 'pdf'} onClick={() => chooseFormat('pdf')}>
+          <FileText size={22} aria-hidden="true" />
+          <span><strong>{t('projects.exports.dialog.format_pdf')}</strong><small>{t('projects.exports.dialog.format_pdf_body')}</small></span>
+        </button>
+      </div>
+    </fieldset>
+  )
 
   return (
     <LumiDialog className="comic-export-dialog" onClose={onClose} aria-labelledby="comic-export-dialog-title">
@@ -196,7 +225,9 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
       <div className="lumi-dialog__body comic-export-dialog__body">
         {stage === 'checking' || stage === 'creating' ? <div className="comic-export-dialog__pending" role="status"><strong>{t(stage === 'checking' ? 'projects.exports.preflight' : 'projects.exports.create_task')}</strong><progress aria-label={t('projects.exports.dialog.progress')} /></div> : null}
         {stage === 'blocked' ? <div className="comic-export-dialog__empty" role="alert"><strong>{t('projects.exports.dialog.empty_title')}</strong><p>{t(pageMode ? 'projects.exports.empty_pages' : 'projects.exports.empty')}</p></div> : null}
+        {stage === 'select' ? formatSelector : null}
         {stage === 'confirm' ? <>
+          {formatSelector}
           <div className="comic-export-dialog__summary"><strong>{t(pageMode ? 'projects.exports.incomplete_title_pages' : 'projects.exports.incomplete_title')}</strong><p>{t(pageMode ? 'projects.exports.incomplete_body_pages' : 'projects.exports.incomplete_body', { ready: readiness.image_section_count, missing: readiness.missing_section_count })}</p></div>
           <ul className="comic-export-dialog__missing">{(readiness.missing_sections || []).map((section) => <li key={section.uuid}><strong>{t(pageMode ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: section.section_no })}</strong><span>{section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</span></li>)}</ul>
         </> : null}
@@ -222,7 +253,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
         </> : null}
       </div>
       <footer className="lumi-dialog__actions">
-        {stage === 'confirm' ? <><button type="button" className="button-secondary" onClick={onClose}>{t('common.action.cancel')}</button><button type="button" onClick={() => startExport(true)}>{t('projects.exports.continue_partial')}</button></> : null}
+        {stage === 'select' || stage === 'confirm' ? <><button type="button" className="button-secondary" onClick={onClose}>{t('common.action.cancel')}</button><button type="button" disabled={!selectedFormat} onClick={() => startExport(stage === 'confirm')}>{t(stage === 'confirm' ? 'projects.exports.continue_partial' : 'projects.exports.dialog.start')}</button></> : null}
         {stage === 'blocked' || stage === 'check_failed' ? <button type="button" className="button-secondary" onClick={onClose}>{t('common.action.close')}</button> : null}
         {stage === 'create_failed' ? <><button type="button" className="button-secondary" onClick={onClose}>{t('common.action.close')}</button><button type="button" onClick={() => startExport(allowMissingRef.current)}>{t('common.action.retry')}</button></> : null}
         {stage === 'checking' || stage === 'creating' ? <button type="button" className="button-secondary" onClick={onClose}>{t('projects.exports.dialog.background')}</button> : null}
@@ -230,7 +261,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
           <button type="button" className="button-secondary" disabled={busy} onClick={onClose}>{t(active ? 'projects.exports.dialog.background' : 'common.action.close')}</button>
           {active ? <button type="button" disabled={busy} onClick={() => cancelMutation.mutate()}>{t(cancelMutation.isPending ? 'projects.exports.dialog.cancelling' : 'common.action.cancel')}</button> : null}
           {retryable ? <button type="button" disabled={busy} onClick={() => retryMutation.mutate()}>{t(retryMutation.isPending ? 'projects.exports.dialog.retrying' : 'common.action.retry')}</button> : null}
-          {ready ? <a className="button-link" href={exportRecord.download_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download')}</a> : null}
+          {ready ? <a className="button-link" href={exportRecord.download_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download_format', { format: exportRecord.format?.toUpperCase() || 'ZIP' })}</a> : null}
         </> : null}
       </footer>
     </LumiDialog>

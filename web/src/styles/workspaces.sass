@@ -3240,6 +3240,78 @@ $sage: $color-success
   max-height: calc(100vh - 156px)
   overflow: auto
 
+.comic-export-dialog__formats
+  margin: 0
+  padding: 0
+  display: grid
+  gap: 7px
+  border: 0
+
+  legend
+    padding: 0
+    font-size: $font-size-small
+    font-weight: 850
+
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+  > div
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 10px
+
+.comic-export-dialog__format-option
+  min-width: 0
+  min-height: 88px
+  padding: 14px
+  display: flex
+  align-items: flex-start
+  gap: 11px
+  border: 1px solid $color-border-subtle
+  color: $color-text
+  background: $color-surface
+  text-align: left
+
+  > svg
+    flex: 0 0 auto
+    color: $color-muted
+
+  > span
+    min-width: 0
+    display: grid
+    gap: 4px
+
+  strong
+    font-size: $font-size-small
+
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 600
+    line-height: 1.45
+
+  &:hover:not(:disabled)
+    border-color: $color-accent
+    background: $color-surface-subtle
+
+  &[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-link
+    background: $color-accent-muted
+    box-shadow: 0 0 0 1px $color-accent
+
+    > svg
+      color: $color-accent
+
+  &[aria-pressed="true"]:hover:not(:disabled)
+    border-color: $color-link
+    color: $color-link
+    background: rgba($color-accent, .16)
+    box-shadow: 0 0 0 2px rgba($color-accent, .35)
+
 .comic-export-dialog__pending,
 .comic-export-dialog__empty,
 .comic-export-dialog__summary
@@ -4799,6 +4871,9 @@ $sage: $color-success
       justify-content: center
 
   .comic-export-dialog__facts
+    grid-template-columns: 1fr
+
+  .comic-export-dialog__formats > div
     grid-template-columns: 1fr
 
   .workspace-hero-card, .chapter-create-grid, .next-actions

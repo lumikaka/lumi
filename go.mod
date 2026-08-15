@@ -12,6 +12,7 @@ require (
 	github.com/riverqueue/river v0.41.0
 	github.com/riverqueue/river/riverdriver/riversqlite v0.41.0
 	github.com/riverqueue/river/rivertype v0.41.0
+	github.com/signintech/gopdf v0.38.0
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/image v0.30.0
 	golang.org/x/sys v0.47.0
@@ -46,6 +47,8 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/river/riverdriver v0.41.0 // indirect

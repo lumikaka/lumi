@@ -207,7 +207,7 @@ type Export struct {
 	RetentionDays int             `json:"retention_days"`
 	ByteSize      int64           `json:"byte_size"`
 	ContentSHA256 string          `json:"content_sha256"`
-	// OutputAsset is only populated for exports created before ZIPs stopped
+	// OutputAsset is only populated for exports created before short-lived exports stopped
 	// being registered in the Asset Store. New clients use DownloadURL.
 	OutputAsset  *files.Asset `json:"output_asset,omitempty"`
 	RelativePath string       `json:"relative_path,omitempty"`
@@ -326,6 +326,7 @@ type PremiseAssetReference struct {
 
 type ExportSnapshot struct {
 	Version              int                         `json:"version"`
+	Format               string                      `json:"format,omitempty"`
 	ProjectUUID          string                      `json:"project_uuid"`
 	Scope                string                      `json:"scope"`
 	ChapterUUID          string                      `json:"chapter_uuid,omitempty"`
@@ -337,15 +338,35 @@ type ExportSnapshot struct {
 	MissingSectionUUIDs  []string                    `json:"missing_section_uuids"`
 	Entries              []ExportEntry               `json:"entries"`
 	PictureBook          *project.PictureBookProfile `json:"picture_book,omitempty"`
+	Cover                *ExportCover                `json:"cover,omitempty"`
+	PDFLayout            *ExportPDFLayout            `json:"pdf_layout,omitempty"`
 }
 
 type ExportEntry struct {
+	ChapterUUID    string `json:"chapter_uuid,omitempty"`
 	ChapterCode    string `json:"chapter_code"`
 	ChapterTitle   string `json:"chapter_title"`
 	SectionNo      int    `json:"section_no"`
 	SectionUUID    string `json:"section_uuid"`
 	ImageAssetUUID string `json:"image_asset_uuid"`
 	Extension      string `json:"extension"`
+	MIMEType       string `json:"mime_type,omitempty"`
+	Width          int    `json:"width,omitempty"`
+	Height         int    `json:"height,omitempty"`
+}
+
+type ExportCover struct {
+	ProjectName  string `json:"project_name"`
+	ChapterCode  string `json:"chapter_code,omitempty"`
+	ChapterTitle string `json:"chapter_title,omitempty"`
+}
+
+type ExportPDFLayout struct {
+	PageSize        string `json:"page_size"`
+	Placement       string `json:"placement"`
+	MarginMM        int    `json:"margin_mm"`
+	GutterMM        int    `json:"gutter_mm"`
+	RendererVersion int    `json:"renderer_version"`
 }
 
 type ExportMissingSection struct {

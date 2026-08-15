@@ -56,7 +56,7 @@ func TestPictureBookProfileMigrationBackfillsPreProfileProjectsAndIsImmutable(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_picture_book_profiles") {
@@ -129,7 +129,7 @@ func TestProjectModelSettingsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(6); err != nil {
+	if err := runner.Down(7); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -167,7 +167,7 @@ func TestProjectChatImageReferenceMigrationUpAndDown(t *testing.T) {
 			t.Fatalf("up migration missing %s", table)
 		}
 	}
-	if err := runner.Down(7); err != nil {
+	if err := runner.Down(8); err != nil {
 		t.Fatal(err)
 	}
 	for _, table := range []string{"chat_item_file_references", "chat_follow_up_file_references"} {
@@ -191,7 +191,7 @@ func TestAssetStoreMigrationDownRemovesSchemaCleanly(t *testing.T) {
 	}
 	// Every later project migration depends on Asset Store, so roll back
 	// through the Asset Store migration before asserting its down contract.
-	if err := runner.Down(20); err != nil {
+	if err := runner.Down(21); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -255,7 +255,7 @@ func TestComicSectionPremiseMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -283,7 +283,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -345,7 +345,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertGraph("up")
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	assertGraph("down")
@@ -362,7 +362,7 @@ func TestPremiseComicMigrationDownKeepsAssetStore(t *testing.T) {
 	}
 	// Roll back Prompt catalog, Premise Chat parity, project language and
 	// Chat/Yolo first, then Premise/Comic.
-	if err := runner.Down(18); err != nil {
+	if err := runner.Down(19); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -392,7 +392,7 @@ func TestPremiseChatParityMigrationPreservesExistingRowsAndForeignKeys(t *testin
 		t.Fatal(err)
 	}
 	// Roll back unified logs and Prompt catalog first, then Premise Chat parity.
-	if err := runner.Down(15); err != nil {
+	if err := runner.Down(16); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -479,7 +479,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 
@@ -577,7 +577,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 		t.Fatal(err)
 	}
 
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -630,7 +630,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -719,7 +719,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -745,7 +745,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -797,7 +797,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -824,7 +824,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -888,7 +888,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -945,7 +945,7 @@ func TestLLMUsageMetricsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(5); err != nil {
+	if err := runner.Down(6); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1020,7 +1020,7 @@ func TestStoryChapterWorkflowMigrationPreservesExistingGraphAndDropsOnlyProjecti
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(2); err != nil {
+	if err := runner.Down(3); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1103,7 +1103,7 @@ func TestComicStoryboardWorkflowMigrationPreservesGraphAndRollsBackKind(t *testi
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(3); err != nil {
+	if err := runner.Down(4); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1165,7 +1165,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1234,7 +1234,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1256,6 +1256,93 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	}
 	if readyCount != 0 || failedCount != 1 {
 		t.Fatalf("down migration ready=%d failed=%d", readyCount, failedCount)
+	}
+}
+
+func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "comic-pdf-export.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		projectUUID = "01900000-0000-7000-8000-000000000401"
+		zipUUID     = "01900000-0000-7000-8000-000000000402"
+		pdfUUID     = "01900000-0000-7000-8000-000000000403"
+		zipTaskUUID = "01900000-0000-7000-8000-000000000404"
+		pdfTaskUUID = "01900000-0000-7000-8000-000000000405"
+		zipHash     = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		pdfHash     = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+		now         = "2026-08-15T00:00:00Z"
+	)
+	if _, err := db.Exec(`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,?,'PDF migration',1,23,?,?)`, projectUUID, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,byte_size,content_sha256,created_at) VALUES(?,1,?,'project','zip','queued','{}',?,'exports/existing.zip',7,0,'',?)`, zipUUID, zipTaskUUID, zipHash, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,byte_size,content_sha256,created_at) VALUES(?,1,?,'project','pdf','queued','{}',?,'exports/rejected.pdf',7,0,'',?)`, pdfUUID, pdfTaskUUID, pdfHash, now); err == nil {
+		t.Fatal("pre-migration schema accepted pdf")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var zipCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM comic_exports WHERE uuid=? AND format='zip'`, zipUUID).Scan(&zipCount); err != nil || zipCount != 1 {
+		t.Fatalf("zip count=%d err=%v", zipCount, err)
+	}
+	if _, err := db.Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,byte_size,content_sha256,created_at) VALUES(?,1,?,'project','pdf','queued','{}',?,'exports/accepted.pdf',7,0,'',?)`, pdfUUID, pdfTaskUUID, pdfHash, now); err != nil {
+		t.Fatalf("pdf insert: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var pdfCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM comic_exports WHERE uuid=?`, pdfUUID).Scan(&pdfCount); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM comic_exports WHERE uuid=?`, zipUUID).Scan(&zipCount); err != nil {
+		t.Fatal(err)
+	}
+	if pdfCount != 0 || zipCount != 1 {
+		t.Fatalf("down migration pdf=%d zip=%d", pdfCount, zipCount)
+	}
+	if _, err := db.Exec(`INSERT INTO comic_exports(uuid,project_id,task_uuid,scope,format,status,snapshot_json,snapshot_hash,relative_path,retention_days,byte_size,content_sha256,created_at) VALUES(?,1,?,'project','pdf','queued','{}',?,'exports/rejected-again.pdf',7,0,'',?)`, pdfUUID, pdfTaskUUID, pdfHash, now); err == nil {
+		t.Fatal("down migration still accepted pdf")
+	}
+	rows, err := db.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		t.Fatal("comic PDF export migration left a foreign key violation")
 	}
 }
 

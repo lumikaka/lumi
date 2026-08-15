@@ -38,10 +38,30 @@ type exportRecord struct {
 }
 
 const (
+	ExportFormatZIP     = "zip"
+	ExportFormatPDF     = "pdf"
 	ExportRetentionDays = 7
 	exportCleanupLimit  = 1000
 	exportRetention     = time.Duration(ExportRetentionDays) * 24 * time.Hour
 )
+
+const (
+	ExportPDFPageSizeA4Portrait = "a4_portrait"
+	ExportPDFTwoUpStacked       = "two_up_stacked"
+	ExportPDFTwoUpColumns       = "two_up_columns"
+	ExportPDFOneUp              = "one_up"
+)
+
+func NormalizeExportFormat(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return ExportFormatZIP, nil
+	}
+	if value != ExportFormatZIP && value != ExportFormatPDF {
+		return "", domainError(CodeValidation, "导出格式无效", "format 只支持 zip 或 pdf。", nil)
+	}
+	return value, nil
+}
 
 func ExportExpiresAt(completedAt time.Time) time.Time {
 	return completedAt.UTC().Add(exportRetention)
@@ -52,6 +72,7 @@ type ExportFilter struct {
 	ChapterUUID  string
 	TaskUUID     string
 	SnapshotHash string
+	Format       string
 	Status       string
 }
 
@@ -75,6 +96,14 @@ func (service *Service) ExportReadiness(ctx context.Context, scope, chapterUUID 
 }
 
 func (service *Service) BuildExportSnapshotWithOptions(ctx context.Context, scope, chapterUUID string, allowMissingImages bool) (ExportSnapshot, string, error) {
+	return service.BuildExportSnapshotForFormat(ctx, scope, chapterUUID, allowMissingImages, ExportFormatZIP)
+}
+
+func (service *Service) BuildExportSnapshotForFormat(ctx context.Context, scope, chapterUUID string, allowMissingImages bool, format string) (ExportSnapshot, string, error) {
+	format, err := NormalizeExportFormat(format)
+	if err != nil {
+		return ExportSnapshot{}, "", err
+	}
 	db, err := service.store.DB().DB()
 	if err != nil {
 		return ExportSnapshot{}, "", err
@@ -84,7 +113,7 @@ func (service *Service) BuildExportSnapshotWithOptions(ctx context.Context, scop
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.ID, scope, chapterUUID, allowMissingImages, pictureBook)
+	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.Name, p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 // BuildExportSnapshotTx repeats export readiness inside the production task
@@ -92,12 +121,21 @@ func (service *Service) BuildExportSnapshotWithOptions(ctx context.Context, scop
 // matching hash proves that the frozen export and its audit counts describe
 // the same database state that is committed with the task.
 func (service *Service) BuildExportSnapshotTx(ctx context.Context, tx *sql.Tx, scope, chapterUUID string, allowMissingImages bool) (ExportSnapshot, string, error) {
+	return service.BuildExportSnapshotTxForFormat(ctx, tx, scope, chapterUUID, allowMissingImages, ExportFormatZIP)
+}
+
+func (service *Service) BuildExportSnapshotTxForFormat(ctx context.Context, tx *sql.Tx, scope, chapterUUID string, allowMissingImages bool, format string) (ExportSnapshot, string, error) {
+	format, err := NormalizeExportFormat(format)
+	if err != nil {
+		return ExportSnapshot{}, "", err
+	}
 	var projectID int64
-	if err := tx.QueryRowContext(ctx, "SELECT id FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID); err != nil {
+	var projectName string
+	if err := tx.QueryRowContext(ctx, "SELECT id,name FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID, &projectName); err != nil {
 		return ExportSnapshot{}, "", err
 	}
 	pictureBook := service.store.PictureBookProfile()
-	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectID, scope, chapterUUID, allowMissingImages, pictureBook)
+	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectName, projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
 type exportQueryer interface {
@@ -105,7 +143,7 @@ type exportQueryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID string, projectID int64, scope, chapterUUID string, allowMissingImages bool, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
+func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID, projectName string, projectID int64, scope, chapterUUID string, allowMissingImages bool, format string, pictureBook project.PictureBookProfile) (ExportSnapshot, string, error) {
 	readiness, entries, err := queryExportReadiness(ctx, queryer, projectID, scope, chapterUUID)
 	if err != nil {
 		return ExportSnapshot{}, "", err
@@ -126,6 +164,31 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 		ActiveChapterCount: readiness.ActiveChapterCount, SectionCount: readiness.ActiveSectionCount,
 		ExportedSectionCount: readiness.ImageSectionCount, MissingSectionCount: readiness.MissingSectionCount,
 		MissingSectionUUIDs: missingUUIDs, Entries: entries, PictureBook: &pictureBook,
+	}
+	if format == ExportFormatPDF {
+		for _, entry := range entries {
+			if !supportedExportPDFMIME(entry.MIMEType) || entry.Width <= 0 || entry.Height <= 0 {
+				return ExportSnapshot{}, "", domainError(CodeExportUnavailable, "PDF 图片元数据不完整", "所有导出图片都必须具有受支持的 MIME 和有效尺寸。", nil)
+			}
+		}
+		snapshot.Version = 5
+		snapshot.Format = ExportFormatPDF
+		snapshot.Cover = &ExportCover{ProjectName: projectName}
+		if readiness.Scope == "chapter" && len(entries) > 0 {
+			snapshot.Cover.ChapterCode = entries[0].ChapterCode
+			snapshot.Cover.ChapterTitle = entries[0].ChapterTitle
+		}
+		layout := pdfLayoutForPictureBook(pictureBook)
+		snapshot.PDFLayout = &layout
+	} else {
+		// ZIP v4 hashes are a compatibility boundary. The PDF-only metadata is
+		// removed before marshaling so existing canonical ZIPs remain reusable.
+		for index := range snapshot.Entries {
+			snapshot.Entries[index].ChapterUUID = ""
+			snapshot.Entries[index].MIMEType = ""
+			snapshot.Entries[index].Width = 0
+			snapshot.Entries[index].Height = 0
+		}
 	}
 	encoded, err := json.Marshal(snapshot)
 	if err != nil {
@@ -152,7 +215,10 @@ func queryExportReadiness(ctx context.Context, queryer exportQueryer, projectID 
 	query := `
 SELECT c.uuid,c.chapter_code,c.title,s.uuid,s.section_no,s.title,
        CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN f.uuid ELSE NULL END,
-       CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.canonical_ext ELSE NULL END
+       CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.canonical_ext ELSE NULL END,
+       CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.mime_type ELSE NULL END,
+       CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.width ELSE NULL END,
+       CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.height ELSE NULL END
 FROM chapters c
 LEFT JOIN chapter_comic_states cs ON cs.chapter_id=c.id
 LEFT JOIN comic_sections s ON s.chapter_comic_state_id=cs.id AND s.deleted_at IS NULL
@@ -179,9 +245,9 @@ WHERE c.project_id=? AND c.deleted_at IS NULL`
 	seenChapters := make(map[string]struct{})
 	for rows.Next() {
 		var rowChapterUUID, chapterCode, chapterTitle string
-		var sectionUUID, sectionTitle, imageUUID, extension sql.NullString
-		var sectionNo sql.NullInt64
-		if err := rows.Scan(&rowChapterUUID, &chapterCode, &chapterTitle, &sectionUUID, &sectionNo, &sectionTitle, &imageUUID, &extension); err != nil {
+		var sectionUUID, sectionTitle, imageUUID, extension, mimeType sql.NullString
+		var sectionNo, width, height sql.NullInt64
+		if err := rows.Scan(&rowChapterUUID, &chapterCode, &chapterTitle, &sectionUUID, &sectionNo, &sectionTitle, &imageUUID, &extension, &mimeType, &width, &height); err != nil {
 			return ExportReadiness{}, nil, err
 		}
 		if _, exists := seenChapters[rowChapterUUID]; !exists {
@@ -194,7 +260,7 @@ WHERE c.project_id=? AND c.deleted_at IS NULL`
 		readiness.ActiveSectionCount++
 		if imageUUID.Valid {
 			readiness.ImageSectionCount++
-			entries = append(entries, ExportEntry{ChapterCode: chapterCode, ChapterTitle: chapterTitle, SectionNo: int(sectionNo.Int64), SectionUUID: sectionUUID.String, ImageAssetUUID: imageUUID.String, Extension: extension.String})
+			entries = append(entries, ExportEntry{ChapterUUID: rowChapterUUID, ChapterCode: chapterCode, ChapterTitle: chapterTitle, SectionNo: int(sectionNo.Int64), SectionUUID: sectionUUID.String, ImageAssetUUID: imageUUID.String, Extension: extension.String, MIMEType: mimeType.String, Width: int(width.Int64), Height: int(height.Int64)})
 			continue
 		}
 		readiness.MissingSections = append(readiness.MissingSections, ExportMissingSection{UUID: sectionUUID.String, SectionNo: int(sectionNo.Int64), Title: sectionTitle.String, ChapterUUID: rowChapterUUID})
@@ -231,7 +297,8 @@ func (service *Service) CreateExportRecord(ctx context.Context, taskUUID, scope,
 	}
 	now := service.now().UTC()
 	relative := ExportRelativePath(uuid, scope, chapterUUID, snapshotHash, snapshot)
-	record := exportRecord{UUID: uuid, ProjectID: p.ID, ChapterID: chapterID, TaskUUID: taskUUID, Scope: scope, Format: "zip", Status: "queued", SnapshotJSON: string(encoded), SnapshotHash: snapshotHash, RelativePath: relative, RetentionDays: ExportRetentionDays, CreatedAt: now}
+	format := exportFormatForSnapshot(snapshot)
+	record := exportRecord{UUID: uuid, ProjectID: p.ID, ChapterID: chapterID, TaskUUID: taskUUID, Scope: scope, Format: format, Status: "queued", SnapshotJSON: string(encoded), SnapshotHash: snapshotHash, RelativePath: relative, RetentionDays: ExportRetentionDays, CreatedAt: now}
 	if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
 		return Export{}, err
 	}
@@ -268,6 +335,7 @@ func (service *Service) ListExportsPage(ctx context.Context, filter ExportFilter
 	filter.ChapterUUID = strings.TrimSpace(filter.ChapterUUID)
 	filter.TaskUUID = strings.TrimSpace(filter.TaskUUID)
 	filter.SnapshotHash = strings.ToLower(strings.TrimSpace(filter.SnapshotHash))
+	filter.Format = strings.ToLower(strings.TrimSpace(filter.Format))
 	filter.Status = strings.ToLower(strings.TrimSpace(filter.Status))
 	if filter.Scope != "" && filter.Scope != "project" && filter.Scope != "chapter" {
 		return nil, Pagination{}, domainError(CodeValidation, "导出 scope 无效", "scope 只支持 project 或 chapter。", nil)
@@ -283,6 +351,9 @@ func (service *Service) ListExportsPage(ctx context.Context, filter ExportFilter
 	}
 	if filter.SnapshotHash != "" && !snapshotHashPattern.MatchString(filter.SnapshotHash) {
 		return nil, Pagination{}, domainError(CodeValidation, "导出快照 hash 无效", "snapshot_hash 必须是 64 位小写十六进制字符串。", nil)
+	}
+	if filter.Format != "" && filter.Format != ExportFormatZIP && filter.Format != ExportFormatPDF {
+		return nil, Pagination{}, domainError(CodeValidation, "导出格式无效", "format 只支持 zip 或 pdf。", nil)
 	}
 	if filter.Status != "" && !validExportStatus(filter.Status) {
 		return nil, Pagination{}, domainError(CodeValidation, "导出状态无效", "status 只支持 queued、running、ready、failed 或 cancelled。", nil)
@@ -301,6 +372,9 @@ func (service *Service) ListExportsPage(ctx context.Context, filter ExportFilter
 	}
 	if filter.SnapshotHash != "" {
 		query = query.Where("snapshot_hash = ?", filter.SnapshotHash)
+	}
+	if filter.Format != "" {
+		query = query.Where("format = ?", filter.Format)
 	}
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
@@ -324,10 +398,14 @@ func (service *Service) ListExportsPage(ctx context.Context, filter ExportFilter
 	return items, pagePagination(page, perPage, total), nil
 }
 
-func (service *Service) ExportForTaskOrReadySnapshot(ctx context.Context, taskUUID, snapshotHash string) (Export, error) {
+func (service *Service) ExportForTaskOrReadySnapshot(ctx context.Context, taskUUID, snapshotHash, requestedFormat string) (Export, error) {
 	var record exportRecord
 	now := service.now().UTC()
-	err := service.store.DB().WithContext(ctx).Where("task_uuid = ? AND status <> 'expired' AND (expires_at IS NULL OR expires_at > ?)", taskUUID, now).First(&record).Error
+	format, err := NormalizeExportFormat(requestedFormat)
+	if err != nil {
+		return Export{}, err
+	}
+	err = service.store.DB().WithContext(ctx).Where("task_uuid = ? AND format = ? AND status <> 'expired' AND (expires_at IS NULL OR expires_at > ?)", taskUUID, format, now).First(&record).Error
 	if err == nil {
 		return service.exportDTO(ctx, record)
 	}
@@ -341,7 +419,7 @@ func (service *Service) ExportForTaskOrReadySnapshot(ctx context.Context, taskUU
 	if projectErr != nil {
 		return Export{}, projectErr
 	}
-	err = service.store.DB().WithContext(ctx).Where("project_id = ? AND snapshot_hash = ? AND status = 'ready' AND expires_at > ?", p.ID, snapshotHash, now).Order("created_at DESC,id DESC").First(&record).Error
+	err = service.store.DB().WithContext(ctx).Where("project_id = ? AND format = ? AND snapshot_hash = ? AND status = 'ready' AND expires_at > ?", p.ID, format, snapshotHash, now).Order("created_at DESC,id DESC").First(&record).Error
 	if err != nil {
 		return Export{}, notFound(err, "导出记录不存在")
 	}
@@ -376,7 +454,7 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 			return Export{}, domainError(CodeExportUnavailable, "导出缺少到期时间", "ready 导出必须登记 7 天保留边界。", nil)
 		}
 		if !record.ExpiresAt.After(service.now().UTC()) {
-			return Export{}, domainError(CodeExportExpired, "导出已过期", "已到期的 ready ZIP 不能在恢复任务时重新使用。", nil)
+			return Export{}, domainError(CodeExportExpired, "导出已过期", "已到期的 ready 导出不能在恢复任务时重新使用。", nil)
 		}
 		return service.exportDTO(ctx, record)
 	}
@@ -421,7 +499,7 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 			return Export{}, err
 		}
 	}
-	byteSize, contentSHA256, target, err := service.renderZipToExportPath(ctx, relative, snapshot, reportProgress)
+	byteSize, contentSHA256, target, err := service.renderExportToPath(ctx, relative, record.Format, snapshot, reportProgress)
 	if err != nil {
 		return Export{}, err
 	}
@@ -499,8 +577,13 @@ func (service *Service) readyExportForDeletedTask(ctx context.Context, taskUUID 
 	if err := json.Unmarshal([]byte(inputSnapshot), &frozen); err != nil || frozen.Kind != "comic_export" || !snapshotHashPattern.MatchString(frozen.Prompt) {
 		return Export{}, domainError(CodeSnapshotInvalid, "导出快照损坏", "无法解析 canonical 导出产物。", err)
 	}
+	format := ExportFormatZIP
+	var exportSnapshot ExportSnapshot
+	if json.Unmarshal(frozen.Parameters, &exportSnapshot) == nil {
+		format = exportFormatForSnapshot(exportSnapshot)
+	}
 	var ready exportRecord
-	if err := service.store.DB().WithContext(ctx).Where("project_id = ? AND snapshot_hash = ? AND status = 'ready' AND expires_at > ?", p.ID, frozen.Prompt, service.now().UTC()).Order("created_at DESC,id DESC").First(&ready).Error; err != nil {
+	if err := service.store.DB().WithContext(ctx).Where("project_id = ? AND format = ? AND snapshot_hash = ? AND status = 'ready' AND expires_at > ?", p.ID, format, frozen.Prompt, service.now().UTC()).Order("created_at DESC,id DESC").First(&ready).Error; err != nil {
 		return Export{}, notFound(err, "导出记录不存在")
 	}
 	if err := notifyExportProgress(reportProgress, 95); err != nil {
@@ -561,6 +644,17 @@ func (writer *exportCountingWriter) Write(value []byte) (int, error) {
 }
 
 func (service *Service) renderZipToExportPath(ctx context.Context, relative string, snapshot ExportSnapshot, reportProgress func(int) error) (int64, string, string, error) {
+	return service.renderExportToPath(ctx, relative, ExportFormatZIP, snapshot, reportProgress)
+}
+
+func (service *Service) renderExportToPath(ctx context.Context, relative, format string, snapshot ExportSnapshot, reportProgress func(int) error) (int64, string, string, error) {
+	format, err := NormalizeExportFormat(format)
+	if err != nil {
+		return 0, "", "", err
+	}
+	if exportFormatForSnapshot(snapshot) != format {
+		return 0, "", "", domainError(CodeSnapshotInvalid, "导出格式不一致", "数据库登记格式与冻结快照格式不一致。", nil)
+	}
 	target, err := service.store.ResolvePath(relative)
 	if err != nil {
 		return 0, "", "", err
@@ -574,11 +668,11 @@ func (service *Service) renderZipToExportPath(ctx context.Context, relative stri
 		part := target + ".part"
 		confirmedTarget, err := service.store.ResolvePath(relative)
 		if err != nil || confirmedTarget != target {
-			return domainError(CodeExportUnavailable, "导出路径不安全", "ZIP 目标在写入前未通过项目根路径复检。", err)
+			return domainError(CodeExportUnavailable, "导出路径不安全", "导出目标在写入前未通过项目根路径复检。", err)
 		}
 		confirmedPart, err := service.store.ResolvePath(relative + ".part")
 		if err != nil || confirmedPart != part {
-			return domainError(CodeExportUnavailable, "导出临时路径不安全", "ZIP .part 在写入前未通过项目根路径复检。", err)
+			return domainError(CodeExportUnavailable, "导出临时路径不安全", "导出 .part 在写入前未通过项目根路径复检。", err)
 		}
 		output, err := os.OpenFile(part, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -586,7 +680,12 @@ func (service *Service) renderZipToExportPath(ctx context.Context, relative stri
 		}
 		hash := sha256.New()
 		counter := &exportCountingWriter{writer: io.MultiWriter(output, hash)}
-		writeErr := service.writeZip(ctx, counter, snapshot, reportProgress)
+		var writeErr error
+		if format == ExportFormatPDF {
+			writeErr = service.writePDF(ctx, counter, snapshot, reportProgress)
+		} else {
+			writeErr = service.writeZip(ctx, counter, snapshot, reportProgress)
+		}
 		syncErr := output.Sync()
 		closeErr := output.Close()
 		if operationErr := errors.Join(writeErr, syncErr, closeErr); operationErr != nil {
@@ -600,7 +699,7 @@ func (service *Service) renderZipToExportPath(ctx context.Context, relative stri
 		if info, statErr := os.Lstat(target); statErr == nil {
 			if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 				_ = os.Remove(part)
-				return domainError(CodeExportUnavailable, "导出目标路径不安全", "已存在的 ZIP 目标必须是项目内普通文件。", nil)
+				return domainError(CodeExportUnavailable, "导出目标路径不安全", "已存在的导出目标必须是项目内普通文件。", nil)
 			}
 			// A process may have stopped after rename but before the ready DB
 			// commit. Removing that unpublished, Export-UUID-scoped target makes
@@ -616,12 +715,12 @@ func (service *Service) renderZipToExportPath(ctx context.Context, relative stri
 		confirmedTarget, err = service.store.ResolvePath(relative)
 		if err != nil || confirmedTarget != target {
 			_ = os.Remove(part)
-			return domainError(CodeExportUnavailable, "导出路径不安全", "ZIP 目标在发布前未通过项目根路径复检。", err)
+			return domainError(CodeExportUnavailable, "导出路径不安全", "导出目标在发布前未通过项目根路径复检。", err)
 		}
 		confirmedPart, err = service.store.ResolvePath(relative + ".part")
 		if err != nil || confirmedPart != part {
 			_ = os.Remove(part)
-			return domainError(CodeExportUnavailable, "导出临时路径不安全", "ZIP .part 在发布前未通过项目根路径复检。", err)
+			return domainError(CodeExportUnavailable, "导出临时路径不安全", "导出 .part 在发布前未通过项目根路径复检。", err)
 		}
 		if err := os.Rename(part, target); err != nil {
 			_ = os.Remove(part)
@@ -650,8 +749,9 @@ func (service *Service) exportDTO(ctx context.Context, row exportRecord) (Export
 	}
 	var snapshot ExportSnapshot
 	_ = json.Unmarshal([]byte(row.SnapshotJSON), &snapshot)
-	filename := safeExportNameForSnapshot(row.Scope, chapterUUID, row.SnapshotHash, snapshot) + ".zip"
-	if base := filepath.Base(filepath.FromSlash(row.RelativePath)); base != "." && base != "" && strings.HasSuffix(strings.ToLower(base), ".zip") {
+	extension := exportExtension(row.Format)
+	filename := safeExportNameForSnapshot(row.Scope, chapterUUID, row.SnapshotHash, snapshot) + "." + extension
+	if base := filepath.Base(filepath.FromSlash(row.RelativePath)); base != "." && base != "" && strings.HasSuffix(strings.ToLower(base), "."+extension) {
 		filename = base
 	}
 	result := Export{
@@ -713,6 +813,20 @@ func safeExtension(value string) string {
 	}
 	return "bin"
 }
+
+func exportFormatForSnapshot(snapshot ExportSnapshot) string {
+	if strings.EqualFold(strings.TrimSpace(snapshot.Format), ExportFormatPDF) {
+		return ExportFormatPDF
+	}
+	return ExportFormatZIP
+}
+
+func exportExtension(format string) string {
+	if strings.EqualFold(strings.TrimSpace(format), ExportFormatPDF) {
+		return ExportFormatPDF
+	}
+	return ExportFormatZIP
+}
 func safeExportName(scope, chapterUUID, hash string) string {
 	parts := []string{"comic", scope}
 	if chapterUUID != "" {
@@ -739,10 +853,10 @@ func safeExportNameForSnapshot(scope, chapterUUID, hash string, snapshot ExportS
 	return strings.Join(append(parts, hash), "-")
 }
 
-// ExportRelativePath is the only storage naming rule used for new ZIPs. The
+// ExportRelativePath is the only storage naming rule used for new exports. The
 // Export UUID makes paths generation-specific, so a cleanup job can never
 // race a later export of the same immutable snapshot.
 func ExportRelativePath(exportUUID, scope, chapterUUID, hash string, snapshot ExportSnapshot) string {
-	filename := safeExportNameForSnapshot(scope, chapterUUID, hash, snapshot) + "-" + exportUUID + ".zip"
+	filename := safeExportNameForSnapshot(scope, chapterUUID, hash, snapshot) + "-" + exportUUID + "." + exportExtension(exportFormatForSnapshot(snapshot))
 	return filepath.ToSlash(filepath.Join("exports", filename))
 }

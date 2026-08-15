@@ -18,14 +18,14 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
     await selectImageVariant('project', 'chapter', 'section-a', 'variant-a', 3)
     await getComicExportReadiness('project', { scope: 'chapter', chapterUuid: 'chapter' })
     await getComicSnapshot('project', 'chapter', 'snapshot / one')
-    await createComicExport('project', { scope: 'chapter', chapter_uuid: 'chapter', allow_missing_images: true, idempotency_key: 'export-1' })
+    await createComicExport('project', { scope: 'chapter', chapter_uuid: 'chapter', format: 'pdf', allow_missing_images: true, idempotency_key: 'export-1' })
     await permanentlyDeletePremiseAsset('project', 'asset / one', 7)
     await emptyPremiseAssetTrash('project')
     await listProductionTaskEvents('project', 'task', { after: '2', limit: '20' })
     await listPremiseSources('project', { page: 2, perPage: 10 })
     await listSettingImages('project', { sourceUuids: ['source-a', 'source b'] })
     await listComicExports('project', { page: 3, perPage: 10, scope: 'chapter', chapterUuid: 'chapter-a' })
-    await listComicExports('project', { taskUuid: 'task-a', snapshotHash: 'hash-a', status: 'ready' })
+    await listComicExports('project', { taskUuid: 'task-a', snapshotHash: 'hash-a', format: 'pdf', status: 'ready' })
     await getProductionTask('project', 'task / one')
     assert.deepEqual(calls.map((call) => call.path), [
       '/api/v1/projects/project/premise-assets',
@@ -42,7 +42,7 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
       '/api/v1/projects/project/premise-sources?page=2&per_page=10',
       '/api/v1/projects/project/premise-setting-images?source_uuid=source-a&source_uuid=source+b',
       '/api/v1/projects/project/comic-exports?page=3&per_page=10&scope=chapter&chapter_uuid=chapter-a',
-      '/api/v1/projects/project/comic-exports?page=1&per_page=20&task_uuid=task-a&snapshot_hash=hash-a&status=ready',
+      '/api/v1/projects/project/comic-exports?page=1&per_page=20&task_uuid=task-a&snapshot_hash=hash-a&format=pdf&status=ready',
       '/api/v1/projects/project/production-tasks/task%20%2F%20one',
     ])
     assert.deepEqual(JSON.parse(calls[1].options.body), { ignored: true, expected_revision: 2 })
@@ -50,5 +50,6 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
     assert.deepEqual(JSON.parse(calls[2].options.body), { section_uuids: ['section-b', 'section-a'] })
     assert.equal(JSON.parse(calls[4].options.body).expected_revision, 3)
     assert.equal(JSON.parse(calls[7].options.body).allow_missing_images, true)
+    assert.equal(JSON.parse(calls[7].options.body).format, 'pdf')
   } finally { global.fetch = originalFetch }
 })

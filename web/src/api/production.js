@@ -47,12 +47,13 @@ export const generateSectionImage = (projectUuid, chapterUuid, sectionUuid, payl
 export const listComicSnapshots = (projectUuid, chapterUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic-snapshots'))
 export const getComicSnapshot = (projectUuid, chapterUuid, snapshotUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, `/comic-snapshots/${encodeURIComponent(snapshotUuid)}`))
 export const restoreComicSnapshot = (projectUuid, chapterUuid, snapshotUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, `/comic-snapshots/${encodeURIComponent(snapshotUuid)}/restorations`), json('POST'))
-export const listComicExports = (projectUuid, { page = 1, perPage = 20, scope = '', chapterUuid = '', taskUuid = '', snapshotHash = '', status = '' } = {}) => {
+export const listComicExports = (projectUuid, { page = 1, perPage = 20, scope = '', chapterUuid = '', taskUuid = '', snapshotHash = '', format = '', status = '' } = {}) => {
   const search = new URLSearchParams({ page: String(page), per_page: String(perPage) })
   if (scope) search.set('scope', scope)
   if (chapterUuid) search.set('chapter_uuid', chapterUuid)
   if (taskUuid) search.set('task_uuid', taskUuid)
   if (snapshotHash) search.set('snapshot_hash', snapshotHash)
+  if (format) search.set('format', format)
   if (status) search.set('status', status)
   return apiRequest(root(projectUuid, `/comic-exports?${search}`))
 }

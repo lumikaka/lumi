@@ -27,7 +27,7 @@ process:
     - title: Generate and choose images
       body: Bring premise references into generation and choose from saved candidates.
     - title: Preview and export
-      body: Read the chapter as a sequence, then export one chapter or the whole project.
+      body: Read the chapter as a sequence, then export one chapter or the whole project as an original-image ZIP or A4 PDF.
 
 formats:
   eyebrow: Five picture-book formats
