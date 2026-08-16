@@ -55,7 +55,7 @@
 - 消息历史：`GET /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/items?before=&after=&limit=`。
 - 会话运行事件：`GET /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/events?after=&limit=`。
 - 单条排队引导：`POST /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups/:follow_up_uuid/steerings`。
-- 工作流诊断：`GET .../workflows/:workflow_uuid/runs`、`events`、`llm-logs`；后者可传公开 UUIDv7 `workflow_step_uuid` 精确筛选步骤调用。
+- 工作流诊断：展开时通过 `GET .../workflows/:workflow_uuid/runs`、`events`、`llm-logs` 读取事实状态；`workflow:*` 仅使 runs/events 失效，`llm_log:changed` 单独使 logs 失效，折叠和空闲期间不轮询。后者可传公开 UUIDv7 `workflow_step_uuid` 精确筛选步骤调用。
 - 所有响应继续使用 `{ "success": true, "data": ... }`；外部标识仅为 UUIDv7，不返回内部 `id`、River job ID、绝对路径、Authorization 或 API token。
 
 ## 验证命令

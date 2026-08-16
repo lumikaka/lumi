@@ -17,9 +17,13 @@ test('project workspace owns realtime presence and query synchronization', () =>
   assert.match(layout, /useProjectRealtimeSync\(projectUuid\)/)
   assert.match(realtime, /channel\.onMessage\(handleMessage\)/)
   assert.match(realtime, /channel\.on\('phx_joined', resyncProject\)/)
+  assert.match(realtime, /refetchType: 'active'/)
+  assert.match(realtime, /queueMicrotask\(flush\)/)
   assert.match(realtime, /channel\.join\(\)/)
   assert.match(realtime, /channel\.leave\(\)/)
   assert.match(realtime, /window\.addEventListener\('focus'/)
+  assert.match(realtime, /document\.addEventListener\('visibilitychange'/)
+  assert.doesNotMatch(realtime, /setInterval|refetchInterval/)
 })
 
 test('system lifecycle events refresh open and recent project state', () => {

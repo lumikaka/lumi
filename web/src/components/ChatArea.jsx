@@ -392,6 +392,8 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
     getPreviousPageParam: (page) => page.cursor_pagination?.has_more ? page.cursor_pagination.prev_cursor : undefined,
     getNextPageParam: () => undefined,
     enabled: open,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   const eventsQuery = useInfiniteQuery({
     queryKey: ['workflow-events', projectUuid, workflow.uuid],
@@ -400,6 +402,8 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
     getPreviousPageParam: (page) => page.cursor_pagination?.has_more ? page.cursor_pagination.prev_cursor : undefined,
     getNextPageParam: () => undefined,
     enabled: open,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   const logsQuery = useInfiniteQuery({
     queryKey: ['workflow-llm-logs', projectUuid, workflow.uuid, focusStepUuid],
@@ -407,6 +411,8 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
     initialPageParam: 1,
     getNextPageParam: (page) => page.pagination.current_page < page.pagination.last_page ? page.pagination.current_page + 1 : undefined,
     enabled: open,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   const runs = useMemo(() => uniqueByUUID(runsQuery.data?.pages?.flatMap((page) => page.items || []) || []), [runsQuery.data])
   const events = useMemo(() => uniqueByUUID(eventsQuery.data?.pages?.flatMap((page) => page.items || []) || []), [eventsQuery.data])

@@ -53,7 +53,6 @@ export function agentQueryKeysForEvent(projectUuid, payload = {}) {
     keys.push(['workflow', projectUuid, payload.workflow_uuid])
     keys.push(['workflow-runs', projectUuid, payload.workflow_uuid])
     keys.push(['workflow-events', projectUuid, payload.workflow_uuid])
-    keys.push(['workflow-llm-logs', projectUuid, payload.workflow_uuid])
   }
   return keys
 }

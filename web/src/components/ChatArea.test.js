@@ -61,3 +61,15 @@ test('second-stage chat parity includes safe markdown, paged history, queue stee
   assert.match(source, /listWorkflowLLMLogs\(projectUuid, workflow\.uuid, \{ page: pageParam, perPage: 10, stepUuid: focusStepUuid \}\)/)
   assert.match(source, /workflow-diagnostics__step-detail[\s\S]*?prettyDiagnosticJSON\(focusedStep\.input\)[\s\S]*?prettyDiagnosticJSON\(focusedStep\.output\)/)
 })
+
+test('workflow diagnostics load only while open and rely on project realtime reconciliation', () => {
+  const diagnostics = source.match(/function WorkflowDiagnostics[\s\S]*?\n}\n\nfunction ThreadEventDiagnostics/)?.[0] || ''
+  assert.ok(diagnostics)
+  assert.equal((diagnostics.match(/enabled: open/g) || []).length, 3)
+  assert.equal((diagnostics.match(/refetchOnWindowFocus: false/g) || []).length, 3)
+  assert.equal((diagnostics.match(/refetchOnReconnect: false/g) || []).length, 3)
+  assert.doesNotMatch(diagnostics, /refetchInterval|setInterval|setTimeout/)
+  assert.match(diagnostics, /runsQuery\.fetchPreviousPage\(\)/)
+  assert.match(diagnostics, /eventsQuery\.fetchPreviousPage\(\)/)
+  assert.match(diagnostics, /logsQuery\.fetchNextPage\(\)/)
+})

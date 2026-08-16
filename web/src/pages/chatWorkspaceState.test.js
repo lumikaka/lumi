@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import { agentQueryKeysForEvent, comicStoryboardOverwriteRequest, workflowControls } from './chatWorkspaceState.js'
 
-test('realtime payload invalidates persistent thread and workflow recovery queries', () => {
+test('local mutations invalidate persistent thread and core workflow recovery queries', () => {
   assert.deepEqual(agentQueryKeysForEvent('project-uuid', { thread_uuid: 'thread-uuid', workflow_uuid: 'workflow-uuid' }), [
     ['chat-threads', 'project-uuid'],
     ['chat-items', 'project-uuid', 'thread-uuid'],
@@ -17,10 +17,9 @@ test('realtime payload invalidates persistent thread and workflow recovery queri
     ['workflow', 'project-uuid', 'workflow-uuid'],
     ['workflow-runs', 'project-uuid', 'workflow-uuid'],
     ['workflow-events', 'project-uuid', 'workflow-uuid'],
-    ['workflow-llm-logs', 'project-uuid', 'workflow-uuid'],
   ])
   assert.deepEqual(agentQueryKeysForEvent('project-uuid', { thread_uuid: 'thread-uuid' }).map((key) => key[0]), ['chat-threads', 'chat-items', 'chat-turns', 'chat-follow-ups', 'chat-input-requests', 'chat-events', 'chat-thread'])
-  assert.deepEqual(agentQueryKeysForEvent('project-uuid', { workflow_uuid: 'workflow-uuid' }).map((key) => key[0]), ['workflows', 'workflow', 'workflow-runs', 'workflow-events', 'workflow-llm-logs'])
+  assert.deepEqual(agentQueryKeysForEvent('project-uuid', { workflow_uuid: 'workflow-uuid' }).map((key) => key[0]), ['workflows', 'workflow', 'workflow-runs', 'workflow-events'])
   assert.deepEqual(agentQueryKeysForEvent('project-uuid', {}), [])
 })
 
