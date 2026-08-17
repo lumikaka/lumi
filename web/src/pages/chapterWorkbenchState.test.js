@@ -71,7 +71,7 @@ test('comic readiness warning stays non-blocking and refreshes for premise realt
 test('current and candidate comic images use the card and dialog structures', () => {
   const source = readFileSync(new URL('./ChapterWorkbenchPage.jsx', import.meta.url), 'utf8')
   const productionImageSource = readFileSync(new URL('./ProductionWorkspaces.jsx', import.meta.url), 'utf8')
-  const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8').replaceAll('\r\n', '\n')
   assert.match(source, /mode: 'preview'/)
   assert.match(source, /mode: 'candidate'/)
   assert.match(source, /<CurrentImagePreviewDialog/)
@@ -102,7 +102,7 @@ test('snapshot history loads public detail before enabling a confirmed restore',
 })
 
 test('snapshot preview uses a two-column desktop dialog and a stacked narrow layout', () => {
-  const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url), 'utf8').replaceAll('\r\n', '\n')
   const desktopStart = styles.indexOf('.chapter-history-dialog\n')
   const desktop = styles.slice(desktopStart, styles.indexOf('.storyboard-candidates-dialog\n', desktopStart))
   assert.match(desktop, /grid-template-columns: 270px minmax\(0, 1fr\)/)

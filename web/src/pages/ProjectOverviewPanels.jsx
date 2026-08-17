@@ -148,7 +148,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
       <LocalizedErrorMessage error={error || profileQuery.error || premiseQuery.error} onDismiss={error ? () => setError(null) : undefined} />
       <div className="project-overview-grid">
         <div className="project-overview-main">
-          <section className="overview-card overview-card--project">
+          <section className="overview-card overview-card--project" id="project-settings">
             <header className="overview-card__header">
               <div><h1>{t('projects.overview.summary')}</h1></div>
               {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('common.action.edit')}</button> : null}

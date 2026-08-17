@@ -54,7 +54,7 @@ test('every picture-book format card has a distinct semantic icon', () => {
 })
 
 test('picture-book card hover keeps readable text and selected-state feedback', () => {
-  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8').replaceAll('\r\n', '\n')
   const cardStyles = styles.slice(styles.indexOf('.picture-book-format-cards'), styles.indexOf('.picture-book-options'))
   const hoverStart = cardStyles.indexOf('  button:hover,')
   const selectedHoverStart = cardStyles.indexOf('  button[aria-pressed="true"]:hover,')

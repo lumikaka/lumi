@@ -246,6 +246,22 @@ func (manager *Manager) RecentProjects(ctx context.Context) ([]Summary, error) {
 	return items, nil
 }
 
+func (manager *Manager) RecentProject(ctx context.Context, projectUUID string) (Summary, error) {
+	if !isUUIDv7(projectUUID) {
+		return Summary{}, projectError(CodeInvalidUUID, "项目 UUID 无效", "项目 UUID 必须是 UUIDv7。", nil)
+	}
+	items, err := manager.RecentProjects(ctx)
+	if err != nil {
+		return Summary{}, err
+	}
+	for _, item := range items {
+		if item.UUID == projectUUID {
+			return item, nil
+		}
+	}
+	return Summary{}, projectError(CodeProjectNotFound, "最近项目不存在", "该项目可能已从最近列表移除。", appstore.ErrRecentProjectNotFound)
+}
+
 func (manager *Manager) OpenProjects(ctx context.Context) ([]Summary, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

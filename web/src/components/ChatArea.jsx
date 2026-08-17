@@ -8,22 +8,23 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  Image,
-  ImagePlus,
   MoreHorizontal,
-  PanelRightClose,
-  PanelRightOpen,
   Pencil,
   Plus,
-  RefreshCw,
-  Send,
-  Square,
   TerminalSquare,
   Trash2,
   Zap,
   X,
 } from 'lucide-react'
 
+import attachmentFileIcon from '../assets/figma/workspace/attachment-file.svg'
+import attachmentIcon from '../assets/figma/workspace/attachment.svg'
+import attachmentRemoveIcon from '../assets/figma/workspace/attachment-remove.svg'
+import composerStopIcon from '../assets/figma/workspace/composer-stop.svg'
+import sendIcon from '../assets/figma/workspace/send.svg'
+import sidebarCollapseIcon from '../assets/figma/workspace/sidebar-collapse.svg'
+import thumbDownIcon from '../assets/figma/workspace/thumb-down.svg'
+import thumbUpIcon from '../assets/figma/workspace/thumb-up.svg'
 import {
   abortChatTurn,
   cancelUserInput,
@@ -54,6 +55,7 @@ import { createAssetUpload } from '../api/assets.js'
 import {
   captureChatScrollAnchor,
   chatComposerMode,
+  chatComposerVisualState,
   chatThreadCountLabel,
   chatTurnElapsedMs,
   groupChatItemsByTurn,
@@ -80,6 +82,7 @@ import { flattenProjectThreads, useProjectThreads } from '../pages/projectThread
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import SafeMarkdown from './SafeMarkdown.jsx'
+import FigmaIcon from './FigmaIcon.jsx'
 
 const threadStatusCopy = {
   idle: 'chat.status.idle', busy: 'chat.status.busy', waiting_for_input: 'chat.status.waiting_for_input', completed: 'common.status.completed',
@@ -125,11 +128,10 @@ const MESSAGE_PAGE_LIMIT = 30
 
 function CollapseButton({ overlay, onToggle }) {
   const { t } = useI18n()
-  const Icon = overlay ? X : PanelRightClose
   const label = t(overlay ? 'chat.close' : 'chat.collapse')
   return (
     <button className="chat-collapse-button" type="button" onClick={onToggle} aria-label={label} aria-expanded="true" title={label}>
-      <Icon size={16} aria-hidden="true" />
+      {overlay ? <span>{t('common.action.close')}</span> : <FigmaIcon src={sidebarCollapseIcon} size={16} />}
     </button>
   )
 }
@@ -160,10 +162,10 @@ function AttachmentStrip({ attachments, onRemove, onRetry }) {
     <div className="chat-attachment-strip">
       {attachments.map((attachment) => (
         <span className={`chat-attachment chat-attachment--${attachment.status}`} key={attachment.localId}>
-          {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" /> : <Image size={18} aria-hidden="true" />}
+          {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" /> : <span className="chat-attachment__filetype" aria-hidden="true"><FigmaIcon src={attachmentFileIcon} size={12} /></span>}
           <span><b title={attachment.filename}>{attachment.filename}</b><em>{t(`chat.attachment.${attachment.status}`)}</em></span>
-          {attachment.status === 'error' && onRetry ? <button type="button" onClick={() => onRetry(attachment.localId)} aria-label={t('chat.attachment.retry', { filename: attachment.filename })}><RefreshCw size={12} /></button> : null}
-          <button type="button" onClick={() => onRemove(attachment.localId)} aria-label={t('chat.attachment.remove', { filename: attachment.filename })}><X size={12} /></button>
+          {attachment.status === 'error' && onRetry ? <button className="chat-attachment__retry" type="button" onClick={() => onRetry(attachment.localId)} aria-label={t('chat.attachment.retry', { filename: attachment.filename })}>{t('common.action.retry')}</button> : null}
+          <button className="chat-attachment__remove" type="button" onClick={() => onRemove(attachment.localId)} title={t('chat.attachment.remove', { filename: attachment.filename })} aria-label={t('chat.attachment.remove', { filename: attachment.filename })}><FigmaIcon src={attachmentRemoveIcon} size={12} /></button>
         </span>
       ))}
     </div>
@@ -175,7 +177,7 @@ function AttachmentPicker({ disabled, onFiles }) {
   const inputRef = useRef(null)
   return (
     <>
-      <button className="chat-attachment-picker" type="button" disabled={disabled} onClick={() => inputRef.current?.click()} title={t('chat.attachment.add')} aria-label={t('chat.attachment.add')}><ImagePlus size={16} /></button>
+      <button className="chat-attachment-picker" type="button" disabled={disabled} onClick={() => inputRef.current?.click()} title={t('chat.attachment.add')} aria-label={t('chat.attachment.add')}><FigmaIcon src={attachmentIcon} size={20} /></button>
       <input ref={inputRef} className="chat-attachment-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={disabled} onChange={(event) => { onFiles(event.target.files); event.target.value = '' }} />
     </>
   )
@@ -277,10 +279,20 @@ function ChatItem({ item }) {
   return (
     <article className={`chat-message chat-message--${item.role || 'assistant'}`}>
       <div className="chat-message__assistant-body">
-        <span className="chat-message__type"><Bot size={13} aria-hidden="true" />{item.role === 'system' ? t('chat.item.system') : 'Lumi Agent'}</span>
         <SafeMarkdown value={item.content} />
+        {item.role !== 'system' ? <MessageFeedback t={t} /> : null}
       </div>
     </article>
+  )
+}
+
+function MessageFeedback({ t }) {
+  const [value, setValue] = useState('')
+  return (
+    <div className="chat-message__feedback" aria-label={t('chat.feedback.label')}>
+      <button type="button" aria-label={t('chat.feedback.helpful')} title={t('chat.feedback.helpful')} aria-pressed={value === 'up'} onClick={() => setValue((current) => current === 'up' ? '' : 'up')}><FigmaIcon src={thumbUpIcon} size={24} leafWidth={12.78} leafHeight={12} /></button>
+      <button type="button" aria-label={t('chat.feedback.unhelpful')} title={t('chat.feedback.unhelpful')} aria-pressed={value === 'down'} onClick={() => setValue((current) => current === 'down' ? '' : 'down')}><FigmaIcon src={thumbDownIcon} size={24} leafWidth={12.78} leafHeight={12} /></button>
+    </div>
   )
 }
 
@@ -554,14 +566,25 @@ function FollowUpQueue({ items, pending, canSteer, notice, onMove, onDelete, onE
   )
 }
 
-function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = false, scene = '', attachments = [], attachmentBlocked = false, onDraftChange, onSend, onAbort, onAddFiles, onRemoveAttachment, onRetryAttachment, onPaste }) {
+export function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = false, forceFocus = false, focusRequestKey = '', scene = '', attachments = [], attachmentBlocked = false, placeholderKey = '', labelKey = '', hintKey = '', onDraftChange, onSend, onAbort, onAddFiles, onRemoveAttachment, onRetryAttachment, onPaste }) {
   const { t } = useI18n()
+  const textareaRef = useRef(null)
   const mode = chatComposerMode({ activeTurn, draft })
+  const visualState = chatComposerVisualState({ activeTurn, draft, pending, abortPending, attachments })
   const canSteer = activeTurn?.status === 'in_progress' && draft.trim() && !pending && !attachmentBlocked
   const canAttach = canProjectChatAttachImages(scene)
-  const actionTitle = mode === 'stop'
-    ? t(abortPending ? 'chat.composer.stopping' : 'chat.composer.stop')
-    : t(mode === 'queue' ? 'chat.composer.queue' : 'chat.composer.send')
+  const actionTitle = pending
+    ? t('chat.composer.sending')
+    : mode === 'stop'
+      ? t(abortPending ? 'chat.composer.stopping' : 'chat.composer.stop')
+      : t(mode === 'queue' ? 'chat.composer.queue' : 'chat.composer.send')
+
+  useEffect(() => {
+    if (!focusRequestKey || pending) return
+    const textarea = textareaRef.current
+    textarea?.focus()
+    textarea?.setSelectionRange(textarea.value.length, textarea.value.length)
+  }, [focusRequestKey, pending])
 
   const submit = (event) => {
     event?.preventDefault()
@@ -584,32 +607,34 @@ function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = fa
   }
 
   return (
-    <form className="chat-composer" onSubmit={submit}>
-      {activeTurn ? <p className="chat-composer__status">{activeTurn.status === 'waiting_for_input' ? t('chat.composer.waiting') : t('chat.composer.turn_running', { number: activeTurn.queue_sequence || '—' })}</p> : null}
+    <form className={`chat-composer${forceFocus ? ' is-forced-focus' : ''}`} data-composer-state={visualState} onSubmit={submit}>
       {canAttach ? <AttachmentStrip attachments={attachments} onRemove={onRemoveAttachment} onRetry={onRetryAttachment} /> : null}
       <textarea
+        ref={textareaRef}
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={handleKeyDown}
         onPaste={canAttach ? onPaste : undefined}
         rows="6"
         maxLength="262144"
-        placeholder={t(activeTurn ? 'chat.composer.follow_up_placeholder' : 'chat.composer.placeholder')}
-        aria-label={t('chat.composer.label')}
+        placeholder={t(placeholderKey || 'chat.composer.placeholder')}
+        aria-label={t(labelKey || 'chat.composer.label')}
         autoFocus={autoFocus}
         disabled={pending}
       />
       <footer>
-        <div className="chat-composer__left">{canAttach ? <AttachmentPicker disabled={pending || attachments.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_IMAGE_REFERENCES} onFiles={onAddFiles} /> : null}<small className="chat-composer__hint">{t('chat.composer.hint')}</small></div>
-        <button
-          className={`chat-composer__send chat-composer__send--${mode}`}
-          type="submit"
-          title={actionTitle}
-          aria-label={actionTitle}
-          disabled={mode === 'disabled' || pending || (mode !== 'stop' && attachmentBlocked) || (mode === 'stop' && abortPending)}
-        >
-          {mode === 'stop' ? <Square size={15} fill="currentColor" aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
-        </button>
+        <div className="chat-composer__left">{canAttach ? <AttachmentPicker disabled={pending || attachments.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_IMAGE_REFERENCES} onFiles={onAddFiles} /> : null}<small className="chat-composer__hint">{t(hintKey || 'chat.composer.hint')}</small></div>
+        <div className="chat-composer__action-slot">
+          <button
+            className={`chat-composer__send chat-composer__send--${mode}`}
+            type="submit"
+            title={actionTitle}
+            aria-label={actionTitle}
+            disabled={mode === 'disabled' || pending || (mode !== 'stop' && attachmentBlocked) || (mode === 'stop' && abortPending)}
+          >
+            <FigmaIcon src={mode === 'stop' ? composerStopIcon : sendIcon} size={mode === 'stop' ? 28 : 24} />
+          </button>
+        </div>
       </footer>
     </form>
   )
@@ -683,14 +708,14 @@ function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, 
   )
 }
 
-function NewThreadDraft({ draft, pending, error, overlay, onDraftChange, onSubmit, onBack, onToggle, onDismissError }) {
+function NewThreadDraft({ draft, pending, error, overlay, focusRequestKey, onDraftChange, onSubmit, onBack, onToggle, onDismissError }) {
   const { t } = useI18n()
   return (
     <div className="chat-panel chat-panel--detail">
       <header className="chat-detail-header">
         <button className="chat-back" type="button" onClick={onBack} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
         <div><p>{t('chat.title')}</p><h2>{t('chat.thread.new')}</h2></div>
-        <div className="chat-detail-actions"><span className="chat-status chat-status--idle">{t('chat.thread.draft')}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
+        <div className="chat-detail-actions"><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
       </header>
       <div className="chat-detail-body">
         <div className="chat-messages" aria-live="polite">
@@ -698,7 +723,7 @@ function NewThreadDraft({ draft, pending, error, overlay, onDraftChange, onSubmi
           <div className="chat-empty-state"><strong>{t('chat.thread.new_title')}</strong><span>{t('chat.thread.new_body')}</span></div>
         </div>
         <div className="chat-composer-shell">
-          <ChatComposer activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} />
+          <ChatComposer activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus focusRequestKey={focusRequestKey} onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} />
         </div>
       </div>
     </div>
@@ -735,7 +760,7 @@ function SceneThreadDraft({ scene, subjectTitle, draft, pending, error, overlay,
       <header className="chat-detail-header">
         <button className="chat-back" type="button" onClick={onBack} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
         <div><p>{t(copy.eyebrowKey || 'premise.title')}</p><h2>{copy.useSubjectTitle && subjectTitle ? subjectTitle : t(copy.titleKey)}</h2></div>
-        <div className="chat-detail-actions"><span className="chat-status chat-status--idle">{t('chat.thread.draft')}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
+        <div className="chat-detail-actions"><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
       </header>
       <div className="chat-detail-body">
         <div className="chat-messages">
@@ -746,17 +771,15 @@ function SceneThreadDraft({ scene, subjectTitle, draft, pending, error, overlay,
           </section>
           {error ? <LocalizedErrorMessage error={error} compact /> : null}
         </div>
-        <form className="chat-composer chat-composer--scene" onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
-          {canProjectChatAttachImages(scene) ? <AttachmentStrip attachments={attachments} onRemove={onRemoveAttachment} onRetry={onRetryAttachment} /> : null}
-          <textarea value={draft} onChange={(event) => onDraftChange(event.target.value)} onPaste={canProjectChatAttachImages(scene) ? onPaste : undefined} rows="6" maxLength="262144" placeholder={t(copy.placeholderKey)} aria-label={t(copy.titleKey)} autoFocus disabled={pending} />
-          <footer><div className="chat-composer__left">{canProjectChatAttachImages(scene) ? <AttachmentPicker disabled={pending || attachments.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_IMAGE_REFERENCES} onFiles={onAddFiles} /> : null}<small className="chat-composer__hint">{t(copy.hintKey || 'chat.scene.first_send')}</small></div><button className="chat-composer__send chat-composer__send--send" type="submit" aria-label={t('chat.composer.send')} disabled={pending || attachmentBlocked || !draft.trim()}>{pending ? <Square size={15} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}</button></footer>
-        </form>
+        <div className="chat-composer-shell">
+          <ChatComposer activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus scene={scene} attachments={attachments} attachmentBlocked={attachmentBlocked} placeholderKey={copy.placeholderKey} labelKey={copy.titleKey} hintKey={copy.hintKey || 'chat.scene.first_send'} onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} onAddFiles={onAddFiles} onRemoveAttachment={onRemoveAttachment} onRetryAttachment={onRetryAttachment} onPaste={onPaste} />
+        </div>
       </div>
     </div>
   )
 }
 
-export default function ChatArea({ projectUuid, expanded: controlledExpanded, onToggle, overlay = false }) {
+export default function ChatArea({ projectUuid, expanded: controlledExpanded, onToggle, overlay = false, composerDraftRequest = null }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -773,6 +796,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const attachmentsRef = useRef([])
   const [error, setError] = useState(null)
   const [queueNotice, setQueueNotice] = useState('')
+  const appliedComposerDraftRequestRef = useRef('')
   useEffect(() => setQueueNotice(''), [selectedThreadUuid])
 
   const threadsQuery = useProjectThreads(projectUuid, expanded)
@@ -815,6 +839,25 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       return []
     })
   }, [])
+
+  useEffect(() => {
+    if (!composerDraftRequest?.id || appliedComposerDraftRequestRef.current === composerDraftRequest.id) return
+    appliedComposerDraftRequestRef.current = composerDraftRequest.id
+    setSelectedThreadUuid('')
+    setShowCreate(true)
+    setInputText(composerDraftRequest.text || '')
+    clearAttachments()
+    setError(null)
+    const next = new URLSearchParams(searchParams)
+    next.set('chat_scope', 'project')
+    next.set('chat_new', '1')
+    next.delete('chat_thread_uuid')
+    next.delete('workflow_uuid')
+    next.delete('chat_scene')
+    next.delete('chat_subject_uuid')
+    next.delete('chat_subject_title')
+    setSearchParams(next, { replace: true })
+  }, [clearAttachments, composerDraftRequest, searchParams, setSearchParams])
 
   const removeAttachment = useCallback((localId) => {
     setAttachments((current) => {
@@ -1133,7 +1176,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   if (!expanded) {
     return (
       <aside className="chat-area chat-area--collapsed" aria-label={t('chat.project')}>
-        <button className="chat-collapsed-rail" type="button" onClick={toggleExpanded} aria-label={t('chat.expand')} aria-expanded="false" title={t('chat.expand')}><PanelRightOpen size={18} aria-hidden="true" /><span>{t('chat.title')}</span></button>
+        <button className="chat-collapsed-rail" type="button" onClick={toggleExpanded} aria-label={t('chat.expand')} aria-expanded="false" title={t('chat.expand')}><FigmaIcon className="is-reversed" src={sidebarCollapseIcon} size={16} /><span>{t('chat.title')}</span></button>
       </aside>
     )
   }
@@ -1142,7 +1185,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     if (requestedScene) {
       return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t(sceneThreadScope(requestedScene) === 'project' ? 'chat.project' : 'premise.workspace')}><SceneThreadDraft scene={requestedScene} subjectTitle={requestedSubjectTitle} draft={inputText} pending={createSceneThreadMutation.isPending} error={error || createSceneThreadMutation.error} overlay={overlay} attachments={attachments} attachmentBlocked={attachmentBlocked} onDraftChange={setInputText} onSubmit={() => createSceneThreadMutation.mutate()} onCancelScene={cancelDraftScene} onBack={showThreadList} onToggle={toggleExpanded} onAddFiles={addAttachmentFiles} onRemoveAttachment={removeAttachment} onRetryAttachment={retryAttachment} onPaste={handleAttachmentPaste} /></aside>
     }
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} focusRequestKey={composerDraftRequest?.id} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} /></aside>
   }
 
   if (!selectedThreadUuid) {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"lumi/internal/directoryopener"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 
@@ -126,11 +127,16 @@ func (handler *OpenProjectHandler) Delete(c echo.Context) error {
 }
 
 type RecentProjectHandler struct {
-	manager *project.Manager
+	manager      *project.Manager
+	folderOpener directoryopener.Opener
 }
 
-func NewRecentProjectHandler(manager *project.Manager) *RecentProjectHandler {
-	return &RecentProjectHandler{manager: manager}
+func NewRecentProjectHandler(manager *project.Manager, openers ...directoryopener.Opener) *RecentProjectHandler {
+	opener := directoryopener.Opener(directoryopener.NewNative())
+	if len(openers) > 0 && openers[0] != nil {
+		opener = openers[0]
+	}
+	return &RecentProjectHandler{manager: manager, folderOpener: opener}
 }
 
 func (handler *RecentProjectHandler) Index(c echo.Context) error {
@@ -162,6 +168,21 @@ func (handler *RecentProjectHandler) Delete(c echo.Context) error {
 		return projectAPIError(err)
 	}
 	return Success(c, http.StatusOK, nil)
+}
+
+func (handler *RecentProjectHandler) OpenFolder(c echo.Context) error {
+	item, err := handler.manager.RecentProject(c.Request().Context(), c.Param("project_uuid"))
+	if err != nil {
+		return projectAPIError(err)
+	}
+	if err := handler.folderOpener.Open(c.Request().Context(), item.RootPath); err != nil {
+		status := http.StatusServiceUnavailable
+		if errors.Is(err, directoryopener.ErrUnavailable) {
+			status = http.StatusNotImplemented
+		}
+		return NewError(status, "project_folder_open_failed", "无法打开项目文件夹", "请确认项目文件夹仍然存在且系统文件管理器可用。", err)
+	}
+	return Success(c, http.StatusOK, map[string]any{"project_uuid": item.UUID, "status": "opened"})
 }
 
 func decodeJSON(c echo.Context, destination any) error {

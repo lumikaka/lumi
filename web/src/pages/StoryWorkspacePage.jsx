@@ -7,8 +7,6 @@ import MarkdownPreview from '../components/MarkdownPreview.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PromptCatalogEditor from '../components/PromptCatalogEditor.jsx'
 import ProjectWorkspaceLayout from '../components/ProjectWorkspaceLayout.jsx'
-import WorkspaceGroupTabs from '../components/WorkspaceGroupTabs.jsx'
-import { workspaceSectionForPath } from '../components/workspaceNavigation.js'
 import { cancelTask, createChapterGeneration, createComicStoryboardGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, listTasks, retryTask } from '../api/ai.js'
 import { createAssetUpload, createIntegrityScan, finalizeAssetUpload, listAssetMaintenanceTasks, listAssets, listIntegrityScans, reconcileAssets, restoreAsset, trashAsset } from '../api/assets.js'
 import {
@@ -654,15 +652,17 @@ export default function StoryWorkspacePage() {
   const { projectUuid } = useParams()
   const location = useLocation()
   const projectQuery = useQuery({ queryKey: ['story-project', projectUuid], queryFn: () => getStoryProject(projectUuid) })
+  const [composerDraftRequest, setComposerDraftRequest] = useState(null)
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
-  const activeSection = workspaceSectionForPath(location.pathname)
   const chapterPreview = /\/chapters\/[^/]+\/preview$/.test(location.pathname)
+  const requestComposerDraft = useCallback((text) => {
+    setComposerDraftRequest((current) => ({ id: (current?.id || 0) + 1, text }))
+  }, [])
   return (
-    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview}>
-      <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} />
+    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} hideChat={chapterPreview} composerDraftRequest={composerDraftRequest}>
       <main className="workspace-main">
         <Routes>
-          <Route index element={<RouteRedirect to={`${base}/overview/summary`} />} />
+          <Route index element={<RouteRedirect to={`${base}/premise`} />} />
           <Route path="overview" element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview/summary" element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
           <Route path="overview/profile" element={<StoryProfilePanel projectUuid={projectUuid} />} />
@@ -672,14 +672,14 @@ export default function StoryWorkspacePage() {
           <Route path="chapters" element={<ChaptersWorkspace projectUuid={projectUuid} />} />
           <Route path="chapters/:chapterUuid/preview" element={<ChapterComicPreviewPage projectUuid={projectUuid} />} />
           <Route path="chapters/:chapterUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
-          <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} />} />
+          <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} onCreatePrompt={requestComposerDraft} />} />
           <Route path="comic" element={<ComicWorkspace projectUuid={projectUuid} />} />
           <Route path="comic/:chapterUuid" element={<ComicWorkspace projectUuid={projectUuid} />} />
           <Route path="assets" element={<AssetsPanel projectUuid={projectUuid} />} />
           <Route path="story" element={<RouteRedirect to={`${base}/overview/profile`} />} />
           <Route path="prompts" element={<RouteRedirect to={`${base}/overview/prompts`} />} />
           <Route path="trash" element={<TrashPanel projectUuid={projectUuid} />} />
-          <Route path="*" element={<RouteRedirect to={`${base}/overview/summary`} />} />
+          <Route path="*" element={<RouteRedirect to={`${base}/premise`} />} />
         </Routes>
       </main>
     </ProjectWorkspaceLayout>

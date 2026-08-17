@@ -74,9 +74,10 @@ type CreateInput struct {
 }
 
 type Service struct {
-	settings   *sitesettings.Service
-	now        func() time.Time
-	identityMu sync.Mutex
+	settings     *sitesettings.Service
+	now          func() time.Time
+	identityMu   sync.Mutex
+	activationMu sync.Mutex
 }
 
 func NewService(app *appstore.Store, keys sitesettings.MasterKeyStore) *Service {
@@ -174,6 +175,12 @@ func (service *Service) Resolve(ctx context.Context, providerUUID string) (Resol
 }
 
 func (service *Service) Activate(ctx context.Context, providerType string) (Provider, error) {
+	service.activationMu.Lock()
+	defer service.activationMu.Unlock()
+	return service.activate(ctx, providerType)
+}
+
+func (service *Service) activate(ctx context.Context, providerType string) (Provider, error) {
 	providerType = normalizeProviderType(providerType)
 	if providerType != TypeCloudflareAIGateway && providerType != TypeAliyunBailian {
 		return Provider{}, providerError(CodeInvalidProvider, "Provider 类型无效", "只能激活受支持的 Provider。", nil)
@@ -197,6 +204,55 @@ func (service *Service) Activate(ctx context.Context, providerType string) (Prov
 	}
 	selected.Active, selected.Enabled = true, true
 	return selected, nil
+}
+
+// ActivateIfNone makes the provider that just passed a connection check usable
+// without unexpectedly replacing another active provider.
+func (service *Service) ActivateIfNone(ctx context.Context, providerType string) (Provider, bool, error) {
+	service.activationMu.Lock()
+	defer service.activationMu.Unlock()
+
+	active, err := service.stringValue(ctx, sitesettings.ActiveProviderKey)
+	if err != nil {
+		return Provider{}, false, err
+	}
+	active = normalizeProviderType(active)
+	if active != "" && active != "none" {
+		return Provider{}, false, nil
+	}
+	activated, err := service.activate(ctx, providerType)
+	return activated, err == nil, err
+}
+
+// ReconcileActive restores legacy states where exactly one provider is ready
+// but no provider was selected. Ambiguous multi-provider states stay unchanged.
+func (service *Service) ReconcileActive(ctx context.Context) (Provider, bool, error) {
+	service.activationMu.Lock()
+	defer service.activationMu.Unlock()
+
+	active, err := service.stringValue(ctx, sitesettings.ActiveProviderKey)
+	if err != nil {
+		return Provider{}, false, err
+	}
+	active = normalizeProviderType(active)
+	if active != "" && active != "none" {
+		return Provider{}, false, nil
+	}
+	items, err := service.List(ctx)
+	if err != nil {
+		return Provider{}, false, err
+	}
+	ready := make([]Provider, 0, len(items))
+	for _, item := range items {
+		if item.Ready {
+			ready = append(ready, item)
+		}
+	}
+	if len(ready) != 1 {
+		return Provider{}, false, nil
+	}
+	activated, err := service.activate(ctx, ready[0].ProviderType)
+	return activated, err == nil, err
 }
 
 func (service *Service) MarkVerified(ctx context.Context, providerUUID string, checkedFingerprints ...string) (Provider, error) {

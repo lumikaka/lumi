@@ -56,6 +56,14 @@ func (handler *AgentHandler) ShowThread(c echo.Context) error {
 	return Success(c, http.StatusOK, thread)
 }
 
+func (handler *AgentHandler) ArchiveThread(c echo.Context) error {
+	thread, err := handler.agents.ArchiveThread(c.Request().Context(), c.Param("project_uuid"), c.Param("thread_uuid"))
+	if err != nil {
+		return agentAPIError(err)
+	}
+	return Success(c, http.StatusCreated, thread)
+}
+
 func (handler *AgentHandler) ListTurns(c echo.Context) error {
 	items, err := handler.agents.ListTurns(c.Request().Context(), c.Param("project_uuid"), c.Param("thread_uuid"))
 	if err != nil {

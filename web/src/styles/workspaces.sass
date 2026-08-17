@@ -182,14 +182,7 @@ $sage: $color-success
   gap: 14px
 
 .premise-visually-hidden
-  position: absolute !important
-  width: 1px !important
-  height: 1px !important
-  padding: 0 !important
-  overflow: hidden
-  clip: rect(0, 0, 0, 0)
-  white-space: nowrap
-  border: 0 !important
+  display: none
 
 .premise-toolbar
   position: relative
@@ -267,15 +260,61 @@ $sage: $color-success
   position: relative
   flex: 0 0 auto
 
+.premise-toolbar__actions
+  flex: 0 0 auto
+  display: flex
+  align-items: center
+  gap: 8px
+
+.premise-import__trigger
+  height: $control-height-compact
+  min-height: $control-height-compact
+  padding: $control-padding-block-compact $control-padding-inline-compact
+  border: 1px solid $color-border
+  border-radius: $control-radius-compact
+  color: $color-text
+  background: $color-surface
+  font-size: 13px
+  font-weight: 800
+
+  &:hover,
+  &:focus-visible
+    border-color: #d8d8d8
+    color: $color-text
+    background: $color-surface-muted
+
+.premise-add__figma-icon
+  position: relative
+  width: 16px
+  height: 16px
+  flex: 0 0 16px
+
+  img
+    position: absolute
+    display: block
+
+    &:first-child
+      width: 1px
+      height: 10.3333px
+      left: 7.5px
+      top: 2.83335px
+
+    &:last-child
+      width: 10.3333px
+      height: 1px
+      left: 2.83335px
+      top: 7.5px
+
 .premise-add__trigger
-  min-height: 38px
-  padding: 0 13px
+  height: $control-height-compact
+  min-height: $control-height-compact
+  padding: $control-padding-block-compact $control-padding-inline-compact
   display: inline-flex
   align-items: center
   justify-content: center
   gap: 7px
   border: 1px solid #e95519
-  border-radius: $radius-sm
+  border-radius: $control-radius-compact
   color: $color-surface
   background: $color-action
   box-shadow: 0 2px 7px rgba($color-action, .22)
@@ -570,9 +609,9 @@ $sage: $color-success
 
 .premise-tag-filters button[aria-pressed="true"]:hover,
 .premise-tag-filters button[aria-pressed="true"]:focus-visible
-  border-color: #1d4ed8
-  color: #1d4ed8
-  background: #dbeafe
+  border-color: $color-accent
+  color: $color-accent
+  background: $color-accent-muted
 
 .premise-card-grid
   display: grid
@@ -742,6 +781,12 @@ $sage: $color-success
     flex-wrap: wrap
     justify-content: center
     gap: 8px
+
+    > button
+      height: $control-height-compact
+      min-height: $control-height-compact
+      padding: $control-padding-block-compact $control-padding-inline-compact
+      border-radius: $control-radius-compact
 
 .premise-style-editor
   margin-bottom: 14px
@@ -1973,7 +2018,7 @@ $sage: $color-success
 .comic-section-row > button[aria-pressed="true"]:hover
   border-color: $color-accent
   color: $color-accent
-  background: #dce8ff
+  background: $color-accent-muted
 
 .comic-editor
   min-width: 0
@@ -3790,9 +3835,9 @@ $sage: $color-success
 
 .chapter-create-menu__trigger[aria-expanded="true"]:hover,
 .chapter-create-menu__trigger[aria-expanded="true"]:focus-visible
-  border-color: #1d4ed8
-  color: #1d4ed8
-  background: #dce8ff
+  border-color: $color-accent
+  color: $color-accent
+  background: $color-accent-muted
 
 .chapter-create-menu__dropdown
   position: absolute
@@ -5339,6 +5384,277 @@ $sage: $color-success
   border: 0
   color: $color-muted
   background: transparent
+
+// Project canvas presentation from Figma node 1477:9217.
+.project-canvas
+  .workspace-main,
+  .workspace-stack,
+  .project-overview,
+  .premise-workspace
+    width: 100%
+    max-width: none
+    margin: 0
+
+  .workspace-section-heading
+    h1
+      font-size: 18px
+      font-weight: 500
+
+    h2
+      font-size: 16px
+      font-weight: 500
+
+    p
+      font-size: 12px
+
+  .story-panel,
+  .overview-card,
+  .overview-progress-card,
+  .premise-content-panel
+    border-color: $color-border
+    border-radius: 8px
+    box-shadow: none
+
+  .premise-workspace
+    gap: 20px
+
+  .premise-toolbar
+    min-height: 29px
+    align-items: center
+
+  .premise-toolbar__tabs
+    padding: 0
+    gap: 2px
+    border: 0
+    border-radius: 0
+    background: transparent
+
+    .premise-toolbar__tab
+      min-height: 29px
+      padding: 0 10px
+      border: 1px solid transparent
+      border-radius: 8px
+      color: $color-muted
+      background: transparent
+      font-size: 12px
+      font-weight: 400
+
+      span
+        display: none
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: $color-surface-muted
+
+      &[aria-selected="true"]
+        border-color: $color-border
+        color: $color-text
+        background: $color-surface
+
+      &[aria-selected="true"]:hover,
+      &[aria-selected="true"]:focus-visible
+        border-color: #d8d8d8
+        color: $color-text
+        background: $color-surface-muted
+
+  .premise-import__trigger,
+  .premise-add__trigger
+    height: $control-height-compact
+    min-height: $control-height-compact
+    padding: $control-padding-block-compact $control-padding-inline-compact
+    border-color: $color-border
+    border-radius: $control-radius-compact
+    color: $color-text
+    background: $color-surface
+    box-shadow: none
+    font-size: 12px
+    font-weight: 400
+
+    &:hover,
+    &:focus-visible,
+    &[aria-expanded="true"]
+      border-color: #d8d8d8
+      color: $color-text
+      background: $color-surface-muted
+
+  .premise-add__trigger[aria-expanded="true"]:hover,
+  .premise-add__trigger[aria-expanded="true"]:focus-visible
+    border-color: #cecece
+    background: $color-border-subtle
+
+  .premise-add__menu--prompt
+    width: 112px
+    padding: 4px
+    gap: 1px
+    border-radius: 8px
+    box-shadow: 0 10px 28px rgba($color-text, .12)
+
+    > .premise-add__item
+      min-height: 34px
+      padding: 0 10px
+      display: flex
+      align-items: center
+      border-radius: 6px
+
+      > span
+        display: block
+
+      strong
+        font-size: 12px
+        font-weight: 400
+
+  .premise-content-panel
+    min-height: 0
+    padding: 0
+    border: 0
+    background: transparent
+
+  .premise-content-heading--assets
+    display: none
+
+  .premise-type-filters
+    min-height: $control-height-compact
+    margin: 0
+    display: flex
+    align-items: center
+    gap: 8px
+    overflow-x: auto
+
+    button
+      min-width: 50px
+      height: $control-height-compact
+      min-height: $control-height-compact
+      padding: $control-padding-block-compact $control-padding-inline-compact
+      border: 1px solid $color-border
+      border-radius: $control-radius-compact
+      color: $color-text
+      background: $color-surface
+      font-size: 12px
+      font-weight: 400
+      white-space: nowrap
+
+      &:hover,
+      &:focus-visible
+        border-color: #d8d8d8
+        color: $color-text
+        background: $color-surface-muted
+
+      &[aria-pressed="true"]
+        border-color: #e8dfcc
+        color: $color-text
+        background: #fffaf0
+
+      &[aria-pressed="true"]:hover,
+      &[aria-pressed="true"]:focus-visible
+        border-color: #dfd2b7
+        background: #fff6e6
+
+  .premise-asset-filter
+    margin: -8px 0 16px
+    padding: 0
+    border: 0
+    background: transparent
+
+  .premise-asset-filter__label
+    color: $color-muted
+    font-size: $font-size-small
+
+  .premise-tag-filter
+    min-height: 26px
+    padding: 0 9px
+    border-radius: 7px
+    font-size: $font-size-small
+    font-weight: 400
+
+  .premise-card-grid
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+    gap: 16px
+
+  .premise-asset-tile
+    border-color: $color-border
+    border-radius: 16px
+    box-shadow: none
+    transform: none
+
+    &:hover,
+    &:focus-within
+      border-color: #d4d4d4
+      box-shadow: 0 4px 14px rgba($color-text, .06)
+      transform: none
+
+  .premise-asset-tile__image
+    background: #fafafa
+
+    > .premise-asset-tile__surface > img
+      object-fit: cover
+
+  .premise-asset-tile__title
+    min-height: 40px
+    padding: 0 12px
+    color: $color-text
+    background: $color-surface
+
+    strong
+      font-size: 14px
+      font-weight: 400
+      line-height: 18px
+
+    span
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 14px
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+  .premise-card-skeleton
+    aspect-ratio: .82
+    border-radius: 16px
+
+  .premise-empty-state,
+  .workspace-empty,
+  .story-empty
+    border: 0
+    background: transparent
+
+  .comic-layout,
+  .chapters-panel
+    border-color: $color-border
+    border-radius: 8px
+    box-shadow: none
+
+@media (max-width: 760px)
+  .project-canvas
+    .premise-toolbar
+      align-items: center
+      flex-direction: row
+      gap: 8px
+
+    .premise-type-filters
+      flex: 1 1 auto
+      min-width: 0
+
+    .premise-toolbar__actions,
+    .premise-add,
+    .premise-import__trigger,
+    .premise-add__trigger
+      width: auto
+
+    .premise-add
+      align-self: flex-end
+
+    .premise-add__menu
+      width: 112px
+
+    .premise-card-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+      gap: 12px
+
+    .premise-asset-tile
+      border-radius: 12px
 
   &:hover,
   &:focus-visible
@@ -7727,9 +8043,9 @@ $sage: $color-success
 
   button[aria-pressed="true"]:hover,
   button[aria-pressed="true"]:focus-visible
-    border-color: #1d4ed8
-    color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
 
   button.section-timeline__batch-action
     border: 1px solid $color-action
@@ -7794,8 +8110,8 @@ $sage: $color-success
 
   &.is-active:has(.section-timeline-card__main:hover),
   &.is-active:focus-within
-    border-color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent
+    background: $color-accent-muted
 
   &.is-checked
     border-color: $color-action
@@ -7967,7 +8283,7 @@ $sage: $color-success
 
 .section-timeline-card.is-active:has(.section-timeline-card__main:hover) .section-timeline-card__copy,
 .section-timeline-card.is-active:focus-within .section-timeline-card__copy
-  color: #1d4ed8
+  color: $color-accent
 
 .section-timeline-card.is-checked .section-timeline-card__copy
   color: $color-action

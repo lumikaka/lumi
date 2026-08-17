@@ -66,14 +66,21 @@ func (handler *ProviderHandler) Check(c echo.Context) error {
 	if err != nil {
 		return providerAPIError(err)
 	}
+	_, activated, err := handler.providers.ActivateIfNone(c.Request().Context(), verified.ProviderType)
+	if err != nil {
+		return providerAPIError(err)
+	}
 	if handler.hub != nil {
 		keys := []string{sitesettings.CloudflareVerifiedKey, sitesettings.CloudflareVerifiedAtKey, sitesettings.CloudflareVerifiedFingerprintKey}
 		if verified.ProviderType == provider.TypeAliyunBailian {
 			keys = []string{sitesettings.BailianVerifiedKey, sitesettings.BailianVerifiedAtKey, sitesettings.BailianVerifiedFingerprintKey}
 		}
+		if activated {
+			keys = append(keys, sitesettings.ActiveProviderKey)
+		}
 		handler.hub.Broadcast(realtime.SystemTopic, "site_settings:updated", map[string]any{"keys": keys})
 	}
-	return Success(c, http.StatusOK, map[string]any{"provider_uuid": verified.UUID, "status": "ok", "verified_at": verified.VerifiedAt})
+	return Success(c, http.StatusOK, map[string]any{"provider_uuid": verified.UUID, "status": "ok", "verified_at": verified.VerifiedAt, "activated": activated})
 }
 
 func providerAPIError(err error) error {

@@ -6,6 +6,7 @@ export const settings = defineMessages({
   'settings.admin': ['管理后台', 'Admin'],
   'settings.account': ['账户设置', 'Account settings'],
   'settings.account_menu': ['账号菜单', 'Account menu'],
+  'settings.account_and_settings': ['账号与设置', 'Account & settings'],
   'settings.local_account': ['本地账户', 'Local account'],
   'settings.local_only': ['仅保存在这台设备', 'Stored only on this device'],
   'settings.language': ['界面语言', 'Interface language'],

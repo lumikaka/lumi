@@ -2,13 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
-  ChevronDown,
   ChevronRight,
   EyeOff,
   History,
   ImagePlus,
   MessageSquareQuote,
-  Plus,
   RotateCcw,
   Sparkles,
   Trash2,
@@ -17,6 +15,8 @@ import {
 } from 'lucide-react'
 
 import { createAssetUpload } from '../api/assets.js'
+import outputAddHorizontal from '../assets/figma/workspace/output-add-horizontal.svg'
+import outputAddVertical from '../assets/figma/workspace/output-add-vertical.svg'
 import { getStoryProfile } from '../api/story.js'
 import {
   breakdownSettingImage,
@@ -45,12 +45,10 @@ import LumiDialog from '../components/LumiDialog.jsx'
 import { Notice, ProductionImage, ProductionTaskStrip } from './ProductionWorkspaces.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import { PremisePromptsPanel, PremiseThreadsPanel } from './PremiseSupportPanels.jsx'
-import { useProjectThreads } from './projectThreads.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import {
   activeTaskFor,
-  collectPremiseTags,
   normalizedTags,
   premiseAssetTitleFromFile,
   premiseSourceState,
@@ -75,6 +73,12 @@ const ASSET_TYPE_COPY = Object.freeze({
   scene: 'premise.asset_type.scene',
   prop: 'premise.asset_type.prop',
   reference: 'premise.asset_type.reference',
+})
+
+const EMPTY_PROMPT_BY_FILTER = Object.freeze({
+  '': 'projects.canvas.add_setting_prompt',
+  scene: 'projects.canvas.add_scene_prompt',
+  prop: 'projects.canvas.add_prop_prompt',
 })
 
 function isEditableTarget(target) {
@@ -109,8 +113,8 @@ function LoadingCards() {
   return <div className="premise-card-grid" aria-label={t('premise.loading_cards')}>{Array.from({ length: 8 }, (_, index) => <div className="premise-card-skeleton" key={index} />)}</div>
 }
 
-export default function PremiseWorkspace({ projectUuid }) {
-  const { formatDateTime, locale, t } = useI18n()
+export default function PremiseWorkspace({ projectUuid, onCreatePrompt }) {
+  const { formatDateTime, t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const addMenuRef = useRef(null)
@@ -121,7 +125,7 @@ export default function PremiseWorkspace({ projectUuid }) {
   const [decisionNotice, setDecisionNotice] = useState('')
   const [activeTab, setActiveTab] = useState('assets')
   const [addMenuOpen, setAddMenuOpen] = useState(false)
-  const [filterTag, setFilterTag] = useState('')
+  const [filterType, setFilterType] = useState('')
   const [style, setStyle] = useState('')
   const [styleEditorOpen, setStyleEditorOpen] = useState(false)
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
@@ -164,8 +168,6 @@ export default function PremiseWorkspace({ projectUuid }) {
     queryFn: () => getStoryProfile(projectUuid),
     enabled: batchDialogOpen,
   })
-  const projectThreadsQuery = useProjectThreads(projectUuid)
-
   const refresh = useCallback(() => {
     ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-variants', 'production-tasks', 'story-project', 'asset-scans', 'asset-maintenance-tasks'].forEach((key) => {
       queryClient.invalidateQueries({ queryKey: [key, projectUuid] })
@@ -400,8 +402,9 @@ export default function PremiseWorkspace({ projectUuid }) {
   }, [settingQueries])
   const settingsError = settingQueries.find((query) => query.error)?.error
   const tasks = tasksQuery.data?.items || []
-  const tags = useMemo(() => collectPremiseTags(activeAssets, locale), [activeAssets, locale])
-  const displayedAssets = useMemo(() => filterTag ? activeAssets.filter((asset) => (asset.tags || []).includes(filterTag)) : activeAssets, [activeAssets, filterTag])
+  const displayedAssets = useMemo(() => activeAssets.filter((asset) => {
+    return !filterType || asset.asset_type === filterType
+  }), [activeAssets, filterType])
   const currentSettingUuid = premiseQuery.data?.current_setting_image?.uuid
   const activeTaskCount = tasks.filter((task) => ['queued', 'running'].includes(task.status) && ['premise_setting_generation', 'premise_asset_breakdown', 'premise_asset_generation'].includes(task.kind)).length
 
@@ -484,6 +487,11 @@ export default function PremiseWorkspace({ projectUuid }) {
     if (historyAsset) closeAssetDetail()
   }
 
+  const requestCreationPrompt = (promptKey) => {
+    onCreatePrompt?.(t(promptKey))
+    setAddMenuOpen(false)
+  }
+
   const toggleSourceDetails = (sourceUuid) => {
     setExpandedSourceUuids((current) => {
       const next = new Set(current)
@@ -523,15 +531,6 @@ export default function PremiseWorkspace({ projectUuid }) {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [batchDialogOpen, batchMutation.isPending, historyAsset, replaceImage.isPending, updateAsset.isPending, uploadDialogOpen, uploadDrafts, uploadMutation.isPending])
 
-  const tabs = [
-    { key: 'assets', labelKey: 'premise.tab.assets', count: activeAssets.length },
-    { key: 'trash', labelKey: 'projects.tab.trash', count: trashedAssets.length },
-    { key: 'batches', labelKey: 'premise.tab.batches', count: sourceTotal },
-    { key: 'threads', labelKey: 'premise.threads.title', count: projectThreadsQuery.data?.pages?.[0]?.pagination?.total || 0 },
-    { key: 'prompts', labelKey: 'projects.tab.prompts' },
-    { key: 'llm_logs', labelKey: 'premise.tab.llm_logs' },
-  ]
-
   const queryError = error || premiseQuery.error || sourcesQuery.error || settingsError || activeAssetsQuery.error || trashAssetsQuery.error || tasksQuery.error
   if (premiseQuery.isLoading) return <p className="workspace-loading">{t('premise.loading')}</p>
 
@@ -549,31 +548,26 @@ export default function PremiseWorkspace({ projectUuid }) {
       }}
     >
       <header className="premise-toolbar">
-        <div className="premise-toolbar__tabs" role="tablist" aria-label={t('premise.toolbar')}>
-          {tabs.map((tab) => (
-            <button
-              type="button"
-              className="premise-toolbar__tab"
-              role="tab"
-              key={tab.key}
-              aria-selected={activeTab === tab.key}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {t(tab.labelKey)}{typeof tab.count === 'number' ? <span>{tab.count}</span> : null}
-            </button>
-          ))}
+        <div className="premise-type-filters" aria-label={t('premise.assets.filter.navigation')}>
+          {[
+            { value: '', label: t('common.label.all') },
+            { value: 'scene', label: t('premise.asset_type.scene') },
+            { value: 'prop', label: t('premise.asset_type.prop') },
+          ].map((option) => <button type="button" key={option.value || 'all'} aria-pressed={filterType === option.value} onClick={() => setFilterType(option.value)}>{option.label}</button>)}
         </div>
-        <div className="premise-add" ref={addMenuRef}>
-          <button type="button" className="premise-add__trigger" aria-haspopup="menu" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((value) => !value)}>
-            <Plus size={16} aria-hidden="true" />{t('premise.add')}<ChevronDown size={15} aria-hidden="true" />
-          </button>
-          {addMenuOpen ? (
-            <div className="premise-add__menu" role="menu">
-              <button type="button" className="premise-add__item" role="menuitem" onClick={openBatchDialog}><Sparkles size={16} aria-hidden="true" /><span><strong>{t('premise.add.batch.title')}</strong><small>{t('premise.add.batch.body')}</small></span></button>
-              <button type="button" className="premise-add__item" role="menuitem" onClick={() => openChatScene('premise_asset_generation')}><Plus size={16} aria-hidden="true" /><span><strong>{t('premise.add.single.title')}</strong><small>{t('premise.add.single.body')}</small></span></button>
-              <button type="button" className="premise-add__item" role="menuitem" onClick={() => { setUploadDialogOpen(true); setAddMenuOpen(false) }}><Upload size={16} aria-hidden="true" /><span><strong>{t('premise.add.upload.title')}</strong><small>{t('premise.add.upload.body')}</small></span></button>
-            </div>
-          ) : null}
+        <div className="premise-toolbar__actions">
+          <button type="button" className="premise-import__trigger" onClick={() => fileInputRef.current?.click()}>{t('projects.canvas.import')}</button>
+          <div className="premise-add" ref={addMenuRef}>
+            <button type="button" className="premise-add__trigger" aria-haspopup="menu" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((value) => !value)}>
+              <span className="premise-add__figma-icon" aria-hidden="true"><img src={outputAddVertical} alt="" /><img src={outputAddHorizontal} alt="" /></span>{t('projects.canvas.add')}
+            </button>
+            {addMenuOpen ? (
+              <div className="premise-add__menu premise-add__menu--prompt" role="menu" aria-label={t('projects.canvas.add_type')}>
+                <button type="button" className="premise-add__item" role="menuitem" onClick={() => requestCreationPrompt('projects.canvas.add_setting_prompt')}><span><strong>{t('projects.canvas.add_setting')}</strong></span></button>
+                <button type="button" className="premise-add__item" role="menuitem" onClick={() => requestCreationPrompt('projects.canvas.add_chapter_prompt')}><span><strong>{t('projects.canvas.add_chapter')}</strong></span></button>
+              </div>
+            ) : null}
+          </div>
           <input ref={fileInputRef} className="premise-visually-hidden" type="file" accept="image/*" multiple aria-hidden="true" tabIndex="-1" onChange={(event) => { addUploadFiles(event.target.files); event.target.value = '' }} />
         </div>
       </header>
@@ -588,23 +582,16 @@ export default function PremiseWorkspace({ projectUuid }) {
             <div><p className="premise-content-eyebrow">{t('premise.assets')}</p><h2>{t('premise.assets.list_title')}</h2></div>
             <span>{displayedAssets.length}</span>
           </header>
-          {tags.length ? (
-            <div className="premise-asset-filter">
-              <span className="premise-asset-filter__label">{t('premise.assets.filter.tags')}</span>
-              <div className="premise-tag-filters" aria-label={t('premise.assets.filter.navigation')}>
-                <button type="button" className="premise-tag-filter" aria-pressed={!filterTag} onClick={() => setFilterTag('')}>{t('common.label.all')}</button>
-                {tags.map((tag) => <button type="button" className="premise-tag-filter" key={tag} aria-pressed={filterTag === tag} onClick={() => setFilterTag(tag)}>{tag}</button>)}
-              </div>
-            </div>
-          ) : null}
           {activeAssetsQuery.isLoading ? <LoadingCards /> : null}
           {!activeAssetsQuery.isLoading && activeAssetsQuery.isError ? (
             <EmptyState title={t('premise.assets.load_failed')} description={t('premise.assets.load_failed_body')} actions={<button type="button" onClick={() => activeAssetsQuery.refetch()}>{t('common.action.reload')}</button>} />
           ) : null}
           {!activeAssetsQuery.isLoading && !activeAssetsQuery.isError && displayedAssets.length === 0 ? (
-            filterTag
-              ? <EmptyState title={t('premise.assets.no_match')} description={t('premise.assets.no_match_body', { tag: filterTag })} actions={<button type="button" className="button-secondary" onClick={() => setFilterTag('')}>{t('premise.assets.clear_filter')}</button>} />
-              : <EmptyState title={t('premise.assets.no_items')} description={t('premise.assets.no_items_body')} actions={<><button type="button" onClick={openBatchDialog}>{t('premise.tab.batches')}</button><button type="button" className="button-secondary" onClick={() => setUploadDialogOpen(true)}>{t('premise.add.upload.title')}</button></>} />
+            <EmptyState
+              title={t('premise.assets.no_items')}
+              description={t('premise.assets.no_items_body')}
+              actions={<button type="button" className="button-secondary" onClick={() => requestCreationPrompt(EMPTY_PROMPT_BY_FILTER[filterType] || EMPTY_PROMPT_BY_FILTER[''])}>{t('projects.canvas.add')}</button>}
+            />
           ) : null}
           {displayedAssets.length ? (
             <div className="premise-card-grid">

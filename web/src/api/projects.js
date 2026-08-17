@@ -55,3 +55,7 @@ export async function relocateRecentProject({ uuid, rootPath }) {
 export async function forgetRecentProject(uuid) {
   return apiRequest(`/api/v1/recent-projects/${encodeURIComponent(uuid)}`, { method: 'DELETE' })
 }
+
+export async function openRecentProjectFolder(uuid) {
+  return apiRequest(`/api/v1/recent-projects/${encodeURIComponent(uuid)}/folder-openings`, jsonRequest('POST', {}))
+}

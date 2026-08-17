@@ -15,6 +15,10 @@ var (
 	ErrUnavailable  = errors.New("directory opener is unavailable")
 )
 
+type Opener interface {
+	Open(context.Context, string) error
+}
+
 type Native struct {
 	openDirectory func(context.Context, string) error
 }

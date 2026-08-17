@@ -1,26 +1,36 @@
 $font-family-base: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif
 $font-size-body: 16px
+$font-size-control: 14px
 $font-size-small: 12px
 // Only for non-essential metadata such as timestamps, UUIDs, and compact status markers.
 $font-size-micro: 10px
 $line-height-body: 1.5
 
 $layout-width: 1240px
-$topbar-height: 54px
-$chat-width: 360px
+$topbar-height: 60px
+$chat-width: 400px
 $chat-collapsed-width: 52px
+$sidebar-width: 260px
+$sidebar-collapsed-width: 56px
 
-$color-text: #1f2328
-$color-muted: rgba($color-text, 0.68)
+$color-text: #1a1a1a
+$color-muted: #727272
 $color-link: #2563eb
-$color-accent: #2563eb
-$color-accent-muted: #eaf1ff
-$color-action: #ff6b2c
+$color-brand: #ffb411
+$color-brand-hover: #eda500
+$color-brand-muted: #fff8e8
+$color-brand-ink: #6a4700
+$color-accent: $color-brand-ink
+$color-accent-muted: $color-brand-muted
+$color-action: $color-brand-ink
+$color-control-primary: #212121
+$color-control-primary-hover: #000000
+$color-control-primary-text: #ffffff
 $color-surface: #ffffff
-$color-surface-muted: #f7f7f6
+$color-surface-muted: #f7f7f5
 $color-surface-subtle: #fbfbfa
-$color-border: #dedede
-$color-border-subtle: #ececec
+$color-border: #e6e6e6
+$color-border-subtle: #ebebeb
 $color-danger: #b42318
 $color-danger-muted: #fff1f0
 $color-success: #15803d
@@ -31,3 +41,9 @@ $color-warning-muted: #fff8e1
 $radius-sm: 6px
 $radius-md: 8px
 $radius-lg: 12px
+
+// Compact text controls: filters, inline actions, and empty-state actions.
+$control-height-compact: 29px
+$control-padding-block-compact: 0
+$control-padding-inline-compact: 12px
+$control-radius-compact: $radius-md

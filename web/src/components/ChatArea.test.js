@@ -12,6 +12,7 @@ test('new thread opens a composer draft and persists the first message without a
   assert.doesNotMatch(source, /NewThreadDetail|chat\.thread\.title_field/)
   assert.match(source, /title: suggestedChatThreadTitle\(text\),[\s\S]*?scope: 'project'/)
   assert.doesNotMatch(source, /requestedScope/)
+  assert.doesNotMatch(source, /chat\.thread\.draft/)
 })
 
 test('image scenes upload references and block sends until every attachment is ready', () => {

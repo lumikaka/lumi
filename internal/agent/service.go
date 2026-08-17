@@ -202,6 +202,33 @@ func (service *Service) GetThread(ctx context.Context, projectUUID, threadUUID s
 	return result, err
 }
 
+func (service *Service) ArchiveThread(ctx context.Context, projectUUID, threadUUID string) (Thread, error) {
+	if !isUUIDv7(threadUUID) {
+		return Thread{}, domainError(CodeValidation, "Thread UUID 无效", "thread_uuid 必须是 UUIDv7。", nil)
+	}
+	now := service.now().UTC()
+	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
+		pid, err := projectID(ctx, store.DB(), projectUUID)
+		if err != nil {
+			return err
+		}
+		result := store.DB().WithContext(ctx).Model(&threadRecord{}).
+			Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).
+			Updates(map[string]any{"archived_at": now, "updated_at": now})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return domainError(CodeNotFound, "Chat thread 不存在", "会话不存在或已经归档。", nil)
+		}
+		return nil
+	})
+	if err != nil {
+		return Thread{}, err
+	}
+	return service.GetThread(ctx, projectUUID, threadUUID)
+}
+
 func threadDTO(row threadRecord, projectUUID string) Thread {
 	return Thread{UUID: row.UUID, ProjectUUID: projectUUID, Title: row.Title, Status: row.Status, Scope: row.Scope, Scene: publicThreadScene(row.Scope, row.Scene), SubjectUUID: row.SubjectUUID, ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, ArchivedAt: row.ArchivedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }

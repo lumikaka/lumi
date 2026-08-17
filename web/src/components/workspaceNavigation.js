@@ -31,6 +31,15 @@ export function workspaceSectionForPath(pathname = '') {
   return 'overview'
 }
 
+export function canvasModeForPath(pathname = '') {
+  const match = pathname.match(/^\/projects\/[^/]+(?:\/([^/?#]+))?/)
+  const route = match?.[1] || ''
+  if (route === 'premise' || route === 'assets') return 'premise'
+  if (route === 'chapters' || route === 'trash') return 'chapters'
+  if (route === 'comic' || pathname.includes('/overview/exports')) return 'works'
+  return ''
+}
+
 export function workspaceRoute(projectUuid, route = '', search = '') {
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
   const pathname = route ? `${base}/${route}` : base

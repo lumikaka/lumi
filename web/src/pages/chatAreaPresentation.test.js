@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   captureChatScrollAnchor,
   chatComposerMode,
+  chatComposerVisualState,
   chatThreadCountLabel,
   chatTurnElapsedMs,
   groupChatItemsByTurn,
@@ -27,6 +28,21 @@ test('composer supports send, queue, stop and steering behavior', () => {
   assert.equal(isChatSteeringShortcut({ key: 'Enter', shiftKey: true, metaKey: true }), true)
   assert.equal(isChatSteeringShortcut({ key: 'Enter', shiftKey: true, ctrlKey: true }), true)
   assert.equal(isChatSteeringShortcut({ key: 'Enter', shiftKey: false, metaKey: true }), false)
+})
+
+test('composer exposes every business visual state from the same state model', () => {
+  const attachment = (status) => [{ localId: status, status }]
+  assert.equal(chatComposerVisualState(), 'idle')
+  assert.equal(chatComposerVisualState({ draft: '继续写' }), 'draft')
+  assert.equal(chatComposerVisualState({ draft: '第一行\n第二行' }), 'multiline')
+  assert.equal(chatComposerVisualState({ attachments: attachment('uploading') }), 'attachment_uploading')
+  assert.equal(chatComposerVisualState({ attachments: attachment('ready') }), 'attachment_ready')
+  assert.equal(chatComposerVisualState({ attachments: attachment('error') }), 'attachment_error')
+  assert.equal(chatComposerVisualState({ draft: '发送', pending: true }), 'sending')
+  assert.equal(chatComposerVisualState({ activeTurn: { status: 'in_progress' } }), 'running_stop')
+  assert.equal(chatComposerVisualState({ activeTurn: { status: 'in_progress' }, draft: '继续补充' }), 'running_queue')
+  assert.equal(chatComposerVisualState({ activeTurn: { status: 'waiting_for_input' } }), 'waiting_input')
+  assert.equal(chatComposerVisualState({ activeTurn: { status: 'in_progress' }, abortPending: true }), 'stopping')
 })
 
 test('new thread titles use the first-message suggestion', () => {

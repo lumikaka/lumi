@@ -85,6 +85,7 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	e.HTTPErrorHandler = ErrorHandler
 	e.POST("/api/v1/projects/:project_uuid/chat_threads", handler.CreateThread)
 	e.GET("/api/v1/projects/:project_uuid/chat_threads", handler.ListThreads)
+	e.POST("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/archivals", handler.ArchiveThread)
 	e.POST("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/turns", handler.CreateTurn)
 	e.GET("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/items", handler.ListItems)
 	e.GET("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/events", handler.ListEvents)
@@ -101,6 +102,16 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 		t.Fatalf("create thread = %d %s", threadResponse.Code, threadResponse.Body.String())
 	}
 	threadUUID := envelopeData(t, threadResponse)["uuid"].(string)
+	archivedThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads/"+threadUUID+"/archivals", nil)
+	if archivedThreadResponse.Code != http.StatusCreated || !strings.Contains(archivedThreadResponse.Body.String(), `"archived_at"`) {
+		t.Fatalf("archive thread = %d %s", archivedThreadResponse.Code, archivedThreadResponse.Body.String())
+	}
+	archivedList := requestJSON(t, e, http.MethodGet, base+"/chat_threads", nil)
+	if archivedList.Code != http.StatusOK || strings.Contains(archivedList.Body.String(), `"uuid":"`+threadUUID+`"`) {
+		t.Fatalf("archived thread remained in list = %d %s", archivedList.Code, archivedList.Body.String())
+	}
+	threadResponse = requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "项目助手"})
+	threadUUID = envelopeData(t, threadResponse)["uuid"].(string)
 	premiseThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "单项生成", "scope": "premise", "scene": "premise_asset_generation"})
 	if premiseThreadResponse.Code != http.StatusCreated || !strings.Contains(premiseThreadResponse.Body.String(), `"scope":"premise"`) || !strings.Contains(premiseThreadResponse.Body.String(), `"scene":"premise_asset_generation"`) {
 		t.Fatalf("create premise thread = %d %s", premiseThreadResponse.Code, premiseThreadResponse.Body.String())

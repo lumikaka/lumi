@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -63,6 +64,10 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	modelClient := llm.NewOpenAICompatibleClient(nil)
 	imageClient := imagegen.NewOpenAICompatibleClient(nil)
 	providerService := provider.NewService(appStore, sitesettings.NewOSMasterKeyStore())
+	if _, _, err := providerService.ReconcileActive(context.Background()); err != nil {
+		providerService.Close()
+		return nil, fmt.Errorf("reconcile active provider: %w", err)
+	}
 	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient)
 	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient)
 	taskManager.WithAgentService(agentService)
@@ -117,6 +122,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/recent-projects", recentProjectHandler.Index)
 	api.PATCH("/recent-projects/:project_uuid", recentProjectHandler.Update)
 	api.DELETE("/recent-projects/:project_uuid", recentProjectHandler.Delete)
+	api.POST("/recent-projects/:project_uuid/folder-openings", recentProjectHandler.OpenFolder)
 	api.GET("/projects/:project_uuid", storyHandler.ShowProject)
 	api.POST("/projects/:project_uuid/image-generation-preflights", projectImagePreflightHandler.Create)
 	api.GET("/projects/:project_uuid/llm-logs", llmLogHandler.Index)
@@ -159,6 +165,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/projects/:project_uuid/chat_threads", agentHandler.ListThreads)
 	api.POST("/projects/:project_uuid/chat_threads", agentHandler.CreateThread)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid", agentHandler.ShowThread)
+	api.POST("/projects/:project_uuid/chat_threads/:thread_uuid/archivals", agentHandler.ArchiveThread)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/turns", agentHandler.ListTurns)
 	api.POST("/projects/:project_uuid/chat_threads/:thread_uuid/turns", agentHandler.CreateTurn)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/items", agentHandler.ListItems)

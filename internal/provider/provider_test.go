@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,6 +155,13 @@ func TestBailianEndpointsAndSingleActiveProvider(t *testing.T) {
 	if _, err := service.MarkVerified(ctx, bailian.UUID); err != nil {
 		t.Fatal(err)
 	}
+	if _, changed, err := service.ActivateIfNone(ctx, TypeAliyunBailian); err != nil || changed {
+		t.Fatalf("ActivateIfNone replaced an existing active provider: changed=%v error=%v", changed, err)
+	}
+	activeBeforeSwitch, err := service.Active(ctx)
+	if err != nil || activeBeforeSwitch.ProviderType != TypeCloudflareAIGateway {
+		t.Fatalf("active provider before explicit switch = %+v, error = %v", activeBeforeSwitch.Provider, err)
+	}
 	if _, err := service.Activate(ctx, TypeAliyunBailian); err != nil {
 		t.Fatal(err)
 	}
@@ -172,6 +180,47 @@ func TestBailianEndpointsAndSingleActiveProvider(t *testing.T) {
 	}
 	if active != 1 {
 		t.Fatalf("active provider count=%d items=%+v", active, items)
+	}
+}
+
+func TestReconcileActiveSelectsTheOnlyReadyProvider(t *testing.T) {
+	ctx := context.Background()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	store, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	service := NewService(store, NewMemorySecretStore())
+	if _, _, err := service.Settings().Update(ctx, map[string]any{
+		sitesettings.BailianWorkspaceKey: "ws-reconcile",
+		sitesettings.BailianRegionKey:    "cn-beijing",
+		sitesettings.BailianAPIKeyKey:    "bailian-secret",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := service.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.MarkVerified(ctx, items[1].UUID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Active(ctx); err == nil {
+		t.Fatal("Active() succeeded before reconcile")
+	} else {
+		var domainErr *Error
+		if !errors.As(err, &domainErr) || domainErr.Code != CodeNoActiveProvider {
+			t.Fatalf("Active() error before reconcile = %v", err)
+		}
+	}
+	activated, changed, err := service.ReconcileActive(ctx)
+	if err != nil || !changed || activated.ProviderType != TypeAliyunBailian || !activated.Active {
+		t.Fatalf("reconciled provider = %+v, changed = %v, error = %v", activated, changed, err)
+	}
+	active, err := service.Active(ctx)
+	if err != nil || active.ProviderType != TypeAliyunBailian {
+		t.Fatalf("active provider = %+v, error = %v", active.Provider, err)
 	}
 }
 

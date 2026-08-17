@@ -104,7 +104,7 @@ export const premise = defineMessages({
   'premise.assets.no_match_body': ['当前没有带 #{tag} 标签的设定项。', 'No premise items currently have the #{tag} tag.'],
   'premise.assets.clear_filter': ['清除筛选', 'Clear filter'],
   'premise.assets.no_items': ['还没有设定项', 'No premise items yet'],
-  'premise.assets.no_items_body': ['可由 AI 批量生成，也可以直接上传一张或多张图片。', 'Generate them in bulk with AI, or upload one or more images directly.'],
+  'premise.assets.no_items_body': ['创建角色、场景和道具等可复用设定，作为章节与画面的创作依据。', 'Create reusable characters, scenes, and props as the basis for chapters and artwork.'],
   'premise.assets.view_detail': ['查看 {title} 详情', 'View details for {title}'],
   'premise.assets.no_image': ['暂无图片', 'No image'],
   'premise.assets.reference_chat': ['引用 {title} 到聊天区', 'Reference {title} in ChatArea'],

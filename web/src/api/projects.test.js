@@ -5,6 +5,7 @@ import {
   createProject,
 	getProjectDefaults,
 	ensureProjectOpen,
+	openRecentProjectFolder,
 	openProjectPath,
   revealProjectDirectory,
   relocateRecentProject,
@@ -78,4 +79,13 @@ test('project API opens a local project location', async (t) => {
   assert.equal(path, '/api/v1/directory-openings')
   assert.equal(options.method, 'POST')
   assert.deepEqual(JSON.parse(options.body), { root_path: '/books/moon' })
+})
+
+test('project API opens a recent folder by public UUID without accepting a client path', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => success({ project_uuid: '019-recent', status: 'opened' }))
+  await openRecentProjectFolder('019-recent')
+  const [path, options] = globalThis.fetch.mock.calls[0].arguments
+  assert.equal(path, '/api/v1/recent-projects/019-recent/folder-openings')
+  assert.equal(options.method, 'POST')
+  assert.deepEqual(JSON.parse(options.body), {})
 })

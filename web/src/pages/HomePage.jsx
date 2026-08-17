@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpDown, FolderOpen, HardDrive, MoreHorizontal, Plus, Search, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
@@ -17,7 +17,7 @@ import {
   projectCreationErrors,
   projectDefaultOverallStyle,
 } from './projectCreationForm.js'
-import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
+import { createdProjectPath, projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 import {
   createProject,
   forgetRecentProject,
@@ -56,9 +56,11 @@ export default function HomePage() {
   const { formatDateTime, locale, t } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recent')
   const [dialog, setDialog] = useState('')
+  const [creationIntent, setCreationIntent] = useState('project')
   const [createMode, setCreateMode] = useState('yolo')
   const [name, setName] = useState('')
   const [parentPath, setParentPath] = useState('')
@@ -115,13 +117,19 @@ export default function HomePage() {
     setPictureBookDraft(defaultPictureBookDraft())
   }
   const closeDialog = () => {
-		if (dialog === 'create') resetCreationFields()
+			if (dialog === 'create') resetCreationFields()
     setDialog('')
+    setCreationIntent('project')
     setTargetProject(null)
     setRelocatePath('')
   }
-  const enterProject = (project) => navigate(`/projects/${encodeURIComponent(project.uuid)}`)
-  const createMutation = useProjectMutation(queryClient, setActionError, createProject, (project) => { resetCreationFields(); closeDialog(); enterProject(project) })
+  const enterProject = (project, options) => navigate(createdProjectPath(project.uuid, options))
+  const createMutation = useProjectMutation(queryClient, setActionError, createProject, (project) => {
+    const continueToConversation = creationIntent === 'conversation'
+    resetCreationFields()
+    closeDialog()
+    enterProject(project, { continueToConversation })
+  })
   const openPathMutation = useProjectMutation(queryClient, setActionError, openProjectPath, (project) => { setExistingPath(''); closeDialog(); enterProject(project) })
   const selectDirectoryMutation = useMutation({
     mutationFn: selectProjectDirectory,
@@ -155,7 +163,7 @@ export default function HomePage() {
       closeDialog()
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.openProjects() })
-      navigate(`/projects/${encodeURIComponent(project.uuid)}?chat_thread_uuid=${encodeURIComponent(workflow.thread_uuid)}&workflow_uuid=${encodeURIComponent(workflow.uuid)}`)
+      navigate(createdProjectPath(project.uuid, { threadUuid: workflow.thread_uuid, workflowUuid: workflow.uuid }))
     },
     onError: setActionError,
   })
@@ -193,8 +201,15 @@ export default function HomePage() {
     if (createMode === 'yolo') yoloMutation.mutate()
     else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook, overallStyle })
   }
-  const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
+  const openCreateDialog = (intent = 'project') => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setCreationIntent(intent); setDialog('create') }
   const openExistingDialog = () => { setActionError(null); setDialog('open') }
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('create_project') !== '1') return
+    openCreateDialog(params.get('continue') === 'new_conversation' ? 'conversation' : 'project')
+    navigate('/', { replace: true })
+  }, [location.search])
 
   useEffect(() => {
     if (!openMenuUuid) return undefined
@@ -217,7 +232,7 @@ export default function HomePage() {
   return (
     <AppPageShell
       title={t('projects.title')}
-      actions={<><button className="project-topbar__action" type="button" aria-label={t('projects.action.open_existing')} title={t('projects.action.open_existing')} onClick={openExistingDialog}><FolderOpen size={15} aria-hidden="true" /><span>{t('projects.action.open_existing')}</span></button><button className="project-topbar__action" type="button" aria-label={t('projects.action.new')} title={t('projects.action.new')} onClick={openCreateDialog}><Plus size={15} aria-hidden="true" /><span>{t('projects.action.new')}</span></button></>}
+      actions={<><button className="project-topbar__action" type="button" aria-label={t('projects.action.open_existing')} title={t('projects.action.open_existing')} onClick={openExistingDialog}><FolderOpen size={15} aria-hidden="true" /><span>{t('projects.action.open_existing')}</span></button><button className="project-topbar__action" type="button" aria-label={t('projects.action.new')} title={t('projects.action.new')} onClick={() => openCreateDialog()}><Plus size={15} aria-hidden="true" /><span>{t('projects.action.new')}</span></button></>}
     >
       <div className="project-index-content">
         <LocalizedErrorMessage error={pageError} className="project-alert project-index-alert" titleKey="projects.error.action_title" onDismiss={actionError ? () => setActionError(null) : undefined} />
@@ -227,7 +242,7 @@ export default function HomePage() {
             <div className="project-index-toolbar__controls">
               <label className="project-index-search"><Search size={16} aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('projects.index.search_placeholder')} aria-label={t('projects.index.search_label')} /></label>
               <label className="project-index-sort"><ArrowUpDown size={16} aria-hidden="true" /><select value={sort} onChange={(event) => setSort(event.target.value)} aria-label={t('projects.index.sort_label')}>{SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}</select></label>
-              <button className="story-button" type="button" onClick={openCreateDialog}><Plus size={16} />{t('projects.action.new')}</button>
+              <button className="story-button" type="button" onClick={() => openCreateDialog()}><Plus size={16} />{t('projects.action.new')}</button>
             </div>
           </div>
           <div className="project-index-table" role="table" aria-label={t('projects.recent')}>
@@ -266,7 +281,7 @@ export default function HomePage() {
         </aside>
       </div>
 
-      {dialog === 'create' ? <Modal className="project-create-dialog" title={t('projects.dialog.create.title')} description={t('projects.dialog.create.description')} dismissDisabled={pending} onClose={closeDialog}>
+      {dialog === 'create' ? <Modal className="project-create-dialog" title={t(creationIntent === 'conversation' ? 'projects.dialog.create_for_conversation.title' : 'projects.dialog.create.title')} description={t(creationIntent === 'conversation' ? 'projects.dialog.create_for_conversation.description' : 'projects.dialog.create.description')} dismissDisabled={pending} onClose={closeDialog}>
         <div className="project-create-tabs"><button type="button" aria-pressed={createMode === 'manual'} onClick={() => selectCreateMode('manual')}>{t('projects.create.manual')}</button><button type="button" aria-pressed={createMode === 'yolo'} onClick={() => selectCreateMode('yolo')}>{t('projects.create.yolo')}</button></div>
 		<form ref={createFormRef} className="project-dialog-form" noValidate onSubmit={submitCreateForm}>
           <div className="project-create-priority-fields">

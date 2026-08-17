@@ -11,15 +11,20 @@ const styles = readFileSync(new URL('../styles/workspaces.sass', import.meta.url
 const chatStyles = readFileSync(new URL('../styles/chat.sass', import.meta.url), 'utf8')
 const shellStyles = readFileSync(new URL('../styles/shell.sass', import.meta.url), 'utf8')
 
-test('premise toolbar keeps workspace navigation and the exact three creation choices', () => {
-  for (const labelKey of ['premise.tab.assets', 'projects.tab.trash', 'premise.tab.batches', 'premise.threads.title', 'projects.tab.prompts', 'premise.tab.llm_logs']) {
-    assert.match(source, new RegExp(`labelKey: '${labelKey.replaceAll('.', '\\.')}'`))
-  }
-  for (const menuItemKey of ['premise.add.batch.title', 'premise.add.single.title', 'premise.add.upload.title']) {
-    assert.match(source, new RegExp(`t\\('${menuItemKey.replaceAll('.', '\\.')}'\\)`))
-  }
-  assert.match(source, /openChatScene\('premise_asset_generation'\)/)
-  assert.doesNotMatch(source, /pending: true|showPendingCapability/)
+test('project outputs remove low-frequency tool navigation and expose prompt-based creation', () => {
+  assert.doesNotMatch(source, /const tabs = \[/)
+  assert.doesNotMatch(source, /premise-toolbar__tabs/)
+  assert.match(source, /projects\.canvas\.add_setting_prompt/)
+  assert.match(source, /projects\.canvas\.add_scene_prompt/)
+  assert.match(source, /projects\.canvas\.add_prop_prompt/)
+  assert.match(source, /projects\.canvas\.add_chapter_prompt/)
+  assert.match(source, /onCreatePrompt\?\.\(t\(promptKey\)\)/)
+  assert.match(source, /projects\.canvas\.import/)
+  assert.match(source, /fileInputRef\.current\?\.click\(\)/)
+  assert.match(source, /EMPTY_PROMPT_BY_FILTER\[filterType\]/)
+  assert.doesNotMatch(source, /setFilterType\(''\).*premise\.assets\.clear_filter/)
+  assert.match(source, /output-add-horizontal\.svg/)
+  assert.match(source, /output-add-vertical\.svg/)
 })
 
 test('project thread lists are shared while premise scenes keep scoped ChatArea routing', () => {
@@ -86,6 +91,7 @@ test('pasting an image into blank workspace selects its generated title for imme
 })
 
 test('premise selected states retain explicit combined hover feedback', () => {
+  assert.match(styles, /\.premise-type-filters[\s\S]*?&:hover,[\s\S]*?color: \$color-text/)
   for (const selector of [
     '.premise-toolbar__tabs button[aria-selected="true"]:hover',
     '.premise-tag-filters button[aria-pressed="true"]:hover',
@@ -99,12 +105,14 @@ test('premise selected states retain explicit combined hover feedback', () => {
 })
 
 test('premise narrow layout keeps controls operable and moves ChatArea into an overlay', () => {
-  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.premise-toolbar[\s\S]*?flex-direction: column/)
-  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.premise-add,[\s\S]*?\.premise-add__trigger[\s\S]*?width: 100%/)
-  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.premise-card-grid[\s\S]*?minmax\(140px, 1fr\)/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-canvas[\s\S]*?\.premise-toolbar[\s\S]*?flex-direction: row/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-canvas[\s\S]*?\.premise-add,[\s\S]*?\.premise-add__trigger[\s\S]*?width: auto/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.premise-card-grid[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.premise-detail-layout[\s\S]*?grid-template-columns: 1fr/)
-  assert.match(shellStyles, /@media \(max-width: 980px\)[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
-  assert.match(layoutSource, /const COMPACT_CHAT_QUERY = '\(max-width: 980px\)'/)
+  assert.match(shellStyles, /@media \(max-width: 1179px\)[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
+  assert.match(layoutSource, /const COMPACT_CHAT_QUERY = '\(max-width: 1179px\)'/)
   assert.match(layoutSource, /compact && overlayOpen/)
-  assert.match(layoutSource, /role="dialog" aria-modal="true" aria-label=\{t\('chat\.project'\)\}/)
+  assert.match(layoutSource, /role=\{compact && overlayOpen \? 'dialog' : undefined\}/)
+  assert.match(layoutSource, /aria-modal=\{compact && overlayOpen \? 'true' : undefined\}/)
+  assert.match(layoutSource, /aria-label=\{compact && overlayOpen \? t\('chat\.project'\) : undefined\}/)
 })

@@ -29,6 +29,10 @@ export function getChatThread(projectUuid, threadUuid) {
   return apiRequest(threadPath(projectUuid, threadUuid))
 }
 
+export function archiveChatThread(projectUuid, threadUuid) {
+  return apiRequest(threadPath(projectUuid, threadUuid, '/archivals'), { method: 'POST' })
+}
+
 export function listChatTurns(projectUuid, threadUuid) {
   return apiRequest(threadPath(projectUuid, threadUuid, '/turns'))
 }

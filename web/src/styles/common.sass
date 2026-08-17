@@ -46,8 +46,12 @@ code
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace
 
 :focus-visible
-  outline: 2px solid $color-accent
+  outline: 2px solid $color-brand
   outline-offset: 2px
+
+input[type="checkbox"],
+input[type="radio"]
+  accent-color: $color-brand
 
 input,
 select,
@@ -64,7 +68,7 @@ textarea
 
   &:focus
     border-color: $color-accent
-    box-shadow: 0 0 0 3px rgba($color-accent, .12)
+    box-shadow: 0 0 0 3px rgba($color-brand, .18)
 
 textarea
   resize: vertical
@@ -81,10 +85,10 @@ button:not([class]),
   align-items: center
   justify-content: center
   gap: 7px
-  border: 1px solid $color-accent
+  border: 1px solid $color-control-primary
   border-radius: $radius-sm
-  color: $color-surface
-  background: $color-accent
+  color: $color-control-primary-text
+  background: $color-control-primary
   font-size: 13px
   font-weight: 750
   line-height: 1
@@ -93,9 +97,9 @@ button:not([class]),
 
   &:hover,
   &:focus-visible
-    border-color: #1d4ed8
-    color: $color-surface
-    background: #1d4ed8
+    border-color: $color-control-primary-hover
+    color: $color-control-primary-text
+    background: $color-control-primary-hover
 
 .button-secondary,
 .story-button--secondary
@@ -114,9 +118,9 @@ button:not([class]),
 
   &:hover,
   &:focus-visible
-    border-color: $color-accent
-    color: $color-accent
-    background: $color-accent-muted
+    border-color: #c9c9c9
+    color: $color-text
+    background: $color-surface-muted
 
 .button-quiet,
 .story-button--subtle

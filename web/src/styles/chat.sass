@@ -809,6 +809,12 @@
     justify-content: flex-end
     gap: 6px
 
+    > button
+      height: $control-height-compact
+      min-height: $control-height-compact
+      padding: $control-padding-block-compact $control-padding-inline-compact
+      border-radius: $control-radius-compact
+
 .chat-input-request__options
   display: grid
   gap: 7px
@@ -834,13 +840,13 @@
     background: $color-accent-muted
 
   &:has(input:checked):hover
-    border-color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent
+    background: $color-accent-muted
 
   input
     width: auto
     margin-top: 2px
-    accent-color: $color-accent
+    accent-color: $color-brand
 
   > span
     min-width: 0
@@ -1025,8 +1031,8 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent
+      background: $color-accent-muted
 
     div
       min-width: 0
@@ -1126,8 +1132,8 @@
             background: $color-accent-muted
 
           &[aria-pressed="true"]:hover
-            border-color: #1d4ed8
-            background: #dce8ff
+            border-color: $color-accent
+            background: $color-accent-muted
 
         > button > div
           min-width: 0
@@ -1290,8 +1296,8 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent
+      background: $color-accent-muted
 
     span
       min-width: 0
@@ -1492,8 +1498,8 @@
     background: $color-accent-muted
 
   &[aria-grabbed="true"]:hover
-    color: #1d4ed8
-    background: #dce8ff
+    color: $color-accent
+    background: $color-accent-muted
 
 .chat-queue__body
   min-width: 0
@@ -1590,7 +1596,7 @@
 
     &.is-steer:hover,
     &.is-steer:focus-visible
-      color: #1d4ed8
+      color: $color-accent
       background: $color-accent-muted
 
 .chat-composer
@@ -1756,18 +1762,18 @@
 
   &:hover,
   &:focus-visible
-    border-color: #e9581e
-    color: #fff
-    background: #e9581e
+    border-color: $color-control-primary-hover
+    color: $color-control-primary-text
+    background: $color-control-primary-hover
 
 .chat-composer__send--stop
-  border-color: $color-danger
-  background: $color-danger
+  border-color: $color-control-primary
+  background: $color-control-primary
 
   &:hover,
   &:focus-visible
-    border-color: #8f1b13
-    background: #8f1b13
+    border-color: $color-control-primary-hover
+    background: $color-control-primary-hover
 
 .chat-composer__send--disabled
   border-color: $color-border-subtle
@@ -1804,3 +1810,500 @@
 
   .chat-input-request__options
     grid-template-columns: 1fr
+
+// Figma conversation surface from node 1477:9176.
+.chat-area
+  border-left: 0
+  border-right: 1px solid $color-border
+  background: $color-surface
+
+.chat-panel
+  grid-template-rows: 60px minmax(0, 1fr)
+
+.chat-panel__header,
+.chat-detail-header
+  height: 60px
+  min-height: 60px
+  padding: 0 16px
+  border-bottom: 1px solid $color-border
+
+  p
+    display: none
+
+  h2
+    margin: 0
+    color: $color-text
+    font-size: 14px
+    font-weight: 400
+    line-height: 18px
+    letter-spacing: 0
+
+.chat-panel__header-actions > span,
+.chat-status
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: 400
+
+.chat-detail-header
+  grid-template-columns: 32px minmax(0, 1fr) auto
+  gap: 8px
+
+.chat-back,
+.chat-collapse-button
+  width: 32px
+  height: 32px
+  border: 0
+  border-radius: 4px
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    border-color: transparent
+    color: $color-text
+    background: $color-surface-muted
+
+.chat-collapse-button:has(span)
+  width: auto
+  padding: 0 8px
+  font-size: 12px
+
+.chat-detail-actions
+  gap: 4px
+
+.chat-status
+  min-height: 22px
+  padding: 2px 6px
+  background: transparent
+
+.chat-status--busy,
+.chat-status--waiting_for_input,
+.chat-status--idle,
+.chat-status--completed,
+.chat-status--failed,
+.chat-status--cancelled,
+.chat-status--interrupted
+  color: $color-muted
+  background: transparent
+
+.chat-thread-list
+  padding: 12px 8px
+
+.chat-messages
+  padding: 24px
+
+.chat-turn
+  margin-bottom: 24px
+  gap: 10px
+
+.chat-turn__meta
+  color: #bfbfbf
+  font-size: $font-size-small
+
+.chat-turn__status
+  min-height: 18px
+  padding: 0 5px
+  border-radius: 4px
+  font-size: $font-size-micro
+  font-weight: 400
+
+.chat-turn__items
+  gap: 12px
+
+.chat-message__user-bubble
+  max-width: 294px
+  padding: 12px 16px
+  border: 0
+  border-radius: 16px
+  background: #f5f5f5
+
+  p
+    font-size: 14px
+    line-height: 20px
+
+.chat-message__assistant-body
+  width: 100%
+
+  p
+    font-size: 14px
+    line-height: 20px
+
+.safe-markdown
+  gap: 8px
+  font-size: 14px
+  line-height: 20px
+
+.chat-message__feedback
+  height: 24px
+  margin-top: 8px
+  display: flex
+  align-items: center
+  gap: 5px
+
+  button
+    width: 24px
+    height: 24px
+    padding: 0
+    display: grid
+    place-items: center
+    border: 0
+    border-radius: 4px
+    background: transparent
+    opacity: .72
+
+    &:hover,
+    &:focus-visible
+      background: $color-surface-muted
+      opacity: 1
+
+    &[aria-pressed="true"]
+      background: $color-border-subtle
+      opacity: 1
+
+    &[aria-pressed="true"]:hover,
+    &[aria-pressed="true"]:focus-visible
+      background: #dedede
+
+.chat-composer-shell
+  border-top: 0
+
+.chat-composer
+  min-height: 100px
+  margin: 20px
+  padding: 16px
+  gap: 0
+  overflow: hidden
+  border: 1px solid #e6e6e6
+  border-radius: 12px
+  background: $color-surface
+  box-shadow: 0 0 8px rgba($color-text, .25)
+
+  &:focus-within
+    border-color: #d2d2d2
+    box-shadow: 0 0 8px rgba($color-text, .25)
+
+  textarea
+    min-height: 38px
+    max-height: 180px
+    padding: 0 0 8px
+    border: 0
+    border-radius: 0
+    box-shadow: none
+    resize: none
+    font-size: 14px
+    line-height: 30px
+
+    &:focus
+      border: 0
+      box-shadow: none
+
+    &::placeholder
+      color: #bfbfbf
+
+  footer
+    min-height: 28px
+    padding: 0
+
+.chat-composer__status
+  padding: 0 0 4px
+  font-size: $font-size-small
+
+.chat-attachment-strip
+  margin-bottom: 2px
+  padding: 0
+  gap: 8px
+
+.chat-attachment
+  height: 28px
+  padding: 4px 8px 4px 4px
+  gap: 4px
+  border: 0
+  border-radius: 8px
+  background: rgba($color-text, .03)
+
+  > img
+    width: 20px
+    height: 20px
+
+  > span:not(.chat-attachment__filetype)
+    max-width: 72px
+    display: block
+
+  b
+    display: block
+    width: 60px
+    color: #727272
+    font-size: 12px
+    font-weight: 400
+    line-height: 16px
+
+  em
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+
+  .chat-attachment__remove
+    width: 12px
+    min-width: 12px
+    height: 12px
+    padding: 0
+    border-radius: 2px
+
+    &:hover,
+    &:focus-visible
+      background: rgba($color-text, .05)
+
+.chat-attachment-picker
+  width: 24px
+  height: 24px
+  border: 0
+  border-radius: 4px
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    border-color: transparent
+    background: $color-surface-muted
+
+.chat-composer__send
+  width: 28px
+  height: 28px
+  border: 0
+  color: $color-control-primary-text
+  background: $color-control-primary
+
+  .figma-icon
+    filter: none
+
+  &:hover,
+  &:focus-visible
+    border-color: transparent
+    background: $color-control-primary-hover
+
+.chat-composer__send--disabled
+  border: 0
+  background: #d9d9d9
+
+  .figma-icon
+    filter: none
+
+.chat-composer__send--disabled:hover,
+.chat-composer__send--disabled:focus-visible
+  background: #d9d9d9
+
+.chat-composer__send--stop
+  color: $color-control-primary-text
+  background: $color-control-primary
+
+  &:hover,
+  &:focus-visible
+    background: $color-control-primary-hover
+
+.chat-collapsed-rail
+  color: $color-muted
+  background: $color-surface
+  font-weight: 400
+
+.chat-area--overlay
+  border-right: 0
+
+@media (max-width: 480px)
+  .chat-messages
+    padding: 18px 16px
+
+  .chat-composer
+    margin: 12px
+
+  .chat-message__user-bubble
+    max-width: 88%
+
+// Input state acceptance and the production composer share these final overrides.
+.chat-attachment__filetype
+  width: 20px
+  height: 20px
+  flex: 0 0 auto
+  display: grid
+  place-items: center
+  border-radius: 4px
+  color: $color-muted
+  background: $color-surface
+
+.chat-attachment > .chat-attachment__retry
+  width: auto
+  min-width: 22px
+  padding: 0 4px
+  font-size: $font-size-small
+
+.chat-composer__action-slot
+  width: 28px
+  min-width: 28px
+  display: flex
+  justify-content: flex-end
+
+.chat-composer textarea
+  height: 38px
+  min-height: 38px
+  outline: none
+
+  &:focus
+    outline: none
+
+.chat-composer.is-forced-focus
+  border-color: #d2d2d2
+  box-shadow: 0 0 8px rgba($color-text, .25)
+
+.chat-composer__send--queue
+  border-color: $color-control-primary
+  color: $color-control-primary-text
+  background: $color-control-primary
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-control-primary-hover
+    color: $color-control-primary-text
+    background: $color-control-primary-hover
+
+.composer-acceptance
+  min-height: 100dvh
+  padding: 32px clamp(20px, 4vw, 64px) 72px
+  color: $color-text
+  background: $color-surface-subtle
+
+.composer-acceptance__header
+  max-width: 1080px
+  margin: 0 auto
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 32px
+
+  p,
+  h1,
+  span
+    margin: 0
+
+  p
+    color: $color-muted
+    font-size: 12px
+
+  h1
+    margin-top: 8px
+    font-size: 24px
+    font-weight: 600
+
+  span
+    display: block
+    margin-top: 8px
+    color: $color-muted
+    font-size: 14px
+
+  > a
+    color: $color-text
+    font-size: 14px
+
+.composer-acceptance__index
+  max-width: 1080px
+  margin: 28px auto 0
+  padding: 12px 0
+  display: flex
+  gap: 8px 18px
+  overflow-x: auto
+  border-top: 1px solid $color-border
+  border-bottom: 1px solid $color-border
+
+  a
+    flex: 0 0 auto
+    color: $color-muted
+    font-size: 12px
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+
+.composer-acceptance__list
+  max-width: 1080px
+  margin: 0 auto
+
+.composer-acceptance__state
+  padding: 32px 0
+  display: grid
+  grid-template-columns: minmax(240px, 1fr) 400px
+  align-items: start
+  gap: 64px
+  border-bottom: 1px solid $color-border
+  scroll-margin-top: 12px
+
+.composer-acceptance__details
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: 12px
+
+    span
+      display: inline-block
+      width: 28px
+      color: $color-text
+
+  h2
+    margin: 8px 0 20px
+    font-size: 18px
+    font-weight: 600
+
+  dl
+    margin: 0
+    display: grid
+    gap: 10px
+
+  dl > div
+    display: grid
+    grid-template-columns: 40px minmax(0, 1fr)
+    gap: 8px
+
+  dt,
+  dd
+    margin: 0
+    font-size: 13px
+    line-height: 20px
+
+  dt
+    color: $color-muted
+
+.composer-acceptance__preview
+  width: 400px
+  max-width: 100%
+
+  .chat-composer
+    width: auto
+    margin: 20px
+
+.composer-acceptance__action
+  min-height: 18px
+  margin: 8px 4px 0
+  color: $color-muted
+  font-size: 12px
+  line-height: 18px
+
+@media (max-width: 760px)
+  .composer-acceptance
+    padding: 20px 16px 48px
+
+  .composer-acceptance__header
+    gap: 16px
+
+    h1
+      font-size: 20px
+
+  .composer-acceptance__state
+    padding: 28px 0
+    grid-template-columns: minmax(0, 1fr)
+    gap: 20px
+
+  .composer-acceptance__preview
+    width: 100%
+
+  .composer-acceptance__preview .chat-composer
+    margin: 0

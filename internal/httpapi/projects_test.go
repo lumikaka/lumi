@@ -15,6 +15,7 @@ import (
 
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/directoryopener"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 
@@ -160,6 +161,47 @@ func TestProjectHandlersCreateOpenMissingAndRelocate(t *testing.T) {
 	}
 	if _, err := os.Stat(movedRoot); err != nil {
 		t.Fatalf("forget deleted project directory: %v", err)
+	}
+}
+
+type folderOpenerFake struct {
+	path string
+	err  error
+}
+
+func (fake *folderOpenerFake) Open(_ context.Context, path string) error {
+	fake.path = path
+	return fake.err
+}
+
+func TestRecentProjectFolderOpeningResolvesPathFromProjectUUID(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "app")
+	store, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager := project.NewManager(store)
+	t.Cleanup(func() { _ = manager.Close(); _ = store.Close() })
+	fake := &folderOpenerFake{}
+	projects := NewProjectHandler(manager)
+	recent := NewRecentProjectHandler(manager, fake)
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler
+	e.POST("/api/v1/projects", projects.Create)
+	e.POST("/api/v1/recent-projects/:project_uuid/folder-openings", recent.OpenFolder)
+
+	created := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "Open Folder", "parent_path": t.TempDir()})
+	projectUUID := envelopeData(t, created)["uuid"].(string)
+	rootPath := envelopeData(t, created)["root_path"].(string)
+	opened := requestJSON(t, e, http.MethodPost, "/api/v1/recent-projects/"+projectUUID+"/folder-openings", map[string]any{})
+	if opened.Code != http.StatusOK || fake.path != rootPath || strings.Contains(opened.Body.String(), rootPath) || strings.Contains(opened.Body.String(), `"id"`) {
+		t.Fatalf("folder opening = %d %s, path = %q", opened.Code, opened.Body.String(), fake.path)
+	}
+
+	fake.err = directoryopener.ErrUnavailable
+	failed := requestJSON(t, e, http.MethodPost, "/api/v1/recent-projects/"+projectUUID+"/folder-openings", map[string]any{})
+	if failed.Code != http.StatusNotImplemented || !strings.Contains(failed.Body.String(), `"code":"project_folder_open_failed"`) {
+		t.Fatalf("failed folder opening = %d %s", failed.Code, failed.Body.String())
 	}
 }
 

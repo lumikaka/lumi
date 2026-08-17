@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   abortChatTurn,
+  archiveChatThread,
   cancelWorkflow,
   createChatThread,
   createChatTurn,
@@ -42,6 +43,7 @@ test('chat resources use project-scoped UUID routes and snake_case payloads', as
     await steerChatRun('project uuid', 'thread uuid', 'change direction', ['upload-c'])
     await abortChatTurn('project uuid', 'thread uuid')
     await respondUserInput('project uuid', 'thread uuid', 'request uuid', { selected_option_uuids: ['option-uuid'] })
+    await archiveChatThread('project uuid', 'thread uuid')
   } finally { global.fetch = original }
 
   assert.equal(calls[0][0], '/api/v1/projects/project%20uuid/chat_threads?page=1&per_page=30')
@@ -59,6 +61,7 @@ test('chat resources use project-scoped UUID routes and snake_case payloads', as
   assert.deepEqual(JSON.parse(calls[7][1].body), { input_text: 'change direction', upload_uuids: ['upload-c'] })
   assert.equal(calls[8][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/cancellations')
   assert.equal(calls[9][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/user_input_requests/request%20uuid/responses')
+  assert.equal(calls[10][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/archivals')
   assert.equal(calls[0][1].method, undefined)
   assert.ok(calls.slice(1).every(([, options]) => ['POST', 'PATCH'].includes(options.method)))
   assert.deepEqual(JSON.parse(calls[4][1].body), { position: 2 })

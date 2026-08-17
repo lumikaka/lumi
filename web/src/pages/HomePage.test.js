@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
 
-import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
+import { createdProjectPath, projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 
 test('unavailable local projects stay recoverable without an open action', () => {
 	assert.deepEqual(projectRowActions({ open: false, available: false }), ['relocate', 'forget'])
@@ -40,10 +40,10 @@ test('project page presents creation, open, relocation and forget dialogs', () =
 
 test('new project dialogs prefer YOLO creation every time they open', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
-  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8').replaceAll('\r\n', '\n')
   assert.match(source, /const \[createMode, setCreateMode\] = useState\('yolo'\)/)
-  assert.match(source, /const openCreateDialog = \(\) => \{ setActionError\(null\); resetCreationFields\(\); setCreateMode\('yolo'\); setDialog\('create'\) \}/)
-  assert.match(source, /<Modal className="project-create-dialog" title=\{t\('projects\.dialog\.create\.title'\)\}/)
+  assert.match(source, /const openCreateDialog = \(intent = 'project'\) => \{ setActionError\(null\); resetCreationFields\(\); setCreateMode\('yolo'\); setCreationIntent\(intent\); setDialog\('create'\) \}/)
+  assert.match(source, /<Modal className="project-create-dialog" title=\{t\(creationIntent === 'conversation'/)
   assert.match(source, /<LumiDialog className=\{className\}/)
   assert.match(styles, /\.lumi-dialog\.project-create-dialog\n\s+width: min\(820px, calc\(100vw - 32px\)\)/)
   assert.match(source, /<PictureBookProfileFields value=\{pictureBookDraft\}/)
@@ -73,4 +73,24 @@ test('both creation modes use a collapsed editable overall style initialized fro
   assert.match(source, /setOverallStyle\(defaultOverallStyle\); setOverallStyleDirty\(false\)/)
   assert.match(source, /createProject\(\{ name, parentPath, generationLanguage, pictureBook, overallStyle \}\)/)
   assert.match(source, /createMutation\.mutate\(\{ name, parentPath, generationLanguage, pictureBook, overallStyle \}\)/)
+})
+
+test('project creation can continue directly into a new or existing conversation', () => {
+  assert.equal(createdProjectPath('project uuid'), '/projects/project%20uuid/premise')
+  assert.equal(
+    createdProjectPath('project uuid', { continueToConversation: true }),
+    '/projects/project%20uuid/premise?chat_scope=project&chat_new=1',
+  )
+  assert.equal(
+    createdProjectPath('project uuid', { threadUuid: 'thread uuid', workflowUuid: 'workflow uuid' }),
+    '/projects/project%20uuid/premise?chat_thread_uuid=thread+uuid&workflow_uuid=workflow+uuid',
+  )
+})
+
+test('new-conversation project creation keeps the continuation intent until navigation', () => {
+  const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  assert.match(source, /params\.get\('continue'\) === 'new_conversation' \? 'conversation' : 'project'/)
+  assert.match(source, /const continueToConversation = creationIntent === 'conversation'/)
+  assert.match(source, /enterProject\(project, \{ continueToConversation \}\)/)
+  assert.match(source, /projects\.dialog\.create_for_conversation\.title/)
 })

@@ -4,6 +4,18 @@ export function chatComposerMode({ activeTurn = null, draft = '' } = {}) {
   return hasDraft ? 'send' : 'disabled'
 }
 
+export function chatComposerVisualState({ activeTurn = null, draft = '', pending = false, abortPending = false, attachments = [] } = {}) {
+  if (abortPending) return 'stopping'
+  if (pending) return 'sending'
+  if (attachments.some((attachment) => attachment.status === 'error')) return 'attachment_error'
+  if (attachments.some((attachment) => attachment.status === 'uploading')) return 'attachment_uploading'
+  if (attachments.length) return 'attachment_ready'
+  if (activeTurn?.status === 'waiting_for_input') return 'waiting_input'
+  if (activeTurn) return String(draft).trim() ? 'running_queue' : 'running_stop'
+  if (String(draft).includes('\n')) return 'multiline'
+  return String(draft).trim() ? 'draft' : 'idle'
+}
+
 export function isChatSteeringShortcut(event) {
   if (!event) return false
   return event.key === 'Enter' && event.shiftKey === true && (event.metaKey === true || event.ctrlKey === true)

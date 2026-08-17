@@ -12,16 +12,25 @@ test('project navigation exposes three primary sections and grouped tools', () =
   assert.deepEqual(WORKSPACE_GROUP_ITEMS.chapters.map((item) => item.key), ['chapters', 'comic', 'trash'])
 })
 
-test('topbar and group tabs use shared route builder with current search', () => {
+test('persistent sidebar owns projects, conversations, and project detail navigation', () => {
   const topbarSource = readFileSync(new URL('./GlobalTopbar.jsx', import.meta.url), 'utf8')
+  const sidebarSource = readFileSync(new URL('./AppSidebar.jsx', import.meta.url), 'utf8')
+  const sidebarNavigationSource = readFileSync(new URL('./sidebarNavigation.js', import.meta.url), 'utf8')
   const shellStyles = readFileSync(new URL('../styles/shell.sass', import.meta.url), 'utf8')
   const tabsSource = readFileSync(new URL('./WorkspaceGroupTabs.jsx', import.meta.url), 'utf8')
-  assert.match(topbarSource, /workspaceRoute\(projectUuid, section\.route, location\.search\)/)
-  assert.match(topbarSource, /projects\.recent_used/)
-  assert.match(topbarSource, /project-menu-drawer__project-copy/)
-  assert.match(shellStyles, /\.project-menu-drawer__project-link[\s\S]*border: 0[\s\S]*background: transparent[\s\S]*text-align: left/)
+  assert.doesNotMatch(topbarSource, /AccountMenu|project-menu-drawer|WORKSPACE_SECTIONS/)
+  assert.match(sidebarSource, /listRecentProjects/)
+  assert.match(sidebarSource, /listChatThreads\(project\.uuid/)
+  assert.match(sidebarSource, /newConversationPath\(projects, activeProjectUuid\)/)
+  assert.match(sidebarNavigationSource, /chat_scope=project&chat_new=1/)
+  assert.match(sidebarSource, /projects\.project_settings/)
+  assert.match(sidebarSource, /sidebar\.project\.open_folder/)
+  assert.match(sidebarSource, /sidebar\.project\.archive/)
+  assert.match(sidebarSource, /settings\.account_and_settings/)
+  assert.match(shellStyles, /\.app-frame[\s\S]*grid-template-columns: \$sidebar-width/)
+  assert.match(shellStyles, /\.app-sidebar-project__row[\s\S]*\.app-sidebar-project__actions[\s\S]*opacity: 1/)
+  assert.match(shellStyles, /\.app-sidebar-thread[\s\S]*\.app-sidebar-thread__actions[\s\S]*opacity: 1/)
   assert.match(tabsSource, /workspaceRoute\(projectUuid, item\.route, location\.search\)/)
-  assert.doesNotMatch(topbarSource, /workspace-sidebar/)
 })
 
 test('overview routes are canonical and legacy story links keep redirect compatibility', () => {
