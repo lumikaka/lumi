@@ -100,6 +100,26 @@ func (handler *AgentHandler) ListEvents(c echo.Context) error {
 	return Success(c, http.StatusOK, page)
 }
 
+func (handler *AgentHandler) ShowTrajectory(c echo.Context) error {
+	limit, err := positiveIntQuery(c, "limit", agent.DefaultTrajectoryPage)
+	if err != nil {
+		return err
+	}
+	page, err := handler.agents.ListTrajectory(
+		c.Request().Context(),
+		c.Param("project_uuid"),
+		c.Param("thread_uuid"),
+		c.QueryParam("before"),
+		c.QueryParam("after"),
+		c.QueryParam("item_uuid"),
+		limit,
+	)
+	if err != nil {
+		return agentAPIError(err)
+	}
+	return Success(c, http.StatusOK, page)
+}
+
 func (handler *AgentHandler) ListFollowUps(c echo.Context) error {
 	items, err := handler.agents.ListFollowUps(c.Request().Context(), c.Param("project_uuid"), c.Param("thread_uuid"))
 	if err != nil {

@@ -511,58 +511,6 @@ func TestPromptCatalogUsesCreationAndMigrationSources(t *testing.T) {
 	}
 }
 
-func TestEnsurePromptCatalogVersionsUpgradesPreviousDefaultsWithoutOverwritingCustomPrompts(t *testing.T) {
-	_, _, service := storyHarness(t)
-	ctx := context.Background()
-	definitions := make(map[string]promptcatalog.Definition, 2)
-	for _, key := range []string{"premise_asset_scene", "asset_reference_scene"} {
-		definition, ok := service.promptDefinition(promptcatalog.GroupAgent, key, promptcatalog.LanguageChinese)
-		if !ok || len(definition.PreviousDefaultValues) != 1 {
-			t.Fatalf("%s previous defaults=%+v known=%v", key, definition.PreviousDefaultValues, ok)
-		}
-		definitions[key] = definition
-		previous, err := service.CreatePromptVersion(ctx, CreatePromptInput{
-			PromptGroup: promptcatalog.GroupAgent, PromptKey: key,
-			Prompt: definition.PreviousDefaultValues[0], ExpectedCurrentVersion: 1,
-		})
-		if err != nil || previous.VersionNo != 2 {
-			t.Fatalf("%s previous default version=%+v error=%v", key, previous, err)
-		}
-	}
-	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
-		t.Fatal(err)
-	}
-	for key, definition := range definitions {
-		versions, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupAgent, key, 1, 20)
-		if err != nil || pagination.Total != 3 || versions[0].VersionNo != 3 || versions[0].Prompt != definition.DefaultValue || versions[0].SourceType != "migration" {
-			t.Fatalf("%s upgraded versions=%+v pagination=%+v error=%v", key, versions, pagination, err)
-		}
-	}
-	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
-		t.Fatal(err)
-	}
-	for key := range definitions {
-		_, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupAgent, key, 1, 20)
-		if err != nil || pagination.Total != 3 {
-			t.Fatalf("%s idempotent upgrade pagination=%+v error=%v", key, pagination, err)
-		}
-	}
-	custom, err := service.CreatePromptVersion(ctx, CreatePromptInput{
-		PromptGroup: promptcatalog.GroupAgent, PromptKey: "premise_asset_scene",
-		Prompt: "Custom single-asset scene", ExpectedCurrentVersion: 3,
-	})
-	if err != nil || custom.VersionNo != 4 {
-		t.Fatalf("custom version=%+v error=%v", custom, err)
-	}
-	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
-		t.Fatal(err)
-	}
-	effective, err := service.EffectivePrompt(ctx, promptcatalog.GroupAgent, "premise_asset_scene")
-	if err != nil || effective != custom.Prompt {
-		t.Fatalf("custom effective prompt=%q error=%v", effective, err)
-	}
-}
-
 func TestPromptCatalogReadsLegacyPremiseKeyButWritesCanonical(t *testing.T) {
 	_, _, service := storyHarness(t)
 	ctx := context.Background()

@@ -1,0 +1,1104 @@
+@use './design-tokens' as *
+
+.project-workbench__content:has(.trajectory-page)
+  padding: 0
+  overflow: hidden
+
+.project-workbench.project-workbench--solo
+  grid-template-columns: minmax(0, 1fr)
+
+.workspace-main--trajectory
+  width: 100%
+  height: 100%
+  max-width: none
+
+.trajectory-page
+  width: 100%
+  height: 100%
+  min-width: 0
+  min-height: 0
+  display: grid
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto
+  color: $color-text
+  background: $color-surface
+
+.trajectory-page--loading
+  place-items: center
+
+.trajectory-page__error
+  min-height: 0
+
+  > .workspace-notice
+    margin: 8px 18px 0
+
+.trajectory-toolbar
+  position: relative
+  z-index: 5
+  min-height: 40px
+  padding: 0 12px
+  display: grid
+  grid-template-columns: minmax(200px, 1fr) auto
+  grid-template-areas: "heading actions"
+  align-items: center
+  gap: 0 12px
+  border-bottom: 1px solid $color-border
+  background: $color-surface
+
+.trajectory-toolbar__heading
+  grid-area: heading
+  min-width: 0
+  display: grid
+  grid-template-columns: auto minmax(0, 1fr)
+  align-items: baseline
+  gap: 8px
+
+  p,
+  h1
+    margin: 0
+
+  .eyebrow,
+  > p:not(.eyebrow)
+    display: none
+
+  h1
+    overflow: hidden
+    font-size: 14px
+    font-weight: 700
+    line-height: 20px
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  code
+    min-width: 0
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 400
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.trajectory-toolbar__actions
+  grid-area: actions
+  display: flex
+  align-items: center
+  gap: 6px
+
+.trajectory-refresh
+  min-height: 24px
+  padding: 0 8px
+  display: inline-flex
+  align-items: center
+  gap: 5px
+  border-radius: 4px
+  font-size: $font-size-small
+
+.trajectory-history-state
+  min-height: 22px
+  padding: 0 7px
+  display: inline-flex
+  align-items: center
+  border: 1px solid $color-border
+  border-radius: 4px
+  color: $color-warning
+  background: $color-warning-muted
+  font-size: $font-size-small
+  font-weight: 600
+
+  &.is-complete
+    color: $color-success
+    background: $color-success-muted
+
+.trajectory-overview-facts
+  display: none
+
+  > div
+    min-width: 0
+    padding: 0 9px
+    display: flex
+    align-items: baseline
+    gap: 4px
+    border-left: 1px solid $color-border-subtle
+    background: transparent
+
+    &:first-child
+      padding-left: 0
+      border-left: 0
+
+  > div.is-active
+    color: $color-warning
+    background: transparent
+
+  dt
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 400
+
+  dd
+    margin: 0
+    color: $color-text
+    font-size: $font-size-micro
+    font-weight: 700
+
+.trajectory-search-controls
+  grid-area: search
+  position: absolute
+  z-index: 8
+  top: 44px
+  right: 7px
+  width: 164px
+  display: block
+  align-items: center
+  gap: 0
+
+  label
+    min-width: 0
+    display: block
+
+    > span
+      position: absolute
+      width: 1px
+      height: 1px
+      overflow: hidden
+      clip: rect(0, 0, 0, 0)
+
+  label:not(.trajectory-search-field)
+    display: none
+
+  input,
+  select
+    width: 100%
+    min-width: 0
+    height: 22px
+    padding: 0 6px
+    border: 1px solid $color-border
+    border-radius: 3px
+    color: $color-text
+    background: $color-surface-subtle
+    font-size: $font-size-small
+
+.trajectory-search-notice
+  position: absolute
+  top: 100%
+  right: 12px
+  margin: 4px 0 0
+  padding: 3px 7px
+  border: 1px solid rgba($color-warning, .24)
+  border-radius: 3px
+  color: $color-warning
+  background: $color-warning-muted
+  font-size: $font-size-micro
+  box-shadow: 0 4px 12px rgba($color-text, .08)
+
+.trajectory-timeline
+  position: relative
+  z-index: 1
+  isolation: isolate
+  min-width: 0
+  padding: 0
+  border-bottom: 1px solid $color-border
+  background: $color-surface
+  user-select: none
+
+.trajectory-timeline__header
+  height: 32px
+  padding: 0 6px
+  display: flex
+  align-items: center
+  justify-content: flex-start
+  gap: 2px
+  border-bottom: 1px solid $color-border-subtle
+
+.trajectory-timeline__toolbar-button
+  height: 20px
+  padding: 0 7px
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  border: 0
+  border-radius: 3px
+  color: $color-muted
+  background: transparent
+  font-size: $font-size-small
+  font-weight: 400
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
+
+  &:focus-visible
+    outline: 1px solid $color-accent
+    outline-offset: 1px
+
+  &[aria-pressed="true"]
+    color: $color-text
+    background: $color-surface-muted
+
+  &[aria-pressed="true"]:hover,
+  &[aria-pressed="true"]:focus-visible
+    color: $color-text
+    background: $color-accent-muted
+
+.trajectory-timeline__plot
+  height: 50px
+  display: grid
+  grid-template-columns: 44px minmax(0, 1fr)
+  overflow: hidden
+  background: $color-surface
+
+.trajectory-timeline__labels
+  position: relative
+  border-right: 1px solid $color-border-subtle
+  color: $color-muted
+  font-size: $font-size-micro
+  line-height: 1
+
+  span
+    position: absolute
+    right: 3px
+    height: 8px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    text-align: right
+
+    &:nth-child(1)
+      top: 7px
+
+    &:nth-child(2)
+      top: 21px
+
+    &:nth-child(3)
+      top: 35px
+
+.trajectory-timeline__track
+  position: relative
+  overflow: hidden
+  cursor: crosshair
+  touch-action: none
+
+  &:focus-visible
+    outline: 1px solid $color-accent
+    outline-offset: -1px
+
+.trajectory-timeline__lanes
+  position: absolute
+  z-index: 2
+  top: 7px
+  right: 0
+  bottom: 7px
+  left: 0
+
+.trajectory-timeline__turn-boundaries
+  position: absolute
+  z-index: 3
+  inset: 0
+  pointer-events: none
+
+.trajectory-timeline__turn-boundary
+  position: absolute
+  top: 0
+  bottom: 0
+  left: var(--trajectory-turn-left)
+  width: 1px
+  background: $color-border
+
+.trajectory-timeline__span
+  position: absolute
+  top: calc(var(--trajectory-span-lane) * 14px)
+  left: calc(var(--trajectory-span-left) + 1px)
+  width: max(2px, calc(var(--trajectory-span-width) - 2px))
+  height: 8px
+  min-width: 2px
+  padding: 0
+  border: 0
+  border-radius: 1px
+  background: #85898f
+  opacity: .78
+  cursor: pointer
+
+  &[data-marker="true"]
+    width: 2px
+
+  &[data-selected="false"]
+    opacity: .2
+
+  &:hover:not([data-current="true"]),
+  &:focus-visible:not([data-current="true"])
+    z-index: 1
+    opacity: 1
+    outline: none
+    box-shadow: 0 0 0 1px $color-surface, 0 0 0 2px rgba($color-accent, .8)
+
+  &[data-current="true"]
+    z-index: 1
+    opacity: 1
+    box-shadow: 0 0 0 1px $color-surface, 0 0 0 2px $color-accent
+
+.trajectory-timeline__span--user
+  background: #5d8fdf
+
+.trajectory-timeline__span--context
+  background: #62ad83
+
+.trajectory-timeline__span--assistant,
+.trajectory-timeline__span--model_request
+  background: #8b6ab0
+  opacity: 1
+
+.trajectory-timeline__span--tool
+  background: #df8a32
+  opacity: 1
+
+.trajectory-timeline__span--compaction
+  background: #777c83
+
+.trajectory-timeline__span--error,
+.trajectory-timeline__span[data-status="error"],
+.trajectory-timeline__span[data-status="interrupted"]
+  background: $color-danger
+
+.trajectory-timeline__span[data-status="running"],
+.trajectory-timeline__span[data-status="pending"]
+  background: $color-warning
+
+.trajectory-timeline__hover-line
+  position: absolute
+  z-index: 4
+  top: 0
+  bottom: 0
+  left: clamp(0px, calc(var(--trajectory-hover-left) - 1px), calc(100% - 2px))
+  width: 2px
+  background: $color-accent
+  pointer-events: none
+
+.trajectory-timeline__selection
+  position: absolute
+  z-index: 1
+  top: 0
+  bottom: 0
+  left: var(--trajectory-selection-left)
+  width: var(--trajectory-selection-width)
+  min-width: 1px
+  background: rgba($color-accent, .12)
+  box-shadow: -100vw 0 0 100vw rgba($color-surface, .58), 100vw 0 0 100vw rgba($color-surface, .58)
+  pointer-events: none
+
+.trajectory-timeline__selection-edges
+  position: absolute
+  z-index: 4
+  top: 0
+  bottom: 0
+  left: var(--trajectory-selection-left)
+  width: var(--trajectory-selection-width)
+  min-width: 1px
+  pointer-events: none
+
+  &::before,
+  &::after
+    position: absolute
+    top: 0
+    bottom: 0
+    width: 3px
+    background: $color-accent
+    content: ''
+
+  &::before
+    left: 0
+
+  &::after
+    right: 0
+
+.trajectory-timeline__empty
+  height: 50px
+  margin: 0
+  display: grid
+  place-items: center
+  color: $color-muted
+  font-size: $font-size-small
+
+.trajectory-timeline__sr-status
+  position: absolute
+  width: 1px
+  height: 1px
+  overflow: hidden
+  clip: rect(0, 0, 0, 0)
+
+.trajectory-workbench
+  position: relative
+  min-width: 0
+  min-height: 0
+  display: grid
+  grid-template-columns: minmax(0, 1fr)
+  overflow: hidden
+
+.trajectory-workbench--inspector-open
+  grid-template-columns: minmax(0, 1fr) var(--trajectory-inspector-width, 390px)
+
+.trajectory-stats
+  min-width: 0
+  min-height: 24px
+  border-top: 1px solid $color-border-subtle
+  color: $color-muted
+  background: $color-surface
+
+.trajectory-stats__line
+  width: 100%
+  max-width: 980px
+  margin: 0 auto
+  padding: 2px 20px
+  overflow: hidden
+  box-sizing: border-box
+  font-size: $font-size-small
+  line-height: 20px
+  text-align: center
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.trajectory-stats__separator
+  margin: 0 10px
+  color: $color-border
+
+.trajectory-ledger-shell
+  min-width: 0
+  min-height: 0
+  overflow: hidden
+
+.trajectory-ledger
+  position: relative
+  min-width: 560px
+  height: 100%
+  min-height: 100%
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr)
+  background: $color-surface
+
+.trajectory-ledger__head,
+.trajectory-row
+  display: grid
+  grid-template-columns: 122px minmax(0, 1fr)
+  align-items: center
+
+.trajectory-ledger__head
+  position: relative
+  z-index: 4
+  min-height: 0
+  height: 0
+  overflow: hidden
+  border-bottom: 0
+  color: $color-muted
+  background: $color-surface
+  font-size: $font-size-micro
+  font-weight: 500
+  letter-spacing: 0
+
+  span
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    overflow: hidden
+    clip: rect(0, 0, 0, 0)
+
+.trajectory-ledger__history
+  padding: 8px
+  display: grid
+  place-items: center
+  border-bottom: 1px solid $color-border-subtle
+  background: $color-surface-subtle
+
+.trajectory-ledger__scroll
+  min-width: 0
+  min-height: 0
+  overflow: auto
+
+.trajectory-ledger__rows--virtual
+  position: relative
+  min-width: 560px
+
+.trajectory-virtual-row
+  position: absolute
+  top: 0
+  left: 0
+  width: 100%
+
+.trajectory-row
+  position: relative
+  width: 100%
+  min-width: 0
+  min-height: 30px
+  padding: 0
+  border: 0
+  border-bottom: 1px solid $color-border-subtle
+  border-radius: 0
+  color: $color-text
+  background: $color-surface
+  font-size: 12px
+  text-align: left
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-border-subtle
+    color: $color-text
+    background: $color-surface-muted
+
+  &[aria-selected="true"]
+    color: $color-text
+    background: $color-accent-muted
+    box-shadow: none
+
+  &[aria-selected="true"]:hover
+    color: $color-accent
+    background: #dfeaff
+
+.trajectory-row--turn-start::before
+  position: absolute
+  z-index: 1
+  top: 0
+  right: 0
+  left: 0
+  height: 2px
+  background: $color-border-subtle
+  content: ''
+  pointer-events: none
+  transform: translateY(-50%)
+
+.trajectory-row__event
+  position: relative
+  min-width: 0
+  height: 100%
+  padding: 0 4px 0 36px
+  display: flex
+  align-items: center
+  gap: 6px
+  overflow: visible
+
+  small
+    padding: 2px 5px
+    border-radius: 999px
+    color: $color-accent
+    background: $color-accent-muted
+    font-size: $font-size-micro
+
+.trajectory-row__kind-slot
+  width: 76px
+  min-width: 0
+  display: flex
+  align-items: center
+  justify-content: flex-end
+
+  strong
+    max-width: 76px
+    overflow: hidden
+    font-size: $font-size-micro
+    line-height: 18px
+    letter-spacing: .02em
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.trajectory-turn-rail,
+.trajectory-selection-rail
+  position: absolute
+  top: -1px
+  bottom: -1px
+  left: 0
+  pointer-events: none
+
+.trajectory-turn-rail
+  z-index: 3
+  width: 2px
+  background: rgba($color-accent, .2)
+
+.trajectory-turn-rail--error,
+.trajectory-turn-rail--failed
+  background: rgba($color-danger, .28)
+
+.trajectory-row--turn-end .trajectory-turn-rail
+  bottom: 0
+
+.trajectory-selection-rail
+  z-index: 5
+  width: 3px
+  background: $color-accent
+
+.trajectory-turn-label
+  position: absolute
+  z-index: 4
+  top: 0
+  left: 0
+  width: max-content
+  height: 12px
+  padding: 1px 5px
+  border: 0
+  border-radius: 0 0 2px
+  color: $color-muted
+  background: $color-surface-muted
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+  font-size: $font-size-micro
+  font-variant-numeric: tabular-nums
+  line-height: 10px
+  white-space: nowrap
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent
+    background: $color-accent-muted
+
+.trajectory-request-boundary
+  position: absolute
+  z-index: 6
+  top: -8px
+  left: calc(12px + var(--trajectory-request-offset, 0px))
+  width: 16px
+  height: 16px
+  padding: 0
+  border: 0
+  background: transparent
+  cursor: pointer
+
+  &::before
+    position: absolute
+    top: 5.5px
+    left: 5.5px
+    width: 5px
+    height: 5px
+    border-radius: 50%
+    background: $color-muted
+    box-shadow: 0 0 0 2px $color-surface, 0 0 0 3px transparent
+    content: ''
+
+  &::after
+    position: absolute
+    top: 2px
+    left: 17px
+    width: max-content
+    padding: 0 4px
+    border: 1px solid $color-border
+    border-radius: 2px
+    color: $color-muted
+    background: $color-surface
+    box-shadow: 0 2px 6px rgba($color-text, .12)
+    content: attr(data-label)
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+    font-size: $font-size-micro
+    line-height: 12px
+    opacity: 0
+    pointer-events: none
+    transform: translateX(-2px)
+    white-space: nowrap
+
+  &:hover::before,
+  &:focus-visible::before
+    background: $color-accent
+
+  &:hover::after,
+  &:focus-visible::after
+    opacity: 1
+    transform: translateX(0)
+
+  &:focus-visible
+    outline: none
+
+  &[aria-pressed="true"]::before
+    background: $color-accent-muted
+    box-shadow: 0 0 0 1.5px $color-accent
+
+  &[aria-pressed="true"]:hover::before,
+  &[aria-pressed="true"]:focus-visible::before
+    background: $color-accent-muted
+    box-shadow: 0 0 0 1.5px $color-accent
+
+  &[data-request-status="error"]::before,
+  &[data-request-status="error"]:hover::before,
+  &[data-request-status="error"]:focus-visible::before
+    background: $color-danger
+
+.trajectory-row__content
+  min-width: 0
+  padding: 0 8px 0 4px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: center
+  gap: 12px
+
+  > span
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  em
+    color: $color-muted
+    font-size: $font-size-micro
+    font-style: normal
+    font-weight: 800
+
+.trajectory-row__trailing
+  display: inline-flex
+  align-items: center
+  justify-content: flex-end
+  gap: 5px
+
+.trajectory-tool-group-toggle
+  width: 20px
+  height: 20px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border
+  border-radius: 3px
+  color: $color-muted
+  background: $color-surface
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent
+    background: $color-surface-muted
+
+  &[aria-pressed="true"]
+    color: $color-accent
+    background: $color-accent-muted
+
+  &[aria-pressed="true"]:hover
+    border-color: rgba($color-accent, .42)
+    color: $color-accent
+    background: #dfeaff
+
+.trajectory-row--summary
+  min-height: 28px
+  color: $color-muted
+  background: $color-surface-subtle
+  font-style: italic
+
+  .trajectory-row__content
+    display: block
+
+.trajectory-row--summary-assistant-tools
+  border-left: 3px solid rgba($color-warning, .36)
+
+.trajectory-row--status-completed .trajectory-row__trailing > em
+  display: none
+
+.trajectory-row--kind-system .trajectory-row__kind-slot strong,
+.trajectory-row--kind-user .trajectory-row__kind-slot strong,
+.trajectory-row--kind-context .trajectory-row__kind-slot strong,
+.trajectory-row--kind-assistant .trajectory-row__kind-slot strong,
+.trajectory-row--kind-tool .trajectory-row__kind-slot strong,
+.trajectory-row--kind-compaction .trajectory-row__kind-slot strong,
+.trajectory-row--kind-error .trajectory-row__kind-slot strong
+  padding: 1px 6px
+  border-radius: 3px
+  font-weight: 600
+
+.trajectory-row--kind-system .trajectory-row__kind-slot strong
+  color: #666b73
+  background: #f0f1f2
+
+.trajectory-row--kind-user .trajectory-row__kind-slot strong
+  color: #356bac
+  background: #e9f2ff
+
+.trajectory-row--kind-context .trajectory-row__kind-slot strong
+  color: #278765
+  background: #e5f7ef
+
+.trajectory-row--kind-assistant .trajectory-row__kind-slot strong
+  color: #735495
+  background: #f0eafa
+
+.trajectory-row--kind-tool .trajectory-row__kind-slot strong
+  color: #a36316
+  background: #fff3df
+
+.trajectory-row--kind-compaction .trajectory-row__kind-slot strong
+  color: #27727c
+  background: #e7f5f6
+
+.trajectory-row--kind-error,
+.trajectory-row--status-error
+  background: $color-danger-muted
+
+  .trajectory-row__kind-slot strong,
+  .trajectory-row__content em
+    color: $color-danger
+
+.trajectory-row--status-running .trajectory-row__content em,
+.trajectory-row--status-pending .trajectory-row__content em
+  color: $color-warning
+
+.trajectory-ledger__empty
+  margin: 0
+  padding: 32px
+  color: $color-muted
+  text-align: center
+
+.trajectory-inspector
+  position: relative
+  min-width: 0
+  min-height: 0
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr)
+  overflow: hidden
+  border-left: 1px solid $color-border
+  background: $color-surface
+
+.trajectory-inspector--empty
+  display: none
+
+.trajectory-inspector__resizer
+  position: absolute
+  z-index: 8
+  top: 0
+  bottom: 0
+  left: -4px
+  width: 8px
+  padding: 0
+  border: 0
+  border-radius: 0
+  background: transparent
+  cursor: col-resize
+
+  &:hover,
+  &:focus-visible
+    background: rgba($color-accent, .28)
+
+.trajectory-inspector__header
+  min-width: 0
+  min-height: 48px
+  padding: 8px 10px 7px 12px
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 10px
+  border-bottom: 1px solid $color-border
+
+  p,
+  h2
+    margin: 0
+
+  h2
+    font-size: 14px
+    line-height: 18px
+
+  code
+    display: block
+    max-width: 32ch
+    margin-top: 1px
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-micro
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.trajectory-inspector__tabs
+  min-height: 34px
+  padding: 0 8px
+  display: flex
+  gap: 14px
+  overflow-x: auto
+  border-bottom: 1px solid $color-border
+
+  button
+    min-height: 33px
+    padding: 0
+    flex: 0 0 auto
+    border: 0
+    border-bottom: 2px solid transparent
+    border-radius: 0
+    color: $color-muted
+    background: transparent
+    font-size: $font-size-micro
+    font-weight: 500
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-border
+      color: $color-text
+      background: transparent
+
+    &[aria-pressed="true"]
+      border-color: $color-accent
+      color: $color-accent
+      background: transparent
+
+    &[aria-pressed="true"]:hover
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+.trajectory-inspector__body
+  min-height: 0
+  padding: 12px
+  overflow: auto
+
+.trajectory-inspector__preview
+  margin: 0 0 10px
+  padding: 8px
+  overflow-wrap: anywhere
+  border: 1px solid $color-border
+  border-radius: 4px
+  background: $color-surface-subtle
+  font-size: $font-size-small
+
+.trajectory-inspector__facts
+  margin: 0
+  display: grid
+  gap: 1px
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: 4px
+  background: $color-border
+
+  > div
+    min-width: 0
+    padding: 5px 7px
+    display: grid
+    grid-template-columns: minmax(92px, .65fr) minmax(0, 1fr)
+    gap: 8px
+    background: $color-surface
+
+  dt
+    color: $color-muted
+    font-size: $font-size-small
+
+  dd
+    min-width: 0
+    margin: 0
+    overflow-wrap: anywhere
+    font-size: $font-size-small
+    font-weight: 700
+
+.trajectory-inspector__notice,
+.trajectory-inspector__note
+  margin: 12px 0 0
+  padding: 9px
+  border-radius: $radius-sm
+  color: $color-warning
+  background: $color-warning-muted
+  font-size: $font-size-small
+
+  strong
+    display: block
+
+.trajectory-machine-value
+  min-width: 0
+
+  h3
+    margin: 0 0 8px
+    font-size: 13px
+
+  pre
+    margin: 0
+    padding: 11px
+    overflow: auto
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface-subtle
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace
+    font-size: $font-size-small
+    line-height: 1.5
+    white-space: pre-wrap
+    word-break: break-word
+
+  code
+    font: inherit
+
+.trajectory-tool-summary
+  margin-top: 14px
+  display: grid
+  gap: 14px
+
+  .trajectory-machine-value pre
+    max-height: 220px
+
+.trajectory-inspector__metadata
+  margin-top: 14px
+
+  summary
+    padding: 6px 0
+    color: $color-muted
+    cursor: pointer
+    font-size: $font-size-small
+    font-weight: 600
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+
+  &[open] summary
+    color: $color-text
+
+  &[open] summary:hover
+    color: $color-accent
+
+.trajectory-json-token--key
+  color: #7c3aed
+
+.trajectory-json-token--string
+  color: #dc2626
+
+.trajectory-json-token--number
+  color: #2563eb
+
+.trajectory-json-token--boolean
+  color: #0f766e
+
+.trajectory-json-token--null
+  color: #9a3412
+  font-style: italic
+
+.trajectory-system-diff
+  display: grid
+  gap: 12px
+
+.trajectory-compaction-detail
+  display: grid
+  gap: 12px
+
+.is-spinning
+  animation: trajectory-spin .8s linear infinite
+
+@keyframes trajectory-spin
+  to
+    transform: rotate(360deg)
+
+@media (max-width: 980px)
+  .trajectory-workbench
+    grid-template-columns: minmax(0, 1fr)
+
+  .trajectory-inspector
+    position: absolute
+    z-index: 12
+    top: 0
+    right: 0
+    bottom: 0
+    width: min(var(--trajectory-inspector-width, 390px), 92vw)
+    box-shadow: -16px 0 38px rgba($color-text, .15)
+
+  .trajectory-inspector--empty
+    display: none
+
+  .trajectory-toolbar
+    min-height: 68px
+    grid-template-areas: "heading actions" "search search"
+
+  .trajectory-search-controls
+    position: static
+    width: auto
+
+@media (max-width: 640px)
+  .trajectory-toolbar
+    min-height: 106px
+    grid-template-columns: minmax(0, 1fr)
+    grid-template-areas: "heading" "actions" "search"
+    padding-block: 4px
+
+  .trajectory-toolbar__actions
+    justify-content: space-between
+
+  .trajectory-search-controls
+    grid-template-columns: minmax(0, 1fr) minmax(110px, .5fr)
+
+  .trajectory-search-field
+    grid-column: 1 / -1

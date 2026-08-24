@@ -36,7 +36,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		quality = "medium"
 	}
 	purpose := "project_chat_asset_image_generation"
-	if tc.Thread.Scene == SceneAssetReference {
+	if logicalSceneKey(tc.Thread) == SceneAssetReference {
 		purpose = "project_chat_asset_reference_image"
 	}
 	if existing, found, err := service.generatedImageForExecution(ctx, store, purpose, execution.UUID); err != nil {
@@ -118,7 +118,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	}
 	filename := generatedImageFilename(stringArg(args, "filename"), execution.UUID, generatedMIMEType)
 	metadata := map[string]any{"source": "project_chat_image_gen", "tool_execution_uuid": execution.UUID, "chat_thread_uuid": tc.Thread.UUID, "chat_run_uuid": tc.Run.UUID, "reference_file_uuids": referenceUUIDs, "revised_prompt": llmlog.Summarize(response.RevisedPrompt, 1000)}
-	if tc.Thread.Scene == SceneAssetReference {
+	if logicalSceneKey(tc.Thread) == SceneAssetReference {
 		metadata["premise_asset_uuid"] = tc.Thread.SubjectUUID
 	}
 	asset, err := fileService.CommitReader(ctx, files.CommitInput{Purpose: purpose, OriginalFilename: filename, DisplayName: filename, SourceType: "generated", Metadata: metadata, Reader: bytes.NewReader(generatedBytes)})
@@ -179,7 +179,7 @@ func (service *Service) resolveImageReferenceUUIDs(ctx context.Context, store *p
 	if len(additional) > maxChatImageReferences {
 		return nil, domainError(CodeToolValidation, "参考图片过多", "当前消息附件与 reference_file_uuids 合计最多 4 张。", nil)
 	}
-	if tc.Thread.Scene != SceneAssetReference {
+	if logicalSceneKey(tc.Thread) != SceneAssetReference {
 		return additional, nil
 	}
 	var currentFileUUID string
@@ -187,7 +187,11 @@ func (service *Service) resolveImageReferenceUUIDs(ctx context.Context, store *p
 	if err != nil || currentFileUUID == "" {
 		return nil, domainError(CodeToolValidation, "当前设定图不可用", "asset_reference 会话必须以当前设定项图片作为第一张参考图。", err)
 	}
-	return stableUniqueUUIDs(append([]string{currentFileUUID}, additional...)), nil
+	result := stableUniqueUUIDs(append([]string{currentFileUUID}, additional...))
+	if len(result) > maxChatImageReferences {
+		return nil, domainError(CodeToolValidation, "参考图片过多", "当前设定图、当前消息附件与 reference_file_uuids 去重后合计最多 4 张。", nil)
+	}
+	return result, nil
 }
 
 func stableUniqueUUIDs(values []string) []string {

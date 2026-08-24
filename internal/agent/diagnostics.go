@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -12,6 +13,24 @@ import (
 
 	"gorm.io/gorm"
 )
+
+var (
+	diagnosticBearerPattern      = regexp.MustCompile(`(?i)bearer\s+[a-z0-9._~+/=-]+`)
+	diagnosticSecretPattern      = regexp.MustCompile(`(?i)((?:api[_ -]?key|authorization|access[_ -]?token|refresh[_ -]?token|cookie|password|secret)\s*[:=]\s*)[^\s,;]+`)
+	diagnosticUnixPathPattern    = regexp.MustCompile(`(?m)(^|[\s"'\x60(])(?:file://)?/(?:Users|Volumes|home|root|private|var|tmp|opt|etc|mnt|srv|workspace)/[^\s"'\x60)]+`)
+	diagnosticWindowsPathPattern = regexp.MustCompile(`(?i)(^|[\s"'\x60(])[a-z]:\\[^\s"'\x60)]+`)
+)
+
+func sanitizeDiagnosticText(value string) string {
+	value = diagnosticBearerPattern.ReplaceAllString(value, "Bearer [REDACTED]")
+	value = diagnosticSecretPattern.ReplaceAllString(value, "${1}[REDACTED]")
+	value = diagnosticUnixPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
+	value = diagnosticWindowsPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
+	if len(value) > 16<<10 {
+		value = value[:16<<10] + "…"
+	}
+	return value
+}
 
 func sanitizeDiagnosticJSON(value string) json.RawMessage {
 	var decoded any
@@ -100,10 +119,7 @@ func sanitizeDiagnosticValue(value any, depth int) any {
 		}
 		return result
 	case string:
-		if len(typed) > 16<<10 {
-			return typed[:16<<10] + "…"
-		}
-		return typed
+		return sanitizeDiagnosticText(typed)
 	case nil, bool, float32, float64, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return typed
 	default:

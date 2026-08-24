@@ -8,6 +8,7 @@ import {
   createChatTurn,
   createFollowUp,
   createYoloWorkflow,
+  getChatTrajectory,
   listChatThreads,
   listChatEvents,
   listChatItems,
@@ -71,6 +72,8 @@ test('chat and workflow recovery reads use cursors and resource actions', async 
   try {
     await listChatItems('project-uuid', 'thread-uuid', { before: 'cursor-a', limit: 25 })
     await listChatEvents('project-uuid', 'thread-uuid', { after: 'cursor-b', limit: 50 })
+    await getChatTrajectory('project uuid', 'thread uuid', { before: 'cursor-c', limit: 80 })
+    await getChatTrajectory('project uuid', 'thread uuid', { itemUuid: 'item uuid', limit: 40 })
     await createYoloWorkflow('project-uuid', { title: 'Book', story_prompt: 'idea', provider_uuid: 'provider-uuid', idempotency_key: 'yolo-key-one' })
     await cancelWorkflow('project-uuid', 'workflow-uuid')
     await retryWorkflow('project-uuid', 'workflow-uuid')
@@ -82,13 +85,15 @@ test('chat and workflow recovery reads use cursors and resource actions', async 
 
   assert.equal(calls[0][0], '/api/v1/projects/project-uuid/chat_threads/thread-uuid/items?limit=25&before=cursor-a')
   assert.equal(calls[1][0], '/api/v1/projects/project-uuid/chat_threads/thread-uuid/events?limit=50&after=cursor-b')
-  assert.equal(calls[2][0], '/api/v1/projects/project-uuid/workflows')
-  assert.equal(calls[3][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/cancellations')
-  assert.equal(calls[4][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/retries')
-  assert.equal(calls[5][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/runs?limit=10&before=runs-cursor')
-  assert.equal(calls[6][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/events?limit=20&before=events-cursor')
-  assert.equal(calls[7][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/llm-logs?page=2&per_page=10&workflow_step_uuid=step-uuid')
-  assert.equal(calls[8][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/conflict-resolutions')
-  assert.equal(calls[8][1].method, 'POST')
-  assert.deepEqual(JSON.parse(calls[8][1].body), { action: 'overwrite', expected_comic_state_revision: 7 })
+  assert.equal(calls[2][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/trajectory?limit=80&before=cursor-c')
+  assert.equal(calls[3][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/trajectory?limit=40&item_uuid=item+uuid')
+  assert.equal(calls[4][0], '/api/v1/projects/project-uuid/workflows')
+  assert.equal(calls[5][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/cancellations')
+  assert.equal(calls[6][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/retries')
+  assert.equal(calls[7][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/runs?limit=10&before=runs-cursor')
+  assert.equal(calls[8][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/events?limit=20&before=events-cursor')
+  assert.equal(calls[9][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/llm-logs?page=2&per_page=10&workflow_step_uuid=step-uuid')
+  assert.equal(calls[10][0], '/api/v1/projects/project-uuid/workflows/workflow-uuid/conflict-resolutions')
+  assert.equal(calls[10][1].method, 'POST')
+  assert.deepEqual(JSON.parse(calls[10][1].body), { action: 'overwrite', expected_comic_state_revision: 7 })
 })

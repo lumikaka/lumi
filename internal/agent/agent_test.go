@@ -25,6 +25,7 @@ import (
 	"lumi/internal/picturebook"
 	"lumi/internal/production"
 	"lumi/internal/project"
+	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
 	"lumi/internal/sitesettings"
 	"lumi/internal/story"
@@ -80,6 +81,25 @@ func (queue *agentQueueFake) GetDomainTask(_ context.Context, _ string, _ string
 		return DomainTask{}, errors.New("unexpected domain task")
 	}
 	return task, nil
+}
+
+func (queue *agentQueueFake) ListDomainTasks(_ context.Context, _ string, _ string, status string, limit int) ([]DomainTask, error) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	items := []DomainTask{}
+	for _, task := range queue.tasks {
+		if status == "" || task.Status == status {
+			items = append(items, task)
+			if limit > 0 && len(items) >= limit {
+				break
+			}
+		}
+	}
+	return items, nil
+}
+
+func (queue *agentQueueFake) ListDomainTaskEvents(context.Context, string, string, string, int64, int64, int) ([]DomainTaskEvent, CursorPagination, error) {
+	return []DomainTaskEvent{}, CursorPagination{PerPage: 50}, nil
 }
 
 func (queue *agentQueueFake) CancelDomainTask(context.Context, string, string, string) error {
@@ -405,22 +425,27 @@ func TestPremiseThreadScopesAndSceneToolsStayBoundToSubject(t *testing.T) {
 	}
 	generationTools := toolDefinitionNames(llmToolDefinitions(generationRow))
 	referenceTools := toolDefinitionNames(llmToolDefinitions(referenceRow))
-	if !generationTools["image_gen"] || !generationTools["create_premise_asset"] || generationTools["generate_premise_asset"] || generationTools["generate_premise_asset_variant"] || generationTools["update_story_profile"] {
+	if len(generationTools) != 4 || !generationTools["request_api"] || !generationTools["read_agent_doc"] || !generationTools["image_gen"] || !generationTools["request_user_input"] {
 		t.Fatalf("generation scene tools=%v", generationTools)
 	}
-	if len(referenceTools) != 3 || !referenceTools[currentProjectAPIToolName] || !referenceTools["image_gen"] || !referenceTools["request_user_input"] || referenceTools["get_premise_asset"] || referenceTools["create_premise_asset"] || referenceTools["update_premise_asset"] {
+	if len(referenceTools) != 4 || !referenceTools["request_api"] || !referenceTools["read_agent_doc"] || !referenceTools["image_gen"] || !referenceTools["request_user_input"] {
 		t.Fatalf("reference scene tools=%v", referenceTools)
 	}
-	if generationTools[currentProjectAPIToolName] || toolDefinitionNames(llmToolDefinitions(projectRow))[currentProjectAPIToolName] {
-		t.Fatal("request_current_project_api leaked outside asset_reference")
+	if generationTools[currentProjectAPIToolName] || referenceTools[currentProjectAPIToolName] || toolDefinitionNames(llmToolDefinitions(projectRow))[currentProjectAPIToolName] {
+		t.Fatal("request_current_project_api leaked into the default project API tool set")
 	}
 	generationPrompts, err := loadContextPrompts(ctx, harness.store, generationRow)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"get_premise", "default_style", "纯白、无纹理背景", "一个完整主体", "512x512"} {
-		if !strings.Contains(generationPrompts.Scene, expected) {
-			t.Fatalf("premise asset generation prompt is missing %q: %s", expected, generationPrompts.Scene)
+	for _, expected := range []string{"request_api", "read_agent_doc", agentDocBasePath + "/guides/premise-asset-create.md"} {
+		if !strings.Contains(generationPrompts.Assistant+generationPrompts.Scene, expected) {
+			t.Fatalf("premise asset generation prompt is missing %q: %+v", expected, generationPrompts)
+		}
+	}
+	for _, workflowDetail := range []string{"纯白、无纹理背景", "一个完整主体", "512x512"} {
+		if strings.Contains(generationPrompts.Scene, workflowDetail) {
+			t.Fatalf("premise asset generation Scene prompt duplicates Guide detail %q: %s", workflowDetail, generationPrompts.Scene)
 		}
 	}
 	otherUUID, _ := newUUIDv7()
@@ -438,9 +463,9 @@ func TestPremiseThreadScopesAndSceneToolsStayBoundToSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{harness.project.UUID, asset.UUID, asset.Title, asset.CurrentVariant.Asset.UUID, premise.DefaultStyle, currentProjectAPIToolName, "POST", "PATCH", "DELETE", "类型、标题、简介", "纯白、无纹理背景", "一个完整主体", "512x512"} {
-		if !strings.Contains(prompts.Scene, expected) {
-			t.Fatalf("asset reference prompt is missing %q: %s", expected, prompts.Scene)
+	for _, expected := range []string{harness.project.UUID, asset.UUID, asset.Title, asset.CurrentVariant.Asset.UUID, premise.DefaultStyle, "request_api", "read_agent_doc", "软删除", "image_gen", agentDocBasePath + "/guides/premise-asset-create.md", agentDocBasePath + "/guides/premise-asset-maintain.md"} {
+		if !strings.Contains(prompts.Assistant+prompts.Scene, expected) {
+			t.Fatalf("asset reference prompt is missing %q: %+v", expected, prompts)
 		}
 	}
 	if strings.Contains(prompts.Scene, "{{") || strings.Contains(prompts.Scene, "get_premise_asset") || strings.Contains(prompts.Scene, "update_premise_asset") {
@@ -474,14 +499,14 @@ func TestStoryboardReferenceThreadStaysBoundToOneComicSection(t *testing.T) {
 		t.Fatal(err)
 	}
 	tools := toolDefinitionNames(llmToolDefinitions(row))
-	if !tools["get_comic_section"] || !tools["update_comic_storyboard"] || !tools["request_user_input"] || tools["start_generation"] || tools["update_chapter_story"] {
+	if len(tools) != 4 || !tools["request_api"] || !tools["read_agent_doc"] || !tools["image_gen"] || !tools["request_user_input"] {
 		t.Fatalf("storyboard scene tools=%v", tools)
 	}
 	otherUUID, _ := newUUIDv7()
-	if toolTargetAllowedForThread("update_comic_storyboard", map[string]any{"section_uuid": otherUUID}, row) {
+	if legacyRecoveryToolTargetAllowed("update_comic_storyboard", map[string]any{"section_uuid": otherUUID}, row) {
 		t.Fatal("storyboard reference scene accepted a different section UUID")
 	}
-	if !toolTargetAllowedForThread("update_comic_storyboard", map[string]any{"section_uuid": section.UUID}, row) {
+	if !legacyRecoveryToolTargetAllowed("update_comic_storyboard", map[string]any{"section_uuid": section.UUID}, row) {
 		t.Fatal("storyboard reference scene rejected its bound section UUID")
 	}
 	prompts, err := loadContextPrompts(ctx, harness.store, row)
@@ -503,70 +528,6 @@ func toolDefinitionNames(definitions []llm.ToolDefinition) map[string]bool {
 		result[definition.Name] = true
 	}
 	return result
-}
-
-func TestPremiseSceneGenerationToolsStartGoProductionTasks(t *testing.T) {
-	harness := newAgentHarness(t)
-	ctx := context.Background()
-	generationThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "生成单项", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	generationTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, generationThread.UUID, CreateTurnInput{InputText: "生成月亮邮局"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	generationContext, err := harness.service.loadToolContext(ctx, harness.store, generationThread.UUID, generationTurn.UUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	createArgs := map[string]any{"asset_type": "scene", "title": "月亮邮局", "summary": "夜间邮局", "tags": []any{"night"}, "prompt": "夜蓝木屋与暖黄窗光"}
-	encodedCreate, _ := json.Marshal(createArgs)
-	result, err := harness.service.executeTool(ctx, harness.store, generationContext, toolExecutionRecord{ToolName: "generate_premise_asset", ArgumentsJSON: string(encodedCreate), IdempotencyKey: "single-scene-task"})
-	if err != nil || !json.Valid(result) {
-		t.Fatalf("create tool result=%s err=%v", result, err)
-	}
-
-	productionService := production.NewService(harness.store, nil)
-	upload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "reference.png", Reader: bytes.NewReader(agentTestPNG(t))})
-	if err != nil {
-		t.Fatal(err)
-	}
-	asset, err := productionService.ImportPremiseAsset(ctx, production.CreateAssetInput{UploadUUID: upload.UUID, AssetType: production.AssetCharacter, Title: "月光邮差"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	referenceThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: asset.UUID, ProviderUUID: harness.provider.UUID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	referenceTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, referenceThread.UUID, CreateTurnInput{InputText: "改成冬季制服"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	referenceContext, err := harness.service.loadToolContext(ctx, harness.store, referenceThread.UUID, referenceTurn.UUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	variantArgs := map[string]any{"prompt": "保持身份特征，改成冬季邮差制服"}
-	encodedVariant, _ := json.Marshal(variantArgs)
-	result, err = harness.service.executeTool(ctx, harness.store, referenceContext, toolExecutionRecord{ToolName: "generate_premise_asset_variant", ArgumentsJSON: string(encodedVariant), IdempotencyKey: "variant-scene-task"})
-	if err != nil || !json.Valid(result) {
-		t.Fatalf("variant tool result=%s err=%v", result, err)
-	}
-
-	harness.queue.mu.Lock()
-	requests := append([]DomainTaskRequest(nil), harness.queue.requests...)
-	harness.queue.mu.Unlock()
-	if len(requests) != 2 {
-		t.Fatalf("domain task requests=%+v", requests)
-	}
-	if requests[0].Kind != KindPremiseAssetGeneration || requests[0].ResourceUUID != generationThread.UUID || requests[0].AssetOperation != "create" || requests[0].AssetTitle != "月亮邮局" {
-		t.Fatalf("create request=%+v", requests[0])
-	}
-	if requests[1].Kind != KindPremiseAssetGeneration || requests[1].ResourceUUID != asset.UUID || requests[1].AssetOperation != "variant" || requests[1].AssetTitle != "" {
-		t.Fatalf("variant request=%+v", requests[1])
-	}
 }
 
 func TestChatImageAttachmentsPersistAndFollowInteractionRules(t *testing.T) {
@@ -829,8 +790,8 @@ func TestChatImageGenRunsSynchronouslyWritesBackAndRecoversIdempotently(t *testi
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "image-call", Name: "image_gen", Arguments: `{"prompt":"moonlit wooden post office"}`}}}, FinishReason: "tool_calls"}, nil
 		case 2:
 			fileUUID := toolResultFileUUID(t, request.Messages)
-			arguments, _ := json.Marshal(map[string]any{"file_uuid": fileUUID, "asset_type": "scene", "title": "月亮邮局", "summary": "夜蓝木屋与暖黄窗光", "tags": []string{"night"}})
-			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "writeback-call", Name: "create_premise_asset", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+			arguments, _ := json.Marshal(map[string]any{"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets", "request_body": map[string]any{"file_uuid": fileUUID, "asset_type": "scene", "title": "月亮邮局", "summary": "夜蓝木屋与暖黄窗光", "tags": []string{"night"}}, "response_filter": ".data | {uuid,title,revision}"})
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "writeback-call", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		default:
 			return finalResponse("图片已经生成并保存为“月亮邮局”设定项。"), nil
 		}
@@ -887,10 +848,14 @@ func TestChatImageGenRunsSynchronouslyWritesBackAndRecoversIdempotently(t *testi
 	if err := harness.store.DB().Table("agent_tool_executions").Where("tool_name='image_gen'").Take(&imageExecution).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := harness.store.DB().Table("agent_tool_executions").Where("tool_name='create_premise_asset'").Take(&writebackExecution).Error; err != nil {
+	if err := harness.store.DB().Table("agent_tool_executions").Where("tool_name='request_api'").Take(&writebackExecution).Error; err != nil {
 		t.Fatal(err)
 	}
 	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode, err = harness.service.loadRunToolMode(ctx, harness.store, tc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1016,6 +981,102 @@ func finalResponse(content string) llm.ChatResponse {
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: content}, FinishReason: "stop"}
 }
 
+func invalidUserInputOptionsResponse(callID string) llm.ChatResponse {
+	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{
+		ID: callID, Name: "request_user_input",
+		Arguments: `{"input_type":"single_choice","question":"角色叫什么名字？","options":"[{\"label\":\"我来输入名字\"},{\"label\":\"随机生成名字\"}]"}`,
+	}}}, FinishReason: "tool_calls"}
+}
+
+func TestToolValidationFailureFeedsBackForRepair(t *testing.T) {
+	repairedCall := llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{
+		ID: "repaired-input", Name: "request_user_input",
+		Arguments: `{"input_type":"single_choice","question":"角色叫什么名字？","options":[{"label":"我来输入名字"},{"label":"随机生成名字"}]}`,
+	}}}, FinishReason: "tool_calls"}
+	harness := newAgentHarness(t, invalidUserInputOptionsResponse("invalid-input"), repairedCall)
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一个角色"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
+		t.Fatalf("repaired tool call did not pause for input: %v", err)
+	}
+
+	harness.model.mu.Lock()
+	modelRequests := append([]llm.ChatRequest(nil), harness.model.requests...)
+	harness.model.mu.Unlock()
+	if len(modelRequests) != 2 {
+		t.Fatalf("model requests=%d, want 2", len(modelRequests))
+	}
+	var rejectedCallID, rejectedResultID, rejectedResult string
+	for _, message := range modelRequests[1].Messages {
+		if len(message.ToolCalls) > 0 && message.ToolCalls[0].ID == "invalid-input" {
+			rejectedCallID = message.ToolCalls[0].ID
+		}
+		if message.Role == "tool" && message.ToolCallID == "invalid-input" {
+			rejectedResultID, rejectedResult = message.ToolCallID, message.Content
+		}
+	}
+	if rejectedCallID == "" || rejectedResultID != rejectedCallID || !strings.Contains(rejectedResult, "options 不符合工具参数 schema") {
+		t.Fatalf("validation repair context call=%q result_id=%q result=%q", rejectedCallID, rejectedResultID, rejectedResult)
+	}
+	requests, err := harness.service.ListUserInputRequests(context.Background(), harness.project.UUID, thread.UUID)
+	if err != nil || len(requests) != 1 || requests[0].Status != "pending" {
+		t.Fatalf("repaired input requests=%+v err=%v", requests, err)
+	}
+	var repairs, executions int64
+	if err := harness.store.DB().Table("chat_items").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND item_type='tool_result' AND json_extract(metadata_json,'$.validation_repair')=1", turn.UUID).Count(&repairs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("agent_tool_executions").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Count(&executions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if repairs != 1 || executions != 1 {
+		t.Fatalf("repairs=%d executions=%d, want one rejected call and one repaired execution", repairs, executions)
+	}
+}
+
+func TestToolValidationRepairLimitFailsAfterTwoFeedbacks(t *testing.T) {
+	harness := newAgentHarness(t,
+		invalidUserInputOptionsResponse("invalid-input-1"),
+		invalidUserInputOptionsResponse("invalid-input-2"),
+		invalidUserInputOptionsResponse("invalid-input-3"),
+		finalResponse("should not be reached"),
+	)
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一个角色"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); err != nil {
+		t.Fatal(err)
+	}
+	harness.model.mu.Lock()
+	calls := harness.model.calls
+	harness.model.mu.Unlock()
+	if calls != 3 {
+		t.Fatalf("model calls=%d, want 3", calls)
+	}
+	turns, err := harness.service.ListTurns(context.Background(), harness.project.UUID, thread.UUID)
+	if err != nil || len(turns) != 1 || turns[0].Status != TurnFailed || turns[0].ErrorCode != CodeToolValidation {
+		t.Fatalf("turns=%+v err=%v", turns, err)
+	}
+	var repairs, executions, requests int64
+	if err := harness.store.DB().Table("chat_items").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND item_type='tool_result' AND json_extract(metadata_json,'$.validation_repair')=1", turn.UUID).Count(&repairs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("agent_tool_executions").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Count(&executions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_user_input_requests").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Count(&requests).Error; err != nil {
+		t.Fatal(err)
+	}
+	if repairs != maxToolValidationRepairs || executions != 0 || requests != 0 {
+		t.Fatalf("repairs=%d executions=%d requests=%d", repairs, executions, requests)
+	}
+}
+
 func TestThreadFIFOFollowUpOrderAndAbortPersist(t *testing.T) {
 	harness := newAgentHarness(t, finalResponse("first"), finalResponse("second"), finalResponse("third"))
 	thread := harness.createThread(t)
@@ -1127,7 +1188,12 @@ func TestToolIntentIsIdempotentAndResultIsCompact(t *testing.T) {
 		if err := harness.service.claimRun(context.Background(), store, &tc); err != nil {
 			t.Fatal(err)
 		}
-		first, _, completed, err := harness.service.persistToolIntent(context.Background(), store, tc, "provider-call-1", "get_story_profile", `{}`)
+		tc.ToolMode, err = harness.service.loadRunToolMode(context.Background(), store, tc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		arguments := `{"method":"GET","url":"/api/v1/projects/` + harness.project.UUID + `/story-profile","response_filter":".data | {uuid,revision}"}`
+		first, _, completed, err := harness.service.persistToolIntent(context.Background(), store, tc, "provider-call-1", "request_api", arguments)
 		if err != nil || completed {
 			t.Fatalf("first intent = %+v, completed=%v, error=%v", first, completed, err)
 		}
@@ -1138,7 +1204,7 @@ func TestToolIntentIsIdempotentAndResultIsCompact(t *testing.T) {
 		if err := harness.service.persistToolResult(context.Background(), store, tc, first, result); err != nil {
 			t.Fatal(err)
 		}
-		second, replay, completed, err := harness.service.persistToolIntent(context.Background(), store, tc, "provider-call-1", "get_story_profile", `{}`)
+		second, replay, completed, err := harness.service.persistToolIntent(context.Background(), store, tc, "provider-call-1", "request_api", arguments)
 		if err != nil || !completed || second.ID != first.ID || string(replay) != string(result) {
 			t.Fatalf("idempotent replay = %+v completed=%v result=%s error=%v", second, completed, replay, err)
 		}
@@ -1153,7 +1219,7 @@ func TestToolArgumentsEnforceSchemaAndUUIDArrays(t *testing.T) {
 	resourceUUID, _ := newUUIDv7()
 	referenceUUID, _ := newUUIDv7()
 	valid := `{"kind":"comic_image_generation","resource_uuid":"` + resourceUUID + `","prompt":"paint","premise_asset_uuids":["` + referenceUUID + `"]}`
-	if _, err := validateToolArguments("start_generation", valid); err != nil {
+	if _, err := validateToolArgumentsForMode("start_generation", valid, ToolModeLegacyTyped); err != nil {
 		t.Fatalf("valid UUID array rejected: %v", err)
 	}
 	if _, err := validateToolArguments("image_gen", `{"prompt":"single subject on white","size":"512x512"}`); err != nil {
@@ -1174,14 +1240,14 @@ func TestToolArgumentsEnforceSchemaAndUUIDArrays(t *testing.T) {
 			if name == "bad option" {
 				toolName = "request_user_input"
 			}
-			if _, err := validateToolArguments(toolName, raw); err == nil {
+			if _, err := validateToolArgumentsForMode(toolName, raw, ToolModeLegacyTyped); err == nil {
 				t.Fatalf("invalid arguments accepted: %s", raw)
 			}
 		})
 	}
 }
 
-func TestEveryAllowlistedProjectToolReturnsScopedPublicShape(t *testing.T) {
+func TestPersistedLegacyProjectToolsReturnScopedPublicShape(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	thread := harness.createThread(t)
@@ -1218,6 +1284,7 @@ func TestEveryAllowlistedProjectToolReturnsScopedPublicShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tc.ToolMode = ToolModeLegacyTyped
 	executed := make(map[string]bool)
 	execute := func(name string, args map[string]any) map[string]any {
 		t.Helper()
@@ -1225,7 +1292,7 @@ func TestEveryAllowlistedProjectToolReturnsScopedPublicShape(t *testing.T) {
 		if marshalErr != nil {
 			t.Fatal(marshalErr)
 		}
-		execution := toolExecutionRecord{ToolName: name, TargetUUID: targetUUIDForTool(name, args), ArgumentsJSON: string(encoded), IdempotencyKey: "shape-test:" + name}
+		execution := toolExecutionRecord{ToolName: name, TargetUUID: legacyRecoveryTargetUUID(name, args, tc.Thread), ArgumentsJSON: string(encoded), IdempotencyKey: "shape-test:" + name}
 		result, executeErr := harness.service.executeTool(ctx, harness.store, tc, execution)
 		if executeErr != nil || len(result) > MaxToolResult || !json.Valid(result) || containsInternalID(result) {
 			t.Fatalf("%s result=%s valid=%v bytes=%d error=%v", name, result, json.Valid(result), len(result), executeErr)
@@ -1275,7 +1342,7 @@ func TestEveryAllowlistedProjectToolReturnsScopedPublicShape(t *testing.T) {
 
 	for _, definition := range toolDefinitions() {
 		name, _ := definition["name"].(string)
-		if name == "request_user_input" || name == "image_gen" || name == "generate_premise_asset" || name == "generate_premise_asset_variant" || name == currentProjectAPIToolName { // Scene tools have dedicated scope tests.
+		if name == "request_user_input" || name == "image_gen" || name == currentProjectAPIToolName || name == "request_api" || name == "read_agent_doc" { // Scene tools have dedicated scope tests.
 			continue
 		}
 		if !executed[name] {
@@ -1396,6 +1463,44 @@ func TestContextCompactionKeepsOriginalAuditItems(t *testing.T) {
 	})
 }
 
+func TestSystemPromptTemplatePreservesAssembly(t *testing.T) {
+	tests := []struct {
+		name        string
+		scene       string
+		apiOverview string
+	}{
+		{name: "complete", scene: "SCENE PROMPT", apiOverview: "API OVERVIEW"},
+		{name: "without scene", apiOverview: "API OVERVIEW"},
+		{name: "without API overview", scene: "SCENE PROMPT"},
+		{name: "base only"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			prompts := contextPromptSet{Assistant: "BASE PROMPT", Scene: test.scene, APIOverview: test.apiOverview, LanguageInstruction: "LANGUAGE INSTRUCTION"}
+			messages := contextMessages(nil, "", project.GenerationLanguageEnglish, prompts)
+			if len(messages) != 1 || messages[0].Role != "system" {
+				t.Fatalf("messages=%+v", messages)
+			}
+			expected := promptcatalog.WithInstruction(prompts.Assistant, prompts.LanguageInstruction)
+			if strings.TrimSpace(prompts.Scene) != "" {
+				expected += "\n\n" + strings.TrimSpace(prompts.Scene)
+			}
+			if strings.TrimSpace(prompts.APIOverview) != "" {
+				expected += "\n\n" + strings.TrimSpace(prompts.APIOverview)
+			}
+			if messages[0].Content != expected {
+				t.Fatalf("system prompt=%q want=%q", messages[0].Content, expected)
+			}
+		})
+	}
+
+	prompts := contextPromptSet{Assistant: "BASE PROMPT", Summary: "Summary:\n{{summary}}", LanguageInstruction: "LANGUAGE INSTRUCTION"}
+	messages := contextMessages(nil, "remembered facts", project.GenerationLanguageEnglish, prompts)
+	if len(messages) != 2 || messages[0].Role != "system" || messages[1].Role != "system" || messages[1].Content != "Summary:\nremembered facts" {
+		t.Fatalf("summary messages=%+v", messages)
+	}
+}
+
 func TestContextUsesProjectGenerationLanguage(t *testing.T) {
 	harness := newAgentHarness(t)
 	thread := harness.createThread(t)
@@ -1436,8 +1541,8 @@ func TestAgentTurnFreezesEffectivePromptsWhenQueued(t *testing.T) {
 		storyService := story.NewService(store)
 		if _, err := storyService.UpdatePromptGroup(context.Background(), story.UpdatePromptGroupInput{
 			PromptGroup:             "agent",
-			Prompts:                 map[string]string{"project_assistant": "FROZEN AGENT ASSISTANT"},
-			ExpectedCurrentVersions: map[string]int{"project_assistant": 1},
+			Prompts:                 map[string]string{"base": "FROZEN AGENT ASSISTANT"},
+			ExpectedCurrentVersions: map[string]int{"base": 1},
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -1457,8 +1562,8 @@ func TestAgentTurnFreezesEffectivePromptsWhenQueued(t *testing.T) {
 		storyService := story.NewService(store)
 		if _, err := storyService.UpdatePromptGroup(context.Background(), story.UpdatePromptGroupInput{
 			PromptGroup:             "agent",
-			Prompts:                 map[string]string{"project_assistant": "NEWER AGENT ASSISTANT"},
-			ExpectedCurrentVersions: map[string]int{"project_assistant": 2},
+			Prompts:                 map[string]string{"base": "NEWER AGENT ASSISTANT"},
+			ExpectedCurrentVersions: map[string]int{"base": 2},
 		}); err != nil {
 			t.Fatal(err)
 		}

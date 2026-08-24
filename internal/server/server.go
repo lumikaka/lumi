@@ -34,6 +34,7 @@ type Application struct {
 	realtimeHub     *realtime.Hub
 	projects        *project.Manager
 	providers       *provider.Service
+	agentService    *agent.Service
 	lifecycleCancel context.CancelFunc
 	lifecycleDone   chan struct{}
 	closeOnce       sync.Once
@@ -163,6 +164,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.POST("/projects/:project_uuid/chat_threads/:thread_uuid/turns", agentHandler.CreateTurn)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/items", agentHandler.ListItems)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/events", agentHandler.ListEvents)
+	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/trajectory", agentHandler.ShowTrajectory)
 	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups", agentHandler.ListFollowUps)
 	api.POST("/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups", agentHandler.CreateFollowUp)
 	api.PATCH("/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups/:follow_up_uuid", agentHandler.UpdateFollowUp)
@@ -250,6 +252,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/projects/:project_uuid/production-tasks/:task_uuid/events", productionHandler.ProductionTaskEvents)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/cancellations", productionHandler.CancelProductionTask)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/retries", productionHandler.RetryProductionTask)
+	configureAgentProjectAPIGateway(e, agentService)
 	e.GET("/media/projects/:project_uuid/assets/:asset_uuid/content", filesHandler.Content, projectRequestLease(projects))
 	e.GET("/media/projects/:project_uuid/comic-exports/:export_uuid/content", productionHandler.ExportContent, projectRequestLease(projects))
 	lifecycleContext, lifecycleCancel := context.WithCancel(context.Background())
@@ -260,7 +263,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		lifecycle.run(lifecycleContext, projectIdleCheckInterval)
 	}()
 	return &Application{
-		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService,
+		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService, agentService: agentService,
 		lifecycleCancel: lifecycleCancel, lifecycleDone: lifecycleDone,
 	}, nil
 }

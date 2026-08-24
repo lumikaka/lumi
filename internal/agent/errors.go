@@ -12,6 +12,7 @@ const (
 	CodeStateConflict    = "agent_state_conflict"
 	CodeToolNotAllowed   = "agent_tool_not_allowed"
 	CodeToolValidation   = "agent_tool_validation_failed"
+	CodeToolConfirmation = "agent_tool_confirmation_required"
 	CodeContextTooLarge  = "agent_context_too_large"
 	CodeResultTooLarge   = "agent_tool_result_too_large"
 	CodeMaxSteps         = "agent_max_steps_exceeded"

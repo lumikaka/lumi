@@ -5,8 +5,9 @@
 ```text
 projects ──1 project_model_settings
    │
-   ├──< task_runs
-   ├──< production_task_runs
+   ├──< task_runs ──< task_events
+   ├──< production_task_runs ──< production_task_events
+   ├──< agent_threads ──< agent_runs ──< agent_events
    ├──< chat_threads ──< chat_runs
    ├──< workflows
    └──< llm_logs ──> task / production task / chat run / workflow step
@@ -32,17 +33,18 @@ Provider UUID ──(跨数据库公开标识)──> 配置和每个冻结执�
 
 Provider UUID 字段非空时长度必须为 36；模型名 trim 后长度为 1–512。应用层另外验证 UUIDv7、Provider ready 状态和 text/image 能力类型。
 
-## 冻结执行表
+## 表：可恢复执行记录
 
-以下既有表新增 `model_source TEXT NOT NULL DEFAULT 'legacy_frozen'`：
+以下执行根表保存冻结输入、状态、尝试、取消请求和公开 UUIDv7；相关事件表只追加 sequence：
 
-- `task_runs` — Story、Chapter 和漫画分镜任务
-- `production_task_runs` — Premise、漫画图片和导出任务
+- `task_runs` / `task_events` — Story 和 Chapter 任务及其事件
+- `production_task_runs` / `production_task_events` — Premise、漫画图片和导出任务及其事件
+- `agent_threads` / `agent_runs` / `agent_events` — 早期 Story Agent 执行链，仍用于已有任务恢复
 - `chat_threads` — 会话级冻结选择
 - `chat_runs` — 每次会话执行的冻结选择
 - `workflows` — YOLO 与漫画图片多步 Workflow
 
-每张表原有的 `provider_uuid` 和 `model` 保存实际执行选择；`model_source` 保存解析来源。迁移前记录使用 `legacy_frozen`，不推断历史来源。
+`task_runs`、`production_task_runs`、`chat_threads`、`chat_runs` 与 `workflows` 的 `provider_uuid`、`model` 保存实际执行选择，`model_source` 保存解析来源。迁移前记录使用 `legacy_frozen`，不推断历史来源。任务业务结果分别由章节、项目、漫画或导出 domain 解释。
 
 ## 表：llm_logs
 
@@ -76,6 +78,7 @@ Provider UUID 字段非空时长度必须为 36；模型名 trim 后长度为 1�
 
 1. 第一次保存任意覆盖时创建 `project_model_settings`，revision 从 0 变为 1；之后按 `expected_revision` 原子递增。
 2. 清除覆盖把该 Provider/model 对恢复为空，不删除整行。
-3. 创建 Task、Production task、Chat thread/run 或 Workflow 时解析一次并写入三元组。
-4. 重试复制原记录的三元组；Workflow 后续 Chat/步骤传播相同值，不重新读取项目设置。
-5. 新调用开始时插入 pending `llm_logs`；结束时原子写入状态、usage、Unicode 字符数和诊断。旧日志的新指标保持 `NULL`，不猜测回填。
+3. 创建 Task、Production task、Chat thread/run 或 Workflow 时解析一次并写入三元组与输入快照。
+4. 运行转换状态时追加事件；取消和重试只作用于冻结记录，重试不重新解析当前模型或 Prompt。
+5. Workflow 后续 Chat/步骤传播相同选择，不重新读取项目设置。
+6. 新调用开始时插入 pending `llm_logs`；结束时原子写入状态、usage、Unicode 字符数和诊断。旧日志的新指标保持 `NULL`，不猜测回填。

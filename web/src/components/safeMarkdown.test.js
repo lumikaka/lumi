@@ -1,13 +1,39 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 
-import { parseMarkdownBlocks, parseMarkdownInline, sanitizeMarkdownUrl } from './safeMarkdown.js'
+import { isExternalMarkdownUrl, sanitizeMarkdownUrl } from './safeMarkdown.js'
+import SafeMarkdown from './safeMarkdownRenderer.js'
 
-test('safe markdown parses the supported chat block shapes', () => {
-  const blocks = parseMarkdownBlocks('# 标题\n\n- 一\n- 二\n\n> 引用\n\n```js\nalert(1)\n```')
-  assert.deepEqual(blocks.map((block) => block.type), ['heading', 'unordered_list', 'blockquote', 'code'])
-  assert.equal(blocks[3].language, 'js')
-  assert.equal(blocks[3].text, 'alert(1)')
+function renderMarkdown(value) {
+  return renderToStaticMarkup(createElement(SafeMarkdown, { value }))
+}
+
+test('safe markdown renders CommonMark and GFM chat content', () => {
+  const html = renderMarkdown(`# 标题
+
+**粗体** *斜体* ~~删除~~
+
+- 外层
+  - 内层
+
+| 名称 | 状态 |
+| --- | --- |
+| Lumi | 完成 |
+
+- [x] 已完成
+
+\`\`\`js
+alert(1)
+\`\`\``)
+
+  assert.match(html, /<h1>标题<\/h1>/)
+  assert.match(html, /<strong>粗体<\/strong> <em>斜体<\/em> <del>删除<\/del>/)
+  assert.match(html, /<li>外层\s*<ul>\s*<li>内层<\/li>/)
+  assert.match(html, /safe-markdown__table-scroll[\s\S]*?<table>[\s\S]*?<th>名称<\/th>[\s\S]*?<td>Lumi<\/td>/)
+  assert.match(html, /class="task-list-item"[\s\S]*?<input type="checkbox" disabled="" checked=""\/> 已完成/)
+  assert.match(html, /<pre><code class="language-js">alert\(1\)\n<\/code><\/pre>/)
 })
 
 test('safe markdown allows useful links and rejects executable protocols', () => {
@@ -16,11 +42,25 @@ test('safe markdown allows useful links and rejects executable protocols', () =>
   assert.equal(sanitizeMarkdownUrl('mailto:user@example.com'), 'mailto:user@example.com')
   assert.equal(sanitizeMarkdownUrl('javascript:alert(1)'), '')
   assert.equal(sanitizeMarkdownUrl('data:text/html,bad'), '')
-  assert.deepEqual(parseMarkdownInline('[safe](https://example.com) and `code`').map((token) => token.type), ['link', 'text', 'code'])
-  assert.deepEqual(parseMarkdownInline('[bad](javascript:alert)').map((token) => token.type), ['text'])
+  assert.equal(isExternalMarkdownUrl('https://example.com'), true)
+  assert.equal(isExternalMarkdownUrl('/projects/one'), false)
+
+  const html = renderMarkdown('[external](https://example.com) [internal](/projects/one) [mail](mailto:user@example.com) [bad](javascript:alert(1))')
+  assert.match(html, /href="https:\/\/example\.com" rel="noopener noreferrer" target="_blank">external<\/a>/)
+  assert.match(html, /href="\/projects\/one">internal<\/a>/)
+  assert.match(html, /href="mailto:user@example\.com">mail<\/a>/)
+  assert.doesNotMatch(html, /javascript:|>bad<\/a>/)
+  assert.match(html, /<span>bad<\/span>/)
 })
 
-test('raw HTML remains plain text instead of becoming executable markup', () => {
-  const blocks = parseMarkdownBlocks('<img src=x onerror=alert(1)>')
-  assert.deepEqual(blocks, [{ type: 'paragraph', text: '<img src=x onerror=alert(1)>' }])
+test('safe markdown drops raw HTML and never loads markdown images', () => {
+  const html = renderMarkdown(`<img src=x onerror=alert(1)>
+
+![remote](https://example.com/image.png)
+
+![unsafe](data:image/png;base64,bad)`)
+
+  assert.doesNotMatch(html, /<img|onerror|data:image/)
+  assert.match(html, /class="safe-markdown__image-link" href="https:\/\/example\.com\/image\.png"[\s\S]*?>remote<\/a>/)
+  assert.match(html, /class="safe-markdown__image-alt">unsafe<\/span>/)
 })

@@ -7,8 +7,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
+	agentprompts "lumi/internal/agent/prompts"
 	"lumi/internal/llm"
 	"lumi/internal/production"
 	"lumi/internal/project"
@@ -22,6 +24,15 @@ type contextItem struct {
 	ImageReferenceCount int64
 }
 
+var systemPromptTemplate = template.Must(template.New("system.md").Option("missingkey=error").Parse(agentprompts.SystemTemplate()))
+
+type systemPromptTemplateData struct {
+	LanguageInstruction string
+	BasePrompt          string
+	ScenePrompt         string
+	APIOverview         string
+}
+
 func (service *Service) buildContext(ctx context.Context, store *project.Store, tc toolContext) ([]llm.ChatMessage, int, int64, error) {
 	var generationLanguage string
 	if err := store.DB().WithContext(ctx).Model(&project.Project{}).Where("uuid = ?", store.ProjectUUID()).Pluck("generation_language", &generationLanguage).Error; err != nil {
@@ -33,15 +44,12 @@ func (service *Service) buildContext(ctx context.Context, store *project.Store, 
 	}
 	prompts, frozen := frozenContextPrompts(items, tc.Turn.ID)
 	if !frozen {
-		prompts, err = loadContextPrompts(ctx, store, tc.Thread)
+		prompts, err = service.loadContextPrompts(ctx, store, tc.Thread)
 		if err != nil {
 			return nil, 0, 0, err
 		}
 	}
-	prompts, err = upgradeLegacyImageScenePrompt(ctx, store, prompts, generationLanguage, tc.Thread)
-	if err != nil {
-		return nil, 0, 0, err
-	}
+	prompts.ToolMode = normalizedToolMode(prompts.ToolMode)
 	throughSequence := maxItemSequence(items)
 	messages := contextMessages(items, "", generationLanguage, prompts)
 	encoded, _ := json.Marshal(messages)
@@ -56,7 +64,7 @@ func (service *Service) buildContext(ctx context.Context, store *project.Store, 
 	if strings.TrimSpace(summary) == "" {
 		return nil, len(encoded), throughSequence, domainError(CodeContextTooLarge, "Agent 上下文无法压缩", "请创建新 thread 继续。", nil)
 	}
-	if err := service.persistSummary(ctx, store, tc.Thread.ID, maxItemSequence(items[:cut]), summary, len(encoded)); err != nil {
+	if err := service.persistSummary(ctx, store, tc, maxItemSequence(items[:cut]), summary, len(encoded)); err != nil {
 		return nil, len(encoded), throughSequence, err
 	}
 	messages = contextMessages(items[cut:], summary, generationLanguage, prompts)
@@ -145,8 +153,11 @@ func maxItemSequence(items []contextItem) int64 {
 type contextPromptSet struct {
 	Assistant           string `json:"assistant"`
 	Scene               string `json:"scene,omitempty"`
+	APIOverview         string `json:"api_overview,omitempty"`
 	Summary             string `json:"summary"`
 	LanguageInstruction string `json:"language_instruction"`
+	ToolProtocol        string `json:"tool_protocol,omitempty"`
+	ToolMode            string `json:"tool_mode,omitempty"`
 }
 
 func frozenContextPrompts(items []contextItem, turnID int64) (contextPromptSet, bool) {
@@ -165,9 +176,29 @@ func frozenContextPrompts(items []contextItem, turnID int64) (contextPromptSet, 
 }
 
 func loadContextPrompts(ctx context.Context, store *project.Store, thread threadRecord) (contextPromptSet, error) {
+	return loadContextPromptsForModeWithRoutes(ctx, store, thread, ToolModeProjectAPI, agentAPIRoutes())
+}
+
+func (service *Service) loadContextPrompts(ctx context.Context, store *project.Store, thread threadRecord) (contextPromptSet, error) {
+	return loadContextPromptsForModeWithRoutes(ctx, store, thread, service.configuredToolMode(thread), service.requestAPIRoutes())
+}
+
+func loadContextPromptsForMode(ctx context.Context, store *project.Store, thread threadRecord, mode string) (contextPromptSet, error) {
+	return loadContextPromptsForModeWithRoutes(ctx, store, thread, mode, agentAPIRoutes())
+}
+
+func loadContextPromptsForModeWithRoutes(ctx context.Context, store *project.Store, thread threadRecord, mode string, routes []agentAPIRoute) (contextPromptSet, error) {
 	service := story.NewService(store)
 	load := func(key string) (string, error) { return service.EffectivePrompt(ctx, promptcatalog.GroupAgent, key) }
-	assistant, err := load("project_assistant")
+	mode = normalizedToolMode(mode)
+	if mode == "" {
+		return contextPromptSet{}, domainError(CodeToolNotAllowed, "Tool Protocol 无效", "新 Run 必须显式使用 project_api_tools；空 mode 不会回退到 legacy typed tools。", nil)
+	}
+	definition, defined := sceneDefinitionForThread(thread)
+	if mode != ToolModeProjectAPI || !defined {
+		return contextPromptSet{}, domainError(CodeToolNotAllowed, "Tool Protocol 无效", "只有 project_api_tools 可以装配新的 Prompt snapshot；legacy 仅可恢复已持久化快照。", nil)
+	}
+	assistant, err := load(definition.BasePromptKey)
 	if err != nil {
 		return contextPromptSet{}, err
 	}
@@ -180,71 +211,30 @@ func loadContextPrompts(ctx context.Context, store *project.Store, thread thread
 		return contextPromptSet{}, err
 	}
 	scene := ""
-	switch {
-	case thread.Scene == ScenePremiseAsset:
-		scene, err = load("premise_asset_scene")
-	case thread.Scope == ThreadScopePremise && thread.Scene == SceneAssetReference:
-		var template string
-		template, err = load("asset_reference_scene")
-		if err == nil {
-			scene, err = renderAssetReferenceScene(ctx, store, thread, template)
-		}
-	case isStoryboardReferenceThread(thread):
-		var binding struct {
-			ChapterUUID string
-			SectionUUID string
-		}
-		err = store.DB().WithContext(ctx).Table("comic_sections AS sections").
-			Select("chapters.uuid AS chapter_uuid, sections.uuid AS section_uuid").
-			Joins("JOIN chapter_comic_states AS states ON states.id = sections.chapter_comic_state_id").
-			Joins("JOIN chapters ON chapters.id = states.chapter_id").
-			Where("chapters.project_id = ? AND chapters.deleted_at IS NULL AND sections.uuid = ? AND sections.deleted_at IS NULL", thread.ProjectID, thread.SubjectUUID).
-			Take(&binding).Error
-		if err == nil {
-			var template string
-			template, err = load("storyboard_reference_scene")
-			if err == nil {
-				scene, err = promptcatalog.Render(template, map[string]string{"chapter_uuid": binding.ChapterUUID, "section_uuid": binding.SectionUUID})
-			}
-		}
-	case thread.Scene == "":
-		if thread.Scope == ThreadScopePremise {
-			scene, err = load("premise_scope")
+	var template string
+	template, err = load(definition.ScenePromptKey)
+	if err == nil {
+		recommendedGuides := renderRecommendedGuideList(definition.RecommendedGuideIDs)
+		switch definition.Key {
+		case SceneProjectAssistant, ScenePremiseAsset:
+			scene, err = promptcatalog.Render(template, map[string]string{"project_uuid": promptSceneValue(store.ProjectUUID()), "recommended_guides": recommendedGuides})
+		case SceneAssetReference:
+			scene, err = renderAssetReferenceScene(ctx, store, thread, template, recommendedGuides)
+		case SceneStoryboardReference:
+			scene, err = renderStoryboardReferenceScene(ctx, store, thread, template, recommendedGuides)
 		}
 	}
-	return contextPromptSet{Assistant: assistant, Scene: scene, Summary: summary, LanguageInstruction: languageInstruction}, err
+	if err != nil {
+		return contextPromptSet{}, err
+	}
+	apiOverview, err := renderAgentDocWithRoutes(agentDocOverviewPath, routes)
+	if err != nil {
+		return contextPromptSet{}, err
+	}
+	return contextPromptSet{Assistant: assistant, Scene: scene, APIOverview: apiOverview, Summary: summary, LanguageInstruction: languageInstruction, ToolProtocol: ToolProtocolProjectAPI, ToolMode: mode}, nil
 }
 
-func upgradeLegacyImageScenePrompt(ctx context.Context, store *project.Store, prompts contextPromptSet, language string, thread threadRecord) (contextPromptSet, error) {
-	legacy := strings.Contains(prompts.Scene, "generate_premise_asset")
-	if thread.Scope == ThreadScopePremise && thread.Scene == SceneAssetReference && !strings.Contains(prompts.Scene, currentProjectAPIToolName) {
-		legacy = legacy || strings.Contains(prompts.Scene, "get_premise_asset") || strings.Contains(prompts.Scene, "update_premise_asset") || strings.Contains(prompts.Scene, "create_premise_asset")
-	}
-	if !legacy {
-		return prompts, nil
-	}
-	key := ""
-	if thread.Scene == ScenePremiseAsset {
-		key = "premise_asset_scene"
-	} else if thread.Scene == SceneAssetReference {
-		key = "asset_reference_scene"
-	}
-	definition, ok := promptcatalog.Lookup(promptcatalog.GroupAgent, key, language)
-	if !ok {
-		return prompts, nil
-	}
-	prompts.Scene = definition.DefaultValue
-	if thread.Scene == SceneAssetReference {
-		rendered, err := renderAssetReferenceScene(ctx, store, thread, prompts.Scene)
-		if err != nil {
-			return prompts, err
-		}
-		prompts.Scene = rendered
-	}
-	return prompts, nil
-}
-
-func renderAssetReferenceScene(ctx context.Context, store *project.Store, thread threadRecord, template string) (string, error) {
+func renderAssetReferenceScene(ctx context.Context, store *project.Store, thread threadRecord, template, recommendedGuides string) (string, error) {
 	productionService := production.NewService(store, nil)
 	asset, err := productionService.GetPremiseAsset(ctx, thread.SubjectUUID)
 	if err != nil {
@@ -262,17 +252,40 @@ func renderAssetReferenceScene(ctx context.Context, store *project.Store, thread
 	}
 	tags, _ := json.Marshal(asset.Tags)
 	values := map[string]string{
-		"project_uuid":      promptSceneValue(store.ProjectUUID()),
-		"subject_uuid":      promptSceneValue(asset.UUID),
-		"asset_type":        promptSceneValue(asset.AssetType),
-		"asset_title":       promptSceneValue(asset.Title),
-		"asset_summary":     promptSceneValue(asset.Summary),
-		"asset_tags":        promptSceneValue(string(tags)),
-		"current_file_uuid": promptSceneValue(asset.CurrentVariant.Asset.UUID),
-		"asset_revision":    strconv.FormatInt(asset.Revision, 10),
-		"overall_style":     promptSceneValue(premise.DefaultStyle),
+		"project_uuid":       promptSceneValue(store.ProjectUUID()),
+		"subject_uuid":       promptSceneValue(asset.UUID),
+		"asset_type":         promptSceneValue(asset.AssetType),
+		"asset_title":        promptSceneValue(asset.Title),
+		"asset_summary":      promptSceneValue(asset.Summary),
+		"asset_tags":         promptSceneValue(string(tags)),
+		"current_file_uuid":  promptSceneValue(asset.CurrentVariant.Asset.UUID),
+		"asset_revision":     strconv.FormatInt(asset.Revision, 10),
+		"overall_style":      promptSceneValue(premise.DefaultStyle),
+		"recommended_guides": recommendedGuides,
 	}
 	return promptcatalog.Render(template, values)
+}
+
+func renderStoryboardReferenceScene(ctx context.Context, store *project.Store, thread threadRecord, template, recommendedGuides string) (string, error) {
+	var binding struct {
+		ChapterUUID string
+		SectionUUID string
+	}
+	err := store.DB().WithContext(ctx).Table("comic_sections AS sections").
+		Select("chapters.uuid AS chapter_uuid, sections.uuid AS section_uuid").
+		Joins("JOIN chapter_comic_states AS states ON states.id = sections.chapter_comic_state_id").
+		Joins("JOIN chapters ON chapters.id = states.chapter_id").
+		Where("chapters.project_id = ? AND chapters.deleted_at IS NULL AND sections.uuid = ? AND sections.deleted_at IS NULL", thread.ProjectID, thread.SubjectUUID).
+		Take(&binding).Error
+	if err != nil {
+		return "", err
+	}
+	return promptcatalog.Render(template, map[string]string{
+		"project_uuid":       promptSceneValue(store.ProjectUUID()),
+		"chapter_uuid":       promptSceneValue(binding.ChapterUUID),
+		"section_uuid":       promptSceneValue(binding.SectionUUID),
+		"recommended_guides": recommendedGuides,
+	})
 }
 
 func promptSceneValue(value string) string {
@@ -282,14 +295,17 @@ func promptSceneValue(value string) string {
 
 func contextMessages(items []contextItem, summary, generationLanguage string, prompts contextPromptSet) []llm.ChatMessage {
 	messages := make([]llm.ChatMessage, 0, len(items)+2)
+	lastDocResult := -1
+	for index, item := range items {
+		if item.ItemType == "tool_result" && item.ToolName == "read_agent_doc" {
+			lastDocResult = index
+		}
+	}
 	languageInstruction := strings.TrimSpace(prompts.LanguageInstruction)
 	if languageInstruction == "" {
 		languageInstruction = project.GenerationLanguageInstruction(generationLanguage)
 	}
-	systemPrompt := promptcatalog.WithInstruction(prompts.Assistant, languageInstruction)
-	if strings.TrimSpace(prompts.Scene) != "" {
-		systemPrompt += "\n\n" + strings.TrimSpace(prompts.Scene)
-	}
+	systemPrompt := renderSystemPrompt(languageInstruction, prompts)
 	messages = append(messages, llm.ChatMessage{Role: "system", Content: systemPrompt})
 	if summary != "" {
 		rendered, err := promptcatalog.Render(prompts.Summary, map[string]string{"summary": summary})
@@ -298,7 +314,7 @@ func contextMessages(items []contextItem, summary, generationLanguage string, pr
 		}
 		messages = append(messages, llm.ChatMessage{Role: "system", Content: rendered})
 	}
-	for _, item := range items {
+	for index, item := range items {
 		switch item.ItemType {
 		case "user_message":
 			content := item.Content
@@ -319,12 +335,49 @@ func contextMessages(items []contextItem, summary, generationLanguage string, pr
 			if providerCallID == "" {
 				providerCallID = item.RemoteItemUUID
 			}
-			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, Content: item.Content})
+			content := item.Content
+			if item.ToolName == "read_agent_doc" && index != lastDocResult {
+				content = compactAgentDocContextResult(content)
+			}
+			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, Content: content})
 		case "error":
 			messages = append(messages, llm.ChatMessage{Role: "system", Content: "Previous local runtime error: " + item.Content})
 		}
 	}
 	return messages
+}
+
+func renderSystemPrompt(languageInstruction string, prompts contextPromptSet) string {
+	var rendered strings.Builder
+	err := systemPromptTemplate.Execute(&rendered, systemPromptTemplateData{
+		LanguageInstruction: strings.TrimSpace(languageInstruction),
+		BasePrompt:          strings.TrimSpace(prompts.Assistant),
+		ScenePrompt:         strings.TrimSpace(prompts.Scene),
+		APIOverview:         strings.TrimSpace(prompts.APIOverview),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("render embedded Agent system prompt: %v", err))
+	}
+	return strings.TrimSpace(rendered.String())
+}
+
+func compactAgentDocContextResult(content string) string {
+	var envelope struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Path   string `json:"path"`
+			DocRef string `json:"doc_ref"`
+		} `json:"data"`
+	}
+	if json.Unmarshal([]byte(content), &envelope) != nil || !envelope.Success {
+		return content
+	}
+	ref := envelope.Data.DocRef
+	if ref == "" {
+		ref = envelope.Data.Path
+	}
+	encoded, _ := json.Marshal(map[string]any{"success": true, "data": map[string]any{"doc_ref": ref, "compacted": true}})
+	return string(encoded)
 }
 
 func metadataString(raw, key string) string {
@@ -356,13 +409,61 @@ func summarizeItems(items []contextItem) string {
 	return strings.TrimSpace(builder.String())
 }
 
-func (service *Service) persistSummary(ctx context.Context, store *project.Store, threadID, through int64, summary string, sourceBytes int) error {
+func (service *Service) persistSummary(ctx context.Context, store *project.Store, tc toolContext, through int64, summary string, sourceBytes int) error {
 	uuid, err := newUUIDv7()
 	if err != nil {
 		return err
 	}
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	thread, err := lockThreadSQL(ctx, tx, tc.Thread.ProjectID, tc.Thread.UUID)
+	if err != nil {
+		return err
+	}
 	now := service.now().UTC()
-	return store.DB().WithContext(ctx).Exec(`INSERT INTO agent_context_summaries(uuid,thread_id,through_item_sequence,summary,source_bytes,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(thread_id,through_item_sequence) DO NOTHING`, uuid, threadID, through, summary, sourceBytes, now).Error
+	result, err := tx.ExecContext(ctx, `INSERT INTO agent_context_summaries(uuid,thread_id,through_item_sequence,summary,source_bytes,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(thread_id,through_item_sequence) DO NOTHING`, uuid, thread.ID, through, summary, sourceBytes, now)
+	if err != nil {
+		return err
+	}
+	inserted, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if inserted > 0 {
+		if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "compaction_created", map[string]any{
+			"project_uuid":          tc.ProjectUUID,
+			"thread_uuid":           tc.Thread.UUID,
+			"turn_uuid":             tc.Turn.UUID,
+			"run_uuid":              tc.Run.UUID,
+			"summary_uuid":          uuid,
+			"through_item_sequence": through,
+		}, now); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if inserted > 0 {
+		service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:compaction_changed", map[string]any{
+			"project_uuid": tc.ProjectUUID,
+			"thread_uuid":  tc.Thread.UUID,
+			"turn_uuid":    tc.Turn.UUID,
+			"run_uuid":     tc.Run.UUID,
+			"summary_uuid": uuid,
+		})
+	}
+	return nil
 }
 
 var _ = time.Time{}

@@ -183,7 +183,7 @@
   min-width: 0
   min-height: 32px
   display: grid
-  grid-template-columns: minmax(0, 1fr) auto
+  grid-template-columns: minmax(0, 1fr) auto auto
   align-items: center
   border-radius: $radius-md
 
@@ -194,7 +194,10 @@
 
   &:hover .chat-thread__menu-button,
   &:focus-within .chat-thread__menu-button,
-  &.is-menu-open .chat-thread__menu-button
+  &.is-menu-open .chat-thread__menu-button,
+  &:hover .chat-thread__trajectory-link,
+  &:focus-within .chat-thread__trajectory-link,
+  &.is-menu-open .chat-thread__trajectory-link
     opacity: 1
 
 .chat-thread-row--new
@@ -267,7 +270,8 @@
     border-radius: 999px
     background: $color-accent
 
-.chat-thread__menu-button
+.chat-thread__menu-button,
+.chat-thread__trajectory-link
   width: 24px
   height: 24px
   margin-right: 4px
@@ -280,6 +284,7 @@
   color: $color-muted
   background: transparent
   opacity: 0
+  text-decoration: none
 
   &:hover,
   &:focus-visible,
@@ -290,6 +295,15 @@
     opacity: 1
 
   &[aria-expanded="true"]:hover
+    border-color: rgba($color-accent, .34)
+    color: $color-accent
+    background: $color-accent-muted
+
+.chat-thread__trajectory-link
+  margin-right: 0
+
+  &:hover,
+  &:focus-visible
     border-color: rgba($color-accent, .34)
     color: $color-accent
     background: $color-accent-muted
@@ -573,7 +587,7 @@
 
 .chat-message--assistant,
 .chat-message--system,
-.chat-message--tool,
+.chat-message--tool-summary,
 .chat-message--user-input,
 .chat-message--error
   justify-content: flex-start
@@ -666,7 +680,9 @@
   blockquote,
   ul,
   ol,
-  pre
+  pre,
+  hr,
+  section[data-footnotes]
     margin: 0
 
   h1,
@@ -693,16 +709,44 @@
   ol
     padding-left: 22px
 
+  li + li
+    margin-top: 4px
+
+  li > ul,
+  li > ol
+    margin-top: 4px
+
+  strong
+    font-weight: 700
+
+  del
+    color: $color-muted
+
   blockquote
     padding-left: 10px
     border-left: 3px solid $color-border
     color: $color-muted
     white-space: pre-wrap
 
+  hr
+    width: 100%
+    border: 0
+    border-top: 1px solid $color-border-subtle
+
   a
     color: $color-accent
     text-decoration-thickness: 1px
     text-underline-offset: 2px
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+
+  .safe-markdown__image-link
+    text-decoration-style: dashed
+
+  .safe-markdown__image-alt
+    color: $color-muted
 
   code
     padding: 1px 4px
@@ -724,6 +768,68 @@
       background: transparent
       white-space: pre
 
+  .contains-task-list
+    padding-left: 4px
+    list-style: none
+
+  .task-list-item
+    input[type="checkbox"]
+      width: 14px
+      height: 14px
+      margin: 0 5px 0 0
+      vertical-align: -2px
+      accent-color: $color-accent
+
+  section[data-footnotes]
+    padding-top: 8px
+    border-top: 1px solid $color-border-subtle
+    color: $color-muted
+    font-size: 12px
+
+    ol
+      padding-left: 20px
+
+    p
+      font-size: inherit
+
+  sup
+    line-height: 0
+
+  .sr-only
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    overflow: hidden
+    clip: rect(0, 0, 0, 0)
+    white-space: nowrap
+    border: 0
+
+.safe-markdown__table-scroll
+  min-width: 0
+  width: 100%
+  max-width: 100%
+  overflow-x: auto
+
+  table
+    width: max-content
+    min-width: 100%
+    border-collapse: collapse
+    font-size: 12px
+
+  th,
+  td
+    max-width: 240px
+    padding: 6px 8px
+    border: 1px solid $color-border-subtle
+    overflow-wrap: anywhere
+    text-align: left
+    vertical-align: top
+
+  th
+    background: $color-surface-subtle
+    font-weight: 700
+
 .chat-message__type
   margin-bottom: 5px
   display: inline-flex
@@ -744,42 +850,149 @@
   line-height: 1.45
   overflow-wrap: anywhere
 
-.chat-tool
-  width: min(100%, 320px)
+.chat-tool-summary
+  width: 100%
   max-width: 100%
-  border: 1px solid $color-border-subtle
-  border-radius: $radius-sm
   color: $color-muted
-  background: $color-surface-subtle
-  font-size: 12px
+  font-size: 13px
 
-  summary
-    min-height: 34px
-    padding: 6px 8px
+  > summary
+    min-height: 38px
+    padding: 6px 1px 8px
+    display: flex
+    align-items: center
+    gap: 4px
+    border-bottom: 1px solid $color-border-subtle
+    cursor: pointer
+    list-style: none
+
+    > span
+      min-width: 0
+      overflow: hidden
+      color: $color-muted
+      font-weight: 400
+      line-height: 1.4
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    em
+      margin-left: auto
+      color: $color-danger
+      font-style: normal
+      font-weight: 600
+      white-space: nowrap
+
+    .chat-tool-summary__chevron
+      flex: 0 0 auto
+      color: rgba($color-text, .38)
+
+  > summary::-webkit-details-marker
+    display: none
+
+  > summary:hover,
+  > summary:focus-visible
+    > span,
+    .chat-tool-summary__chevron
+      color: $color-text
+
+  > summary:focus-visible
+    outline: 2px solid rgba($color-accent, .2)
+    outline-offset: 1px
+
+  &[open] > summary
+    .chat-tool-summary__chevron
+      transform: rotate(90deg)
+
+  > ol
+    margin: 0
+    padding: 5px 0 0
     display: grid
-    grid-template-columns: 16px minmax(0, 1fr) auto auto
+    gap: 1px
+    list-style: none
+
+.chat-tool-summary__chevron,
+.chat-tool-execution__chevron
+  transition: transform .16s ease
+
+.chat-message--tool-summary-issue .chat-tool-summary
+  > summary > em
+    color: $color-danger
+
+  > summary:hover,
+  > summary:focus-visible
+    > em
+      color: #8f1b13
+
+.chat-tool-execution
+  min-width: 0
+  border-radius: $radius-sm
+
+  > details > summary
+    min-height: 30px
+    padding: 5px 1px
+    display: grid
+    grid-template-columns: minmax(0, 1fr) auto 13px
     align-items: center
     gap: 7px
     cursor: pointer
     list-style: none
 
-  summary::-webkit-details-marker
+    &:hover,
+    &:focus-visible
+      color: $color-accent
+
+    &:focus-visible
+      outline: 2px solid rgba($color-accent, .18)
+      outline-offset: -2px
+
+    strong
+      min-width: 0
+      overflow: hidden
+      color: $color-text
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    span
+      white-space: nowrap
+
+  > details > summary::-webkit-details-marker
     display: none
 
-  strong
-    min-width: 0
-    overflow: hidden
-    color: $color-text
-    text-overflow: ellipsis
-    white-space: nowrap
+  > details[open] > summary
+    .chat-tool-execution__chevron
+      transform: rotate(180deg)
 
-  em
+.chat-tool-execution--failed,
+.chat-tool-execution--interrupted
+  > details > summary span
+    color: $color-danger
+
+.chat-tool-execution--running,
+.chat-tool-execution--pending
+  > details > summary span
     color: $color-accent
-    font-style: normal
+
+.chat-tool-execution__content
+  padding: 3px 1px 7px
+  display: grid
+  gap: 7px
+
+  > section
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    > b
+      color: $color-muted
+      font-size: $font-size-small
+
+  > small
+    color: $color-muted
+    font-size: $font-size-small
 
   pre
     max-height: 200px
-    margin: 0 8px 8px
+    margin: 0
     padding: 8px
     overflow: auto
     border: 1px solid $color-border
@@ -863,10 +1076,156 @@
   font-size: 12px
   font-weight: 700
 
-.chat-input-request__answer
-  margin: 0
+.chat-input-history
+  width: min(100%, 520px)
+  max-width: 100%
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
   color: $color-muted
-  font-size: 13px
+  background: $color-surface-subtle
+  font-size: 12px
+
+  > summary
+    min-height: 40px
+    padding: 7px 9px
+    display: grid
+    grid-template-columns: 16px minmax(0, 1fr) auto 14px
+    align-items: center
+    gap: 7px
+    cursor: pointer
+    list-style: none
+
+    > span
+      min-width: 0
+      display: grid
+      gap: 1px
+
+      strong,
+      small
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      strong
+        color: $color-text
+        font-size: 12px
+
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+    > small
+      color: $color-muted
+      font-size: $font-size-small
+      white-space: nowrap
+
+  > summary::-webkit-details-marker
+    display: none
+
+  > summary:hover,
+  > summary:focus-visible
+    color: $color-accent
+    background: $color-accent-muted
+
+  > summary:focus-visible
+    outline: 2px solid rgba($color-accent, .22)
+    outline-offset: -2px
+
+  &[open] > summary
+    border-bottom: 1px solid $color-border-subtle
+
+    .chat-input-history__chevron
+      transform: rotate(180deg)
+
+.chat-input-history__chevron
+  transition: transform .16s ease
+
+.chat-input-history__content
+  padding: 9px
+  display: grid
+  gap: 10px
+
+  > section
+    min-width: 0
+    display: grid
+    gap: 5px
+
+    > b
+      color: $color-muted
+      font-size: $font-size-small
+
+    > p
+      margin: 0
+      color: $color-text
+      font-size: 13px
+      line-height: 1.45
+      overflow-wrap: anywhere
+
+  ul
+    margin: 0
+    padding: 0
+    display: grid
+    gap: 4px
+    list-style: none
+
+  li
+    min-width: 0
+    padding: 6px 7px
+    display: grid
+    grid-template-columns: 16px minmax(0, 1fr) auto
+    align-items: center
+    gap: 6px
+    border: 1px solid transparent
+    border-radius: $radius-sm
+    color: $color-muted
+
+    > span:first-child
+      width: 16px
+      height: 16px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      border: 1px solid $color-border
+      border-radius: 50%
+
+    > span:nth-child(2)
+      min-width: 0
+      display: grid
+      gap: 1px
+
+      strong
+        color: $color-text
+        font-size: 12px
+
+      small
+        color: $color-muted
+        line-height: 1.35
+
+    > em
+      color: $color-accent
+      font-size: $font-size-small
+      font-style: normal
+      font-weight: 700
+
+    &.is-selected
+      border-color: rgba($color-accent, .26)
+      color: $color-accent
+      background: $color-accent-muted
+
+      > span:first-child
+        border-color: $color-accent
+
+.chat-message--user-input-incomplete .chat-input-history
+  border-color: rgba($color-warning, .24)
+  background: $color-warning-muted
+
+  > summary > svg:first-child
+    color: $color-warning
+
+  > summary:hover,
+  > summary:focus-visible
+    color: $color-warning
+    background: rgba($color-warning, .08)
 
 .workflow-progress
   margin: 0 0 14px
@@ -1336,97 +1695,33 @@
     margin: 0
     overflow-wrap: anywhere
 
-.chat-event-diagnostics
-  margin-top: 7px
-  border-top: 1px solid $color-border-subtle
-  padding-top: 7px
+.chat-detail-actions > .chat-detail__trajectory-link
+  flex: 0 0 auto
+  width: 30px
+  height: 30px
+  padding: 0
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface-subtle
+  font-size: $font-size-small
+  font-weight: 800
+  text-decoration: none
 
-  > summary
-    display: inline-flex
-    align-items: center
-    gap: 5px
-    color: $color-muted
-    cursor: pointer
-    font-size: $font-size-small
-    font-weight: 800
+  &:hover
+    border-color: rgba($color-accent, .42)
+    color: $color-accent
+    background: $color-accent-muted
 
-.chat-event-diagnostics__content
-  padding-top: 7px
-  display: grid
-  gap: 5px
-
-  > p
-    margin: 0
-    color: $color-muted
-    font-size: $font-size-small
-
-  > details
-    border: 1px solid $color-border-subtle
-    border-radius: $radius-sm
-    background: $color-surface
-
-    > summary
-      padding: 6px
-      display: flex
-      align-items: center
-      justify-content: space-between
-      gap: 6px
-      cursor: pointer
-
-      > span
-        min-width: 0
-        display: grid
-
-      strong,
-      code,
-      time
-        font-size: $font-size-small
-
-      strong,
-      code
-        overflow: hidden
-        text-overflow: ellipsis
-        white-space: nowrap
-
-      code,
-      time
-        color: $color-muted
-
-    > dl
-      margin: 0 6px 6px
-      padding: 7px
-      display: grid
-      gap: 4px
-      border-radius: 4px
-      background: $color-surface-subtle
-
-      > div
-        display: grid
-        grid-template-columns: 84px minmax(0, 1fr)
-        gap: 5px
-        font-size: $font-size-small
-
-      dt
-        color: $color-muted
-
-      dd
-        min-width: 0
-        margin: 0
-        overflow-wrap: anywhere
-
-    > pre
-      max-height: 180px
-      margin: 0 6px 6px
-      padding: 7px
-      overflow: auto
-      border-radius: 4px
-      background: $color-surface-subtle
-      font-size: $font-size-small
-      white-space: pre-wrap
-
-  > button
-    justify-self: start
-    font-size: $font-size-small
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-accent
+    background: $color-accent-muted
+    outline: 3px solid rgba($color-accent, .18)
+    outline-offset: -3px
 
 .chat-composer-shell
   min-width: 0

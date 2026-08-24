@@ -24,8 +24,8 @@
 - [x] 图片引用用 `chat_item_file_references` / `chat_follow_up_file_references` 持久化；内部只关联 bigint ID，API/WS 只返回 UUIDv7、公开元数据和受控 `content_url`。删除排队项同步解除引用。
 - [x] 初始 turn、Follow-up 与 Steering 都支持固定图片引用；普通新 turn 不继承，未提供新图片的 Steering 只继承当前活动 turn 最近一组，不能跨 turn/thread。
 - [x] `asset_reference` 可修改当前设定项、以当前项为参考创建独立新设定项；用户明确要求时可将当前项移入回收站。派生创建不会修改来源项。
-- [x] 新引用会话只向模型暴露 `request_current_project_api`、`image_gen`、`request_user_input`。通用工具按 GET/POST/PATCH/DELETE 分别展示读取、创建、更新和移入回收站状态；旧 typed tool execution 仍可恢复。
-- [x] 聊天生图在同一 Agent turn 中同步执行 `image_gen → request_current_project_api POST/PATCH → 最终回复`，并展示生成图片、设定项写入和整理回复状态。
+- [x] 所有有效 Scene 都按固定顺序向模型暴露 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input`。全局 Project API Tool 按注册 Route 展示读取、创建、更新和移入回收站状态；图片附件与绑定图自动参考仍按 Scene 的 `ImageReferencePolicy` 控制。
+- [x] 聊天生图在同一 Agent turn 中同步执行 `image_gen → request_api POST/PATCH → 最终回复`，并展示生成图片、设定项写入和整理回复状态。
 - [x] Assistant 消息安全渲染 Markdown：段落、标题、有序/无序列表、引用、链接、行内代码和 fenced code；不使用原始 HTML 注入，链接协议使用白名单。
 - [x] Follow-up 队列支持固定附件预览、原位编辑、删除、鼠标拖拽、Alt+方向键重排，以及活动 run 中的单条“立即引导”。若并发窗口关闭，消息保持 queued 并给出明确提示。
 - [x] 会话列表使用页码分页和滚动继续加载；消息初始只读最近 50 条并通过 cursor 加载更早历史，插入旧消息后保持阅读位置；URL 可直接打开未出现在第一页的会话。
@@ -46,7 +46,7 @@
 - Lumi 保留本地工作流进度、取消、重试和待处理输入；诊断信息来自 `project.sqlite` 的安全公开投影，不提供后台管理、计费、协作者与权限 UI。
 - Lumi 使用轻量结构化 Markdown 解析器，不引入服务端 Markdown/HTML 或语法高亮依赖；原始 HTML 始终作为文本。
 - 会话列表采用统一 API contract 的页码分页，消息、run 和 event 采用 opaque cursor；这是单机 SQLite 读取边界下的实现差异。
-- `request_current_project_api` 是 Agent 内部的 REST-shaped 工具：只解析固定相对路径并直接调用当前项目领域服务，不做 HTTP 回环，也不扩展外部 REST API；项目 UUID、`subject_uuid`、方法、字段与软删除边界都在持久化工具意图和执行时校验。
+- `request_api` 是 Agent 内部的 REST-shaped 工具：只接受全局 Registry 中的规范相对路径和逐 Route query/body schema，直接调用当前项目领域服务，不做 HTTP 回环，也不开放任意 REST passthrough；项目 UUID、资源归属、方法、字段、revision、幂等和危险确认均在持久化工具意图与执行时校验。
 
 ## 关键 API 与迁移
 

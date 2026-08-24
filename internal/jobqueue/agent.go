@@ -121,9 +121,79 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 	case KindComicImageGeneration:
 		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, false)
 		return productionDomainTask(task), err
+	case KindStoryProfileGeneration, KindStoryProfileFromChapters, KindStoryChapterBatchPlan, KindComicStoryboardGeneration:
+		var maxSectionCount *int
+		if request.MaxSectionCount > 0 {
+			maxSectionCount = &request.MaxSectionCount
+		}
+		task, err := manager.CreateStoryWorkflow(ctx, projectUUID, request.Kind, request.ChapterUUID, CreateStoryWorkflowInput{
+			ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt,
+			ChapterCount: request.ChapterCount, MaxSectionCount: maxSectionCount, IdempotencyKey: request.IdempotencyKey,
+		})
+		return storyDomainTask(task), err
+	case KindComicExport:
+		operation, err := manager.CreateComicExport(ctx, projectUUID, CreateExportInput{
+			Scope: request.Scope, ChapterUUID: request.ChapterUUID, Format: request.Format,
+			AllowMissingImages: request.AllowMissingImages, IdempotencyKey: request.IdempotencyKey,
+		})
+		return productionDomainTask(operation.Task), err
 	default:
 		return agent.DomainTask{}, taskError(CodeInvalidTask, "Domain task 不在 allowlist", "Agent 只能启动已注册的生成任务。", nil)
 	}
+}
+
+func (manager *Manager) ListDomainTasks(ctx context.Context, projectUUID, domain, status string, limit int) ([]agent.DomainTask, error) {
+	result := []agent.DomainTask{}
+	switch domain {
+	case "story":
+		items, err := manager.ListTasks(ctx, projectUUID, status, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			result = append(result, storyDomainTask(item))
+		}
+	case "production":
+		items, err := manager.ListProductionTasks(ctx, projectUUID, status, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			result = append(result, productionDomainTask(item))
+		}
+	default:
+		return nil, taskError(CodeInvalidTask, "任务领域无效", "domain 只支持 story 或 production。", nil)
+	}
+	return result, nil
+}
+
+func (manager *Manager) ListDomainTaskEvents(ctx context.Context, projectUUID, domain, taskUUID string, before, after int64, limit int) ([]agent.DomainTaskEvent, agent.CursorPagination, error) {
+	var items []TaskEvent
+	var pagination CursorPagination
+	var err error
+	switch domain {
+	case "story":
+		items, pagination, err = manager.ListTaskEvents(ctx, projectUUID, taskUUID, before, after, limit)
+	case "production":
+		items, pagination, err = manager.ListProductionTaskEvents(ctx, projectUUID, taskUUID, before, after, limit)
+	default:
+		err = taskError(CodeInvalidTask, "任务领域无效", "domain 只支持 story 或 production。", nil)
+	}
+	if err != nil {
+		return nil, agent.CursorPagination{}, err
+	}
+	publicItems := make([]agent.DomainTaskEvent, 0, len(items))
+	for _, item := range items {
+		publicItems = append(publicItems, agent.DomainTaskEvent{UUID: item.UUID, Sequence: item.Sequence, EventType: item.EventType, CreatedAt: item.CreatedAt})
+	}
+	publicPagination := agent.CursorPagination{PerPage: pagination.PerPage, HasMore: pagination.HasMore}
+	if pagination.NextCursor != nil {
+		publicPagination.NextCursor = *pagination.NextCursor
+	}
+	if pagination.PrevCursor != nil {
+		publicPagination.PrevCursor = *pagination.PrevCursor
+	}
+	return publicItems, publicPagination, nil
 }
 
 func (manager *Manager) GetDomainTask(ctx context.Context, projectUUID, kind, taskUUID string) (agent.DomainTask, error) {
@@ -154,7 +224,7 @@ func (manager *Manager) RetryDomainTask(ctx context.Context, projectUUID, kind, 
 }
 
 func storyDomainTaskKind(kind string) bool {
-	return kind == KindStoryChapterGeneration || kind == KindStoryChapterBatchPlan || kind == KindComicStoryboardGeneration
+	return kind == "story" || kind == KindStoryChapterGeneration || kind == KindStoryProfileGeneration || kind == KindStoryProfileFromChapters || kind == KindStoryChapterBatchPlan || kind == KindComicStoryboardGeneration
 }
 
 func storyDomainTask(task Task) agent.DomainTask {

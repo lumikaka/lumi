@@ -50,6 +50,14 @@ export function listChatEvents(projectUuid, threadUuid, { after = '', limit = 10
   return apiRequest(threadPath(projectUuid, threadUuid, `/events?${search}`))
 }
 
+export function getChatTrajectory(projectUuid, threadUuid, { before = '', after = '', limit = 80, itemUuid = '' } = {}) {
+  const search = new URLSearchParams({ limit: String(limit) })
+  if (before) search.set('before', before)
+  if (after) search.set('after', after)
+  if (itemUuid) search.set('item_uuid', itemUuid)
+  return apiRequest(threadPath(projectUuid, threadUuid, `/trajectory?${search}`))
+}
+
 export function listFollowUps(projectUuid, threadUuid) {
   return apiRequest(threadPath(projectUuid, threadUuid, '/follow_ups'))
 }

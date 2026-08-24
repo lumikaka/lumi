@@ -5,9 +5,12 @@ import {
   captureChatScrollAnchor,
   chatComposerMode,
   chatThreadCountLabel,
+  chatTurnDurationMs,
   chatTurnElapsedMs,
   groupChatItemsByTurn,
   isChatSteeringShortcut,
+  projectChatTurnActivity,
+  projectChatUserInput,
   projectChatSearchWithoutLegacyScope,
   restoreChatScrollAnchor,
   shouldLoadEarlierChatItems,
@@ -95,12 +98,150 @@ test('active turns remain visible before the first persisted item arrives', () =
   assert.deepEqual(groups.map((group) => group.uuid), ['turn-running'])
 })
 
+test('completed turn activity pairs tool calls and results without polluting conversation items', () => {
+  const activity = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'user', sequence: 1, item_type: 'user_message', role: 'user' },
+    { uuid: 'call', sequence: 2, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'image_gen', status: 'completed', content: '{"prompt":"moon"}' },
+    { uuid: 'result', sequence: 3, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'image_gen', status: 'completed', content: '{"success":true}' },
+    { uuid: 'assistant', sequence: 4, item_type: 'assistant_message', role: 'assistant' },
+  ])
+
+  assert.equal(activity.mode, 'terminal')
+  assert.deepEqual(activity.conversationItems.map((item) => item.uuid), ['user', 'assistant'])
+  assert.equal(activity.tools.length, 1)
+  assert.equal(activity.tools[0].call.uuid, 'call')
+  assert.equal(activity.tools[0].result.uuid, 'result')
+  assert.equal(activity.tools[0].status, 'completed')
+  assert.equal(activity.summaryIndex, 1)
+})
+
+test('turn activity derives failures, interruptions and partial-history state', () => {
+  const activity = projectChatTurnActivity({ status: 'failed' }, [
+    { uuid: 'failed-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'failed' },
+    { uuid: 'failed-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed', content: '{"success":false,"error":{"code":"bad"}}' },
+    { uuid: 'unfinished-call', sequence: 3, item_type: 'tool_call', tool_call_uuid: 'tool-2', tool_name: 'image_gen', status: 'in_progress' },
+    { uuid: 'orphan-result', sequence: 4, item_type: 'tool_result', tool_call_uuid: 'tool-3', tool_name: 'read_agent_doc', status: 'completed', content: '{"success":true}' },
+    { uuid: 'error', sequence: 5, item_type: 'error', role: 'system' },
+  ], { historyMayBePartial: true })
+
+  assert.deepEqual(activity.tools.map((tool) => tool.status), ['failed', 'interrupted', 'completed'])
+  assert.equal(activity.issueCount, 2)
+  assert.equal(activity.historyMayBePartial, true)
+  assert.equal(activity.summaryIndex, 0)
+})
+
+test('completed turns hide safely recovered validation failures from tool activity', () => {
+  const activity = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'failed-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'failed' },
+    { uuid: 'failed-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed', content: '{"success":false,"error":{"code":"agent_tool_validation_failed"}}' },
+    { uuid: 'recovery-call', sequence: 3, item_type: 'tool_call', tool_call_uuid: 'tool-2', tool_name: 'read_agent_doc', status: 'completed' },
+    { uuid: 'recovery-result', sequence: 4, item_type: 'tool_result', tool_call_uuid: 'tool-2', tool_name: 'read_agent_doc', status: 'completed', content: '{"success":true}' },
+    { uuid: 'assistant', sequence: 5, item_type: 'assistant_message', role: 'assistant' },
+  ])
+
+  assert.deepEqual(activity.tools.map((tool) => tool.key), ['tool-2'])
+  assert.equal(activity.issueCount, 0)
+})
+
+test('completed turns retain failures that are unsafe or have no observed recovery', () => {
+  const unsafe = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'failed-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'failed' },
+    { uuid: 'failed-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed', content: '{"success":false,"error":{"code":"production_state_conflict"}}' },
+    { uuid: 'later-call', sequence: 3, item_type: 'tool_call', tool_call_uuid: 'tool-2', tool_name: 'request_api', status: 'completed' },
+    { uuid: 'later-result', sequence: 4, item_type: 'tool_result', tool_call_uuid: 'tool-2', tool_name: 'request_api', status: 'completed', content: '{"success":true}' },
+  ])
+  const notRecovered = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'failed-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'failed' },
+    { uuid: 'failed-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed', content: '{"success":false,"error":{"code":"agent_tool_validation_failed"}}' },
+    { uuid: 'assistant', sequence: 3, item_type: 'assistant_message', role: 'assistant' },
+  ])
+
+  assert.equal(unsafe.tools.length, 2)
+  assert.equal(unsafe.issueCount, 1)
+  assert.equal(notRecovered.tools.length, 1)
+  assert.equal(notRecovered.issueCount, 1)
+})
+
+test('active turn activity exposes only the latest running logical tool', () => {
+  const activity = projectChatTurnActivity({ status: 'in_progress' }, [
+    { uuid: 'old-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'read_agent_doc', status: 'completed' },
+    { uuid: 'old-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'read_agent_doc', status: 'completed', content: '{}' },
+    { uuid: 'active-call', sequence: 3, item_type: 'tool_call', tool_call_uuid: 'tool-2', tool_name: 'unknown_tool', status: 'in_progress' },
+  ])
+
+  assert.equal(activity.mode, 'active')
+  assert.equal(activity.activeTool.toolName, 'unknown_tool')
+  assert.equal(activity.activeTool.status, 'running')
+  assert.deepEqual(activity.conversationItems, [])
+})
+
+test('request user input stays in the conversation and outside tool summaries', () => {
+  const activity = projectChatTurnActivity({ status: 'waiting_for_input' }, [
+    { uuid: 'call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_user_input', status: 'completed' },
+    { uuid: 'request', sequence: 2, item_type: 'user_input_request', role: 'assistant' },
+    { uuid: 'result', sequence: 3, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_user_input', status: 'completed' },
+  ])
+
+  assert.equal(activity.mode, 'waiting_for_input')
+  assert.deepEqual(activity.conversationItems.map((item) => item.uuid), ['request'])
+  assert.deepEqual(activity.tools, [])
+})
+
+test('user input projection keeps pending requests interactive and resolves historical answers', () => {
+  const request = {
+    status: 'resumed',
+    options: [
+      { uuid: 'option-1', label: '角色' },
+      { uuid: 'option-2', label: '场景' },
+    ],
+    response: JSON.stringify({ selected_option_uuids: ['option-1'], other_text: '需要成长弧光' }),
+  }
+
+  assert.deepEqual(projectChatUserInput(request), {
+    answers: ['角色', '需要成长弧光'],
+    mode: 'answered',
+    otherText: '需要成长弧光',
+    selectedOptionUuids: ['option-1'],
+  })
+  assert.equal(projectChatUserInput({ status: 'pending', options: [] }).mode, 'pending')
+  assert.equal(projectChatUserInput({ status: 'cancelled', options: [] }).mode, 'incomplete')
+})
+
+test('terminal tool summary is placed before the final response after steering messages', () => {
+  const activity = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'first-user', sequence: 1, item_type: 'user_message', role: 'user' },
+    { uuid: 'call', sequence: 2, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed' },
+    { uuid: 'steering-user', sequence: 3, item_type: 'user_message', role: 'user' },
+    { uuid: 'result', sequence: 4, item_type: 'tool_result', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'completed', content: '{}' },
+    { uuid: 'assistant', sequence: 5, item_type: 'assistant_message', role: 'assistant' },
+  ])
+
+  assert.deepEqual(activity.conversationItems.map((item) => item.uuid), ['first-user', 'steering-user', 'assistant'])
+  assert.equal(activity.summaryIndex, 2)
+})
+
 test('assistant pending only exists before real runtime output and exposes long waits', () => {
   const turn = { status: 'in_progress', started_at: '2026-08-11T00:00:00.000Z' }
   assert.equal(shouldShowAssistantPending(turn, [{ role: 'user', item_type: 'user_message' }]), true)
   assert.equal(shouldShowAssistantPending(turn, [{ role: 'assistant', item_type: 'assistant_message' }]), false)
   assert.equal(shouldShowAssistantPending(turn, [{ role: 'tool', item_type: 'tool_call' }]), false)
   assert.equal(chatTurnElapsedMs(turn, Date.parse('2026-08-11T00:00:11.000Z')), 11_000)
+})
+
+test('terminal turn duration prefers execution timestamps and safely falls back to persisted bounds', () => {
+  assert.equal(chatTurnDurationMs({
+    started_at: '2026-08-11T00:00:00.000Z',
+    completed_at: '2026-08-11T00:07:49.000Z',
+  }), 469_000)
+  assert.equal(chatTurnDurationMs({
+    created_at: '2026-08-11T00:00:00.000Z',
+    updated_at: '2026-08-11T00:00:02.500Z',
+  }), 2_500)
+  assert.equal(chatTurnDurationMs({ completed_at: '2026-08-11T00:00:02.500Z' }), null)
+  assert.equal(chatTurnDurationMs({
+    started_at: '2026-08-11T00:00:03.000Z',
+    completed_at: '2026-08-11T00:00:02.500Z',
+  }), 0)
 })
 
 test('chat history autoloads only near the top when an earlier page is available', () => {

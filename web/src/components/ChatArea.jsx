@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -6,11 +6,13 @@ import {
   Bot,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   GripVertical,
   Image,
   ImagePlus,
   MoreHorizontal,
+  Route as RouteIcon,
   PanelRightClose,
   PanelRightOpen,
   Pencil,
@@ -18,7 +20,6 @@ import {
   RefreshCw,
   Send,
   Square,
-  TerminalSquare,
   Trash2,
   Zap,
   X,
@@ -33,7 +34,6 @@ import {
   createFollowUp,
   deleteFollowUp,
   getChatThread,
-  listChatEvents,
   listChatItems,
   listChatTurns,
   listFollowUps,
@@ -55,9 +55,12 @@ import {
   captureChatScrollAnchor,
   chatComposerMode,
   chatThreadCountLabel,
+  chatTurnDurationMs,
   chatTurnElapsedMs,
   groupChatItemsByTurn,
   isChatSteeringShortcut,
+  projectChatTurnActivity,
+  projectChatUserInput,
   restoreChatScrollAnchor,
   shouldLoadEarlierChatItems,
   shouldShowAssistantPending,
@@ -106,22 +109,11 @@ const stepCopy = {
   chapter_batch_plan: 'chat.workflow.step.chapter_batch_plan',
 }
 
-const chatEventCopy = {
-  turn_queued: 'chat.events.type.turn_queued',
-  run_started: 'chat.events.type.run_started',
-  run_completed: 'chat.events.type.run_completed',
-  run_failed: 'chat.events.type.run_failed',
-  run_cancelled: 'chat.events.type.run_cancelled',
-  run_interrupted: 'chat.events.type.run_interrupted',
-  tool_intent: 'chat.events.type.tool_intent',
-  tool_result: 'chat.events.type.tool_result',
-  user_input_requested: 'chat.events.type.user_input_requested',
-  user_input_answered: 'chat.events.type.user_input_answered',
-  steering_queued: 'chat.events.type.steering_queued',
-  abort_requested: 'chat.events.type.abort_requested',
-}
-
 const MESSAGE_PAGE_LIMIT = 30
+
+function threadTrajectoryHref(projectUuid, threadUuid) {
+  return `/projects/${encodeURIComponent(projectUuid)}/threads/${encodeURIComponent(threadUuid)}/trajectory`
+}
 
 function CollapseButton({ overlay, onToggle }) {
   const { t } = useI18n()
@@ -182,15 +174,20 @@ function AttachmentPicker({ disabled, onFiles }) {
 }
 
 function UserInputCard({ request, pending, onRespond, onCancel }) {
+  const presentation = projectChatUserInput(request)
+  if (presentation.mode !== 'pending') {
+    return <UserInputHistory request={request} presentation={presentation} />
+  }
+  return <PendingUserInputCard request={request} presentation={presentation} pending={pending} onRespond={onRespond} onCancel={onCancel} />
+}
+
+function PendingUserInputCard({ request, presentation, pending, onRespond, onCancel }) {
   const { t } = useI18n()
-  const response = userInputResponse(request)
-  const initialSelected = response.selected_option_uuids || []
-  const initialOtherText = response.other_text || ''
+  const initialSelected = presentation.selectedOptionUuids
+  const initialOtherText = presentation.otherText
   const [selected, setSelected] = useState(initialSelected)
   const [otherText, setOtherText] = useState(initialOtherText)
-  const isPending = request.status === 'pending'
   const isMultiple = request.input_type === 'multiple_choice'
-  const disabled = !isPending || pending
 
   useEffect(() => {
     setSelected(initialSelected)
@@ -207,8 +204,6 @@ function UserInputCard({ request, pending, onRespond, onCancel }) {
     setOtherText(value)
     if (!isMultiple && value.trim()) setSelected([])
   }
-  const answered = [...selected.map((uuid) => request.options.find((option) => option.uuid === uuid)?.label || uuid), otherText].filter(Boolean)
-
   return (
     <article className="chat-message chat-message--assistant chat-message--user-input">
       <form className="chat-input-request" onSubmit={(event) => {
@@ -222,7 +217,7 @@ function UserInputCard({ request, pending, onRespond, onCancel }) {
             <label className="chat-input-request__option" key={option.uuid}>
               <input
                 checked={selected.includes(option.uuid)}
-                disabled={disabled}
+                disabled={pending}
                 name={`chat-input-${request.uuid}`}
                 onChange={() => toggle(option.uuid)}
                 type={isMultiple ? 'checkbox' : 'radio'}
@@ -234,38 +229,65 @@ function UserInputCard({ request, pending, onRespond, onCancel }) {
         </div>
         <label className="chat-input-request__other">
           <span>{t('chat.input.other')}</span>
-          <input disabled={disabled} value={otherText} onChange={(event) => updateOtherText(event.target.value)} placeholder={t('chat.input.other_placeholder')} />
+          <input disabled={pending} value={otherText} onChange={(event) => updateOtherText(event.target.value)} placeholder={t('chat.input.other_placeholder')} />
         </label>
-        {!isPending && answered.length ? <p className="chat-input-request__answer">{answered.join('，')}</p> : null}
-        {isPending ? (
-          <footer>
-            <button type="submit" disabled={pending || (!selected.length && !otherText.trim())}>{t(pending ? 'chat.input.submitting' : 'common.action.submit')}</button>
-            <button type="button" className="button-quiet" disabled={pending} onClick={() => onCancel(request.uuid)}>{t('chat.input.cancel_turn')}</button>
-          </footer>
-        ) : null}
+        <footer>
+          <button type="submit" disabled={pending || (!selected.length && !otherText.trim())}>{t(pending ? 'chat.input.submitting' : 'common.action.submit')}</button>
+          <button type="button" className="button-quiet" disabled={pending} onClick={() => onCancel(request.uuid)}>{t('chat.input.cancel_turn')}</button>
+        </footer>
       </form>
+    </article>
+  )
+}
+
+function UserInputHistory({ request, presentation }) {
+  const { t } = useI18n()
+  const selected = new Set(presentation.selectedOptionUuids)
+  const answer = presentation.answers.join(t('chat.input.answer_separator'))
+  const incomplete = presentation.mode === 'incomplete'
+  return (
+    <article className={`chat-message chat-message--user-input chat-message--user-input-history${incomplete ? ' chat-message--user-input-incomplete' : ''}`}>
+      <details className="chat-input-history">
+        <summary>
+          {incomplete ? <X size={14} aria-hidden="true" /> : <Check size={14} aria-hidden="true" />}
+          <span>
+            <strong>{incomplete ? t('chat.input.incomplete_summary') : t('chat.input.answered_summary', { answer })}</strong>
+            <small>{request.question}</small>
+          </span>
+          <small>{t('chat.input.history_hint')}</small>
+          <ChevronDown className="chat-input-history__chevron" size={14} aria-hidden="true" />
+        </summary>
+        <div className="chat-input-history__content">
+          <section>
+            <b>{t('chat.input.question')}</b>
+            <p>{request.question}</p>
+          </section>
+          {request.options?.length ? (
+            <section>
+              <b>{t('chat.input.options')}</b>
+              <ul>
+                {request.options.map((option) => (
+                  <li className={selected.has(option.uuid) ? 'is-selected' : ''} key={option.uuid}>
+                    <span>{selected.has(option.uuid) ? <Check size={12} aria-hidden="true" /> : null}</span>
+                    <span><strong>{option.label}</strong>{option.description ? <small>{option.description}</small> : null}</span>
+                    {selected.has(option.uuid) ? <em>{t('chat.input.selected')}</em> : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          <section>
+            <b>{t('chat.input.final_answer')}</b>
+            <p>{incomplete ? t('chat.input.not_answered') : answer}</p>
+          </section>
+        </div>
+      </details>
     </article>
   )
 }
 
 function ChatItem({ item }) {
   const { t } = useI18n()
-  if (item.item_type === 'tool_call' || item.item_type === 'tool_result') {
-    return (
-      <article className="chat-message chat-message--tool">
-        <details className="chat-tool">
-          <summary>
-            <TerminalSquare size={14} aria-hidden="true" />
-            <strong>{item.tool_name || 'controlled_tool'}</strong>
-            <span>{t(item.item_type === 'tool_call' ? 'chat.tool.call' : 'chat.tool.result')}</span>
-            <em>{item.status === 'completed' ? t('common.status.completed') : item.status === 'in_progress' ? t('chat.tool.running') : t('common.status.unknown_with_code', { code: item.status })}</em>
-          </summary>
-          <pre data-machine-value>{item.content || (item.target_uuid ? `target_uuid: ${item.target_uuid}` : t('chat.tool.project_only'))}</pre>
-        </details>
-      </article>
-    )
-  }
-
   if (item.item_type === 'error') {
     return <article className="chat-message chat-message--error"><div>{t('chat.item.error')}</div></article>
   }
@@ -284,9 +306,93 @@ function ChatItem({ item }) {
   )
 }
 
-function TurnGroup({ group, requestByItemUuid, inputPending, onRespond, onCancel }) {
+function ToolActivitySummary({ activity, turn }) {
+  const { formatNumber, t } = useI18n()
+  if (activity.mode !== 'terminal' || !activity.tools.length) return null
+  const abnormalTurn = ['failed', 'cancelled', 'interrupted'].includes(turn?.status)
+  const issueSummary = activity.issueCount > 0
+    ? t('chat.tool.summary.issues', { issue_count: activity.issueCount })
+    : abnormalTurn
+      ? t('chat.tool.summary.turn_issue')
+      : ''
+  const duration = chatTurnDurationLabel(turn, t, formatNumber)
+
+  return (
+    <article className={`chat-message chat-message--tool-summary${abnormalTurn || activity.issueCount > 0 ? ' chat-message--tool-summary-issue' : ''}`}>
+      <details className="chat-tool-summary">
+        <summary>
+          <span>{duration || t('chat.tool.summary.title')}</span>
+          {issueSummary ? <em>{issueSummary}</em> : null}
+          <ChevronRight className="chat-tool-summary__chevron" size={12} aria-hidden="true" />
+        </summary>
+        <ol>
+          {activity.tools.map((tool) => (
+            <li className={`chat-tool-execution chat-tool-execution--${statusClass(tool.status)}`} key={tool.key}>
+              <details>
+                <summary>
+                  <strong>{tool.toolName}</strong>
+                  <span>{toolStatusLabel(tool.status, t)}</span>
+                  <ChevronDown className="chat-tool-execution__chevron" size={13} aria-hidden="true" />
+                </summary>
+                <div className="chat-tool-execution__content">
+                  {tool.call ? <ToolActivityPayload label={t('chat.tool.arguments')} item={tool.call} /> : <small>{t('chat.tool.arguments_unavailable')}</small>}
+                  {tool.result ? <ToolActivityPayload label={t('chat.tool.result')} item={tool.result} /> : <small>{t('chat.tool.result_unavailable')}</small>}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ol>
+      </details>
+    </article>
+  )
+}
+
+function chatTurnDurationLabel(turn, t, formatNumber) {
+  const durationMs = chatTurnDurationMs(turn)
+  if (durationMs === null) return ''
+  if (durationMs < 1000) return t('chat.turn.duration.less_than_second')
+
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) {
+    return t('chat.turn.duration.hours_minutes_seconds', {
+      hours: formatNumber(hours),
+      minutes: formatNumber(minutes),
+      seconds: formatNumber(seconds),
+    })
+  }
+  if (minutes > 0) {
+    return t('chat.turn.duration.minutes_seconds', {
+      minutes: formatNumber(minutes),
+      seconds: formatNumber(seconds),
+    })
+  }
+  return t('chat.turn.duration.seconds', { seconds: formatNumber(seconds) })
+}
+
+function ToolActivityPayload({ label, item }) {
+  const { t } = useI18n()
+  const content = item.content || (item.target_uuid ? `target_uuid: ${item.target_uuid}` : t('chat.tool.project_only'))
+  return <section><b>{label}</b><pre data-machine-value>{content}</pre></section>
+}
+
+function toolStatusLabel(status, t) {
+  return {
+    completed: t('common.status.completed'),
+    failed: t('common.status.failed'),
+    interrupted: t('common.status.interrupted'),
+    running: t('chat.tool.running'),
+    pending: t('common.status.pending'),
+  }[status] || t('common.status.unknown_with_code', { code: status })
+}
+
+function TurnGroup({ group, historyMayBePartial, requestByItemUuid, inputPending, onRespond, onCancel }) {
   const { formatDateTime, t } = useI18n()
   const turn = group.turn
+  const activity = projectChatTurnActivity(turn, group.items, { historyMayBePartial })
+  const summary = <ToolActivitySummary activity={activity} turn={turn} />
   return (
     <section className={`chat-turn chat-turn--${statusClass(turn?.status)}`} data-turn-uuid={group.uuid}>
       {turn ? (
@@ -297,21 +403,23 @@ function TurnGroup({ group, requestByItemUuid, inputPending, onRespond, onCancel
         </div>
       ) : null}
       <div className="chat-turn__items">
-        {group.items.map((item) => {
-          const request = requestByItemUuid.get(item.uuid)
-          if (item.item_type === 'user_input_request' && request) {
-            return <UserInputCard key={item.uuid} request={request} pending={inputPending} onRespond={onRespond} onCancel={onCancel} />
-          }
-          return <ChatItem key={item.uuid} item={item} />
-        })}
+        {activity.conversationItems.map((item, index) => (
+          <Fragment key={item.uuid}>
+            {index === activity.summaryIndex ? summary : null}
+            {item.item_type === 'user_input_request' && requestByItemUuid.get(item.uuid)
+              ? <UserInputCard request={requestByItemUuid.get(item.uuid)} pending={inputPending} onRespond={onRespond} onCancel={onCancel} />
+              : <ChatItem item={item} />}
+          </Fragment>
+        ))}
+        {activity.summaryIndex === activity.conversationItems.length ? summary : null}
         {turn?.status === 'failed' && turn.error_code ? <LocalizedErrorMessage error={{ code: turn.error_code }} compact /> : null}
-        <TurnActivity turn={turn} items={group.items} />
+        <TurnActivity turn={turn} items={group.items} activity={activity} />
       </div>
     </section>
   )
 }
 
-function TurnActivity({ turn, items }) {
+function TurnActivity({ turn, items, activity }) {
   const { t } = useI18n()
   const active = turn?.status === 'in_progress'
   const [now, setNow] = useState(() => Date.now())
@@ -323,7 +431,7 @@ function TurnActivity({ turn, items }) {
   }, [active, turn?.uuid])
   if (!active) return null
   const pending = shouldShowAssistantPending(turn, items)
-  const copy = pending ? t('chat.activity.thinking') : turnActivityCopy(items, t)
+  const copy = pending ? t('chat.activity.thinking') : turnActivityCopy(activity, t)
   if (!copy) return null
   const longRunning = pending && chatTurnElapsedMs(turn, now) >= 10_000
   return <div className="chat-turn__activity" role="status" aria-live="polite"><i aria-hidden="true" /><span>{copy}{longRunning ? <small>{t('chat.activity.long_running')}</small> : null}</span></div>
@@ -477,34 +585,6 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
   )
 }
 
-function ThreadEventDiagnostics({ events, loading, error, hasMore, loadingMore, onLoadMore }) {
-  const { formatDateTime, formatNumber, t } = useI18n()
-  return (
-    <details className="chat-event-diagnostics">
-      <summary><TerminalSquare size={14} aria-hidden="true" /><span>{t('chat.events.title')}</span></summary>
-      <div className="chat-event-diagnostics__content">
-        {error ? <LocalizedErrorMessage error={error} compact /> : null}
-        {loading ? <p>{t('chat.loading')}</p> : null}
-        {!loading && !error && events.length === 0 ? <p>{t('chat.events.empty')}</p> : null}
-        {events.map((event) => (
-          <details key={event.uuid}>
-            <summary><span><strong>{chatEventCopy[event.event_type] ? t(chatEventCopy[event.event_type]) : t('common.status.unknown_with_code', { code: event.event_type })}</strong><code>{event.event_type}</code></span><time>{formatDateTime(event.created_at)}</time></summary>
-            <dl>
-              <div><dt>{t('chat.events.event_uuid')}</dt><dd><code>{event.uuid}</code></dd></div>
-              <div><dt>{t('chat.events.thread_uuid')}</dt><dd><code>{event.thread_uuid}</code></dd></div>
-              {event.run_uuid ? <div><dt>{t('chat.events.run_uuid')}</dt><dd><code>{event.run_uuid}</code></dd></div> : null}
-              <div><dt>{t('chat.events.sequence')}</dt><dd>{formatNumber(event.sequence)}</dd></div>
-              <div><dt>{t('chat.events.created_at')}</dt><dd>{formatDateTime(event.created_at)}</dd></div>
-            </dl>
-            <pre data-machine-value>{prettyDiagnosticJSON(event.payload)}</pre>
-          </details>
-        ))}
-        {hasMore ? <button type="button" className="button-quiet" disabled={loadingMore} onClick={onLoadMore}>{t(loadingMore ? 'chat.events.loading_more' : 'chat.events.load_more')}</button> : null}
-      </div>
-    </details>
-  )
-}
-
 function FollowUpQueue({ items, pending, canSteer, notice, onMove, onDelete, onEdit, onSteer }) {
   const { formatDateTime, t } = useI18n()
   const [editingUuid, setEditingUuid] = useState('')
@@ -615,7 +695,7 @@ function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = fa
   )
 }
 
-function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
+function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
   const { t } = useI18n()
   const [openMenuUuid, setOpenMenuUuid] = useState('')
   const listRef = useRef(null)
@@ -673,6 +753,15 @@ function ThreadList({ threads, workflows, total, loading, loadingMore, hasMore, 
               <span className="chat-thread__title">{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t)}</span>
               <span className="chat-thread__meta">{ACTIVE_CHAT_STATUSES.has(thread.status) ? <i aria-hidden="true" /> : null}<span>{threadStatusCopy[thread.status] ? t(threadStatusCopy[thread.status]) : t('common.status.unknown_with_code', { code: thread.status })}</span></span>
             </button>
+            <a
+              className="chat-thread__trajectory-link"
+              href={threadTrajectoryHref(projectUuid, thread.uuid)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })}
+              title={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })}
+              onClick={(event) => event.stopPropagation()}
+            ><RouteIcon size={15} aria-hidden="true" /></a>
             <button className="chat-thread__menu-button" type="button" aria-label={t('chat.thread.actions', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })} aria-expanded={openMenuUuid === thread.uuid} onClick={(event) => { event.stopPropagation(); setOpenMenuUuid((current) => current === thread.uuid ? '' : thread.uuid) }}><MoreHorizontal size={16} /></button>
             {openMenuUuid === thread.uuid ? <div className="chat-thread__menu" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); onOpenThread(thread.uuid) }}>{t('chat.thread.open')}</button><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); copyText(thread.uuid) }}>{t('chat.thread.copy_uuid')}</button></div> : null}
           </div>
@@ -693,7 +782,7 @@ function NewThreadDraft({ draft, pending, error, overlay, onDraftChange, onSubmi
         <div className="chat-detail-actions"><span className="chat-status chat-status--idle">{t('chat.thread.draft')}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
       </header>
       <div className="chat-detail-body">
-        <div className="chat-messages" aria-live="polite">
+        <div className="chat-messages">
           <ErrorNotice error={error} onDismiss={onDismissError} />
           <div className="chat-empty-state"><strong>{t('chat.thread.new_title')}</strong><span>{t('chat.thread.new_body')}</span></div>
         </div>
@@ -887,14 +976,6 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const turnsQuery = useQuery({ queryKey: ['chat-turns', projectUuid, selectedThreadUuid], queryFn: () => listChatTurns(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
   const followUpsQuery = useQuery({ queryKey: ['chat-follow-ups', projectUuid, selectedThreadUuid], queryFn: () => listFollowUps(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
   const requestsQuery = useQuery({ queryKey: ['chat-input-requests', projectUuid, selectedThreadUuid], queryFn: () => listUserInputRequests(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
-  const eventsQuery = useInfiniteQuery({
-    queryKey: ['chat-events', projectUuid, selectedThreadUuid, 'pages'],
-    queryFn: ({ pageParam }) => listChatEvents(projectUuid, selectedThreadUuid, { after: pageParam, limit: 100 }),
-    initialPageParam: '',
-    getNextPageParam: (page) => page.cursor_pagination?.has_more ? page.cursor_pagination.next_cursor : undefined,
-    enabled: expanded && Boolean(selectedThreadUuid),
-  })
-
   const invalidate = useCallback((payload = { thread_uuid: selectedThreadUuid }) => {
     agentQueryKeysForEvent(projectUuid, payload).forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
   }, [projectUuid, queryClient, selectedThreadUuid])
@@ -1018,7 +1099,6 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const turns = turnsQuery.data?.items || []
   const requests = requestsQuery.data?.items || []
   const followUps = followUpsQuery.data?.items || []
-  const events = useMemo(() => uniqueByUUID(eventsQuery.data?.pages?.flatMap((page) => page.items || []) || []), [eventsQuery.data])
   const turnGroups = useMemo(() => groupChatItemsByTurn(items, turns), [items, turns])
   const requestByItemUuid = useMemo(() => new Map(requests.map((request) => [request.item_uuid, request])), [requests])
   const inlineRequestUuids = useMemo(() => new Set(items.map((item) => requestByItemUuid.get(item.uuid)?.uuid).filter(Boolean)), [items, requestByItemUuid])
@@ -1146,7 +1226,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   }
 
   if (!selectedThreadUuid) {
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList projectUuid={projectUuid} threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
   }
 
   return (
@@ -1155,19 +1235,31 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
         <header className="chat-detail-header">
           <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
           <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedWorkflow, t) : t('chat.threads')}</h2></div>
-          <div className="chat-detail-actions"><span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span><CollapseButton overlay={overlay} onToggle={toggleExpanded} /></div>
+          <div className="chat-detail-actions">
+            <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>
+            {selectedThread ? (
+              <a
+                className="chat-detail__trajectory-link"
+                href={threadTrajectoryHref(projectUuid, selectedThread.uuid)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedWorkflow, t) })}
+                title={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedWorkflow, t) })}
+              ><RouteIcon size={15} aria-hidden="true" /></a>
+            ) : null}
+            <CollapseButton overlay={overlay} onToggle={toggleExpanded} />
+          </div>
         </header>
         <div className="chat-detail-body">
-          <div className="chat-messages" aria-live="polite" ref={messagesRef} onScroll={handleMessagesScroll}>
+          <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
             {itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
             {selectedThread?.scene ? <section className="chat-scene-card chat-scene-card--compact"><div><Bot size={16} aria-hidden="true" /><span><strong>{sceneCopy[selectedThread.scene]?.titleKey ? t(sceneCopy[selectedThread.scene].titleKey) : t('common.status.unknown_with_code', { code: selectedThread.scene })}</strong>{selectedThread.subject_uuid ? <small>{selectedThread.subject_uuid}</small> : null}</span></div></section> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
             <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-            {turnGroups.map((group) => <TurnGroup key={group.uuid} group={group} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
+            {turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasPreviousPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
             {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
-            <ThreadEventDiagnostics events={events} loading={eventsQuery.isLoading} error={eventsQuery.error} hasMore={eventsQuery.hasNextPage} loadingMore={eventsQuery.isFetchingNextPage} onLoadMore={() => eventsQuery.fetchNextPage()} />
           </div>
           <div className="chat-composer-shell">
             <FollowUpQueue items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
@@ -1179,27 +1271,21 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   )
 }
 
-function userInputResponse(request) {
-  if (!request?.response) return {}
-  if (typeof request.response === 'object') return request.response
-  try { return JSON.parse(request.response) } catch { return {} }
-}
-
 function statusClass(status) {
   return String(status || 'unknown').replace(/[^a-z0-9_-]/gi, '_')
 }
 
-function turnActivityCopy(items, t) {
-  const runningTool = [...items].reverse().find((item) => item.item_type === 'tool_call' && item.status === 'in_progress')
-  if (runningTool?.tool_name === 'image_gen') return t('chat.activity.image_gen')
-  if (runningTool?.tool_name === 'request_current_project_api') {
-    const activityKey = currentProjectAPIActivityKey(runningTool.content)
+function turnActivityCopy(activity, t) {
+  const runningTool = activity.activeTool
+  if (runningTool?.status === 'running' && runningTool.toolName === 'image_gen') return t('chat.activity.image_gen')
+  if (runningTool?.status === 'running' && ['request_api', 'request_current_project_api'].includes(runningTool.toolName)) {
+    const activityKey = currentProjectAPIActivityKey(runningTool.call?.content)
     if (activityKey) return t(activityKey)
   }
-  if (runningTool && ['create_premise_asset', 'update_premise_asset'].includes(runningTool.tool_name)) return t('chat.activity.writeback')
-  const latestItem = items.at(-1)
-  if (latestItem?.item_type === 'tool_result') return t('chat.activity.finalizing')
-  return ''
+  if (runningTool?.status === 'running' && ['create_premise_asset', 'update_premise_asset'].includes(runningTool.toolName)) return t('chat.activity.writeback')
+  if (runningTool?.status === 'running' || runningTool?.status === 'pending') return t('chat.activity.tool_running', { tool_name: runningTool.toolName })
+  if (runningTool) return t('chat.activity.finalizing')
+  return t('chat.activity.thinking')
 }
 
 function currentProjectAPIActivityKey(content) {

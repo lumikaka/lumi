@@ -37,6 +37,7 @@ import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import ChaptersWorkspace from './ChaptersWorkspace.jsx'
 import ChapterComicPreviewPage from './ChapterComicPreviewPage.jsx'
 import ChapterWorkbenchPage from './ChapterWorkbenchPage.jsx'
+import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
 import { useI18n } from '../i18n/useI18n.js'
@@ -657,10 +658,11 @@ export default function StoryWorkspacePage() {
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
   const activeSection = workspaceSectionForPath(location.pathname)
   const chapterPreview = /\/chapters\/[^/]+\/preview$/.test(location.pathname)
+  const trajectoryView = /\/threads\/[^/]+\/trajectory$/.test(location.pathname)
   return (
-    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview}>
-      <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} />
-      <main className="workspace-main">
+    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview || trajectoryView}>
+      {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} /> : null}
+      <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
         <Routes>
           <Route index element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview" element={<RouteRedirect to={`${base}/overview/summary`} />} />
@@ -679,6 +681,7 @@ export default function StoryWorkspacePage() {
           <Route path="story" element={<RouteRedirect to={`${base}/overview/profile`} />} />
           <Route path="prompts" element={<RouteRedirect to={`${base}/overview/prompts`} />} />
           <Route path="trash" element={<TrashPanel projectUuid={projectUuid} />} />
+          <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
           <Route path="*" element={<RouteRedirect to={`${base}/overview/summary`} />} />
         </Routes>
       </main>

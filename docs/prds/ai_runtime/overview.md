@@ -1,15 +1,15 @@
-# AI 运行时 — 分层模型解析与可追溯执行
+# AI 运行时 — 分层模型解析、可恢复执行与调用审计
 
 ## 模块职责
 
-AI 运行时模块负责把全局 Provider 默认值、项目级覆盖、场景级覆盖和请求显式选择解析成实际 Provider/模型，在创建任务、Chat 或 Workflow 时冻结解析结果，并为项目内 AI 调用提供可筛选的安全审计记录。
+AI 运行时模块负责把全局 Provider 默认值、项目级覆盖、场景级覆盖和请求显式选择解析成实际 Provider/模型，在创建任务、Chat 或 Workflow 时冻结解析结果；它还提供可恢复任务状态、append-only 事件和项目内 AI 调用的安全审计记录。
 
 ## 职责边界
 
 | 范围 | 说明 |
 |---|---|
-| 负责 | 模型选项投影、项目/场景覆盖、继承与失效回退、乐观锁更新、任务来源审计、重试冻结，以及调用摘要、用量与诊断读取。 |
-| 不负责 | Provider 密钥持久化和连通性实现、模型调用协议、Prompt 内容、各业务任务的输入输出语义。 |
+| 负责 | 模型选项投影、项目/场景覆盖、继承与失效回退、冻结来源、任务状态/事件恢复、取消重试、调用摘要、用量与诊断读取。 |
+| 不负责 | Provider 密钥持久化和连通性实现、Prompt 内容，以及 Story、Premise、漫画、导出和 Workflow 的业务输入输出语义。 |
 
 ## 核心概念
 
@@ -29,17 +29,22 @@ AI 运行时模块负责把全局 Provider 默认值、项目级覆盖、场景�
 
 Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项目级日志。日志只保存安全摘要、JSON payload、公开关联 UUID、Provider 诊断和可用 usage；列表筛选不扫描巨大原始 payload，图片调用和 Provider 未返回的指标保持不可用状态。
 
+### 可恢复执行
+
+`task_runs` 与 `production_task_runs` 记录可取消、可重试的执行快照，事件表仅追加。客户端用 WebSocket 变更提示失效 TanStack Query，并通过 REST 在首次 join、重连和窗口重新聚焦时校准 SQLite 事实状态。
+
 ## Feature 列表
 
 | Feature | 文档 | 说明 |
 |---|---|---|
 | `项目模型解析与任务冻结` | [`features/项目模型解析与任务冻结.md`](features/项目模型解析与任务冻结.md) | 用统一优先级解析文本/图片模型，并让任务、Chat 和 Workflow 可审计、可重放。 |
+| `可恢复AI任务执行` | [`features/可恢复AI任务执行.md`](features/可恢复AI任务执行.md) | 以冻结输入、状态机和 append-only 事件支撑跨域任务的恢复、取消与重试。 |
 | `AI调用可观测性` | [`features/AI调用可观测性.md`](features/AI调用可观测性.md) | 统一查询项目 AI 调用、组合筛选安全摘要，并展示可用的 token、字符和吞吐指标。 |
 
 ## 与其他模块的关系
 
 | 模块 | 关系 |
 |---|---|
-| Provider | 提供 ready/active 状态、默认文本模型和默认图片模型；模型设置只保存 Provider UUIDv7 与模型名。 |
-| 故事生产 | Story、Premise、漫画分镜/图片和导出前置选择使用对应场景解析。 |
-| Chat / YOLO | Chat thread/run 与 Workflow 创建时冻结同一解析结果，并向后续步骤传播。 |
+| AI Provider | 提供 ready/active 状态和默认模型；项目库只保存 Provider UUIDv7 与模型名。 |
+| 章节、设定资产、漫画 Section、导出 | 业务域创建任务并定义输入输出语义，运行时只管理冻结和执行状态。 |
+| Chat thread / Workflow | Chat thread/run 与 Workflow 创建时冻结同一解析结果，并向后续步骤传播。 |

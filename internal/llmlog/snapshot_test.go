@@ -46,7 +46,7 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 	secret := "configured-secret"
 	chatRequest, err := EncodeChatRequest(llm.ChatRequest{
 		BaseURL: "https://provider.example/v1", APIKey: secret, Model: "agent-model", MaxTokens: 2048,
-		Messages: []llm.ChatMessage{{Role: "user", Content: "hello"}},
+		Messages: []llm.ChatMessage{{Role: "user", Content: "hello /Users/private/lumi/story.md"}},
 		Tools:    []llm.ToolDefinition{{Name: "lookup", Description: "authorization=tool-token", Parameters: map[string]any{"type": "object", "description": "uses " + secret}}},
 	})
 	if err != nil {
@@ -71,7 +71,7 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join([]string{string(chatRequest), string(chatResponse), string(imageRequest), string(imageResponse)}, "\n")
-	for _, forbidden := range []string{secret, "tool-token", "response-token", "unconfigured-inline-key", "reference-image-bytes", "generated-image-bytes", "provider.example", "image.example"} {
+	for _, forbidden := range []string{secret, "tool-token", "response-token", "unconfigured-inline-key", "reference-image-bytes", "generated-image-bytes", "provider.example", "image.example", "/Users/private/lumi/story.md"} {
 		if strings.Contains(joined, forbidden) {
 			t.Fatalf("safe snapshots leaked %q: %s", forbidden, joined)
 		}

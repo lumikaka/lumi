@@ -148,6 +148,170 @@ export function groupChatItemsByTurn(items = [], turns = []) {
     .sort(compareTurnGroups)
 }
 
+const terminalChatTurnStatuses = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
+const toolItemTypes = new Set(['tool_call', 'tool_result'])
+const safelyRecoverableToolErrorCodes = new Set(['agent_tool_validation_failed'])
+
+export function projectChatTurnActivity(turn, items = [], { historyMayBePartial = false } = {}) {
+  const conversationItems = []
+  const executions = new Map()
+
+  items.forEach((item, index) => {
+    if (!toolItemTypes.has(item?.item_type)) {
+      conversationItems.push(item)
+      return
+    }
+    if (item.tool_name === 'request_user_input') return
+
+    const toolCallUuid = String(item.tool_call_uuid || '')
+    const key = toolCallUuid || `${item.item_type}:${item.uuid || item.sequence || index}`
+    const sequence = finiteSequence(item.sequence, index)
+    const execution = executions.get(key) || {
+      key,
+      toolCallUuid,
+      toolName: item.tool_name || 'controlled_tool',
+      call: null,
+      result: null,
+      sequence,
+      lastSequence: sequence,
+    }
+
+    execution.toolName = execution.toolName === 'controlled_tool' && item.tool_name ? item.tool_name : execution.toolName
+    execution.sequence = Math.min(execution.sequence, sequence)
+    execution.lastSequence = Math.max(execution.lastSequence, sequence)
+    if (item.item_type === 'tool_call') {
+      execution.call ||= item
+    } else {
+      execution.result = item
+    }
+    executions.set(key, execution)
+  })
+
+  const turnStatus = turn?.status || ''
+  const terminal = terminalChatTurnStatuses.has(turnStatus)
+  const projectedTools = [...executions.values()]
+    .sort((left, right) => left.sequence - right.sequence || left.key.localeCompare(right.key))
+    .map((execution) => ({ ...execution, status: projectedToolStatus(execution, terminal) }))
+  const tools = projectedTools.filter((tool) => !isRecoveredToolFailure(tool, turnStatus, projectedTools, conversationItems))
+  const inferredActive = !turn && tools.some((tool) => tool.status === 'running' || tool.status === 'pending')
+  const mode = turnStatus === 'in_progress' || inferredActive
+    ? 'active'
+    : turnStatus === 'waiting_for_input'
+      ? 'waiting_for_input'
+      : terminal || (!turn && tools.length > 0)
+        ? 'terminal'
+        : 'idle'
+  const activeTool = [...tools].reverse().find((tool) => tool.status === 'running' || tool.status === 'pending') || tools.at(-1) || null
+
+  return {
+    activeTool,
+    conversationItems,
+    historyMayBePartial: Boolean(historyMayBePartial),
+    issueCount: tools.filter((tool) => tool.status === 'failed' || tool.status === 'interrupted').length,
+    mode,
+    summaryIndex: terminalSummaryIndex(conversationItems),
+    tools,
+  }
+}
+
+function finiteSequence(value, fallback) {
+  const sequence = Number(value)
+  return Number.isFinite(sequence) ? sequence : 1_000_000_000_000_000 + fallback
+}
+
+function projectedToolStatus(execution, terminal) {
+  if (execution.call?.status === 'failed' || execution.result?.status === 'failed' || toolResultFailed(execution.result?.content)) return 'failed'
+  if (execution.result) return 'completed'
+  if (terminal) return execution.call?.status === 'completed' ? 'completed' : 'interrupted'
+  if (execution.call?.status === 'in_progress') return 'running'
+  if (execution.call?.status === 'completed') return 'completed'
+  return 'pending'
+}
+
+function toolResultFailed(content) {
+  if (typeof content !== 'string' || !content.trim()) return false
+  try {
+    return JSON.parse(content)?.success === false
+  } catch {
+    return false
+  }
+}
+
+function isRecoveredToolFailure(tool, turnStatus, tools, conversationItems) {
+  if (turnStatus !== 'completed' || tool.status !== 'failed') return false
+  if (!safelyRecoverableToolErrorCodes.has(toolResultErrorCode(tool.result?.content))) return false
+
+  const laterCompletedTool = tools.some((candidate) => (
+    candidate.key !== tool.key
+    && candidate.sequence > tool.lastSequence
+    && candidate.status === 'completed'
+  ))
+  const laterInputRequest = conversationItems.some((item, index) => (
+    item?.item_type === 'user_input_request'
+    && finiteSequence(item.sequence, index) > tool.lastSequence
+  ))
+  return laterCompletedTool || laterInputRequest
+}
+
+function toolResultErrorCode(content) {
+  if (typeof content !== 'string' || !content.trim()) return ''
+  try {
+    return String(JSON.parse(content)?.error?.code || '')
+  } catch {
+    return ''
+  }
+}
+
+export function projectChatUserInput(request = {}) {
+  const response = parseObject(request.response)
+  const responseOptions = new Map(
+    (Array.isArray(response.selected_options) ? response.selected_options : [])
+      .filter((option) => option?.uuid)
+      .map((option) => [option.uuid, option]),
+  )
+  const requestedOptions = new Map(
+    (Array.isArray(request.options) ? request.options : [])
+      .filter((option) => option?.uuid)
+      .map((option) => [option.uuid, option]),
+  )
+  const selectedOptionUuids = Array.isArray(response.selected_option_uuids)
+    ? response.selected_option_uuids.map(String)
+    : [...responseOptions.keys()]
+  const otherText = String(response.other_text || '').trim()
+  const answers = selectedOptionUuids.map((uuid) => (
+    requestedOptions.get(uuid)?.label || responseOptions.get(uuid)?.label || uuid
+  ))
+  if (otherText) answers.push(otherText)
+
+  return {
+    answers,
+    mode: request.status === 'pending' ? 'pending' : answers.length > 0 ? 'answered' : 'incomplete',
+    otherText,
+    selectedOptionUuids,
+  }
+}
+
+function parseObject(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value
+  if (typeof value !== 'string' || !value.trim()) return {}
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function terminalSummaryIndex(items) {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index]?.item_type === 'assistant_message') return index
+  }
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index]?.item_type === 'error') return index
+  }
+  return items.length
+}
+
 export function shouldShowAssistantPending(turn, items = []) {
   if (turn?.status !== 'in_progress') return false
   return !items.some((item) => item.role === 'assistant' || ['tool_call', 'tool_result', 'error', 'user_input_request'].includes(item.item_type))
@@ -156,6 +320,13 @@ export function shouldShowAssistantPending(turn, items = []) {
 export function chatTurnElapsedMs(turn, now = Date.now()) {
   const started = Date.parse(turn?.started_at || turn?.updated_at || turn?.created_at || '')
   return Number.isFinite(started) ? Math.max(0, now - started) : 0
+}
+
+export function chatTurnDurationMs(turn) {
+  const started = Date.parse(turn?.started_at || turn?.created_at || '')
+  const completed = Date.parse(turn?.completed_at || turn?.updated_at || '')
+  if (!Number.isFinite(started) || !Number.isFinite(completed)) return null
+  return Math.max(0, completed - started)
 }
 
 function isVisibleTurn(turn) {

@@ -4,6 +4,7 @@ import { story } from './story.js'
 import { premise } from './premise.js'
 import { comic } from './comic.js'
 import { chat } from './chat.js'
+import { trajectory } from './trajectory.js'
 import { settings } from './settings.js'
 import { errors } from './errors.js'
 
@@ -21,6 +22,7 @@ export const MESSAGE_BUNDLES = Object.freeze([
   ['premise', premise],
   ['comic', comic],
   ['chat', chat],
+  ['trajectory', trajectory],
   ['settings', settings],
   ['errors', errors],
 ])

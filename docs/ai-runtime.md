@@ -52,7 +52,7 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 附件校验使用稳定领域错误码区分数量超限、不支持的 scene、UUID 无效、不存在、项目不匹配、上传未完成和 MIME 不支持。项目级 `storyboard_reference` 虽与设定引用复用内部 scene discriminator，服务端仍以 scope + scene 联合判断，不能误用图片附件。删除 Follow-up 会在同一事务中解除文件引用并压紧队列位置。
 
-聊天链路在同一 Agent turn 内同步完成写入，不会创建 `production_task_runs`。`premise_asset_generation` 仍使用 `image_gen → create_premise_asset`；`asset_reference` 只暴露 `request_current_project_api`、`image_gen`、`request_user_input`，通过内部通用工具 GET 当前项后选择 PATCH 当前项、POST 派生新项，或在用户明确要求时 DELETE 软删除当前项。通用工具只解析当前项目的固定相对路径并直接分发到领域服务，不做 HTTP 回环，也不成为外部 REST 能力。
+聊天链路在同一 Agent turn 内同步完成写入，不会创建 `production_task_runs`。`premise_asset_generation` 和 `asset_reference` 均使用全局 `request_api`；图片 Scene 额外暴露 `image_gen`，通过项目 Route GET 当前事实后选择 PATCH 当前项、POST 派生新项，或经全局危险确认后 DELETE 软删除。`request_api` 以 Echo 当前注册的 `/api/v1/projects/{project_uuid}/...` Route 为可用范围：命中已审查覆盖层时直接分发领域服务，超出覆盖层字段或仅存在于真实 REST API 的 Route 则调用进程内应用路由，不访问 localhost 或外部网络。所有调用仍校验当前项目 UUID、公开参数和统一响应信封；未配置风险策略的写 Route 默认要求用户确认。
 
 引用场景生成文件先持久化到 Asset Store，并绑定当前 project、chat thread、来源 premise asset、用途和 `tool_execution_uuid`。POST 只消费当前引用线程尚未使用的 `project_chat_asset_reference_image`，事件保存公开来源设定项 UUID 和工具执行 UUID；PATCH 图片、POST 和 DELETE 均可在领域提交后安全重放。revision 冲突保留生成文件，Agent 必须重新 GET 最新 revision 后重试。设定项进入回收站后，新 turn、读取、生图与后续写操作都会被拒绝；升级前已持久化的 typed-tool execution 仍可恢复完成。
 

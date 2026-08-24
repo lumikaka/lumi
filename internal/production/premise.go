@@ -648,6 +648,23 @@ func (service *Service) ImportPremiseAsset(ctx context.Context, input CreateAsse
 	return dto, err
 }
 
+type projectChatImageFile struct {
+	ID               int64
+	Kind             string
+	Purpose          string
+	ChatThreadUUID   string
+	PremiseAssetUUID string
+}
+
+func loadProjectChatImageFile(tx *gorm.DB, projectID int64, fileUUID string) (projectChatImageFile, error) {
+	var file projectChatImageFile
+	err := tx.Table("files").
+		Select("id,kind,purpose,COALESCE(json_extract(metadata_json,'$.chat_thread_uuid'),'') AS chat_thread_uuid,COALESCE(json_extract(metadata_json,'$.premise_asset_uuid'),'') AS premise_asset_uuid").
+		Where("project_id=? AND uuid=? AND deleted_at IS NULL", projectID, fileUUID).
+		Take(&file).Error
+	return file, err
+}
+
 // CreatePremiseAssetFromFile binds an already durable chat-generated image to
 // a new premise asset. The tool execution UUID makes recovery after a process
 // interruption idempotent without routing chat work through production tasks.
@@ -689,17 +706,15 @@ func (service *Service) CreatePremiseAssetFromFile(ctx context.Context, input Cr
 				return notFound(err, "来源设定资产不存在")
 			}
 		}
-		var file struct {
-			ID      int64
-			Kind    string
-			Purpose string
-		}
-		fileQuery := tx.Table("files").Select("id,kind,purpose").Where("project_id=? AND uuid=? AND deleted_at IS NULL AND json_extract(metadata_json,'$.chat_thread_uuid')=?", p.ID, fileUUID, chatThreadUUID)
-		if sourceAssetUUID != "" {
-			fileQuery = fileQuery.Where("json_extract(metadata_json,'$.premise_asset_uuid')=?", sourceAssetUUID)
-		}
-		if err := fileQuery.Take(&file).Error; err != nil {
+		file, err := loadProjectChatImageFile(tx, p.ID, fileUUID)
+		if err != nil {
 			return notFound(err, "生成图片文件不存在")
+		}
+		if file.ChatThreadUUID != chatThreadUUID {
+			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前会话 image_gen 新返回的文件；已有项目图片只能作为 reference_file_uuids。", nil)
+		}
+		if sourceAssetUUID != "" && file.PremiseAssetUUID != sourceAssetUUID {
+			return domainError(CodeValidation, "生成图片绑定上下文无效", "派生设定项只能使用当前绑定资产引用会话 image_gen 新生成的图片。", nil)
 		}
 		allowedPurpose := "project_chat_asset_image_generation"
 		if sourceAssetUUID != "" {
@@ -1130,13 +1145,15 @@ func (service *Service) UpdatePremiseAssetFromFile(ctx context.Context, assetUUI
 		if asset.Revision != input.ExpectedRevision {
 			return domainError(CodeConflict, "设定资产已被修改", "刷新后基于最新 revision 重试。", nil)
 		}
-		var file struct {
-			ID      int64
-			Kind    string
-			Purpose string
-		}
-		if err := tx.Table("files").Select("id,kind,purpose").Where("project_id=? AND uuid=? AND deleted_at IS NULL AND json_extract(metadata_json,'$.chat_thread_uuid')=? AND json_extract(metadata_json,'$.premise_asset_uuid')=?", asset.ProjectID, fileUUID, chatThreadUUID, assetUUID).Take(&file).Error; err != nil {
+		file, err := loadProjectChatImageFile(tx, asset.ProjectID, fileUUID)
+		if err != nil {
 			return notFound(err, "生成图片文件不存在")
+		}
+		if file.ChatThreadUUID != chatThreadUUID {
+			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前绑定资产引用会话 image_gen 新返回的文件。", nil)
+		}
+		if file.PremiseAssetUUID != assetUUID {
+			return domainError(CodeValidation, "生成图片绑定上下文无效", "图片替换只能使用绑定当前 Premise Asset 的引用会话输出。", nil)
 		}
 		if file.Kind != "image" || file.Purpose != "project_chat_asset_reference_image" {
 			return domainError(CodeValidation, "生成图片用途无效", "设定项替换只能使用当前引用会话 image_gen 生成的图片。", nil)

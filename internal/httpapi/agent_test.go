@@ -18,6 +18,7 @@ import (
 	"lumi/internal/provider"
 	"lumi/internal/story"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -35,6 +36,12 @@ func (*httpAgentQueue) StartDomainTask(context.Context, string, agent.DomainTask
 }
 func (*httpAgentQueue) GetDomainTask(context.Context, string, string, string) (agent.DomainTask, error) {
 	return agent.DomainTask{}, nil
+}
+func (*httpAgentQueue) ListDomainTasks(context.Context, string, string, string, int) ([]agent.DomainTask, error) {
+	return []agent.DomainTask{}, nil
+}
+func (*httpAgentQueue) ListDomainTaskEvents(context.Context, string, string, string, int64, int64, int) ([]agent.DomainTaskEvent, agent.CursorPagination, error) {
+	return []agent.DomainTaskEvent{}, agent.CursorPagination{}, nil
 }
 func (*httpAgentQueue) CancelDomainTask(context.Context, string, string, string) error { return nil }
 func (*httpAgentQueue) RetryDomainTask(context.Context, string, string, string) (agent.DomainTask, error) {
@@ -88,6 +95,7 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	e.POST("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/turns", handler.CreateTurn)
 	e.GET("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/items", handler.ListItems)
 	e.GET("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/events", handler.ListEvents)
+	e.GET("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/trajectory", handler.ShowTrajectory)
 	e.POST("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups", handler.CreateFollowUp)
 	e.POST("/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/follow_ups/:follow_up_uuid/steerings", handler.SteerFollowUp)
 	e.POST("/api/v1/projects/:project_uuid/workflows", handler.CreateYoloWorkflow)
@@ -136,6 +144,11 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	}
 	itemsResponse := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+threadUUID+"/items?limit=25", nil)
 	eventsResponse := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+threadUUID+"/events?limit=25", nil)
+	trajectoryResponse := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+threadUUID+"/trajectory?limit=25", nil)
+	trajectoryItems := envelopeData(t, trajectoryResponse)["items"].([]any)
+	trajectoryItemUUID := trajectoryItems[0].(map[string]any)["uuid"].(string)
+	trajectoryDeepLinkResponse := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+threadUUID+"/trajectory?limit=25&item_uuid="+trajectoryItemUUID, nil)
+	missingTrajectoryResponse := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+httpAgentUUIDv7(t)+"/trajectory?limit=25", nil)
 	workflowResponse := requestJSON(t, e, http.MethodPost, base+"/workflows", map[string]any{"title": "快速创作", "story_prompt": "一只小熊寻找星光。", "idempotency_key": "http-yolo-one"})
 	workflowUUID := envelopeData(t, workflowResponse)["uuid"].(string)
 	workflowRunsResponse := requestJSON(t, e, http.MethodGet, base+"/workflows/"+workflowUUID+"/runs?limit=2", nil)
@@ -148,14 +161,23 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	if allProjectThreads.Code != http.StatusOK || !strings.Contains(allProjectThreads.Body.String(), `"title":"项目助手"`) || !strings.Contains(allProjectThreads.Body.String(), `"title":"单项生成"`) || !strings.Contains(allProjectThreads.Body.String(), `"title":"分镜引用"`) || !strings.Contains(allProjectThreads.Body.String(), `"total":4`) {
 		t.Fatalf("mixed project threads = %d %s", allProjectThreads.Code, allProjectThreads.Body.String())
 	}
-	for name, response := range map[string]string{"thread": threadResponse.Body.String(), "premise_thread": premiseThreadResponse.Body.String(), "project_list": projectList.Body.String(), "unfiltered_project_list": unfilteredProjectList.Body.String(), "all_project_threads": allProjectThreads.Body.String(), "storyboard_thread": storyboardThreadResponse.Body.String(), "turn": turnResponse.Body.String(), "follow_up": followResponse.Body.String(), "steer_fallback": steerFallbackResponse.Body.String(), "items": itemsResponse.Body.String(), "events": eventsResponse.Body.String(), "workflow": workflowResponse.Body.String(), "workflow_runs": workflowRunsResponse.Body.String(), "workflow_events": workflowEventsResponse.Body.String(), "workflow_logs": workflowLogsResponse.Body.String(), "filtered_workflow_logs": filteredWorkflowLogsResponse.Body.String()} {
+	for name, response := range map[string]string{"thread": threadResponse.Body.String(), "premise_thread": premiseThreadResponse.Body.String(), "project_list": projectList.Body.String(), "unfiltered_project_list": unfilteredProjectList.Body.String(), "all_project_threads": allProjectThreads.Body.String(), "storyboard_thread": storyboardThreadResponse.Body.String(), "turn": turnResponse.Body.String(), "follow_up": followResponse.Body.String(), "steer_fallback": steerFallbackResponse.Body.String(), "items": itemsResponse.Body.String(), "events": eventsResponse.Body.String(), "trajectory": trajectoryResponse.Body.String(), "trajectory_deep_link": trajectoryDeepLinkResponse.Body.String(), "workflow": workflowResponse.Body.String(), "workflow_runs": workflowRunsResponse.Body.String(), "workflow_events": workflowEventsResponse.Body.String(), "workflow_logs": workflowLogsResponse.Body.String(), "filtered_workflow_logs": filteredWorkflowLogsResponse.Body.String()} {
 		if strings.Contains(response, `"id":`) || strings.Contains(response, "river_job_id") || strings.Contains(response, "http-agent-secret") || strings.Contains(response, "root_path") {
 			t.Fatalf("%s response leaked internal data: %s", name, response)
 		}
 	}
-	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || eventsResponse.Code != http.StatusOK || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
-		t.Fatalf("items=%d events=%d workflow=%d runs=%d workflow_events=%d logs=%d filtered_logs=%d", itemsResponse.Code, eventsResponse.Code, workflowResponse.Code, workflowRunsResponse.Code, workflowEventsResponse.Code, workflowLogsResponse.Code, filteredWorkflowLogsResponse.Code)
+	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || eventsResponse.Code != http.StatusOK || trajectoryResponse.Code != http.StatusOK || trajectoryDeepLinkResponse.Code != http.StatusOK || !strings.Contains(trajectoryResponse.Body.String(), `"history_complete":true`) || !strings.Contains(trajectoryResponse.Body.String(), `"model_requests":[]`) || missingTrajectoryResponse.Code != http.StatusNotFound || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
+		t.Fatalf("items=%d events=%d trajectory=%d deep_link=%d missing_trajectory=%d workflow=%d runs=%d workflow_events=%d logs=%d filtered_logs=%d", itemsResponse.Code, eventsResponse.Code, trajectoryResponse.Code, trajectoryDeepLinkResponse.Code, missingTrajectoryResponse.Code, workflowResponse.Code, workflowRunsResponse.Code, workflowEventsResponse.Code, workflowLogsResponse.Code, filteredWorkflowLogsResponse.Code)
 	}
+}
+
+func httpAgentUUIDv7(t *testing.T) string {
+	t.Helper()
+	value, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value.String()
 }
 
 func TestAgentAPIErrorPreservesDomainTaskConflict(t *testing.T) {

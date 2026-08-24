@@ -118,6 +118,27 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 	if !websocketRouteFound || !workflowConflictRouteFound || application.RealtimeHub() == nil {
 		t.Fatal("application realtime or workflow conflict endpoint was not initialized")
 	}
+	serverProjectRoutes := projectAPIRouteSpecs(application.Echo)
+	agentProjectRoutes := application.agentService.ProjectAPIRoutes()
+	if len(agentProjectRoutes) != len(serverProjectRoutes) {
+		t.Fatalf("Agent project routes=%d, server project routes=%d", len(agentProjectRoutes), len(serverProjectRoutes))
+	}
+	agentRouteKeys := make(map[string]bool, len(agentProjectRoutes))
+	for _, route := range agentProjectRoutes {
+		agentRouteKeys[route.Method+" "+route.Path] = true
+	}
+	for _, route := range serverProjectRoutes {
+		segments := strings.Split(route.Path, "/")
+		for index, segment := range segments {
+			if strings.HasPrefix(segment, ":") {
+				segments[index] = "{" + strings.TrimPrefix(segment, ":") + "}"
+			}
+		}
+		key := route.Method + " " + strings.Join(segments, "/")
+		if !agentRouteKeys[key] {
+			t.Fatalf("server project route missing from Agent gateway: %s", key)
+		}
+	}
 
 	for _, scenario := range []struct {
 		path   string

@@ -32,7 +32,8 @@ type imageReferenceRow struct {
 }
 
 func threadAllowsImageReferences(thread threadRecord) bool {
-	return thread.Scope == ThreadScopePremise && (thread.Scene == ScenePremiseAsset || thread.Scene == SceneAssetReference)
+	definition, ok := sceneDefinitionForThread(thread)
+	return ok && definition.ImageReferencePolicy != ImageReferenceNone
 }
 
 func (service *Service) finalizeChatImageReferences(ctx context.Context, store *project.Store, thread threadRecord, uploadUUIDs []string) ([]storedImageReference, error) {

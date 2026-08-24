@@ -23,14 +23,16 @@ import (
 )
 
 type Service struct {
-	projects  *project.Manager
-	providers *provider.Service
-	models    *modelsettings.Resolver
-	model     llm.ToolClient
-	image     imagegen.Client
-	queue     Queue
-	hub       *realtime.Hub
-	now       func() time.Time
+	projects             *project.Manager
+	providers            *provider.Service
+	models               *modelsettings.Resolver
+	model                llm.ToolClient
+	image                imagegen.Client
+	queue                Queue
+	hub                  *realtime.Hub
+	projectAPIRoutes     []agentAPIRoute
+	projectAPIDispatcher ProjectAPIDispatcher
+	now                  func() time.Time
 }
 
 func NewService(projects *project.Manager, providers *provider.Service, model llm.ToolClient, queue Queue, hub *realtime.Hub) *Service {
@@ -288,7 +290,7 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 			First(&promptThread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
-		promptSnapshot, err := loadContextPrompts(ctx, store, promptThread)
+		promptSnapshot, err := service.loadContextPrompts(ctx, store, promptThread)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-const chatDetailKeys = ['chat-items', 'chat-turns', 'chat-follow-ups', 'chat-input-requests', 'chat-events']
+const chatDetailKeys = ['chat-items', 'chat-turns', 'chat-follow-ups', 'chat-input-requests', 'chat-events', 'chat-trajectory']
 const workflowDetailKeys = ['workflow', 'workflow-runs', 'workflow-events']
 const comicKeys = ['comic-sections', 'comic-state', 'comic-storyboards', 'comic-images', 'comic-snapshots', 'comic-snapshot', 'comic-exports']
 const premiseKeys = ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-variants']

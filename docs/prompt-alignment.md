@@ -30,10 +30,11 @@
 | premise_style | simple_cel_anime | 无 | 内置画风预设 | Prompt 管理与生成输入 | 已实现；双语目录测试 |
 | premise_style | hong_kong_comic | 无 | 内置画风预设 | Prompt 管理与生成输入 | 已实现；双语目录测试 |
 | premise_style | minimal_japanese_handdrawn | 无 | 内置画风预设 | Prompt 管理与生成输入 | 已实现；双语目录测试 |
-| agent | project_assistant | 无 | `project_chat_area.ex` runtime/system messages | Lumi Project Chat context | 已实现；项目语言置前、工具/UUID/项目范围约束测试 |
-| agent | premise_asset_scene | 无 | `premise_asset_generation_instruction/1` | Premise 单项 Agent scene | 已实现；按 Lumi 专用工具名适配，双语目录 |
-| agent | asset_reference_scene | project_uuid, subject_uuid, asset_type, asset_title, asset_summary, asset_tags, current_file_uuid, asset_revision, overall_style | `asset_reference_instruction/2` | Premise asset-reference scene | 已实现；实时来源项与整体画风渲染，判断 PATCH 当前项或 POST 派生新项，明确 DELETE 仅软删除；旧 typed-tool 快照运行时升级 |
-| agent | premise_scope | 无 | ProjectChatArea premise scope | 普通 Premise thread | 已实现；双语目录 |
+| agent | base | 无 | Agent 全局安全协议 | 所有 Agent Scene | 已实现；UUID、Overview Contract 索引 system 注入、revision、危险确认和真实状态规则 |
+| agent | scene_project_assistant | project_uuid | Project Assistant Scene | 通用 Project Chat | 已实现；全局 Registry、无 subject、无 `image_gen` |
+| agent | scene_premise_asset | project_uuid | Premise Asset Generation Scene | Premise 单项生成 | 已实现；512×512、白底单主体、`image_gen → request_api` |
+| agent | scene_asset_reference | project_uuid, subject_uuid, asset_type, asset_title, asset_summary, asset_tags, current_file_uuid, asset_revision, overall_style | Asset Reference Scene | 绑定 Premise Asset 的引用会话 | 已实现；Subject 仅为默认对象，PATCH/POST/确认后软删除 |
+| agent | scene_storyboard_reference | project_uuid, chapter_uuid, section_uuid | Storyboard Reference Scene | 绑定 Comic Section 的分镜会话 | 已实现；GET 最新事实后完整 POST，无 `image_gen` |
 | agent | conversation_summary | summary | Agent runtime context packaging | 本地 Agent 上下文压缩 | 已实现；审计项保留与本地化测试 |
 
 ## 选择、覆盖、版本与快照
@@ -43,6 +44,7 @@
 - 项目语言切换只迁移默认值；用户自定义版本不被覆盖。任务创建时冻结 generation_language、system/user/image prompt、Provider endpoint/model/参数、章节/Profile revision、Storyboard、候选设定项和文件 UUID。
 - River 重试读取快照，不重新读取项目语言、Prompt 版本或候选目录。Section 参考选择结果写入任务事件并在重试时复用；Story workflow 模型 JSON 写入 `story_prompt_results` 并可幂等恢复内容提交。
 - Story、Profile、批量章节计划和 Comic storyboard 的 LLM 日志使用各自真实 task kind 作为 scenario，便于逐步骤核验最终请求；迁移升级/回滚会显式备份恢复既有任务事件、Agent 审计和日志。
+- Project Chat 创建 Turn 时渲染只含能力与领域 Contract 文档入口的完整 `agent/api-docs/overview.md`，随 Prompt snapshot 冻结，并注入该 Turn 每次模型调用的 system prompt；具体 Route 不进入 Overview，模型通过 `read_agent_doc` 只读取当前目标领域的详细 API Contract。
 - API/WS 只投影 UUIDv7；数据库关联继续使用 bigint `id`。所有新增 REST 接口位于 `/api/v1` 并使用统一 success/data/error 信封。
 
 ## 单机 Provider 适配
@@ -50,7 +52,7 @@
 - Story/selection 使用 Cloudflare AI Gateway `/ai/v1/chat/completions`；Base URL 由 Account ID 固定派生，不接受任意 OpenAI-compatible 服务地址。
 - Cloudflare 图片生成无论是否包含参考图，均调用 `/ai/v1/responses` 的 `image_generation` tool；参考图以冻结的 `input_image` data URL 发送。Aliyun Bailian adapter 继续把冻结图片编码为 message content data URL。
 - 图片与引用文件在任务创建时冻结公开 file UUID，worker 从本地 Asset Store 读取实际字节。API key 只在执行时从全局 secret store 解析，从不进入项目库或公开 payload。
-- Project Chat 的两个图片 scene 不进入 River 生产队列：当前设定图、当前消息附件与显式引用按固定顺序解析，`image_gen` 同步写入 Asset Store。`premise_asset_generation` 继续由 typed tool 创建；`asset_reference` 使用仅对该 scene 暴露的 `request_current_project_api` 直接分发领域服务，可更新当前项、派生创建或软删除。该能力不扩展外部 REST API，升级前已持久化的旧 typed-tool execution 仍可恢复执行。
+- Project Chat 的两个图片 scene 不进入 River 生产队列：当前设定图、当前消息附件与显式引用按固定顺序解析，`image_gen` 同步写入 Asset Store；随后统一通过 `request_api` 调用当前服务端项目 API。命中审查覆盖层时直接分发领域服务，其他真实项目 Route 通过进程内应用路由执行；可更新当前项、派生创建或经确认软删除。所有新 Run 都使用 Project API Prompt/Tool；升级前已持久化的旧 typed-tool execution 仅由隔离 recovery-only 适配器恢复。
 - Comic moment 分布在任务创建时冻结为 `[2,3,1,2,3,1]`，避免 River 重试改变最终请求，使单机 durable task 具有确定性。
 
 ## 验证索引
@@ -58,7 +60,7 @@
 - Catalog：`internal/promptcatalog/catalog_test.go`
 - Story/Profile/Batch/Next/Comic 快照与请求：`internal/jobqueue/integration_test.go`
 - Premise/Section/图片引用：`internal/jobqueue/production_integration_test.go`
-- Project Chat 图片附件、同步生图、通用项目工具边界、派生创建、写回/软删除与幂等恢复：`internal/agent/agent_test.go`、`internal/agent/project_api_tool_test.go`、`internal/production/production_test.go`
+- Project Chat 图片附件、同步生图、全局 Project API 边界、派生创建、写回/软删除与幂等恢复：`internal/agent/agent_test.go`、`internal/agent/scene_migration_test.go`、`internal/agent/agent_api_phase3_test.go`、`internal/production/production_test.go`
 - Yolo：`internal/jobqueue/agent_integration_test.go`、`internal/agent/agent_test.go`
 - Provider 参考图载荷：`internal/imagegen/client_test.go`
 - Prompt 默认/自定义/恢复/语言切换/legacy：`internal/story/story_test.go`、`internal/httpapi/story_test.go`

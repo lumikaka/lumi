@@ -13,9 +13,11 @@ import (
 const redactedSnapshotValue = "[REDACTED]"
 
 var (
-	snapshotBearerPattern  = regexp.MustCompile(`(?i)bearer\s+[a-z0-9._~+/=-]+`)
-	snapshotKeyPattern     = regexp.MustCompile(`(?i)((?:api[_ -]?key|authorization|access[_ -]?token)\s*[:=]\s*)[^\s,;]+`)
-	snapshotJSONKeyPattern = regexp.MustCompile(`(?i)("(?:api[_ -]?key|authorization|access[_ -]?token)"\s*:\s*")[^"]*(")`)
+	snapshotBearerPattern      = regexp.MustCompile(`(?i)bearer\s+[a-z0-9._~+/=-]+`)
+	snapshotKeyPattern         = regexp.MustCompile(`(?i)((?:api[_ -]?key|authorization|access[_ -]?token)\s*[:=]\s*)[^\s,;]+`)
+	snapshotJSONKeyPattern     = regexp.MustCompile(`(?i)("(?:api[_ -]?key|authorization|access[_ -]?token)"\s*:\s*")[^"]*(")`)
+	snapshotUnixPathPattern    = regexp.MustCompile(`(?m)(^|[\s"'\x60(])(?:file://)?/(?:Users|Volumes|home|root|private|var|tmp|opt|etc|mnt|srv|workspace)/[^\s"'\x60)]+`)
+	snapshotWindowsPathPattern = regexp.MustCompile(`(?i)(^|[\s"'\x60(])[a-z]:\\[^\s"'\x60)]+`)
 )
 
 type textRequestSnapshot struct {
@@ -162,5 +164,7 @@ func redactSnapshotText(value, apiKey string) string {
 	}
 	value = snapshotBearerPattern.ReplaceAllString(value, "Bearer "+redactedSnapshotValue)
 	value = snapshotKeyPattern.ReplaceAllString(value, "${1}"+redactedSnapshotValue)
-	return snapshotJSONKeyPattern.ReplaceAllString(value, "${1}"+redactedSnapshotValue+"${2}")
+	value = snapshotJSONKeyPattern.ReplaceAllString(value, "${1}"+redactedSnapshotValue+"${2}")
+	value = snapshotUnixPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
+	return snapshotWindowsPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
 }

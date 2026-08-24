@@ -13,6 +13,7 @@ import './styles/shell.sass'
 import './styles/projects.sass'
 import './styles/settings.sass'
 import './styles/chat.sass'
+import './styles/trajectory.sass'
 import './styles/desktop-session.sass'
 
 const queryClient = new QueryClient({

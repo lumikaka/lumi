@@ -17,12 +17,21 @@ test('chat and workflow events refresh core recovery queries without reloading L
     workflow_uuid: 'workflow-uuid',
   })
   assert.equal(result.invalidateAll, false)
-  for (const expected of ['chat-threads', 'chat-thread', 'chat-items', 'chat-events', 'workflows', 'workflow', 'workflow-runs', 'workflow-events']) {
+  for (const expected of ['chat-threads', 'chat-thread', 'chat-items', 'chat-events', 'chat-trajectory', 'workflows', 'workflow', 'workflow-runs', 'workflow-events']) {
     assert.ok(keyNames(result).includes(expected), expected)
   }
   assert.ok(!keyNames(result).includes('workflow-llm-logs'))
   assert.ok(result.queryKeys.some((key) => key[0] === 'chat-items' && key[2] === 'thread-uuid'))
+  assert.ok(result.queryKeys.some((key) => key[0] === 'chat-trajectory' && key[2] === 'thread-uuid'))
   assert.ok(result.queryKeys.some((key) => key[0] === 'workflow-runs' && key[2] === 'workflow-uuid'))
+})
+
+test('Model Request and compaction hints invalidate trajectory facts through REST rereads', () => {
+  for (const event of ['chat:model_request_changed', 'chat:compaction_changed']) {
+    const result = projectRealtimeInvalidation(projectUuid, event, { thread_uuid: 'thread-uuid' })
+    assert.equal(result.invalidateAll, false)
+    assert.ok(result.queryKeys.some((key) => key[0] === 'chat-trajectory' && key[2] === 'thread-uuid'))
+  }
 })
 
 test('task events distinguish story work from asset maintenance', () => {

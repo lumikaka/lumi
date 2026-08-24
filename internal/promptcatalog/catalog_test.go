@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	agentprompts "lumi/internal/agent/prompts"
 	"reflect"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 		GroupChapter:      {"json_system", "comic_storyboard", "section_premise_selection", "before_image", "section_reference_present", "section_reference_absent", "section_additional_direction", "section_image"},
 		GroupPremise:      {"setting_image", "asset_breakdown", "single_asset_generation"},
 		GroupPremiseStyle: {"project_overall_style", "simple_cel_anime", "hong_kong_comic", "minimal_japanese_handdrawn"},
-		GroupAgent:        {"project_assistant", "premise_asset_scene", "asset_reference_scene", "storyboard_reference_scene", "premise_scope", "conversation_summary"},
+		GroupAgent:        {"base", "scene_project_assistant", "scene_premise_asset", "scene_asset_reference", "scene_storyboard_reference", "conversation_summary"},
 		GroupRuntime:      {"project_language_instruction"},
 	}
 	if definitions := Definitions(LanguageChinese); len(definitions) != 28 {
@@ -57,6 +58,43 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 	preset, _ := Lookup(GroupPremiseStyle, "simple_cel_anime", LanguageChinese)
 	if before.PromptType != PromptTypeFragment || preset.PromptType != PromptTypePreset || section.PromptType != PromptTypeTemplate || !strings.Contains(section.DefaultValue, "{{before_image_prompt}}") {
 		t.Fatalf("prompt types or composition are invalid: before=%q preset=%q section=%q", before.PromptType, preset.PromptType, section.PromptType)
+	}
+}
+
+func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
+	keys := []string{"base", "scene_project_assistant", "scene_premise_asset", "scene_asset_reference", "scene_storyboard_reference", "conversation_summary"}
+	values := map[string]string{
+		"project_uuid":       "01900000-0000-7000-8000-000000000001",
+		"subject_uuid":       "01900000-0000-7000-8000-000000000002",
+		"asset_type":         "character",
+		"asset_title":        "Courier",
+		"asset_summary":      "A moonlit courier",
+		"asset_tags":         `["courier"]`,
+		"current_file_uuid":  "01900000-0000-7000-8000-000000000003",
+		"asset_revision":     "2",
+		"overall_style":      "Simple cel animation",
+		"chapter_uuid":       "01900000-0000-7000-8000-000000000004",
+		"section_uuid":       "01900000-0000-7000-8000-000000000005",
+		"recommended_guides": "- /api/v1/agent-docs/guides/example.md",
+		"summary":            "The current project facts.",
+	}
+	for _, language := range []string{LanguageChinese, LanguageEnglish} {
+		for _, key := range keys {
+			definition, ok := Lookup(GroupAgent, key, language)
+			if !ok {
+				t.Fatalf("missing %s Agent prompt %s", language, key)
+			}
+			if definition.DefaultValue != agentprompts.MustRead(key, language) {
+				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
+			}
+			if len(definition.PreviousDefaultValues) != 0 {
+				t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
+			}
+			rendered, err := Render(definition.DefaultValue, values)
+			if err != nil || strings.Contains(rendered, "{{") {
+				t.Fatalf("render %s Agent prompt %s: rendered=%q err=%v", language, key, rendered, err)
+			}
+		}
 	}
 }
 
@@ -149,8 +187,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "b164d27cbd2cba47ad4227ae4c4be725cc59f26cb359fa0ee97973386080f905",
-		LanguageEnglish: "c310669e6e8212d8e364c0839ed60381157f5643c9ff3a6b06a1573c265041a2",
+		LanguageChinese: "d6a0bbd4f4ce3dae5361c1e32f3f8de99d634a13d09f7847152b33faa1efdaf6",
+		LanguageEnglish: "1d8d54a0efa45fcab7bd892053718c562e40f37822a770920638826f075ac3c6",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

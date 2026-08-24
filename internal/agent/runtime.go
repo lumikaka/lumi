@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"lumi/internal/llm"
@@ -40,6 +39,10 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	}
 	if err := service.claimRun(ctx, store, &tc); err != nil {
 		return err
+	}
+	tc.ToolMode, err = service.loadRunToolMode(ctx, store, tc)
+	if err != nil {
+		return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 	}
 	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
 	if err != nil {
@@ -92,7 +95,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err := service.recordModelStart(ctx, store, tc, contextBytes); err != nil {
 			return err
 		}
-		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: llmToolDefinitions(tc.Thread), MaxTokens: 4096}
+		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: service.llmToolDefinitions(tc.Thread, tc.ToolMode), MaxTokens: 4096}
 		scenario := strings.TrimSpace(publicThreadScene(tc.Thread.Scope, tc.Thread.Scene))
 		if scenario == "" {
 			scenario = "project_chat"
@@ -110,10 +113,18 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err != nil {
 			return err
 		}
+		tc.RequestUUID = logHandle.UUID
+		tc.RequestOrdinal = tc.Run.StepCount + 1
+		if err := service.recordModelRequestEvent(ctx, store, tc, "model_request_started", "pending"); err != nil {
+			return err
+		}
 		response, err := service.model.Complete(ctx, request)
 		var responsePayload []byte
 		if err == nil {
 			responsePayload, err = llmlog.EncodeChatResponse(response, request.APIKey)
+			if err == nil {
+				responsePayload = attachAgentToolLogMetadata(responsePayload, service.agentToolLogMetadata(tc, response.Message.ToolCalls))
+			}
 		}
 		finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
 			OutputSummary: response.Message.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
@@ -126,6 +137,21 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 				return finishErr
 			}
 		}
+		requestStatus := "completed"
+		if err != nil {
+			requestStatus = "failed"
+			if errors.Is(err, context.Canceled) {
+				requestStatus = "cancelled"
+			}
+		}
+		_ = store.DB().WithContext(context.WithoutCancel(ctx)).Table("llm_logs").Select("status").Where("uuid=? AND chat_run_id=?", tc.RequestUUID, tc.Run.ID).Scan(&requestStatus).Error
+		if eventErr := service.recordModelRequestEvent(context.WithoutCancel(ctx), store, tc, "model_request_completed", requestStatus); eventErr != nil {
+			if err != nil {
+				err = errors.Join(err, eventErr)
+			} else {
+				return eventErr
+			}
+		}
 		if err != nil {
 			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 		}
@@ -135,11 +161,23 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			continue
 		}
 		if len(response.Message.ToolCalls) > 0 {
+			if mixedRequestUserInputCalls(response.Message.ToolCalls) {
+				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeToolValidation, "request_user_input 必须是本次模型响应中唯一的 Tool Call。")
+			}
 			for _, call := range response.Message.ToolCalls {
 				execution, persistedResult, completed, err := service.persistToolIntent(ctx, store, tc, call.ID, call.Name, call.Arguments)
 				if err != nil {
 					toolResult := toolErrorResult(err)
 					if execution.ID == 0 {
+						if errorCode(err) == CodeToolValidation {
+							repaired, persistErr := service.persistRejectedToolCall(ctx, store, tc, call.ID, call.Name, call.Arguments, err)
+							if persistErr != nil {
+								return persistErr
+							}
+							if repaired {
+								continue
+							}
+						}
 						return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
 					}
 					if persistErr := service.persistToolResult(ctx, store, tc, execution, toolResult); persistErr != nil {
@@ -182,17 +220,114 @@ func (service *Service) hasSteeringAfter(ctx context.Context, store *project.Sto
 }
 
 func llmToolDefinitions(thread threadRecord) []llm.ToolDefinition {
+	return llmToolDefinitionsForMode(thread, ToolModeProjectAPI)
+}
+
+func (service *Service) llmToolDefinitions(thread threadRecord, mode string) []llm.ToolDefinition {
+	return llmToolDefinitionsForMode(thread, mode)
+}
+
+func llmToolDefinitionsForMode(thread threadRecord, mode string) []llm.ToolDefinition {
 	definitions := toolDefinitions()
+	if normalizedToolMode(mode) == ToolModeLegacyTyped {
+		definitions = legacyRecoveryToolDefinitions()
+	}
 	result := make([]llm.ToolDefinition, 0, len(definitions))
 	for _, definition := range definitions {
 		name := definition["name"].(string)
-		if !toolAllowedForThread(name, thread) {
+		if !toolAllowedForThreadMode(name, thread, mode) {
 			continue
 		}
 		parameters, _ := definition["parameters"].(map[string]any)
-		result = append(result, llm.ToolDefinition{Name: name, Description: definition["description"].(string), Parameters: parameters})
+		description := definition["description"].(string)
+		result = append(result, llm.ToolDefinition{Name: name, Description: description, Parameters: parameters})
 	}
 	return result
+}
+
+func (service *Service) loadRunToolMode(ctx context.Context, store *project.Store, tc toolContext) (string, error) {
+	var snapshot struct {
+		Mode     string
+		Protocol string
+	}
+	err := store.DB().WithContext(ctx).Raw(`SELECT COALESCE(json_extract(metadata_json,'$.prompt_snapshot.tool_mode'),''),COALESCE(json_extract(metadata_json,'$.prompt_snapshot.tool_protocol'),'') FROM chat_items WHERE run_id=? AND turn_id=? AND item_type='user_message' ORDER BY sequence,id LIMIT 1`, tc.Run.ID, tc.Turn.ID).Row().Scan(&snapshot.Mode, &snapshot.Protocol)
+	if err != nil {
+		return "", err
+	}
+	mode := normalizedToolMode(snapshot.Mode)
+	switch mode {
+	case ToolModeProjectAPI:
+		if snapshot.Protocol != ToolProtocolProjectAPI {
+			return "", domainError(CodeToolNotAllowed, "Tool Protocol 快照无效", "project_api_tools Run 只支持 project_api_v2；旧协议 Run 不恢复。", nil)
+		}
+		return mode, nil
+	case ToolModeLegacyTyped:
+		if err := service.recordLegacyToolRecoveryUse(ctx, store, tc, "legacy_mode_snapshot"); err != nil {
+			return "", err
+		}
+		return mode, nil
+	case "":
+		// Tool mode predates the protocol snapshot. This is a recovery-only
+		// interpretation for a persisted Run; new Run creation always writes both
+		// tool_protocol and tool_mode and cannot enter this branch.
+		if err := service.recordLegacyToolRecoveryUse(ctx, store, tc, "missing_mode_snapshot"); err != nil {
+			return "", err
+		}
+		return ToolModeLegacyTyped, nil
+	default:
+		return "", domainError(CodeToolNotAllowed, "Tool Mode 快照无效", "持久化 Run 使用了不受支持的 Tool Mode。", nil)
+	}
+}
+
+func (service *Service) recordLegacyToolRecoveryUse(ctx context.Context, store *project.Store, tc toolContext, source string) error {
+	var count int64
+	if err := store.DB().WithContext(ctx).Table("chat_events").Where("run_id=? AND event_type='legacy_tool_recovery'", tc.Run.ID).Count(&count).Error; err != nil || count > 0 {
+		return err
+	}
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	thread, err := lockThreadSQL(ctx, tx, tc.Thread.ProjectID, tc.Thread.UUID)
+	if err != nil {
+		return err
+	}
+	// Recheck while holding the thread write lock so retries cannot duplicate
+	// the recovery audit event.
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_events WHERE run_id=? AND event_type='legacy_tool_recovery'`, tc.Run.ID).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		now := service.now().UTC()
+		if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "legacy_tool_recovery", map[string]any{
+			"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID,
+			"turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID,
+			"source": source, "tool_mode": ToolModeLegacyTyped,
+		}, now); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func mixedRequestUserInputCalls(calls []llm.ToolCall) bool {
+	if len(calls) <= 1 {
+		return false
+	}
+	for _, call := range calls {
+		if call.Name == "request_user_input" {
+			return true
+		}
+	}
+	return false
 }
 
 func (service *Service) loadToolContext(ctx context.Context, store *project.Store, threadUUID, turnUUID string) (toolContext, error) {
@@ -300,6 +435,53 @@ func (service *Service) recordModelStart(ctx context.Context, store *project.Sto
 	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(map[string]any{"step_count": gorm.Expr("step_count + 1"), "context_bytes": contextBytes, "updated_at": now}).Error
 }
 
+func (service *Service) recordModelRequestEvent(ctx context.Context, store *project.Store, tc toolContext, eventType, status string) error {
+	if !isUUIDv7(tc.RequestUUID) || tc.RequestOrdinal < 1 {
+		return domainError(CodeStateConflict, "Model Request 关联无效", "request_uuid 与 request_ordinal 必须来自已持久化的 LLM Log。", nil)
+	}
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	thread, err := lockThreadSQL(ctx, tx, tc.Thread.ProjectID, tc.Thread.UUID)
+	if err != nil {
+		return err
+	}
+	now := service.now().UTC()
+	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, eventType, map[string]any{
+		"project_uuid":    tc.ProjectUUID,
+		"thread_uuid":     tc.Thread.UUID,
+		"turn_uuid":       tc.Turn.UUID,
+		"run_uuid":        tc.Run.UUID,
+		"request_uuid":    tc.RequestUUID,
+		"request_ordinal": tc.RequestOrdinal,
+		"status":          status,
+	}, now); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:model_request_changed", map[string]any{
+		"project_uuid":    tc.ProjectUUID,
+		"thread_uuid":     tc.Thread.UUID,
+		"turn_uuid":       tc.Turn.UUID,
+		"run_uuid":        tc.Run.UUID,
+		"request_uuid":    tc.RequestUUID,
+		"request_ordinal": tc.RequestOrdinal,
+		"status":          status,
+	})
+	return nil
+}
+
 func (service *Service) completeRun(ctx context.Context, store *project.Store, tc toolContext, content string) error {
 	followUpPromptSnapshot := contextPromptSet{}
 	var queuedFollowUps int64
@@ -307,10 +489,17 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 		return err
 	}
 	if queuedFollowUps > 0 {
-		var err error
-		followUpPromptSnapshot, err = loadContextPrompts(ctx, store, tc.Thread)
+		items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.QueueSequence)
 		if err != nil {
 			return err
+		}
+		var frozen bool
+		followUpPromptSnapshot, frozen = frozenContextPrompts(items, tc.Turn.ID)
+		if !frozen {
+			followUpPromptSnapshot, err = service.loadContextPrompts(ctx, store, tc.Thread)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	sqlDB, err := store.DB().DB()
@@ -327,7 +516,12 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 		return err
 	}
 	now := service.now().UTC()
-	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "assistant_message", "assistant", content, "text", "completed", "", "", "", map[string]any{}, now)
+	metadata := map[string]any{}
+	if isUUIDv7(tc.RequestUUID) {
+		metadata["request_uuid"] = tc.RequestUUID
+		metadata["request_ordinal"] = tc.RequestOrdinal
+	}
+	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "assistant_message", "assistant", content, "text", "completed", "", "", "", metadata, now)
 	if err != nil {
 		return err
 	}
@@ -337,7 +531,12 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET status='completed',completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='in_progress' AND cancel_requested_at IS NULL`, now, now, tc.Turn.ID); err != nil {
 		return err
 	}
-	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "run_completed", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "item_uuid": item.UUID, "status": TurnCompleted}, now); err != nil {
+	completedPayload := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "item_uuid": item.UUID, "status": TurnCompleted}
+	if isUUIDv7(tc.RequestUUID) {
+		completedPayload["request_uuid"] = tc.RequestUUID
+		completedPayload["request_ordinal"] = tc.RequestOrdinal
+	}
+	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "run_completed", completedPayload, now); err != nil {
 		return err
 	}
 	if err := service.promoteNextFollowUpTx(ctx, tx, tc.ProjectUUID, &thread, followUpPromptSnapshot); err != nil {
@@ -509,4 +708,3 @@ func safeMessage(err error) string {
 
 // recordModelFinish uses this migration-backed type without exporting database IDs.
 var _ = json.RawMessage{}
-var _ = fmt.Sprintf

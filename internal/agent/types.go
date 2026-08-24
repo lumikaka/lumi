@@ -81,6 +81,8 @@ type Queue interface {
 	CancelAgentWork(string, string)
 	StartDomainTask(context.Context, string, DomainTaskRequest) (DomainTask, error)
 	GetDomainTask(context.Context, string, string, string) (DomainTask, error)
+	ListDomainTasks(context.Context, string, string, string, int) ([]DomainTask, error)
+	ListDomainTaskEvents(context.Context, string, string, string, int64, int64, int) ([]DomainTaskEvent, CursorPagination, error)
 	CancelDomainTask(context.Context, string, string, string) error
 	RetryDomainTask(context.Context, string, string, string) (DomainTask, error)
 }
@@ -109,6 +111,11 @@ type DomainTaskRequest struct {
 	AssetTitle            string
 	AssetSummary          string
 	AssetTags             []string
+	ChapterCount          int
+	MaxSectionCount       int
+	Scope                 string
+	Format                string
+	AllowMissingImages    bool
 }
 
 type DomainTask struct {
@@ -118,6 +125,13 @@ type DomainTask struct {
 	Status       string `json:"status"`
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+type DomainTaskEvent struct {
+	UUID      string    `json:"uuid"`
+	Sequence  int64     `json:"sequence"`
+	EventType string    `json:"event_type"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Thread struct {
