@@ -113,7 +113,7 @@ func TestStoryboardReferenceProjectAPIModeKeepsGlobalAccessAndSafety(t *testing.
 		t.Fatal(err)
 	}
 	tc.ToolMode = ToolModeProjectAPI
-	if value, err := readAgentDoc(tc, map[string]any{"path": storyDocPath}); err != nil || !strings.Contains(value["content"].(string), RouteStoryProfileGet) {
+	if value, err := readAgentDoc(tc, map[string]any{"path": storyDocPath}); err != nil || !strings.Contains(value["content"].(string), "`GET /api/v1/projects/{project_uuid}/story-profile`") {
 		t.Fatalf("non-recommended Story doc value=%+v err=%v", value, err)
 	}
 	storyRequest := map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/story-profile", "response_filter": ".data | {uuid}"}
@@ -528,7 +528,7 @@ func TestProjectAssistantReadsGuideAndAPIContractBeforeCreatingAsset(t *testing.
 			arguments, _ := json.Marshal(map[string]any{"path": premiseAssetDocPath})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-create-contract", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 3:
-			if !messagesContain(request.Messages, "创建设定项") || !messagesContain(request.Messages, "file_uuid") {
+			if !messagesContain(request.Messages, "`POST /api/v1/projects/{project_uuid}/premise-assets`") || !messagesContain(request.Messages, "file_uuid") {
 				t.Fatalf("premise asset API Contract was not returned before image generation: %+v", request.Messages)
 			}
 			arguments, _ := json.Marshal(map[string]any{"prompt": "参考月光邮差的星光分拣员，保持同一视觉语言", "reference_uuids": []string{source.UUID}, "size": "512x512"})
@@ -1060,7 +1060,13 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 			fixture.resourceUUID = segments[len(segments)-2]
 		}
 		key := "assistant-generation-" + fixture.name
-		task := call(key, "POST", fixture.url, map[string]any{"prompt": "生成 " + fixture.name, "model": "explicit-model", "premise_asset_uuids": []any{assetReferenceUUID}})
+		body := map[string]any{"prompt": "生成 " + fixture.name, "model": "explicit-model"}
+		if fixture.kind == "story_chapter_generation" {
+			body["prompt_key"] = "next_story_chapter"
+		} else {
+			body["premise_asset_uuids"] = []any{assetReferenceUUID}
+		}
+		task := call(key, "POST", fixture.url, body)
 		taskUUID, _ := task["uuid"].(string)
 		if !isUUIDv7(taskUUID) || task["status"] != "queued" || task["kind"] != fixture.kind {
 			t.Fatalf("%s queued task=%+v", fixture.name, task)
@@ -1072,8 +1078,14 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 		harness.queue.mu.Lock()
 		request := harness.queue.requests[len(harness.queue.requests)-1]
 		harness.queue.mu.Unlock()
-		if request.Kind != fixture.kind || request.ResourceUUID != fixture.resourceUUID || request.ChapterUUID != fixture.chapterUUID || request.ProviderUUID != tc.Run.ProviderUUID || request.Model != "explicit-model" || request.Prompt != "生成 "+fixture.name || strings.Join(request.PremiseAssetUUIDs, ",") != assetReferenceUUID || request.IdempotencyKey != key {
+		if request.Kind != fixture.kind || request.ResourceUUID != fixture.resourceUUID || request.ChapterUUID != fixture.chapterUUID || request.ProviderUUID != tc.Run.ProviderUUID || request.Model != "explicit-model" || request.Prompt != "生成 "+fixture.name || request.IdempotencyKey != key {
 			t.Fatalf("%s generation request=%+v", fixture.name, request)
+		}
+		if fixture.kind == "story_chapter_generation" && request.PromptKey != "next_story_chapter" {
+			t.Fatalf("chapter generation prompt_key was not forwarded: %+v", request)
+		}
+		if fixture.kind != "story_chapter_generation" && strings.Join(request.PremiseAssetUUIDs, ",") != assetReferenceUUID {
+			t.Fatalf("%s generation references were not forwarded: %+v", fixture.name, request)
 		}
 	}
 

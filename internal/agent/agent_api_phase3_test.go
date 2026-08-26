@@ -50,8 +50,9 @@ func TestPhase3RouteContractsAreCompleteAndSecure(t *testing.T) {
 				t.Fatalf("missing document %s", route.DocPath)
 			}
 			doc, err := renderAgentDoc(route.DocPath)
-			if err != nil || !strings.Contains(doc, route.ID) {
-				t.Fatalf("route is absent from generated doc: err=%v", err)
+			docMarker := "`" + route.Method + " " + route.PathTemplate + "`"
+			if err != nil || !strings.Contains(doc, docMarker) {
+				t.Fatalf("route is absent from static API Contract: err=%v", err)
 			}
 			if route.Risk == RiskDangerous && !route.RequiresConfirmation {
 				t.Fatal("dangerous route does not require confirmation")

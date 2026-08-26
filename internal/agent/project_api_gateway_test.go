@@ -76,8 +76,8 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 		t.Fatalf("overview did not retain only the API Contract index: err=%v", err)
 	}
 	projectDoc, err := service.readAgentDoc(tc, map[string]any{"path": projectDocPath})
-	if err != nil || !strings.Contains(projectDoc["content"].(string), "project_api.get.llm_logs") {
-		t.Fatalf("discovered route missing from its detailed API Contract: err=%v", err)
+	if err != nil || strings.Contains(projectDoc["content"].(string), "project_api.get.llm_logs") || !strings.Contains(projectDoc["content"].(string), "`GET /api/v1/projects/{project_uuid}`") {
+		t.Fatalf("static Project Contract was mutated by discovered routes: err=%v", err)
 	}
 }
 

@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -10,9 +9,6 @@ import (
 	"lumi/internal/llm"
 	"lumi/internal/story"
 )
-
-//go:embed testdata/api-docs/*.md
-var agentAPIDocGoldenFiles embed.FS
 
 func TestProjectAPIToolsAndGuidesAreGloballyRegistered(t *testing.T) {
 	thread := threadRecord{}
@@ -274,6 +270,79 @@ func TestReadAgentDocEntryPointAndEmbeddedSourcesAreDiscoverable(t *testing.T) {
 	}
 }
 
+func TestAPIDocsAreMaintainedAsConciseStaticMarkdown(t *testing.T) {
+	for _, definition := range agentAPIDocDefinitions() {
+		source, err := readAgentDocTemplate(definition.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(source, "{{") {
+			t.Fatalf("API Contract %s still contains a template token", definition.Path)
+		}
+		if len(source) > 6000 {
+			t.Fatalf("API Contract %s is not concise: %d bytes", definition.Path, len(source))
+		}
+		for _, unnecessary := range []string{"## Query 字段", "## 响应字段", "## 权限", "route_id"} {
+			if strings.Contains(source, unnecessary) {
+				t.Fatalf("API Contract %s retains generated detail %q", definition.Path, unnecessary)
+			}
+		}
+		for _, route := range routesForAgentDoc(definition.Path) {
+			operation := "`" + route.Method + " " + route.PathTemplate + "`"
+			if !strings.Contains(source, operation) {
+				t.Fatalf("static API Contract %s missing operation %s", definition.Path, operation)
+			}
+			for _, schema := range []map[string]any{route.QuerySchema, route.BodySchema} {
+				requiredFields, _ := schema["required"].([]string)
+				for _, field := range requiredFields {
+					if !strings.Contains(source, field) {
+						t.Fatalf("static API Contract %s missing required field %s for %s", definition.Path, field, operation)
+					}
+				}
+			}
+			if route.RequiresConfirmation && !strings.Contains(source, "确认") {
+				t.Fatalf("static API Contract %s omits confirmation for %s", definition.Path, operation)
+			}
+		}
+
+		rendered, err := renderAgentDocWithRoutes(definition.Path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rendered != strings.TrimSpace(source)+"\n" {
+			t.Fatalf("API Contract %s was changed by runtime route rendering", definition.Path)
+		}
+	}
+
+	chapterSource, err := readAgentDocTemplate(chapterDocPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"`POST /api/v1/projects/{project_uuid}/chapters`",
+		"`POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/generations`",
+		"`prompt_key`",
+		"`story_chapter`",
+		"`next_story_chapter`",
+		"`chapter_code`",
+		"`title`",
+		`{"chapter_code":"vol01.ch01","title":"第一章","content":"...","content_format":"md"}`,
+		`{"expected_revision":3}`,
+		`{"prompt_key":"story_chapter","prompt":"生成本章正文"}`,
+	} {
+		if !strings.Contains(chapterSource, required) {
+			t.Fatalf("static Chapter Contract missing %q", required)
+		}
+	}
+	if strings.Contains(chapterSource, `"model":"可选"`) {
+		t.Fatal("Chapter Contract contains a placeholder that could be sent literally")
+	}
+	chapterProjector, _ := agentAPIProjectorByKey("chapter")
+	if !containsString(agentAPIProjectorFieldNames(chapterProjector), "trashed_at") {
+		t.Fatal("Chapter Contract documents trashed_at but the compact response omits it")
+	}
+}
+
 func TestOverviewIndexesMatchGuideAndAPIDocRegistries(t *testing.T) {
 	content, err := renderAgentDoc(agentDocOverviewPath)
 	if err != nil {
@@ -408,7 +477,7 @@ func TestPremiseAssetGuidesRouteBatchCreationThroughSettingWorkflow(t *testing.T
 	}
 }
 
-func TestDetailedAPIDocsUseVACSStyleTablesAndProjectorFields(t *testing.T) {
+func TestAgentAPIProjectorsAreComplete(t *testing.T) {
 	for _, route := range agentAPIRoutes() {
 		projector, ok := agentAPIProjectorByKey(route.Projector)
 		if !ok {
@@ -418,40 +487,6 @@ func TestDetailedAPIDocsUseVACSStyleTablesAndProjectorFields(t *testing.T) {
 			if _, ok := agentAPIProjectorByKey(projector.ItemProjector); !ok {
 				t.Fatalf("list projector %s has no item projector %s", projector.Key, projector.ItemProjector)
 			}
-		}
-	}
-
-	content, err := renderAgentDoc(comicSectionDocPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, heading := range []string{"## 方法与路径", "## 路径参数", "## 请求体字段", "## 响应字段", "## 权限", "## 调用约束", "## 错误与调用示例"} {
-		if !strings.Contains(content, heading) {
-			t.Fatalf("detailed API doc missing %q: %s", heading, content)
-		}
-	}
-	for _, field := range []string{"data.uuid", "data.chapter_uuid", "data.section_no", "data.current_storyboard", "data.revision"} {
-		if !strings.Contains(content, "`"+field+"`") {
-			t.Fatalf("detailed API doc missing projector field %s: %s", field, content)
-		}
-	}
-	if strings.Contains(content, "Scene 范围") || strings.Contains(content, "当前 Scene") || strings.Contains(content, "Agent Scene 约束") {
-		t.Fatalf("generic API detail doc contains Scene authorization text: %s", content)
-	}
-}
-
-func TestComicSectionDocsMatchGoldenFiles(t *testing.T) {
-	for _, goldenPath := range []string{"testdata/api-docs/project_assistant-comic-section.md", "testdata/api-docs/storyboard_reference-comic-section.md"} {
-		got, err := renderAgentDoc(comicSectionDocPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want, err := agentAPIDocGoldenFiles.ReadFile(goldenPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != string(want) {
-			t.Fatalf("rendered doc differs from %s\n--- got ---\n%s\n--- want ---\n%s", goldenPath, got, want)
 		}
 	}
 }

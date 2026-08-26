@@ -47,6 +47,8 @@
 
 Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持精简，固定包含“API 调用顺序和说明”，并指向调用前必须阅读的 API Contract；method、path、字段和响应仍只由 Contract 定义。文档读取只接受注册路径；旧英文 Guide、Scene 文档、任意文件、Query、Fragment 与路径穿越不在注册表中。
 
+`internal/agent/docs/api/*.md` 是由 Codex 维护、经审查并纳入版本控制的静态 Markdown，不从 Route metadata 生成。Route registry 仍负责调用范围、schema、风险与执行；测试校验每条审查 Route 的 method/path 和必填请求字段都出现在对应 Contract 中，防止文档与执行契约漂移。
+
 ## Premise Asset 文件来源契约
 
 创建时 `file_uuid` 与 `upload_uuid` 必须且只能提供一个：
@@ -94,7 +96,7 @@ Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持�
 
 - 四个有效 Scene 的相同四工具顺序，以及 `RecommendedGuideIDs` 与 Guide Registry 一致。
 - Overview、三份 Guide 和全部 API Contract 可读；未注册路径、Scene 路径、Query、Fragment、编码和路径穿越拒绝。
-- Overview 能力/Contract 文档索引、不包含具体 Route、完整 system prompt 注入与 Turn 级快照、Guide 渲染、模板变量和 96 KiB 文档上限。
+- Overview 能力/Contract 文档索引、不包含具体 Route、完整 system prompt 注入与 Turn 级快照、静态 Guide/API Contract、Route 覆盖和 96 KiB 文档上限。
 - Scene Prompt 只包含权威上下文与推荐 Guide；旧默认自动迁移、自定义 Prompt 保留。
 - 更早 Project API 协议拒绝、v2 正常恢复、旧文档工具名拒绝。
 - 已有设定图直接 POST 的准确来源错误，以及“读取 Guide → 已有项目图片作为参考 → 新输出创建资产”的完整回归。

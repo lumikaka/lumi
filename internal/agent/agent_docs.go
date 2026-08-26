@@ -2,7 +2,6 @@ package agent
 
 import (
 	"embed"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -52,17 +51,17 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 	return []agentAPIDocDefinition{
 		{Path: chapterDocPath, Description: "Chapter、正文版本、导入、回收站与恢复。"},
 		{Path: comicExportDocPath, Description: "Comic Export readiness、创建与结果列表。"},
-		{Path: comicSectionDocPath, Description: "单个 Comic Section、图片与 variant。"},
+		{Path: comicSectionDocPath, Description: "单个 Comic Section 详情。"},
 		{Path: comicSnapshotDocPath, Description: "Comic Snapshot 列表、详情与恢复。"},
 		{Path: comicDocPath, Description: "Comic 状态、Section 集合与排序。"},
 		{Path: generationDocPath, Description: "Story、Chapter、Premise 与 Comic 生成入口。"},
 		{Path: premiseAssetDocPath, Description: "Premise Asset、图片 variant 与生命周期。"},
 		{Path: premiseDocPath, Description: "Premise、来源与 Setting Image。"},
-		{Path: projectAssetDocPath, Description: "项目文件、上传、完整性与资产维护。"},
-		{Path: projectDocPath, Description: "项目元数据、模型与 Prompt 设置、诊断及项目级运行资源。"},
+		{Path: projectAssetDocPath, Description: "项目资产的读取、元数据与生命周期。"},
+		{Path: projectDocPath, Description: "项目元数据与生成语言。"},
 		{Path: storyDocPath, Description: "Story Profile、版本、导入与投影。"},
 		{Path: storyboardDocPath, Description: "Storyboard variant、全量更新与选择。"},
-		{Path: taskDocPath, Description: "Story、Production、Workflow 与维护任务状态。"},
+		{Path: taskDocPath, Description: "Story 与 Production 任务的状态、事件、取消和重试。"},
 	}
 }
 
@@ -209,18 +208,26 @@ func renderAgentDocWithRoutes(path string, routes []agentAPIRoute) (string, erro
 	case agentDocOverviewPath:
 		return renderAgentDocOverview(template, routes), nil
 	}
-	for _, guide := range agentGuideDefinitions() {
-		if path == guide.Path {
-			return strings.TrimSpace(template) + "\n", nil
+	if isStaticAgentDocPath(path) {
+		// Guides and API Contracts are reviewed Markdown. Route metadata controls
+		// validation and execution, but never generates instructions for the Agent.
+		return strings.TrimSpace(template) + "\n", nil
+	}
+	return "", domainError(CodeToolNotAllowed, "Agent Doc 未注册", "文档没有命中静态 Agent Docs Registry。", nil)
+}
+
+func isStaticAgentDocPath(path string) bool {
+	for _, doc := range agentAPIDocDefinitions() {
+		if path == doc.Path {
+			return true
 		}
 	}
-	docRoutes := routesForAgentDocFromRoutes(path, routes)
-	if len(docRoutes) == 0 {
-		return "", domainError(CodeToolNotAllowed, "API Doc 没有可用 Route", "全局 Route Registry 没有与该文档对应的 API。", nil)
+	for _, guide := range agentGuideDefinitions() {
+		if path == guide.Path {
+			return true
+		}
 	}
-	return replaceAgentDocTokens(template, map[string]string{
-		"route_docs": renderAgentDomainDoc(docRoutes),
-	}), nil
+	return false
 }
 
 func readAgentDocTemplate(path string) (string, error) {
@@ -308,157 +315,6 @@ func renderAgentAPIDocIndex(docs []agentAPIDocDefinition) string {
 	return renderAgentMarkdownTable([]string{"API Contract 路径", "领域与用途"}, rows)
 }
 
-func renderAgentDomainDoc(routes []agentAPIRoute) string {
-	sections := []string{
-		"## 方法与路径\n\n" + renderAgentMethodTable(routes),
-		"## 路径参数\n\n" + renderAgentPathParameterTable(routes),
-		"## Query 字段\n\n" + renderAgentQueryTable(routes),
-		"## 请求体字段\n\n" + renderAgentRequestBodyTable(routes),
-		"## 响应字段\n\n" + renderAgentResponseFieldTable(routes),
-		"## 权限\n\n" + renderAgentPermissionTable(routes),
-		"## 调用约束\n\n" + renderAgentCallConstraintTable(routes),
-		"## 错误与调用示例\n\n" + renderAgentErrorsAndExamples(routes),
-	}
-	return "以下全局已注册操作使用 `request_api` 调用。\n\n" + strings.Join(sections, "\n\n")
-}
-
-func renderAgentQueryTable(routes []agentAPIRoute) string {
-	rows := [][]string{}
-	for _, route := range routes {
-		operation := codeCell(route.Method + " " + route.PathTemplate)
-		if route.QuerySchema == nil {
-			rows = append(rows, []string{operation, "无", "-", "-", "不要传 query。"})
-			continue
-		}
-		properties, _ := route.QuerySchema["properties"].(map[string]any)
-		keys := make([]string, 0, len(properties))
-		for key := range properties {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		required := agentAPIRequiredFields(route.QuerySchema)
-		for _, key := range keys {
-			schema, _ := properties[key].(map[string]any)
-			rows = append(rows, []string{operation, codeCell(key), agentAPISchemaType(schema), agentAPIRequiredLabel(required[key]), agentAPISchemaDescription(schema)})
-		}
-	}
-	return renderAgentMarkdownTable([]string{"操作", "字段", "类型", "必填", "说明"}, rows)
-}
-
-func renderAgentMethodTable(routes []agentAPIRoute) string {
-	rows := make([][]string, 0, len(routes))
-	for _, route := range routes {
-		rows = append(rows, []string{codeCell(route.Method), codeCell(route.PathTemplate), route.Action + "（`" + route.ID + "`）。"})
-	}
-	return renderAgentMarkdownTable([]string{"方法", "路径", "说明"}, rows)
-}
-
-func renderAgentPathParameterTable(routes []agentAPIRoute) string {
-	parameters := agentAPIPathParameters(routes)
-	rows := make([][]string, 0, len(parameters))
-	for _, name := range parameters {
-		description := agentAPIPathParameterDescription(name)
-		rows = append(rows, []string{codeCell(name), "string (UUIDv7)", "是", description})
-	}
-	if len(rows) == 0 {
-		rows = append(rows, []string{"无", "-", "-", "该文档中的 Route 没有 Path 参数。"})
-	}
-	return renderAgentMarkdownTable([]string{"字段", "类型", "必填", "说明"}, rows)
-}
-
-func renderAgentRequestBodyTable(routes []agentAPIRoute) string {
-	rows := [][]string{}
-	for _, route := range routes {
-		operation := codeCell(route.Method + " " + route.PathTemplate)
-		if route.BodySchema == nil {
-			rows = append(rows, []string{operation, "无", "-", "-", "不需要请求体。"})
-			continue
-		}
-		properties, _ := route.BodySchema["properties"].(map[string]any)
-		keys := make([]string, 0, len(properties))
-		for key := range properties {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		required := agentAPIRequiredFields(route.BodySchema)
-		for _, key := range keys {
-			schema, _ := properties[key].(map[string]any)
-			rows = append(rows, []string{
-				operation, codeCell(key), agentAPISchemaType(schema), agentAPIRequiredLabel(required[key]), agentAPISchemaDescription(schema),
-			})
-		}
-	}
-	rows = append(rows, []string{"全部", codeCell("project_uuid"), "string", "禁止", "项目 UUID 只能出现在 URL Path 中，并且必须等于当前 Run 绑定项目。"})
-	return renderAgentMarkdownTable([]string{"适用方法", "字段", "类型", "必填", "说明"}, rows)
-}
-
-func renderAgentResponseFieldTable(routes []agentAPIRoute) string {
-	rows := [][]string{{"全部", codeCell("success"), "boolean", "是否成功。"}}
-	for _, route := range routes {
-		operation := codeCell(route.Method + " " + route.PathTemplate)
-		projector, ok := agentAPIProjectorByKey(route.Projector)
-		rows = append(rows, []string{operation, codeCell("data"), "object", route.Action + " 操作的紧凑响应。"})
-		if !ok {
-			continue
-		}
-		if projector.List {
-			rows = append(rows,
-				[]string{operation, codeCell("data.items"), "array", "有上限的资源列表。"},
-				[]string{operation, codeCell("data.total"), "integer", "裁剪前的资源数量。"},
-				[]string{operation, codeCell("data.truncated"), "boolean", "是否因列表上限而截断。"},
-			)
-			itemProjector, _ := agentAPIProjectorByKey(projector.ItemProjector)
-			for _, field := range itemProjector.Fields {
-				rows = append(rows, []string{operation, codeCell("data.items[]." + field.Name), field.Type, field.Description})
-			}
-			continue
-		}
-		for _, field := range projector.Fields {
-			rows = append(rows, []string{operation, codeCell("data." + field.Name), field.Type, field.Description})
-		}
-	}
-	rows = append(rows, []string{"全部", codeCell("error"), "object | null", "失败时返回公开错误信息；成功响应不包含错误内容。"})
-	return renderAgentMarkdownTable([]string{"适用方法", "字段", "类型", "说明"}, rows)
-}
-
-func renderAgentPermissionTable(routes []agentAPIRoute) string {
-	rows := make([][]string, 0, len(routes))
-	for _, route := range routes {
-		permission := "可编辑当前项目"
-		if route.ReadOnly {
-			permission = "可访问当前项目"
-		}
-		resourceBoundary := "当前项目范围；资源归属由领域服务校验"
-		rows = append(rows, []string{codeCell(route.Method + " " + route.PathTemplate), permission, resourceBoundary})
-	}
-	return renderAgentMarkdownTable([]string{"方法与路径", "项目权限", "资源边界"}, rows)
-}
-
-func renderAgentCallConstraintTable(routes []agentAPIRoute) string {
-	rows := make([][]string, 0, len(routes))
-	for _, route := range routes {
-		idempotency := "-"
-		if route.Method == "POST" || route.ID == RoutePremiseAssetDelete {
-			idempotency = "Tool Execution UUID"
-		}
-		rows = append(rows, []string{
-			codeCell(route.ID), agentAPIBoolLabel(route.ExpectedRevision), agentAPIBoolLabel(route.Async), codeCell(route.Risk),
-			agentAPIBoolLabel(route.RequiresConfirmation), idempotency,
-		})
-	}
-	return renderAgentMarkdownTable([]string{"route_id", "expected_revision", "异步", "风险", "需要 request_user_input", "幂等规则"}, rows)
-}
-
-func renderAgentErrorsAndExamples(routes []agentAPIRoute) string {
-	var builder strings.Builder
-	builder.WriteString("常见错误：`tool_validation`、`tool_not_allowed`、`not_found`、revision/state conflict。\n\n")
-	for _, route := range routes {
-		encoded, _ := json.Marshal(minimalAgentAPIRequest(route))
-		fmt.Fprintf(&builder, "- `%s`：`%s`\n", route.ID, encoded)
-	}
-	return strings.TrimSpace(builder.String())
-}
-
 func renderAgentMarkdownTable(headers []string, rows [][]string) string {
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "| %s |\n", strings.Join(headers, " | "))
@@ -485,120 +341,4 @@ func agentMarkdownTableCell(value string) string {
 
 func codeCell(value string) string {
 	return "`" + value + "`"
-}
-
-func agentAPIPathParameters(routes []agentAPIRoute) []string {
-	result := []string{}
-	seen := map[string]bool{}
-	for _, route := range routes {
-		for _, segment := range strings.Split(route.PathTemplate, "/") {
-			if !strings.HasPrefix(segment, "{") || !strings.HasSuffix(segment, "}") {
-				continue
-			}
-			name := strings.TrimSuffix(strings.TrimPrefix(segment, "{"), "}")
-			if name != "" && !seen[name] {
-				result = append(result, name)
-				seen[name] = true
-			}
-		}
-	}
-	return result
-}
-
-func agentAPIPathParameterDescription(name string) string {
-	return map[string]string{
-		"project_uuid":       "当前 Run 绑定项目的公开 UUIDv7。",
-		"chapter_uuid":       "目标 Chapter 的公开 UUIDv7。",
-		"premise_asset_uuid": "目标 Premise Asset 的公开 UUIDv7。",
-		"section_uuid":       "目标 Comic Section 的公开 UUIDv7。",
-		"source_uuid":        "目标 Premise Source 的公开 UUIDv7。",
-		"setting_image_uuid": "目标 Premise Setting Image 的公开 UUIDv7。",
-		"task_uuid":          "目标任务的公开 UUIDv7。",
-	}[name]
-}
-
-func agentAPIRequiredFields(schema map[string]any) map[string]bool {
-	result := map[string]bool{}
-	values, _ := schema["required"].([]string)
-	for _, value := range values {
-		result[value] = true
-	}
-	return result
-}
-
-func agentAPISchemaType(schema map[string]any) string {
-	typeName, _ := schema["type"].(string)
-	if typeName != "array" {
-		return typeName
-	}
-	items, _ := schema["items"].(map[string]any)
-	itemType, _ := items["type"].(string)
-	if itemType == "" {
-		itemType = "object"
-	}
-	return "array<" + itemType + ">"
-}
-
-func agentAPISchemaDescription(schema map[string]any) string {
-	description, _ := schema["description"].(string)
-	if values, ok := schema["enum"].([]string); ok && len(values) > 0 {
-		description += " 可选值：`" + strings.Join(values, "`、`") + "`。"
-	}
-	if description == "" {
-		description = "已注册请求字段。"
-	}
-	return description
-}
-
-func agentAPIRequiredLabel(required bool) string {
-	if required {
-		return "是"
-	}
-	return "否"
-}
-
-func agentAPIBoolLabel(value bool) string {
-	if value {
-		return "是"
-	}
-	return "否"
-}
-
-func minimalAgentAPIRequest(route agentAPIRoute) map[string]any {
-	request := map[string]any{"url": route.PathTemplate, "method": route.Method, "response_filter": recommendedAgentAPIResponseFilter(route)}
-	if route.BodySchema == nil {
-		return request
-	}
-	body := map[string]any{}
-	for key := range agentAPIRequiredFields(route.BodySchema) {
-		body[key] = minimalAgentAPIFieldValue(key)
-	}
-	if route.ID == RoutePremiseAssetCreate {
-		body["file_uuid"] = "00000000-0000-7000-8000-000000000000"
-	}
-	request["request_body"] = body
-	return request
-}
-
-func minimalAgentAPIFieldValue(key string) any {
-	switch key {
-	case "expected_revision":
-		return 3
-	case "content_format":
-		return "md"
-	case "asset_type":
-		return "character"
-	case "story_md":
-		return "# Story"
-	case "content":
-		return "# Chapter"
-	case "content_md":
-		return "# Storyboard"
-	case "title":
-		return "Asset title"
-	case "prompt":
-		return "Generation instructions"
-	default:
-		return "..."
-	}
 }

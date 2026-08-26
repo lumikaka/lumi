@@ -16,6 +16,6 @@ Guide 按前端创作功能组织，简要说明 API 调用顺序和用途；API
 
 - 本文档：能力与领域文档索引，回答“应该读取哪份文档”。
 - `/api/v1/agent-docs/guides/*.md`：由前端创作功能反推的精简调用流程，回答“API 按什么顺序调用、每步做什么”。
-- `/api/v1/agent-docs/api/*.md`：按当前服务端项目 API 渲染的具体 API Contract，回答“method、path、字段与响应是什么”。
+- `/api/v1/agent-docs/api/*.md`：经审查并纳入版本控制的 Markdown API Contract，回答“method、path、字段与响应是什么”。
 
 `read_agent_doc` 只能读取注册表中的 Overview、Guide 和 API Contract；任意文件路径、已停用的历史 Prompt 文档、Query、Fragment 与路径穿越都不可读。

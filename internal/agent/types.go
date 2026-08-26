@@ -105,6 +105,7 @@ type DomainTaskRequest struct {
 	Model                 string
 	SelectionProviderUUID string
 	SelectionModel        string
+	PromptKey             string
 	Prompt                string
 	IdempotencyKey        string
 	PremiseAssetUUIDs     []string

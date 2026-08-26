@@ -102,7 +102,7 @@ func (manager *Manager) CancelAgentWork(projectUUID, workUUID string) {
 func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string, request agent.DomainTaskRequest) (agent.DomainTask, error) {
 	switch request.Kind {
 	case KindStoryChapterGeneration:
-		task, err := manager.CreateChapterGeneration(ctx, projectUUID, CreateGenerationInput{ChapterUUID: request.ResourceUUID, ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
+		task, err := manager.CreateChapterGeneration(ctx, projectUUID, CreateGenerationInput{ChapterUUID: request.ResourceUUID, ProviderUUID: request.ProviderUUID, Model: request.Model, PromptKey: request.PromptKey, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
 		return storyDomainTask(task), err
 	case KindPremiseSettingGeneration:
 		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})

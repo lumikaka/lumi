@@ -62,9 +62,8 @@ type agentAPIRequest struct {
 	TargetUUID     string
 }
 
-// agentAPIResponseField is shared by the compact response projector and API
-// documentation renderer. A field cannot be documented without also being
-// part of the allowlisted response surface.
+// agentAPIResponseField defines the allowlisted compact response surface used
+// by request_api. Agent-facing API instructions live in reviewed Markdown.
 type agentAPIResponseField struct {
 	Name, Type, Description string
 }
@@ -90,6 +89,7 @@ func rawAgentAPIProjectors() []agentAPIProjector {
 			{Name: "chapter_code", Type: "string", Description: "章节业务编号。"},
 			{Name: "title", Type: "string", Description: "章节标题。"},
 			{Name: "revision", Type: "integer", Description: "当前乐观并发版本。"},
+			{Name: "trashed_at", Type: "string | null", Description: "移入回收站的时间；active Chapter 为空。"},
 			{Name: "current_story", Type: "object | null", Description: "当前章节正文版本。"},
 		}, RecommendedFields: []string{"uuid", "chapter_code", "title", "revision"}},
 		{Key: "chapter_list", List: true, ItemProjector: "chapter"},
@@ -205,6 +205,10 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		"prompt": apiString("生成指令。"), "model": apiString("可选模型覆盖值。"),
 		"premise_asset_uuids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "可选 Premise Asset 参考 UUIDv7 列表。"},
 	}, "prompt")
+	chapterGenerationBody := apiObject(map[string]any{
+		"prompt_key": apiEnum("章节正文 Prompt。普通章节使用 story_chapter；创建下一章或继续写作使用 next_story_chapter。", "story_chapter", "next_story_chapter"),
+		"prompt":     apiString("生成指令。"), "model": apiString("可选模型覆盖值。"),
+	}, "prompt_key", "prompt")
 	base := []agentAPIRoute{
 		{ID: RouteStoryProfileGet, Action: "读取故事档案", Method: "GET", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileGet, Projector: "story_profile", DocPath: storyDocPath, RecommendedResponseFilter: ".data | {uuid,revision,story_md,projection_state}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryProfileUpdate, Action: "更新故事档案", Method: "PUT", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileUpdate, Projector: "story_profile", DocPath: storyDocPath, BodySchema: storyUpdate, ExpectedRevision: true, Risk: RiskWrite},
@@ -219,7 +223,7 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		{ID: RoutePremiseAssetDelete, Action: "将设定项移入回收站", Method: "DELETE", PathTemplate: project + "/premise-assets/{premise_asset_uuid}", Handler: RoutePremiseAssetDelete, Projector: "premise_asset", DocPath: premiseAssetDocPath, BodySchema: deleteBody, ExpectedRevision: true, Risk: RiskDangerous, RequiresConfirmation: true},
 		{ID: RouteComicSectionGet, Action: "读取漫画 Section", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionGet, Projector: "comic_section", DocPath: comicSectionDocPath, RecommendedResponseFilter: ".data | {uuid,chapter_uuid,section_no,title,description_md,current_storyboard,revision}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryboardUpdate, Action: "更新 Storyboard", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/storyboard-variants", Handler: RouteStoryboardUpdate, Projector: "comic_section", DocPath: storyboardDocPath, BodySchema: storyboardBody, ExpectedRevision: true, Risk: RiskWrite},
-		{ID: RouteChapterGenerationCreate, Action: "创建章节生成任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/generations", Handler: RouteChapterGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
+		{ID: RouteChapterGenerationCreate, Action: "创建章节生成任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/generations", Handler: RouteChapterGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: chapterGenerationBody, Async: true, Risk: RiskWrite},
 		{ID: RoutePremiseSettingGenerationCreate, Action: "创建 Premise 设定图任务", Method: "POST", PathTemplate: project + "/premise-sources/{source_uuid}/setting-generations", Handler: RoutePremiseSettingGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
 		{ID: RoutePremiseBreakdownCreate, Action: "创建 Premise 拆解任务", Method: "POST", PathTemplate: project + "/premise-setting-images/{setting_image_uuid}/breakdowns", Handler: RoutePremiseBreakdownCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
 		{ID: RouteComicImageGenerationCreate, Action: "创建漫画图片任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations", Handler: RouteComicImageGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
@@ -530,7 +534,7 @@ func startAgentRouteGeneration(ctx context.Context, service *Service, tc toolCon
 	}
 	request := DomainTaskRequest{
 		Kind: kind, ResourceUUID: resourceUUID, ChapterUUID: chapterUUID, ProviderUUID: tc.Run.ProviderUUID,
-		Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"),
+		Model: stringArg(args, "model"), PromptKey: stringArg(args, "prompt_key"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"),
 		IdempotencyKey: idempotencyKey,
 	}
 	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, request)
