@@ -498,7 +498,7 @@ func createAssetReferenceMigrationFixture(t *testing.T, harness *agentHarness) (
 	return asset, thread
 }
 
-func TestProjectAssistantReadsCreateGuideAndDerivesAssetFromExistingImage(t *testing.T) {
+func TestProjectAssistantReadsGuideAndAPIContractBeforeCreatingAsset(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	source, _ := createAssetReferenceMigrationFixture(t, harness)
@@ -512,7 +512,7 @@ func TestProjectAssistantReadsCreateGuideAndDerivesAssetFromExistingImage(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	guidePath := agentDocBasePath + "/guides/premise-asset-create.md"
+	guidePath := agentDocBasePath + "/guides/创建设定资产.md"
 	harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
 		if got := definitionNames(request.Tools); strings.Join(got, ",") != strings.Join(projectAPIToolNames, ",") {
 			t.Fatalf("call %d tools=%v want=%v", call, got, projectAPIToolNames)
@@ -522,12 +522,18 @@ func TestProjectAssistantReadsCreateGuideAndDerivesAssetFromExistingImage(t *tes
 			arguments, _ := json.Marshal(map[string]any{"path": guidePath})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-create-guide", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 2:
-			if !messagesContain(request.Messages, "不能直接作为 POST") || !messagesContain(request.Messages, "reference_uuids") {
-				t.Fatalf("create Guide was not returned before image generation: %+v", request.Messages)
+			if !messagesContain(request.Messages, "不能直接充当新资产文件") || !messagesContain(request.Messages, "当前 Turn Reference") {
+				t.Fatalf("create Guide was not returned before API Contract: %+v", request.Messages)
+			}
+			arguments, _ := json.Marshal(map[string]any{"path": premiseAssetDocPath})
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-create-contract", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+		case 3:
+			if !messagesContain(request.Messages, "创建设定项") || !messagesContain(request.Messages, "file_uuid") {
+				t.Fatalf("premise asset API Contract was not returned before image generation: %+v", request.Messages)
 			}
 			arguments, _ := json.Marshal(map[string]any{"prompt": "参考月光邮差的星光分拣员，保持同一视觉语言", "reference_uuids": []string{source.UUID}, "size": "512x512"})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "derive-image", Name: "image_gen", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
-		case 3:
+		case 4:
 			fileUUID := toolResultFileUUID(t, request.Messages)
 			arguments, _ := json.Marshal(map[string]any{
 				"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets",
@@ -957,9 +963,14 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 	if prompts.ProjectUUID != harness.project.UUID || prompts.Scene != "" || prompts.LanguageInstruction != "" {
 		t.Fatalf("project chat prompt facts=%+v", prompts)
 	}
-	for _, expected := range []string{"request_api", "read_agent_doc", agentDocBasePath + "/guides/premise-asset-create.md", agentDocBasePath + "/guides/premise-asset-maintain.md", agentDocBasePath + "/guides/storyboard-update.md"} {
+	for _, expected := range []string{"request_api", "read_agent_doc", "必须先用 read_agent_doc", "之后才能使用 request_api"} {
 		if !strings.Contains(prompts.Assistant+prompts.APIOverview, expected) {
 			t.Fatalf("project assistant prompt missing %q: %+v", expected, prompts)
+		}
+	}
+	for _, guide := range agentGuideDefinitions() {
+		if !strings.Contains(prompts.APIOverview, guide.Path) {
+			t.Fatalf("project assistant capability index missing Guide %s", guide.ID)
 		}
 	}
 	if !containsString(definitionNames(llmToolDefinitionsForMode(tc.Thread, tc.ToolMode)), "image_gen") {

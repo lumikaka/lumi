@@ -37,9 +37,7 @@
 
 ## 当前 Guide 映射
 
-- `premise_asset_create` → `/api/v1/agent-docs/guides/premise-asset-create.md`
-- `premise_asset_maintain` → `/api/v1/agent-docs/guides/premise-asset-maintain.md`
-- `storyboard_update` → `/api/v1/agent-docs/guides/storyboard-update.md`
+当前 Guide 已按前端创作功能重组为 14 份中文文档，实际能力 ID 与路径以 `/api/v1/agent-docs/overview.md` 渲染的 Guide Registry 为准。旧英文 Guide 路径不再注册，也不提供兼容别名。
 
 Overview 的能力索引由同一 Guide Registry 生成；`read_agent_doc` 只读取注册的 Overview、Guide 和 API Contract。Scene Markdown、任意文件路径、Query、Fragment、编码路径、反斜杠和路径穿越均拒绝。
 
@@ -48,7 +46,7 @@ Overview 的能力索引由同一 Guide Registry 生成；`read_agent_doc` 只�
 - 所有外部标识使用 UUIDv7；内部 bigint `id`、路径、metadata 和凭据不会进入请求或响应。
 - 写操作先读取最新事实和 revision；冲突后重新读取再决定是否重试。
 - 危险 Route 使用稳定请求指纹绑定 Route、项目、目标、method/path/query/body、revision 和确认选项。
-- 已有 Premise Asset 图片只能作为 `image_gen.reference_file_uuids`，不能直接作为创建或替换的 `file_uuid`。
+- 已有 Premise Asset 图片只能作为当前 Turn Reference 传给 `image_gen.reference_uuids`，不能直接作为创建或替换的 `file_uuid`。
 - `file_uuid` 必须来自当前会话、用途匹配且尚未消费的 `image_gen` 输出；真正不存在、来源不合法和已消费分别返回不同领域错误。
 
 ## 验证原则
