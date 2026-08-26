@@ -1,5 +1,7 @@
 # Comic Snapshot API
 
+文中“获得确认”均指：先提交参数完整的 `request_api`；若返回 `agent_tool_confirmation_required`，该次不会执行写操作，此时再按 Overview 的全局协议把 confirmation 只传给 `request_user_input`；确认后由运行时自动执行原请求。
+
 使用 `request_api` 调用。将占位符替换为公开 UUIDv7；每次调用都传 `response_filter`。
 
 ## 读取

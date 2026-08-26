@@ -62,6 +62,7 @@ import {
   projectChatTurnActivity,
   projectChatUserInput,
   restoreChatScrollAnchor,
+  shouldAutofillEarlierChatItems,
   shouldLoadEarlierChatItems,
   shouldShowAssistantPending,
   suggestedChatThreadTitle,
@@ -1124,7 +1125,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     } finally {
       isLoadingEarlierRef.current = false
     }
-  }, [itemsQuery])
+  }, [itemsQuery.fetchNextPage, itemsQuery.hasNextPage, itemsQuery.isFetchingNextPage])
 
   const handleMessagesScroll = useCallback(() => {
     if (!shouldLoadEarlierChatItems({
@@ -1134,6 +1135,21 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     })) return
     void loadEarlierMessages()
   }, [itemsQuery.hasNextPage, itemsQuery.isFetchingNextPage, loadEarlierMessages])
+
+  useEffect(() => {
+    if (!selectedThreadUuid || !items.length || itemsQuery.isFetchNextPageError) return undefined
+    const frame = requestAnimationFrame(() => {
+      const container = messagesRef.current
+      if (!container || !shouldAutofillEarlierChatItems({
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight,
+        hasEarlierPage: itemsQuery.hasNextPage,
+        isFetchingEarlierPage: itemsQuery.isFetchingNextPage,
+      })) return
+      void loadEarlierMessages()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [items.length, itemsQuery.hasNextPage, itemsQuery.isFetchNextPageError, itemsQuery.isFetchingNextPage, loadEarlierMessages, selectedThreadUuid])
 
   const toggleExpanded = () => {
     if (onToggle) onToggle()
@@ -1227,7 +1243,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
         </header>
         <div className="chat-detail-body">
           <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
-            {itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingNextPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
+            {itemsQuery.isFetchingNextPage ? <div className="chat-history-loader" role="status"><span>{t('chat.messages.loading_earlier')}</span></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
 			<WorkflowProgress projectUuid={projectUuid} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}

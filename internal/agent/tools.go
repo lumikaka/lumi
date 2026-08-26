@@ -55,7 +55,7 @@ func projectAPISharedToolDefinitions() []map[string]any {
 		return map[string]any{"type": "string", "description": description}
 	}
 	return []map[string]any{
-		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract.", "parameters": object(map[string]any{
+		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract. Never put confirmation in query or request_body. After a bound request_user_input is confirmed, the runtime executes the original request automatically; do not replay it.", "parameters": object(map[string]any{
 			"url":             stringField("Canonical relative /api/v1/projects/{current_project_uuid}/... path"),
 			"method":          map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}},
 			"query":           map[string]any{"type": "object", "additionalProperties": true, "description": "Optional route-specific typed query object; never append a query string to url."},
@@ -92,7 +92,7 @@ func projectAPIV4RequestUserInputDefinition() map[string]any {
 		"question": stringField("Single-sentence question shown to the user.", 1, 4000),
 		"options":  map[string]any{"type": "array", "minItems": 2, "maxItems": 3, "items": option},
 	}, "header", "id", "question", "options")
-	return map[string]any{"name": "request_user_input", "description": "Pause this run and ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. For a dangerous Agent API route, include confirmation bound to its exact question and request fingerprint.", "parameters": object(map[string]any{
+	return map[string]any{"name": "request_user_input", "description": "Pause this run and ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. For a dangerous Agent API route, include confirmation bound to its exact question and request fingerprint. If the user selects the bound option, the runtime executes the original request automatically; never copy confirmation into request_api or replay the request yourself.", "parameters": object(map[string]any{
 		"questions": map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question},
 		"confirmation": object(map[string]any{
 			"route": stringField("Dangerous global Agent API route ID.", 1, 160), "project_uuid": stringField("Current public project UUIDv7.", 36, 36), "target_uuid": stringField("Concrete target resource UUIDv7.", 36, 36),
@@ -131,6 +131,11 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	if parameters == nil {
 		return nil, domainError(CodeToolNotAllowed, "工具不在 allowlist", "Agent 只能调用当前项目注册的受控工具。", nil)
 	}
+	if name == "request_api" {
+		if err := rejectRequestAPIConfirmationPlacement(args); err != nil {
+			return nil, err
+		}
+	}
 	if err := validatePublicToolArguments(name, protocol, args); err != nil {
 		return nil, err
 	}
@@ -158,6 +163,45 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 		}
 	}
 	return args, nil
+}
+
+func rejectRequestAPIConfirmationPlacement(args map[string]any) error {
+	if _, exists := args["confirmation"]; exists {
+		return requestAPIConfirmationPlacementError()
+	}
+	for _, key := range []string{"query", "request_body"} {
+		if containsJSONField(args[key], "confirmation") {
+			return requestAPIConfirmationPlacementError()
+		}
+	}
+	return nil
+}
+
+func containsJSONField(value any, field string) bool {
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			if key == field || containsJSONField(child, field) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if containsJSONField(child, field) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func requestAPIConfirmationPlacementError() error {
+	return domainError(
+		CodeToolValidation,
+		"request_api 不接受 confirmation",
+		"confirmation 只能传给 request_user_input；用户确认后运行时会自动执行原请求，不要在 request_api、query 或 request_body 中携带 confirmation，也不要自行重放 request_api。",
+		nil,
+	)
 }
 
 func rejectDuplicateJSONFields(raw string) error {
@@ -943,13 +987,20 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 		return UserInputRequest{}, err
 	}
 	var existing userInputRow
-	err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.run_id=? AND q.tool_call_uuid=?`, tc.Run.ID, execution.ToolCallUUID).Scan(&existing.ID, &existing.ThreadID, &existing.RunID, &existing.TurnID, &existing.ItemID, &existing.UUID, &existing.ToolCallUUID, &existing.SchemaVersion, &existing.RequestJSON, &existing.ResponseJSON, &existing.Status, &existing.AnsweredAt, &existing.ResumedAt, &existing.CancelledAt, &existing.CreatedAt, &existing.UpdatedAt, &existing.RunUUID, &existing.TurnUUID, &existing.ItemUUID)
+	err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid,i.metadata_json FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.run_id=? AND q.tool_call_uuid=?`, tc.Run.ID, execution.ToolCallUUID).Scan(&existing.ID, &existing.ThreadID, &existing.RunID, &existing.TurnID, &existing.ItemID, &existing.UUID, &existing.ToolCallUUID, &existing.SchemaVersion, &existing.RequestJSON, &existing.ResponseJSON, &existing.Status, &existing.AnsweredAt, &existing.ResumedAt, &existing.CancelledAt, &existing.CreatedAt, &existing.UpdatedAt, &existing.RunUUID, &existing.TurnUUID, &existing.ItemUUID, &existing.ItemMetadataJSON)
 	if err == nil {
 		existing.ThreadUUID = tc.Thread.UUID
 		return existing.DTO(), tx.Commit()
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return UserInputRequest{}, err
+	}
+	var confirmationSource dangerousConfirmationSourceExecution
+	if prepared.Confirmation != nil {
+		confirmationSource, err = service.findDangerousConfirmationSourceTx(ctx, tx, tc.Run.ID, execution.ID, tc.ProjectUUID, "", *prepared.Confirmation)
+		if err != nil {
+			return UserInputRequest{}, err
+		}
 	}
 	now := service.now().UTC()
 	contentObject := map[string]any{"request_uuid": requestUUID, "schema_version": prepared.SchemaVersion}
@@ -961,7 +1012,11 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 		contentObject["options"] = prepared.Options
 	}
 	content, _ := json.Marshal(contentObject)
-	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "user_input_request", "assistant", string(content), "json", "completed", execution.ToolCallUUID, "request_user_input", requestUUID, map[string]any{"purpose": "request_user_input"}, now)
+	itemMetadata := map[string]any{"purpose": "request_user_input"}
+	if confirmationSource.UUID != "" {
+		itemMetadata["confirmation_source_execution_uuid"] = confirmationSource.UUID
+	}
+	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "user_input_request", "assistant", string(content), "json", "completed", execution.ToolCallUUID, "request_user_input", requestUUID, itemMetadata, now)
 	if err != nil {
 		return UserInputRequest{}, err
 	}
@@ -1004,6 +1059,7 @@ type preparedUserInputRequest struct {
 	InputType     string
 	Question      string
 	Options       []UserInputOption
+	Confirmation  *dangerousConfirmationBinding
 }
 
 func (service *Service) prepareUserInputRequest(tc toolContext, raw string) (preparedUserInputRequest, error) {
@@ -1049,7 +1105,7 @@ func (service *Service) prepareCodexUserInputRequest(tc toolContext, raw string)
 		questions[0].Question = fmt.Sprintf("%s\n\n确认操作：%s（%s）；目标 UUID：%s；expected_revision：%d。", questions[0].Question, route.Action, route.ID, args.Confirmation.TargetUUID, args.Confirmation.ExpectedRevision)
 	}
 	requestJSON, _ := json.Marshal(map[string]any{"questions": questions})
-	return preparedUserInputRequest{SchemaVersion: userInputSchemaCodexQuestions, RequestJSON: string(requestJSON), Questions: questions}, nil
+	return preparedUserInputRequest{SchemaVersion: userInputSchemaCodexQuestions, RequestJSON: string(requestJSON), Questions: questions, Confirmation: args.Confirmation}, nil
 }
 
 func (service *Service) prepareLegacyUserInputRequest(tc toolContext, raw string) (preparedUserInputRequest, error) {
@@ -1090,7 +1146,7 @@ func (service *Service) prepareLegacyUserInputRequest(tc toolContext, raw string
 		options = append(options, UserInputOption{UUID: uuid, Label: label, Description: description})
 	}
 	requestJSON, _ := json.Marshal(map[string]any{"input_type": args.InputType, "question": question, "options": options})
-	return preparedUserInputRequest{SchemaVersion: userInputSchemaLegacyChoice, RequestJSON: string(requestJSON), InputType: args.InputType, Question: question, Options: options}, nil
+	return preparedUserInputRequest{SchemaVersion: userInputSchemaLegacyChoice, RequestJSON: string(requestJSON), InputType: args.InputType, Question: question, Options: options, Confirmation: args.Confirmation}, nil
 }
 
 // Assert the compiler keeps the SQL transaction boundary used by tool intent.

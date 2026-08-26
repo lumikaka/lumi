@@ -14,6 +14,7 @@ import {
   projectChatTurnActivity,
   projectChatUserInput,
   restoreChatScrollAnchor,
+  shouldAutofillEarlierChatItems,
   shouldLoadEarlierChatItems,
   shouldShowAssistantPending,
   suggestedChatThreadTitle,
@@ -295,6 +296,15 @@ test('chat history autoloads only near the top when an earlier page is available
   assert.equal(shouldLoadEarlierChatItems({ scrollTop: 72, hasEarlierPage: true, isFetchingEarlierPage: false }), false)
   assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasEarlierPage: false, isFetchingEarlierPage: false }), false)
   assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasEarlierPage: true, isFetchingEarlierPage: true }), false)
+})
+
+test('chat history autofills only when the first page does not overflow', () => {
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 480, clientHeight: 480, hasEarlierPage: true }), true)
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 320, clientHeight: 480, hasEarlierPage: true }), true)
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 481, clientHeight: 480, hasEarlierPage: true }), false)
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 320, clientHeight: 480, hasEarlierPage: false }), false)
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 320, clientHeight: 480, hasEarlierPage: true, isFetchingEarlierPage: true }), false)
+  assert.equal(shouldAutofillEarlierChatItems({ scrollHeight: 0, clientHeight: 0, hasEarlierPage: true }), false)
 })
 
 test('chat history restores the visible turn after prepending an earlier page', () => {

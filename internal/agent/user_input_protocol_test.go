@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"lumi/internal/llm"
+	"lumi/internal/production"
 )
 
 const validCodexUserInputArguments = `{"questions":[{"header":"画面风格","id":"art_style","question":"这次画面应采用哪种整体风格？","options":[{"label":"温暖手绘 (Recommended)","description":"延续绘本现有的柔和质感和亲切氛围。"},{"label":"电影写实","description":"强化真实光影、景深和镜头感。"}]}]}`
@@ -89,6 +90,31 @@ func TestProjectAPIRequestUserInputDefinitionsAreFrozenByProtocol(t *testing.T) 
 	}
 }
 
+func TestRequestAPIRejectsConfirmationPlacement(t *testing.T) {
+	cases := map[string]map[string]any{
+		"top_level":   {"confirmation": map[string]any{}},
+		"query":       {"query": map[string]any{"confirmation": map[string]any{}}},
+		"nested_body": {"request_body": map[string]any{"parameters": map[string]any{"confirmation": map[string]any{}}}},
+	}
+	for name, extra := range cases {
+		t.Run(name, func(t *testing.T) {
+			arguments := map[string]any{
+				"url":    "/api/v1/projects/01990000-0000-7000-8000-000000000321/chapters",
+				"method": "POST", "response_filter": ".data | {uuid}",
+			}
+			for key, value := range extra {
+				arguments[key] = value
+			}
+			raw, _ := json.Marshal(arguments)
+			_, err := validateToolArgumentsForProtocol("request_api", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
+			var agentErr *Error
+			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || !strings.Contains(agentErr.Details, "运行时会自动执行原请求") {
+				t.Fatalf("%s confirmation placement error=%v", name, err)
+			}
+		})
+	}
+}
+
 func TestPersistedV2AndV3UserInputRunsResumeWithFrozenContract(t *testing.T) {
 	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {
 		t.Run(protocol, func(t *testing.T) {
@@ -116,6 +142,81 @@ func TestPersistedV2AndV3UserInputRunsResumeWithFrozenContract(t *testing.T) {
 			}
 			if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
+	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {
+		t.Run(protocol, func(t *testing.T) {
+			harness := newAgentHarness(t)
+			ctx := context.Background()
+			asset, thread := createAssetReferenceMigrationFixture(t, harness)
+			turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := harness.store.DB().Exec(`UPDATE chat_items SET metadata_json=json_set(metadata_json,'$.prompt_snapshot.tool_protocol',?) WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND item_type='user_message'`, protocol, turn.UUID).Error; err != nil {
+				t.Fatal(err)
+			}
+			assetURL := "/api/v1/projects/" + harness.project.UUID + "/premise-assets/" + asset.UUID
+			requestArguments := map[string]any{
+				"method": "DELETE", "url": assetURL,
+				"request_body":    map[string]any{"expected_revision": float64(asset.Revision)},
+				"response_filter": ".data | {uuid,deleted_at}",
+			}
+			request, err := parseAgentAPIRequest(toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI, ToolProtocol: protocol}, requestArguments)
+			if err != nil {
+				t.Fatal(err)
+			}
+			requestJSON, _ := json.Marshal(requestArguments)
+			confirmationJSON, _ := json.Marshal(map[string]any{
+				"input_type": "single_choice", "question": "是否将当前设定项移入回收站？",
+				"options": []map[string]any{{"label": "保留设定项", "description": "不执行删除。"}, {"label": "确认移入回收站", "description": "执行已绑定的删除操作。"}},
+				"confirmation": map[string]any{
+					"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID,
+					"expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(request), "confirm_option": 1,
+				},
+			})
+			harness.model.respond = func(call int, modelRequest llm.ChatRequest) (llm.ChatResponse, error) {
+				switch call {
+				case 1:
+					return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "legacy-danger", Name: "request_api", Arguments: string(requestJSON)}}}, FinishReason: "tool_calls"}, nil
+				case 2:
+					if !messagesContain(modelRequest.Messages, CodeToolConfirmation) {
+						t.Fatalf("%s confirmation error missing from context", protocol)
+					}
+					return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "legacy-confirm", Name: "request_user_input", Arguments: string(confirmationJSON)}}}, FinishReason: "tool_calls"}, nil
+				case 3:
+					if len(modelRequest.Tools) != 0 {
+						t.Fatalf("%s finalization exposed tools: %v", protocol, definitionNames(modelRequest.Tools))
+					}
+					return finalResponse("已按确认移入回收站。"), nil
+				default:
+					return llm.ChatResponse{}, fmt.Errorf("unexpected %s model call %d", protocol, call)
+				}
+			}
+			if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
+				t.Fatalf("%s did not wait for confirmation: %v", protocol, err)
+			}
+			requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
+			if err != nil || len(requests) != 1 || requests[0].SchemaVersion != userInputSchemaLegacyChoice {
+				t.Fatalf("%s requests=%+v err=%v", protocol, requests, err)
+			}
+			if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{SelectedOptionUUIDs: []string{requests[0].Options[1].UUID}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
+				t.Fatal(err)
+			}
+			deleted, err := production.NewService(harness.store, nil).GetPremiseAsset(ctx, asset.UUID)
+			if err != nil || deleted.DeletedAt == nil {
+				t.Fatalf("%s did not execute automatic replay: asset=%+v err=%v", protocol, deleted, err)
+			}
+			var replayCount int64
+			if err := harness.store.DB().Table("agent_tool_executions").Where("json_extract(arguments_json,'$.__confirmation_auto_replay')=1").Count(&replayCount).Error; err != nil || replayCount != 1 {
+				t.Fatalf("%s replay count=%d err=%v", protocol, replayCount, err)
 			}
 		})
 	}

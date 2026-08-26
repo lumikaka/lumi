@@ -1,5 +1,7 @@
 # Task API
 
+文中“获得确认”均指：先提交参数完整的 `request_api`；若返回 `agent_tool_confirmation_required`，该次不会执行取消，此时再按 Overview 的全局协议把 confirmation 只传给 `request_user_input`；确认后由运行时自动执行原请求。
+
 使用 `request_api` 调用，将占位符替换为公开 UUIDv7。Story 任务使用 `/tasks`；Premise、Comic 与导出等生产任务使用 `/production-tasks`。不要定时 HTTP 轮询；只在工作流需要时读取，应用状态同步由 WebSocket 变更提示后 REST 重读完成。
 
 常用 Task 过滤器：`.data | {uuid,kind,resource_uuid,status,error_code,error_message}`。

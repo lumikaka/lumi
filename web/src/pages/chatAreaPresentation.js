@@ -115,6 +115,15 @@ export function shouldLoadEarlierChatItems({ scrollTop, hasEarlierPage, isFetchi
   return Boolean(hasEarlierPage && !isFetchingEarlierPage && Number(scrollTop) < 72)
 }
 
+export function shouldAutofillEarlierChatItems({ scrollHeight, clientHeight, hasEarlierPage, isFetchingEarlierPage } = {}) {
+  return Boolean(
+    hasEarlierPage
+    && !isFetchingEarlierPage
+    && Number(clientHeight) > 0
+    && Number(scrollHeight) <= Number(clientHeight)
+  )
+}
+
 export function captureChatScrollAnchor(container) {
   if (!container) return null
   const containerRect = container.getBoundingClientRect()

@@ -192,7 +192,6 @@ export const chat = defineMessages({
   'chat.thread.project_context': ['项目级通用对话', 'General project conversation'],
   'chat.loading': ['加载中', 'Loading'],
   'chat.messages.loading': ['正在加载消息…', 'Loading messages…'],
-  'chat.messages.load_earlier': ['加载更早消息', 'Load earlier messages'],
   'chat.messages.loading_earlier': ['正在加载更早消息…', 'Loading earlier messages…'],
   'chat.messages.empty': ['暂无消息', 'No messages'],
   'chat.messages.empty_body': ['发送一条消息，开始与当前项目协作。', 'Send a message to begin collaborating on this project.'],

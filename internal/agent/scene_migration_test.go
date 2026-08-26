@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image/color"
 	"strings"
 	"testing"
@@ -747,7 +748,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 		harness := newAgentHarness(t)
 		ctx := context.Background()
 		asset, thread := createAssetReferenceMigrationFixture(t, harness)
-		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？"})
+		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 3})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -763,7 +764,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 			"confirmation": map[string]any{"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID, "expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(deleteRequest), "question_id": "delete_asset", "confirm_option": 1},
 		})
 		harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
-			if !containsString(definitionNames(request.Tools), "request_api") || containsString(definitionNames(request.Tools), currentProjectAPIToolName) {
+			if call < 4 && (!containsString(definitionNames(request.Tools), "request_api") || containsString(definitionNames(request.Tools), currentProjectAPIToolName)) {
 				t.Fatalf("call %d dangerous flow lost project API mode: %v", call, definitionNames(request.Tools))
 			}
 			switch call {
@@ -778,7 +779,10 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 				}
 				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "danger-confirm", Name: "request_user_input", Arguments: string(confirmationArguments)}}}, FinishReason: "tool_calls"}, nil
 			case 4:
-				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "danger-confirmed-delete", Name: "request_api", Arguments: string(deleteArguments)}}}, FinishReason: "tool_calls"}, nil
+				if len(request.Tools) != 0 || !messagesContain(request.Messages, `"deleted_at"`) {
+					t.Fatalf("confirmation resume did not use a tool-free finalization after automatic replay: tools=%v messages=%+v", definitionNames(request.Tools), request.Messages)
+				}
+				return finalResponse("设定项已移入回收站。"), nil
 			default:
 				return finalResponse("设定项已移入回收站。"), nil
 			}
@@ -811,12 +815,153 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
 			t.Fatal(err)
 		}
+		if repeated, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"delete_asset": {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID}}}); err != nil || repeated.Status != "resumed" {
+			t.Fatalf("repeated confirmation answer was not idempotent: request=%+v err=%v", repeated, err)
+		}
 		deleted, err := production.NewService(harness.store, nil).GetPremiseAsset(ctx, asset.UUID)
 		if err != nil || deleted.DeletedAt == nil {
 			t.Fatalf("confirmed asset was not soft-deleted=%+v err=%v", deleted, err)
 		}
 		if replayAllowed, err := hasMatchingDangerousConfirmation(ctx, harness.store, tc, deleteRequest); err != nil || replayAllowed {
 			t.Fatalf("completed dangerous request did not consume its confirmation: allowed=%v err=%v", replayAllowed, err)
+		}
+		var automaticReplays int64
+		if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=? AND json_extract(arguments_json,'$.__confirmation_auto_replay')=1", tc.Run.ID).Count(&automaticReplays).Error; err != nil || automaticReplays != 1 {
+			t.Fatalf("automatic confirmation replays=%d err=%v", automaticReplays, err)
+		}
+	})
+
+	t.Run("safe choice does not replay", func(t *testing.T) {
+		harness := newAgentHarness(t)
+		ctx := context.Background()
+		asset, thread := createAssetReferenceMigrationFixture(t, harness)
+		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assetURL := "/api/v1/projects/" + harness.project.UUID + "/premise-assets/" + asset.UUID
+		deleteRequestArguments := map[string]any{"method": "DELETE", "url": assetURL, "request_body": map[string]any{"expected_revision": float64(asset.Revision)}, "response_filter": ".data | {uuid,deleted_at}"}
+		deleteRequest, err := parseAgentAPIRequest(toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI}, deleteRequestArguments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deleteArguments, _ := json.Marshal(deleteRequestArguments)
+		confirmationArguments, _ := json.Marshal(map[string]any{
+			"questions":    []map[string]any{{"header": "删除确认", "id": "delete_asset", "question": "是否将当前设定项移入回收站？", "options": []map[string]any{{"label": "保留设定项 (Recommended)", "description": "不执行删除并保留当前设定项。"}, {"label": "确认移入回收站", "description": "执行已绑定到当前版本的删除操作。"}}}},
+			"confirmation": map[string]any{"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID, "expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(deleteRequest), "question_id": "delete_asset", "confirm_option": 1},
+		})
+		harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
+			switch call {
+			case 1:
+				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "safe-unconfirmed", Name: "request_api", Arguments: string(deleteArguments)}}}, FinishReason: "tool_calls"}, nil
+			case 2:
+				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "safe-confirm", Name: "request_user_input", Arguments: string(confirmationArguments)}}}, FinishReason: "tool_calls"}, nil
+			case 3:
+				if len(request.Tools) != 0 {
+					t.Fatalf("safe response finalization still exposed tools: %v", definitionNames(request.Tools))
+				}
+				return finalResponse("已保留设定项。"), nil
+			default:
+				return llm.ChatResponse{}, fmt.Errorf("unexpected model call %d", call)
+			}
+		}
+		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
+			t.Fatalf("safe flow did not pause: %v", err)
+		}
+		requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
+		if err != nil || len(requests) != 1 {
+			t.Fatalf("safe requests=%+v err=%v", requests, err)
+		}
+		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"delete_asset": {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID}}}); err != nil {
+			t.Fatal(err)
+		}
+		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
+			t.Fatal(err)
+		}
+		current, err := production.NewService(harness.store, nil).GetPremiseAsset(ctx, asset.UUID)
+		if err != nil || current.DeletedAt != nil {
+			t.Fatalf("safe choice changed asset=%+v err=%v", current, err)
+		}
+		var automaticReplays int64
+		if err := harness.store.DB().Table("agent_tool_executions").Where("json_extract(arguments_json,'$.__confirmation_auto_replay')=1").Count(&automaticReplays).Error; err != nil || automaticReplays != 0 {
+			t.Fatalf("safe choice automatic replays=%d err=%v", automaticReplays, err)
+		}
+	})
+
+	t.Run("storyboard generation replays the persisted request", func(t *testing.T) {
+		harness := newAgentHarness(t)
+		ctx := context.Background()
+		chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+			ChapterCode: "vol03.ch01", Title: "自动确认分镜", Content: "雨夜重逢。", ContentFormat: "md",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "生成漫画分镜", ProviderUUID: harness.provider.UUID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "为这个章节生成漫画分镜。", MaxSteps: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		requestArguments := map[string]any{
+			"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/chapters/" + chapter.UUID + "/comic-storyboard-generations",
+			"request_body":    map[string]any{"prompt": "按雨夜重逢规划完整漫画分镜", "max_section_count": float64(6)},
+			"response_filter": ".data | {uuid,kind,resource_uuid,status,error_code,error_message}",
+		}
+		request, err := parseAgentAPIRequest(toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI}, requestArguments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		requestJSON, _ := json.Marshal(requestArguments)
+		confirmationJSON, _ := json.Marshal(map[string]any{
+			"questions": []map[string]any{{"header": "生成确认", "id": "generate_storyboard", "question": "是否创建漫画分镜规划任务？", "options": []map[string]any{{"label": "暂不生成 (Recommended)", "description": "保留当前章节，不创建任务。"}, {"label": "确认生成", "description": "按已绑定参数创建分镜任务。"}}}},
+			"confirmation": map[string]any{
+				"route": RouteComicStoryboardGenerationCreate, "project_uuid": harness.project.UUID, "target_uuid": chapter.UUID,
+				"expected_revision": int64(0), "request_fingerprint": agentRequestFingerprint(request), "question_id": "generate_storyboard", "confirm_option": 1,
+			},
+		})
+		harness.model.respond = func(call int, modelRequest llm.ChatRequest) (llm.ChatResponse, error) {
+			switch call {
+			case 1:
+				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-generate", Name: "request_api", Arguments: string(requestJSON)}}}, FinishReason: "tool_calls"}, nil
+			case 2:
+				if !messagesContain(modelRequest.Messages, CodeToolConfirmation) {
+					t.Fatal("storyboard generation confirmation error missing from context")
+				}
+				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-confirm", Name: "request_user_input", Arguments: string(confirmationJSON)}}}, FinishReason: "tool_calls"}, nil
+			case 3:
+				if len(modelRequest.Tools) != 0 || !messagesContain(modelRequest.Messages, `"status":"queued"`) {
+					t.Fatalf("storyboard finalization did not observe queued task: tools=%v messages=%+v", definitionNames(modelRequest.Tools), modelRequest.Messages)
+				}
+				return finalResponse("漫画分镜规划任务已创建。"), nil
+			default:
+				return llm.ChatResponse{}, fmt.Errorf("unexpected storyboard model call %d", call)
+			}
+		}
+		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
+			t.Fatalf("storyboard generation did not wait for confirmation: %v", err)
+		}
+		if len(harness.queue.requests) != 0 {
+			t.Fatalf("storyboard task started before confirmation: %+v", harness.queue.requests)
+		}
+		requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
+		if err != nil || len(requests) != 1 {
+			t.Fatalf("storyboard confirmation requests=%+v err=%v", requests, err)
+		}
+		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"generate_storyboard": {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID}}}); err != nil {
+			t.Fatal(err)
+		}
+		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
+			t.Fatal(err)
+		}
+		if len(harness.queue.requests) != 1 || harness.queue.requests[0].Kind != WorkflowComicStoryboard || harness.queue.requests[0].ResourceUUID != chapter.UUID {
+			t.Fatalf("storyboard automatic replay requests=%+v", harness.queue.requests)
+		}
+		var run runRecord
+		if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Take(&run).Error; err != nil || run.Status != TurnCompleted || run.StepCount != run.MaxSteps {
+			t.Fatalf("storyboard finalization run=%+v err=%v", run, err)
 		}
 	})
 }

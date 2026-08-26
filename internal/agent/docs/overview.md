@@ -8,6 +8,10 @@
 
 Guide 按前端创作功能组织，简要说明 API 调用顺序和用途；API Contract 负责 method、path、字段和响应结构。用户目标命中能力索引时，必须先读对应 Guide，再读 Guide 指定的 API Contract，之后才能调用 `request_api`。
 
+## 危险操作确认协议
+
+危险写操作必须先按 API Contract 组装最终的 `request_api`。如果返回 `agent_tool_confirmation_required`，只把错误中给出的 `route`、`project_uuid`、`target_uuid`、`expected_revision` 和 `request_fingerprint` 原样放入下一次独立的 `request_user_input.confirmation`，并绑定唯一确认问题。`confirmation` 绝不能放入 `request_api`、`query` 或 `request_body`。用户选择被绑定的确认项后，运行时会从持久化记录中自动执行原始请求；不要自行重放 `request_api`。安全选项、Other、取消、错目标、错 revision 或错 fingerprint 都不会执行操作。
+
 ## API Contract 索引
 
 {{api_doc_index}}

@@ -1,6 +1,6 @@
 # Generation API
 
-使用 `request_api` 调用，将路径和示例中的占位符替换为公开 UUIDv7。以下接口都返回异步 Task。使用 `.data | {uuid,kind,resource_uuid,status,error_code,error_message}`，再按 `/api/v1/agent-docs/api/task.md` 跟踪。`model` 都是可选覆盖值；不覆盖时省略，不要发送“可选”等占位字符串。
+使用 `request_api` 调用，将路径和示例中的占位符替换为公开 UUIDv7。以下接口都返回异步 Task。使用 `.data | {uuid,kind,resource_uuid,status,error_code,error_message}`，再按 `/api/v1/agent-docs/api/task.md` 跟踪。`model` 都是可选覆盖值；不覆盖时省略，不要发送“可选”等占位字符串。文中“获得确认”均指：先提交参数完整的 `request_api` 获取 `agent_tool_confirmation_required`（此时不会创建 Task），再按 Overview 的全局协议把 confirmation 只传给 `request_user_input`；确认后由运行时自动执行原请求。
 
 ## Story 与 Chapter
 

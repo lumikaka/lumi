@@ -582,7 +582,7 @@ func (service *Service) ListUserInputRequests(ctx context.Context, projectUUID, 
 			return err
 		}
 		var rows []userInputRow
-		if err := store.DB().WithContext(ctx).Table("chat_user_input_requests AS q").Select(`q.*,th.uuid AS thread_uuid,r.uuid AS run_uuid,t.uuid AS turn_uuid,i.uuid AS item_uuid`).Joins("JOIN chat_threads th ON th.id=q.thread_id").Joins("JOIN chat_runs r ON r.id=q.run_id").Joins("JOIN chat_turns t ON t.id=q.turn_id").Joins("JOIN chat_items i ON i.id=q.item_id").Where("th.project_id=? AND th.uuid=?", pid, threadUUID).Order("q.created_at,q.id").Scan(&rows).Error; err != nil {
+		if err := store.DB().WithContext(ctx).Table("chat_user_input_requests AS q").Select(`q.*,th.uuid AS thread_uuid,r.uuid AS run_uuid,t.uuid AS turn_uuid,i.uuid AS item_uuid,i.metadata_json AS item_metadata_json`).Joins("JOIN chat_threads th ON th.id=q.thread_id").Joins("JOIN chat_runs r ON r.id=q.run_id").Joins("JOIN chat_turns t ON t.id=q.turn_id").Joins("JOIN chat_items i ON i.id=q.item_id").Where("th.project_id=? AND th.uuid=?", pid, threadUUID).Order("q.created_at,q.id").Scan(&rows).Error; err != nil {
 			return err
 		}
 		for _, row := range rows {
@@ -594,12 +594,13 @@ func (service *Service) ListUserInputRequests(ctx context.Context, projectUUID, 
 }
 
 type userInputRow struct {
-	ID, ThreadID, RunID, TurnID, ItemID             int64
-	UUID, ToolCallUUID, SchemaVersion, RequestJSON  string
-	ResponseJSON                                    *string
-	Status, ThreadUUID, RunUUID, TurnUUID, ItemUUID string
-	AnsweredAt, ResumedAt, CancelledAt              *time.Time
-	CreatedAt, UpdatedAt                            time.Time
+	ID, ThreadID, RunID, TurnID, ItemID                          int64
+	UUID, ToolCallUUID, SchemaVersion, RequestJSON               string
+	ResponseJSON                                                 *string
+	Status, ProjectUUID, ThreadUUID, RunUUID, TurnUUID, ItemUUID string
+	ItemMetadataJSON                                             string
+	AnsweredAt, ResumedAt, CancelledAt                           *time.Time
+	CreatedAt, UpdatedAt                                         time.Time
 }
 
 func (row userInputRow) DTO() UserInputRequest {
@@ -641,11 +642,11 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 			return err
 		}
 		var row userInputRow
-		err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.thread_id=? AND q.uuid=?`, thread.ID, requestUUID).Scan(&row.ID, &row.ThreadID, &row.RunID, &row.TurnID, &row.ItemID, &row.UUID, &row.ToolCallUUID, &row.SchemaVersion, &row.RequestJSON, &row.ResponseJSON, &row.Status, &row.AnsweredAt, &row.ResumedAt, &row.CancelledAt, &row.CreatedAt, &row.UpdatedAt, &row.RunUUID, &row.TurnUUID, &row.ItemUUID)
+		err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid,i.metadata_json FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.thread_id=? AND q.uuid=?`, thread.ID, requestUUID).Scan(&row.ID, &row.ThreadID, &row.RunID, &row.TurnID, &row.ItemID, &row.UUID, &row.ToolCallUUID, &row.SchemaVersion, &row.RequestJSON, &row.ResponseJSON, &row.Status, &row.AnsweredAt, &row.ResumedAt, &row.CancelledAt, &row.CreatedAt, &row.UpdatedAt, &row.RunUUID, &row.TurnUUID, &row.ItemUUID, &row.ItemMetadataJSON)
 		if err != nil {
 			return notFound(err, "用户输入请求不存在")
 		}
-		row.ThreadUUID = threadUUID
+		row.ProjectUUID, row.ThreadUUID = projectUUID, threadUUID
 		if row.Status == "resumed" {
 			result = row.DTO()
 			return tx.Commit()
@@ -676,6 +677,10 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET state='completed',result_json=?,completed_at=?,updated_at=? WHERE run_id=? AND tool_call_uuid=? AND state IN ('intent','executing')`, string(encodedToolResult), now, now, row.RunID, row.ToolCallUUID); err != nil {
 			return err
 		}
+		replay, replayCreated, err := service.prepareConfirmedRequestReplayTx(ctx, tx, &thread, row, string(encoded), now)
+		if err != nil {
+			return err
+		}
 		if _, err := appendEventTx(ctx, tx, &thread, &row.RunID, "user_input_answered", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": row.TurnUUID, "run_uuid": row.RunUUID, "request_uuid": row.UUID, "item_uuid": item.UUID}, now); err != nil {
 			return err
 		}
@@ -704,6 +709,14 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		responseText := string(encoded)
 		row.ResponseJSON, row.Status, row.AnsweredAt, row.UpdatedAt = &responseText, "resuming", &now, now
 		result = row.DTO()
+		if replayCreated {
+			service.broadcastThread(projectUUID, threadUUID, "chat:tool_call", map[string]any{
+				"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": row.TurnUUID, "run_uuid": row.RunUUID,
+				"tool_call_uuid": replay.ToolCallUUID, "tool_name": replay.ToolName, "route_id": replay.RouteID,
+				"action": replay.Action, "method": replay.Method, "path": replay.Path, "target_uuid": replay.TargetUUID,
+				"status": "in_progress", "runtime_generated": true, "confirmation_request_uuid": row.UUID,
+			})
+		}
 		return nil
 	})
 	if err == nil {

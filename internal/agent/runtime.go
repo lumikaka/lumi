@@ -93,25 +93,35 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return err
 		}
 		tc.Run = currentRun
-		if tc.Run.StepCount >= tc.Run.MaxSteps {
+		if tc.Run.StepCount > tc.Run.MaxSteps {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, CodeMaxSteps, "Agent 已达到最大工具步骤。")
 		}
+		finalResponseOnly := tc.Run.StepCount == tc.Run.MaxSteps
 		messages, contextBytes, contextThrough, err := service.buildContext(ctx, store, tc)
 		if err != nil {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
 		}
-		if err := service.recordModelStart(ctx, store, tc, contextBytes); err != nil {
+		if err := service.recordModelStart(ctx, store, tc, contextBytes, !finalResponseOnly); err != nil {
 			return err
 		}
 		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: llmToolDefinitionsForContext(tc), MaxTokens: 4096}
 		scenario := "project_chat"
+		requestOrdinal := tc.Run.StepCount + 1
+		if finalResponseOnly {
+			request.Tools = nil
+			scenario = "project_chat_finalization"
+			requestOrdinal, err = service.nextModelRequestOrdinal(ctx, store, tc.Run.ID, requestOrdinal)
+			if err != nil {
+				return err
+			}
+		}
 		requestPayload, err := llmlog.EncodeChatRequest(request)
 		if err != nil {
 			return err
 		}
 		logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
 			ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID,
-			SourceType: llmlog.SourceProjectChat, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: tc.Run.StepCount + 1,
+			SourceType: llmlog.SourceProjectChat, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: requestOrdinal,
 			ProviderUUID: tc.Run.ProviderUUID, ProviderType: resolved.ProviderType, Model: tc.Run.Model,
 			RequestPayload: requestPayload,
 		})
@@ -119,7 +129,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return err
 		}
 		tc.RequestUUID = logHandle.UUID
-		tc.RequestOrdinal = tc.Run.StepCount + 1
+		tc.RequestOrdinal = requestOrdinal
 		if err := service.recordModelRequestEvent(ctx, store, tc, "model_request_started", "pending"); err != nil {
 			return err
 		}
@@ -164,6 +174,13 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return err
 		} else if steered {
 			continue
+		}
+		if finalResponseOnly {
+			content := strings.TrimSpace(response.Message.Content)
+			if len(response.Message.ToolCalls) > 0 || content == "" {
+				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeMaxSteps, "Agent 已达到最大工具步骤，且未能生成最终回复。")
+			}
+			return service.completeRun(ctx, store, tc, content)
 		}
 		if len(response.Message.ToolCalls) > 0 {
 			if mixedRequestUserInputCalls(response.Message.ToolCalls) {
@@ -540,9 +557,24 @@ func (service *Service) cancelRequested(ctx context.Context, store *project.Stor
 	return cancelled, err
 }
 
-func (service *Service) recordModelStart(ctx context.Context, store *project.Store, tc toolContext, contextBytes int) error {
+func (service *Service) recordModelStart(ctx context.Context, store *project.Store, tc toolContext, contextBytes int, countStep bool) error {
 	now := service.now().UTC()
-	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(map[string]any{"step_count": gorm.Expr("step_count + 1"), "context_bytes": contextBytes, "updated_at": now}).Error
+	updates := map[string]any{"context_bytes": contextBytes, "updated_at": now}
+	if countStep {
+		updates["step_count"] = gorm.Expr("step_count + 1")
+	}
+	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(updates).Error
+}
+
+func (service *Service) nextModelRequestOrdinal(ctx context.Context, store *project.Store, runID int64, minimum int) (int, error) {
+	var next int
+	if err := store.DB().WithContext(ctx).Raw(`SELECT COALESCE(MAX(attempt),0)+1 FROM llm_logs WHERE chat_run_id=?`, runID).Scan(&next).Error; err != nil {
+		return 0, err
+	}
+	if next < minimum {
+		next = minimum
+	}
+	return next, nil
 }
 
 func (service *Service) recordModelRequestEvent(ctx context.Context, store *project.Store, tc toolContext, eventType, status string) error {
