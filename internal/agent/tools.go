@@ -41,7 +41,10 @@ type toolExecutionRecord struct {
 	CreatedAt, UpdatedAt                                                           time.Time
 }
 
-const maxToolValidationRepairs = 2
+const (
+	maxToolValidationRepairs             = 2
+	confirmationQuestionIDArgumentRepair = "confirmation.question_id"
+)
 
 func toolDefinitions() []map[string]any {
 	return append(projectAPISharedToolDefinitions(), projectAPIV4RequestUserInputDefinition())
@@ -138,6 +141,9 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	}
 	if err := validatePublicToolArguments(name, protocol, args); err != nil {
 		return nil, err
+	}
+	if name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3 && normalizedToolMode(mode) == ToolModeProjectAPI {
+		normalizeProjectAPIV4ConfirmationQuestionID(args)
 	}
 	properties, _ := parameters["properties"].(map[string]any)
 	for key, value := range args {
@@ -408,6 +414,53 @@ func validatePublicArgumentsAt(value any, key string, path []string, allowQuesti
 
 var requestUserInputQuestionIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
+// A dangerous v4 confirmation can only bind one question, so question_id is a
+// redundant model-authored key rather than part of the security identity. Keep
+// every security-bearing field strict, but canonicalize a non-empty mismatched
+// question_id to the sole valid question key before schema validation.
+func normalizeProjectAPIV4ConfirmationQuestionID(args map[string]any) bool {
+	values, ok := args["questions"].([]any)
+	if !ok || len(values) != 1 {
+		return false
+	}
+	question, ok := values[0].(map[string]any)
+	if !ok {
+		return false
+	}
+	questionID := strings.TrimSpace(stringArg(question, "id"))
+	if !requestUserInputQuestionIDPattern.MatchString(questionID) {
+		return false
+	}
+	confirmation, ok := args["confirmation"].(map[string]any)
+	if !ok {
+		return false
+	}
+	providedID, ok := confirmation["question_id"].(string)
+	if !ok || strings.TrimSpace(providedID) == "" || providedID == questionID {
+		return false
+	}
+	confirmation["question_id"] = questionID
+	return true
+}
+
+func projectAPIV4ConfirmationQuestionIDWasNormalized(name, protocol, mode, raw string, normalized map[string]any) bool {
+	if name != "request_user_input" || protocol == ToolProtocolProjectV2 || protocol == ToolProtocolProjectV3 || normalizedToolMode(mode) != ToolModeProjectAPI {
+		return false
+	}
+	var original map[string]any
+	if json.Unmarshal([]byte(raw), &original) != nil {
+		return false
+	}
+	originalConfirmation, originalOK := original["confirmation"].(map[string]any)
+	normalizedConfirmation, normalizedOK := normalized["confirmation"].(map[string]any)
+	if !originalOK || !normalizedOK {
+		return false
+	}
+	originalID, originalOK := originalConfirmation["question_id"].(string)
+	normalizedID, normalizedOK := normalizedConfirmation["question_id"].(string)
+	return originalOK && normalizedOK && originalID != normalizedID
+}
+
 func validateProjectAPIV4UserInputArguments(args map[string]any) error {
 	values, _ := args["questions"].([]any)
 	seen := map[string]struct{}{}
@@ -475,6 +528,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return existing, nil, false, err
 	}
+	questionIDRepaired := projectAPIV4ConfirmationQuestionIDWasNormalized(name, tc.ToolProtocol, tc.ToolMode, raw, args)
 	if !toolAllowedForThreadMode(name, tc.Thread, tc.ToolMode) {
 		return existing, nil, false, domainError(CodeToolNotAllowed, "工具不适用于当前 Run", "当前冻结的 Tool Mode 无法使用该工具。", nil)
 	}
@@ -551,6 +605,9 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	}
 	now := service.now().UTC()
 	metadata := map[string]any{"purpose": name, "action": action, "target_uuid": targetUUID, "provider_call_id": providerCallID}
+	if questionIDRepaired {
+		metadata["argument_repaired"] = confirmationQuestionIDArgumentRepair
+	}
 	if isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
 		metadata["request_ordinal"] = tc.RequestOrdinal
@@ -571,6 +628,9 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 		return existing, nil, false, err
 	}
 	toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "target_uuid": targetUUID}
+	if questionIDRepaired {
+		toolEvent["argument_repaired"] = confirmationQuestionIDArgumentRepair
+	}
 	if isUUIDv7(tc.RequestUUID) {
 		toolEvent["request_uuid"] = tc.RequestUUID
 		toolEvent["request_ordinal"] = tc.RequestOrdinal

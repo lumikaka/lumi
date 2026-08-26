@@ -84,20 +84,23 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 	rows, err := tx.QueryContext(ctx, `SELECT t.id,t.uuid,th.uuid,CASE
 		WHEN EXISTS(SELECT 1 FROM workflow_awaits a WHERE a.chat_turn_id=t.id AND a.status IN ('ready','resuming')) THEN 'chat_resume'
 		WHEN EXISTS(SELECT 1 FROM chat_user_input_requests q WHERE q.turn_id=t.id AND q.status='resuming') THEN 'chat_resume'
-		ELSE 'chat_turn' END
+		ELSE 'chat_turn' END,CASE
+		WHEN EXISTS(SELECT 1 FROM workflow_awaits a WHERE a.chat_turn_id=t.id AND a.status IN ('ready','resuming')) THEN COALESCE((SELECT a.uuid FROM workflow_awaits a WHERE a.chat_turn_id=t.id AND a.status IN ('ready','resuming') ORDER BY a.id LIMIT 1),'')
+		WHEN EXISTS(SELECT 1 FROM chat_user_input_requests q WHERE q.turn_id=t.id AND q.status='resuming') THEN COALESCE((SELECT q.uuid FROM chat_user_input_requests q WHERE q.turn_id=t.id AND q.status='resuming' ORDER BY q.id LIMIT 1),'')
+		ELSE '' END
 		FROM chat_turns t JOIN chat_threads th ON th.id=t.thread_id
 		WHERE t.status='queued' ORDER BY th.id,t.queue_sequence`)
 	if err != nil {
 		return err
 	}
 	type queuedTurn struct {
-		ID                         int64
-		TurnUUID, ThreadUUID, Kind string
+		ID                                     int64
+		TurnUUID, ThreadUUID, Kind, WakeupUUID string
 	}
 	var turns []queuedTurn
 	for rows.Next() {
 		var row queuedTurn
-		if err := rows.Scan(&row.ID, &row.TurnUUID, &row.ThreadUUID, &row.Kind); err != nil {
+		if err := rows.Scan(&row.ID, &row.TurnUUID, &row.ThreadUUID, &row.Kind, &row.WakeupUUID); err != nil {
 			rows.Close()
 			return err
 		}
@@ -107,7 +110,7 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 		return err
 	}
 	for _, row := range turns {
-		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: row.Kind, ResourceUUID: row.TurnUUID, ThreadUUID: row.ThreadUUID})
+		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: row.Kind, ResourceUUID: row.TurnUUID, ThreadUUID: row.ThreadUUID, WakeupUUID: row.WakeupUUID})
 		if err != nil {
 			return err
 		}

@@ -9,15 +9,15 @@ import (
 )
 
 type workflowAwaitTarget struct {
-	ID, ThreadID, TurnID, RunID int64
-	ThreadUUID, TurnUUID        string
+	ID, ThreadID, TurnID, RunID     int64
+	AwaitUUID, ThreadUUID, TurnUUID string
 }
 
 // readyWorkflowAwaitsTx moves an inline Chat dependency across the durable
 // Workflow terminal boundary and inserts exactly one active Chat Resume job in
 // the same SQLite/River transaction.
 func readyWorkflowAwaitsTx(ctx context.Context, runtime *projectRuntime, tx *sql.Tx, taskUUID string, now time.Time) error {
-	rows, err := tx.QueryContext(ctx, `SELECT a.id,a.chat_thread_id,a.chat_turn_id,a.chat_run_id,th.uuid,t.uuid
+	rows, err := tx.QueryContext(ctx, `SELECT a.id,a.chat_thread_id,a.chat_turn_id,a.chat_run_id,a.uuid,th.uuid,t.uuid
 		FROM workflow_awaits a
 		JOIN workflows w ON w.id=a.workflow_id
 		JOIN workflow_steps s ON s.workflow_id=w.id
@@ -31,7 +31,7 @@ func readyWorkflowAwaitsTx(ctx context.Context, runtime *projectRuntime, tx *sql
 	var targets []workflowAwaitTarget
 	for rows.Next() {
 		var target workflowAwaitTarget
-		if err := rows.Scan(&target.ID, &target.ThreadID, &target.TurnID, &target.RunID, &target.ThreadUUID, &target.TurnUUID); err != nil {
+		if err := rows.Scan(&target.ID, &target.ThreadID, &target.TurnID, &target.RunID, &target.AwaitUUID, &target.ThreadUUID, &target.TurnUUID); err != nil {
 			rows.Close()
 			return err
 		}
@@ -65,7 +65,7 @@ func readyWorkflowAwaitsTx(ctx context.Context, runtime *projectRuntime, tx *sql
 		}
 		jobID, err := runtime.manager.EnqueueAgentTx(ctx, runtime.projectUUID, tx, agent.JobSpec{
 			Version: 1, ProjectUUID: runtime.projectUUID, JobKind: agent.JobChatResume,
-			ResourceUUID: target.TurnUUID, ThreadUUID: target.ThreadUUID,
+			ResourceUUID: target.TurnUUID, ThreadUUID: target.ThreadUUID, WakeupUUID: target.AwaitUUID,
 		})
 		if err != nil {
 			return err

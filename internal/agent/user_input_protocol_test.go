@@ -61,6 +61,48 @@ func TestProjectAPIV4RequestUserInputSchemaAndRuntimeValidation(t *testing.T) {
 	}
 }
 
+func TestProjectAPIV4SingleQuestionConfirmationNormalizesQuestionID(t *testing.T) {
+	question := map[string]any{
+		"header":   "生成确认",
+		"id":       "confirm_storyboard",
+		"question": "是否生成漫画分镜？",
+		"options": []map[string]any{
+			{"label": "暂不生成 (Recommended)", "description": "保留当前状态，不创建生成任务。"},
+			{"label": "确认生成", "description": "创建已绑定的漫画分镜生成任务。"},
+		},
+	}
+	confirmation := map[string]any{
+		"route":               RouteComicStoryboardGenerationCreate,
+		"project_uuid":        "01990000-0000-7000-8000-000000000321",
+		"target_uuid":         "01990000-0000-7000-8000-000000000322",
+		"expected_revision":   0,
+		"request_fingerprint": "sha256:" + strings.Repeat("a", 64),
+		"question_id":         "confirm_comic_storyboard_gen",
+		"confirm_option":      1,
+	}
+	raw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question}, "confirmation": confirmation})
+	args, err := validateToolArgumentsForProtocol("request_user_input", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
+	if err != nil {
+		t.Fatalf("single-question confirmation was not normalized: %v", err)
+	}
+	normalized := args["confirmation"].(map[string]any)
+	if normalized["question_id"] != "confirm_storyboard" || normalized["request_fingerprint"] != confirmation["request_fingerprint"] || normalized["target_uuid"] != confirmation["target_uuid"] {
+		t.Fatalf("unexpected normalized confirmation: %+v", normalized)
+	}
+
+	second := map[string]any{
+		"header": "范围确认", "id": "confirm_scope", "question": "生成全部内容吗？",
+		"options": []map[string]any{
+			{"label": "仅当前章节 (Recommended)", "description": "只处理当前章节。"},
+			{"label": "全部章节", "description": "处理项目中的全部章节。"},
+		},
+	}
+	multiRaw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question, second}, "confirmation": confirmation})
+	if _, err := validateToolArgumentsForProtocol("request_user_input", string(multiRaw), ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
+		t.Fatalf("multi-question confirmation unexpectedly normalized: %v", err)
+	}
+}
+
 func TestProjectAPIRequestUserInputDefinitionsAreFrozenByProtocol(t *testing.T) {
 	legacy := `{"input_type":"single_choice","question":"继续吗？","options":[{"label":"继续"},{"label":"取消"}]}`
 	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {

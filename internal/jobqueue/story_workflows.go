@@ -83,7 +83,7 @@ func (manager *Manager) CreateStoryWorkflow(ctx context.Context, projectUUID, ki
 	if err != nil {
 		return Task{}, taskError(CodeTaskPersistenceFailed, "无法固化生成输入", "任务尚未创建。", err)
 	}
-	return manager.persistStoryWorkflowTask(ctx, runtime, kind, resourceUUID, input.IdempotencyKey, input.Prompt, resolved.UUID, model, modelSource, encoded)
+	return manager.persistStoryWorkflowTask(ctx, runtime, kind, resourceUUID, input.IdempotencyKey, input.Prompt, resolved.UUID, model, modelSource, encoded, input.Invocation)
 }
 
 func buildStoryWorkflowSnapshot(ctx context.Context, service *story.Service, projectUUID, kind, chapterUUID string, input CreateStoryWorkflowInput, language string) (storyGenerationSnapshot, string, error) {
@@ -236,7 +236,7 @@ func nextChapterCodes(chapters []story.Chapter, count int) []string {
 	return result
 }
 
-func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *projectRuntime, kind, resourceUUID, idempotencyKey, summary, providerUUID, model, modelSource string, snapshot []byte) (Task, error) {
+func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *projectRuntime, kind, resourceUUID, idempotencyKey, summary, providerUUID, model, modelSource string, snapshot []byte, invocation agent.DomainInvocationContext) (Task, error) {
 	taskUUID, err := newUUIDv7()
 	if err != nil {
 		return Task{}, err
@@ -275,7 +275,7 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 		return Task{}, err
 	}
 	if isProjectedStoryTaskWorkflow(kind) {
-		if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, kind, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, agent.DirectUIInvocationContext(), now); err != nil {
+		if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, kind, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, invocation, now); err != nil {
 			return Task{}, err
 		}
 	}

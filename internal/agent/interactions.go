@@ -690,7 +690,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET status='queued',updated_at=? WHERE id=? AND status='waiting_for_input'`, now, row.TurnID); err != nil {
 			return err
 		}
-		jobID, err := service.queue.EnqueueAgentTx(ctx, projectUUID, tx, JobSpec{Version: 1, ProjectUUID: projectUUID, JobKind: JobChatResume, ResourceUUID: row.TurnUUID, ThreadUUID: threadUUID})
+		jobID, err := service.queue.EnqueueAgentTx(ctx, projectUUID, tx, JobSpec{Version: 1, ProjectUUID: projectUUID, JobKind: JobChatResume, ResourceUUID: row.TurnUUID, ThreadUUID: threadUUID, WakeupUUID: row.UUID})
 		if err != nil {
 			return err
 		}

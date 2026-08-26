@@ -124,13 +124,14 @@ type CreateGenerationInput struct {
 // CreateStoryWorkflowInput is used by the non-chapter Story prompt steps. The
 // HTTP handlers choose the task kind; clients cannot submit an arbitrary kind.
 type CreateStoryWorkflowInput struct {
-	ProviderUUID    string               `json:"-"`
-	Model           string               `json:"model"`
-	Prompt          string               `json:"prompt,omitempty"`
-	ChapterCount    int                  `json:"chapter_count,omitempty"`
-	MaxSectionCount *int                 `json:"max_section_count,omitempty"`
-	Parameters      GenerationParameters `json:"parameters"`
-	IdempotencyKey  string               `json:"idempotency_key"`
+	ProviderUUID    string                        `json:"-"`
+	Model           string                        `json:"model"`
+	Prompt          string                        `json:"prompt,omitempty"`
+	ChapterCount    int                           `json:"chapter_count,omitempty"`
+	MaxSectionCount *int                          `json:"max_section_count,omitempty"`
+	Parameters      GenerationParameters          `json:"parameters"`
+	IdempotencyKey  string                        `json:"idempotency_key"`
+	Invocation      agent.DomainInvocationContext `json:"-"`
 }
 
 const (

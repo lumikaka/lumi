@@ -33,6 +33,7 @@ type inlineWorkflowAgentModel struct {
 	storyStarted             chan struct{}
 	releaseStory             chan struct{}
 	storyErr                 error
+	storyboard               bool
 }
 
 func newInlineWorkflowAgentModel() *inlineWorkflowAgentModel {
@@ -54,9 +55,21 @@ func (model *inlineWorkflowAgentModel) Generate(ctx context.Context, request llm
 	if model.storyErr != nil {
 		return llm.Response{}, model.storyErr
 	}
-	content, _ := json.Marshal(map[string]string{
-		"chapter_code": "vol01.ch01", "title": "月光邮差", "content": "小狐狸完成了月光信件的旅程。", "content_format": "txt",
-	})
+	var content []byte
+	if model.storyboard {
+		content, _ = json.Marshal(map[string]any{
+			"chapter_code": "vol01.ch01",
+			"title":        "月光邮差",
+			"sections": []map[string]any{
+				{"section_no": 1, "title": "月下启程", "storyboard": "小狐狸在月光下收到一封信。"},
+				{"section_no": 2, "title": "送达星光", "storyboard": "小狐狸把星光送给害怕黑夜的朋友。"},
+			},
+		})
+	} else {
+		content, _ = json.Marshal(map[string]string{
+			"chapter_code": "vol01.ch01", "title": "月光邮差", "content": "小狐狸完成了月光信件的旅程。", "content_format": "txt",
+		})
+	}
 	if onDelta != nil {
 		_ = onDelta(string(content))
 	}
@@ -72,9 +85,53 @@ func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.C
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "章节 Workflow 未完成，我已读取结构化终态并向用户说明。"}, FinishReason: "stop"}, nil
 		}
 	}
+	for index := len(request.Messages) - 1; index >= 0; index-- {
+		var envelope struct {
+			Error struct {
+				Code    string `json:"code"`
+				Details string `json:"details"`
+			} `json:"error"`
+		}
+		if json.Unmarshal([]byte(request.Messages[index].Content), &envelope) != nil || envelope.Error.Code != agent.CodeToolConfirmation {
+			continue
+		}
+		var persisted map[string]any
+		if json.Unmarshal([]byte(envelope.Error.Details), &persisted) != nil {
+			break
+		}
+		confirmation := map[string]any{
+			"route":               persisted["route"],
+			"project_uuid":        persisted["project_uuid"],
+			"target_uuid":         persisted["target_uuid"],
+			"expected_revision":   persisted["expected_revision"],
+			"request_fingerprint": persisted["request_fingerprint"],
+			"question_id":         "generate_storyboard",
+			"confirm_option":      1,
+		}
+		arguments, _ := json.Marshal(map[string]any{
+			"questions": []map[string]any{{
+				"header": "生成确认", "id": "generate_storyboard", "question": "是否创建漫画分镜规划任务？",
+				"options": []map[string]any{
+					{"label": "暂不生成 (Recommended)", "description": "保留当前章节，不创建任务。"},
+					{"label": "确认生成", "description": "在当前对话中等待分镜任务完成。"},
+				},
+			}},
+			"confirmation": confirmation,
+		})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "confirm-storyboard-workflow", Name: "request_user_input", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+	}
 	last := ""
 	if len(request.Messages) > 0 {
 		last = request.Messages[len(request.Messages)-1].Content
+	}
+	if strings.Contains(last, "发起漫画分镜生成") {
+		arguments, _ := json.Marshal(map[string]any{
+			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/comic-storyboard-generations",
+			"method":          "POST",
+			"request_body":    map[string]any{"prompt": "按主要情节点拆分完整漫画分镜。", "max_section_count": 2},
+			"response_filter": ".data | {uuid,status}",
+		})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-storyboard-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 	}
 	if strings.Contains(last, "发起章节生成") {
 		arguments, _ := json.Marshal(map[string]any{
@@ -134,13 +191,17 @@ func setupInlineWorkflowTestEnv(t *testing.T, model *inlineWorkflowAgentModel) i
 }
 
 func waitInlineWorkflow(t *testing.T, env inlineWorkflowTestEnv, threadUUID string) agent.Workflow {
+	return waitInlineWorkflowKind(t, env, threadUUID, agent.WorkflowStoryChapter)
+}
+
+func waitInlineWorkflowKind(t *testing.T, env inlineWorkflowTestEnv, threadUUID, kind string) agent.Workflow {
 	t.Helper()
 	deadline := time.Now().Add(8 * time.Second)
 	for time.Now().Before(deadline) {
 		workflows, err := env.agents.ListWorkflows(env.ctx, env.project.UUID)
 		if err == nil {
 			for _, workflow := range workflows {
-				if workflow.Kind == agent.WorkflowStoryChapter && workflow.ThreadUUID == threadUUID {
+				if workflow.Kind == kind && workflow.ThreadUUID == threadUUID {
 					return workflow
 				}
 			}
@@ -549,6 +610,108 @@ func TestChatToolChapterGenerationWaitsWithoutShadowThreadAndResumes(t *testing.
 		}
 		if awaitStatus != "resumed" || runStatus != agent.TurnCompleted || threadStatus != agent.ThreadIdle {
 			t.Fatalf("await=%s run=%s thread=%s", awaitStatus, runStatus, threadStatus)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConfirmedChatToolComicStoryboardWaitsInCurrentThreadAndResumes(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	model.storyboard = true
+	env := setupInlineWorkflowTestEnv(t, model)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		updated, err := story.NewService(store).UpdateStory(env.ctx, env.chapter.UUID, story.UpdateStoryInput{
+			Content: "小狐狸在月光下收到一封信，并把星光送给害怕黑夜的朋友。", ContentFormat: "txt", ExpectedRevision: env.chapter.Revision,
+		})
+		if err == nil {
+			env.chapter = updated
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "当前分镜对话", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起漫画分镜生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var inputRequests []agent.UserInputRequest
+	deadline := time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		inputRequests, err = env.agents.ListUserInputRequests(env.ctx, env.project.UUID, thread.UUID)
+		if err == nil && len(inputRequests) == 1 && inputRequests[0].Status == "pending" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err != nil || len(inputRequests) != 1 || inputRequests[0].Status != "pending" {
+		t.Fatalf("storyboard confirmation requests=%+v err=%v", inputRequests, err)
+	}
+	confirmed, err := env.agents.RespondUserInput(env.ctx, env.project.UUID, thread.UUID, inputRequests[0].UUID, agent.UserInputResponse{
+		Answers: map[string]agent.UserInputAnswer{"generate_storyboard": {SelectedOptionUUID: inputRequests[0].Questions[0].Options[1].UUID}},
+	})
+	if err != nil || (confirmed.Status != "resuming" && confirmed.Status != "resumed") {
+		t.Fatalf("storyboard confirmation=%+v err=%v", confirmed, err)
+	}
+
+	select {
+	case <-model.storyStarted:
+	case <-time.After(8 * time.Second):
+		t.Fatal("comic storyboard Workflow did not start")
+	}
+	waitTurnStatus(t, env, thread.UUID, agent.TurnWaitingForWorkflow)
+	inline := waitInlineWorkflowKind(t, env, thread.UUID, agent.WorkflowComicStoryboard)
+	if inline.PresentationMode != string(agent.PresentationInline) || inline.OriginTurnUUID != turn.UUID || inline.AwaitStatus != "waiting" {
+		t.Fatalf("inline storyboard workflow=%+v", inline)
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		var threadCount, awaitCount int64
+		if err := store.DB().Table("chat_threads").Count(&threadCount).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflow_awaits").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND status='waiting'", inline.UUID).Count(&awaitCount).Error; err != nil {
+			return err
+		}
+		if threadCount != 1 || awaitCount != 1 {
+			t.Fatalf("storyboard shadow threads=%d awaits=%d", threadCount-1, awaitCount)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	close(model.releaseStory)
+	deadline = time.Now().Add(10 * time.Second)
+	var turns []agent.Turn
+	for time.Now().Before(deadline) {
+		turns, err = env.agents.ListTurns(env.ctx, env.project.UUID, thread.UUID)
+		if err == nil && len(turns) == 1 && turns[0].Status == agent.TurnCompleted {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if err != nil || len(turns) != 1 || turns[0].Status != agent.TurnCompleted {
+		workflow, workflowErr := env.agents.GetWorkflow(env.ctx, env.project.UUID, inline.UUID)
+		items, itemsErr := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+		t.Fatalf("storyboard turn=%+v err=%v workflow=%+v workflow_err=%v items=%+v items_err=%v", turns, err, workflow, workflowErr, items.Items, itemsErr)
+	}
+	inline, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, inline.UUID)
+	if err != nil || inline.Status != agent.WorkflowCompleted || inline.AwaitStatus != "resumed" {
+		t.Fatalf("completed storyboard workflow=%+v err=%v", inline, err)
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		sections, err := production.NewService(store, nil).ListSections(env.ctx, env.chapter.UUID)
+		if err != nil {
+			return err
+		}
+		if len(sections) != 2 {
+			t.Fatalf("storyboard sections=%+v", sections)
 		}
 		return nil
 	}); err != nil {

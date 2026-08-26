@@ -60,7 +60,7 @@ const (
 	JobChatTurn      = "chat_turn"
 	JobChatResume    = "chat_resume"
 	JobWorkflowStep  = "workflow_step"
-	DefaultMaxSteps  = 12
+	DefaultMaxSteps  = 20
 	MaxToolResult    = 64 << 10
 	MaxContextBytes  = 512 << 10
 	MaxSummaryBytes  = 24 << 10
@@ -137,6 +137,9 @@ type JobSpec struct {
 	JobKind      string
 	ResourceUUID string
 	ThreadUUID   string
+	// WakeupUUID distinguishes separate durable reasons for resuming the same
+	// turn, such as user confirmation and Workflow completion.
+	WakeupUUID string
 }
 
 type DomainTaskRequest struct {

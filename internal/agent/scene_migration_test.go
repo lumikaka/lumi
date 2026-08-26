@@ -919,7 +919,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 			"questions": []map[string]any{{"header": "生成确认", "id": "generate_storyboard", "question": "是否创建漫画分镜规划任务？", "options": []map[string]any{{"label": "暂不生成 (Recommended)", "description": "保留当前章节，不创建任务。"}, {"label": "确认生成", "description": "按已绑定参数创建分镜任务。"}}}},
 			"confirmation": map[string]any{
 				"route": RouteComicStoryboardGenerationCreate, "project_uuid": harness.project.UUID, "target_uuid": chapter.UUID,
-				"expected_revision": int64(0), "request_fingerprint": agentRequestFingerprint(request), "question_id": "generate_storyboard", "confirm_option": 1,
+				"expected_revision": int64(0), "request_fingerprint": agentRequestFingerprint(request), "question_id": "confirm_comic_storyboard_gen", "confirm_option": 1,
 			},
 		})
 		harness.model.respond = func(call int, modelRequest llm.ChatRequest) (llm.ChatResponse, error) {
@@ -949,6 +949,16 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 		requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
 		if err != nil || len(requests) != 1 {
 			t.Fatalf("storyboard confirmation requests=%+v err=%v", requests, err)
+		}
+		var rawQuestionID, storedQuestionID, argumentRepair string
+		if err := harness.store.DB().Raw(`SELECT json_extract(items.content,'$.confirmation.question_id'),json_extract(executions.arguments_json,'$.confirmation.question_id'),json_extract(items.metadata_json,'$.argument_repaired')
+				FROM chat_items AS items
+				JOIN agent_tool_executions AS executions ON executions.item_id=items.id
+				WHERE items.turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND items.tool_name='request_user_input'`, turn.UUID).Row().Scan(&rawQuestionID, &storedQuestionID, &argumentRepair); err != nil {
+			t.Fatal(err)
+		}
+		if rawQuestionID != "confirm_comic_storyboard_gen" || storedQuestionID != "generate_storyboard" || argumentRepair != confirmationQuestionIDArgumentRepair {
+			t.Fatalf("storyboard confirmation normalization raw=%q stored=%q repair=%q", rawQuestionID, storedQuestionID, argumentRepair)
 		}
 		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"generate_storyboard": {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID}}}); err != nil {
 			t.Fatal(err)

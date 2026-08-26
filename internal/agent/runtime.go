@@ -96,32 +96,28 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if tc.Run.StepCount > tc.Run.MaxSteps {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, CodeMaxSteps, "Agent 已达到最大工具步骤。")
 		}
-		finalResponseOnly := tc.Run.StepCount == tc.Run.MaxSteps
+		if tc.Run.StepCount == tc.Run.MaxSteps {
+			return service.completeRun(ctx, store, tc, stepLimitHandoffMessage, map[string]any{
+				"runtime_generated": true,
+				"completion_reason": "step_limit",
+			})
+		}
 		messages, contextBytes, contextThrough, err := service.buildContext(ctx, store, tc)
 		if err != nil {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
 		}
-		if err := service.recordModelStart(ctx, store, tc, contextBytes, !finalResponseOnly); err != nil {
+		if err := service.recordModelStart(ctx, store, tc, contextBytes, true); err != nil {
 			return err
 		}
 		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: llmToolDefinitionsForContext(tc), MaxTokens: 4096}
-		scenario := "project_chat"
 		requestOrdinal := tc.Run.StepCount + 1
-		if finalResponseOnly {
-			request.Tools = nil
-			scenario = "project_chat_finalization"
-			requestOrdinal, err = service.nextModelRequestOrdinal(ctx, store, tc.Run.ID, requestOrdinal)
-			if err != nil {
-				return err
-			}
-		}
 		requestPayload, err := llmlog.EncodeChatRequest(request)
 		if err != nil {
 			return err
 		}
 		logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
 			ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID,
-			SourceType: llmlog.SourceProjectChat, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: requestOrdinal,
+			SourceType: llmlog.SourceProjectChat, Scenario: "project_chat", RequestType: llmlog.RequestText, Attempt: requestOrdinal,
 			ProviderUUID: tc.Run.ProviderUUID, ProviderType: resolved.ProviderType, Model: tc.Run.Model,
 			RequestPayload: requestPayload,
 		})
@@ -175,13 +171,6 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		} else if steered {
 			continue
 		}
-		if finalResponseOnly {
-			content := strings.TrimSpace(response.Message.Content)
-			if len(response.Message.ToolCalls) > 0 || content == "" {
-				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeMaxSteps, "Agent 已达到最大工具步骤，且未能生成最终回复。")
-			}
-			return service.completeRun(ctx, store, tc, content)
-		}
 		if len(response.Message.ToolCalls) > 0 {
 			if mixedRequestUserInputCalls(response.Message.ToolCalls) {
 				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeToolValidation, "request_user_input 必须是本次模型响应中唯一的 Tool Call。")
@@ -234,8 +223,29 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if content == "" {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, CodeProvider, "Provider 未返回可用回复。")
 		}
-		return service.completeRun(ctx, store, tc, content)
+		if containsUnexecutedToolMarkup(content) {
+			return service.completeRun(ctx, store, tc, invalidToolMarkupHandoffMessage, map[string]any{
+				"runtime_generated": true,
+				"completion_reason": "unexecuted_tool_markup",
+			})
+		}
+		return service.completeRun(ctx, store, tc, content, nil)
 	}
+}
+
+const (
+	stepLimitHandoffMessage         = "本轮已达到处理步骤上限，已执行的操作均已保存。若仍有未完成内容，请回复「继续」，我会从当前进度接着处理。"
+	invalidToolMarkupHandoffMessage = "模型返回了未执行的工具调用文本；为避免误操作，本轮已安全停止，且没有执行其中的操作。请回复「继续」以从当前进度重试。"
+)
+
+func containsUnexecutedToolMarkup(content string) bool {
+	lower := strings.ToLower(content)
+	for _, marker := range []string{"<invoke", "</invoke>", "<tool_call", "</tool_call>", "<function=", "<parameter name="} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func (service *Service) hasSteeringAfter(ctx context.Context, store *project.Store, runID, sequence int64) (bool, error) {
@@ -566,17 +576,6 @@ func (service *Service) recordModelStart(ctx context.Context, store *project.Sto
 	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(updates).Error
 }
 
-func (service *Service) nextModelRequestOrdinal(ctx context.Context, store *project.Store, runID int64, minimum int) (int, error) {
-	var next int
-	if err := store.DB().WithContext(ctx).Raw(`SELECT COALESCE(MAX(attempt),0)+1 FROM llm_logs WHERE chat_run_id=?`, runID).Scan(&next).Error; err != nil {
-		return 0, err
-	}
-	if next < minimum {
-		next = minimum
-	}
-	return next, nil
-}
-
 func (service *Service) recordModelRequestEvent(ctx context.Context, store *project.Store, tc toolContext, eventType, status string) error {
 	if !isUUIDv7(tc.RequestUUID) || tc.RequestOrdinal < 1 {
 		return domainError(CodeStateConflict, "Model Request 关联无效", "request_uuid 与 request_ordinal 必须来自已持久化的 LLM Log。", nil)
@@ -624,7 +623,7 @@ func (service *Service) recordModelRequestEvent(ctx context.Context, store *proj
 	return nil
 }
 
-func (service *Service) completeRun(ctx context.Context, store *project.Store, tc toolContext, content string) error {
+func (service *Service) completeRun(ctx context.Context, store *project.Store, tc toolContext, content string, completionMetadata map[string]any) error {
 	followUpPromptSnapshot := contextPromptSet{}
 	var queuedFollowUps int64
 	if err := store.DB().WithContext(ctx).Table("chat_follow_ups").Where("thread_id=? AND status='queued' AND deleted_at IS NULL", tc.Thread.ID).Count(&queuedFollowUps).Error; err != nil {
@@ -659,7 +658,11 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 	}
 	now := service.now().UTC()
 	metadata := map[string]any{}
-	if isUUIDv7(tc.RequestUUID) {
+	for key, value := range completionMetadata {
+		metadata[key] = value
+	}
+	runtimeGenerated, _ := metadata["runtime_generated"].(bool)
+	if !runtimeGenerated && isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
 		metadata["request_ordinal"] = tc.RequestOrdinal
 	}
@@ -674,7 +677,12 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 		return err
 	}
 	completedPayload := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "item_uuid": item.UUID, "status": TurnCompleted}
-	if isUUIDv7(tc.RequestUUID) {
+	if runtimeGenerated {
+		completedPayload["runtime_generated"] = true
+		if reason, _ := metadata["completion_reason"].(string); reason != "" {
+			completedPayload["completion_reason"] = reason
+		}
+	} else if isUUIDv7(tc.RequestUUID) {
 		completedPayload["request_uuid"] = tc.RequestUUID
 		completedPayload["request_ordinal"] = tc.RequestOrdinal
 	}

@@ -18,6 +18,7 @@ type agentArgs struct {
 	JobKind      string `json:"job_kind" river:"unique"`
 	ResourceUUID string `json:"resource_uuid" river:"unique"`
 	ThreadUUID   string `json:"thread_uuid" river:"unique"`
+	WakeupUUID   string `json:"wakeup_uuid,omitempty" river:"unique"`
 }
 
 func (agentArgs) Kind() string { return "lumi_project_agent_v1" }
@@ -39,7 +40,7 @@ func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) 
 		worker.runtime.unregisterWork(job.Args.ResourceUUID)
 	}()
 	for {
-		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID})
+		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID, WakeupUUID: job.Args.WakeupUUID})
 		if errors.Is(err, agent.ErrJobNotReady) {
 			// River promotes snoozed jobs on its maintenance cadence, which is too
 			// coarse for an Agent polling a task running on another queue. Keep the
@@ -70,7 +71,7 @@ func (manager *Manager) EnqueueAgentTx(ctx context.Context, projectUUID string, 
 	if err != nil {
 		return 0, err
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, agentArgs{Version: spec.Version, ProjectUUID: projectUUID, JobKind: spec.JobKind, ResourceUUID: spec.ResourceUUID, ThreadUUID: spec.ThreadUUID}, &river.InsertOpts{
+	inserted, err := runtime.client.InsertTx(ctx, tx, agentArgs{Version: spec.Version, ProjectUUID: projectUUID, JobKind: spec.JobKind, ResourceUUID: spec.ResourceUUID, ThreadUUID: spec.ThreadUUID, WakeupUUID: spec.WakeupUUID}, &river.InsertOpts{
 		Queue: QueueAgent, MaxAttempts: 5,
 		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}},
 	})
@@ -135,8 +136,15 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		task, err := manager.CreateStoryWorkflow(ctx, projectUUID, request.Kind, request.ChapterUUID, CreateStoryWorkflowInput{
 			ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt,
 			ChapterCount: request.ChapterCount, MaxSectionCount: maxSectionCount, IdempotencyKey: request.IdempotencyKey,
+			Invocation: request.Invocation,
 		})
-		return storyDomainTask(task), err
+		if err != nil {
+			return storyDomainTask(task), err
+		}
+		if request.Invocation.AwaitCompletion {
+			return storyDomainTask(task), agent.ErrWaitingWorkflow
+		}
+		return storyDomainTask(task), nil
 	case KindComicExport:
 		operation, err := manager.CreateComicExport(ctx, projectUUID, CreateExportInput{
 			Scope: request.Scope, ChapterUUID: request.ChapterUUID, Format: request.Format,
