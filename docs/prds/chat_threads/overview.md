@@ -2,7 +2,7 @@
 
 ## 模块职责
 
-对话线程模块负责项目内 Agent 对话的持久化会话、轮次、运行、消息、追问队列、用户输入、Reference 和工具执行。Thread 本身不绑定业务场景或单一资源；每条用户输入用最多 16 个冻结 Reference 显式声明本次上下文，并可在进程中断或实时事件丢失后从 SQLite 恢复事实状态。
+对话线程模块负责项目内 Agent 对话的持久化会话、轮次、运行、消息、追问队列、用户输入、Reference 和工具执行。普通 `conversation` Thread 本身不绑定业务场景或单一资源；每条用户输入用最多 16 个冻结 Reference 显式声明本次上下文，并可在进程中断、异步 Workflow 等待或实时事件丢失后从 SQLite 恢复事实状态。
 
 ## 职责边界
 
@@ -16,6 +16,8 @@
 ### Thread 与 Turn
 
 Thread 只固定项目、标题、会话级模型选择和运行状态。每次用户输入形成按序排队的 Turn，Reference 归属于对应 User Item；执行产生 Run、可读 Item 和 append-only Event，Thread 的展示状态是这些持久记录的投影。
+
+Thread 以 `thread_type=conversation|workflow` 区分普通对话与公开 UI 创建的独立 Workflow 页面。Chat Tool 发起的 Workflow 仍关联当前 `conversation` Thread，并通过 origin Turn 内联显示，不覆盖会话标题。
 
 ### Reference
 
@@ -38,6 +40,6 @@ Agent 的工具调用、用户选择题和图片引用均先写入持久记录�
 | 模块 | 关系 |
 |---|---|
 | AI 运行时 | 创建 Thread/Run 时冻结模型；调用明细统一进入 `llm_logs`。 |
-| 工作流 | Workflow 可选关联 Thread，但具有独立状态机和步骤。 |
+| 工作流 | `direct_ui` Workflow 使用独立 `workflow` Thread；`chat_tool` Workflow 复用当前 `conversation` Thread，并以持久 await 暂停/恢复父 Run。 |
 | 文件 | 普通上传图片作为 `file` Reference；实际上传、内容服务和冻结图片引用保护由 `files` 管理。 |
 | Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |

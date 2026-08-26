@@ -7,7 +7,7 @@ import PromptCatalogEditor from '../components/PromptCatalogEditor.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { statusLabel as fallbackStatusLabel } from '../i18n/labels.js'
-import { threadContextCopyKey, threadDisplayTitle } from './chatAreaPresentation.js'
+import { dedicatedWorkflowForThread, threadContextCopyKey, threadDisplayTitle } from './chatAreaPresentation.js'
 import { flattenProjectThreads, useProjectThreads } from './projectThreads.js'
 
 const statusCopy = {
@@ -25,7 +25,7 @@ export function PremiseThreadsPanel({ projectUuid, onOpenThread, onNewThread }) 
   const threadsQuery = useProjectThreads(projectUuid)
   const workflowsQuery = useQuery({ queryKey: ['workflows', projectUuid], queryFn: () => listWorkflows(projectUuid) })
   const threads = useMemo(() => flattenProjectThreads(threadsQuery.data?.pages), [threadsQuery.data])
-  const workflowByThread = useMemo(() => new Map((workflowsQuery.data?.items || []).map((workflow) => [workflow.thread_uuid, workflow])), [workflowsQuery.data])
+	const workflowByThread = useMemo(() => new Map(threads.map((thread) => [thread.uuid, dedicatedWorkflowForThread(workflowsQuery.data?.items || [], thread.uuid)]).filter(([, workflow]) => workflow)), [threads, workflowsQuery.data])
   const total = threadsQuery.data?.pages?.[0]?.pagination?.total ?? threads.length
   return (
     <section className="premise-content-panel premise-thread-panel" role="tabpanel">

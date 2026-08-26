@@ -107,7 +107,7 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 		if err != nil {
 			return err
 		}
-		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
+		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, ThreadType: ThreadTypeConversation, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
 		return store.DB().WithContext(ctx).Create(&record).Error
 	})
 	if err != nil {
@@ -179,7 +179,7 @@ func (service *Service) GetThread(ctx context.Context, projectUUID, threadUUID s
 }
 
 func threadDTO(row threadRecord, projectUUID string) Thread {
-	return Thread{UUID: row.UUID, ProjectUUID: projectUUID, Title: row.Title, Status: row.Status, ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, ArchivedAt: row.ArchivedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return Thread{UUID: row.UUID, ProjectUUID: projectUUID, Title: row.Title, Status: row.Status, ThreadType: row.ThreadType, ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, ArchivedAt: row.ArchivedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func notFound(err error, message string) error {
@@ -323,7 +323,10 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 		return turnRecord{}, runRecord{}, err
 	}
 	thread.NextTurnSequence++
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',provider_uuid=?,model=?,model_source=?,next_turn_sequence=?,next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.ProviderUUID, thread.Model, thread.ModelSource, thread.NextTurnSequence, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET provider_uuid=?,model=?,model_source=?,next_turn_sequence=?,next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.ProviderUUID, thread.Model, thread.ModelSource, thread.NextTurnSequence, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+		return turnRecord{}, runRecord{}, err
+	}
+	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
 	turn := turnRecord{ID: turnID, ThreadID: thread.ID, UUID: turnUUID, SourceType: sourceType, SourceFollowUpID: followUpID, QueueSequence: queueSequence, InputText: text, Status: TurnQueued, RiverJobID: &jobID, CreatedAt: now, UpdatedAt: now}
@@ -441,13 +444,25 @@ func (service *Service) ListTurns(ctx context.Context, projectUUID, threadUUID s
 		if err := store.DB().WithContext(ctx).Where("thread_id=?", thread.ID).Order("queue_sequence,id").Find(&rows).Error; err != nil {
 			return err
 		}
+		var waitingRows []struct{ ChatTurnID int64 }
+		if err := store.DB().WithContext(ctx).Table("workflow_awaits").Select("chat_turn_id").Where("chat_thread_id=? AND status='waiting'", thread.ID).Scan(&waitingRows).Error; err != nil {
+			return err
+		}
+		waitingTurnIDs := make(map[int64]struct{}, len(waitingRows))
+		for _, waiting := range waitingRows {
+			waitingTurnIDs[waiting.ChatTurnID] = struct{}{}
+		}
 		result = make([]Turn, 0, len(rows))
 		for _, row := range rows {
 			var followUpUUID string
 			if row.SourceFollowUpID > 0 {
 				_ = store.DB().WithContext(ctx).Raw("SELECT uuid FROM chat_follow_ups WHERE id=?", row.SourceFollowUpID).Scan(&followUpUUID).Error
 			}
-			result = append(result, turnDTO(row, threadUUID, followUpUUID))
+			dto := turnDTO(row, threadUUID, followUpUUID)
+			if _, waiting := waitingTurnIDs[row.ID]; waiting && row.Status == TurnInProgress {
+				dto.Status = TurnWaitingForWorkflow
+			}
+			result = append(result, dto)
 		}
 		return nil
 	})

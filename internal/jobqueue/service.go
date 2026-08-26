@@ -133,7 +133,7 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	}
 	_ = threadID
 	_ = runID
-	if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, projectUUID, KindStoryChapterGeneration, input.ChapterUUID, taskUUID, resolved.UUID, model, modelSource, snapshotJSON, now); err != nil {
+	if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, projectUUID, KindStoryChapterGeneration, input.ChapterUUID, taskUUID, resolved.UUID, model, modelSource, snapshotJSON, input.Invocation, now); err != nil {
 		return Task{}, taskError(CodeTaskPersistenceFailed, "无法创建章节任务 Workflow", "任务、审计记录与队列 job 已一并回滚。", err)
 	}
 	inserted, err := runtime.client.InsertTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, TaskKind: KindStoryChapterGeneration, ResourceUUID: input.ChapterUUID}, &river.InsertOpts{
@@ -389,6 +389,9 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 	}
 	if isProjectedStoryTaskWorkflow(record.Kind) {
 		if err := cancelStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+			return Task{}, err
+		}
+		if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
 			return Task{}, err
 		}
 	}

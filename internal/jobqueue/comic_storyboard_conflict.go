@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"lumi/internal/agent"
 	"lumi/internal/production"
 )
 
@@ -300,8 +301,10 @@ func (runtime *projectRuntime) declineComicStoryboardOverwrite(ctx context.Conte
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='cancelled',completed_at=?,cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='cancelled',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	workflowPayload := storyTaskWorkflowPayload(ref, record.UUID, StatusCancelled)
 	workflowPayload["resolution"] = ComicStoryboardConflictKeepExisting

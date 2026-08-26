@@ -69,11 +69,14 @@ test('terminal turns collapse paired tool activity while keeping raw diagnostics
 
 test('answered user input collapses in place while pending input stays interactive', () => {
   assert.match(source, /function UserInputCard[\s\S]*?projectChatUserInput\(request\)[\s\S]*?presentation\.mode !== 'pending'[\s\S]*?<UserInputHistory/)
-  assert.match(source, /function PendingUserInputCard[\s\S]*?<form className="chat-input-request"[\s\S]*?onRespond\(request\.uuid/)
-  assert.match(source, /function UserInputHistory[\s\S]*?<details className="chat-input-history">[\s\S]*?request\.options\.map[\s\S]*?chat\.input\.final_answer/)
+  assert.match(source, /function PendingUserInputCard[\s\S]*?<form className="chat-input-request"[\s\S]*?presentation\.questions\.map[\s\S]*?selected_option_uuid[\s\S]*?onRespond\(request\.uuid/)
+  assert.match(source, /function UserInputHistory[\s\S]*?<details className="chat-input-history">[\s\S]*?presentation\.questions\.map[\s\S]*?chat\.input\.final_answer/)
+  assert.match(source, /function OptionCopy[\s\S]*? \(Recommended\)[\s\S]*?chat-input-request__recommended/)
   assert.match(source, /chat-message--user-input-incomplete/)
   assert.match(messagesSource, /'chat\.input\.answered_summary': \['已选择：\{answer\}', 'Selected: \{answer\}'\]/)
+  assert.match(messagesSource, /'chat\.input\.answered_question_count': \['已完成 \{count\} 个问题', 'Answered \{count\} questions'\]/)
   assert.match(messagesSource, /'chat\.input\.incomplete_summary': \['未完成选择', 'Choice not completed'\]/)
+  assert.match(messagesSource, /'chat\.input\.recommended': \['推荐', 'Recommended'\]/)
 })
 
 test('second-stage chat parity includes safe markdown, paged history, queue steering and workflow diagnostics', () => {
@@ -111,6 +114,18 @@ test('workflow diagnostics load only while open and rely on project realtime rec
   assert.match(diagnostics, /runsQuery\.fetchPreviousPage\(\)/)
   assert.match(diagnostics, /eventsQuery\.fetchPreviousPage\(\)/)
   assert.match(diagnostics, /logsQuery\.fetchNextPage\(\)/)
+})
+
+test('inline workflows render inside their origin turn without replacing conversation thread identity', () => {
+	assert.match(source, /groupInlineWorkflowsByTurn\(workflows, selectedThreadUuid\)/)
+	assert.match(source, /workflows: inlineWorkflowsByTurn\.get\(group\.uuid\) \|\| \[\]/)
+	assert.match(source, /function TurnGroup[\s\S]*?chat-turn__workflows[\s\S]*?<WorkflowProgress[\s\S]*?inline/)
+	assert.match(source, /workflow-progress--inline/)
+	assert.match(source, /selectedDedicatedWorkflow[\s\S]*?threadDisplayTitle\(selectedThread, selectedDedicatedWorkflow, t\)/)
+	assert.match(source, /\['queued', 'in_progress', 'waiting_for_input', 'waiting_for_workflow'\]/)
+	assert.match(source, /chat\.composer\.waiting_for_workflow/)
+	assert.match(messagesSource, /'chat\.activity\.waiting_for_workflow': \['工作流正在后台执行/)
+	assert.match(stylesSource, /\.workflow-progress--inline[\s\S]*?margin: 0/)
 })
 
 test('thread detail replaces raw runtime events with a real Trajectory link', () => {

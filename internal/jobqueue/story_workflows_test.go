@@ -430,6 +430,13 @@ func TestChapterWorkflowControlsUseOriginalTaskAndProjection(t *testing.T) {
 		if err != nil || len(workflows) != 1 {
 			t.Fatalf("chapter workflows=%+v err=%v", workflows, err)
 		}
+		if workflows[0].PresentationMode != string(agent.PresentationDedicatedThread) {
+			t.Fatalf("direct UI workflow presentation=%q", workflows[0].PresentationMode)
+		}
+		projectedThread, err := agents.GetThread(context.Background(), harness.project.UUID, workflows[0].ThreadUUID)
+		if err != nil || projectedThread.ThreadType != agent.ThreadTypeWorkflow {
+			t.Fatalf("direct UI workflow thread=%+v err=%v", projectedThread, err)
+		}
 		workflowUUID, threadUUID := workflows[0].UUID, workflows[0].ThreadUUID
 		cancelled, err := agents.CancelWorkflow(context.Background(), harness.project.UUID, workflowUUID)
 		if err != nil || cancelled.Status != StatusCancelled {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"lumi/internal/agent"
 	"lumi/internal/modelsettings"
 	"lumi/internal/production"
 	"lumi/internal/project"
@@ -274,7 +275,7 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 		return Task{}, err
 	}
 	if isProjectedStoryTaskWorkflow(kind) {
-		if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, kind, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, now); err != nil {
+		if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, runtime.projectUUID, kind, resourceUUID, taskUUID, providerUUID, model, modelSource, snapshot, agent.DirectUIInvocationContext(), now); err != nil {
 			return Task{}, err
 		}
 	}

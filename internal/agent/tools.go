@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -43,14 +44,15 @@ type toolExecutionRecord struct {
 const maxToolValidationRepairs = 2
 
 func toolDefinitions() []map[string]any {
+	return append(projectAPISharedToolDefinitions(), projectAPIV4RequestUserInputDefinition())
+}
+
+func projectAPISharedToolDefinitions() []map[string]any {
 	object := func(properties map[string]any, required ...string) map[string]any {
 		return map[string]any{"type": "object", "additionalProperties": false, "properties": properties, "required": required}
 	}
 	stringField := func(description string) map[string]any {
 		return map[string]any{"type": "string", "description": description}
-	}
-	integerField := func(description string) map[string]any {
-		return map[string]any{"type": "integer", "description": description}
 	}
 	return []map[string]any{
 		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract.", "parameters": object(map[string]any{
@@ -67,15 +69,36 @@ func toolDefinitions() []map[string]any {
 			"prompt": stringField("Detailed image generation prompt"), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
 			"size": map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
 		}, "prompt", "reference_uuids")},
-		{"name": "request_user_input", "description": "Pause this run and ask the user a bounded choice question. For a dangerous Agent API route, include confirmation bound to the route, project, target UUID, expected revision, and exact request fingerprint.", "parameters": object(map[string]any{
-			"input_type": map[string]any{"type": "string", "enum": []string{"single_choice", "multiple_choice"}}, "question": stringField("Question shown to the user"),
-			"options": map[string]any{"type": "array", "minItems": 2, "maxItems": 8, "items": object(map[string]any{"label": stringField("Short option label"), "description": stringField("Optional explanation")}, "label")},
-			"confirmation": object(map[string]any{
-				"route": stringField("Dangerous global Agent API route ID"), "project_uuid": stringField("Current public project UUIDv7"), "target_uuid": stringField("Concrete target resource UUIDv7"),
-				"expected_revision": integerField("Freshly read target revision"), "request_fingerprint": stringField("Exact sha256 fingerprint returned by request_api"), "confirm_option": integerField("Zero-based confirming option index"),
-			}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "confirm_option"),
-		}, "input_type", "question", "options")},
 	}
+}
+
+func projectAPIV4RequestUserInputDefinition() map[string]any {
+	object := func(properties map[string]any, required ...string) map[string]any {
+		return map[string]any{"type": "object", "additionalProperties": false, "properties": properties, "required": required}
+	}
+	stringField := func(description string, minimum, maximum int) map[string]any {
+		return map[string]any{"type": "string", "description": description, "minLength": minimum, "maxLength": maximum}
+	}
+	integerField := func(description string) map[string]any {
+		return map[string]any{"type": "integer", "description": description}
+	}
+	option := object(map[string]any{
+		"label":       stringField("User-facing label of 1–5 words. The first option must end with ` (Recommended)`.", 1, 160),
+		"description": stringField("One short sentence explaining the impact or tradeoff.", 1, 1000),
+	}, "label", "description")
+	question := object(map[string]any{
+		"header":   stringField("Short UI header of at most 12 characters.", 1, 12),
+		"id":       map[string]any{"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]{0,63}$", "description": "Stable snake_case answer key."},
+		"question": stringField("Single-sentence question shown to the user.", 1, 4000),
+		"options":  map[string]any{"type": "array", "minItems": 2, "maxItems": 3, "items": option},
+	}, "header", "id", "question", "options")
+	return map[string]any{"name": "request_user_input", "description": "Pause this run and ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. For a dangerous Agent API route, include confirmation bound to its exact question and request fingerprint.", "parameters": object(map[string]any{
+		"questions": map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question},
+		"confirmation": object(map[string]any{
+			"route": stringField("Dangerous global Agent API route ID.", 1, 160), "project_uuid": stringField("Current public project UUIDv7.", 36, 36), "target_uuid": stringField("Concrete target resource UUIDv7.", 36, 36),
+			"expected_revision": integerField("Freshly read target revision."), "request_fingerprint": stringField("Exact sha256 fingerprint returned by request_api.", 71, 71), "question_id": map[string]any{"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]{0,63}$"}, "confirm_option": integerField("Zero-based confirming option index; index zero is reserved for the safe recommended option."),
+		}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "question_id", "confirm_option"),
+	}, "questions")}
 }
 
 func validateToolArguments(name string, raw string) (map[string]any, error) {
@@ -108,7 +131,7 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	if parameters == nil {
 		return nil, domainError(CodeToolNotAllowed, "工具不在 allowlist", "Agent 只能调用当前项目注册的受控工具。", nil)
 	}
-	if err := validatePublicArguments(args, ""); err != nil {
+	if err := validatePublicToolArguments(name, protocol, args); err != nil {
 		return nil, err
 	}
 	properties, _ := parameters["properties"].(map[string]any)
@@ -127,6 +150,11 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 			if _, exists := args[key]; !exists {
 				return nil, domainError(CodeToolValidation, "工具参数缺少必填字段", key+" 是必填字段。", nil)
 			}
+		}
+	}
+	if name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3 && normalizedToolMode(mode) == ToolModeProjectAPI {
+		if err := validateProjectAPIV4UserInputArguments(args); err != nil {
+			return nil, err
 		}
 	}
 	return args, nil
@@ -200,6 +228,10 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 			}
 			if maximum, exists := schema["maxLength"].(int); exists && len([]rune(text)) > maximum {
 				valid = false
+			}
+			if pattern, exists := schema["pattern"].(string); exists {
+				matched, err := regexp.MatchString(pattern, text)
+				valid = valid && err == nil && matched
 			}
 		}
 	case "integer":
@@ -279,17 +311,27 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 }
 
 func validatePublicArguments(value any, key string) error {
+	return validatePublicArgumentsAt(value, key, nil, false)
+}
+
+func validatePublicToolArguments(name, protocol string, value any) error {
+	allowQuestionID := name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3
+	return validatePublicArgumentsAt(value, "", nil, allowQuestionID)
+}
+
+func validatePublicArgumentsAt(value any, key string, path []string, allowQuestionID bool) error {
 	switch typed := value.(type) {
 	case map[string]any:
 		for childKey, child := range typed {
 			lower := strings.ToLower(childKey)
-			if lower == "id" || strings.HasSuffix(lower, "_id") || strings.HasSuffix(lower, "_path") ||
+			logicalQuestionID := allowQuestionID && ((lower == "id" && len(path) == 2 && path[0] == "questions" && path[1] == "[]") || (lower == "question_id" && len(path) == 1 && path[0] == "confirmation"))
+			if (!logicalQuestionID && lower == "id") || (!logicalQuestionID && strings.HasSuffix(lower, "_id")) || strings.HasSuffix(lower, "_path") ||
 				lower == "authorization" || lower == "cookie" || lower == "password" || strings.HasSuffix(lower, "_password") ||
 				lower == "secret" || strings.HasSuffix(lower, "_secret") || lower == "credential" || strings.HasSuffix(lower, "_credential") ||
 				lower == "token" || strings.HasSuffix(lower, "_token") || lower == "api_key" || strings.HasSuffix(lower, "_api_key") {
 				return domainError(CodeToolValidation, "工具参数包含内部字段", "只允许公开业务字段和 UUID，不允许 id、磁盘路径或凭据字段。", nil)
 			}
-			if err := validatePublicArguments(child, childKey); err != nil {
+			if err := validatePublicArgumentsAt(child, childKey, append(path, childKey), allowQuestionID); err != nil {
 				return err
 			}
 		}
@@ -304,7 +346,7 @@ func validatePublicArguments(value any, key string) error {
 			return nil
 		}
 		for _, child := range typed {
-			if err := validatePublicArguments(child, key); err != nil {
+			if err := validatePublicArgumentsAt(child, key, append(path, "[]"), allowQuestionID); err != nil {
 				return err
 			}
 		}
@@ -315,6 +357,53 @@ func validatePublicArguments(value any, key string) error {
 		}
 		if strings.HasSuffix(lower, "_uuids") && typed != "" {
 			return domainError(CodeToolValidation, "工具 UUID 列表无效", key+" 必须是 UUIDv7 数组。", nil)
+		}
+	}
+	return nil
+}
+
+var requestUserInputQuestionIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
+func validateProjectAPIV4UserInputArguments(args map[string]any) error {
+	values, _ := args["questions"].([]any)
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		question, _ := value.(map[string]any)
+		header := strings.TrimSpace(stringArg(question, "header"))
+		questionID := strings.TrimSpace(stringArg(question, "id"))
+		prompt := strings.TrimSpace(stringArg(question, "question"))
+		options, _ := question["options"].([]any)
+		if header == "" || len([]rune(header)) > 12 || prompt == "" || len([]rune(prompt)) > 4000 || !requestUserInputQuestionIDPattern.MatchString(questionID) {
+			return domainError(CodeToolValidation, "用户输入问题无效", "header、id 或 question 不符合 request_user_input v4 限制。", nil)
+		}
+		if _, duplicate := seen[questionID]; duplicate {
+			return domainError(CodeToolValidation, "用户输入问题 ID 重复", "questions 中的 id 必须唯一。", nil)
+		}
+		seen[questionID] = struct{}{}
+		for index, rawOption := range options {
+			option, _ := rawOption.(map[string]any)
+			label := strings.TrimSpace(stringArg(option, "label"))
+			description := strings.TrimSpace(stringArg(option, "description"))
+			recommended := strings.HasSuffix(label, " (Recommended)")
+			if label == "" || len([]rune(label)) > 160 || description == "" || len([]rune(description)) > 1000 || strings.ContainsAny(description, "\r\n") || (index == 0) != recommended || strings.EqualFold(label, "Other") || strings.EqualFold(label, "Other (Recommended)") {
+				return domainError(CodeToolValidation, "用户输入选项无效", "选项必须包含非空 label/description；仅第一项 label 必须以 ` (Recommended)` 结尾，且模型不得创建 Other。", nil)
+			}
+		}
+	}
+	if raw, exists := args["confirmation"]; exists {
+		confirmation, _ := raw.(map[string]any)
+		questionID := strings.TrimSpace(stringArg(confirmation, "question_id"))
+		if len(values) != 1 || questionID == "" {
+			return domainError(CodeToolValidation, "危险操作确认问题无效", "confirmation 只允许绑定单问题请求，并且必须提供 question_id。", nil)
+		}
+		question, _ := values[0].(map[string]any)
+		if questionID != strings.TrimSpace(stringArg(question, "id")) {
+			return domainError(CodeToolValidation, "危险操作确认问题不匹配", "confirmation.question_id 必须匹配唯一问题的 id。", nil)
+		}
+		options, _ := question["options"].([]any)
+		confirmOption := int(intArg(confirmation, "confirm_option"))
+		if confirmOption <= 0 || confirmOption >= len(options) {
+			return domainError(CodeToolValidation, "危险操作确认选项无效", "confirmation.confirm_option 必须绑定非首项的有效选项；首项保留为安全推荐项。", nil)
 		}
 	}
 	return nil
@@ -581,7 +670,7 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 		}
 	}
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, ctx.Err()) {
+		if errors.Is(err, context.Canceled) || errors.Is(err, ctx.Err()) || errors.Is(err, ErrWaitingWorkflow) {
 			return nil, err
 		}
 		return toolErrorResult(err), nil
@@ -718,7 +807,7 @@ func updateStoryboardTool(ctx context.Context, service *production.Service, args
 }
 
 func (service *Service) startGenerationTool(ctx context.Context, tc toolContext, execution toolExecutionRecord, args map[string]any) (DomainTask, error) {
-	request := DomainTaskRequest{Kind: stringArg(args, "kind"), ResourceUUID: stringArg(args, "resource_uuid"), ChapterUUID: stringArg(args, "chapter_uuid"), ProviderUUID: tc.Run.ProviderUUID, Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"), IdempotencyKey: execution.IdempotencyKey}
+	request := DomainTaskRequest{Kind: stringArg(args, "kind"), ResourceUUID: stringArg(args, "resource_uuid"), ChapterUUID: stringArg(args, "chapter_uuid"), ProviderUUID: tc.Run.ProviderUUID, Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"), IdempotencyKey: execution.IdempotencyKey, Invocation: chatToolInvocationContext(tc, execution)}
 	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, request)
 }
 
@@ -832,41 +921,9 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 }
 
 func (service *Service) createUserInputRequest(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord) (UserInputRequest, error) {
-	var args struct {
-		InputType string `json:"input_type"`
-		Question  string `json:"question"`
-		Options   []struct {
-			Label       string `json:"label"`
-			Description string `json:"description"`
-		} `json:"options"`
-		Confirmation *dangerousConfirmationBinding `json:"confirmation"`
-	}
-	if err := json.Unmarshal([]byte(execution.ArgumentsJSON), &args); err != nil {
-		return UserInputRequest{}, domainError(CodeToolValidation, "用户输入参数无效", "无法解析 request_user_input。", err)
-	}
-	question := strings.TrimSpace(args.Question)
-	if (args.InputType != "single_choice" && args.InputType != "multiple_choice") || question == "" || len([]rune(question)) > 4000 || len(args.Options) < 2 || len(args.Options) > 8 {
-		return UserInputRequest{}, domainError(CodeToolValidation, "用户输入请求无效", "问题和选项不符合限制。", nil)
-	}
-	if args.Confirmation != nil {
-		route, err := service.validateDangerousConfirmationBinding(tc, *args.Confirmation, args.InputType, len(args.Options))
-		if err != nil {
-			return UserInputRequest{}, err
-		}
-		question = fmt.Sprintf("%s\n\n确认操作：%s（%s）；目标 UUID：%s；expected_revision：%d。", question, route.Action, route.ID, args.Confirmation.TargetUUID, args.Confirmation.ExpectedRevision)
-	}
-	options := make([]UserInputOption, 0, len(args.Options))
-	for _, candidate := range args.Options {
-		label := strings.TrimSpace(candidate.Label)
-		description := strings.TrimSpace(candidate.Description)
-		if label == "" || len([]rune(label)) > 160 || len([]rune(description)) > 1000 {
-			return UserInputRequest{}, domainError(CodeToolValidation, "用户输入选项无效", "选项标签不能为空且最多 160 字符。", nil)
-		}
-		uuid, err := newUUIDv7()
-		if err != nil {
-			return UserInputRequest{}, err
-		}
-		options = append(options, UserInputOption{UUID: uuid, Label: label, Description: description})
+	prepared, err := service.prepareUserInputRequest(tc, execution.ArgumentsJSON)
+	if err != nil {
+		return UserInputRequest{}, err
 	}
 	requestUUID, err := newUUIDv7()
 	if err != nil {
@@ -886,7 +943,7 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 		return UserInputRequest{}, err
 	}
 	var existing userInputRow
-	err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.input_type,q.question,q.options_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.run_id=? AND q.tool_call_uuid=?`, tc.Run.ID, execution.ToolCallUUID).Scan(&existing.ID, &existing.ThreadID, &existing.RunID, &existing.TurnID, &existing.ItemID, &existing.UUID, &existing.ToolCallUUID, &existing.InputType, &existing.Question, &existing.OptionsJSON, &existing.ResponseJSON, &existing.Status, &existing.AnsweredAt, &existing.ResumedAt, &existing.CancelledAt, &existing.CreatedAt, &existing.UpdatedAt, &existing.RunUUID, &existing.TurnUUID, &existing.ItemUUID)
+	err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.run_id=? AND q.tool_call_uuid=?`, tc.Run.ID, execution.ToolCallUUID).Scan(&existing.ID, &existing.ThreadID, &existing.RunID, &existing.TurnID, &existing.ItemID, &existing.UUID, &existing.ToolCallUUID, &existing.SchemaVersion, &existing.RequestJSON, &existing.ResponseJSON, &existing.Status, &existing.AnsweredAt, &existing.ResumedAt, &existing.CancelledAt, &existing.CreatedAt, &existing.UpdatedAt, &existing.RunUUID, &existing.TurnUUID, &existing.ItemUUID)
 	if err == nil {
 		existing.ThreadUUID = tc.Thread.UUID
 		return existing.DTO(), tx.Commit()
@@ -895,13 +952,20 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 		return UserInputRequest{}, err
 	}
 	now := service.now().UTC()
-	optionsJSON, _ := json.Marshal(options)
-	content, _ := json.Marshal(map[string]any{"request_uuid": requestUUID, "input_type": args.InputType, "question": question, "options": options})
+	contentObject := map[string]any{"request_uuid": requestUUID, "schema_version": prepared.SchemaVersion}
+	if prepared.SchemaVersion == userInputSchemaCodexQuestions {
+		contentObject["questions"] = prepared.Questions
+	} else {
+		contentObject["input_type"] = prepared.InputType
+		contentObject["question"] = prepared.Question
+		contentObject["options"] = prepared.Options
+	}
+	content, _ := json.Marshal(contentObject)
 	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "user_input_request", "assistant", string(content), "json", "completed", execution.ToolCallUUID, "request_user_input", requestUUID, map[string]any{"purpose": "request_user_input"}, now)
 	if err != nil {
 		return UserInputRequest{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO chat_user_input_requests(uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,input_type,question,options_json,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'pending',?,?)`, requestUUID, thread.ID, tc.Run.ID, tc.Turn.ID, item.ID, execution.ToolCallUUID, args.InputType, question, string(optionsJSON), now, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO chat_user_input_requests(uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,schema_version,request_json,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,'pending',?,?)`, requestUUID, thread.ID, tc.Run.ID, tc.Turn.ID, item.ID, execution.ToolCallUUID, prepared.SchemaVersion, prepared.RequestJSON, now, now); err != nil {
 		return UserInputRequest{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET state='executing',started_at=COALESCE(started_at,?),updated_at=? WHERE id=?`, now, now, execution.ID); err != nil {
@@ -913,7 +977,7 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET status='waiting_for_input',updated_at=? WHERE id=? AND status='in_progress'`, now, tc.Turn.ID); err != nil {
 		return UserInputRequest{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='waiting_for_input',next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
 		return UserInputRequest{}, err
 	}
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "user_input_requested", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "request_uuid": requestUUID, "tool_call_uuid": execution.ToolCallUUID}, now); err != nil {
@@ -922,12 +986,111 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=? WHERE id=?`, thread.NextEventSequence, thread.ID); err != nil {
 		return UserInputRequest{}, err
 	}
+	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
+		return UserInputRequest{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return UserInputRequest{}, err
 	}
-	request := UserInputRequest{UUID: requestUUID, ThreadUUID: tc.Thread.UUID, RunUUID: tc.Run.UUID, TurnUUID: tc.Turn.UUID, ItemUUID: item.UUID, ToolCallUUID: execution.ToolCallUUID, InputType: args.InputType, Question: question, Options: options, Status: "pending", CreatedAt: now, UpdatedAt: now}
+	request := UserInputRequest{UUID: requestUUID, ThreadUUID: tc.Thread.UUID, RunUUID: tc.Run.UUID, TurnUUID: tc.Turn.UUID, ItemUUID: item.UUID, ToolCallUUID: execution.ToolCallUUID, SchemaVersion: prepared.SchemaVersion, Questions: prepared.Questions, InputType: prepared.InputType, Question: prepared.Question, Options: prepared.Options, Status: "pending", CreatedAt: now, UpdatedAt: now}
 	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:user_input_requested", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "request_uuid": requestUUID, "status": "pending"})
 	return request, nil
+}
+
+type preparedUserInputRequest struct {
+	SchemaVersion string
+	RequestJSON   string
+	Questions     []UserInputQuestion
+	InputType     string
+	Question      string
+	Options       []UserInputOption
+}
+
+func (service *Service) prepareUserInputRequest(tc toolContext, raw string) (preparedUserInputRequest, error) {
+	if usesCodexUserInputProtocol(tc) {
+		return service.prepareCodexUserInputRequest(tc, raw)
+	}
+	return service.prepareLegacyUserInputRequest(tc, raw)
+}
+
+func (service *Service) prepareCodexUserInputRequest(tc toolContext, raw string) (preparedUserInputRequest, error) {
+	var args struct {
+		Questions []struct {
+			Header   string `json:"header"`
+			ID       string `json:"id"`
+			Question string `json:"question"`
+			Options  []struct {
+				Label       string `json:"label"`
+				Description string `json:"description"`
+			} `json:"options"`
+		} `json:"questions"`
+		Confirmation *dangerousConfirmationBinding `json:"confirmation"`
+	}
+	if err := json.Unmarshal([]byte(raw), &args); err != nil {
+		return preparedUserInputRequest{}, domainError(CodeToolValidation, "用户输入参数无效", "无法解析 request_user_input。", err)
+	}
+	questions := make([]UserInputQuestion, 0, len(args.Questions))
+	for _, candidate := range args.Questions {
+		question := UserInputQuestion{Header: strings.TrimSpace(candidate.Header), ID: strings.TrimSpace(candidate.ID), Question: strings.TrimSpace(candidate.Question)}
+		for _, rawOption := range candidate.Options {
+			uuid, err := newUUIDv7()
+			if err != nil {
+				return preparedUserInputRequest{}, err
+			}
+			question.Options = append(question.Options, UserInputOption{UUID: uuid, Label: strings.TrimSpace(rawOption.Label), Description: strings.TrimSpace(rawOption.Description)})
+		}
+		questions = append(questions, question)
+	}
+	if args.Confirmation != nil {
+		route, err := service.validateCodexDangerousConfirmationBinding(tc, *args.Confirmation, questions)
+		if err != nil {
+			return preparedUserInputRequest{}, err
+		}
+		questions[0].Question = fmt.Sprintf("%s\n\n确认操作：%s（%s）；目标 UUID：%s；expected_revision：%d。", questions[0].Question, route.Action, route.ID, args.Confirmation.TargetUUID, args.Confirmation.ExpectedRevision)
+	}
+	requestJSON, _ := json.Marshal(map[string]any{"questions": questions})
+	return preparedUserInputRequest{SchemaVersion: userInputSchemaCodexQuestions, RequestJSON: string(requestJSON), Questions: questions}, nil
+}
+
+func (service *Service) prepareLegacyUserInputRequest(tc toolContext, raw string) (preparedUserInputRequest, error) {
+	var args struct {
+		InputType string `json:"input_type"`
+		Question  string `json:"question"`
+		Options   []struct {
+			Label       string `json:"label"`
+			Description string `json:"description"`
+		} `json:"options"`
+		Confirmation *dangerousConfirmationBinding `json:"confirmation"`
+	}
+	if err := json.Unmarshal([]byte(raw), &args); err != nil {
+		return preparedUserInputRequest{}, domainError(CodeToolValidation, "用户输入参数无效", "无法解析 request_user_input。", err)
+	}
+	question := strings.TrimSpace(args.Question)
+	if (args.InputType != "single_choice" && args.InputType != "multiple_choice") || question == "" || len([]rune(question)) > 4000 || len(args.Options) < 2 || len(args.Options) > 8 {
+		return preparedUserInputRequest{}, domainError(CodeToolValidation, "用户输入请求无效", "问题和选项不符合限制。", nil)
+	}
+	if args.Confirmation != nil {
+		route, err := service.validateDangerousConfirmationBinding(tc, *args.Confirmation, args.InputType, len(args.Options))
+		if err != nil {
+			return preparedUserInputRequest{}, err
+		}
+		question = fmt.Sprintf("%s\n\n确认操作：%s（%s）；目标 UUID：%s；expected_revision：%d。", question, route.Action, route.ID, args.Confirmation.TargetUUID, args.Confirmation.ExpectedRevision)
+	}
+	options := make([]UserInputOption, 0, len(args.Options))
+	for _, candidate := range args.Options {
+		label := strings.TrimSpace(candidate.Label)
+		description := strings.TrimSpace(candidate.Description)
+		if label == "" || len([]rune(label)) > 160 || len([]rune(description)) > 1000 {
+			return preparedUserInputRequest{}, domainError(CodeToolValidation, "用户输入选项无效", "选项标签不能为空且最多 160 字符。", nil)
+		}
+		uuid, err := newUUIDv7()
+		if err != nil {
+			return preparedUserInputRequest{}, err
+		}
+		options = append(options, UserInputOption{UUID: uuid, Label: label, Description: description})
+	}
+	requestJSON, _ := json.Marshal(map[string]any{"input_type": args.InputType, "question": question, "options": options})
+	return preparedUserInputRequest{SchemaVersion: userInputSchemaLegacyChoice, RequestJSON: string(requestJSON), InputType: args.InputType, Question: question, Options: options}, nil
 }
 
 // Assert the compiler keeps the SQL transaction boundary used by tool intent.

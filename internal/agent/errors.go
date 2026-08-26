@@ -53,6 +53,7 @@ func domainError(code, message, details string, cause error) error {
 }
 
 var (
-	ErrJobNotReady  = errors.New("agent job is not ready")
-	ErrWaitingInput = errors.New("agent waiting for user input")
+	ErrJobNotReady     = errors.New("agent job is not ready")
+	ErrWaitingInput    = errors.New("agent waiting for user input")
+	ErrWaitingWorkflow = errors.New("agent waiting for workflow")
 )

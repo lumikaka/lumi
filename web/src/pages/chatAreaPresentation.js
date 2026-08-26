@@ -43,18 +43,49 @@ export function workflowDisplayTitle(workflow, t) {
 }
 
 export function threadDisplayTitle(thread, workflow, t) {
-  if (workflow) return workflowDisplayTitle(workflow, t)
+	if (workflow?.presentation_mode === 'dedicated_thread') return workflowDisplayTitle(workflow, t)
   const copyKey = workflowKindCopy[thread?.title]
   if (copyKey) return t(copyKey)
   return thread?.title || t('chat.threads')
 }
 
 export function threadContextCopyKey(thread, workflow) {
-  if (workflow?.kind === 'story_chapter_generation') return 'chat.workflow.kind.story_chapter_generation'
-  if (workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
-  if (workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
-  if (workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_generation') return 'chat.workflow.kind.story_chapter_generation'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
   return 'chat.thread.project_context'
+}
+
+export function dedicatedWorkflowForThread(workflows = [], threadUuid = '') {
+	return workflows
+		.filter((workflow) => workflow?.thread_uuid === threadUuid && workflow?.presentation_mode === 'dedicated_thread')
+		.sort(compareWorkflows)[0] || null
+}
+
+export function groupInlineWorkflowsByTurn(workflows = [], threadUuid = '') {
+	const groups = new Map()
+	workflows
+		.filter((workflow) => (
+			workflow?.thread_uuid === threadUuid
+			&& workflow?.presentation_mode === 'inline'
+			&& workflow?.origin_turn_uuid
+		))
+		.sort(compareWorkflows)
+		.forEach((workflow) => {
+			const current = groups.get(workflow.origin_turn_uuid) || []
+			current.push(workflow)
+			groups.set(workflow.origin_turn_uuid, current)
+		})
+	return groups
+}
+
+function compareWorkflows(left, right) {
+	const leftTime = Date.parse(left?.created_at || '')
+	const rightTime = Date.parse(right?.created_at || '')
+	if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime
+	if (Number.isFinite(leftTime) !== Number.isFinite(rightTime)) return Number.isFinite(leftTime) ? -1 : 1
+	return String(left?.uuid || '').localeCompare(String(right?.uuid || ''))
 }
 
 export function workflowProgressPercent(workflow) {
@@ -187,6 +218,8 @@ export function projectChatTurnActivity(turn, items = [], { historyMayBePartial 
   const inferredActive = !turn && tools.some((tool) => tool.status === 'running' || tool.status === 'pending')
   const mode = turnStatus === 'in_progress' || inferredActive
     ? 'active'
+    : turnStatus === 'waiting_for_workflow'
+      ? 'waiting_for_workflow'
     : turnStatus === 'waiting_for_input'
       ? 'waiting_for_input'
       : terminal || (!turn && tools.length > 0)
@@ -255,29 +288,65 @@ function toolResultErrorCode(content) {
 
 export function projectChatUserInput(request = {}) {
   const response = parseObject(request.response)
-  const responseOptions = new Map(
-    (Array.isArray(response.selected_options) ? response.selected_options : [])
-      .filter((option) => option?.uuid)
-      .map((option) => [option.uuid, option]),
-  )
-  const requestedOptions = new Map(
-    (Array.isArray(request.options) ? request.options : [])
-      .filter((option) => option?.uuid)
-      .map((option) => [option.uuid, option]),
-  )
-  const selectedOptionUuids = Array.isArray(response.selected_option_uuids)
-    ? response.selected_option_uuids.map(String)
-    : [...responseOptions.keys()]
-  const otherText = String(response.other_text || '').trim()
-  const answers = selectedOptionUuids.map((uuid) => (
-    requestedOptions.get(uuid)?.label || responseOptions.get(uuid)?.label || uuid
-  ))
-  if (otherText) answers.push(otherText)
+  const codexQuestions = Array.isArray(request.questions) ? request.questions : []
+  const questions = codexQuestions.length > 0
+    ? codexQuestions.map((question) => projectCodexUserInputQuestion(question, response.answers?.[question.id]))
+    : [projectLegacyUserInputQuestion(request, response)]
+  const answers = questions.flatMap((question) => question.answers)
+  const selectedOptionUuids = questions.flatMap((question) => question.selectedOptionUuids)
+  const otherText = questions.map((question) => question.otherText).filter(Boolean).join('\n')
 
   return {
     answers,
     mode: request.status === 'pending' ? 'pending' : answers.length > 0 ? 'answered' : 'incomplete',
     otherText,
+    questions,
+    selectedOptionUuids,
+  }
+}
+
+function projectCodexUserInputQuestion(question = {}, answerValue) {
+  const answer = parseObject(answerValue)
+  const options = Array.isArray(question.options) ? question.options : []
+  const selectedOptionUuid = String(answer.selected_option_uuid || '')
+  const otherText = String(answer.other_text || '').trim()
+  const selected = options.find((option) => String(option?.uuid) === selectedOptionUuid)
+  const answers = selectedOptionUuid ? [selected?.label || selectedOptionUuid] : otherText ? [otherText] : []
+  return {
+    answers,
+    header: String(question.header || ''),
+    id: String(question.id || ''),
+    options,
+    otherText,
+    question: String(question.question || ''),
+    selectedOptionUuid,
+    selectedOptionUuids: selectedOptionUuid ? [selectedOptionUuid] : [],
+  }
+}
+
+function projectLegacyUserInputQuestion(request, response) {
+  const responseOptions = new Map(
+    (Array.isArray(response.selected_options) ? response.selected_options : [])
+      .filter((option) => option?.uuid)
+      .map((option) => [option.uuid, option]),
+  )
+  const options = Array.isArray(request.options) ? request.options : []
+  const requestedOptions = new Map(options.filter((option) => option?.uuid).map((option) => [option.uuid, option]))
+  const selectedOptionUuids = Array.isArray(response.selected_option_uuids)
+    ? response.selected_option_uuids.map(String)
+    : [...responseOptions.keys()]
+  const otherText = String(response.other_text || '').trim()
+  const answers = selectedOptionUuids.map((uuid) => requestedOptions.get(uuid)?.label || responseOptions.get(uuid)?.label || uuid)
+  if (otherText) answers.push(otherText)
+  return {
+    answers,
+    header: '',
+    id: 'legacy_question',
+    inputType: request.input_type || 'single_choice',
+    options,
+    otherText,
+    question: String(request.question || ''),
+    selectedOptionUuid: selectedOptionUuids[0] || '',
     selectedOptionUuids,
   }
 }
@@ -321,7 +390,7 @@ export function chatTurnDurationMs(turn) {
 }
 
 function isVisibleTurn(turn) {
-  return Boolean(turn && ['queued', 'in_progress', 'waiting_for_input', 'failed'].includes(turn.status))
+  return Boolean(turn && ['queued', 'in_progress', 'waiting_for_input', 'waiting_for_workflow', 'failed'].includes(turn.status))
 }
 
 function compareTurnGroups(left, right) {

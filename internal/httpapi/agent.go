@@ -213,7 +213,7 @@ func (handler *AgentHandler) ListUserInputRequests(c echo.Context) error {
 
 func (handler *AgentHandler) RespondUserInput(c echo.Context) error {
 	var input agent.UserInputResponse
-	if err := decodeJSON(c, &input); err != nil {
+	if err := decodeUniqueJSON(c, &input); err != nil {
 		return err
 	}
 	request, err := handler.agents.RespondUserInput(c.Request().Context(), c.Param("project_uuid"), c.Param("thread_uuid"), c.Param("request_uuid"), input)

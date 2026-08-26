@@ -8,13 +8,15 @@ import (
 )
 
 const (
-	ThreadIdle            = "idle"
-	ThreadBusy            = "busy"
-	ThreadWaitingForInput = "waiting_for_input"
-	ThreadCompleted       = "completed"
-	ThreadFailed          = "failed"
-	ThreadCancelled       = "cancelled"
-	ThreadInterrupted     = "interrupted"
+	ThreadIdle             = "idle"
+	ThreadBusy             = "busy"
+	ThreadWaitingForInput  = "waiting_for_input"
+	ThreadCompleted        = "completed"
+	ThreadFailed           = "failed"
+	ThreadCancelled        = "cancelled"
+	ThreadInterrupted      = "interrupted"
+	ThreadTypeConversation = "conversation"
+	ThreadTypeWorkflow     = "workflow"
 	// Recovery-only Scene-era values. New Thread API and storage do not expose
 	// or persist these discriminators.
 	ThreadScopeProject       = "project"
@@ -26,10 +28,14 @@ const (
 	TurnQueued          = "queued"
 	TurnInProgress      = "in_progress"
 	TurnWaitingForInput = "waiting_for_input"
-	TurnCompleted       = "completed"
-	TurnFailed          = "failed"
-	TurnCancelled       = "cancelled"
-	TurnInterrupted     = "interrupted"
+	// TurnWaitingForWorkflow is an API projection backed by workflow_awaits.
+	// The constrained chat_turns/chat_runs rows remain in_progress until the
+	// awaited Workflow reaches a terminal state and queues a durable resume.
+	TurnWaitingForWorkflow = "waiting_for_workflow"
+	TurnCompleted          = "completed"
+	TurnFailed             = "failed"
+	TurnCancelled          = "cancelled"
+	TurnInterrupted        = "interrupted"
 
 	WorkflowYolo                     = "yolo_project_initialization"
 	WorkflowComicSectionImage        = "comic_section_image_generation"
@@ -60,6 +66,42 @@ const (
 	MaxSummaryBytes  = 24 << 10
 	DefaultItemsPage = 100
 )
+
+type InvocationSource string
+
+const (
+	InvocationDirectUI     InvocationSource = "direct_ui"
+	InvocationChatTool     InvocationSource = "chat_tool"
+	InvocationWorkflowStep InvocationSource = "workflow_step"
+)
+
+type PresentationMode string
+
+const (
+	PresentationDedicatedThread PresentationMode = "dedicated_thread"
+	PresentationInline          PresentationMode = "inline"
+	PresentationNone            PresentationMode = "none"
+)
+
+// DomainInvocationContext is trusted process-local ownership metadata. It is
+// never decoded from a public Generation request body.
+type DomainInvocationContext struct {
+	Source            InvocationSource
+	PresentationMode  PresentationMode
+	AwaitCompletion   bool
+	ThreadUUID        string
+	TurnUUID          string
+	RunUUID           string
+	ToolExecutionUUID string
+}
+
+func DirectUIInvocationContext() DomainInvocationContext {
+	return DomainInvocationContext{Source: InvocationDirectUI, PresentationMode: PresentationDedicatedThread}
+}
+
+func WorkflowStepInvocationContext(threadUUID string) DomainInvocationContext {
+	return DomainInvocationContext{Source: InvocationWorkflowStep, PresentationMode: PresentationNone, ThreadUUID: threadUUID}
+}
 
 var YoloStepKeys = []string{
 	"project_initialization",
@@ -119,6 +161,7 @@ type DomainTaskRequest struct {
 	Scope                 string
 	Format                string
 	AllowMissingImages    bool
+	Invocation            DomainInvocationContext
 }
 
 type DomainTask struct {
@@ -142,6 +185,7 @@ type Thread struct {
 	ProjectUUID  string     `json:"project_uuid"`
 	Title        string     `json:"title"`
 	Status       string     `json:"status"`
+	ThreadType   string     `json:"thread_type"`
 	ProviderUUID string     `json:"provider_uuid"`
 	Model        string     `json:"model"`
 	ModelSource  string     `json:"model_source"`
@@ -263,23 +307,34 @@ type UserInputOption struct {
 	Description string `json:"description,omitempty"`
 }
 
+type UserInputQuestion struct {
+	Header   string            `json:"header"`
+	ID       string            `json:"id"`
+	Question string            `json:"question"`
+	Options  []UserInputOption `json:"options"`
+}
+
 type UserInputRequest struct {
-	UUID         string            `json:"uuid"`
-	ThreadUUID   string            `json:"thread_uuid"`
-	RunUUID      string            `json:"run_uuid"`
-	TurnUUID     string            `json:"turn_uuid"`
-	ItemUUID     string            `json:"item_uuid"`
-	ToolCallUUID string            `json:"tool_call_uuid"`
-	InputType    string            `json:"input_type"`
-	Question     string            `json:"question"`
-	Options      []UserInputOption `json:"options"`
-	Response     json.RawMessage   `json:"response,omitempty"`
-	Status       string            `json:"status"`
-	AnsweredAt   *time.Time        `json:"answered_at,omitempty"`
-	ResumedAt    *time.Time        `json:"resumed_at,omitempty"`
-	CancelledAt  *time.Time        `json:"cancelled_at,omitempty"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	UUID          string              `json:"uuid"`
+	ThreadUUID    string              `json:"thread_uuid"`
+	RunUUID       string              `json:"run_uuid"`
+	TurnUUID      string              `json:"turn_uuid"`
+	ItemUUID      string              `json:"item_uuid"`
+	ToolCallUUID  string              `json:"tool_call_uuid"`
+	SchemaVersion string              `json:"schema_version"`
+	Questions     []UserInputQuestion `json:"questions,omitempty"`
+	// InputType, Question, and Options are the compatibility projection for
+	// persisted v2/v3 requests. New v4 requests expose Questions only.
+	InputType   string            `json:"input_type,omitempty"`
+	Question    string            `json:"question,omitempty"`
+	Options     []UserInputOption `json:"options,omitempty"`
+	Response    json.RawMessage   `json:"response,omitempty"`
+	Status      string            `json:"status"`
+	AnsweredAt  *time.Time        `json:"answered_at,omitempty"`
+	ResumedAt   *time.Time        `json:"resumed_at,omitempty"`
+	CancelledAt *time.Time        `json:"cancelled_at,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 type CursorPage[T any] struct {
@@ -307,27 +362,33 @@ type ThreadPage struct {
 }
 
 type Workflow struct {
-	UUID              string          `json:"uuid"`
-	ProjectUUID       string          `json:"project_uuid"`
-	ThreadUUID        string          `json:"thread_uuid,omitempty"`
-	Kind              string          `json:"kind"`
-	Title             string          `json:"title"`
-	Status            string          `json:"status"`
-	InputVersion      int             `json:"input_version"`
-	InputSnapshot     json.RawMessage `json:"input_snapshot"`
-	IdempotencyKey    string          `json:"idempotency_key"`
-	ProviderUUID      string          `json:"provider_uuid"`
-	Model             string          `json:"model"`
-	ModelSource       string          `json:"model_source"`
-	CurrentStepKey    string          `json:"current_step_key,omitempty"`
-	ErrorCode         string          `json:"error_code,omitempty"`
-	ErrorMessage      string          `json:"error_message,omitempty"`
-	CancelRequestedAt *time.Time      `json:"cancel_requested_at,omitempty"`
-	StartedAt         *time.Time      `json:"started_at,omitempty"`
-	CompletedAt       *time.Time      `json:"completed_at,omitempty"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
-	Steps             []WorkflowStep  `json:"steps,omitempty"`
+	UUID               string          `json:"uuid"`
+	ProjectUUID        string          `json:"project_uuid"`
+	ThreadUUID         string          `json:"thread_uuid,omitempty"`
+	PresentationMode   string          `json:"presentation_mode"`
+	OriginTurnUUID     string          `json:"origin_turn_uuid,omitempty"`
+	OriginRunUUID      string          `json:"origin_run_uuid,omitempty"`
+	OriginToolCallUUID string          `json:"origin_tool_call_uuid,omitempty"`
+	OriginItemUUID     string          `json:"origin_item_uuid,omitempty"`
+	AwaitStatus        string          `json:"await_status,omitempty"`
+	Kind               string          `json:"kind"`
+	Title              string          `json:"title"`
+	Status             string          `json:"status"`
+	InputVersion       int             `json:"input_version"`
+	InputSnapshot      json.RawMessage `json:"input_snapshot"`
+	IdempotencyKey     string          `json:"idempotency_key"`
+	ProviderUUID       string          `json:"provider_uuid"`
+	Model              string          `json:"model"`
+	ModelSource        string          `json:"model_source"`
+	CurrentStepKey     string          `json:"current_step_key,omitempty"`
+	ErrorCode          string          `json:"error_code,omitempty"`
+	ErrorMessage       string          `json:"error_message,omitempty"`
+	CancelRequestedAt  *time.Time      `json:"cancel_requested_at,omitempty"`
+	StartedAt          *time.Time      `json:"started_at,omitempty"`
+	CompletedAt        *time.Time      `json:"completed_at,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+	Steps              []WorkflowStep  `json:"steps,omitempty"`
 }
 
 type WorkflowStep struct {
@@ -425,8 +486,14 @@ type SteeringInput struct {
 }
 
 type UserInputResponse struct {
-	SelectedOptionUUIDs []string `json:"selected_option_uuids"`
-	OtherText           string   `json:"other_text,omitempty"`
+	Answers             map[string]UserInputAnswer `json:"answers,omitempty"`
+	SelectedOptionUUIDs []string                   `json:"selected_option_uuids"`
+	OtherText           string                     `json:"other_text,omitempty"`
+}
+
+type UserInputAnswer struct {
+	SelectedOptionUUID string `json:"selected_option_uuid,omitempty"`
+	OtherText          string `json:"other_text,omitempty"`
 }
 
 type CreateYoloInput struct {
@@ -439,7 +506,7 @@ type CreateYoloInput struct {
 
 type threadRecord struct {
 	ID                                                    int64 `gorm:"primaryKey"`
-	UUID, Title, Status                                   string
+	UUID, Title, Status, ThreadType                       string
 	Scope, Scene, SubjectUUID                             string `gorm:"-"`
 	ProviderUUID, Model, ModelSource                      string
 	ProjectID                                             int64
@@ -518,3 +585,13 @@ type workflowStepRecord struct {
 }
 
 func (workflowStepRecord) TableName() string { return "workflow_steps" }
+
+type workflowAwaitRecord struct {
+	ID, WorkflowID, ChatThreadID, ChatTurnID, ChatRunID, ToolExecutionID int64
+	UUID, Status                                                         string
+	RiverJobID                                                           *int64
+	ReadyAt, ResumedAt, CancelledAt                                      *time.Time
+	CreatedAt, UpdatedAt                                                 time.Time
+}
+
+func (workflowAwaitRecord) TableName() string { return "workflow_awaits" }

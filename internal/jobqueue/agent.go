@@ -51,7 +51,7 @@ func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) 
 				continue
 			}
 		}
-		if errors.Is(err, agent.ErrWaitingInput) {
+		if errors.Is(err, agent.ErrWaitingInput) || errors.Is(err, agent.ErrWaitingWorkflow) {
 			return nil
 		}
 		if err == nil {
@@ -102,8 +102,14 @@ func (manager *Manager) CancelAgentWork(projectUUID, workUUID string) {
 func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string, request agent.DomainTaskRequest) (agent.DomainTask, error) {
 	switch request.Kind {
 	case KindStoryChapterGeneration:
-		task, err := manager.CreateChapterGeneration(ctx, projectUUID, CreateGenerationInput{ChapterUUID: request.ResourceUUID, ProviderUUID: request.ProviderUUID, Model: request.Model, PromptKey: request.PromptKey, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
-		return storyDomainTask(task), err
+		task, err := manager.CreateChapterGeneration(ctx, projectUUID, CreateGenerationInput{ChapterUUID: request.ResourceUUID, ProviderUUID: request.ProviderUUID, Model: request.Model, PromptKey: request.PromptKey, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey, Invocation: request.Invocation})
+		if err != nil {
+			return storyDomainTask(task), err
+		}
+		if request.Invocation.AwaitCompletion {
+			return storyDomainTask(task), agent.ErrWaitingWorkflow
+		}
+		return storyDomainTask(task), nil
 	case KindPremiseSettingGeneration:
 		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
 		return productionDomainTask(task), err

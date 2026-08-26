@@ -3,7 +3,7 @@
 日期：2026-08-20  
 基线：`29a0755f9c5c593a2df600bcf6c1481de16d0228`（`feat: Tool 改造第一步`）
 
-> 本文是步骤二历史记录。当前运行时契约已经收敛为 `project_api_v2`；最终架构见 `agent-project-api-phase-3.md`。为避免把历史术语误当成可用接口，本文统一使用当前工具名和当前 Scene/Guide 结构描述对应能力。
+> 本文是步骤二历史记录。当前活动运行时契约已经演进为 `project_api_v4`；v2 只用于冻结恢复，最终架构见 `agent-project-api-phase-3.md`。为避免把历史术语误当成可用接口，本文统一使用当前工具名描述对应能力。
 
 ## 当时完成的基础能力
 
@@ -15,14 +15,14 @@
 
 ## 当前结构对步骤二的后续修正
 
-| 层面 | 步骤二产物 | 当前 `project_api_v2` |
+| 层面 | 步骤二产物 | 当前 `project_api_v4` |
 | --- | --- | --- |
 | Scene | 混合 Prompt、工具集合与 Route/Doc 推荐 | 只保留身份、Subject 上下文、安全边界、图片参考策略和 `RecommendedGuideIDs` |
 | 工具 | Scene 间存在 3/4 工具差异 | 四个有效 Scene 统一为 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input` |
 | 文档发现 | Scene 推荐 API 索引 | Overview 能力/API 索引 + Guide Registry + API Contract |
 | 图片尺寸 | 设定项 Scene 运行时强制 `512x512` | `image_gen` 无 Scene 尺寸分支；创建 Guide 明确默认 `512x512` |
 | Prompt | Scene 内复制操作流程 | 流程抽入三份 Guide；Scene Prompt 只注入权威上下文和推荐 Guide 路径 |
-| 恢复 | Project API 快照按当时协议恢复 | 只有 `project_api_v2` 可继续运行；更早 Project API Run 不恢复 |
+| 恢复 | Project API 快照按当时协议恢复 | 新 Run 使用 v4；v3、v2 与 legacy typed 均只按冻结 schema 恢复 |
 
 ## 当前四 Scene Tool 矩阵
 
@@ -51,6 +51,6 @@ Overview 的能力索引由同一 Guide Registry 生成；`read_agent_doc` 只�
 
 ## 验证原则
 
-步骤二的旧成本数字和运行时强制逻辑不再作为当前基线。当前验收以四 Scene 相同工具顺序、Guide/Route 注册表一致性、Prompt 默认值迁移、`project_api_v2` 恢复边界、文件来源错误分类及完整业务回归为准。
+步骤二的旧成本数字和运行时强制逻辑不再作为当前基线。当前验收以统一四工具顺序、Guide/Route 注册表一致性、Prompt 默认值迁移、v4 活动协议与 v3/v2 恢复边界、文件来源错误分类及完整业务回归为准。
 
 未运行 Cargo 或任何 Rust 编译、检查及测试。

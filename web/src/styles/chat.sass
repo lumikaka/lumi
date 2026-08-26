@@ -472,6 +472,10 @@
   display: grid
   gap: 10px
 
+.chat-turn__workflows
+  display: grid
+  gap: 9px
+
 .chat-turn__activity
   margin: 0
   display: flex
@@ -910,7 +914,7 @@
 
 .chat-input-request
   margin: 0
-  width: min(100%, 520px)
+  width: min(100%, 600px)
   padding: 11px
   display: grid
   gap: 10px
@@ -918,14 +922,51 @@
   border-radius: $radius-sm
   background: $color-surface-subtle
 
-  > strong
-    font-size: 14px
-    line-height: 1.5
-
   footer
     display: flex
     justify-content: flex-end
     gap: 6px
+
+.chat-input-request__questions
+  display: grid
+  gap: 14px
+
+.chat-input-request__question
+  min-width: 0
+  margin: 0
+  padding: 0
+  display: grid
+  gap: 8px
+  border: 0
+
+  & + &
+    padding-top: 13px
+    border-top: 1px solid $color-border-subtle
+
+  legend
+    width: 100%
+    padding: 0
+    display: grid
+    gap: 3px
+
+    > span
+      width: fit-content
+      padding: 2px 6px
+      border-radius: 999px
+      color: $color-accent
+      background: $color-accent-muted
+      font-size: $font-size-small
+      font-weight: 700
+
+    > strong
+      color: $color-text
+      font-size: 14px
+      line-height: 1.5
+
+.chat-input-request__position
+  justify-self: end
+  color: $color-muted
+  font-size: $font-size-small
 
 .chat-input-request__options
   display: grid
@@ -981,8 +1022,20 @@
   font-size: 12px
   font-weight: 700
 
+.chat-input-request__recommended
+  margin-left: 6px
+  padding: 1px 5px
+  display: inline-block
+  border-radius: 999px
+  color: $color-accent
+  background: $color-accent-muted
+  font-size: $font-size-small
+  font-style: normal
+  font-weight: 700
+  vertical-align: 1px
+
 .chat-input-history
-  width: min(100%, 520px)
+  width: min(100%, 600px)
   max-width: 100%
   border: 1px solid $color-border-subtle
   border-radius: $radius-sm
@@ -1066,6 +1119,10 @@
       line-height: 1.45
       overflow-wrap: anywhere
 
+  > section + section
+    padding-top: 9px
+    border-top: 1px solid $color-border-subtle
+
   ul
     margin: 0
     padding: 0
@@ -1119,6 +1176,21 @@
 
       > span:first-child
         border-color: $color-accent
+
+.chat-input-history__answer
+  display: grid
+  grid-template-columns: auto minmax(0, 1fr)
+  align-items: baseline
+  gap: 7px
+  color: $color-text
+
+  > b
+    color: $color-muted
+    font-size: $font-size-small
+
+  > span
+    overflow-wrap: anywhere
+    font-size: 13px
 
 .chat-message--user-input-incomplete .chat-input-history
   border-color: rgba($color-warning, .24)
@@ -1196,6 +1268,15 @@
       margin-left: auto
       color: $color-muted
       font-size: $font-size-small
+
+.workflow-progress--inline
+  margin: 0
+  border-left-width: 3px
+  background: rgba($color-success, .07)
+
+.workflow-progress.is-selected
+  border-color: $color-accent
+  box-shadow: 0 0 0 2px rgba($color-accent, .12)
 
 .workflow-conflict-confirmation
   padding: 10px

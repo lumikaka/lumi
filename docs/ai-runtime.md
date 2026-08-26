@@ -34,6 +34,12 @@ River client 和类型只出现在 `internal/jobqueue`。domain、HTTP 和 React
 5. Worker 只在短事务中读写状态；Provider 网络调用期间没有数据库事务或长期写锁。
 6. 切换标签页 URL 不操作 Runtime。仅目标项目显式关闭、独立空闲回收或应用退出时，River 才停止领取并最多 soft-stop 5 秒，再取消剩余 worker context；Runtime 未成功停止时对应 Store 和项目锁保持打开。安全幂等任务保持可恢复状态，旧 URL 重开项目后由 River 重试。
 
+异步 Generation 的调用来源由进程内可信 `DomainInvocationContext` 指定，不能从 User-Agent、请求头或公开 JSON 推断。`direct_ui` 使用 `dedicated_thread` 且不等待 Chat；`chat_tool` 使用 `inline`、携带当前 Thread/Turn/Run/Tool Execution 的公开 UUIDv7 并等待完成；`workflow_step` 使用 `none`，避免嵌套业务步骤再创建展示 Thread。公开章节 Generation HTTP 端点始终显式传入 `direct_ui`，请求体保持兼容。
+
+Chat Tool 创建任务、Workflow/Step 与 `workflow_awaits` 使用同一 SQLite 事务。等待期间 `chat_turns` / `chat_runs` 因现有 CHECK 约束保持 `in_progress`，await 的 `waiting` 状态提供语义等价的可恢复边界，Turn REST DTO 投影为 `waiting_for_workflow`；Agent worker 返回并释放 queue slot，不轮询领域任务。Workflow 完成、失败、中断或取消时，领域终态、await `ready`、父 Turn/Run `queued` 和唯一 `JobChatResume` 在同一 SQLite/River 事务提交。Resume 只读取持久化终态，幂等保存脱敏 Tool Result，再继续原模型 Run。
+
+`ReconcileOnOpen` 不会把活动 `waiting` await 当普通 `in_progress` Run 重跑。它会取消父 Run 已终止的 await，修复已终态 Workflow 仍处于 `waiting` 的投影，为 `ready|resuming` 依赖补投唯一 Resume，并重新计算全部 Thread 聚合状态。父 Run 停止会取消其独占 Workflow；晚到终态不能复活已取消 Run。单独取消或失败的 Workflow 则以结构化 Tool Result 唤醒仍有效的父 Run，不伪装成 Provider failure。
+
 项目空闲回收按 UUID 独立判断。Presence、在途 HTTP 请求或 queued/running 工作任一存在时都不累计 5 分钟 grace；工作刚完成时重新开始完整 grace。`waiting_for_input` 延续可持久恢复语义，不阻止回收。一个项目的 Runtime 启动、停止或 Provider 调用失败不得改变其他项目的 Store、Runtime 与任务。
 
 `task_runs` 是 UI 刷新后的事实源，状态覆盖 `queued`、`running`、`waiting_for_input`、`completed`、`failed`、`cancelled` 和 `interrupted`。`task_events`、`agent_events` 为 append-only sequence。WebSocket 事件丢失不会影响恢复；客户端重连后重新读取 task 列表或用 event cursor 追赶。
@@ -56,9 +62,19 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 引用场景生成文件先持久化到 Asset Store，并绑定当前 project、chat thread、来源 premise asset、用途和 `tool_execution_uuid`。POST 只消费当前引用线程尚未使用的 `project_chat_asset_reference_image`，事件保存公开来源设定项 UUID 和工具执行 UUID；PATCH 图片、POST 和 DELETE 均可在领域提交后安全重放。revision 冲突保留生成文件，Agent 必须重新 GET 最新 revision 后重试。设定项进入回收站后，新 turn、读取、生图与后续写操作都会被拒绝；升级前已持久化的 typed-tool execution 仍可恢复完成。
 
+## Project Chat 用户输入协议
+
+新 Run 冻结 `project_api_v4`。活动 `request_user_input` 顶层只接受 `questions` 和可选 Lumi `confirmation`：一次 1–3 题，每题使用唯一 snake_case 逻辑 id、最多 12 字符 header、2–3 个互斥选项、非空说明，且只有第一项 label 以精确的 ` (Recommended)` 结尾。模型不得生成 Other；ChatArea 为每题提供自由输入。该工具必须是模型当次响应中的唯一 Tool Call。
+
+`chat_user_input_requests.schema_version` 区分 `codex_questions_v1` 和 `legacy_choice_v1`，`request_json` 是请求唯一事实源。服务端为选项生成公开 UUIDv7；浏览器按 question id 提交一个选项 UUID 或 Other，后端校验所属关系和完整性，再向原 Tool call 写入 `{answers:{question_id:{answers:[label_or_text]}}}`，将同一 Run 排队恢复。请求创建、回答、Tool Result 和 Resume 均以 SQLite 状态为事实；`chat:user_input_*` WebSocket 消息只触发 Query 失效和 REST 重读，不增加轮询。
+
+危险确认在 v4 中必须只含一个问题，`confirmation.question_id` 与该问题匹配，route、project、target、revision 和请求 fingerprint 完整绑定。第一项是安全推荐项，`confirm_option` 只能指向后续明确危险选项；只有选择该服务端 UUID 才授权，安全项和 Other 均不授权。冻结的 `project_api_v3`、`project_api_v2` 继续按旧单题单选/多选与确认语义恢复，`legacy_typed_tools` 继续走隔离恢复，均不会套用 v4 schema。
+
 ## Chat 与 Workflow 诊断读取
 
 ChatArea 不靠 WebSocket 消息作为事实源：WS 只触发与 `thread_uuid` / `workflow_uuid` 对应的查询失效，业务状态不使用定时 HTTP 轮询；首次 join、重新 join、窗口重新聚焦和重新可见后从 `project.sqlite` 重新读取。运行诊断仅在展开时读取：`workflow:*` 刷新 workflow、runs 和 events，LLM 日志在 pending 与终态提交后发布 `llm_log:changed` 并单独刷新 logs；payload 仅含公开 UUIDv7、状态和必要定位字段。会话列表使用页码分页，消息与 workflow runs/events 使用 cursor，关联 LLM logs 使用页码分页，避免长历史一次性读取。点击 workflow step/run 时使用公开 UUIDv7 `workflow_step_uuid` 筛选关联调用；服务端同时校验该步骤属于当前 project 和 workflow。
+
+Workflow DTO 的 `presentation_mode` 为 `dedicated_thread|inline|none`。inline DTO 额外提供 `origin_turn_uuid`、`origin_run_uuid`、`origin_tool_call_uuid`、`origin_item_uuid` 与 `await_status`；不提供内部 bigint ID 或 River job ID。ChatArea 只让 dedicated Workflow 覆盖独立 Workflow Thread 的标题和顶部卡片；inline Workflow 按 origin Turn 分组并以创建时间、UUID 稳定排序到 Tool 活动附近，因此同一个普通 Thread/Turn 可同时展示多个 Workflow。
 
 Workflow 的公开 DTO、workflow/chat event payload 与 item metadata 在返回前递归净化：移除内部 `id`/`*_id`、路径、Authorization、cookie、credential、password、API key 和 token 字段，并校验所有 `*_uuid` 为 UUIDv7。ChatArea 将 chat events 作为可展开的 cursor 事件流显示，不再只请求后丢弃。普通错误 UI 只显示本地化错误码说明；模型调用诊断只展示安全摘要、模型、状态、tokens、耗时和关联公开 UUID，不渲染底层技术错误或供应商原始报文。
 

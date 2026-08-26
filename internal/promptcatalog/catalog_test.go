@@ -88,7 +88,7 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 1 || definition.PreviousDefaultValues[0] == definition.DefaultValue || !strings.Contains(definition.PreviousDefaultValues[0], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[0], "流程或来源约束不确定") {
+				if len(definition.PreviousDefaultValues) != 2 || definition.PreviousDefaultValues[0] == definition.DefaultValue || !strings.Contains(definition.PreviousDefaultValues[0], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[0], "确认选项索引") || !strings.Contains(definition.PreviousDefaultValues[1], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[1], "流程或来源约束不确定") {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -191,8 +191,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "b31fe57d1b824c27bfa384ddf729d2cd68eefa11d6e56f604f9917d225238bee",
-		LanguageEnglish: "e9ebd37f170be6b6470f35b915d0770ee0e88a7cc9ce0677d3c229b64bb61aba",
+		LanguageChinese: "5ed4c35dc16d61075fa027f2e63e226bd4cd6121580791a3ad2c62d0f9ffc71e",
+		LanguageEnglish: "f2dfd6a787324d4f56970b5079900d0c16ee1e10126899f92c0e490a1ca860ab",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

@@ -7,7 +7,9 @@ import {
   chatThreadCountLabel,
   chatTurnDurationMs,
   chatTurnElapsedMs,
+	dedicatedWorkflowForThread,
   groupChatItemsByTurn,
+	groupInlineWorkflowsByTurn,
   isChatSteeringShortcut,
   projectChatTurnActivity,
   projectChatUserInput,
@@ -44,9 +46,10 @@ test('thread pagination count shows progress until every thread is loaded', () =
 
 test('mixed project threads retain localized workflow titles and use generic project context copy', () => {
   const t = (key) => `translated:${key}`
-  const workflow = { kind: 'comic_storyboard_generation', title: 'internal' }
+	const workflow = { kind: 'comic_storyboard_generation', title: 'internal', presentation_mode: 'dedicated_thread' }
   assert.equal(workflowDisplayTitle(workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
   assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
+	assert.equal(threadDisplayTitle({ title: '正常对话' }, { ...workflow, presentation_mode: 'inline' }, t), '正常对话')
   assert.equal(threadContextCopyKey({}, null), 'chat.thread.project_context')
   assert.equal(threadContextCopyKey({ scope: 'premise', scene: 'asset_reference' }, null), 'chat.thread.project_context')
 })
@@ -56,7 +59,22 @@ test('chapter workflows use prompt-aware localized titles with chapter context',
   assert.equal(workflowDisplayTitle({ kind: 'story_chapter_generation', input_snapshot: { prompt_key: 'story_chapter', chapter_code: 'vol01.ch02' } }, t), 'chat.workflow.kind.story_chapter_with_code:vol01.ch02')
   assert.equal(workflowDisplayTitle({ kind: 'story_chapter_generation', input_snapshot: JSON.stringify({ prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' }) }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
   assert.equal(workflowDisplayTitle({ kind: 'story_chapter_batch_plan', input_snapshot: { chapter_count: 4 } }, t), 'chat.workflow.kind.chapter_batch_plan_with_count:4')
-  assert.equal(threadDisplayTitle({ title: 'internal' }, { kind: 'story_chapter_generation', input_snapshot: { prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' } }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
+	assert.equal(threadDisplayTitle({ title: 'internal' }, { kind: 'story_chapter_generation', presentation_mode: 'dedicated_thread', input_snapshot: { prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' } }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
+})
+
+test('dedicated and inline workflows are separated and inline cards sort stably within their origin turn', () => {
+	const workflows = [
+		{ uuid: 'workflow-b', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:02Z' },
+		{ uuid: 'dedicated', thread_uuid: 'thread-1', presentation_mode: 'dedicated_thread', created_at: '2026-08-26T00:00:00Z' },
+		{ uuid: 'workflow-c', thread_uuid: 'thread-2', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:00Z' },
+		{ uuid: 'workflow-a', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:01Z' },
+		{ uuid: 'workflow-d', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-2', presentation_mode: 'inline', created_at: '2026-08-26T00:00:03Z' },
+	]
+
+	assert.equal(dedicatedWorkflowForThread(workflows, 'thread-1')?.uuid, 'dedicated')
+	const groups = groupInlineWorkflowsByTurn(workflows, 'thread-1')
+	assert.deepEqual([...groups.keys()], ['turn-1', 'turn-2'])
+	assert.deepEqual(groups.get('turn-1').map((workflow) => workflow.uuid), ['workflow-a', 'workflow-b'])
 })
 
 test('workflow progress aggregates persisted step percentages', () => {
@@ -87,6 +105,14 @@ test('active turns remain visible before the first persisted item arrives', () =
   ])
 
   assert.deepEqual(groups.map((group) => group.uuid), ['turn-running'])
+})
+
+test('workflow-waiting turns stay visible and expose a distinct activity mode', () => {
+	const groups = groupChatItemsByTurn([], [
+		{ uuid: 'turn-waiting', queue_sequence: 1, status: 'waiting_for_workflow' },
+	])
+	assert.deepEqual(groups.map((group) => group.uuid), ['turn-waiting'])
+	assert.equal(projectChatTurnActivity(groups[0].turn, []).mode, 'waiting_for_workflow')
 })
 
 test('completed turn activity pairs tool calls and results without polluting conversation items', () => {
@@ -192,10 +218,39 @@ test('user input projection keeps pending requests interactive and resolves hist
     answers: ['角色', '需要成长弧光'],
     mode: 'answered',
     otherText: '需要成长弧光',
+    questions: [{
+      answers: ['角色', '需要成长弧光'],
+      header: '',
+      id: 'legacy_question',
+      inputType: 'single_choice',
+      options: request.options,
+      otherText: '需要成长弧光',
+      question: '',
+      selectedOptionUuid: 'option-1',
+      selectedOptionUuids: ['option-1'],
+    }],
     selectedOptionUuids: ['option-1'],
   })
   assert.equal(projectChatUserInput({ status: 'pending', options: [] }).mode, 'pending')
   assert.equal(projectChatUserInput({ status: 'cancelled', options: [] }).mode, 'incomplete')
+})
+
+test('Codex-style user input projection keeps per-question selected and Other answers', () => {
+  const request = {
+    schema_version: 'codex_questions_v1',
+    status: 'resumed',
+    questions: [
+      { id: 'style', header: '风格', question: '选择风格？', options: [{ uuid: 'style-1', label: '手绘 (Recommended)' }, { uuid: 'style-2', label: '写实' }] },
+      { id: 'pages', header: '页数', question: '选择页数？', options: [{ uuid: 'pages-1', label: '八页 (Recommended)' }, { uuid: 'pages-2', label: '十六页' }] },
+    ],
+    response: { answers: { style: { selected_option_uuid: 'style-2', other_text: '' }, pages: { selected_option_uuid: '', other_text: '12 页' } } },
+  }
+  const projected = projectChatUserInput(request)
+  assert.equal(projected.mode, 'answered')
+  assert.deepEqual(projected.answers, ['写实', '12 页'])
+  assert.deepEqual(projected.selectedOptionUuids, ['style-2'])
+  assert.equal(projected.questions[0].selectedOptionUuid, 'style-2')
+  assert.equal(projected.questions[1].otherText, '12 页')
 })
 
 test('terminal tool summary is placed before the final response after steering messages', () => {

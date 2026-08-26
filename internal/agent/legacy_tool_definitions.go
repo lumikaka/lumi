@@ -43,3 +43,20 @@ func legacyRecoveryToolDefinitions() []map[string]any {
 		}, "input_type", "question", "options")},
 	}
 }
+
+func legacyToolDefinitionByName(name string) map[string]any {
+	for _, definition := range legacyRecoveryToolDefinitions() {
+		if definition["name"] == name {
+			return definition
+		}
+	}
+	return nil
+}
+
+// legacyProjectAPIRequestUserInputDefinition is shared by the frozen v2/v3
+// Project API protocols. The legacy typed recovery catalog contains the same
+// argument contract, but keeping this named boundary prevents active schema
+// changes from silently altering persisted runs.
+func legacyProjectAPIRequestUserInputDefinition() map[string]any {
+	return legacyToolDefinitionByName("request_user_input")
+}

@@ -111,7 +111,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 			return err
 		}
 		now := service.now().UTC()
-		result, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,?,?)`, threadUUID, pid, "Yolo · "+title, resolved.UUID, model, modelSource, now, now)
+		result, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, pid, "Yolo · "+title, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
 		}
@@ -254,9 +254,25 @@ func (service *Service) GetWorkflow(ctx context.Context, projectUUID, workflowUU
 }
 
 func (service *Service) workflowDTO(ctx context.Context, store *project.Store, projectUUID string, row workflowRecord) (Workflow, error) {
-	var threadUUID string
+	var threadUUID, threadType string
 	if row.ThreadID != nil {
-		_ = store.DB().WithContext(ctx).Raw(`SELECT uuid FROM chat_threads WHERE id=?`, *row.ThreadID).Scan(&threadUUID).Error
+		_ = store.DB().WithContext(ctx).Raw(`SELECT uuid,thread_type FROM chat_threads WHERE id=?`, *row.ThreadID).Row().Scan(&threadUUID, &threadType)
+	}
+	var await struct {
+		Status, TurnUUID, RunUUID, ToolCallUUID, ItemUUID string
+	}
+	_ = store.DB().WithContext(ctx).Raw(`SELECT a.status,t.uuid,r.uuid,x.tool_call_uuid,i.uuid
+		FROM workflow_awaits a
+		JOIN chat_turns t ON t.id=a.chat_turn_id
+		JOIN chat_runs r ON r.id=a.chat_run_id
+		JOIN agent_tool_executions x ON x.id=a.tool_execution_id
+		JOIN chat_items i ON i.id=x.item_id
+		WHERE a.workflow_id=? LIMIT 1`, row.ID).Row().Scan(&await.Status, &await.TurnUUID, &await.RunUUID, &await.ToolCallUUID, &await.ItemUUID)
+	presentationMode := string(PresentationNone)
+	if await.Status != "" {
+		presentationMode = string(PresentationInline)
+	} else if threadType == ThreadTypeWorkflow {
+		presentationMode = string(PresentationDedicatedThread)
 	}
 	var steps []workflowStepRecord
 	if err := store.DB().WithContext(ctx).Where("workflow_id=?", row.ID).Order("position,id").Find(&steps).Error; err != nil {
@@ -281,7 +297,7 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 			progressByTask[task.UUID] = task.Progress
 		}
 	}
-	dto := Workflow{UUID: row.UUID, ProjectUUID: projectUUID, ThreadUUID: threadUUID, Kind: row.Kind, Title: row.Title, Status: row.Status, InputVersion: row.InputVersion, InputSnapshot: sanitizeDiagnosticJSON(row.InputSnapshot), ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, CurrentStepKey: row.CurrentStepKey, ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), CancelRequestedAt: row.CancelRequestedAt, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	dto := Workflow{UUID: row.UUID, ProjectUUID: projectUUID, ThreadUUID: threadUUID, PresentationMode: presentationMode, OriginTurnUUID: await.TurnUUID, OriginRunUUID: await.RunUUID, OriginToolCallUUID: await.ToolCallUUID, OriginItemUUID: await.ItemUUID, AwaitStatus: await.Status, Kind: row.Kind, Title: row.Title, Status: row.Status, InputVersion: row.InputVersion, InputSnapshot: sanitizeDiagnosticJSON(row.InputSnapshot), ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, CurrentStepKey: row.CurrentStepKey, ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), CancelRequestedAt: row.CancelRequestedAt, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	for _, step := range steps {
 		progress, found := progressByTask[step.TaskUUID]
 		if !found && step.Status == WorkflowCompleted {
@@ -745,6 +761,13 @@ func (service *Service) runYoloFirstImage(ctx context.Context, store *project.St
 }
 
 func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *project.Store, step workflowStepRecord, request DomainTaskRequest) (DomainTask, error) {
+	if request.Invocation.Source == "" {
+		var threadUUID string
+		if err := store.DB().WithContext(ctx).Raw(`SELECT COALESCE(t.uuid,'') FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id WHERE w.id=?`, step.WorkflowID).Scan(&threadUUID).Error; err != nil {
+			return DomainTask{}, err
+		}
+		request.Invocation = WorkflowStepInvocationContext(threadUUID)
+	}
 	var output map[string]any
 	_ = json.Unmarshal([]byte(step.OutputJSON), &output)
 	taskUUID, _ := output[request.IdempotencyKey].(string)
@@ -909,7 +932,10 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已完成：第一章、Story Profile、Premise、六个 Comic Sections 和首图均已就绪。", "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='completed',next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
+				return err
+			}
+			if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 				return err
 			}
 		}
@@ -967,7 +993,7 @@ func (service *Service) failWorkflowStep(ctx context.Context, store *project.Sto
 			return err
 		}
 		if workflow.ThreadID != nil {
-			if err := tx.Table("chat_threads").Where("id=?", *workflow.ThreadID).Updates(map[string]any{"status": ThreadFailed, "updated_at": now}).Error; err != nil {
+			if _, err := recomputeThreadStatusGormTx(ctx, tx, *workflow.ThreadID, now); err != nil {
 				return err
 			}
 		}
@@ -1037,7 +1063,7 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 				return err
 			}
 			if row.ThreadID != nil {
-				if err := tx.Table("chat_threads").Where("id=?", *row.ThreadID).Updates(map[string]any{"status": ThreadCancelled, "updated_at": now}).Error; err != nil {
+				if _, err := recomputeThreadStatusGormTx(ctx, tx, *row.ThreadID, now); err != nil {
 					return err
 				}
 			}
@@ -1172,7 +1198,9 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		var threadUUID string
 		if row.ThreadID != nil {
 			_ = tx.QueryRowContext(ctx, `SELECT uuid FROM chat_threads WHERE id=?`, *row.ThreadID).Scan(&threadUUID)
-			_, _ = tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, *row.ThreadID)
+			if _, err := RecomputeThreadStatusTx(ctx, tx, *row.ThreadID, now); err != nil {
+				return err
+			}
 		}
 		jobID, err := service.queue.EnqueueAgentTx(ctx, projectUUID, tx, JobSpec{Version: 1, ProjectUUID: projectUUID, JobKind: JobWorkflowStep, ResourceUUID: step.UUID, ThreadUUID: threadUUID})
 		if err != nil {

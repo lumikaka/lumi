@@ -535,9 +535,16 @@ func startAgentRouteGeneration(ctx context.Context, service *Service, tc toolCon
 	request := DomainTaskRequest{
 		Kind: kind, ResourceUUID: resourceUUID, ChapterUUID: chapterUUID, ProviderUUID: tc.Run.ProviderUUID,
 		Model: stringArg(args, "model"), PromptKey: stringArg(args, "prompt_key"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"),
-		IdempotencyKey: idempotencyKey,
+		IdempotencyKey: idempotencyKey, Invocation: chatToolInvocationContext(tc, execution),
 	}
 	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, request)
+}
+
+func chatToolInvocationContext(tc toolContext, execution toolExecutionRecord) DomainInvocationContext {
+	return DomainInvocationContext{
+		Source: InvocationChatTool, PresentationMode: PresentationInline, AwaitCompletion: true,
+		ThreadUUID: tc.Thread.UUID, TurnUUID: tc.Turn.UUID, RunUUID: tc.Run.UUID, ToolExecutionUUID: execution.UUID,
+	}
 }
 
 func compactAgentRouteValue(route agentAPIRoute, value any) (any, error) {

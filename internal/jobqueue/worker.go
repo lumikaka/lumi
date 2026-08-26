@@ -319,6 +319,9 @@ func (runtime *projectRuntime) completeTask(ctx context.Context, record taskReco
 		if err := completeStoryTaskWorkflowTx(ctx, tx, record.UUID, workflowOutput, now); err != nil {
 			return err
 		}
+		if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err
@@ -414,6 +417,9 @@ func (runtime *projectRuntime) failTask(ctx context.Context, record taskRecord, 
 		if err := failStoryTaskWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 			return err
 		}
+		if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+			return err
+		}
 	}
 	var threadID, runID int64
 	if err := tx.QueryRowContext(ctx, `SELECT agent_thread_id, id FROM agent_runs WHERE task_run_id = ?`, record.ID).Scan(&threadID, &runID); err == nil {
@@ -448,6 +454,9 @@ func (runtime *projectRuntime) cancelTaskProjection(ctx context.Context, record 
 	}
 	if isProjectedStoryTaskWorkflow(record.Kind) {
 		if err := cancelStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+			return err
+		}
+		if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
 			return err
 		}
 	}

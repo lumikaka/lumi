@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"lumi/internal/agent"
 	"lumi/internal/project"
 )
 
@@ -110,13 +111,14 @@ type GenerationParameters struct {
 }
 
 type CreateGenerationInput struct {
-	ChapterUUID    string               `json:"chapter_uuid"`
-	ProviderUUID   string               `json:"-"`
-	Model          string               `json:"model"`
-	PromptKey      string               `json:"prompt_key,omitempty"`
-	Prompt         string               `json:"prompt"`
-	Parameters     GenerationParameters `json:"parameters"`
-	IdempotencyKey string               `json:"idempotency_key"`
+	ChapterUUID    string                        `json:"chapter_uuid"`
+	ProviderUUID   string                        `json:"-"`
+	Model          string                        `json:"model"`
+	PromptKey      string                        `json:"prompt_key,omitempty"`
+	Prompt         string                        `json:"prompt"`
+	Parameters     GenerationParameters          `json:"parameters"`
+	IdempotencyKey string                        `json:"idempotency_key"`
+	Invocation     agent.DomainInvocationContext `json:"-"`
 }
 
 // CreateStoryWorkflowInput is used by the non-chapter Story prompt steps. The

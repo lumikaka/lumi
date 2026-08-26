@@ -24,6 +24,7 @@ export function statusLabel(t, value) {
     saved: 'common.status.saved',
     unavailable: 'common.status.unavailable',
     waiting_for_input: 'common.status.waiting_for_input',
+	waiting_for_workflow: 'chat.status.waiting_for_workflow',
   }[value]
   return key ? t(key) : t('common.status.unknown_with_code', { code: value || '—' })
 }

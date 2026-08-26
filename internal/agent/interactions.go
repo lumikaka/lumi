@@ -314,7 +314,7 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		}
 		var runID, turnID int64
 		var runUUID, turnUUID, runStatus string
-		if err := tx.QueryRowContext(ctx, `SELECT r.id,r.uuid,r.status,t.id,t.uuid FROM chat_runs r JOIN chat_turns t ON t.id=r.turn_id WHERE r.thread_id=? AND r.status='in_progress' ORDER BY r.created_at DESC,r.id DESC LIMIT 1`, thread.ID).Scan(&runID, &runUUID, &runStatus, &turnID, &turnUUID); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT r.id,r.uuid,r.status,t.id,t.uuid FROM chat_runs r JOIN chat_turns t ON t.id=r.turn_id WHERE r.thread_id=? AND r.status='in_progress' AND NOT EXISTS(SELECT 1 FROM workflow_awaits a WHERE a.chat_run_id=r.id AND a.status='waiting') ORDER BY r.created_at DESC,r.id DESC LIMIT 1`, thread.ID).Scan(&runID, &runUUID, &runStatus, &turnID, &turnUUID); err != nil {
 			return domainError(CodeBusy, "当前没有可 Steering 的运行", "Steering 只能在 run 的安全边界注入。", err)
 		}
 		now := service.now().UTC()
@@ -381,7 +381,7 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 
 		var runID, turnID int64
 		var runUUID, turnUUID string
-		runErr := tx.QueryRowContext(ctx, `SELECT r.id,r.uuid,t.id,t.uuid FROM chat_runs r JOIN chat_turns t ON t.id=r.turn_id WHERE r.thread_id=? AND r.status='in_progress' AND t.status='in_progress' ORDER BY r.created_at DESC,r.id DESC LIMIT 1`, thread.ID).Scan(&runID, &runUUID, &turnID, &turnUUID)
+		runErr := tx.QueryRowContext(ctx, `SELECT r.id,r.uuid,t.id,t.uuid FROM chat_runs r JOIN chat_turns t ON t.id=r.turn_id WHERE r.thread_id=? AND r.status='in_progress' AND t.status='in_progress' AND NOT EXISTS(SELECT 1 FROM workflow_awaits a WHERE a.chat_run_id=r.id AND a.status='waiting') ORDER BY r.created_at DESC,r.id DESC LIMIT 1`, thread.ID).Scan(&runID, &runUUID, &turnID, &turnUUID)
 		if errors.Is(runErr, sql.ErrNoRows) {
 			if err := tx.Commit(); err != nil {
 				return err
@@ -476,6 +476,7 @@ func compactFollowUpsSQLTx(ctx context.Context, tx *sql.Tx, threadID int64, now 
 func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID string) (Turn, error) {
 	var result Turn
 	var jobID int64
+	var awaitedTasks []struct{ Kind, UUID string }
 	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		sqlDB, err := store.DB().DB()
 		if err != nil {
@@ -502,6 +503,25 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 			return domainError(CodeStateConflict, "Thread 当前没有可取消的 turn", "所有 turn 已处于稳定状态。", err)
 		}
 		now := service.now().UTC()
+		awaitRows, err := tx.QueryContext(ctx, `SELECT w.kind,s.task_uuid
+			FROM workflow_awaits a
+			JOIN workflows w ON w.id=a.workflow_id
+			JOIN workflow_steps s ON s.workflow_id=w.id
+			WHERE a.chat_run_id=? AND a.status IN ('waiting','ready','resuming') AND s.task_uuid<>''`, runID)
+		if err != nil {
+			return err
+		}
+		for awaitRows.Next() {
+			var task struct{ Kind, UUID string }
+			if err := awaitRows.Scan(&task.Kind, &task.UUID); err != nil {
+				awaitRows.Close()
+				return err
+			}
+			awaitedTasks = append(awaitedTasks, task)
+		}
+		if err := awaitRows.Close(); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET status='cancelled',cancel_requested_at=?,completed_at=?,updated_at=?,error_code='agent_cancelled',error_message='用户已取消。' WHERE id=? AND status IN ('queued','in_progress','waiting_for_input')`, now, now, now, turn.ID); err != nil {
 			return err
 		}
@@ -511,18 +531,22 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_user_input_requests SET status='cancelled',cancelled_at=?,updated_at=? WHERE run_id=? AND status IN ('pending','answered','resuming')`, now, now, runID); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET status='cancelled',cancelled_at=COALESCE(cancelled_at,?),updated_at=? WHERE chat_run_id=? AND status IN ('waiting','ready','resuming')`, now, now, runID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE id IN (SELECT workflow_id FROM workflow_awaits WHERE chat_run_id=?) AND status IN ('queued','running')`, now, now, runID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE uuid IN (SELECT s.task_uuid FROM workflow_awaits a JOIN workflow_steps s ON s.workflow_id=a.workflow_id WHERE a.chat_run_id=?) AND status IN ('queued','running','waiting_for_input')`, now, now, runID); err != nil {
+			return err
+		}
 		if _, err := appendEventTx(ctx, tx, &thread, &runID, "abort_requested", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": turn.UUID, "run_uuid": runUUID, "status": TurnCancelled}, now); err != nil {
 			return err
 		}
-		var active int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_turns WHERE thread_id=? AND id<>? AND status IN ('queued','in_progress','waiting_for_input')`, thread.ID, turn.ID).Scan(&active); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
 			return err
 		}
-		threadStatus := ThreadIdle
-		if active > 0 {
-			threadStatus = ThreadBusy
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status=?,next_event_sequence=?,updated_at=? WHERE id=?`, threadStatus, thread.NextEventSequence, now, thread.ID); err != nil {
+		if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {
@@ -542,6 +566,9 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 	service.queue.CancelAgentWork(projectUUID, result.UUID)
 	if jobID > 0 {
 		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, jobID)
+	}
+	for _, task := range awaitedTasks {
+		_ = service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, task.Kind, task.UUID)
 	}
 	service.broadcastThread(projectUUID, threadUUID, "chat:turn_cancelled", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": result.UUID, "status": result.Status})
 	return result, nil
@@ -567,22 +594,27 @@ func (service *Service) ListUserInputRequests(ctx context.Context, projectUUID, 
 }
 
 type userInputRow struct {
-	ID, ThreadID, RunID, TurnID, ItemID                  int64
-	UUID, ToolCallUUID, InputType, Question, OptionsJSON string
-	ResponseJSON                                         *string
-	Status, ThreadUUID, RunUUID, TurnUUID, ItemUUID      string
-	AnsweredAt, ResumedAt, CancelledAt                   *time.Time
-	CreatedAt, UpdatedAt                                 time.Time
+	ID, ThreadID, RunID, TurnID, ItemID             int64
+	UUID, ToolCallUUID, SchemaVersion, RequestJSON  string
+	ResponseJSON                                    *string
+	Status, ThreadUUID, RunUUID, TurnUUID, ItemUUID string
+	AnsweredAt, ResumedAt, CancelledAt              *time.Time
+	CreatedAt, UpdatedAt                            time.Time
 }
 
 func (row userInputRow) DTO() UserInputRequest {
-	var options []UserInputOption
-	_ = json.Unmarshal([]byte(row.OptionsJSON), &options)
+	var stored struct {
+		InputType string              `json:"input_type"`
+		Question  string              `json:"question"`
+		Options   []UserInputOption   `json:"options"`
+		Questions []UserInputQuestion `json:"questions"`
+	}
+	_ = json.Unmarshal([]byte(row.RequestJSON), &stored)
 	var response json.RawMessage
 	if row.ResponseJSON != nil {
 		response = json.RawMessage(*row.ResponseJSON)
 	}
-	return UserInputRequest{UUID: row.UUID, ThreadUUID: row.ThreadUUID, RunUUID: row.RunUUID, TurnUUID: row.TurnUUID, ItemUUID: row.ItemUUID, ToolCallUUID: row.ToolCallUUID, InputType: row.InputType, Question: row.Question, Options: options, Response: response, Status: row.Status, AnsweredAt: row.AnsweredAt, ResumedAt: row.ResumedAt, CancelledAt: row.CancelledAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return UserInputRequest{UUID: row.UUID, ThreadUUID: row.ThreadUUID, RunUUID: row.RunUUID, TurnUUID: row.TurnUUID, ItemUUID: row.ItemUUID, ToolCallUUID: row.ToolCallUUID, SchemaVersion: row.SchemaVersion, Questions: stored.Questions, InputType: stored.InputType, Question: stored.Question, Options: stored.Options, Response: response, Status: row.Status, AnsweredAt: row.AnsweredAt, ResumedAt: row.ResumedAt, CancelledAt: row.CancelledAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threadUUID, requestUUID string, input UserInputResponse) (UserInputRequest, error) {
@@ -609,7 +641,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 			return err
 		}
 		var row userInputRow
-		err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.input_type,q.question,q.options_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.thread_id=? AND q.uuid=?`, thread.ID, requestUUID).Scan(&row.ID, &row.ThreadID, &row.RunID, &row.TurnID, &row.ItemID, &row.UUID, &row.ToolCallUUID, &row.InputType, &row.Question, &row.OptionsJSON, &row.ResponseJSON, &row.Status, &row.AnsweredAt, &row.ResumedAt, &row.CancelledAt, &row.CreatedAt, &row.UpdatedAt, &row.RunUUID, &row.TurnUUID, &row.ItemUUID)
+		err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.thread_id=? AND q.uuid=?`, thread.ID, requestUUID).Scan(&row.ID, &row.ThreadID, &row.RunID, &row.TurnID, &row.ItemID, &row.UUID, &row.ToolCallUUID, &row.SchemaVersion, &row.RequestJSON, &row.ResponseJSON, &row.Status, &row.AnsweredAt, &row.ResumedAt, &row.CancelledAt, &row.CreatedAt, &row.UpdatedAt, &row.RunUUID, &row.TurnUUID, &row.ItemUUID)
 		if err != nil {
 			return notFound(err, "用户输入请求不存在")
 		}
@@ -621,12 +653,13 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if row.Status != "pending" {
 			return domainError(CodeStateConflict, "用户输入请求不可回答", "request 已回答、取消或正在恢复。", nil)
 		}
-		response, err := validateUserInputResponse(row, input)
+		response, toolResult, err := validateUserInputResponse(row, input)
 		if err != nil {
 			return err
 		}
 		now := service.now().UTC()
 		encoded, _ := json.Marshal(response)
+		encodedToolResult, _ := json.Marshal(toolResult)
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_user_input_requests SET response_json=?,status='resuming',answered_at=?,updated_at=? WHERE id=? AND status='pending'`, string(encoded), now, now, row.ID); err != nil {
 			return err
 		}
@@ -636,11 +669,11 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if providerCallID != "" {
 			metadata["provider_call_id"] = providerCallID
 		}
-		item, err := appendItemTx(ctx, tx, &thread, &row.TurnID, &row.RunID, "tool_result", "tool", string(encoded), "json", "completed", row.ToolCallUUID, "request_user_input", row.UUID, metadata, now)
+		item, err := appendItemTx(ctx, tx, &thread, &row.TurnID, &row.RunID, "tool_result", "tool", string(encodedToolResult), "json", "completed", row.ToolCallUUID, "request_user_input", row.UUID, metadata, now)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET state='completed',result_json=?,completed_at=?,updated_at=? WHERE run_id=? AND tool_call_uuid=? AND state IN ('intent','executing')`, string(encoded), now, now, row.RunID, row.ToolCallUUID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET state='completed',result_json=?,completed_at=?,updated_at=? WHERE run_id=? AND tool_call_uuid=? AND state IN ('intent','executing')`, string(encodedToolResult), now, now, row.RunID, row.ToolCallUUID); err != nil {
 			return err
 		}
 		if _, err := appendEventTx(ctx, tx, &thread, &row.RunID, "user_input_answered", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": row.TurnUUID, "run_uuid": row.RunUUID, "request_uuid": row.UUID, "item_uuid": item.UUID}, now); err != nil {
@@ -659,7 +692,10 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=? WHERE id=?`, jobID, row.TurnID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+			return err
+		}
+		if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {
@@ -676,24 +712,34 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 	return result, err
 }
 
-func validateUserInputResponse(row userInputRow, input UserInputResponse) (map[string]any, error) {
-	var options []UserInputOption
-	if err := json.Unmarshal([]byte(row.OptionsJSON), &options); err != nil {
-		return nil, domainError(CodeStateConflict, "用户输入选项损坏", "无法安全提交回答。", err)
+func validateUserInputResponse(row userInputRow, input UserInputResponse) (map[string]any, map[string]any, error) {
+	if row.SchemaVersion == userInputSchemaCodexQuestions {
+		return validateCodexUserInputResponse(row, input)
+	}
+	return validateLegacyUserInputResponse(row, input)
+}
+
+func validateLegacyUserInputResponse(row userInputRow, input UserInputResponse) (map[string]any, map[string]any, error) {
+	var request struct {
+		InputType string            `json:"input_type"`
+		Options   []UserInputOption `json:"options"`
+	}
+	if err := json.Unmarshal([]byte(row.RequestJSON), &request); err != nil {
+		return nil, nil, domainError(CodeStateConflict, "用户输入选项损坏", "无法安全提交回答。", err)
 	}
 	allowed := map[string]UserInputOption{}
-	for _, option := range options {
+	for _, option := range request.Options {
 		allowed[option.UUID] = option
 	}
 	selected := make([]UserInputOption, 0, len(input.SelectedOptionUUIDs))
 	seen := map[string]struct{}{}
 	for _, id := range input.SelectedOptionUUIDs {
 		if !isUUIDv7(id) {
-			return nil, domainError(CodeValidation, "选项 UUID 无效", "selected_option_uuids 只能包含公开 UUIDv7。", nil)
+			return nil, nil, domainError(CodeValidation, "选项 UUID 无效", "selected_option_uuids 只能包含公开 UUIDv7。", nil)
 		}
 		option, ok := allowed[id]
 		if !ok {
-			return nil, domainError(CodeValidation, "选项不存在", "只能提交请求中列出的选项。", nil)
+			return nil, nil, domainError(CodeValidation, "选项不存在", "只能提交请求中列出的选项。", nil)
 		}
 		if _, duplicate := seen[id]; duplicate {
 			continue
@@ -701,19 +747,20 @@ func validateUserInputResponse(row userInputRow, input UserInputResponse) (map[s
 		seen[id] = struct{}{}
 		selected = append(selected, option)
 	}
-	if row.InputType == "single_choice" && len(selected) > 1 {
-		return nil, domainError(CodeValidation, "只能选择一个选项", "single_choice 只接受一个选项。", nil)
+	if request.InputType == "single_choice" && len(selected) > 1 {
+		return nil, nil, domainError(CodeValidation, "只能选择一个选项", "single_choice 只接受一个选项。", nil)
 	}
 	other := strings.TrimSpace(input.OtherText)
 	if len([]rune(other)) > 4000 || (len(selected) == 0 && other == "") {
-		return nil, domainError(CodeValidation, "回答无效", "请选择至少一个选项或填写其他说明，说明最多 4000 字符。", nil)
+		return nil, nil, domainError(CodeValidation, "回答无效", "请选择至少一个选项或填写其他说明，说明最多 4000 字符。", nil)
 	}
 	ids := make([]string, 0, len(selected))
 	for _, option := range selected {
 		ids = append(ids, option.UUID)
 	}
 	sort.Strings(ids)
-	return map[string]any{"selected_option_uuids": ids, "selected_options": selected, "other_text": other}, nil
+	result := map[string]any{"selected_option_uuids": ids, "selected_options": selected, "other_text": other}
+	return result, result, nil
 }
 
 func (service *Service) CancelUserInput(ctx context.Context, projectUUID, threadUUID, requestUUID string) (UserInputRequest, error) {

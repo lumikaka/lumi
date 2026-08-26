@@ -966,14 +966,14 @@ func finalResponse(content string) llm.ChatResponse {
 func invalidUserInputOptionsResponse(callID string) llm.ChatResponse {
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{
 		ID: callID, Name: "request_user_input",
-		Arguments: `{"input_type":"single_choice","question":"角色叫什么名字？","options":"[{\"label\":\"我来输入名字\"},{\"label\":\"随机生成名字\"}]"}`,
+		Arguments: `{"questions":[{"header":"角色名","id":"character_name","question":"角色叫什么名字？","options":"[{\"label\":\"我来输入名字\"},{\"label\":\"随机生成名字\"}]"}]}`,
 	}}}, FinishReason: "tool_calls"}
 }
 
 func TestToolValidationFailureFeedsBackForRepair(t *testing.T) {
 	repairedCall := llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{
 		ID: "repaired-input", Name: "request_user_input",
-		Arguments: `{"input_type":"single_choice","question":"角色叫什么名字？","options":[{"label":"我来输入名字"},{"label":"随机生成名字"}]}`,
+		Arguments: `{"questions":[{"header":"角色名","id":"character_name","question":"角色叫什么名字？","options":[{"label":"我来命名 (Recommended)","description":"由你提供最符合设定的角色名字。"},{"label":"随机生成","description":"由 Agent 生成一个符合设定的名字。"}]}]}`,
 	}}}, FinishReason: "tool_calls"}
 	harness := newAgentHarness(t, invalidUserInputOptionsResponse("invalid-input"), repairedCall)
 	thread := harness.createThread(t)
@@ -1580,7 +1580,7 @@ func TestAgentTurnFreezesEffectivePromptsWhenQueued(t *testing.T) {
 }
 
 func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
-	requestCall := llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "input-call-1", Name: "request_user_input", Arguments: `{"input_type":"single_choice","question":"选择风格","options":[{"label":"温暖"},{"label":"冒险"}]}`}}}, FinishReason: "tool_calls"}
+	requestCall := llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "input-call-1", Name: "request_user_input", Arguments: `{"questions":[{"header":"画面风格","id":"art_style","question":"选择哪种画面风格？","options":[{"label":"温暖手绘 (Recommended)","description":"延续柔和亲切的绘本质感。"},{"label":"电影写实","description":"强化真实光影和镜头感。"}]},{"header":"篇幅","id":"page_count","question":"这次内容需要多少页？","options":[{"label":"八页 (Recommended)","description":"保持简洁且适合一次阅读。"},{"label":"十六页","description":"提供更完整的情节展开空间。"}]}]}`}}}, FinishReason: "tool_calls"}
 	harness := newAgentHarness(t, requestCall, finalResponse("已采用你的选择"))
 	thread := harness.createThread(t)
 	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "帮我选风格"})
@@ -1591,12 +1591,30 @@ func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
 		t.Fatalf("run did not pause for input: %v", err)
 	}
 	requests, err := harness.service.ListUserInputRequests(context.Background(), harness.project.UUID, thread.UUID)
-	if err != nil || len(requests) != 1 || requests[0].Status != "pending" || len(requests[0].Options) != 2 {
+	if err != nil || len(requests) != 1 || requests[0].Status != "pending" || requests[0].SchemaVersion != userInputSchemaCodexQuestions || len(requests[0].Questions) != 2 {
 		t.Fatalf("input requests = %+v, error=%v", requests, err)
 	}
-	answered, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{SelectedOptionUUIDs: []string{requests[0].Options[0].UUID}})
+	answered, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+		"art_style":  {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
+		"page_count": {OtherText: "12 页"},
+	}})
 	if err != nil || answered.Status != "resuming" || answered.RunUUID != requests[0].RunUUID {
 		t.Fatalf("answered request = %+v, error=%v", answered, err)
+	}
+	harness.queue.mu.Lock()
+	jobsAfterAnswer := len(harness.queue.jobs)
+	harness.queue.mu.Unlock()
+	if _, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+		"art_style":  {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
+		"page_count": {OtherText: "12 页"},
+	}}); errorCode(err) != CodeStateConflict {
+		t.Fatalf("duplicate answer was not rejected: %v", err)
+	}
+	harness.queue.mu.Lock()
+	jobsAfterDuplicate := len(harness.queue.jobs)
+	harness.queue.mu.Unlock()
+	if jobsAfterDuplicate != jobsAfterAnswer {
+		t.Fatalf("duplicate answer enqueued a second resume job: before=%d after=%d", jobsAfterAnswer, jobsAfterDuplicate)
 	}
 	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
 		t.Fatal(err)
@@ -1607,17 +1625,21 @@ func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
 	if len(requestsSent) != 2 || len(requestsSent[0].Messages) < 2 || requestsSent[0].Messages[1].Content != "帮我选风格" {
 		t.Fatalf("model did not receive persisted user context: %+v", requestsSent)
 	}
-	var toolCallID, toolResultID string
+	var toolCallID, toolResultID, toolResult string
 	for _, message := range requestsSent[1].Messages {
 		if len(message.ToolCalls) > 0 {
 			toolCallID = message.ToolCalls[0].ID
 		}
 		if message.Role == "tool" {
 			toolResultID = message.ToolCallID
+			toolResult = message.Content
 		}
 	}
 	if toolCallID != "input-call-1" || toolResultID != toolCallID {
 		t.Fatalf("tool context IDs do not match provider call: call=%q result=%q", toolCallID, toolResultID)
+	}
+	if !strings.Contains(toolResult, `"art_style":{"answers":["温暖手绘 (Recommended)"]}`) || !strings.Contains(toolResult, `"page_count":{"answers":["12 页"]}`) {
+		t.Fatalf("tool result did not use Codex answer shape: %s", toolResult)
 	}
 	turns, err := harness.service.ListTurns(context.Background(), harness.project.UUID, thread.UUID)
 	if err != nil || len(turns) != 1 || turns[0].Status != TurnCompleted {
@@ -1876,6 +1898,78 @@ func TestYoloEveryStepRetriesAndReconcilesAtSafeBoundary(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestThreadStatusRecomputeAggregatesConversationAndDedicatedWorkflowState(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "聚合状态", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "开始"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertStatus := func(want string) {
+		t.Helper()
+		got, err := harness.service.GetThread(ctx, harness.project.UUID, thread.UUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Status != want {
+			t.Fatalf("thread status=%q, want %q", got.Status, want)
+		}
+	}
+	assertStatus(ThreadBusy)
+
+	sqlDB, err := harness.store.DB().DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var threadID, projectID int64
+	if err := sqlDB.QueryRowContext(ctx, `SELECT id,project_id FROM chat_threads WHERE uuid=?`, thread.UUID).Scan(&threadID, &projectID); err != nil {
+		t.Fatal(err)
+	}
+	recompute := func() {
+		t.Helper()
+		tx, err := sqlDB.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		if _, err := RecomputeThreadStatusTx(ctx, tx, threadID, time.Now().UTC()); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := sqlDB.ExecContext(ctx, `UPDATE chat_turns SET status='waiting_for_input' WHERE uuid=?`, turn.UUID); err != nil {
+		t.Fatal(err)
+	}
+	recompute()
+	assertStatus(ThreadWaitingForInput)
+	if _, err := sqlDB.ExecContext(ctx, `UPDATE chat_turns SET status='completed' WHERE uuid=?; UPDATE chat_runs SET status='completed' WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)`, turn.UUID, turn.UUID); err != nil {
+		t.Fatal(err)
+	}
+	workflowUUID, _ := newUUIDv7()
+	now := time.Now().UTC()
+	if _, err := sqlDB.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(?,?,?,'story_chapter_generation','内联生成','running',1,'{}',?,?,?,?, '',?,?)`, workflowUUID, projectID, threadID, "aggregate-status-workflow", harness.provider.UUID, harness.provider.DefaultModel, modelsettings.SourceExplicitTask, now, now); err != nil {
+		t.Fatal(err)
+	}
+	recompute()
+	assertStatus(ThreadBusy)
+	if _, err := sqlDB.ExecContext(ctx, `UPDATE workflows SET status='failed',completed_at=?,updated_at=? WHERE uuid=?`, now, now, workflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	recompute()
+	assertStatus(ThreadIdle)
+	if _, err := sqlDB.ExecContext(ctx, `UPDATE chat_threads SET thread_type='workflow' WHERE id=?`, threadID); err != nil {
+		t.Fatal(err)
+	}
+	recompute()
+	assertStatus(ThreadFailed)
 }
 
 func TestYoloRetryRestartsFailedProductTask(t *testing.T) {

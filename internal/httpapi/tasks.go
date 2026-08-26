@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"lumi/internal/agent"
 	"lumi/internal/jobqueue"
 	"lumi/internal/production"
 	"lumi/internal/project"
@@ -25,6 +26,7 @@ func (handler *TaskHandler) CreateChapterGeneration(c echo.Context) error {
 		return err
 	}
 	request.ChapterUUID = c.Param("chapter_uuid")
+	request.Invocation = agent.DirectUIInvocationContext()
 	created, err := handler.tasks.CreateChapterGeneration(c.Request().Context(), c.Param("project_uuid"), request)
 	if err != nil {
 		return taskAPIError(err)

@@ -232,6 +232,7 @@ func phase3Generation(ctx context.Context, service *Service, tc toolContext, exe
 		Kind: kind, ResourceUUID: resourceUUID, ChapterUUID: chapterUUID,
 		ProviderUUID: tc.Run.ProviderUUID, Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"),
 		ChapterCount: queryInt(args, "chapter_count", 1), MaxSectionCount: queryInt(args, "max_section_count", 0), IdempotencyKey: key,
+		Invocation: chatToolInvocationContext(tc, execution),
 	})
 }
 

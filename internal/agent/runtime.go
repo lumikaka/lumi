@@ -44,6 +44,11 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	if err != nil {
 		return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 	}
+	if spec.JobKind == JobChatResume {
+		if _, err := service.resumeWorkflowAwait(ctx, store, tc); err != nil {
+			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+		}
+	}
 	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
 	if err != nil {
 		return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
@@ -73,6 +78,9 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			}
 			result, err := service.executeTool(ctx, store, tc, pending)
 			if err != nil {
+				if errors.Is(err, ErrWaitingWorkflow) {
+					return err
+				}
 				return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 			}
 			if err := service.persistToolResult(ctx, store, tc, pending, result); err != nil {
@@ -194,6 +202,9 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 				}
 				result, err := service.executeTool(ctx, store, tc, execution)
 				if err != nil {
+					if errors.Is(err, ErrWaitingWorkflow) {
+						return err
+					}
 					return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 				}
 				if err := service.persistToolResult(ctx, store, tc, execution, result); err != nil {
@@ -251,28 +262,66 @@ func toolDefinitionsForProtocol(mode, protocol string) []map[string]any {
 	if normalizedToolMode(mode) == ToolModeLegacyTyped {
 		return legacyRecoveryToolDefinitions()
 	}
-	if normalizedToolMode(mode) == ToolModeProjectAPI && protocol == ToolProtocolProjectV2 {
-		return projectAPIV2ToolDefinitions()
+	if normalizedToolMode(mode) == ToolModeProjectAPI {
+		switch protocol {
+		case ToolProtocolProjectV2:
+			return projectAPIV2ToolDefinitions()
+		case ToolProtocolProjectV3:
+			return projectAPIV3ToolDefinitions()
+		}
 	}
 	return toolDefinitions()
 }
 
-// projectAPIV2ToolDefinitions preserves the phase-two image_gen argument
-// surface for already-persisted runs. New turns always receive project_api_v3.
+// projectAPIV3ToolDefinitions freezes the former one-question user-input
+// contract. It must never inherit the active request_user_input definition.
+func projectAPIV3ToolDefinitions() []map[string]any {
+	definitions := frozenProjectAPIV2V3SharedToolDefinitions()
+	return append(definitions, frozenProjectAPIV3ImageGenDefinition(), legacyProjectAPIRequestUserInputDefinition())
+}
+
+// projectAPIV2ToolDefinitions freezes both the phase-two image_gen argument
+// surface and the former one-question user-input contract.
 func projectAPIV2ToolDefinitions() []map[string]any {
-	definitions := toolDefinitions()
-	for index, definition := range definitions {
-		if definition["name"] != "image_gen" {
-			continue
-		}
-		for _, legacy := range legacyRecoveryToolDefinitions() {
-			if legacy["name"] == "image_gen" {
-				definitions[index] = legacy
-				break
-			}
-		}
+	definitions := frozenProjectAPIV2V3SharedToolDefinitions()
+	return append(definitions, legacyToolDefinitionByName("image_gen"), legacyProjectAPIRequestUserInputDefinition())
+}
+
+// frozenProjectAPIV2V3SharedToolDefinitions is intentionally independent of
+// the active definitions. Changes to v4 request_api/read_agent_doc must not
+// alter the schema seen by a persisted v2 or v3 Run.
+func frozenProjectAPIV2V3SharedToolDefinitions() []map[string]any {
+	object := func(properties map[string]any, required ...string) map[string]any {
+		return map[string]any{"type": "object", "additionalProperties": false, "properties": properties, "required": required}
 	}
-	return definitions
+	stringField := func(description string) map[string]any {
+		return map[string]any{"type": "string", "description": description}
+	}
+	return []map[string]any{
+		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract.", "parameters": object(map[string]any{
+			"url":             stringField("Canonical relative /api/v1/projects/{current_project_uuid}/... path"),
+			"method":          map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}},
+			"query":           map[string]any{"type": "object", "additionalProperties": true, "description": "Optional route-specific typed query object; never append a query string to url."},
+			"request_body":    map[string]any{"type": "object", "additionalProperties": true},
+			"response_filter": map[string]any{"type": "string", "minLength": 1, "maxLength": 2048, "description": "Required safe projection beginning with .data. Select only the fields needed for the current step; use .data only when the complete compact response is necessary."},
+		}, "url", "method", "response_filter")},
+		{"name": "read_agent_doc", "description": "Read a registered Agent Overview, reusable capability Guide, or Project API contract. Start with /api/v1/agent-docs/overview.md to discover capabilities and routes.", "parameters": object(map[string]any{
+			"path": stringField("Registered /api/v1/agent-docs/...md path"),
+		}, "path")},
+	}
+}
+
+func frozenProjectAPIV3ImageGenDefinition() map[string]any {
+	object := func(properties map[string]any, required ...string) map[string]any {
+		return map[string]any{"type": "object", "additionalProperties": false, "properties": properties, "required": required}
+	}
+	stringField := func(description string) map[string]any {
+		return map[string]any{"type": "string", "description": description}
+	}
+	return map[string]any{"name": "image_gen", "description": "Generate a project-scoped image synchronously. Select zero to four image-capable References from the current Turn by their resource_uuid; the backend resolves their frozen images in the supplied order.", "parameters": object(map[string]any{
+		"prompt": stringField("Detailed image generation prompt"), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
+		"size": map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
+	}, "prompt", "reference_uuids")}
 }
 
 func (service *Service) loadRunToolMode(ctx context.Context, store *project.Store, tc toolContext) (string, error) {
@@ -287,8 +336,8 @@ func (service *Service) loadRunToolMode(ctx context.Context, store *project.Stor
 	mode := normalizedToolMode(snapshot.Mode)
 	switch mode {
 	case ToolModeProjectAPI:
-		if snapshot.Protocol != ToolProtocolProjectAPI && snapshot.Protocol != ToolProtocolProjectV2 {
-			return "", domainError(CodeToolNotAllowed, "Tool Protocol 快照无效", "project_api_tools Run 只恢复 project_api_v2 或 project_api_v3 快照。", nil)
+		if snapshot.Protocol != ToolProtocolProjectAPI && snapshot.Protocol != ToolProtocolProjectV3 && snapshot.Protocol != ToolProtocolProjectV2 {
+			return "", domainError(CodeToolNotAllowed, "Tool Protocol 快照无效", "project_api_tools Run 只恢复 project_api_v2、project_api_v3 或 project_api_v4 快照。", nil)
 		}
 		return mode, nil
 	case ToolModeLegacyTyped:
@@ -392,7 +441,7 @@ func (service *Service) loadToolContext(ctx context.Context, store *project.Stor
 		} `json:"legacy_thread_context"`
 	}
 	if json.Unmarshal([]byte(metadataJSON), &metadata) == nil {
-		if metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectAPI || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV2 {
+		if metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectAPI || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV3 || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV2 {
 			// Only persisted project-api protocols need to be distinguished here.
 			// Legacy typed runs continue to be selected by tool_mode.
 			threadProtocol := metadata.PromptSnapshot.ToolProtocol
@@ -455,7 +504,10 @@ func (service *Service) claimRun(ctx context.Context, store *project.Store, tc *
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "run_started", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "status": TurnInProgress}, now); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextEventSequence, now, thread.ID); err != nil {
+		return err
+	}
+	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -600,15 +652,10 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 	if err := service.promoteNextFollowUpTx(ctx, tx, tc.ProjectUUID, &thread, followUpPromptSnapshot); err != nil {
 		return err
 	}
-	var active int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_turns WHERE thread_id=? AND id<>? AND status IN ('queued','in_progress','waiting_for_input')`, thread.ID, tc.Turn.ID).Scan(&active); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
 		return err
 	}
-	status := ThreadIdle
-	if active > 0 {
-		status = ThreadBusy
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status=?,next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, status, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -681,15 +728,10 @@ func (service *Service) finishRunWithStatus(ctx context.Context, store *project.
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "run_"+status, map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "item_uuid": item.UUID, "status": status, "error_code": code}, now); err != nil {
 		return err
 	}
-	var active int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_turns WHERE thread_id=? AND id<>? AND status IN ('queued','in_progress','waiting_for_input')`, thread.ID, tc.Turn.ID).Scan(&active); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
 		return err
 	}
-	threadStatus := ThreadIdle
-	if active > 0 {
-		threadStatus = ThreadBusy
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status=?,next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, threadStatus, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {

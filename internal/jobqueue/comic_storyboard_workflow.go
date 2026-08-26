@@ -53,6 +53,11 @@ type storyTaskWorkflowRef struct {
 	StepStatus   string
 }
 
+type inlineWorkflowOwner struct {
+	ThreadID, TurnID, RunID, ToolExecutionID, ToolItemID      int64
+	ThreadUUID, TurnUUID, RunUUID, ToolCallUUID, ToolItemUUID string
+}
+
 func projectedStoryTaskWorkflowConfig(taskKind string) (storyTaskWorkflowConfig, bool) {
 	switch taskKind {
 	case KindStoryChapterGeneration:
@@ -71,32 +76,54 @@ func isProjectedStoryTaskWorkflow(taskKind string) bool {
 	return ok
 }
 
-func createStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, taskKind, resourceUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, now time.Time) error {
+func createStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, taskKind, resourceUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, invocation agent.DomainInvocationContext, now time.Time) error {
 	config, ok := projectedStoryTaskWorkflowConfig(taskKind)
 	if !ok {
 		return nil
+	}
+	invocation, err := normalizeDomainInvocation(invocation)
+	if err != nil {
+		return err
 	}
 	var frozen storyGenerationSnapshot
 	if err := json.Unmarshal(taskSnapshot, &frozen); err != nil {
 		return err
 	}
-	threadUUID, err := newUUIDv7()
-	if err != nil {
-		return err
+	var threadID *int64
+	var threadUUID string
+	var inlineOwner inlineWorkflowOwner
+	switch invocation.PresentationMode {
+	case agent.PresentationDedicatedThread:
+		threadUUID, err = newUUIDv7()
+		if err != nil {
+			return err
+		}
+		threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, projectID, config.Title, providerUUID, model, modelSource, now, now)
+		if err != nil {
+			return err
+		}
+		id, err := threadResult.LastInsertId()
+		if err != nil {
+			return err
+		}
+		threadID = &id
+	case agent.PresentationInline:
+		inlineOwner, err = loadInlineWorkflowOwnerTx(ctx, tx, projectID, invocation)
+		if err != nil {
+			return err
+		}
+		threadID, threadUUID = &inlineOwner.ThreadID, inlineOwner.ThreadUUID
+	case agent.PresentationNone:
+		// The parent Workflow owns presentation; this projected child Workflow
+		// deliberately has no ChatArea Thread.
+	default:
+		return taskError(CodeInvalidTask, "Workflow 展示模式无效", "内部 invocation presentation_mode 不受支持。", nil)
 	}
 	workflowUUID, err := newUUIDv7()
 	if err != nil {
 		return err
 	}
 	stepUUID, err := newUUIDv7()
-	if err != nil {
-		return err
-	}
-	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,?,?)`, threadUUID, projectID, config.Title, providerUUID, model, modelSource, now, now)
-	if err != nil {
-		return err
-	}
-	threadID, err := threadResult.LastInsertId()
 	if err != nil {
 		return err
 	}
@@ -152,19 +179,76 @@ func createStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64,
 	if err != nil {
 		return err
 	}
-	return appendStoryTaskWorkflowEventTx(ctx, tx, workflowID, &stepID, "workflow_queued", map[string]any{
+	payload := map[string]any{
 		"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID,
 		"step_uuid": stepUUID, "task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": agent.WorkflowQueued,
-	}, now)
+	}
+	if invocation.PresentationMode == agent.PresentationInline {
+		awaitUUID, err := newUUIDv7()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_awaits(uuid,workflow_id,chat_thread_id,chat_turn_id,chat_run_id,tool_execution_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'waiting',?,?)`, awaitUUID, workflowID, inlineOwner.ThreadID, inlineOwner.TurnID, inlineOwner.RunID, inlineOwner.ToolExecutionID, now, now); err != nil {
+			return err
+		}
+		payload["turn_uuid"], payload["run_uuid"] = inlineOwner.TurnUUID, inlineOwner.RunUUID
+		payload["tool_call_uuid"], payload["origin_item_uuid"] = inlineOwner.ToolCallUUID, inlineOwner.ToolItemUUID
+	}
+	return appendStoryTaskWorkflowEventTx(ctx, tx, workflowID, &stepID, "workflow_queued", payload, now)
 }
 
 func createComicStoryboardWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, chapterUUID, taskUUID, providerUUID, model, modelSource string, taskSnapshot []byte, now time.Time) error {
-	return createStoryTaskWorkflowTx(ctx, tx, projectID, projectUUID, KindComicStoryboardGeneration, chapterUUID, taskUUID, providerUUID, model, modelSource, taskSnapshot, now)
+	return createStoryTaskWorkflowTx(ctx, tx, projectID, projectUUID, KindComicStoryboardGeneration, chapterUUID, taskUUID, providerUUID, model, modelSource, taskSnapshot, agent.DirectUIInvocationContext(), now)
+}
+
+func normalizeDomainInvocation(invocation agent.DomainInvocationContext) (agent.DomainInvocationContext, error) {
+	if invocation.Source == "" {
+		invocation = agent.DirectUIInvocationContext()
+	}
+	switch invocation.Source {
+	case agent.InvocationDirectUI:
+		if invocation.PresentationMode != agent.PresentationDedicatedThread || invocation.AwaitCompletion || invocation.ThreadUUID != "" || invocation.TurnUUID != "" || invocation.RunUUID != "" || invocation.ToolExecutionUUID != "" {
+			return invocation, taskError(CodeInvalidTask, "直接调用上下文无效", "direct_ui 只能创建不等待的独立 Workflow Thread。", nil)
+		}
+	case agent.InvocationChatTool:
+		if invocation.PresentationMode != agent.PresentationInline || !invocation.AwaitCompletion {
+			return invocation, taskError(CodeInvalidTask, "Chat Tool 调用上下文无效", "chat_tool 必须以内联方式等待 Workflow。", nil)
+		}
+		for _, value := range []string{invocation.ThreadUUID, invocation.TurnUUID, invocation.RunUUID, invocation.ToolExecutionUUID} {
+			if !isUUIDv7(value) {
+				return invocation, taskError(CodeInvalidTask, "Chat Tool 调用 UUID 无效", "内部 invocation 只能引用公开 UUIDv7。", nil)
+			}
+		}
+	case agent.InvocationWorkflowStep:
+		if invocation.PresentationMode != agent.PresentationNone || invocation.AwaitCompletion || (invocation.ThreadUUID != "" && !isUUIDv7(invocation.ThreadUUID)) || invocation.TurnUUID != "" || invocation.RunUUID != "" || invocation.ToolExecutionUUID != "" {
+			return invocation, taskError(CodeInvalidTask, "Workflow Step 调用上下文无效", "workflow_step 子任务不得创建或等待额外 Chat Thread。", nil)
+		}
+	default:
+		return invocation, taskError(CodeInvalidTask, "调用来源无效", "内部 invocation source 不受支持。", nil)
+	}
+	return invocation, nil
+}
+
+func loadInlineWorkflowOwnerTx(ctx context.Context, tx *sql.Tx, projectID int64, invocation agent.DomainInvocationContext) (inlineWorkflowOwner, error) {
+	var owner inlineWorkflowOwner
+	err := tx.QueryRowContext(ctx, `SELECT th.id,t.id,r.id,x.id,x.item_id,th.uuid,t.uuid,r.uuid,x.tool_call_uuid,i.uuid
+		FROM chat_threads th
+		JOIN chat_turns t ON t.thread_id=th.id
+		JOIN chat_runs r ON r.thread_id=th.id AND r.turn_id=t.id
+		JOIN agent_tool_executions x ON x.thread_id=th.id AND x.turn_id=t.id AND x.run_id=r.id
+		JOIN chat_items i ON i.id=x.item_id
+		WHERE th.project_id=? AND th.thread_type='conversation' AND th.uuid=? AND t.uuid=? AND r.uuid=? AND x.uuid=?
+		  AND t.status='in_progress' AND r.status='in_progress' AND x.state IN ('intent','executing')`, projectID, invocation.ThreadUUID, invocation.TurnUUID, invocation.RunUUID, invocation.ToolExecutionUUID).
+		Scan(&owner.ThreadID, &owner.TurnID, &owner.RunID, &owner.ToolExecutionID, &owner.ToolItemID, &owner.ThreadUUID, &owner.TurnUUID, &owner.RunUUID, &owner.ToolCallUUID, &owner.ToolItemUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return owner, taskError(CodeInvalidTask, "Chat Tool 调用归属无效", "Thread、Turn、Run 与 Tool Execution 必须属于同一活动 Chat Run。", nil)
+	}
+	return owner, err
 }
 
 func storyTaskWorkflowRefTx(ctx context.Context, tx *sql.Tx, taskUUID string) (storyTaskWorkflowRef, bool, error) {
 	var ref storyTaskWorkflowRef
-	err := tx.QueryRowContext(ctx, `SELECT w.id,w.thread_id,s.id,w.uuid,t.uuid,s.uuid,s.resource_uuid,w.kind,s.step_key,w.status,s.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.WorkflowKind, &ref.StepKey, &ref.Status, &ref.StepStatus)
+	err := tx.QueryRowContext(ctx, `SELECT w.id,COALESCE(w.thread_id,0),s.id,w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.kind,s.step_key,w.status,s.status FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.WorkflowKind, &ref.StepKey, &ref.Status, &ref.StepStatus)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ref, false, nil
 	}
@@ -182,8 +266,10 @@ func markStoryTaskWorkflowRunningTx(ctx context.Context, tx *sql.Tx, taskUUID st
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,started_at=COALESCE(started_at,?),completed_at=NULL,cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowRunning && ref.StepStatus == agent.WorkflowRunning {
 		return nil
@@ -202,8 +288,10 @@ func markStoryTaskWorkflowWaitingTx(ctx context.Context, tx *sql.Tx, taskUUID st
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,updated_at=? WHERE id=?`, ref.StepKey, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='waiting_for_input',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.StepStatus == "waiting" {
 		return nil
@@ -226,8 +314,10 @@ func completeStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID strin
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key=?,completed_at=COALESCE(completed_at,?),cancel_requested_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='completed',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowCompleted && ref.StepStatus == agent.WorkflowCompleted {
 		return nil
@@ -250,8 +340,10 @@ func failStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, me
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='failed',completed_at=?,error_code=?,error_message=?,updated_at=? WHERE id=?`, now, code, message, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='failed',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowFailed && ref.StepStatus == agent.WorkflowFailed {
 		return nil
@@ -272,8 +364,10 @@ func cancelStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string,
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='cancelled',cancel_requested_at=?,completed_at=?,error_code='cancelled',error_message='用户已取消。',updated_at=? WHERE id=?`, now, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='cancelled',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowCancelled {
 		return nil
@@ -292,8 +386,10 @@ func queueStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, 
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',current_step_key=?,cancel_requested_at=NULL,started_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.StepKey, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowQueued && ref.StepStatus == agent.WorkflowQueued {
 		return nil
@@ -312,8 +408,10 @@ func interruptStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, cod
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='interrupted',completed_at=?,error_code=?,error_message=?,updated_at=? WHERE id=?`, now, code, message, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='interrupted',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
-		return err
+	if ref.ThreadID > 0 {
+		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
+			return err
+		}
 	}
 	if ref.Status == agent.WorkflowInterrupted && ref.StepStatus == agent.WorkflowInterrupted {
 		return nil
@@ -329,19 +427,19 @@ func reconcileStoryTaskWorkflows(ctx context.Context, db *sql.DB, projectID int6
 		return err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status,t.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads t ON t.id=w.thread_id WHERE tasks.project_id=? AND tasks.kind=w.kind AND w.kind IN (?,?,?)`, projectID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard)
+	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id WHERE tasks.project_id=? AND tasks.kind=w.kind AND w.kind IN (?,?,?)`, projectID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard)
 	if err != nil {
 		return err
 	}
 	type reconciliationItem struct {
 		taskID                                        int64
 		taskUUID, taskStatus, errorCode, errorMessage string
-		workflowStatus, stepStatus, threadStatus      string
+		workflowStatus, stepStatus                    string
 	}
 	var items []reconciliationItem
 	for rows.Next() {
 		var item reconciliationItem
-		if err := rows.Scan(&item.taskID, &item.taskUUID, &item.taskStatus, &item.errorCode, &item.errorMessage, &item.workflowStatus, &item.stepStatus, &item.threadStatus); err != nil {
+		if err := rows.Scan(&item.taskID, &item.taskUUID, &item.taskStatus, &item.errorCode, &item.errorMessage, &item.workflowStatus, &item.stepStatus); err != nil {
 			rows.Close()
 			return err
 		}
@@ -365,7 +463,7 @@ func reconcileStoryTaskWorkflows(ctx context.Context, db *sql.DB, projectID int6
 				return err
 			}
 		case StatusCompleted:
-			if item.workflowStatus != agent.WorkflowCompleted || item.stepStatus != agent.WorkflowCompleted || item.threadStatus != agent.ThreadCompleted {
+			if item.workflowStatus != agent.WorkflowCompleted || item.stepStatus != agent.WorkflowCompleted {
 				output, err := storyTaskOutputTx(ctx, tx, item.taskID)
 				if err != nil {
 					return err
@@ -375,19 +473,19 @@ func reconcileStoryTaskWorkflows(ctx context.Context, db *sql.DB, projectID int6
 				}
 			}
 		case StatusFailed:
-			if item.workflowStatus != agent.WorkflowFailed || item.stepStatus != agent.WorkflowFailed || item.threadStatus != agent.ThreadFailed {
+			if item.workflowStatus != agent.WorkflowFailed || item.stepStatus != agent.WorkflowFailed {
 				if err := failStoryTaskWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
 					return err
 				}
 			}
 		case StatusCancelled:
-			if item.workflowStatus != agent.WorkflowCancelled || item.stepStatus != agent.WorkflowCancelled || item.threadStatus != agent.ThreadCancelled {
+			if item.workflowStatus != agent.WorkflowCancelled || item.stepStatus != agent.WorkflowCancelled {
 				if err := cancelStoryTaskWorkflowTx(ctx, tx, item.taskUUID, now); err != nil {
 					return err
 				}
 			}
 		case StatusInterrupted:
-			if item.workflowStatus != agent.WorkflowInterrupted || item.stepStatus != agent.WorkflowInterrupted || item.threadStatus != agent.ThreadInterrupted {
+			if item.workflowStatus != agent.WorkflowInterrupted || item.stepStatus != agent.WorkflowInterrupted {
 				if err := interruptStoryTaskWorkflowTx(ctx, tx, item.taskUUID, item.errorCode, item.errorMessage, now); err != nil {
 					return err
 				}
@@ -447,15 +545,29 @@ func (runtime *projectRuntime) broadcastStoryTaskWorkflow(event, taskUUID string
 	if runtime.manager.hub == nil {
 		return
 	}
-	var workflowUUID, threadUUID, stepUUID, resourceUUID, status string
+	var workflowUUID, threadUUID, stepUUID, resourceUUID, status, turnUUID, toolCallUUID string
 	var progress int
-	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.uuid,s.resource_uuid,w.status,tasks.progress FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id JOIN task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &progress)
+	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.status,tasks.progress,COALESCE(turns.uuid,''),COALESCE(x.tool_call_uuid,'')
+		FROM workflows w
+		LEFT JOIN chat_threads t ON t.id=w.thread_id
+		JOIN workflow_steps s ON s.workflow_id=w.id
+		JOIN task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid
+		LEFT JOIN workflow_awaits a ON a.workflow_id=w.id
+		LEFT JOIN chat_turns turns ON turns.id=a.chat_turn_id
+		LEFT JOIN agent_tool_executions x ON x.id=a.tool_execution_id
+		WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &progress, &turnUUID, &toolCallUUID)
 	if err != nil {
 		return
 	}
 	payload, ok := storyTaskRealtimePayload(runtime.projectUUID, workflowUUID, threadUUID, stepUUID, taskUUID, resourceUUID, status, progress)
 	if !ok {
 		return
+	}
+	if isUUIDv7(turnUUID) {
+		payload["turn_uuid"] = turnUUID
+	}
+	if isUUIDv7(toolCallUUID) {
+		payload["tool_call_uuid"] = toolCallUUID
 	}
 	runtime.manager.hub.Broadcast(realtime.ProjectTopic(runtime.projectUUID), event, payload)
 }

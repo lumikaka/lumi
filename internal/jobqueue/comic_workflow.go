@@ -40,7 +40,7 @@ func createComicImageWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64
 	if err != nil {
 		return err
 	}
-	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,?,?)`, threadUUID, projectID, comicWorkflowTitle, providerUUID, model, modelSource, now, now)
+	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, projectID, comicWorkflowTitle, providerUUID, model, modelSource, now, now)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func markComicWorkflowRunningTx(ctx context.Context, tx *sql.Tx, taskUUID string
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=COALESCE((SELECT step_key FROM workflow_steps WHERE workflow_id=? AND status='running' ORDER BY position LIMIT 1),current_step_key),started_at=COALESCE(started_at,?),completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.ID, now, now, ref.ID); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID)
+	_, err = agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now)
 	return err
 }
 
@@ -166,7 +166,7 @@ func setComicWorkflowStepRunningTx(ctx context.Context, tx *sql.Tx, ref comicWor
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='running',current_step_key=?,started_at=COALESCE(started_at,?),completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, stepKey, now, now, ref.ID); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID)
+	_, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now)
 	return err
 }
 
@@ -181,7 +181,7 @@ func completeComicWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, n
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key=?,completed_at=?,error_code='',error_message='',updated_at=? WHERE id=?`, agent.WorkflowStepSaveSectionImage, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='completed',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
+	if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
 		return err
 	}
 	return appendComicWorkflowEventTx(ctx, tx, ref.ID, "workflow_completed", map[string]any{"workflow_uuid": ref.UUID, "thread_uuid": ref.ThreadUUID, "task_uuid": taskUUID, "status": agent.WorkflowCompleted}, now)
@@ -198,7 +198,7 @@ func failComicWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, messag
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='failed',completed_at=?,error_code=?,error_message=?,updated_at=? WHERE id=?`, now, code, message, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='failed',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
+	if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
 		return err
 	}
 	return appendComicWorkflowEventTx(ctx, tx, ref.ID, "workflow_failed", map[string]any{"workflow_uuid": ref.UUID, "thread_uuid": ref.ThreadUUID, "task_uuid": taskUUID, "status": agent.WorkflowFailed, "error_code": code}, now)
@@ -215,7 +215,7 @@ func cancelComicWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='cancelled',cancel_requested_at=?,completed_at=?,error_code='cancelled',error_message='用户已取消。',updated_at=? WHERE id=?`, now, now, now, ref.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET status='cancelled',updated_at=? WHERE id=?`, now, ref.ThreadID); err != nil {
+	if _, err := agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now); err != nil {
 		return err
 	}
 	return appendComicWorkflowEventTx(ctx, tx, ref.ID, "workflow_cancelled", map[string]any{"workflow_uuid": ref.UUID, "thread_uuid": ref.ThreadUUID, "task_uuid": taskUUID, "status": agent.WorkflowCancelled}, now)
@@ -236,7 +236,7 @@ func queueComicWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID string, now 
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',current_step_key=(SELECT step_key FROM workflow_steps WHERE workflow_id=? AND position=?),cancel_requested_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, ref.ID, position, now, ref.ID); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE chat_threads SET status='busy',updated_at=? WHERE id=?`, now, ref.ThreadID)
+	_, err = agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now)
 	return err
 }
 
@@ -251,7 +251,7 @@ func interruptComicWorkflowTx(ctx context.Context, tx *sql.Tx, taskUUID, code, m
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='interrupted',completed_at=?,error_code=?,error_message=?,updated_at=? WHERE id=?`, now, code, message, now, ref.ID); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE chat_threads SET status='interrupted',updated_at=? WHERE id=?`, now, ref.ThreadID)
+	_, err = agent.RecomputeThreadStatusTx(ctx, tx, ref.ThreadID, now)
 	return err
 }
 

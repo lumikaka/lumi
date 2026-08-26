@@ -28,6 +28,534 @@ type riverAgentModel struct {
 	calls    int
 }
 
+type inlineWorkflowAgentModel struct {
+	projectUUID, chapterUUID string
+	storyStarted             chan struct{}
+	releaseStory             chan struct{}
+	storyErr                 error
+}
+
+func newInlineWorkflowAgentModel() *inlineWorkflowAgentModel {
+	return &inlineWorkflowAgentModel{storyStarted: make(chan struct{}, 1), releaseStory: make(chan struct{})}
+}
+
+func (*inlineWorkflowAgentModel) Check(context.Context, string, string, string) error { return nil }
+
+func (model *inlineWorkflowAgentModel) Generate(ctx context.Context, request llm.Request, onDelta func(string) error) (llm.Response, error) {
+	select {
+	case model.storyStarted <- struct{}{}:
+	default:
+	}
+	select {
+	case <-model.releaseStory:
+	case <-ctx.Done():
+		return llm.Response{}, ctx.Err()
+	}
+	if model.storyErr != nil {
+		return llm.Response{}, model.storyErr
+	}
+	content, _ := json.Marshal(map[string]string{
+		"chapter_code": "vol01.ch01", "title": "月光邮差", "content": "小狐狸完成了月光信件的旅程。", "content_format": "txt",
+	})
+	if onDelta != nil {
+		_ = onDelta(string(content))
+	}
+	return llm.Response{Content: string(content), FinishReason: "stop"}, nil
+}
+
+func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.ChatRequest) (llm.ChatResponse, error) {
+	for _, message := range request.Messages {
+		if strings.Contains(message.Content, `"workflow_uuid"`) && strings.Contains(message.Content, `"status":"completed"`) {
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "章节 Workflow 已完成，我已读取终态结果并继续回复。"}, FinishReason: "stop"}, nil
+		}
+		if strings.Contains(message.Content, `"workflow_uuid"`) && strings.Contains(message.Content, `"success":false`) {
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "章节 Workflow 未完成，我已读取结构化终态并向用户说明。"}, FinishReason: "stop"}, nil
+		}
+	}
+	last := ""
+	if len(request.Messages) > 0 {
+		last = request.Messages[len(request.Messages)-1].Content
+	}
+	if strings.Contains(last, "发起章节生成") {
+		arguments, _ := json.Marshal(map[string]any{
+			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/generations",
+			"method":          "POST",
+			"request_body":    map[string]any{"prompt_key": "story_chapter", "prompt": "写出这一章的完整正文。"},
+			"response_filter": ".data | {uuid,status}",
+		})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-chapter-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+	}
+	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "旁路 Chat Run 已完成。"}, FinishReason: "stop"}, nil
+}
+
+type inlineWorkflowTestEnv struct {
+	ctx      context.Context
+	projects *project.Manager
+	agents   *agent.Service
+	project  project.Summary
+	provider provider.Provider
+	chapter  story.Chapter
+}
+
+func setupInlineWorkflowTestEnv(t *testing.T, model *inlineWorkflowAgentModel) inlineWorkflowTestEnv {
+	t.Helper()
+	ctx := context.Background()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers := provider.NewService(app, provider.NewMemorySecretStore())
+	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/inline-model", APIKey: "inline-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queue := NewManager(providers, model, nil)
+	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
+	agents := agent.NewService(projects, providers, model, queue, nil)
+	queue.WithAgentService(agents)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	created, err := projects.Create(ctx, "Inline Workflow", project.ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = projects.Close(); _ = app.Close() })
+	model.projectUUID = created.UUID
+	var chapter story.Chapter
+	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
+		var createErr error
+		chapter, createErr = story.NewService(store).CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "第一章"})
+		return createErr
+	}); err != nil {
+		t.Fatal(err)
+	}
+	model.chapterUUID = chapter.UUID
+	return inlineWorkflowTestEnv{ctx: ctx, projects: projects, agents: agents, project: created, provider: configured, chapter: chapter}
+}
+
+func waitInlineWorkflow(t *testing.T, env inlineWorkflowTestEnv, threadUUID string) agent.Workflow {
+	t.Helper()
+	deadline := time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		workflows, err := env.agents.ListWorkflows(env.ctx, env.project.UUID)
+		if err == nil {
+			for _, workflow := range workflows {
+				if workflow.Kind == agent.WorkflowStoryChapter && workflow.ThreadUUID == threadUUID {
+					return workflow
+				}
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("inline workflow was not persisted")
+	return agent.Workflow{}
+}
+
+func waitTurnStatus(t *testing.T, env inlineWorkflowTestEnv, threadUUID, status string) agent.Turn {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		turns, err := env.agents.ListTurns(env.ctx, env.project.UUID, threadUUID)
+		if err == nil && len(turns) > 0 && turns[len(turns)-1].Status == status {
+			return turns[len(turns)-1]
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatalf("thread %s did not reach %s", threadUUID, status)
+	return agent.Turn{}
+}
+
+func TestChatToolWorkflowFailureAndCancellationResumeStructuredToolResults(t *testing.T) {
+	for _, test := range []struct {
+		name, terminal string
+		fail           bool
+	}{
+		{name: "failed", terminal: agent.WorkflowFailed, fail: true},
+		{name: "cancelled", terminal: agent.WorkflowCancelled},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			model := newInlineWorkflowAgentModel()
+			if test.fail {
+				model.storyErr = &llm.Error{Code: "test_generation_failed", SafeMessage: "测试生成失败。", Retryable: false}
+			}
+			env := setupInlineWorkflowTestEnv(t, model)
+			thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "终态对话", ProviderUUID: env.provider.UUID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起章节生成"}); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-model.storyStarted:
+			case <-time.After(8 * time.Second):
+				t.Fatal("chapter Workflow did not start")
+			}
+			workflow := waitInlineWorkflow(t, env, thread.UUID)
+			if test.fail {
+				close(model.releaseStory)
+			} else if _, err := env.agents.CancelWorkflow(env.ctx, env.project.UUID, workflow.UUID); err != nil {
+				t.Fatal(err)
+			}
+			waitTurnStatus(t, env, thread.UUID, agent.TurnCompleted)
+			workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+			if err != nil || workflow.Status != test.terminal {
+				t.Fatalf("workflow=%+v err=%v", workflow, err)
+			}
+			items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var results, replies int
+			for _, item := range items.Items {
+				if item.ItemType == "tool_result" {
+					results++
+					var payload struct {
+						Success bool `json:"success"`
+						Data    struct {
+							Status string `json:"status"`
+						} `json:"data"`
+						Error struct {
+							Code    string `json:"code"`
+							Message string `json:"message"`
+							Details string `json:"details"`
+						} `json:"error"`
+					}
+					if err := json.Unmarshal([]byte(item.Content), &payload); err != nil || payload.Success || payload.Data.Status != test.terminal || payload.Error.Code == "" || payload.Error.Message != "异步生成未完成。" || payload.Error.Details != "" {
+						t.Fatalf("terminal tool result=%s err=%v", item.Content, err)
+					}
+				}
+				if item.ItemType == "assistant_message" && strings.Contains(item.Content, "结构化终态") {
+					replies++
+				}
+			}
+			if results != 1 || replies != 1 {
+				t.Fatalf("results=%d replies=%d items=%+v", results, replies, items.Items)
+			}
+			if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+				var status string
+				if err := store.DB().Table("workflow_awaits").Select("status").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Scan(&status).Error; err != nil {
+					return err
+				}
+				if status != "resumed" {
+					t.Fatalf("await status=%s", status)
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestAbortWaitingChatTurnCancelsOwnedWorkflowWithoutResume(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "取消父 Run", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起章节生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-model.storyStarted:
+	case <-time.After(8 * time.Second):
+		t.Fatal("chapter Workflow did not start")
+	}
+	workflow := waitInlineWorkflow(t, env, thread.UUID)
+	aborted, err := env.agents.Abort(env.ctx, env.project.UUID, thread.UUID)
+	if err != nil || aborted.UUID != turn.UUID || aborted.Status != agent.TurnCancelled {
+		t.Fatalf("abort=%+v err=%v", aborted, err)
+	}
+	deadline := time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+		if err == nil && workflow.Status == agent.WorkflowCancelled {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if workflow.Status != agent.WorkflowCancelled {
+		t.Fatalf("owned workflow=%+v err=%v", workflow, err)
+	}
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items.Items {
+		if item.ItemType == "tool_result" || item.ItemType == "assistant_message" {
+			t.Fatalf("cancelled parent was resumed by item %+v", item)
+		}
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		var awaitStatus, runStatus string
+		if err := store.DB().Table("workflow_awaits").Select("status").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Scan(&awaitStatus).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("chat_runs").Select("status").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Scan(&runStatus).Error; err != nil {
+			return err
+		}
+		if awaitStatus != "cancelled" || runStatus != agent.TurnCancelled {
+			t.Fatalf("await=%s run=%s", awaitStatus, runStatus)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReconcileRepairsTerminalInlineWorkflowAndResumeIsIdempotent(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "重启恢复", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起章节生成"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-model.storyStarted:
+	case <-time.After(8 * time.Second):
+		t.Fatal("chapter Workflow did not start")
+	}
+	workflow := waitInlineWorkflow(t, env, thread.UUID)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		now := time.Now().UTC()
+		if err := store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=?,completed_at=?,updated_at=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?)`, `{"chapter_uuid":"`+env.chapter.UUID+`"}`, now, now, workflow.UUID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(`UPDATE workflows SET status='completed',completed_at=?,updated_at=? WHERE uuid=?`, now, now, workflow.UUID).Error; err != nil {
+			return err
+		}
+		// Repeated opens cover both the missing terminal projection and a
+		// duplicate attempt to deliver the same unique Resume job.
+		if err := env.agents.ReconcileOnOpen(env.ctx, store); err != nil {
+			return err
+		}
+		return env.agents.ReconcileOnOpen(env.ctx, store)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitTurnStatus(t, env, thread.UUID, agent.TurnCompleted)
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var results, replies int
+	for _, item := range items.Items {
+		if item.ItemType == "tool_result" {
+			results++
+		}
+		if item.ItemType == "assistant_message" && strings.Contains(item.Content, "Workflow 已完成") {
+			replies++
+		}
+	}
+	if results != 1 || replies != 1 {
+		t.Fatalf("reconcile duplicated output: results=%d replies=%d items=%+v", results, replies, items.Items)
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		var awaits, resumed int64
+		if err := store.DB().Table("workflow_awaits").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Count(&awaits).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflow_awaits").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND status='resumed'", workflow.UUID).Count(&resumed).Error; err != nil {
+			return err
+		}
+		if awaits != 1 || resumed != 1 {
+			t.Fatalf("awaits=%d resumed=%d", awaits, resumed)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestChatToolChapterGenerationWaitsWithoutShadowThreadAndResumes(t *testing.T) {
+	ctx := context.Background()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers := provider.NewService(app, provider.NewMemorySecretStore())
+	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/inline-model", APIKey: "inline-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := newInlineWorkflowAgentModel()
+	queue := NewManager(providers, model, nil)
+	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
+	agents := agent.NewService(projects, providers, model, queue, nil)
+	queue.WithAgentService(agents)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	created, err := projects.Create(ctx, "Inline Workflow", project.ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = projects.Close(); _ = app.Close() })
+	model.projectUUID = created.UUID
+	var chapter story.Chapter
+	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
+		var createErr error
+		chapter, createErr = story.NewService(store).CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "第一章"})
+		return createErr
+	}); err != nil {
+		t.Fatal(err)
+	}
+	model.chapterUUID = chapter.UUID
+	thread, err := agents.CreateThread(ctx, created.UUID, agent.CreateThreadInput{Title: "当前对话", ProviderUUID: configured.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := agents.CreateTurn(ctx, created.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起章节生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-model.storyStarted:
+	case <-time.After(8 * time.Second):
+		t.Fatal("chapter Workflow did not start")
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	var turns []agent.Turn
+	for time.Now().Before(deadline) {
+		turns, err = agents.ListTurns(ctx, created.UUID, thread.UUID)
+		if err == nil && len(turns) == 1 && turns[0].Status == agent.TurnWaitingForWorkflow {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if len(turns) != 1 || turns[0].Status != agent.TurnWaitingForWorkflow {
+		t.Fatalf("waiting turn=%+v err=%v", turns, err)
+	}
+	workflows, err := agents.ListWorkflows(ctx, created.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var inline agent.Workflow
+	for _, candidate := range workflows {
+		if candidate.Kind == agent.WorkflowStoryChapter && candidate.ThreadUUID == thread.UUID {
+			inline = candidate
+			break
+		}
+	}
+	if inline.UUID == "" || inline.PresentationMode != string(agent.PresentationInline) || inline.OriginTurnUUID != turn.UUID || inline.OriginToolCallUUID == "" || inline.AwaitStatus != "waiting" {
+		t.Fatalf("inline workflow=%+v", inline)
+	}
+	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
+		var threadCount, awaitCount int64
+		if err := store.DB().Table("chat_threads").Count(&threadCount).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflow_awaits").Where("status='waiting'").Count(&awaitCount).Error; err != nil {
+			return err
+		}
+		var owner struct {
+			ThreadUUID, TurnUUID, RunUUID, ToolCallUUID, RunStatus, ThreadType string
+		}
+		if err := store.DB().Raw(`SELECT th.uuid AS thread_uuid,t.uuid AS turn_uuid,r.uuid AS run_uuid,x.tool_call_uuid,r.status AS run_status,th.thread_type
+			FROM workflow_awaits a
+			JOIN workflows w ON w.id=a.workflow_id
+			JOIN chat_threads th ON th.id=a.chat_thread_id
+			JOIN chat_turns t ON t.id=a.chat_turn_id
+			JOIN chat_runs r ON r.id=a.chat_run_id
+			JOIN agent_tool_executions x ON x.id=a.tool_execution_id
+			WHERE w.uuid=?`, inline.UUID).Scan(&owner).Error; err != nil {
+			return err
+		}
+		if threadCount != 1 || awaitCount != 1 || owner.ThreadUUID != thread.UUID || owner.TurnUUID != turn.UUID || owner.RunUUID != inline.OriginRunUUID || owner.ToolCallUUID != inline.OriginToolCallUUID || owner.RunStatus != agent.TurnInProgress || owner.ThreadType != agent.ThreadTypeConversation {
+			t.Fatalf("threads=%d awaits=%d", threadCount, awaitCount)
+		}
+		if err := agents.ReconcileOnOpen(ctx, store); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	turns, err = agents.ListTurns(ctx, created.UUID, thread.UUID)
+	if err != nil || len(turns) != 1 || turns[0].Status != agent.TurnWaitingForWorkflow {
+		t.Fatalf("active await was replayed during reconcile: turns=%+v err=%v", turns, err)
+	}
+
+	// The story queue is deliberately blocked. A second Chat Run completing on
+	// the single agent queue proves the parent worker was released, not polling.
+	sideThread, err := agents.CreateThread(ctx, created.UUID, agent.CreateThreadInput{Title: "旁路对话", ProviderUUID: configured.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sideTurn, err := agents.CreateTurn(ctx, created.UUID, sideThread.UUID, agent.CreateTurnInput{InputText: "旁路消息"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		items, listErr := agents.ListTurns(ctx, created.UUID, sideThread.UUID)
+		if listErr == nil && len(items) == 1 && items[0].Status == agent.TurnCompleted {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	sideTurns, err := agents.ListTurns(ctx, created.UUID, sideThread.UUID)
+	if err != nil || len(sideTurns) != 1 || sideTurns[0].UUID != sideTurn.UUID || sideTurns[0].Status != agent.TurnCompleted {
+		t.Fatalf("side turn=%+v err=%v", sideTurns, err)
+	}
+
+	close(model.releaseStory)
+	deadline = time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		turns, err = agents.ListTurns(ctx, created.UUID, thread.UUID)
+		if err == nil && len(turns) == 1 && turns[0].Status == agent.TurnCompleted {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if len(turns) != 1 || turns[0].Status != agent.TurnCompleted {
+		t.Fatalf("resumed turn=%+v err=%v", turns, err)
+	}
+	items, err := agents.ListItems(ctx, created.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var toolResults, assistants int
+	for _, item := range items.Items {
+		if item.ItemType == "tool_result" {
+			toolResults++
+			var result map[string]any
+			if json.Unmarshal([]byte(item.Content), &result) != nil || result["success"] != true {
+				t.Fatalf("tool result=%s", item.Content)
+			}
+		}
+		if item.ItemType == "assistant_message" && strings.Contains(item.Content, "Workflow 已完成") {
+			assistants++
+		}
+	}
+	if toolResults != 1 || assistants != 1 {
+		t.Fatalf("tool results=%d assistants=%d items=%+v", toolResults, assistants, items.Items)
+	}
+	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
+		var awaitStatus, runStatus, threadStatus string
+		if err := store.DB().Table("workflow_awaits").Select("status").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", inline.UUID).Scan(&awaitStatus).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("chat_runs").Select("status").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Scan(&runStatus).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("chat_threads").Select("status").Where("uuid=?", thread.UUID).Scan(&threadStatus).Error; err != nil {
+			return err
+		}
+		if awaitStatus != "resumed" || runStatus != agent.TurnCompleted || threadStatus != agent.ThreadIdle {
+			t.Fatalf("await=%s run=%s thread=%s", awaitStatus, runStatus, threadStatus)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func newRiverAgentModel() *riverAgentModel {
 	return &riverAgentModel{started: make(chan struct{}, 1), release: make(chan struct{})}
 }

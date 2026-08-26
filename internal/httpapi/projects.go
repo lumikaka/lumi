@@ -168,6 +168,74 @@ func decodeJSON(c echo.Context, destination any) error {
 	return decodeJSONLimit(c, destination, 1<<20)
 }
 
+func decodeUniqueJSON(c echo.Context, destination any) error {
+	if !strings.HasPrefix(strings.ToLower(c.Request().Header.Get(echo.HeaderContentType)), echo.MIMEApplicationJSON) {
+		return NewError(http.StatusUnsupportedMediaType, "unsupported_media_type", "请求格式无效", "写请求必须使用 application/json。", nil)
+	}
+	raw, err := io.ReadAll(http.MaxBytesReader(c.Response(), c.Request().Body, 1<<20))
+	if err != nil || !json.Valid(raw) {
+		return NewError(http.StatusBadRequest, "invalid_json", "JSON 请求无效", "请检查字段名与 JSON 语法。", err)
+	}
+	if err := rejectDuplicateJSONFields(raw); err != nil {
+		return NewError(http.StatusBadRequest, "invalid_json", "JSON 请求无效", "同一个 JSON object 中不能重复字段。", err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		return NewError(http.StatusBadRequest, "invalid_json", "JSON 请求无效", "请检查字段名与 JSON 语法。", err)
+	}
+	return nil
+}
+
+func rejectDuplicateJSONFields(raw []byte) error {
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	var walk func() error
+	walk = func() error {
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		delimiter, ok := token.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delimiter {
+		case '{':
+			seen := map[string]struct{}{}
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return errors.New("JSON object key must be a string")
+				}
+				if _, exists := seen[key]; exists {
+					return errors.New("duplicate JSON field: " + key)
+				}
+				seen[key] = struct{}{}
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		case '[':
+			for decoder.More() {
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		default:
+			return errors.New("invalid JSON delimiter")
+		}
+	}
+	return walk()
+}
+
 func decodeJSONLimit(c echo.Context, destination any, limit int64) error {
 	if !strings.HasPrefix(strings.ToLower(c.Request().Header.Get(echo.HeaderContentType)), echo.MIMEApplicationJSON) {
 		return NewError(http.StatusUnsupportedMediaType, "unsupported_media_type", "请求格式无效", "写请求必须使用 application/json。", nil)

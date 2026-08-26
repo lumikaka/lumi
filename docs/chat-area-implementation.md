@@ -18,7 +18,7 @@
 - [x] 线程详情顶部栏、返回、折叠/关闭、运行状态和失败状态。
 - [x] 点击“新建会话”直接进入草稿对话，首次发送时持久化会话与首轮消息，并以首条消息前 60 个字符生成标题。
 - [x] 按 turn 分组的消息流、用户浅色气泡、Assistant 无气泡文本、工具调用与错误状态。
-- [x] 等待用户输入、已回答输入、单选/多选、提交和取消状态。
+- [x] 等待用户输入、已回答输入、v4 单次 1–3 个互斥单选问题、推荐项、客户端 Other、提交和取消状态；v2/v3 历史单选/多选继续展示。
 - [x] 输入区高度、提示、发送/停止按钮、Enter/Shift+Enter 与转向快捷键。
 - [x] `premise_asset_generation` 与 `asset_reference` 场景支持选择或粘贴最多 4 张 PNG/JPEG/WebP；显示本地缩略图和上传状态，支持移除与失败重试，未就绪时禁止发送。
 - [x] 图片引用用 `chat_item_file_references` / `chat_follow_up_file_references` 持久化；内部只关联 bigint ID，API/WS 只返回 UUIDv7、公开元数据和受控 `content_url`。删除排队项同步解除引用。

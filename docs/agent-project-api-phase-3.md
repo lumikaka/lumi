@@ -1,11 +1,11 @@
-# Agent Project API 当前架构（`project_api_v2`）
+# Agent Project API 当前架构（`project_api_v4`）
 
 日期：2026-08-21  
 步骤二基线：`86abf15f16694d72b0ae2e920ace064af364c20c`
 
 ## 结论
 
-四个 Scene 的新 Run 统一使用 `project_api_v2` / `project_api_tools`，共享同一组四个工具，并可调用服务端当前注册的全部项目 API Route。原有 74 条显式 Agent Route 继续作为经过审查的安全与性能覆盖层。Scene 不再是工具或文档权限容器，只提供运行时身份、项目/Subject 事实、安全边界、图片参考策略和 Guide 推荐。
+新 Run 统一使用 `project_api_v4` / `project_api_tools`，共享 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input` 四个工具，并可调用服务端当前注册的全部项目 API Route。原有显式 Agent Route 继续作为经过审查的安全与性能覆盖层。Thread 不再以 Scene 或 subject 决定工具权限；当前 Turn 的多资源 Reference 提供图片与业务上下文。
 
 `request_api` 不访问 Lumi 的 localhost 或任意外部 URL。可用 Route 从 Echo 的 `/api/v1/projects/:project_uuid/...` 注册结果自动装配：已审查 Route 优先使用领域服务分发；其余 Route 或超出旧覆盖层 schema 的合法参数通过进程内 Echo handler 执行。
 
@@ -13,7 +13,7 @@
 
 | 层面 | 权威职责 |
 | --- | --- |
-| Tool Protocol | 新 Run 固定快照 `project_api_v2` / `project_api_tools`；更早 Project API 协议不恢复 |
+| Tool Protocol | 新 Run 固定快照 `project_api_v4` / `project_api_tools`；v3、v2 与 legacy typed 只按冻结协议恢复 |
 | SceneDefinition | `Key`、`Scopes`、Prompt key、`RecommendedGuideIDs`、Subject 约束、`ImageReferencePolicy` |
 | Tool Set | 所有有效 Scene 按固定顺序获得 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input` |
 | Guide Registry | 声明 capability ID、说明、所需工具、上下文/输入前提和 Guide 路径 |
@@ -22,7 +22,7 @@
 | Domain Service | 校验项目/资源归属、业务状态、SQLite 事实、revision 和文件来源 |
 | Prompt Catalog | Base Prompt 提供稳定规则；Scene Prompt 提供权威上下文并动态注入推荐 Guide 路径 |
 
-新 Thread、Turn、steering 和正常 follow-up 都创建 v2 snapshot。queued follow-up 复用来源 Turn 的冻结 snapshot；restart 和 user-input resume 读取持久化 snapshot。已完成历史仍可查看，但更早 Project API Run 和旧文档工具名不会被恢复或映射。
+新 Thread、Turn、steering 和正常 follow-up 都创建 v4 snapshot。queued follow-up 复用来源 Turn 的冻结 snapshot；restart 和 user-input resume 读取持久化 snapshot。v3/v2 Run 保留旧单题单选/多选 schema 与回答语义，legacy typed 使用隔离恢复工具集；任何历史 Run 都不会静默改套 v4 schema。
 
 ## Scene 与 Guide
 
@@ -56,7 +56,7 @@ Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持�
 - `file_uuid`：当前会话 `image_gen` 新返回、用途与当前上下文匹配且尚未消费的文件。
 - `upload_uuid`：当前项目 ready 且尚未消费的上传。
 
-已有设定项的 `current_variant.asset.uuid`、当前消息附件或其他项目文件不能直接充当 `file_uuid`；已有项目图片只能先作为 `image_gen.reference_file_uuids`，再提交新输出。
+已有设定项的 `current_variant.asset.uuid`、当前消息附件或其他项目文件不能直接充当 `file_uuid`；已有项目图片只能先作为当前 Turn Reference 传给 `image_gen.reference_uuids`，再提交新输出。
 
 后端先按当前项目和 UUID 查询文件，再依次校验会话、绑定上下文、kind/purpose 和消费状态：
 
@@ -79,14 +79,14 @@ Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持�
 - 所有请求与响应只使用 UUIDv7 和公开字段；投影递归排除内部 `id`、路径、metadata、secret 和 credential。
 - 每次 `request_api` 必须提供从 `.data` 开始的有限 `response_filter`。
 - 写入 intent 先持久化；execution UUID / idempotency key 防止重启后重复创建。
-- 危险 Route 以 SHA-256 请求指纹绑定 route、project、target、method/path/query/body、revision 与确认选项，必须单独调用 `request_user_input`。
+- 危险 Route 以 SHA-256 请求指纹绑定 route、project、target、method/path/query/body、revision、唯一 question id 与确认选项，必须单独调用 `request_user_input`。v4 第一项是安全推荐项，只有后续被绑定的明确危险选项可授权；Other 不授权。
 - 未配置显式风险覆盖层的 GET Route 默认为只读低风险；其余 Route 默认要求请求指纹绑定的用户确认。Provider/密钥、任意本地路径及所有非项目 API 仍不可调用。
 
 ## 历史恢复边界
 
-- 新 Run：只创建 `project_api_v2` snapshot。
-- v2 Run：可按冻结 snapshot 在 restart、steering、follow-up 和 user-input resume 中恢复。
-- 更早 Project API Run：明确拒绝恢复；不提供工具别名或协议映射。
+- 新 Run：只创建 `project_api_v4` snapshot。
+- v4 Run：`request_user_input` 一次持久化 1–3 个互斥单选问题，服务端生成选项 UUIDv7，模型按 question id 收到 `{answers:[label_or_text]}`。
+- v3/v2 Run：可按冻结 snapshot 在 restart、steering、follow-up 和 user-input resume 中恢复；继续使用旧单题单选/多选 contract。
 - 已完成历史：数据库审计项可照常查看，不重写 tool name、arguments 或 result。
 - `legacy_typed_tools`：只由它自己的持久化历史 snapshot 进入隔离 recovery 路径，不参与新 Run 装配，也不提供已移除名称的兼容。
 
@@ -98,7 +98,7 @@ Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持�
 - Overview、三份 Guide 和全部 API Contract 可读；未注册路径、Scene 路径、Query、Fragment、编码和路径穿越拒绝。
 - Overview 能力/Contract 文档索引、不包含具体 Route、完整 system prompt 注入与 Turn 级快照、静态 Guide/API Contract、Route 覆盖和 96 KiB 文档上限。
 - Scene Prompt 只包含权威上下文与推荐 Guide；旧默认自动迁移、自定义 Prompt 保留。
-- 更早 Project API 协议拒绝、v2 正常恢复、旧文档工具名拒绝。
+- v4 严格问题 schema 与回答映射、v3/v2 正常恢复、旧文档工具名拒绝。
 - 已有设定图直接 POST 的准确来源错误，以及“读取 Guide → 已有项目图片作为参考 → 新输出创建资产”的完整回归。
 - 当前消息附件、绑定资产自动参考、图片替换、派生设定项、Storyboard 全量更新和危险操作确认。
 

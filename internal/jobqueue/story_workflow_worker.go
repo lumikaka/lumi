@@ -223,6 +223,9 @@ func (runtime *projectRuntime) completeStoryWorkflowTask(ctx context.Context, re
 		if err := completeStoryTaskWorkflowTx(ctx, tx, record.UUID, resultPayload, now); err != nil {
 			return err
 		}
+		if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err

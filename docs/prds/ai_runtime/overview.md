@@ -35,7 +35,7 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 
 ### Project Chat Prompt 协议
 
-新 Chat Run 使用 `project_api_v3`。System Prompt 只含静态 Agent 规则、API Overview 和当前 `project_uuid`；生成语言等可变事实由 Agent 按需通过 Project API 读取。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。
+新 Chat Run 使用 `project_api_v4`。System Prompt 只含静态 Agent 规则、API Overview 和当前 `project_uuid`；生成语言等可变事实由 Agent 按需通过 Project API 读取。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。v4 将 `request_user_input` 冻结为 1–3 个互斥单选问题和按 question id 返回的回答；v3/v2 与 legacy typed Run 只按各自历史 schema 恢复。
 
 ## Feature 列表
 
@@ -51,4 +51,4 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 |---|---|
 | AI Provider | 提供 ready/active 状态和默认模型；项目库只保存 Provider UUIDv7 与模型名。 |
 | 章节、设定资产、漫画 Section、导出 | 业务域创建任务并定义输入输出语义，运行时只管理冻结和执行状态。 |
-| Chat thread / Workflow | Chat thread/run 与 Workflow 创建时冻结模型和 Prompt 协议；已有 v2/legacy Run 只按持久快照恢复。 |
+| Chat thread / Workflow | Chat thread/run 与 Workflow 创建时冻结模型和 Prompt 协议；已有 v3/v2/legacy Run 只按持久快照恢复。 |

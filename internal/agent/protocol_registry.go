@@ -6,7 +6,8 @@ const (
 	legacySceneProjectAssistant = "project_assistant"
 	ToolModeLegacyTyped         = "legacy_typed_tools"
 	ToolModeProjectAPI          = "project_api_tools"
-	ToolProtocolProjectAPI      = "project_api_v3"
+	ToolProtocolProjectAPI      = "project_api_v4"
+	ToolProtocolProjectV3       = "project_api_v3"
 	ToolProtocolProjectV2       = "project_api_v2"
 )
 

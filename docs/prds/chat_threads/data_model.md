@@ -10,6 +10,7 @@ projects ──< chat_threads
                  │                                └──< chat_user_input_requests
                  ├──< chat_events
                  ├──< chat_follow_ups ──< chat_context_references
+                 ├──< workflow_awaits >── workflows
                  └──< agent_context_summaries
 
 chat_context_references ──> files / premise_assets / comic_sections
@@ -22,6 +23,7 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 - `uuid` — TEXT NOT NULL UNIQUE，公开 Thread UUIDv7
 - `project_id` — INTEGER NOT NULL FK → `projects.id`
+- `thread_type` — `conversation|workflow`；普通对话使用聚合状态，独立 Workflow Thread 镜像其 Workflow 终态
 - `title` / `status` — 展示标题和 `idle|busy|waiting_for_input|completed|failed|cancelled|interrupted` 状态
 - `provider_uuid` / `model` / `model_source` — 创建时冻结的模型选择
 - `next_turn_sequence` / `next_item_sequence` / `next_event_sequence` — Thread 内递增序列
@@ -29,14 +31,15 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 ## 关联表
 
-- `chat_turns` — 排队输入、来源、状态、取消和执行时间；每个 Thread 内 queue sequence 有序。
-- `chat_runs` — Turn 的一次 Agent 执行，保存冻结模型、上下文大小、步骤数和终态。
+- `chat_turns` — 排队输入、来源、状态、取消和执行时间；每个 Thread 内 queue sequence 有序。等待异步 Workflow 时底层保持 `in_progress`，REST 投影为 `waiting_for_workflow`。
+- `chat_runs` — Turn 的一次 Agent 执行，保存冻结模型、上下文大小、步骤数和终态；Workflow 等待语义由唯一 `workflow_awaits` 关系补充。
 - `chat_items` — 用户、Assistant、工具、错误或输入请求等可读序列项。
 - `chat_events` — Thread 内 append-only 诊断事件。
 - `chat_follow_ups` — 可排序的待发送追问及其 promoted Turn。
-- `chat_user_input_requests` — Tool call 触发的单选或多选请求及回答状态。
+- `chat_user_input_requests` — Tool call 触发的可恢复用户输入。`schema_version` 为 `codex_questions_v1|legacy_choice_v1`；`request_json` 是请求唯一事实源，`response_json` 保存已校验回答。v4 请求包含 1–3 个带逻辑 `id` 的互斥单选问题和服务端生成的选项 UUIDv7；legacy 投影完整保留旧单选、多选与 Other。
 - `agent_tool_executions` — 工具意图、受控参数、幂等键与结果状态。
 - `agent_context_summaries` — 到指定 Item sequence 为止的持久上下文摘要。
+- `workflow_awaits` — 将一个异步 Workflow 唯一绑定到当前 Thread、Turn、Run 和 Tool Execution，保存 `waiting|ready|resuming|resumed|cancelled` 与内部 Resume Job 关联。
 
 ## 表：chat_context_references
 
@@ -64,4 +67,7 @@ chat_context_references ──> files / premise_assets / comic_sections
 2. 执行创建 Run、Item、工具和用户输入记录，事件只追加；当前 Turn 的 Steering 可追加自己的 Reference。
 3. Follow-up 保存自己的 Reference，可原子替换、提升为 Turn、立即引导或逻辑删除。
 4. 目标资源删除后保留 `resource_uuid` 与快照；冻结图片继续保护对应 File/Object，直到 Reference owner 删除。
-5. 客户端以 REST 重读列表、items 和 events；实时消息只触发目标 Thread 查询失效。
+5. Chat Tool 创建异步 Generation 时不创建新 Thread；父 Run 释放 worker，Workflow 终态以结构化 Tool Result 恢复同一 Run。父 Run 取消会取消其独占 await 和 Workflow，已取消父 Run 不会被晚到终态重新唤醒。
+6. Thread 状态由集中函数重算：用户输入或决策优先为 `waiting_for_input`；存在 queued、in-progress、Workflow-waiting Turn 或活动 Workflow 时为 `busy`；普通对话无活动项为 `idle`；仅独立 `workflow` Thread 镜像 Workflow 终态。
+7. 客户端以 REST 重读列表、items 和 events；实时消息只触发目标 Thread 查询失效。
+8. v4 回答必须覆盖请求中每个 question id，每题恰好使用一个所属选项 UUID 或非空 Other；写入回答、同 Tool call 的 Codex 形状 Tool Result、Run/Turn 排队和唯一 Resume Job 在同一事务完成。

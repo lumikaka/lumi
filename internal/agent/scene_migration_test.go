@@ -190,7 +190,7 @@ func TestStoryboardReferenceProjectAPIModeSurvivesUserInputAndFollowUp(t *testin
 				t.Fatalf("call %d lost frozen project API tool mode: %v", call, definitionNames(request.Tools))
 			}
 			if call == 1 {
-				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-input", Name: "request_user_input", Arguments: `{"input_type":"single_choice","question":"选择节奏","options":[{"label":"舒缓"},{"label":"紧凑"}]}`}}}, FinishReason: "tool_calls"}, nil
+				return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-input", Name: "request_user_input", Arguments: `{"questions":[{"header":"叙事节奏","id":"story_pace","question":"这次采用哪种叙事节奏？","options":[{"label":"舒缓 (Recommended)","description":"保留更多氛围和情绪铺垫。"},{"label":"紧凑","description":"更快推进关键情节和冲突。"}]}]}`}}}, FinishReason: "tool_calls"}, nil
 			}
 			return finalResponse("已按选择继续。"), nil
 		}
@@ -201,7 +201,7 @@ func TestStoryboardReferenceProjectAPIModeSurvivesUserInputAndFollowUp(t *testin
 		if err != nil || len(requests) != 1 {
 			t.Fatalf("requests=%+v err=%v", requests, err)
 		}
-		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{SelectedOptionUUIDs: []string{requests[0].Options[0].UUID}}); err != nil {
+		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"story_pace": {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID}}}); err != nil {
 			t.Fatal(err)
 		}
 		if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
@@ -759,9 +759,8 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 		}
 		deleteArguments, _ := json.Marshal(deleteRequestArguments)
 		confirmationArguments, _ := json.Marshal(map[string]any{
-			"input_type": "single_choice", "question": "是否将当前设定项移入回收站？",
-			"options":      []map[string]any{{"label": "确认移入回收站"}, {"label": "保留设定项"}},
-			"confirmation": map[string]any{"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID, "expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(deleteRequest), "confirm_option": 0},
+			"questions":    []map[string]any{{"header": "删除确认", "id": "delete_asset", "question": "是否将当前设定项移入回收站？", "options": []map[string]any{{"label": "保留设定项 (Recommended)", "description": "不执行删除并保留当前设定项。"}, {"label": "确认移入回收站", "description": "执行已绑定到当前版本的删除操作。"}}}},
+			"confirmation": map[string]any{"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID, "expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(deleteRequest), "question_id": "delete_asset", "confirm_option": 1},
 		})
 		harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
 			if !containsString(definitionNames(request.Tools), "request_api") || containsString(definitionNames(request.Tools), currentProjectAPIToolName) {
@@ -792,10 +791,10 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 			t.Fatalf("asset changed before confirmation=%+v err=%v", before, err)
 		}
 		requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
-		if err != nil || len(requests) != 1 || !strings.Contains(requests[0].Question, RoutePremiseAssetDelete) || !strings.Contains(requests[0].Question, asset.UUID) {
+		if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || !strings.Contains(requests[0].Questions[0].Question, RoutePremiseAssetDelete) || !strings.Contains(requests[0].Questions[0].Question, asset.UUID) {
 			t.Fatalf("bound confirmation request=%+v err=%v", requests, err)
 		}
-		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{SelectedOptionUUIDs: []string{requests[0].Options[0].UUID}}); err != nil {
+		if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{"delete_asset": {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID}}}); err != nil {
 			t.Fatal(err)
 		}
 		tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
@@ -815,6 +814,9 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 		deleted, err := production.NewService(harness.store, nil).GetPremiseAsset(ctx, asset.UUID)
 		if err != nil || deleted.DeletedAt == nil {
 			t.Fatalf("confirmed asset was not soft-deleted=%+v err=%v", deleted, err)
+		}
+		if replayAllowed, err := hasMatchingDangerousConfirmation(ctx, harness.store, tc, deleteRequest); err != nil || replayAllowed {
+			t.Fatalf("completed dangerous request did not consume its confirmation: allowed=%v err=%v", replayAllowed, err)
 		}
 	})
 }

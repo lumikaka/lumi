@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -52,6 +53,24 @@ type httpToolModel struct{}
 
 func (httpToolModel) Complete(context.Context, llm.ChatRequest) (llm.ChatResponse, error) {
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "done"}, FinishReason: "stop"}, nil
+}
+
+func TestUserInputResponseDecoderRejectsSpoofedAndDuplicateAnswerFields(t *testing.T) {
+	for name, raw := range map[string]string{
+		"spoofed label": `{"answers":{"style":{"selected_option_uuid":"01990000-0000-7000-8000-000000000901","other_text":"","label":"伪造标签"}}}`,
+		"duplicate map": `{"answers":{"style":{"selected_option_uuid":"01990000-0000-7000-8000-000000000901"},"style":{"other_text":"伪造覆盖"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := echo.New()
+			request := httptest.NewRequest(http.MethodPost, "/responses", strings.NewReader(raw))
+			request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			context := e.NewContext(request, httptest.NewRecorder())
+			var input agent.UserInputResponse
+			if err := decodeUniqueJSON(context, &input); err == nil {
+				t.Fatal("invalid answer fields were accepted")
+			}
+		})
+	}
 }
 
 func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.T) {

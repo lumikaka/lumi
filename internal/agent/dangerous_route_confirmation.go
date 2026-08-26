@@ -16,6 +16,7 @@ type dangerousConfirmationBinding struct {
 	TargetUUID         string `json:"target_uuid"`
 	ExpectedRevision   int64  `json:"expected_revision"`
 	RequestFingerprint string `json:"request_fingerprint"`
+	QuestionID         string `json:"question_id,omitempty"`
 	ConfirmOption      int    `json:"confirm_option"`
 }
 
@@ -34,6 +35,17 @@ func validateDangerousConfirmationBindingWithRoutes(tc toolContext, binding dang
 	}
 	if inputType != "single_choice" || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || binding.ExpectedRevision < 0 || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption < 0 || binding.ConfirmOption >= optionCount {
 		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认绑定无效", "confirmation 必须绑定当前 Project、具体目标 UUID、稳定 request_fingerprint、非负 revision 和有效的单选确认项。", nil)
+	}
+	return route, nil
+}
+
+func (service *Service) validateCodexDangerousConfirmationBinding(tc toolContext, binding dangerousConfirmationBinding, questions []UserInputQuestion) (agentAPIRoute, error) {
+	route, ok := agentAPIRouteByIDFromRoutes(strings.TrimSpace(binding.Route), service.requestAPIRoutes())
+	if !ok || route.Risk != RiskDangerous || !route.RequiresConfirmation {
+		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认 Route 无效", "confirmation.route 必须是要求全局确认的已注册危险 Route。", nil)
+	}
+	if len(questions) != 1 || binding.QuestionID != questions[0].ID || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || binding.ExpectedRevision < 0 || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption <= 0 || binding.ConfirmOption >= len(questions[0].Options) {
+		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认绑定无效", "confirmation 必须绑定当前 Project、唯一 question_id、具体目标 UUID、稳定 request_fingerprint、非负 revision 和非推荐的有效确认项；第一项保留为安全选项。", nil)
 	}
 	return route, nil
 }
@@ -110,12 +122,14 @@ func containsAny(value string, candidates []string) bool {
 
 func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store, tc toolContext, request agentAPIRequest) (bool, error) {
 	var rows []struct {
+		ExecutionID   int64
 		ArgumentsJSON string
-		OptionsJSON   string
+		SchemaVersion string
+		RequestJSON   string
 		ResponseJSON  string
 	}
 	err := store.DB().WithContext(ctx).Table("agent_tool_executions AS executions").
-		Select("executions.arguments_json,requests.options_json,requests.response_json").
+		Select("executions.id AS execution_id,executions.arguments_json,requests.schema_version,requests.request_json,requests.response_json").
 		Joins("JOIN chat_user_input_requests AS requests ON requests.run_id=executions.run_id AND requests.tool_call_uuid=executions.tool_call_uuid").
 		Where("executions.run_id=? AND executions.tool_name='request_user_input' AND executions.state='completed' AND requests.response_json IS NOT NULL", tc.Run.ID).
 		Order("executions.id DESC").Scan(&rows).Error
@@ -128,21 +142,20 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 		var arguments struct {
 			Confirmation *dangerousConfirmationBinding `json:"confirmation"`
 		}
-		var options []UserInputOption
-		var response struct {
-			SelectedOptionUUIDs []string `json:"selected_option_uuids"`
-		}
-		if json.Unmarshal([]byte(row.ArgumentsJSON), &arguments) != nil || arguments.Confirmation == nil ||
-			json.Unmarshal([]byte(row.OptionsJSON), &options) != nil || json.Unmarshal([]byte(row.ResponseJSON), &response) != nil {
+		if json.Unmarshal([]byte(row.ArgumentsJSON), &arguments) != nil || arguments.Confirmation == nil {
 			continue
 		}
 		binding := arguments.Confirmation
-		if binding.Route != request.Route.ID || binding.ProjectUUID != tc.ProjectUUID || binding.TargetUUID != request.TargetUUID || binding.ExpectedRevision != expectedRevision || binding.RequestFingerprint != expectedFingerprint || binding.ConfirmOption < 0 || binding.ConfirmOption >= len(options) {
+		if binding.Route != request.Route.ID || binding.ProjectUUID != tc.ProjectUUID || binding.TargetUUID != request.TargetUUID || binding.ExpectedRevision != expectedRevision || binding.RequestFingerprint != expectedFingerprint {
 			continue
 		}
-		confirmedUUID := options[binding.ConfirmOption].UUID
-		for _, selected := range response.SelectedOptionUUIDs {
-			if selected == confirmedUUID {
+		confirmed, err := dangerousConfirmationSelected(row.SchemaVersion, row.RequestJSON, row.ResponseJSON, *binding)
+		if err == nil && confirmed {
+			consumed, err := dangerousConfirmationAlreadyConsumed(ctx, store, tc.Run.ID, row.ExecutionID, expectedFingerprint)
+			if err != nil {
+				return false, err
+			}
+			if !consumed {
 				return true, nil
 			}
 		}
@@ -150,10 +163,86 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 	return false, nil
 }
 
+func dangerousConfirmationAlreadyConsumed(ctx context.Context, store *project.Store, runID, confirmationExecutionID int64, fingerprint string) (bool, error) {
+	var executions []struct {
+		ArgumentsJSON string
+	}
+	if err := store.DB().WithContext(ctx).Table("agent_tool_executions").
+		Select("arguments_json").
+		Where("run_id=? AND id>? AND tool_name='request_api' AND state='completed'", runID, confirmationExecutionID).
+		Order("id").Scan(&executions).Error; err != nil {
+		return false, err
+	}
+	for _, execution := range executions {
+		var arguments map[string]any
+		if json.Unmarshal([]byte(execution.ArgumentsJSON), &arguments) != nil {
+			continue
+		}
+		if storedAgentRequestFingerprint(arguments) == fingerprint {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func storedAgentRequestFingerprint(arguments map[string]any) string {
+	query, _ := arguments["query"].(map[string]any)
+	body, _ := arguments["request_body"].(map[string]any)
+	return agentRequestFingerprintParts(stringArg(arguments, "__route_id"), stringArg(arguments, "__method"), stringArg(arguments, "__path"), query, body)
+}
+
+func dangerousConfirmationSelected(schemaVersion, requestJSON, responseJSON string, binding dangerousConfirmationBinding) (bool, error) {
+	if schemaVersion == userInputSchemaCodexQuestions {
+		var request struct {
+			Questions []UserInputQuestion `json:"questions"`
+		}
+		var response struct {
+			Answers map[string]UserInputAnswer `json:"answers"`
+		}
+		if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
+			return false, err
+		}
+		if err := json.Unmarshal([]byte(responseJSON), &response); err != nil {
+			return false, err
+		}
+		if len(request.Questions) != 1 || request.Questions[0].ID != binding.QuestionID || binding.ConfirmOption <= 0 || binding.ConfirmOption >= len(request.Questions[0].Options) {
+			return false, nil
+		}
+		answer, ok := response.Answers[binding.QuestionID]
+		return ok && strings.TrimSpace(answer.OtherText) == "" && answer.SelectedOptionUUID == request.Questions[0].Options[binding.ConfirmOption].UUID, nil
+	}
+	var legacyRequest struct {
+		Options []UserInputOption `json:"options"`
+	}
+	var legacyResponse struct {
+		SelectedOptionUUIDs []string `json:"selected_option_uuids"`
+	}
+	if err := json.Unmarshal([]byte(requestJSON), &legacyRequest); err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal([]byte(responseJSON), &legacyResponse); err != nil {
+		return false, err
+	}
+	if binding.ConfirmOption < 0 || binding.ConfirmOption >= len(legacyRequest.Options) {
+		return false, nil
+	}
+	confirmedUUID := legacyRequest.Options[binding.ConfirmOption].UUID
+	for _, selected := range legacyResponse.SelectedOptionUUIDs {
+		if selected == confirmedUUID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func agentRequestFingerprint(request agentAPIRequest) string {
+	return agentRequestFingerprintParts(request.Route.ID, request.Method, request.Path, request.Query, request.Body)
+}
+
+func agentRequestFingerprintParts(routeID, method, path string, query, body map[string]any) string {
 	canonical, _ := json.Marshal(map[string]any{
-		"route": request.Route.ID, "method": request.Method, "path": request.Path,
-		"query": request.Query, "request_body": request.Body,
+		"route": routeID, "method": method, "path": path,
+		"query": query, "request_body": body,
 	})
 	digest := sha256.Sum256(canonical)
 	return "sha256:" + hex.EncodeToString(digest[:])

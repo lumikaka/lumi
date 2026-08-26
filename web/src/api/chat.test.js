@@ -44,7 +44,7 @@ test('chat resources use project-scoped UUID routes and snake_case payloads', as
     await steerFollowUp('project uuid', 'thread uuid', 'follow uuid')
     await steerChatRun('project uuid', 'thread uuid', 'change direction', [premiseReference, fileReference])
     await abortChatTurn('project uuid', 'thread uuid')
-    await respondUserInput('project uuid', 'thread uuid', 'request uuid', { selected_option_uuids: ['option-uuid'] })
+    await respondUserInput('project uuid', 'thread uuid', 'request uuid', { answers: { art_style: { selected_option_uuid: 'option-uuid', other_text: '' } } })
   } finally { global.fetch = original }
 
   assert.equal(calls[0][0], '/api/v1/projects/project%20uuid/chat_threads?page=1&per_page=30')
@@ -62,6 +62,7 @@ test('chat resources use project-scoped UUID routes and snake_case payloads', as
   assert.deepEqual(JSON.parse(calls[7][1].body), { input_text: 'change direction', references: [premiseReference, fileReference] })
   assert.equal(calls[8][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/cancellations')
   assert.equal(calls[9][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/user_input_requests/request%20uuid/responses')
+  assert.deepEqual(JSON.parse(calls[9][1].body), { answers: { art_style: { selected_option_uuid: 'option-uuid', other_text: '' } } })
   assert.equal(calls[0][1].method, undefined)
   assert.ok(calls.slice(1).every(([, options]) => ['POST', 'PATCH'].includes(options.method)))
   assert.deepEqual(JSON.parse(calls[4][1].body), { position: 2 })
