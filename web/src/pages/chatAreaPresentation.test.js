@@ -236,10 +236,10 @@ test('terminal turn duration prefers execution timestamps and safely falls back 
 })
 
 test('chat history autoloads only near the top when an earlier page is available', () => {
-  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 71, hasPreviousPage: true, isFetchingPreviousPage: false }), true)
-  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 72, hasPreviousPage: true, isFetchingPreviousPage: false }), false)
-  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasPreviousPage: false, isFetchingPreviousPage: false }), false)
-  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasPreviousPage: true, isFetchingPreviousPage: true }), false)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 71, hasEarlierPage: true, isFetchingEarlierPage: false }), true)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 72, hasEarlierPage: true, isFetchingEarlierPage: false }), false)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasEarlierPage: false, isFetchingEarlierPage: false }), false)
+  assert.equal(shouldLoadEarlierChatItems({ scrollTop: 20, hasEarlierPage: true, isFetchingEarlierPage: true }), false)
 })
 
 test('chat history restores the visible turn after prepending an earlier page', () => {

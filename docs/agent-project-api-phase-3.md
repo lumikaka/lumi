@@ -43,7 +43,7 @@
 - `internal/agent/docs/api/*.md`：领域 API Contract。
 - `internal/agent/docs/guides/*.md`：可复用能力流程。
 
-`/api/v1/agent-docs/overview.md` 包含能力索引和领域 API Contract 文档索引，不展开具体 Route。能力索引固定列为 `capability_id`、说明、所需工具、上下文/输入前提、Guide 路径；文档索引指向 `api/chapter.md`、`api/comic*.md`、`api/generation.md`、`api/premise*.md`、`api/project*.md`、`api/story.md`、`api/storyboard.md` 和 `api/task.md`。Runtime 在创建 Turn 时渲染完整 Overview，将其写入冻结 Prompt snapshot，并原样追加到每次模型请求的 system prompt；模型据此选择并读取目标领域 Contract，具体 method/path 只进入需要它的调用上下文。
+`/api/v1/agent-docs/overview.md` 包含能力索引和领域 API Contract 文档索引，不展开具体 Route。能力索引直接以中文 Guide 路径标识能力，并列出说明、所需工具和上下文/输入前提；文档索引指向 `api/chapter.md`、`api/comic*.md`、`api/generation.md`、`api/premise*.md`、`api/project*.md`、`api/story.md`、`api/storyboard.md` 和 `api/task.md`。Runtime 在创建 Turn 时渲染完整 Overview，将其写入冻结 Prompt snapshot，并原样追加到每次模型请求的 system prompt；模型据此选择并读取目标领域 Contract，具体 method/path 只进入需要它的调用上下文。
 
 Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持精简，固定包含“API 调用顺序和说明”，并指向调用前必须阅读的 API Contract；method、path、字段和响应仍只由 Contract 定义。文档读取只接受注册路径；旧英文 Guide、Scene 文档、任意文件、Query、Fragment 与路径穿越不在注册表中。
 

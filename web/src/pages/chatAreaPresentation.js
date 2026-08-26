@@ -80,8 +80,8 @@ function workflowSnapshot(workflow) {
   }
 }
 
-export function shouldLoadEarlierChatItems({ scrollTop, hasPreviousPage, isFetchingPreviousPage } = {}) {
-  return Boolean(hasPreviousPage && !isFetchingPreviousPage && Number(scrollTop) < 72)
+export function shouldLoadEarlierChatItems({ scrollTop, hasEarlierPage, isFetchingEarlierPage } = {}) {
+  return Boolean(hasEarlierPage && !isFetchingEarlierPage && Number(scrollTop) < 72)
 }
 
 export function captureChatScrollAnchor(container) {

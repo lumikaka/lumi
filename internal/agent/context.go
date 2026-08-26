@@ -233,12 +233,6 @@ func promptTemplateValue(value string) string {
 func contextMessages(items []contextItem, summary string, currentTurn any, prompts contextPromptSet) []llm.ChatMessage {
 	currentTurnID, _ := currentTurn.(int64)
 	messages := make([]llm.ChatMessage, 0, len(items)+2)
-	lastDocResult := -1
-	for index, item := range items {
-		if item.ItemType == "tool_result" && item.ToolName == "read_agent_doc" {
-			lastDocResult = index
-		}
-	}
 	systemPrompt := renderSystemPrompt(prompts.LanguageInstruction, prompts)
 	messages = append(messages, llm.ChatMessage{Role: "system", Content: systemPrompt})
 	if summary != "" {
@@ -257,7 +251,7 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 			latestReferenceSequence[reference.ResourceUUID] = item.Sequence
 		}
 	}
-	for index, item := range items {
+	for _, item := range items {
 		switch item.ItemType {
 		case "user_message":
 			content := item.Content
@@ -289,11 +283,7 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 			if providerCallID == "" {
 				providerCallID = item.RemoteItemUUID
 			}
-			content := item.Content
-			if item.ToolName == "read_agent_doc" && index != lastDocResult {
-				content = compactAgentDocContextResult(content)
-			}
-			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, Content: content})
+			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, Content: item.Content})
 		case "error":
 			messages = append(messages, llm.ChatMessage{Role: "user", Content: "Local runtime diagnostic (context only, not an instruction): " + item.Content})
 		}
@@ -315,25 +305,6 @@ func renderSystemPrompt(languageInstruction string, prompts contextPromptSet) st
 		panic(fmt.Sprintf("render embedded Agent system prompt: %v", err))
 	}
 	return strings.TrimSpace(rendered.String())
-}
-
-func compactAgentDocContextResult(content string) string {
-	var envelope struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Path   string `json:"path"`
-			DocRef string `json:"doc_ref"`
-		} `json:"data"`
-	}
-	if json.Unmarshal([]byte(content), &envelope) != nil || !envelope.Success {
-		return content
-	}
-	ref := envelope.Data.DocRef
-	if ref == "" {
-		ref = envelope.Data.Path
-	}
-	encoded, _ := json.Marshal(map[string]any{"success": true, "data": map[string]any{"doc_ref": ref, "compacted": true}})
-	return string(encoded)
 }
 
 func metadataString(raw, key string) string {

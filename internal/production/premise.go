@@ -776,12 +776,19 @@ func (service *Service) premiseAssetForToolExecution(ctx context.Context, execut
 }
 
 // CommitGeneratedPremiseAsset commits a breakdown crop through Asset Store and
-// creates its domain asset and first immutable variant in the final transaction.
+// binds it to a domain asset as an immutable image candidate.
+// An active asset with the same title is the same logical setting item: append
+// and select a new immutable candidate instead of failing the active-title
+// uniqueness constraint. A replay of the same task/title returns the candidate
+// it already committed so durable task retries do not create extra versions.
 func (service *Service) CommitGeneratedPremiseAsset(ctx context.Context, taskUUID, settingUUID string, input CreateAssetInput, reader filesReader) (PremiseAsset, error) {
 	assetType := strings.TrimSpace(input.AssetType)
 	title := strings.TrimSpace(input.Title)
 	if !validAssetType(assetType) || title == "" || len([]rune(title)) > 160 || len([]rune(strings.TrimSpace(input.Summary))) > 12000 {
 		return PremiseAsset{}, domainError(CodeValidation, "拆分资产无效", "asset_type 与 title 必须有效。", nil)
+	}
+	if existing, found, err := service.premiseAssetForBreakdownTask(ctx, taskUUID, title); err != nil || found {
+		return existing, err
 	}
 	tags, err := normalizeTags(input.Tags)
 	if err != nil {
@@ -817,27 +824,70 @@ func (service *Service) CommitGeneratedPremiseAsset(ctx context.Context, taskUUI
 			return notFound(err, "设置图不存在")
 		}
 		now := service.now().UTC()
-		record := premiseAssetRecord{UUID: assetUUID, ProjectID: p.ID, ActorID: actor.ID, AssetType: assetType, Title: title, Summary: strings.TrimSpace(input.Summary), PositionJSON: position, CropJSON: crop, CreatedAt: now, UpdatedAt: now}
-		if err := tx.Create(&record).Error; err != nil {
-			return conflictErr(err)
+		var record premiseAssetRecord
+		existingRecord := true
+		findErr := tx.Where("project_id = ? AND lower(title) = lower(?) AND deleted_at IS NULL", p.ID, title).Take(&record).Error
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			existingRecord = false
+			record = premiseAssetRecord{UUID: assetUUID, ProjectID: p.ID, ActorID: actor.ID, AssetType: assetType, Title: title, Summary: strings.TrimSpace(input.Summary), PositionJSON: position, CropJSON: crop, CreatedAt: now, UpdatedAt: now}
+			if err := tx.Create(&record).Error; err != nil {
+				return conflictErr(err)
+			}
+		} else if findErr != nil {
+			return findErr
 		}
 		domainID = record.ID
-		variant := assetVariantRecord{UUID: variantUUID, PremiseAssetID: record.ID, FileID: fileID, SourceSettingImageID: &setting.ID, VersionNo: 1, SourceType: "breakdown", CropJSON: crop, CreatedAt: now}
+		var version int
+		if err := tx.Model(&assetVariantRecord{}).Where("premise_asset_id = ?", record.ID).Select("COALESCE(MAX(version_no),0)+1").Scan(&version).Error; err != nil {
+			return err
+		}
+		variant := assetVariantRecord{UUID: variantUUID, PremiseAssetID: record.ID, FileID: fileID, SourceSettingImageID: &setting.ID, VersionNo: version, SourceType: "breakdown", CropJSON: crop, CreatedAt: now}
 		if err := tx.Create(&variant).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&record).Update("current_variant_id", variant.ID).Error; err != nil {
+		updates := map[string]any{
+			"asset_type": assetType, "title": title, "summary": strings.TrimSpace(input.Summary),
+			"position_json": position, "crop_json": crop, "current_variant_id": variant.ID,
+			"revision": gorm.Expr("revision + 1"), "updated_at": now,
+		}
+		if !existingRecord {
+			delete(updates, "revision")
+		}
+		if err := tx.Model(&premiseAssetRecord{}).Where("id = ?", record.ID).Updates(updates).Error; err != nil {
 			return err
 		}
 		if err := replaceTags(tx, record.ID, tags, now); err != nil {
 			return err
 		}
-		return appendPremiseAssetEvent(tx, record.ID, "asset_created_from_breakdown", map[string]any{"asset_uuid": record.UUID, "variant_uuid": variant.UUID, "setting_image_uuid": settingUUID}, now)
+		eventType := "asset_created_from_breakdown"
+		if existingRecord {
+			eventType = "asset_candidate_added_from_breakdown"
+		}
+		return appendPremiseAssetEvent(tx, record.ID, eventType, map[string]any{
+			"asset_uuid": record.UUID, "variant_uuid": variant.UUID, "setting_image_uuid": settingUUID,
+			"task_uuid": taskUUID, "title_key": strings.ToLower(title),
+		}, now)
 	}})
 	if err != nil {
 		return PremiseAsset{}, err
 	}
 	return service.premiseAssetDTO(ctx, domainID)
+}
+
+func (service *Service) premiseAssetForBreakdownTask(ctx context.Context, taskUUID, title string) (PremiseAsset, bool, error) {
+	if !isUUIDv7(taskUUID) {
+		return PremiseAsset{}, false, domainError(CodeValidation, "拆分任务 UUID 无效", "task_uuid 必须是 UUIDv7。", nil)
+	}
+	var assetID int64
+	err := service.store.DB().WithContext(ctx).Table("premise_asset_events").
+		Select("premise_asset_id").
+		Where("event_type IN ('asset_created_from_breakdown','asset_candidate_added_from_breakdown') AND json_extract(payload, '$.task_uuid') = ? AND json_extract(payload, '$.title_key') = ?", taskUUID, strings.ToLower(strings.TrimSpace(title))).
+		Order("id DESC").Limit(1).Scan(&assetID).Error
+	if err != nil || assetID == 0 {
+		return PremiseAsset{}, false, err
+	}
+	asset, err := service.premiseAssetDTO(ctx, assetID)
+	return asset, err == nil, err
 }
 
 func (service *Service) PremiseAssetForGenerationTask(ctx context.Context, taskUUID string) (PremiseAsset, bool, error) {

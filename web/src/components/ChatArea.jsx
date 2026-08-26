@@ -904,8 +904,8 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     queryKey: ['chat-items', projectUuid, selectedThreadUuid, 'pages'],
     queryFn: ({ pageParam }) => listChatItems(projectUuid, selectedThreadUuid, { before: pageParam, limit: MESSAGE_PAGE_LIMIT }),
     initialPageParam: '',
-    getPreviousPageParam: (firstPage) => firstPage.cursor_pagination?.has_more ? firstPage.cursor_pagination.prev_cursor : undefined,
-    getNextPageParam: () => undefined,
+    getPreviousPageParam: () => undefined,
+    getNextPageParam: (lastPage) => lastPage.cursor_pagination?.has_more ? lastPage.cursor_pagination.prev_cursor : undefined,
     enabled: expanded && Boolean(selectedThreadUuid),
   })
   const turnsQuery = useQuery({ queryKey: ['chat-turns', projectUuid, selectedThreadUuid], queryFn: () => listChatTurns(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
@@ -1022,11 +1022,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   }, [items.length])
 
   const loadEarlierMessages = useCallback(async () => {
-    if (!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage || isLoadingEarlierRef.current) return
+    if (!itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage || isLoadingEarlierRef.current) return
     isLoadingEarlierRef.current = true
     scrollAnchorRef.current = captureChatScrollAnchor(messagesRef.current)
     try {
-      await itemsQuery.fetchPreviousPage()
+      await itemsQuery.fetchNextPage()
     } finally {
       isLoadingEarlierRef.current = false
     }
@@ -1035,11 +1035,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const handleMessagesScroll = useCallback(() => {
     if (!shouldLoadEarlierChatItems({
       scrollTop: messagesRef.current?.scrollTop,
-      hasPreviousPage: itemsQuery.hasPreviousPage,
-      isFetchingPreviousPage: itemsQuery.isFetchingPreviousPage,
+      hasEarlierPage: itemsQuery.hasNextPage,
+      isFetchingEarlierPage: itemsQuery.isFetchingNextPage,
     })) return
     void loadEarlierMessages()
-  }, [itemsQuery.hasPreviousPage, itemsQuery.isFetchingPreviousPage, loadEarlierMessages])
+  }, [itemsQuery.hasNextPage, itemsQuery.isFetchingNextPage, loadEarlierMessages])
 
   const toggleExpanded = () => {
     if (onToggle) onToggle()
@@ -1133,12 +1133,12 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
         </header>
         <div className="chat-detail-body">
           <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
-            {itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
+            {itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingNextPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
             <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-            {turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasPreviousPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
+            {turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
             {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
           </div>
           <div className="chat-composer-shell">
@@ -1157,13 +1157,14 @@ function statusClass(status) {
 
 function turnActivityCopy(activity, t) {
   const runningTool = activity.activeTool
-  if (runningTool?.status === 'running' && runningTool.toolName === 'image_gen') return t('chat.activity.image_gen')
+  const toolVariables = { tool_name: runningTool?.toolName || 'controlled_tool' }
+  if (runningTool?.status === 'running' && runningTool.toolName === 'image_gen') return t('chat.activity.image_gen', toolVariables)
   if (runningTool?.status === 'running' && ['request_api', 'request_current_project_api'].includes(runningTool.toolName)) {
     const activityKey = currentProjectAPIActivityKey(runningTool.call?.content)
-    if (activityKey) return t(activityKey)
+    if (activityKey) return t(activityKey, toolVariables)
   }
-  if (runningTool?.status === 'running' && ['create_premise_asset', 'update_premise_asset'].includes(runningTool.toolName)) return t('chat.activity.writeback')
-  if (runningTool?.status === 'running' || runningTool?.status === 'pending') return t('chat.activity.tool_running', { tool_name: runningTool.toolName })
+  if (runningTool?.status === 'running' && ['create_premise_asset', 'update_premise_asset'].includes(runningTool.toolName)) return t('chat.activity.writeback', toolVariables)
+  if (runningTool?.status === 'running' || runningTool?.status === 'pending') return t('chat.activity.tool_running', toolVariables)
   if (runningTool) return t('chat.activity.finalizing')
   return t('chat.activity.thinking')
 }

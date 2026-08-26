@@ -34,25 +34,9 @@ const (
 	generationDocPath    = agentDocAPIBasePath + "/generation.md"
 	taskDocPath          = agentDocAPIBasePath + "/task.md"
 	maxAgentDocBytes     = 96 << 10
-
-	GuideStoryProfileManage      = "story_profile_manage"
-	GuideChapterCreate           = "chapter_create"
-	GuideChapterUpdate           = "chapter_update"
-	GuideChapterTrashManage      = "chapter_trash_manage"
-	GuidePremiseGenerate         = "premise_generate"
-	GuidePremiseAssetCreate      = "premise_asset_create"
-	GuidePremiseAssetMaintain    = "premise_asset_maintain"
-	GuidePremiseAssetTrashManage = "premise_asset_trash_manage"
-	GuideComicStoryboardGenerate = "comic_storyboard_generate"
-	GuideComicSectionManage      = "comic_section_manage"
-	GuideStoryboardManage        = "storyboard_manage"
-	GuideComicImageManage        = "comic_image_manage"
-	GuideComicSnapshotRestore    = "comic_snapshot_restore"
-	GuideComicExport             = "comic_export"
 )
 
 type agentGuideDefinition struct {
-	ID            string
 	Description   string
 	RequiredTools []string
 	Prerequisites string
@@ -85,85 +69,85 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 func agentGuideDefinitions() []agentGuideDefinition {
 	return []agentGuideDefinition{
 		{
-			ID: GuideStoryProfileManage, Description: "编辑、生成、重建、导入或查看故事总纲版本。",
+			Description:   "编辑、生成、重建、导入或查看故事总纲版本。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "当前项目；写入时需要最新 Story Profile revision。",
 			Path:          agentDocBasePath + "/guides/管理故事总纲.md",
 		},
 		{
-			ID: GuideChapterCreate, Description: "手动创建、批量规划或生成章节正文。",
+			Description:   "手动创建、批量规划或生成章节正文。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "章节标题或生成目标；必要时具备章节编号、正文或章节数量。",
 			Path:          agentDocBasePath + "/guides/创建章节.md",
 		},
 		{
-			ID: GuideChapterUpdate, Description: "修改章节标题或完整正文，并查看正文版本。",
+			Description:   "修改章节标题或完整正文，并查看正文版本。",
 			RequiredTools: []string{"read_agent_doc", "request_api"},
 			Prerequisites: "目标 Chapter UUID 与最新 revision。",
 			Path:          agentDocBasePath + "/guides/修改章节.md",
 		},
 		{
-			ID: GuideChapterTrashManage, Description: "移入、查看、恢复、永久删除或清空章节回收站。",
+			Description:   "移入、查看、恢复、永久删除或清空章节回收站。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID；删除或恢复时需要最新 revision。",
 			Path:          agentDocBasePath + "/guides/管理章节回收站.md",
 		},
 		{
-			ID: GuidePremiseGenerate, Description: "维护画风并生成、导入、选择或拆解项目设定图。",
+			Description:   "维护画风并生成、导入、选择或拆解项目设定图。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "设定描述；更新画风时需要最新 Premise revision。",
 			Path:          agentDocBasePath + "/guides/生成项目设定.md",
 		},
 		{
-			ID: GuidePremiseAssetCreate, Description: "从生成图片或 ready upload 创建设定资产。",
+			Description:   "从生成图片或 ready upload 创建设定资产。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "image_gen", "request_user_input"},
 			Prerequisites: "设定项类型、标题与图片来源。",
 			Path:          agentDocBasePath + "/guides/创建设定资产.md",
 		},
 		{
-			ID: GuidePremiseAssetMaintain, Description: "更新设定资产元数据、图片版本或当前图片。",
+			Description:   "更新设定资产元数据、图片版本或当前图片。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "image_gen", "request_user_input"},
 			Prerequisites: "目标 Premise Asset UUID 与最新 revision。",
 			Path:          agentDocBasePath + "/guides/维护设定资产.md",
 		},
 		{
-			ID: GuidePremiseAssetTrashManage, Description: "移入、查看、恢复、永久删除或清空设定资产回收站。",
+			Description:   "移入、查看、恢复、永久删除或清空设定资产回收站。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Premise Asset UUID；删除或恢复时需要最新 revision。",
 			Path:          agentDocBasePath + "/guides/管理设定资产回收站.md",
 		},
 		{
-			ID: GuideComicStoryboardGenerate, Description: "为章节生成漫画分镜并跟踪任务。",
+			Description:   "为章节生成漫画分镜并跟踪任务。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID 与分镜生成要求。",
 			Path:          agentDocBasePath + "/guides/生成漫画分镜.md",
 		},
 		{
-			ID: GuideComicSectionManage, Description: "创建、修改、排序或删除漫画段落。",
+			Description:   "创建、修改、排序或删除漫画段落。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID；修改或删除时需要 Section UUID 与最新 revision。",
 			Path:          agentDocBasePath + "/guides/管理漫画段落.md",
 		},
 		{
-			ID: GuideStoryboardManage, Description: "编辑完整分镜文本或选择历史分镜版本。",
+			Description:   "编辑完整分镜文本或选择历史分镜版本。",
 			RequiredTools: []string{"read_agent_doc", "request_api"},
 			Prerequisites: "目标 Chapter 与 Section UUID，以及最新 Section revision。",
 			Path:          agentDocBasePath + "/guides/编辑与选择漫画分镜.md",
 		},
 		{
-			ID: GuideComicImageManage, Description: "生成、导入或选择漫画图片版本。",
+			Description:   "生成、导入或选择漫画图片版本。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter 与 Section UUID；导入时需要 ready upload。",
 			Path:          agentDocBasePath + "/guides/生成导入与选择漫画图片.md",
 		},
 		{
-			ID: GuideComicSnapshotRestore, Description: "查看漫画快照详情并恢复章节漫画状态。",
+			Description:   "查看漫画快照详情并恢复章节漫画状态。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID 与待恢复 Snapshot UUID。",
 			Path:          agentDocBasePath + "/guides/恢复漫画快照.md",
 		},
 		{
-			ID: GuideComicExport, Description: "检查导出条件并创建、跟踪漫画导出任务。",
+			Description:   "检查导出条件并创建、跟踪漫画导出任务。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "导出范围与格式；章节导出时需要 Chapter UUID。",
 			Path:          agentDocBasePath + "/guides/导出漫画.md",
@@ -310,24 +294,10 @@ func renderAgentCapabilityIndex(guides []agentGuideDefinition) string {
 	rows := make([][]string, 0, len(guides))
 	for _, guide := range guides {
 		rows = append(rows, []string{
-			codeCell(guide.ID), guide.Description, "`" + strings.Join(guide.RequiredTools, "`, `") + "`", guide.Prerequisites, codeCell(guide.Path),
+			codeCell(guide.Path), guide.Description, "`" + strings.Join(guide.RequiredTools, "`, `") + "`", guide.Prerequisites,
 		})
 	}
-	return renderAgentMarkdownTable([]string{"capability_id", "说明", "所需工具", "上下文/输入前提", "Guide 路径"}, rows)
-}
-
-func renderRecommendedGuideList(ids []string) string {
-	byID := make(map[string]agentGuideDefinition, len(agentGuideDefinitions()))
-	for _, guide := range agentGuideDefinitions() {
-		byID[guide.ID] = guide
-	}
-	lines := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if guide, ok := byID[id]; ok {
-			lines = append(lines, "- `"+guide.ID+"`：`"+guide.Path+"`")
-		}
-	}
-	return strings.Join(lines, "\n")
+	return renderAgentMarkdownTable([]string{"Guide", "说明", "所需工具", "上下文/输入前提"}, rows)
 }
 
 func renderAgentAPIDocIndex(docs []agentAPIDocDefinition) string {

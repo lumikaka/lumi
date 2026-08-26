@@ -19,7 +19,7 @@ func TestProjectAPIToolsAndGuidesAreGloballyRegistered(t *testing.T) {
 	registeredGuides := map[string]bool{}
 	guides := agentGuideDefinitions()
 	for _, guide := range guides {
-		registeredGuides[guide.ID] = true
+		registeredGuides[guide.Path] = true
 	}
 	got := definitionNames(llmToolDefinitionsForMode(thread, ToolModeProjectAPI))
 	if strings.Join(got, ",") != strings.Join(projectAPIToolNames, ",") {
@@ -28,28 +28,28 @@ func TestProjectAPIToolsAndGuidesAreGloballyRegistered(t *testing.T) {
 	if containsString(got, currentProjectAPIToolName) || containsString(got, "get_premise") || containsString(got, "get_comic_section") {
 		t.Fatalf("project API mode exposed a duplicate legacy route: %v", got)
 	}
-	expectedGuideIDs := []string{
-		GuideStoryProfileManage,
-		GuideChapterCreate,
-		GuideChapterUpdate,
-		GuideChapterTrashManage,
-		GuidePremiseGenerate,
-		GuidePremiseAssetCreate,
-		GuidePremiseAssetMaintain,
-		GuidePremiseAssetTrashManage,
-		GuideComicStoryboardGenerate,
-		GuideComicSectionManage,
-		GuideStoryboardManage,
-		GuideComicImageManage,
-		GuideComicSnapshotRestore,
-		GuideComicExport,
+	expectedGuidePaths := []string{
+		agentDocBasePath + "/guides/管理故事总纲.md",
+		agentDocBasePath + "/guides/创建章节.md",
+		agentDocBasePath + "/guides/修改章节.md",
+		agentDocBasePath + "/guides/管理章节回收站.md",
+		agentDocBasePath + "/guides/生成项目设定.md",
+		agentDocBasePath + "/guides/创建设定资产.md",
+		agentDocBasePath + "/guides/维护设定资产.md",
+		agentDocBasePath + "/guides/管理设定资产回收站.md",
+		agentDocBasePath + "/guides/生成漫画分镜.md",
+		agentDocBasePath + "/guides/管理漫画段落.md",
+		agentDocBasePath + "/guides/编辑与选择漫画分镜.md",
+		agentDocBasePath + "/guides/生成导入与选择漫画图片.md",
+		agentDocBasePath + "/guides/恢复漫画快照.md",
+		agentDocBasePath + "/guides/导出漫画.md",
 	}
-	if len(guides) != len(expectedGuideIDs) || len(registeredGuides) != len(expectedGuideIDs) {
-		t.Fatalf("global guide count=%d unique=%d want=%d", len(guides), len(registeredGuides), len(expectedGuideIDs))
+	if len(guides) != len(expectedGuidePaths) || len(registeredGuides) != len(expectedGuidePaths) {
+		t.Fatalf("global guide count=%d unique=%d want=%d", len(guides), len(registeredGuides), len(expectedGuidePaths))
 	}
-	for _, guideID := range expectedGuideIDs {
-		if !registeredGuides[guideID] {
-			t.Fatalf("global guide registry is missing %s", guideID)
+	for _, path := range expectedGuidePaths {
+		if !registeredGuides[path] {
+			t.Fatalf("global guide registry is missing %s", path)
 		}
 	}
 }
@@ -93,7 +93,7 @@ func TestSceneToolContextCostBaseline(t *testing.T) {
 		}
 		for _, guide := range agentGuideDefinitions() {
 			if strings.Contains(prompts.Scene, guide.Path) {
-				t.Fatalf("project chat system prompt contains scene guide %s", guide.ID)
+				t.Fatalf("project chat system prompt contains scene guide %s", guide.Path)
 			}
 		}
 		for _, forbidden := range []string{
@@ -229,9 +229,21 @@ func TestReadAgentDocUsesGlobalRegistryAcrossScenes(t *testing.T) {
 			t.Errorf("unauthorized doc accepted: %q", path)
 		}
 	}
-	content := compactAgentDocContextResult(`{"success":true,"data":{"path":"` + premiseAssetDocPath + `","doc_ref":"` + premiseAssetDocPath + `","content":"large"}}`)
-	if strings.Contains(content, "large") || !strings.Contains(content, `"compacted":true`) || !strings.Contains(content, premiseAssetDocPath) {
-		t.Fatalf("doc context was not compacted: %s", content)
+}
+
+func TestContextMessagesKeepAllReadAgentDocResults(t *testing.T) {
+	first := `{"success":true,"data":{"path":"/api/v1/agent-docs/guides/生成项目设定.md","content":"FIRST DOC IMPORTANT RULE"}}`
+	second := `{"success":true,"data":{"path":"/api/v1/agent-docs/api/generation.md","content":"SECOND DOC API CONTRACT"}}`
+	items := []contextItem{
+		{itemRecord: itemRecord{Sequence: 1, ItemType: "tool_result", Role: "tool", ToolName: "read_agent_doc", Content: first, MetadataJSON: `{"provider_call_id":"first-doc"}`}},
+		{itemRecord: itemRecord{Sequence: 2, ItemType: "tool_result", Role: "tool", ToolName: "read_agent_doc", Content: second, MetadataJSON: `{"provider_call_id":"second-doc"}`}},
+	}
+	messages := contextMessages(items, "", int64(0), contextPromptSet{Assistant: "BASE", APIOverview: "OVERVIEW", ProjectUUID: mustAgentUUID(t), ToolProtocol: ToolProtocolProjectAPI})
+	if len(messages) != 3 || messages[1].Content != first || messages[2].Content != second {
+		t.Fatalf("read_agent_doc results were not preserved: %+v", messages)
+	}
+	if strings.Contains(messages[1].Content, `"compacted":true`) || strings.Contains(messages[2].Content, `"compacted":true`) {
+		t.Fatalf("read_agent_doc result was replaced by a compact reference: %+v", messages)
 	}
 }
 
@@ -271,8 +283,8 @@ func TestOverviewIndexesMatchGuideAndAPIDocRegistries(t *testing.T) {
 		t.Fatalf("guide count=%d want=14", len(agentGuideDefinitions()))
 	}
 	for _, guide := range agentGuideDefinitions() {
-		if strings.Count(content, "`"+guide.ID+"`") != 1 || !strings.Contains(content, "`"+guide.Path+"`") {
-			t.Fatalf("capability index missing Guide %s", guide.ID)
+		if strings.Count(content, "`"+guide.Path+"`") != 1 {
+			t.Fatalf("capability index missing Guide %s", guide.Path)
 		}
 	}
 	for _, doc := range agentAPIDocDefinitions() {
@@ -288,10 +300,13 @@ func TestOverviewIndexesMatchGuideAndAPIDocRegistries(t *testing.T) {
 			t.Fatalf("overview leaked concrete route %s", route.ID)
 		}
 	}
-	for _, heading := range []string{"capability_id", "说明", "所需工具", "上下文/输入前提", "Guide 路径", "API Contract 路径", "领域与用途"} {
+	for _, heading := range []string{"Guide", "说明", "所需工具", "上下文/输入前提", "API Contract 路径", "领域与用途"} {
 		if !strings.Contains(content, heading) {
 			t.Fatalf("overview missing index column %q", heading)
 		}
+	}
+	if strings.Contains(content, "capability_id") {
+		t.Fatal("overview still exposes redundant capability IDs")
 	}
 	if strings.Contains(content, "{{") || strings.Contains(content, "/scenes/") {
 		t.Fatalf("overview contains unresolved or Scene-doc content: %s", content)
@@ -311,17 +326,17 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 		seenPaths[guide.Path] = true
 		content, err := renderAgentDoc(guide.Path)
 		if err != nil {
-			t.Fatalf("render Guide %s: %v", guide.ID, err)
+			t.Fatalf("render Guide %s: %v", guide.Path, err)
 		}
 		if len(content) > 2048 {
-			t.Fatalf("Guide %s is not concise: %d bytes", guide.ID, len(content))
+			t.Fatalf("Guide %s is not concise: %d bytes", guide.Path, len(content))
 		}
 		if strings.Count(content, "## API 调用顺序和说明") != 1 {
-			t.Fatalf("Guide %s missing fixed API order section: %s", guide.ID, content)
+			t.Fatalf("Guide %s missing fixed API order section: %s", guide.Path, content)
 		}
 		readIndex, requestIndex := strings.Index(content, "read_agent_doc"), strings.Index(content, "request_api")
 		if readIndex < 0 || requestIndex < 0 || readIndex > requestIndex {
-			t.Fatalf("Guide %s does not put API Contract reading before request_api", guide.ID)
+			t.Fatalf("Guide %s does not put API Contract reading before request_api", guide.Path)
 		}
 		contractCount := 0
 		for index, token := range strings.Split(content, "`") {
@@ -330,14 +345,17 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 			}
 			contractCount++
 			if !registeredAPIDocs[token] {
-				t.Fatalf("Guide %s references unregistered API Contract %s", guide.ID, token)
+				t.Fatalf("Guide %s references unregistered API Contract %s", guide.Path, token)
 			}
 		}
 		if contractCount == 0 {
-			t.Fatalf("Guide %s does not reference an API Contract", guide.ID)
+			t.Fatalf("Guide %s does not reference an API Contract", guide.Path)
 		}
 		if strings.Contains(content, "## Workflow API") {
-			t.Fatalf("Guide %s added a Workflow API section", guide.ID)
+			t.Fatalf("Guide %s added a Workflow API section", guide.Path)
+		}
+		if strings.Contains(content, "能力 ID") {
+			t.Fatalf("Guide %s still exposes a redundant capability ID", guide.Path)
 		}
 	}
 	for _, path := range []string{
@@ -349,6 +367,44 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 		if seenPaths[path] {
 			t.Fatalf("removed Guide path remains registered: %s", path)
 		}
+	}
+}
+
+func TestPremiseAssetGuidesRouteBatchCreationThroughSettingWorkflow(t *testing.T) {
+	createGuide, err := renderAgentDoc(agentDocBasePath + "/guides/创建设定资产.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"立即停止本 Guide",
+		"禁止调用 `image_gen`",
+		"禁止循环调用设定资产 API",
+		agentDocBasePath + "/guides/生成项目设定.md",
+	} {
+		if !strings.Contains(createGuide, required) {
+			t.Fatalf("create asset Guide missing batch guard %q: %s", required, createGuide)
+		}
+	}
+
+	batchGuide, err := renderAgentDoc(agentDocBasePath + "/guides/生成项目设定.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		premiseDocPath,
+		generationDocPath,
+		taskDocPath,
+		"只创建一个 Premise Source",
+		"只创建一次 Premise 设定图任务",
+		"等待用户确认",
+		"再创建一次 Premise 拆解任务",
+	} {
+		if !strings.Contains(batchGuide, required) {
+			t.Fatalf("batch premise Guide missing workflow instruction %q: %s", required, batchGuide)
+		}
+	}
+	if readIndex, requestIndex := strings.Index(batchGuide, "read_agent_doc"), strings.Index(batchGuide, "request_api"); readIndex < 0 || requestIndex < 0 || readIndex > requestIndex {
+		t.Fatalf("batch premise Guide requests API before reading Contracts: %s", batchGuide)
 	}
 }
 

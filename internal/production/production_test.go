@@ -317,6 +317,81 @@ func TestPremiseTagsVariantsAndCurrentPointers(t *testing.T) {
 	}
 }
 
+func TestRepeatedBreakdownAppendsAndSelectsCandidateForSameTitle(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	source, err := h.service.CreatePremiseSource(ctx, CreateSourceInput{SourceText: "Two versions of the same hero", SourceType: "manual"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstSetting, err := h.service.ImportSettingImage(ctx, upload(t, h.service, "premise_setting_image", imageBytes(t, 20)), source.UUID, "first setting")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondSetting, err := h.service.ImportSettingImage(ctx, upload(t, h.service, "premise_setting_image", imageBytes(t, 30)), source.UUID, "second setting")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projectID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.project.UUID).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	createRunningTask := func(taskUUID, settingUUID string) {
+		t.Helper()
+		now := time.Now().UTC()
+		if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,created_at,updated_at) VALUES(?,?,'premise_asset_breakdown',?,'{}','running',?,5,1,3,?,?)`, taskUUID, projectID, settingUUID, "breakdown-"+taskUUID, now, now).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	firstTaskUUID := mustUUID(t)
+	createRunningTask(firstTaskUUID, firstSetting.UUID)
+	first, err := h.service.CommitGeneratedPremiseAsset(ctx, firstTaskUUID, firstSetting.UUID, CreateAssetInput{
+		AssetType: AssetCharacter, Title: "Hero", Summary: "first summary", Tags: []string{"character", "first"},
+		Position: map[string]any{"x": 0.1}, Crop: map[string]any{"x": 1},
+	}, bytes.NewReader(imageBytes(t, 40)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Revision != 0 || first.CurrentVariant == nil || first.CurrentVariant.VersionNo != 1 || first.CurrentVariant.SourceSettingImageUUID != firstSetting.UUID {
+		t.Fatalf("first breakdown=%+v", first)
+	}
+
+	secondTaskUUID := mustUUID(t)
+	createRunningTask(secondTaskUUID, secondSetting.UUID)
+	second, err := h.service.CommitGeneratedPremiseAsset(ctx, secondTaskUUID, secondSetting.UUID, CreateAssetInput{
+		AssetType: AssetCharacter, Title: "hero", Summary: "second summary", Tags: []string{"character", "latest"},
+		Position: map[string]any{"x": 0.2}, Crop: map[string]any{"x": 2},
+	}, bytes.NewReader(imageBytes(t, 50)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.UUID != first.UUID || second.Revision != 1 || second.Title != "hero" || second.Summary != "second summary" || second.CurrentVariant == nil || second.CurrentVariant.VersionNo != 2 || second.CurrentVariant.SourceSettingImageUUID != secondSetting.UUID {
+		t.Fatalf("second breakdown=%+v", second)
+	}
+	if len(second.Tags) != 2 || second.Tags[0] != "character" || second.Tags[1] != "latest" {
+		t.Fatalf("second tags=%v", second.Tags)
+	}
+	variants, err := h.service.ListAssetVariants(ctx, first.UUID)
+	if err != nil || len(variants) != 2 || variants[0].UUID != second.CurrentVariant.UUID || variants[1].UUID != first.CurrentVariant.UUID {
+		t.Fatalf("breakdown candidates=%+v err=%v", variants, err)
+	}
+
+	replayed, err := h.service.CommitGeneratedPremiseAsset(ctx, secondTaskUUID, secondSetting.UUID, CreateAssetInput{
+		AssetType: AssetCharacter, Title: "hero", Summary: "should not create v3",
+	}, bytes.NewReader(imageBytes(t, 60)))
+	if err != nil || replayed.UUID != second.UUID || replayed.CurrentVariant == nil || replayed.CurrentVariant.UUID != second.CurrentVariant.UUID {
+		t.Fatalf("idempotent breakdown replay=%+v err=%v", replayed, err)
+	}
+	variants, err = h.service.ListAssetVariants(ctx, first.UUID)
+	if err != nil || len(variants) != 2 {
+		t.Fatalf("replayed candidates=%+v err=%v", variants, err)
+	}
+	restored, err := h.service.SelectAssetVariant(ctx, first.UUID, first.CurrentVariant.UUID, replayed.Revision)
+	if err != nil || restored.CurrentVariant == nil || restored.CurrentVariant.UUID != first.CurrentVariant.UUID {
+		t.Fatalf("restore prior candidate=%+v err=%v", restored, err)
+	}
+}
+
 func TestPremiseSourcePaginationAndPageScopedSettingImages(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

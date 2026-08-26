@@ -37,7 +37,7 @@
 
 ## 当前 Guide 映射
 
-当前 Guide 已按前端创作功能重组为 14 份中文文档，实际能力 ID 与路径以 `/api/v1/agent-docs/overview.md` 渲染的 Guide Registry 为准。旧英文 Guide 路径不再注册，也不提供兼容别名。
+当前 Guide 已按前端创作功能重组为 14 份中文文档，文档名称与路径以 `/api/v1/agent-docs/overview.md` 渲染的 Guide Registry 为准。旧英文 Guide 路径不再注册，也不提供兼容别名。
 
 Overview 的能力索引由同一 Guide Registry 生成；`read_agent_doc` 只读取注册的 Overview、Guide 和 API Contract。Scene Markdown、任意文件路径、Query、Fragment、编码路径、反斜杠和路径穿越均拒绝。
 

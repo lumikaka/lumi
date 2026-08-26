@@ -37,11 +37,15 @@ test('every composer accepts finalized files and domain references without scene
 })
 
 test('running image and current-project API tools expose method-specific progress copy', () => {
-  assert.match(source, /toolName === 'image_gen'[\s\S]*?chat\.activity\.image_gen/)
+  assert.match(source, /toolVariables = \{ tool_name: runningTool\?\.toolName \|\| 'controlled_tool' \}[\s\S]*?toolName === 'image_gen'[\s\S]*?chat\.activity\.image_gen', toolVariables/)
   assert.match(source, /\['request_api', 'request_current_project_api'\]\.includes\(runningTool\.toolName\)[\s\S]*?currentProjectAPIActivityKey/)
   assert.match(source, /GET: 'chat\.activity\.asset_read'[\s\S]*?POST: 'chat\.activity\.asset_create'[\s\S]*?PATCH: 'chat\.activity\.asset_update'[\s\S]*?DELETE: 'chat\.activity\.asset_trash'/)
-  assert.match(source, /\['create_premise_asset', 'update_premise_asset'\][\s\S]*?chat\.activity\.writeback/)
+  assert.match(source, /if \(activityKey\) return t\(activityKey, toolVariables\)/)
+  assert.match(source, /\['create_premise_asset', 'update_premise_asset'\][\s\S]*?chat\.activity\.writeback', toolVariables/)
   assert.match(source, /chat\.activity\.tool_running[\s\S]*?chat\.activity\.finalizing/)
+  for (const key of ['image_gen', 'asset_read', 'asset_create', 'asset_update', 'asset_trash', 'writeback', 'tool_running']) {
+    assert.match(messagesSource, new RegExp(`'chat\\.activity\\.${key}': \\[.*?\\{tool_name\\}`), key)
+  }
 })
 
 test('terminal turns collapse paired tool activity while keeping raw diagnostics available', () => {
@@ -55,12 +59,12 @@ test('terminal turns collapse paired tool activity while keeping raw diagnostics
   assert.match(source, /activity\.tools\.map[\s\S]*?<details>[\s\S]*?<ToolActivityPayload label=\{t\('chat\.tool\.arguments'\)/)
   assert.match(source, /projectChatTurnActivity\(turn, group\.items, \{ historyMayBePartial \}\)/)
   assert.match(source, /index === activity\.summaryIndex[\s\S]*?<ChatItem item=\{item\}/)
-  assert.match(source, /historyMayBePartial=\{Boolean\(index === 0 && itemsQuery\.hasPreviousPage && !group\.items\.some/)
+  assert.match(source, /historyMayBePartial=\{Boolean\(index === 0 && itemsQuery\.hasNextPage && !group\.items\.some/)
   assert.equal((source.match(/aria-live="polite"/g) || []).length, 1)
   assert.match(messagesSource, /'chat\.tool\.summary\.title': \['工具活动', 'Tool activity'\]/)
   assert.doesNotMatch(messagesSource, /使用了 \{count\} 项工具|Used \{count\} tools/)
   assert.match(messagesSource, /'chat\.turn\.duration\.minutes_seconds': \['耗时 \{minutes\} 分 \{seconds\} 秒', 'Took \{minutes\}m \{seconds\}s'\]/)
-  assert.match(messagesSource, /'chat\.activity\.tool_running': \['正在执行 \{tool_name\}…', 'Running \{tool_name\}…'\]/)
+  assert.match(messagesSource, /'chat\.activity\.tool_running': \['正在调用 \{tool_name\}…', 'Calling \{tool_name\}…'\]/)
 })
 
 test('answered user input collapses in place while pending input stays interactive', () => {
@@ -79,6 +83,7 @@ test('second-stage chat parity includes safe markdown, paged history, queue stee
   assert.match(projectThreadsSource, /return \['chat-threads', projectUuid, 'pages'\]/)
   assert.match(projectThreadsSource, /listChatThreads\(projectUuid, \{ page: pageParam, perPage: PROJECT_THREADS_PAGE_SIZE \}\)/)
   assert.match(source, /const itemsQuery = useInfiniteQuery\(\{[\s\S]*?queryKey: \['chat-items', projectUuid, selectedThreadUuid, 'pages'\]/)
+  assert.match(source, /queryKey: \['chat-items'[\s\S]*?getPreviousPageParam: \(\) => undefined,[\s\S]*?getNextPageParam: \(lastPage\) => lastPage\.cursor_pagination\?\.has_more \? lastPage\.cursor_pagination\.prev_cursor : undefined/)
   assert.match(projectThreadsSource, /PROJECT_THREADS_PAGE_SIZE = 20/)
   assert.match(source, /const MESSAGE_PAGE_LIMIT = 30/)
   assert.match(source, /rootMargin: '48px 0px'[\s\S]*?threshold: 0\.01/)
@@ -86,7 +91,7 @@ test('second-stage chat parity includes safe markdown, paged history, queue stee
   assert.match(source, /chatThreadCountLabel\(threads\.length, total\)/)
   assert.match(source, /onScroll=\{handleMessagesScroll\}/)
   assert.match(source, /isLoadingEarlierRef\.current = true[\s\S]*?finally[\s\S]*?isLoadingEarlierRef\.current = false/)
-  assert.match(source, /captureChatScrollAnchor\(messagesRef\.current\)[\s\S]*?itemsQuery\.fetchPreviousPage\(\)/)
+  assert.match(source, /captureChatScrollAnchor\(messagesRef\.current\)[\s\S]*?itemsQuery\.fetchNextPage\(\)/)
   assert.match(source, /restoreChatScrollAnchor\(messagesRef\.current, anchor\)/)
   assert.match(source, /draggable=\{!pending[\s\S]*?aria-grabbed/)
   assert.match(source, /steerFollowUp\(projectUuid, selectedThreadUuid, uuid\)/)

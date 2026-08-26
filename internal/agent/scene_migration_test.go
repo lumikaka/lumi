@@ -970,7 +970,7 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 	}
 	for _, guide := range agentGuideDefinitions() {
 		if !strings.Contains(prompts.APIOverview, guide.Path) {
-			t.Fatalf("project assistant capability index missing Guide %s", guide.ID)
+			t.Fatalf("project assistant capability index missing Guide %s", guide.Path)
 		}
 	}
 	if !containsString(definitionNames(llmToolDefinitionsForMode(tc.Thread, tc.ToolMode)), "image_gen") {
