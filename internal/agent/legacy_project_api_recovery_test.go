@@ -26,11 +26,11 @@ func TestCurrentProjectAPIToolDerivesUpdatesAndSoftDeletesIdempotently(t *testin
 		t.Fatal(err)
 	}
 	originalFileUUID := source.CurrentVariant.Asset.UUID
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: source.UUID, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一位搭档，然后更新当前角色"})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一位搭档，然后更新当前角色", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: source.UUID}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestCurrentProjectAPIToolDerivesUpdatesAndSoftDeletesIdempotently(t *testin
 	}
 	// This fixture exercises the isolated recovery path for an already
 	// persisted phase-two legacy execution, not new Run assembly.
-	tc.ToolMode = ToolModeLegacyTyped
+	tc = legacyAssetReferenceContext(tc, source.UUID)
 	harness.service.WithImageClient(&imageClientFake{response: imagegen.Response{Bytes: agentTestPNG(t), MIMEType: "image/png", RevisedPrompt: "moonlit courier companion"}})
 
 	generateImage := func(prompt string) string {
@@ -157,8 +157,8 @@ func TestCurrentProjectAPIToolDerivesUpdatesAndSoftDeletesIdempotently(t *testin
 	if err != nil || trashed.DeletedAt == nil {
 		t.Fatalf("soft-deleted source was not recoverable=%+v err=%v", trashed, err)
 	}
-	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "继续修改"}); errorCode(err) != CodeToolNotAllowed {
-		t.Fatalf("trashed asset accepted a later reference turn: %v", err)
+	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "开启无 Reference 的新 Turn"}); err != nil {
+		t.Fatalf("generic thread remained bound to trashed legacy subject: %v", err)
 	}
 }
 
@@ -174,7 +174,7 @@ func TestCurrentProjectAPIToolRejectsRoutesBodiesAndInvalidFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: asset.UUID, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +186,7 @@ func TestCurrentProjectAPIToolRejectsRoutesBodiesAndInvalidFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tc = legacyAssetReferenceContext(tc, asset.UUID)
 	base := "/api/v1/projects/" + harness.project.UUID
 	otherProjectUUID, otherSubjectUUID := mustAgentUUID(t), mustAgentUUID(t)
 	invalid := []map[string]any{
@@ -292,11 +293,11 @@ func TestPersistedLegacyToolIntentAuditsSubjectAndRecoversExecution(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: asset.UUID, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "引用设定", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "读取当前项"})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "读取当前项", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: asset.UUID}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +307,7 @@ func TestPersistedLegacyToolIntentAuditsSubjectAndRecoversExecution(t *testing.T
 	}
 	// This fixture exercises the isolated recovery path for an already
 	// persisted phase-two legacy execution, not new Run assembly.
-	tc.ToolMode = ToolModeLegacyTyped
+	tc = legacyAssetReferenceContext(tc, asset.UUID)
 	raw, _ := json.Marshal(map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets/" + asset.UUID})
 	execution, _, completed, err := harness.service.persistToolIntent(ctx, harness.store, tc, "provider-call-current-project-api", currentProjectAPIToolName, string(raw))
 	if err != nil || completed || execution.ToolName != currentProjectAPIToolName || execution.TargetUUID != asset.UUID || !isUUIDv7(execution.UUID) {
@@ -339,6 +340,15 @@ func mustAgentUUID(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return uuid
+}
+
+func legacyAssetReferenceContext(tc toolContext, assetUUID string) toolContext {
+	tc.Thread.Scope = ThreadScopePremise
+	tc.Thread.Scene = SceneAssetReference
+	tc.Thread.SubjectUUID = assetUUID
+	tc.ToolMode = ToolModeLegacyTyped
+	tc.ToolProtocol = ToolProtocolProjectV2
+	return tc
 }
 
 func jsonInt(value int64) string {

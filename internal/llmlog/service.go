@@ -22,7 +22,6 @@ type Log struct {
 	SourceType                string     `json:"source_type"`
 	Scenario                  string     `json:"scenario"`
 	Scope                     string     `json:"scope,omitempty"`
-	Scene                     string     `json:"scene,omitempty"`
 	ProviderUUID              string     `json:"provider_uuid"`
 	ProviderType              string     `json:"provider_type"`
 	Model                     string     `json:"model"`
@@ -111,14 +110,13 @@ SELECT
   logs.uuid AS uuid,
   logs.source_type AS source_type,
   logs.scenario AS scenario,
-  CASE
-    WHEN logs.source_type = 'project_chat' THEN COALESCE(chat_threads.scope, '')
+	CASE
+	    WHEN logs.source_type = 'project_chat' THEN 'project'
     WHEN logs.source_type = 'workflow' THEN 'project'
     WHEN logs.source_type = 'production' AND logs.scenario IN ('premise_setting_generation','premise_asset_breakdown','premise_asset_generation') THEN 'premise'
     WHEN logs.source_type = 'production' THEN 'project'
     ELSE ''
-  END AS scope,
-  CASE WHEN logs.source_type = 'project_chat' THEN COALESCE(chat_threads.scene, '') ELSE '' END AS scene,
+	END AS scope,
   logs.provider_uuid AS provider_uuid,
   logs.provider_type AS provider_type,
   logs.model AS model,

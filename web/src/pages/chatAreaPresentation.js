@@ -54,10 +54,7 @@ export function threadContextCopyKey(thread, workflow) {
   if (workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
   if (workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
   if (workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
-  if (thread?.scene === 'premise_asset_generation') return 'premise.threads.scene.generate'
-  if (thread?.scene === 'asset_reference') return 'premise.threads.scene.reference'
-  if (thread?.scene === 'storyboard_reference') return 'chat.scene.storyboard.title'
-  return thread?.scope === 'premise' ? 'premise.threads.scene.chat' : 'premise.threads.scene.project'
+  return 'chat.thread.project_context'
 }
 
 export function workflowProgressPercent(workflow) {
@@ -81,12 +78,6 @@ function workflowSnapshot(workflow) {
   } catch {
     return {}
   }
-}
-
-export function projectChatSearchWithoutLegacyScope(search = '') {
-  const next = new URLSearchParams(search)
-  next.delete('chat_scope')
-  return next
 }
 
 export function shouldLoadEarlierChatItems({ scrollTop, hasPreviousPage, isFetchingPreviousPage } = {}) {

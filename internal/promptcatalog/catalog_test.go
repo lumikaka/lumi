@@ -37,11 +37,11 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 		GroupChapter:      {"json_system", "comic_storyboard", "section_premise_selection", "before_image", "section_reference_present", "section_reference_absent", "section_additional_direction", "section_image"},
 		GroupPremise:      {"setting_image", "asset_breakdown", "single_asset_generation"},
 		GroupPremiseStyle: {"project_overall_style", "simple_cel_anime", "hong_kong_comic", "minimal_japanese_handdrawn"},
-		GroupAgent:        {"base", "scene_project_assistant", "scene_premise_asset", "scene_asset_reference", "scene_storyboard_reference", "conversation_summary"},
+		GroupAgent:        {"base", "conversation_summary"},
 		GroupRuntime:      {"project_language_instruction"},
 	}
-	if definitions := Definitions(LanguageChinese); len(definitions) != 28 {
-		t.Fatalf("catalog size = %d, want 28", len(definitions))
+	if definitions := Definitions(LanguageChinese); len(definitions) != 24 {
+		t.Fatalf("catalog size = %d, want 24", len(definitions))
 	}
 	for group, keys := range want {
 		for _, key := range keys {
@@ -62,7 +62,7 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 }
 
 func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
-	keys := []string{"base", "scene_project_assistant", "scene_premise_asset", "scene_asset_reference", "scene_storyboard_reference", "conversation_summary"}
+	keys := []string{"base", "conversation_summary"}
 	values := map[string]string{
 		"project_uuid":       "01900000-0000-7000-8000-000000000001",
 		"subject_uuid":       "01900000-0000-7000-8000-000000000002",
@@ -187,8 +187,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "d6a0bbd4f4ce3dae5361c1e32f3f8de99d634a13d09f7847152b33faa1efdaf6",
-		LanguageEnglish: "1d8d54a0efa45fcab7bd892053718c562e40f37822a770920638826f075ac3c6",
+		LanguageChinese: "5b2d6be6ab23c4d6b9c8d898c5f573e6a0da16a4bbe44df8bbdd556e21c0dae8",
+		LanguageEnglish: "b1ec86b6521b44a3e9bf99234a4635f2752cab68cafdf84621201defbff0188e",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

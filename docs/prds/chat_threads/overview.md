@@ -2,20 +2,24 @@
 
 ## 模块职责
 
-对话线程模块负责项目内 Agent 对话的持久化会话、轮次、运行、消息、追问队列、用户输入和工具执行。它让用户在项目、Premise 或绑定资源上下文中继续对话，并在进程中断或实时事件丢失后从 SQLite 恢复事实状态。
+对话线程模块负责项目内 Agent 对话的持久化会话、轮次、运行、消息、追问队列、用户输入、Reference 和工具执行。Thread 本身不绑定业务场景或单一资源；每条用户输入用最多 16 个冻结 Reference 显式声明本次上下文，并可在进程中断或实时事件丢失后从 SQLite 恢复事实状态。
 
 ## 职责边界
 
 | 范围 | 说明 |
 |---|---|
-| 负责 | Thread、turn、run、item、event、follow-up、用户输入、受控工具意图和图片引用的持久化交互。 |
+| 负责 | Thread、turn、run、item、event、follow-up、用户输入、统一 Reference、受控工具意图和图片生成交互。 |
 | 不负责 | Provider 配置、模型解析、通用 Workflow 编排、业务资源的字段语义和文件物理存储。 |
 
 ## 核心概念
 
 ### Thread 与 Turn
 
-Thread 固定项目、场景、可选 subject 和会话级模型选择。每次用户输入形成按序排队的 Turn，执行产生 Run、可读 Item 和 append-only Event；Thread 的展示状态是这些持久记录的投影。
+Thread 只固定项目、标题、会话级模型选择和运行状态。每次用户输入形成按序排队的 Turn，Reference 归属于对应 User Item；执行产生 Run、可读 Item 和 append-only Event，Thread 的展示状态是这些持久记录的投影。
+
+### Reference
+
+Reference 是用户对当前输入所需项目资源的显式引用，首版支持 `file`、`premise_asset` 和 `comic_section`。服务在接受输入时校验项目边界并冻结紧凑快照；后续 Turn 不自动继承，历史资源发生删除或修改也不重写已有快照。
 
 ### 受控交互
 
@@ -35,5 +39,5 @@ Agent 的工具调用、用户选择题和图片引用均先写入持久记录�
 |---|---|
 | AI 运行时 | 创建 Thread/Run 时冻结模型；调用明细统一进入 `llm_logs`。 |
 | 工作流 | Workflow 可选关联 Thread，但具有独立状态机和步骤。 |
-| 文件 | 图片引用关联公开 File UUID；实际上传、内容服务和引用保护由 `files` 管理。 |
-| Premise 资产 | `asset_reference` 等场景通过受控项目 API 修改业务资源，业务校验仍由 Premise 服务负责。 |
+| 文件 | 普通上传图片作为 `file` Reference；实际上传、内容服务和冻结图片引用保护由 `files` 管理。 |
+| Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |

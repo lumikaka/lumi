@@ -29,8 +29,8 @@ test('restores and persists normalized locale preferences', () => {
 })
 
 test('translates immediately from the selected resource without changing user values', () => {
-  assert.equal(translateMessage(RESOURCES, 'zh-Hans', 'chat.title.reference', { title: 'Moonlight Post Office' }), '设定引用 · Moonlight Post Office')
-  assert.equal(translateMessage(RESOURCES, 'en', 'chat.title.reference', { title: '月亮邮局' }), 'Premise reference · 月亮邮局')
+  assert.equal(translateMessage(RESOURCES, 'zh-Hans', 'chat.reference.remove', { title: 'Moonlight Post Office' }), '移除引用“Moonlight Post Office”')
+  assert.equal(translateMessage(RESOURCES, 'en', 'chat.reference.remove', { title: '月亮邮局' }), 'Remove reference “月亮邮局”')
   assert.equal(translateMessage(RESOURCES, 'en', 'missing.key'), 'missing.key')
 })
 

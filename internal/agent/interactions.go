@@ -31,7 +31,7 @@ func (service *Service) ListFollowUps(ctx context.Context, projectUUID, threadUU
 		}
 		for _, row := range rows {
 			item := followUpDTO(row, threadUUID, "")
-			item.ImageReferences, err = service.followUpImageReferences(ctx, store, row.ID)
+			item.References, err = service.followUpReferences(ctx, store, row.ID)
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&thread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
-		references, err := service.finalizeChatImageReferences(ctx, store, thread, input.UploadUUIDs)
+		references, err := service.resolveContextReferences(ctx, store, thread.ProjectID, input.References)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 		if err != nil {
 			return err
 		}
-		if err := attachFollowUpImageReferencesTx(ctx, tx, followUpID, references, now); err != nil {
+		if err := attachFollowUpReferencesTx(ctx, tx, followUpID, references, now); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {
@@ -105,7 +105,7 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 		}
 		record := followUpRecord{ID: followUpID, UUID: uuid, ThreadID: thread.ID, InputText: text, Position: position, Status: "queued", CreatedAt: now, UpdatedAt: now}
 		result = followUpDTO(record, threadUUID, "")
-		result.ImageReferences, err = service.followUpImageReferences(ctx, store, record.ID)
+		result.References, err = service.followUpReferences(ctx, store, record.ID)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func followUpDTO(row followUpRecord, threadUUID, promotedTurnUUID string) Follow
 	return FollowUp{UUID: row.UUID, ThreadUUID: threadUUID, InputText: row.InputText, Position: row.Position, Status: row.Status, PromotedTurnUUID: promotedTurnUUID, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, DeletedAt: row.DeletedAt}
 }
 
-func (service *Service) UpdateFollowUp(ctx context.Context, projectUUID, threadUUID, followUpUUID string, input CreateFollowUpInput) (FollowUp, error) {
+func (service *Service) UpdateFollowUp(ctx context.Context, projectUUID, threadUUID, followUpUUID string, input UpdateFollowUpInput) (FollowUp, error) {
 	text, err := validateText(input.InputText, 256<<10, "Follow-up")
 	if err != nil {
 		return FollowUp{}, err
@@ -132,20 +132,44 @@ func (service *Service) UpdateFollowUp(ctx context.Context, projectUUID, threadU
 		if err != nil {
 			return err
 		}
+		var thread threadRecord
+		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&thread).Error; err != nil {
+			return notFound(err, "Chat thread 不存在")
+		}
+		var replacement []storedContextReference
+		if input.References != nil {
+			replacement, err = service.resolveContextReferences(ctx, store, thread.ProjectID, *input.References)
+			if err != nil {
+				return err
+			}
+		}
 		now := service.now().UTC()
-		update := store.DB().WithContext(ctx).Table("chat_follow_ups").Where("uuid=? AND thread_id=(SELECT id FROM chat_threads WHERE project_id=? AND uuid=?) AND status='queued' AND deleted_at IS NULL", followUpUUID, pid, threadUUID).Updates(map[string]any{"input_text": text, "updated_at": now})
-		if update.Error != nil {
-			return update.Error
-		}
-		if update.RowsAffected != 1 {
-			return domainError(CodeStateConflict, "Follow-up 无法修改", "只有 queued follow-up 可以修改。", nil)
-		}
 		var row followUpRecord
-		if err := store.DB().WithContext(ctx).Where("uuid=?", followUpUUID).First(&row).Error; err != nil {
+		err = store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("uuid=? AND thread_id=? AND status='queued' AND deleted_at IS NULL", followUpUUID, thread.ID).First(&row).Error; err != nil {
+				return domainError(CodeStateConflict, "Follow-up 无法修改", "只有 queued follow-up 可以修改。", err)
+			}
+			if err := tx.Model(&row).Updates(map[string]any{"input_text": text, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			if input.References == nil {
+				return nil
+			}
+			if err := tx.Exec("DELETE FROM chat_context_references WHERE follow_up_id=?", row.ID).Error; err != nil {
+				return err
+			}
+			sqlTx, ok := tx.Statement.ConnPool.(*sql.Tx)
+			if !ok {
+				return domainError(CodeStateConflict, "Follow-up Reference 无法更新", "数据库事务连接不可用。", nil)
+			}
+			return attachFollowUpReferencesTx(ctx, sqlTx, row.ID, replacement, now)
+		})
+		if err != nil {
 			return err
 		}
+		row.InputText, row.UpdatedAt = text, now
 		result = followUpDTO(row, threadUUID, "")
-		result.ImageReferences, err = service.followUpImageReferences(ctx, store, row.ID)
+		result.References, err = service.followUpReferences(ctx, store, row.ID)
 		if err != nil {
 			return err
 		}
@@ -229,7 +253,7 @@ func (service *Service) DeleteFollowUp(ctx context.Context, projectUUID, threadU
 			if result.RowsAffected != 1 {
 				return domainError(CodeStateConflict, "Follow-up 无法删除", "只有 queued follow-up 可以删除。", nil)
 			}
-			if err := tx.Exec("DELETE FROM chat_follow_up_file_references WHERE follow_up_id=?", followUpID).Error; err != nil {
+			if err := tx.Exec("DELETE FROM chat_context_references WHERE follow_up_id=?", followUpID).Error; err != nil {
 				return err
 			}
 			return compactFollowUps(tx, threadUUID)
@@ -271,7 +295,7 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&promptThread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
-		references, err := service.finalizeChatImageReferences(ctx, store, promptThread, input.UploadUUIDs)
+		references, err := service.resolveContextReferences(ctx, store, promptThread.ProjectID, input.References)
 		if err != nil {
 			return err
 		}
@@ -293,18 +317,12 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		if err := tx.QueryRowContext(ctx, `SELECT r.id,r.uuid,r.status,t.id,t.uuid FROM chat_runs r JOIN chat_turns t ON t.id=r.turn_id WHERE r.thread_id=? AND r.status='in_progress' ORDER BY r.created_at DESC,r.id DESC LIMIT 1`, thread.ID).Scan(&runID, &runUUID, &runStatus, &turnID, &turnUUID); err != nil {
 			return domainError(CodeBusy, "当前没有可 Steering 的运行", "Steering 只能在 run 的安全边界注入。", err)
 		}
-		if len(references) == 0 {
-			references, err = loadLatestTurnImageReferencesTx(ctx, tx, turnID)
-			if err != nil {
-				return err
-			}
-		}
 		now := service.now().UTC()
 		row, err := appendItemTx(ctx, tx, &thread, &turnID, &runID, "user_message", "user", text, "text", "completed", "", "", "", map[string]any{"steering": true}, now)
 		if err != nil {
 			return err
 		}
-		if err := attachItemImageReferencesTx(ctx, tx, row.ID, references, now); err != nil {
+		if err := attachItemReferencesTx(ctx, tx, row.ID, references, now); err != nil {
 			return err
 		}
 		if _, err := appendEventTx(ctx, tx, &thread, &runID, "steering_queued", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": turnUUID, "run_uuid": runUUID, "item_uuid": row.UUID}, now); err != nil {
@@ -317,7 +335,7 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 			return err
 		}
 		result = itemDTO(row, threadUUID, turnUUID, runUUID)
-		result.ImageReferences, err = service.itemImageReferences(ctx, store, row.ID)
+		result.References, err = service.itemReferences(ctx, store, row.ID)
 		if err != nil {
 			return err
 		}
@@ -369,7 +387,7 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 				return err
 			}
 			queued := followUpDTO(followUp, threadUUID, "")
-			queued.ImageReferences, err = service.followUpImageReferences(ctx, store, followUp.ID)
+			queued.References, err = service.followUpReferences(ctx, store, followUp.ID)
 			if err != nil {
 				return err
 			}
@@ -379,7 +397,7 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 		if runErr != nil {
 			return runErr
 		}
-		references, err := loadFollowUpImageReferencesTx(ctx, tx, followUp.ID)
+		references, err := loadFollowUpReferencesTx(ctx, tx, followUp.ID)
 		if err != nil {
 			return err
 		}
@@ -388,10 +406,10 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 		if err != nil {
 			return err
 		}
-		if err := attachItemImageReferencesTx(ctx, tx, row.ID, references, now); err != nil {
+		if err := attachItemReferencesTx(ctx, tx, row.ID, references, now); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM chat_follow_up_file_references WHERE follow_up_id=?`, followUp.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM chat_context_references WHERE follow_up_id=?`, followUp.ID); err != nil {
 			return err
 		}
 		promoted, err := tx.ExecContext(ctx, `UPDATE chat_follow_ups SET status='promoted',promoted_turn_id=?,updated_at=? WHERE id=? AND status='queued' AND deleted_at IS NULL`, turnID, now, followUp.ID)
@@ -414,7 +432,7 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 			return err
 		}
 		item := itemDTO(row, threadUUID, turnUUID, runUUID)
-		item.ImageReferences, err = service.itemImageReferences(ctx, store, row.ID)
+		item.References, err = service.itemReferences(ctx, store, row.ID)
 		if err != nil {
 			return err
 		}

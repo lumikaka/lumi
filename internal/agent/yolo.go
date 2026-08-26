@@ -144,7 +144,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 				return err
 			}
 		}
-		thread := threadRecord{ID: threadID, UUID: threadUUID, ProjectID: pid, Scope: ThreadScopeProject, NextItemSequence: 1, NextEventSequence: 1}
+		thread := threadRecord{ID: threadID, UUID: threadUUID, ProjectID: pid, NextItemSequence: 1, NextEventSequence: 1}
 		if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已启动。进度会持久保存，关闭应用后仍可恢复。", "text", "completed", "", "", workflowUUID, map[string]any{"workflow_uuid": workflowUUID}, now); err != nil {
 			return err
 		}
@@ -903,7 +903,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 		}
 		if workflow.ThreadID != nil {
 			var thread threadRecord
-			if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,scope,scene,subject_uuid,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&thread.ID, &thread.UUID, &thread.ProjectID, &thread.Title, &thread.Status, &thread.Scope, &thread.Scene, &thread.SubjectUUID, &thread.ProviderUUID, &thread.Model, &thread.ModelSource, &thread.NextTurnSequence, &thread.NextItemSequence, &thread.NextEventSequence, &thread.ArchivedAt, &thread.CreatedAt, &thread.UpdatedAt); err != nil {
+			if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&thread.ID, &thread.UUID, &thread.ProjectID, &thread.Title, &thread.Status, &thread.ProviderUUID, &thread.Model, &thread.ModelSource, &thread.NextTurnSequence, &thread.NextItemSequence, &thread.NextEventSequence, &thread.ArchivedAt, &thread.CreatedAt, &thread.UpdatedAt); err != nil {
 				return err
 			}
 			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已完成：第一章、Story Profile、Premise、六个 Comic Sections 和首图均已就绪。", "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {

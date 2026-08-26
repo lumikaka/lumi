@@ -8,13 +8,15 @@ import (
 )
 
 const (
-	ThreadIdle               = "idle"
-	ThreadBusy               = "busy"
-	ThreadWaitingForInput    = "waiting_for_input"
-	ThreadCompleted          = "completed"
-	ThreadFailed             = "failed"
-	ThreadCancelled          = "cancelled"
-	ThreadInterrupted        = "interrupted"
+	ThreadIdle            = "idle"
+	ThreadBusy            = "busy"
+	ThreadWaitingForInput = "waiting_for_input"
+	ThreadCompleted       = "completed"
+	ThreadFailed          = "failed"
+	ThreadCancelled       = "cancelled"
+	ThreadInterrupted     = "interrupted"
+	// Recovery-only Scene-era values. New Thread API and storage do not expose
+	// or persist these discriminators.
 	ThreadScopeProject       = "project"
 	ThreadScopePremise       = "premise"
 	ScenePremiseAsset        = "premise_asset_generation"
@@ -139,9 +141,6 @@ type Thread struct {
 	ProjectUUID  string     `json:"project_uuid"`
 	Title        string     `json:"title"`
 	Status       string     `json:"status"`
-	Scope        string     `json:"scope"`
-	Scene        string     `json:"scene,omitempty"`
-	SubjectUUID  string     `json:"subject_uuid,omitempty"`
 	ProviderUUID string     `json:"provider_uuid"`
 	Model        string     `json:"model"`
 	ModelSource  string     `json:"model_source"`
@@ -189,33 +188,43 @@ type Run struct {
 }
 
 type Item struct {
-	UUID            string           `json:"uuid"`
-	ThreadUUID      string           `json:"thread_uuid"`
-	TurnUUID        string           `json:"turn_uuid,omitempty"`
-	RunUUID         string           `json:"run_uuid,omitempty"`
-	Sequence        int64            `json:"sequence"`
-	ItemType        string           `json:"item_type"`
-	Role            string           `json:"role"`
-	Content         string           `json:"content"`
-	ContentFormat   string           `json:"content_format"`
-	Status          string           `json:"status"`
-	ToolCallUUID    string           `json:"tool_call_uuid,omitempty"`
-	ToolName        string           `json:"tool_name,omitempty"`
-	TargetUUID      string           `json:"target_uuid,omitempty"`
-	Metadata        json.RawMessage  `json:"metadata"`
-	ImageReferences []ImageReference `json:"image_references,omitempty"`
-	CreatedAt       time.Time        `json:"created_at"`
+	UUID          string          `json:"uuid"`
+	ThreadUUID    string          `json:"thread_uuid"`
+	TurnUUID      string          `json:"turn_uuid,omitempty"`
+	RunUUID       string          `json:"run_uuid,omitempty"`
+	Sequence      int64           `json:"sequence"`
+	ItemType      string          `json:"item_type"`
+	Role          string          `json:"role"`
+	Content       string          `json:"content"`
+	ContentFormat string          `json:"content_format"`
+	Status        string          `json:"status"`
+	ToolCallUUID  string          `json:"tool_call_uuid,omitempty"`
+	ToolName      string          `json:"tool_name,omitempty"`
+	TargetUUID    string          `json:"target_uuid,omitempty"`
+	Metadata      json.RawMessage `json:"metadata"`
+	References    []Reference     `json:"references"`
+	CreatedAt     time.Time       `json:"created_at"`
 }
 
-type ImageReference struct {
-	UploadUUID       string `json:"upload_uuid"`
-	FileUUID         string `json:"file_uuid"`
-	OriginalFilename string `json:"original_filename"`
-	MIMEType         string `json:"mime_type"`
-	ByteSize         int64  `json:"byte_size"`
-	Width            *int   `json:"width"`
-	Height           *int   `json:"height"`
-	ContentURL       string `json:"content_url"`
+const (
+	ReferenceTypeFile         = "file"
+	ReferenceTypePremiseAsset = "premise_asset"
+	ReferenceTypeComicSection = "comic_section"
+	MaxContextReferences      = 16
+	MaxReferenceSnapshotBytes = 8 << 10
+)
+
+type ReferenceInput struct {
+	ResourceType string `json:"resource_type"`
+	ResourceUUID string `json:"resource_uuid"`
+}
+
+type Reference struct {
+	ResourceType   string          `json:"resource_type"`
+	ResourceUUID   string          `json:"resource_uuid"`
+	Position       int             `json:"position"`
+	ImageAvailable bool            `json:"image_available"`
+	Snapshot       json.RawMessage `json:"snapshot"`
 }
 
 type Event struct {
@@ -229,16 +238,16 @@ type Event struct {
 }
 
 type FollowUp struct {
-	UUID             string           `json:"uuid"`
-	ThreadUUID       string           `json:"thread_uuid"`
-	InputText        string           `json:"input_text"`
-	Position         int              `json:"position"`
-	Status           string           `json:"status"`
-	PromotedTurnUUID string           `json:"promoted_turn_uuid,omitempty"`
-	ImageReferences  []ImageReference `json:"image_references,omitempty"`
-	CreatedAt        time.Time        `json:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at"`
-	DeletedAt        *time.Time       `json:"deleted_at,omitempty"`
+	UUID             string      `json:"uuid"`
+	ThreadUUID       string      `json:"thread_uuid"`
+	InputText        string      `json:"input_text"`
+	Position         int         `json:"position"`
+	Status           string      `json:"status"`
+	PromotedTurnUUID string      `json:"promoted_turn_uuid,omitempty"`
+	References       []Reference `json:"references"`
+	CreatedAt        time.Time   `json:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+	DeletedAt        *time.Time  `json:"deleted_at,omitempty"`
 }
 
 type FollowUpDelivery struct {
@@ -389,27 +398,29 @@ type WorkflowLLMLogPage struct {
 
 type CreateThreadInput struct {
 	Title        string `json:"title"`
-	Scope        string `json:"scope,omitempty"`
-	Scene        string `json:"scene,omitempty"`
-	SubjectUUID  string `json:"subject_uuid,omitempty"`
 	ProviderUUID string `json:"-"`
 	Model        string `json:"model"`
 }
 
 type CreateTurnInput struct {
-	InputText   string   `json:"input_text"`
-	MaxSteps    int      `json:"max_steps,omitempty"`
-	UploadUUIDs []string `json:"upload_uuids,omitempty"`
+	InputText  string           `json:"input_text"`
+	MaxSteps   int              `json:"max_steps,omitempty"`
+	References []ReferenceInput `json:"references,omitempty"`
 }
 
 type CreateFollowUpInput struct {
-	InputText   string   `json:"input_text"`
-	UploadUUIDs []string `json:"upload_uuids,omitempty"`
+	InputText  string           `json:"input_text"`
+	References []ReferenceInput `json:"references,omitempty"`
+}
+
+type UpdateFollowUpInput struct {
+	InputText  string            `json:"input_text"`
+	References *[]ReferenceInput `json:"references,omitempty"`
 }
 
 type SteeringInput struct {
-	InputText   string   `json:"input_text"`
-	UploadUUIDs []string `json:"upload_uuids,omitempty"`
+	InputText  string           `json:"input_text"`
+	References []ReferenceInput `json:"references,omitempty"`
 }
 
 type UserInputResponse struct {
@@ -427,7 +438,8 @@ type CreateYoloInput struct {
 
 type threadRecord struct {
 	ID                                                    int64 `gorm:"primaryKey"`
-	UUID, Title, Status, Scope, Scene, SubjectUUID        string
+	UUID, Title, Status                                   string
+	Scope, Scene, SubjectUUID                             string `gorm:"-"`
 	ProviderUUID, Model, ModelSource                      string
 	ProjectID                                             int64
 	NextTurnSequence, NextItemSequence, NextEventSequence int64

@@ -4,9 +4,13 @@
 
 该 Feature 为内置 Prompt Catalog 保存项目级覆盖，而不修改代码内默认 Prompt。覆盖按 group 和 key 版本化，支持创建、批量更新、恢复历史版本和恢复默认；Story、Premise、漫画与 Agent 调用在任务创建时冻结最终 Prompt，不在重试时重新读取当前覆盖。
 
+Agent 活动 Catalog 只包含通用 `base` 与 `conversation_summary`。新 `project_api_v3` System Prompt 由静态规则、运行时生成的 API Overview 和唯一动态项目事实 `project_uuid` 组成，不注入生成语言、业务 Scene、subject 或 Reference 内容；Reference 快照只作为对应当前 Turn User Message 中明确标记的不可信数据。
+
 ## data_model
 
 `project_prompt_versions` 以 `(project_id, prompt_group, prompt_key, version_no)` 唯一保存不可变版本。每条记录含公开 UUIDv7、内容 hash、来源类型及可选 `restored_from_version_id` 内部关联；当前值由 Catalog 默认值与最新项目版本投影得出。
+
+Scene-era Agent Prompt key 已退出活动 Catalog。既有 `project_prompt_versions` 行不删除、不改写，只作为历史记录保留；已有 v2 或 legacy typed Run 从 User Item 中冻结的 Prompt snapshot 恢复，新的 Turn 不得选择旧协议或 Scene Prompt。
 
 ## api
 
@@ -25,4 +29,4 @@
 
 ## others
 
-默认 Prompt、group、key 和占位符定义位于 `internal/promptcatalog`。保存必须校验合法 group/key 和模板占位符；运行时不接受未冻结的历史重写。
+默认 Prompt、group、key 和占位符定义位于 `internal/promptcatalog`。保存必须校验当前活动 group/key 和模板占位符；退出 Catalog 的 Scene 版本只读保留。Conversation Summary 作为不可信派生上下文以 User 角色注入，本地运行错误仅作为诊断上下文，不提升到 System 优先级。

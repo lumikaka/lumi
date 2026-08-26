@@ -29,35 +29,37 @@ function envelope(data) {
 }
 
 test('chat resources use project-scoped UUID routes and snake_case payloads', async () => {
+  const premiseReference = { resource_type: 'premise_asset', resource_uuid: 'asset-uuid' }
+  const fileReference = { resource_type: 'file', resource_uuid: 'file-uuid' }
   const calls = []
   const original = global.fetch
   global.fetch = async (url, options = {}) => { calls.push([url, options]); return envelope({ uuid: 'public-uuid' }) }
   try {
-    await listChatThreads('project uuid', { scope: 'premise' })
-    await createChatThread('project uuid', { title: 'Asset', scope: 'premise', scene: 'asset_reference', subject_uuid: 'asset-uuid' })
-    await createChatTurn('project uuid', 'thread uuid', { input_text: 'hello', upload_uuids: ['upload-a'] })
-    await createFollowUp('project uuid', 'thread uuid', 'next', ['upload-b'])
+    await listChatThreads('project uuid')
+    await createChatThread('project uuid', { title: 'Asset' })
+    await createChatTurn('project uuid', 'thread uuid', { input_text: 'hello', references: [premiseReference] })
+    await createFollowUp('project uuid', 'thread uuid', 'next', [fileReference])
     await moveFollowUp('project uuid', 'thread uuid', 'follow uuid', 2)
     await updateFollowUp('project uuid', 'thread uuid', 'follow uuid', 'edited')
     await steerFollowUp('project uuid', 'thread uuid', 'follow uuid')
-    await steerChatRun('project uuid', 'thread uuid', 'change direction', ['upload-c'])
+    await steerChatRun('project uuid', 'thread uuid', 'change direction', [premiseReference, fileReference])
     await abortChatTurn('project uuid', 'thread uuid')
     await respondUserInput('project uuid', 'thread uuid', 'request uuid', { selected_option_uuids: ['option-uuid'] })
   } finally { global.fetch = original }
 
   assert.equal(calls[0][0], '/api/v1/projects/project%20uuid/chat_threads?page=1&per_page=30')
   assert.equal(calls[1][0], '/api/v1/projects/project%20uuid/chat_threads')
-  assert.deepEqual(JSON.parse(calls[1][1].body), { title: 'Asset', scope: 'premise', scene: 'asset_reference', subject_uuid: 'asset-uuid' })
+  assert.deepEqual(JSON.parse(calls[1][1].body), { title: 'Asset' })
   assert.equal(calls[2][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/turns')
-  assert.deepEqual(JSON.parse(calls[2][1].body), { input_text: 'hello', upload_uuids: ['upload-a'] })
+  assert.deepEqual(JSON.parse(calls[2][1].body), { input_text: 'hello', references: [premiseReference] })
   assert.equal(calls[3][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/follow_ups')
-  assert.deepEqual(JSON.parse(calls[3][1].body), { input_text: 'next', upload_uuids: ['upload-b'] })
+  assert.deepEqual(JSON.parse(calls[3][1].body), { input_text: 'next', references: [fileReference] })
   assert.equal(calls[4][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/follow_ups/follow%20uuid/position')
   assert.equal(calls[5][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/follow_ups/follow%20uuid')
   assert.deepEqual(JSON.parse(calls[5][1].body), { input_text: 'edited' })
   assert.equal(calls[6][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/follow_ups/follow%20uuid/steerings')
   assert.equal(calls[7][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/steerings')
-  assert.deepEqual(JSON.parse(calls[7][1].body), { input_text: 'change direction', upload_uuids: ['upload-c'] })
+  assert.deepEqual(JSON.parse(calls[7][1].body), { input_text: 'change direction', references: [premiseReference, fileReference] })
   assert.equal(calls[8][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/cancellations')
   assert.equal(calls[9][0], '/api/v1/projects/project%20uuid/chat_threads/thread%20uuid/user_input_requests/request%20uuid/responses')
   assert.equal(calls[0][1].method, undefined)

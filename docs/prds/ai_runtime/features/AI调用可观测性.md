@@ -2,7 +2,9 @@
 
 ## overview
 
-该 Feature 为单机项目提供统一、可恢复的 AI 调用审计视图。Story、Project Chat、Premise/漫画 Production 与 Workflow 调用都进入同一项目日志；用户可以按 Provider、模型、场景、状态、请求类型和关键词组合筛选，并从公开 Task、Thread、Run、Workflow UUID 追踪调用上下文。
+该 Feature 为单机项目提供统一、可恢复的 AI 调用审计视图。Story、Project Chat、Premise/漫画 Production 与 Workflow 调用都进入同一项目日志；用户可以按 Provider、模型、scenario、状态、请求类型和关键词组合筛选，并从公开 Task、Thread、Run、Workflow UUID 追踪调用上下文。
+
+新 Chat 文本和图片调用的 scenario 统一为 `project_chat`，对外不返回 Scene。项目级日志包含全部 Chat；Premise scope 只展示 Premise Production 调用。历史 scenario 继续可筛选和阅读，但不会影响新日志归类。
 
 列表只搜索受限长度的输入/输出摘要、模型、scenario、错误码和 Provider request id，不对原始请求/响应 JSON 做无界扫描。详情保留既有安全 payload 阅读器，但不保存或返回请求 header、API Key、Authorization、二进制图片或内部数据库 ID。
 

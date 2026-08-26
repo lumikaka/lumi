@@ -455,9 +455,8 @@ export default function PremiseWorkspace({ projectUuid }) {
     setDetailDraft({ assetType: asset.asset_type, title: asset.title, summary: asset.summary || '', tags: (asset.tags || []).join(', ') })
   }
 
-  const updateChatQuery = ({ threadUuid = '', scene = '', subject = null } = {}) => {
+  const updateChatQuery = ({ threadUuid = '', reference = null } = {}) => {
     const next = new URLSearchParams(searchParams)
-    next.delete('chat_scope')
     next.delete('workflow_uuid')
     if (threadUuid) {
       next.set('chat_thread_uuid', threadUuid)
@@ -466,21 +465,21 @@ export default function PremiseWorkspace({ projectUuid }) {
       next.delete('chat_thread_uuid')
       next.set('chat_new', '1')
     }
-    if (scene) next.set('chat_scene', scene)
-    else next.delete('chat_scene')
-    if (subject?.uuid) {
-      next.set('chat_subject_uuid', subject.uuid)
-      next.set('chat_subject_title', subject.title || '')
+    if (reference?.uuid) {
+      next.set('chat_reference_type', 'premise_asset')
+      next.set('chat_reference_uuid', reference.uuid)
+      next.set('chat_reference_title', reference.title || '')
     } else {
-      next.delete('chat_subject_uuid')
-      next.delete('chat_subject_title')
+      next.delete('chat_reference_type')
+      next.delete('chat_reference_uuid')
+      next.delete('chat_reference_title')
     }
     setSearchParams(next)
     setAddMenuOpen(false)
   }
 
-  const openChatScene = (scene, subject = null) => {
-    updateChatQuery({ scene, subject })
+  const openChat = (reference = null) => {
+    updateChatQuery({ reference })
     if (historyAsset) closeAssetDetail()
   }
 
@@ -570,7 +569,7 @@ export default function PremiseWorkspace({ projectUuid }) {
           {addMenuOpen ? (
             <div className="premise-add__menu" role="menu">
               <button type="button" className="premise-add__item" role="menuitem" onClick={openBatchDialog}><Sparkles size={16} aria-hidden="true" /><span><strong>{t('premise.add.batch.title')}</strong><small>{t('premise.add.batch.body')}</small></span></button>
-              <button type="button" className="premise-add__item" role="menuitem" onClick={() => openChatScene('premise_asset_generation')}><Plus size={16} aria-hidden="true" /><span><strong>{t('premise.add.single.title')}</strong><small>{t('premise.add.single.body')}</small></span></button>
+              <button type="button" className="premise-add__item" role="menuitem" onClick={() => openChat()}><Plus size={16} aria-hidden="true" /><span><strong>{t('premise.add.single.title')}</strong><small>{t('premise.add.single.body')}</small></span></button>
               <button type="button" className="premise-add__item" role="menuitem" onClick={() => { setUploadDialogOpen(true); setAddMenuOpen(false) }}><Upload size={16} aria-hidden="true" /><span><strong>{t('premise.add.upload.title')}</strong><small>{t('premise.add.upload.body')}</small></span></button>
             </div>
           ) : null}
@@ -615,7 +614,7 @@ export default function PremiseWorkspace({ projectUuid }) {
                       {asset.current_variant ? <ProductionImage projectUuid={projectUuid} asset={asset.current_variant.asset} alt={asset.title} /> : <span className="asset-card__placeholder">{t('premise.assets.no_image')}</span>}
                     </button>
                     <div className="premise-asset-tile__actions">
-                      <button type="button" className="premise-icon-button" onClick={() => openChatScene('asset_reference', asset)} aria-label={t('premise.assets.reference_chat', { title: asset.title })} title={t('premise.assets.reference')}><MessageSquareQuote size={15} aria-hidden="true" /></button>
+                      <button type="button" className="premise-icon-button" onClick={() => openChat(asset)} aria-label={t('premise.assets.reference_chat', { title: asset.title })} title={t('premise.assets.reference')}><MessageSquareQuote size={15} aria-hidden="true" /></button>
                       <button type="button" className="premise-icon-button" onClick={() => openAssetDetail(asset)} aria-label={t('premise.assets.history_label', { title: asset.title })} title={t('premise.assets.history')}><History size={15} aria-hidden="true" /></button>
                       <button type="button" className="premise-icon-button is-danger" disabled={trashMutation.isPending && trashMutation.variables?.uuid === asset.uuid} onClick={() => trashMutation.mutate(asset)} aria-label={t('premise.assets.trash_label', { title: asset.title })} title={t('story.chapter.trash')}><Trash2 size={15} aria-hidden="true" /></button>
                     </div>
@@ -812,7 +811,7 @@ export default function PremiseWorkspace({ projectUuid }) {
       {historyAsset && detailDraft ? (
         <div className="premise-dialog-backdrop premise-dialog-backdrop--detail" onMouseDown={(event) => { if (event.target === event.currentTarget) closeAssetDetail() }}>
           <section className="premise-dialog premise-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="premise-detail-title">
-            <header><div><p>{t('premise.detail.title')}</p><h2 id="premise-detail-title">{historyAsset.title}</h2></div><div className="premise-detail-header-actions"><button type="button" className="button-secondary" onClick={() => openChatScene('asset_reference', historyAsset)}><MessageSquareQuote size={15} aria-hidden="true" />{t('premise.assets.reference')}</button><button type="button" className="button-quiet" onClick={closeAssetDetail} aria-label={t('common.action.close')}><X size={18} aria-hidden="true" /></button></div></header>
+            <header><div><p>{t('premise.detail.title')}</p><h2 id="premise-detail-title">{historyAsset.title}</h2></div><div className="premise-detail-header-actions"><button type="button" className="button-secondary" onClick={() => openChat(historyAsset)}><MessageSquareQuote size={15} aria-hidden="true" />{t('premise.assets.reference')}</button><button type="button" className="button-quiet" onClick={closeAssetDetail} aria-label={t('common.action.close')}><X size={18} aria-hidden="true" /></button></div></header>
             <div className="premise-detail-layout">
               <div className="premise-detail-preview">{historyAsset.current_variant ? <ProductionImage projectUuid={projectUuid} asset={historyAsset.current_variant.asset} alt={historyAsset.title} profile="detail_1024" /> : <div className="asset-card__placeholder">{t('premise.assets.no_image')}</div>}</div>
               <form className="premise-detail-form" onSubmit={(event) => { event.preventDefault(); updateAsset.mutate() }}>

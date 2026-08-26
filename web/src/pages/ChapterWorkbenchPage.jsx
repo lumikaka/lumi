@@ -585,13 +585,12 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       }
     }
     updateSearchParams(searchParams, setSearchParams, {
-      chat_scope: null,
       chat_thread_uuid: null,
       workflow_uuid: null,
       chat_new: '1',
-      chat_scene: 'storyboard_reference',
-      chat_subject_uuid: selected.uuid,
-      chat_subject_title: t(pageMode ? 'comic.workbench.ai.page_subject_title' : 'comic.workbench.ai.subject_title', { number: selected.section_no, title: selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled') }),
+      chat_reference_type: 'comic_section',
+      chat_reference_uuid: selected.uuid,
+      chat_reference_title: t(pageMode ? 'comic.workbench.ai.page_subject_title' : 'comic.workbench.ai.subject_title', { number: selected.section_no, title: selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled') }),
     })
   }
   const availableBatchCount = selectionControls.selectedCount

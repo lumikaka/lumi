@@ -33,6 +33,10 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 
 `task_runs` 与 `production_task_runs` 记录可取消、可重试的执行快照，事件表仅追加。客户端用 WebSocket 变更提示失效 TanStack Query，并通过 REST 在首次 join、重连和窗口重新聚焦时校准 SQLite 事实状态。
 
+### Project Chat Prompt 协议
+
+新 Chat Run 使用 `project_api_v3`。System Prompt 只含静态 Agent 规则、API Overview 和当前 `project_uuid`；生成语言等可变事实由 Agent 按需通过 Project API 读取。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。
+
 ## Feature 列表
 
 | Feature | 文档 | 说明 |
@@ -47,4 +51,4 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 |---|---|
 | AI Provider | 提供 ready/active 状态和默认模型；项目库只保存 Provider UUIDv7 与模型名。 |
 | 章节、设定资产、漫画 Section、导出 | 业务域创建任务并定义输入输出语义，运行时只管理冻结和执行状态。 |
-| Chat thread / Workflow | Chat thread/run 与 Workflow 创建时冻结同一解析结果，并向后续步骤传播。 |
+| Chat thread / Workflow | Chat thread/run 与 Workflow 创建时冻结模型和 Prompt 协议；已有 v2/legacy Run 只按持久快照恢复。 |

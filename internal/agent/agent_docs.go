@@ -13,25 +13,26 @@ import (
 // matches the global embedded-doc registry; no caller-controlled filesystem
 // path is ever opened.
 //
-//go:embed api-docs/*.md api-docs/guides/*.md
+//go:embed docs/overview.md docs/api/*.md docs/guides/*.md
 var agentDocFiles embed.FS
 
 const (
 	agentDocBasePath     = "/api/v1/agent-docs"
+	agentDocAPIBasePath  = agentDocBasePath + "/api"
 	agentDocOverviewPath = agentDocBasePath + "/overview.md"
-	storyDocPath         = agentDocBasePath + "/story.md"
-	projectDocPath       = agentDocBasePath + "/project.md"
-	chapterDocPath       = agentDocBasePath + "/chapter.md"
-	premiseDocPath       = agentDocBasePath + "/premise.md"
-	premiseAssetDocPath  = agentDocBasePath + "/premise-asset.md"
-	comicSectionDocPath  = agentDocBasePath + "/comic-section.md"
-	comicDocPath         = agentDocBasePath + "/comic.md"
-	comicSnapshotDocPath = agentDocBasePath + "/comic-snapshot.md"
-	comicExportDocPath   = agentDocBasePath + "/comic-export.md"
-	projectAssetDocPath  = agentDocBasePath + "/project-asset.md"
-	storyboardDocPath    = agentDocBasePath + "/storyboard.md"
-	generationDocPath    = agentDocBasePath + "/generation.md"
-	taskDocPath          = agentDocBasePath + "/task.md"
+	storyDocPath         = agentDocAPIBasePath + "/story.md"
+	projectDocPath       = agentDocAPIBasePath + "/project.md"
+	chapterDocPath       = agentDocAPIBasePath + "/chapter.md"
+	premiseDocPath       = agentDocAPIBasePath + "/premise.md"
+	premiseAssetDocPath  = agentDocAPIBasePath + "/premise-asset.md"
+	comicSectionDocPath  = agentDocAPIBasePath + "/comic-section.md"
+	comicDocPath         = agentDocAPIBasePath + "/comic.md"
+	comicSnapshotDocPath = agentDocAPIBasePath + "/comic-snapshot.md"
+	comicExportDocPath   = agentDocAPIBasePath + "/comic-export.md"
+	projectAssetDocPath  = agentDocAPIBasePath + "/project-asset.md"
+	storyboardDocPath    = agentDocAPIBasePath + "/storyboard.md"
+	generationDocPath    = agentDocAPIBasePath + "/generation.md"
+	taskDocPath          = agentDocAPIBasePath + "/task.md"
 	maxAgentDocBytes     = 96 << 10
 
 	GuidePremiseAssetCreate   = "premise_asset_create"
@@ -60,7 +61,6 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 		{Path: comicSnapshotDocPath, Description: "Comic Snapshot 列表、详情与恢复。"},
 		{Path: comicDocPath, Description: "Comic 状态、Section 集合与排序。"},
 		{Path: generationDocPath, Description: "Story、Chapter、Premise 与 Comic 生成入口。"},
-		{Path: agentDocOverviewPath, Description: "能力、Guide 与领域 API Contract 总索引。"},
 		{Path: premiseAssetDocPath, Description: "Premise Asset、图片 variant 与生命周期。"},
 		{Path: premiseDocPath, Description: "Premise、来源与 Setting Image。"},
 		{Path: projectAssetDocPath, Description: "项目文件、上传、完整性与资产维护。"},
@@ -105,9 +105,6 @@ func (service *Service) readAgentDoc(tc toolContext, args map[string]any) (map[s
 func readAgentDocWithRoutes(tc toolContext, args map[string]any, routes []agentAPIRoute) (map[string]any, error) {
 	if normalizedToolMode(tc.ToolMode) != ToolModeProjectAPI {
 		return nil, domainError(CodeToolNotAllowed, "read_agent_doc 不适用于当前 Tool Mode", "当前 Run 没有启用 project_api_tools。", nil)
-	}
-	if _, ok := sceneDefinitionForThread(tc.Thread); !ok {
-		return nil, domainError(CodeToolNotAllowed, "Scene 定义无效", "当前 thread 无法读取 Agent Docs。", nil)
 	}
 	path := stringArg(args, "path")
 	if !validAgentDocPath(path) {
@@ -170,7 +167,7 @@ func readAgentDocTemplate(path string) (string, error) {
 	if relative == path || relative == "" {
 		return "", domainError(CodeToolValidation, "Agent Doc path 无效", "文档路径无法映射到注册文档。", nil)
 	}
-	content, err := agentDocFiles.ReadFile("api-docs/" + relative)
+	content, err := agentDocFiles.ReadFile("docs/" + relative)
 	if err != nil {
 		return "", domainError(CodeToolNotAllowed, "Agent Doc 未注册", "注册路径没有对应的内嵌 Markdown 文档。", err)
 	}
@@ -211,8 +208,9 @@ func registeredAgentDocPaths() []string {
 }
 
 func registeredAgentDocPathsForRoutes(routes []agentAPIRoute) []string {
-	paths := make([]string, 0, len(agentAPIDocDefinitions())+len(agentGuideDefinitions()))
-	seen := make(map[string]bool, cap(paths))
+	paths := make([]string, 0, 1+len(agentAPIDocDefinitions())+len(agentGuideDefinitions()))
+	paths = append(paths, agentDocOverviewPath)
+	seen := map[string]bool{agentDocOverviewPath: true}
 	for _, doc := range agentAPIDocDefinitions() {
 		paths = append(paths, doc.Path)
 		seen[doc.Path] = true

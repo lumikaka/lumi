@@ -79,6 +79,75 @@ func pngFixture(t *testing.T) []byte {
 	return buffer.Bytes()
 }
 
+func TestUploadCleanupRetiresOnlyUnreferencedFinalizedChatFiles(t *testing.T) {
+	service, store, _ := testService(t)
+	ctx := context.Background()
+	clock := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return clock }
+	create := func(name string, content []byte) Asset {
+		t.Helper()
+		upload, err := service.CreateUpload(ctx, CreateUploadInput{Purpose: "project_chatbot_reference", OriginalFilename: name, Reader: bytes.NewReader(content)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		asset, err := service.FinalizeUpload(ctx, upload.UUID, "project_chatbot_reference")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return asset
+	}
+	unreferenced := create("orphan.png", pngFixture(t))
+	referencedContent := append(pngFixture(t), byte(0))
+	referenced := create("referenced.png", referencedContent)
+	var projectID, fileID int64
+	if err := store.DB().Table("projects").Where("uuid=?", store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Table("files").Where("uuid=?", referenced.UUID).Pluck("id", &fileID).Error; err != nil {
+		t.Fatal(err)
+	}
+	threadUUID, _ := newUUIDv7()
+	itemUUID, _ := newUUIDv7()
+	providerUUID, _ := newUUIDv7()
+	if err := store.DB().Exec(`INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,'Reference owner','idle',?,'test-model','legacy_frozen',?,?)`, threadUUID, projectID, providerUUID, clock, clock).Error; err != nil {
+		t.Fatal(err)
+	}
+	var threadID int64
+	if err := store.DB().Table("chat_threads").Where("uuid=?", threadUUID).Pluck("id", &threadID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Exec(`INSERT INTO chat_items(uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(?,?,1,'user_message','user','Keep file','{}',?)`, itemUUID, threadID, clock).Error; err != nil {
+		t.Fatal(err)
+	}
+	var itemID int64
+	if err := store.DB().Table("chat_items").Where("uuid=?", itemUUID).Pluck("id", &itemID).Error; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := `{"resource_type":"file","resource_uuid":"` + referenced.UUID + `","status":"available"}`
+	if err := store.DB().Exec(`INSERT INTO chat_context_references(chat_item_id,position,resource_type,resource_uuid,snapshot_json,file_id,image_file_id,created_at) VALUES(?,1,'file',?,?,?,?,?)`, itemID, referenced.UUID, snapshot, fileID, fileID, clock).Error; err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(8 * 24 * time.Hour)
+	summary, err := service.CleanupUploads(ctx, 100, 7*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.RetiredFiles != 1 {
+		t.Fatalf("retired files=%d summary=%+v", summary.RetiredFiles, summary)
+	}
+	if _, err := service.GetAsset(ctx, unreferenced.UUID, false); err == nil {
+		t.Fatal("unreferenced finalized File remained active")
+	} else {
+		var domainErr *Error
+		if !errors.As(err, &domainErr) || domainErr.Code != CodeAssetNotFound {
+			t.Fatalf("unexpected retired File error: %v", err)
+		}
+	}
+	if _, err := service.GetAsset(ctx, referenced.UUID, false); err != nil {
+		t.Fatalf("referenced finalized File was retired: %v", err)
+	}
+}
+
 func TestRepairContentRestoresExactMissingOrDamagedAsset(t *testing.T) {
 	service, _, _ := testService(t)
 	ctx := context.Background()

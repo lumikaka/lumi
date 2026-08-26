@@ -47,12 +47,12 @@ test('known API errors use localized copy and retain raw details only for diagno
   )
 
   assert.equal(
-    localizedErrorPresentation(translator('en'), { code: 'chat_image_reference_invalid_mime', status: 422 }).message,
+    localizedErrorPresentation(translator('en'), { code: 'chat_reference_invalid_mime', status: 422 }).message,
     'Only PNG, JPEG, or WebP images can be attached.',
   )
   assert.equal(
-    localizedErrorPresentation(translator('zh-Hans'), { code: 'chat_image_reference_limit_exceeded', status: 422 }).message,
-    '每条消息最多添加 4 张参考图片。',
+    localizedErrorPresentation(translator('zh-Hans'), { code: 'chat_reference_limit_exceeded', status: 422 }).message,
+    '每条消息最多引用 16 个资源。',
   )
   assert.equal(
     localizedErrorPresentation(translator('zh-Hans'), { code: 'production_export_empty', status: 422 }).message,

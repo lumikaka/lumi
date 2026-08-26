@@ -109,27 +109,27 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 		t.Fatalf("create thread = %d %s", threadResponse.Code, threadResponse.Body.String())
 	}
 	threadUUID := envelopeData(t, threadResponse)["uuid"].(string)
-	premiseThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "单项生成", "scope": "premise", "scene": "premise_asset_generation"})
-	if premiseThreadResponse.Code != http.StatusCreated || !strings.Contains(premiseThreadResponse.Body.String(), `"scope":"premise"`) || !strings.Contains(premiseThreadResponse.Body.String(), `"scene":"premise_asset_generation"`) {
+	premiseThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "单项生成"})
+	if premiseThreadResponse.Code != http.StatusCreated || strings.Contains(premiseThreadResponse.Body.String(), `"scope"`) || strings.Contains(premiseThreadResponse.Body.String(), `"scene"`) || strings.Contains(premiseThreadResponse.Body.String(), `"subject_uuid"`) {
 		t.Fatalf("create premise thread = %d %s", premiseThreadResponse.Code, premiseThreadResponse.Body.String())
 	}
-	projectList := requestJSON(t, e, http.MethodGet, base+"/chat_threads?scope=premise", nil)
+	projectList := requestJSON(t, e, http.MethodGet, base+"/chat_threads", nil)
 	if projectList.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"title":"单项生成"`) || !strings.Contains(projectList.Body.String(), `"title":"项目助手"`) || !strings.Contains(projectList.Body.String(), `"total":2`) {
-		t.Fatalf("project thread list with legacy scope = %d %s", projectList.Code, projectList.Body.String())
+		t.Fatalf("project thread list = %d %s", projectList.Code, projectList.Body.String())
 	}
 	unfilteredProjectList := requestJSON(t, e, http.MethodGet, base+"/chat_threads", nil)
 	if unfilteredProjectList.Code != http.StatusOK || !strings.Contains(unfilteredProjectList.Body.String(), `"title":"单项生成"`) || !strings.Contains(unfilteredProjectList.Body.String(), `"title":"项目助手"`) || !strings.Contains(unfilteredProjectList.Body.String(), `"total":2`) {
 		t.Fatalf("project thread list = %d %s", unfilteredProjectList.Code, unfilteredProjectList.Body.String())
 	}
-	storyboardThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "分镜引用", "scope": "project", "scene": "storyboard_reference", "subject_uuid": storyboardSection.UUID})
-	if storyboardThreadResponse.Code != http.StatusCreated || !strings.Contains(storyboardThreadResponse.Body.String(), `"scene":"storyboard_reference"`) || !strings.Contains(storyboardThreadResponse.Body.String(), storyboardSection.UUID) {
+	storyboardThreadResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "分镜引用"})
+	if storyboardThreadResponse.Code != http.StatusCreated || strings.Contains(storyboardThreadResponse.Body.String(), `"scene"`) || strings.Contains(storyboardThreadResponse.Body.String(), storyboardSection.UUID) {
 		t.Fatalf("create storyboard thread = %d %s", storyboardThreadResponse.Code, storyboardThreadResponse.Body.String())
 	}
-	invalidScene := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "越界", "scope": "project", "scene": "premise_asset_generation"})
-	if invalidScene.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("invalid project scene = %d %s", invalidScene.Code, invalidScene.Body.String())
+	invalidScene := requestJSON(t, e, http.MethodPost, base+"/chat_threads", map[string]any{"title": "旧协议", "scope": "project", "scene": "premise_asset_generation"})
+	if invalidScene.Code != http.StatusBadRequest {
+		t.Fatalf("legacy thread fields = %d %s", invalidScene.Code, invalidScene.Body.String())
 	}
-	turnResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads/"+threadUUID+"/turns", map[string]any{"input_text": "继续创作"})
+	turnResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads/"+threadUUID+"/turns", map[string]any{"input_text": "继续创作", "references": []map[string]any{{"resource_type": "comic_section", "resource_uuid": storyboardSection.UUID}}})
 	if turnResponse.Code != http.StatusCreated {
 		t.Fatalf("create turn = %d %s", turnResponse.Code, turnResponse.Body.String())
 	}
@@ -166,7 +166,7 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 			t.Fatalf("%s response leaked internal data: %s", name, response)
 		}
 	}
-	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || eventsResponse.Code != http.StatusOK || trajectoryResponse.Code != http.StatusOK || trajectoryDeepLinkResponse.Code != http.StatusOK || !strings.Contains(trajectoryResponse.Body.String(), `"history_complete":true`) || !strings.Contains(trajectoryResponse.Body.String(), `"model_requests":[]`) || missingTrajectoryResponse.Code != http.StatusNotFound || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
+	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || !strings.Contains(itemsResponse.Body.String(), storyboardSection.UUID) || !strings.Contains(itemsResponse.Body.String(), `"resource_type":"comic_section"`) || eventsResponse.Code != http.StatusOK || trajectoryResponse.Code != http.StatusOK || trajectoryDeepLinkResponse.Code != http.StatusOK || !strings.Contains(trajectoryResponse.Body.String(), `"history_complete":true`) || !strings.Contains(trajectoryResponse.Body.String(), `"model_requests":[]`) || missingTrajectoryResponse.Code != http.StatusNotFound || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
 		t.Fatalf("items=%d events=%d trajectory=%d deep_link=%d missing_trajectory=%d workflow=%d runs=%d workflow_events=%d logs=%d filtered_logs=%d", itemsResponse.Code, eventsResponse.Code, trajectoryResponse.Code, trajectoryDeepLinkResponse.Code, missingTrajectoryResponse.Code, workflowResponse.Code, workflowRunsResponse.Code, workflowEventsResponse.Code, workflowLogsResponse.Code, filteredWorkflowLogsResponse.Code)
 	}
 }

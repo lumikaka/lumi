@@ -95,11 +95,8 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err := service.recordModelStart(ctx, store, tc, contextBytes); err != nil {
 			return err
 		}
-		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: service.llmToolDefinitions(tc.Thread, tc.ToolMode), MaxTokens: 4096}
-		scenario := strings.TrimSpace(publicThreadScene(tc.Thread.Scope, tc.Thread.Scene))
-		if scenario == "" {
-			scenario = "project_chat"
-		}
+		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: llmToolDefinitionsForContext(tc), MaxTokens: 4096}
+		scenario := "project_chat"
 		requestPayload, err := llmlog.EncodeChatRequest(request)
 		if err != nil {
 			return err
@@ -228,10 +225,15 @@ func (service *Service) llmToolDefinitions(thread threadRecord, mode string) []l
 }
 
 func llmToolDefinitionsForMode(thread threadRecord, mode string) []llm.ToolDefinition {
-	definitions := toolDefinitions()
-	if normalizedToolMode(mode) == ToolModeLegacyTyped {
-		definitions = legacyRecoveryToolDefinitions()
-	}
+	return llmToolDefinitionsForProtocol(thread, mode, "")
+}
+
+func llmToolDefinitionsForContext(tc toolContext) []llm.ToolDefinition {
+	return llmToolDefinitionsForProtocol(tc.Thread, tc.ToolMode, tc.ToolProtocol)
+}
+
+func llmToolDefinitionsForProtocol(thread threadRecord, mode, protocol string) []llm.ToolDefinition {
+	definitions := toolDefinitionsForProtocol(mode, protocol)
 	result := make([]llm.ToolDefinition, 0, len(definitions))
 	for _, definition := range definitions {
 		name := definition["name"].(string)
@@ -243,6 +245,34 @@ func llmToolDefinitionsForMode(thread threadRecord, mode string) []llm.ToolDefin
 		result = append(result, llm.ToolDefinition{Name: name, Description: description, Parameters: parameters})
 	}
 	return result
+}
+
+func toolDefinitionsForProtocol(mode, protocol string) []map[string]any {
+	if normalizedToolMode(mode) == ToolModeLegacyTyped {
+		return legacyRecoveryToolDefinitions()
+	}
+	if normalizedToolMode(mode) == ToolModeProjectAPI && protocol == ToolProtocolProjectV2 {
+		return projectAPIV2ToolDefinitions()
+	}
+	return toolDefinitions()
+}
+
+// projectAPIV2ToolDefinitions preserves the phase-two image_gen argument
+// surface for already-persisted runs. New turns always receive project_api_v3.
+func projectAPIV2ToolDefinitions() []map[string]any {
+	definitions := toolDefinitions()
+	for index, definition := range definitions {
+		if definition["name"] != "image_gen" {
+			continue
+		}
+		for _, legacy := range legacyRecoveryToolDefinitions() {
+			if legacy["name"] == "image_gen" {
+				definitions[index] = legacy
+				break
+			}
+		}
+	}
+	return definitions
 }
 
 func (service *Service) loadRunToolMode(ctx context.Context, store *project.Store, tc toolContext) (string, error) {
@@ -257,8 +287,8 @@ func (service *Service) loadRunToolMode(ctx context.Context, store *project.Stor
 	mode := normalizedToolMode(snapshot.Mode)
 	switch mode {
 	case ToolModeProjectAPI:
-		if snapshot.Protocol != ToolProtocolProjectAPI {
-			return "", domainError(CodeToolNotAllowed, "Tool Protocol 快照无效", "project_api_tools Run 只支持 project_api_v2；旧协议 Run 不恢复。", nil)
+		if snapshot.Protocol != ToolProtocolProjectAPI && snapshot.Protocol != ToolProtocolProjectV2 {
+			return "", domainError(CodeToolNotAllowed, "Tool Protocol 快照无效", "project_api_tools Run 只恢复 project_api_v2 或 project_api_v3 快照。", nil)
 		}
 		return mode, nil
 	case ToolModeLegacyTyped:
@@ -346,6 +376,34 @@ func (service *Service) loadToolContext(ctx context.Context, store *project.Stor
 	var run runRecord
 	if err := store.DB().WithContext(ctx).Where("turn_id=?", turn.ID).First(&run).Error; err != nil {
 		return toolContext{}, notFound(err, "Chat run 不存在")
+	}
+	var metadataJSON string
+	if err := store.DB().WithContext(ctx).Table("chat_items").Select("metadata_json").Where("run_id=? AND turn_id=? AND item_type='user_message'", run.ID, turn.ID).Order("sequence,id").Limit(1).Scan(&metadataJSON).Error; err != nil {
+		return toolContext{}, err
+	}
+	var metadata struct {
+		PromptSnapshot struct {
+			ToolProtocol string `json:"tool_protocol"`
+		} `json:"prompt_snapshot"`
+		LegacyThreadContext struct {
+			Scope       string `json:"scope"`
+			Scene       string `json:"scene"`
+			SubjectUUID string `json:"subject_uuid"`
+		} `json:"legacy_thread_context"`
+	}
+	if json.Unmarshal([]byte(metadataJSON), &metadata) == nil {
+		if metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectAPI || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV2 {
+			// Only persisted project-api protocols need to be distinguished here.
+			// Legacy typed runs continue to be selected by tool_mode.
+			threadProtocol := metadata.PromptSnapshot.ToolProtocol
+			thread.Scope = metadata.LegacyThreadContext.Scope
+			thread.Scene = metadata.LegacyThreadContext.Scene
+			thread.SubjectUUID = metadata.LegacyThreadContext.SubjectUUID
+			return toolContext{ProjectUUID: store.ProjectUUID(), Thread: thread, Turn: turn, Run: run, ToolProtocol: threadProtocol}, nil
+		}
+		thread.Scope = metadata.LegacyThreadContext.Scope
+		thread.Scene = metadata.LegacyThreadContext.Scene
+		thread.SubjectUUID = metadata.LegacyThreadContext.SubjectUUID
 	}
 	return toolContext{ProjectUUID: store.ProjectUUID(), Thread: thread, Turn: turn, Run: run}, nil
 }
@@ -489,7 +547,7 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 		return err
 	}
 	if queuedFollowUps > 0 {
-		items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.QueueSequence)
+		items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.ID, tc.Turn.QueueSequence)
 		if err != nil {
 			return err
 		}
@@ -569,7 +627,7 @@ func (service *Service) promoteNextFollowUpTx(ctx context.Context, tx *sql.Tx, p
 	if err != nil {
 		return err
 	}
-	references, err := loadFollowUpImageReferencesTx(ctx, tx, follow.ID)
+	references, err := loadFollowUpReferencesTx(ctx, tx, follow.ID)
 	if err != nil {
 		return err
 	}

@@ -141,7 +141,7 @@ func (handler *AgentHandler) CreateFollowUp(c echo.Context) error {
 }
 
 func (handler *AgentHandler) UpdateFollowUp(c echo.Context) error {
-	var input agent.CreateFollowUpInput
+	var input agent.UpdateFollowUpInput
 	if err := decodeJSONLimit(c, &input, 256<<10); err != nil {
 		return err
 	}

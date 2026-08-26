@@ -754,7 +754,7 @@ func TestComicImageWorkflowCreationRollsBackEveryRecordOnScaffoldFailure(t *test
 		if err := store.DB().Table("comic_image_generations").Where("comic_section_id=(SELECT id FROM comic_sections WHERE uuid=?)", section.UUID).Count(&generations).Error; err != nil {
 			return err
 		}
-		if err := store.DB().Table("chat_threads").Where("title=? AND subject_uuid=?", comicWorkflowTitle, section.UUID).Count(&threads).Error; err != nil {
+		if err := store.DB().Table("chat_threads").Where("title=?", comicWorkflowTitle).Count(&threads).Error; err != nil {
 			return err
 		}
 		return store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicSectionImage).Count(&workflows).Error

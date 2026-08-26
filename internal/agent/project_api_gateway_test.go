@@ -140,9 +140,9 @@ func TestSystemPromptIncludesCompleteAPIDocOverviewWithoutConcreteRoutes(t *test
 		t.Fatalf("system prompt does not contain the complete effective API overview:\n%s", systemPrompt)
 	}
 	for _, expected := range []string{
-		"`/api/v1/agent-docs/premise.md`",
-		"`/api/v1/agent-docs/premise-asset.md`",
-		"`/api/v1/agent-docs/project.md`",
+		"`/api/v1/agent-docs/api/premise.md`",
+		"`/api/v1/agent-docs/api/premise-asset.md`",
+		"`/api/v1/agent-docs/api/project.md`",
 	} {
 		if !strings.Contains(systemPrompt, expected) {
 			t.Fatalf("system prompt is missing API Contract index entry %q", expected)

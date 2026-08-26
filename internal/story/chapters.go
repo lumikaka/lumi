@@ -443,17 +443,24 @@ SELECT
       WHERE states.chapter_id=?
     )
   )) +
-  (SELECT COUNT(*) FROM chat_threads AS thread WHERE thread.project_id=? AND thread.status IN ('busy','waiting_for_input') AND (
-    thread.subject_uuid=? OR thread.subject_uuid IN (
-      SELECT sections.uuid FROM comic_sections AS sections
-      JOIN chapter_comic_states AS states ON states.id=sections.chapter_comic_state_id
-      WHERE states.chapter_id=?
-    )
-  ))`,
+	(SELECT COUNT(DISTINCT turns.id) FROM chat_turns AS turns
+	 JOIN chat_threads AS thread ON thread.id=turns.thread_id
+	 JOIN chat_items AS items ON items.turn_id=turns.id AND items.item_type='user_message'
+	 JOIN chat_context_references AS refs ON refs.chat_item_id=items.id AND refs.resource_type='comic_section'
+	 JOIN comic_sections AS sections ON sections.uuid=refs.resource_uuid
+	 JOIN chapter_comic_states AS states ON states.id=sections.chapter_comic_state_id
+	 WHERE thread.project_id=? AND turns.status IN ('queued','in_progress','waiting_for_input') AND states.chapter_id=?) +
+	(SELECT COUNT(DISTINCT follow_ups.id) FROM chat_follow_ups AS follow_ups
+	 JOIN chat_threads AS thread ON thread.id=follow_ups.thread_id
+	 JOIN chat_context_references AS refs ON refs.follow_up_id=follow_ups.id AND refs.resource_type='comic_section'
+	 JOIN comic_sections AS sections ON sections.uuid=refs.resource_uuid
+	 JOIN chapter_comic_states AS states ON states.id=sections.chapter_comic_state_id
+	 WHERE thread.project_id=? AND follow_ups.status='queued' AND follow_ups.deleted_at IS NULL AND states.chapter_id=?)`,
 		record.ProjectID, record.UUID, record.ID, record.UUID, record.ID,
 		record.ProjectID, record.UUID, record.ID, record.UUID, record.ID,
 		record.ProjectID, record.UUID, record.ID,
-		record.ProjectID, record.UUID, record.ID,
+		record.ProjectID, record.ID,
+		record.ProjectID, record.ID,
 	).Scan(&active).Error
 	return active > 0, err
 }

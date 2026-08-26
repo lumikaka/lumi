@@ -36,5 +36,5 @@ reconcile、扫描、修复、GC 与缩略图重建均生成可查询任务或�
 | 项目 | 所有 File/Object 属于单一项目，项目关闭时 Runtime 按项目停止。 |
 | 章节 | 导入源使用 `story_source_items.file_id` 关联 File。 |
 | Premise 资产 / 漫画 Section | 设定图、variant 和 Section 图片引用受控 File。 |
-| Chat Thread | 图片引用关联 File，不允许跨项目引用或暴露磁盘路径。 |
+| Chat Thread | `file` Reference 及其他资源 Reference 的 `image_file_id` 冻结关联 File；不允许跨项目引用或暴露磁盘路径。 |
 | 导出 | 新漫画导出不写入 Asset Store；旧 `output_file_id` 仅为到期兼容回收。 |

@@ -4,7 +4,7 @@
 
 该 Feature 以“先审计、后应用”的方式回收不再被任何结构化引用、历史、快照或受保护任务使用的 Object。GC 不能由业务删除直接触发物理移除：先生成 dry-run 计划，复核快照和引用，再由维护任务应用。
 
-同一套维护任务也承载 reconcile、完整性扫描、缩略图重建和上传清理，并通过进度、事件、取消和终态让页面恢复操作状态。
+同一套维护任务也承载 reconcile、完整性扫描、缩略图重建和上传清理，并通过进度、事件、取消和终态让页面恢复操作状态。`chat_context_references.file_id` 与 `image_file_id` 均属于结构化保留来源，即使原业务资源已经永久删除也不能回收对应 Object。
 
 ## data_model
 
@@ -29,4 +29,4 @@
 
 ## others
 
-GC 只处理受控项目根下的对象，不接受任意路径。Premise 资产永久删除和旧导出到期会解除逻辑引用，但物理回收仍须通过引用复检与审计计划。
+GC 只处理受控项目根下的对象，不接受任意路径。Upload Cleanup 会在保留期后仅软删除未被 `chat_context_references` 使用的 `project_chatbot_reference` File，随后仍由 GC dry-run/apply 完成物理回收；已成为 Reference 的 File 不得进入该路径。Premise 资产永久删除会把 Reference 的业务目标 FK 置空，但保留 UUID、快照和冻结图片；物理回收仍须通过 Chat Reference、历史快照和全部业务引用的复检与审计计划。

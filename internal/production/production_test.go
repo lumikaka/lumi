@@ -514,6 +514,72 @@ func TestPremiseAssetPermanentDeleteProtectsActiveWorkAndSoftDeletesUnreferenced
 	}
 }
 
+func TestPremiseAssetPermanentDeletePreservesHistoricalChatReferenceImage(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	asset, err := h.service.ImportPremiseAsset(ctx, CreateAssetInput{
+		UploadUUID: upload(t, h.service, "premise_asset", imageBytes(t, 62)),
+		AssetType:  AssetCharacter,
+		Title:      "Referenced hero",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileUUID := asset.CurrentVariant.Asset.UUID
+	var projectID, assetID, fileID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid = ?", h.project.UUID).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Table("premise_assets AS assets").
+		Select("assets.id,variants.file_id").
+		Joins("JOIN premise_asset_variants AS variants ON variants.id=assets.current_variant_id").
+		Where("assets.uuid=?", asset.UUID).
+		Row().Scan(&assetID, &fileID); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	threadUUID, itemUUID := mustUUID(t), mustUUID(t)
+	providerUUID := mustUUID(t)
+	if err := h.service.store.DB().Exec(`INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,created_at,updated_at) VALUES(?,?,'Historical reference','idle',?,'test-model',?,?)`, threadUUID, projectID, providerUUID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Exec(`INSERT INTO chat_items(uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(?,(SELECT id FROM chat_threads WHERE uuid=?),1,'user_message','user','Keep this reference','{}',?)`, itemUUID, threadUUID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := `{"resource_type":"premise_asset","resource_uuid":"` + asset.UUID + `","status":"available","title":"Referenced hero","truncated_fields":[]}`
+	if err := h.service.store.DB().Exec(`INSERT INTO chat_context_references(chat_item_id,position,resource_type,resource_uuid,snapshot_json,premise_asset_id,image_file_id,created_at) VALUES((SELECT id FROM chat_items WHERE uuid=?),1,'premise_asset',?,?,?,?,?)`, itemUUID, asset.UUID, snapshot, assetID, fileID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	trashed, err := h.service.SetPremiseAssetTrashed(ctx, asset.UUID, true, asset.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := h.service.PermanentlyDeletePremiseAsset(ctx, asset.UUID, trashed.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.DeletedCount != 1 || result.FileSoftDeletedCount != 0 || result.RetainedFileCount != 1 {
+		t.Fatalf("reference-retained delete result=%+v", result)
+	}
+	var retainedUUID, retainedSnapshot string
+	var retainedAssetID *int64
+	var retainedImageFileID int64
+	if err := h.service.store.DB().Raw(`SELECT resource_uuid,snapshot_json,premise_asset_id,image_file_id FROM chat_context_references WHERE chat_item_id=(SELECT id FROM chat_items WHERE uuid=?)`, itemUUID).Row().Scan(&retainedUUID, &retainedSnapshot, &retainedAssetID, &retainedImageFileID); err != nil {
+		t.Fatal(err)
+	}
+	if retainedUUID != asset.UUID || retainedAssetID != nil || retainedImageFileID != fileID || retainedSnapshot != snapshot {
+		t.Fatalf("retained reference uuid=%q asset_id=%v image_file_id=%d snapshot=%s", retainedUUID, retainedAssetID, retainedImageFileID, retainedSnapshot)
+	}
+	content, err := h.service.Files().OpenContent(ctx, fileUUID)
+	if err != nil {
+		t.Fatalf("frozen reference image is not readable: %v", err)
+	}
+	if closeErr := content.File.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+}
+
 func TestEmptyPremiseAssetTrashDeletesSafeItemsAndReturnsStableBlockers(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

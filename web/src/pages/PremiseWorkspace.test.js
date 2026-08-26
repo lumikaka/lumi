@@ -18,13 +18,15 @@ test('premise toolbar keeps workspace navigation and the exact three creation ch
   for (const menuItemKey of ['premise.add.batch.title', 'premise.add.single.title', 'premise.add.upload.title']) {
     assert.match(source, new RegExp(`t\\('${menuItemKey.replaceAll('.', '\\.')}'\\)`))
   }
-  assert.match(source, /openChatScene\('premise_asset_generation'\)/)
+  assert.match(source, /onClick=\{\(\) => openChat\(\)\}/)
+  assert.doesNotMatch(source, /openChatScene/)
   assert.doesNotMatch(source, /pending: true|showPendingCapability/)
 })
 
-test('project thread lists are shared while premise scenes keep scoped ChatArea routing', () => {
-  assert.match(source, /next\.delete\('chat_scope'\)/)
-  assert.match(source, /openChatScene\('asset_reference', asset\)/)
+test('project thread lists are shared while premise entries preselect a Reference', () => {
+  assert.match(source, /openChat\(asset\)/)
+  assert.match(source, /next\.set\('chat_reference_type', 'premise_asset'\)/)
+  assert.match(source, /next\.set\('chat_reference_uuid', reference\.uuid\)/)
   assert.match(source, /<PremiseThreadsPanel/)
   assert.match(source, /<PremisePromptsPanel/)
   assert.match(source, /scope="premise" title=\{t\('premise\.llm_logs\.title'\)\}/)
@@ -37,12 +39,13 @@ test('project thread lists are shared while premise scenes keep scoped ChatArea 
   assert.match(supportSource, /threadsQuery\.refetch\(\)/)
   assert.match(projectThreadsSource, /return \['chat-threads', projectUuid, 'pages'\]/)
   assert.match(chatSource, /useProjectThreads\(projectUuid, expanded\)/)
-  assert.doesNotMatch(chatSource, /requestedScope/)
+  assert.doesNotMatch(chatSource, /requestedScope|requestedScene|requestedSubjectUuid/)
   assert.match(supportSource, /<PromptCatalogEditor projectUuid=\{projectUuid\} groups=\{\['premise', 'premise_style'\]\}/)
-  assert.match(chatSource, /scene: requestedScene/)
-  assert.match(chatSource, /subject_uuid: requestedSubjectUuid/)
+  assert.match(chatSource, /requestedReferenceType = searchParams\.get\('chat_reference_type'\)/)
+  assert.match(chatSource, /appendProjectChatReference\(current, requestedReference\)/)
   assert.match(chatSource, /createChatTurn\(projectUuid, thread\.uuid/)
-  assert.match(chatStyles, /\.chat-scene-card/)
+  assert.match(chatStyles, /\.chat-reference-picker/)
+  assert.doesNotMatch(chatStyles, /\.chat-scene-card/)
 })
 
 test('premise batches expose full detail and optimistic Ignore or restore', () => {

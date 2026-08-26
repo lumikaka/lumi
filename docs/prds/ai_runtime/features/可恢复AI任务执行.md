@@ -27,4 +27,4 @@
 
 ## others
 
-状态以 REST/SQLite 为事实源，不使用定时 HTTP 轮询。首次 join、重新 join 和窗口重新聚焦必须重读目标任务；实时 payload 只可携带公开 UUIDv7、状态和刷新定位信息。
+状态以 REST/SQLite 为事实源，不使用定时 HTTP 轮询。首次 join、重新 join 和窗口重新聚焦必须重读目标任务；实时 payload 只可携带公开 UUIDv7、状态和刷新定位信息。Chat Retry/Resume 复用原 User Item 的 Prompt snapshot 与 Reference snapshot；只有新 Run 使用 `project_api_v3`，已有 v2 或 legacy typed Run 不升级协议后继续执行。

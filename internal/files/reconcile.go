@@ -36,7 +36,8 @@ type ReconcileSummary struct {
 
 type UploadCleanupSummary struct {
 	ReconcileSummary
-	Removed int64 `json:"removed"`
+	Removed      int64 `json:"removed"`
+	RetiredFiles int64 `json:"retired_files"`
 }
 
 func (service *Service) CleanupUploads(ctx context.Context, limit int, retention time.Duration) (UploadCleanupSummary, error) {
@@ -51,18 +52,46 @@ func (service *Service) CleanupUploads(ctx context.Context, limit int, retention
 		return UploadCleanupSummary{}, err
 	}
 	cutoff := service.now().UTC().Add(-retention)
+	var orphanFileIDs []int64
+	if err := service.store.DB().WithContext(ctx).Table("files AS files").
+		Where("files.project_id = (SELECT id FROM projects WHERE uuid = ?) AND files.purpose = 'project_chatbot_reference' AND files.deleted_at IS NULL AND files.created_at <= ?", service.store.ProjectUUID(), cutoff).
+		Where("NOT EXISTS (SELECT 1 FROM chat_context_references refs WHERE refs.file_id=files.id OR refs.image_file_id=files.id)").
+		Order("files.id ASC").Limit(limit).Pluck("files.id", &orphanFileIDs).Error; err != nil {
+		return UploadCleanupSummary{}, err
+	}
 	var ids []int64
 	if err := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where(`project_id = (SELECT id FROM projects WHERE uuid = ?) AND ((state = ? AND updated_at <= ? AND file_object_id IS NULL AND finalized_file_id IS NULL) OR (state = ? AND consumed_at <= ?))`, service.store.ProjectUUID(), StateExpired, cutoff, StateConsumed, cutoff).Order("id ASC").Limit(limit).Pluck("id", &ids).Error; err != nil {
 		return UploadCleanupSummary{}, err
 	}
-	if len(ids) == 0 {
+	if len(ids) == 0 && len(orphanFileIDs) == 0 {
 		return UploadCleanupSummary{ReconcileSummary: reconciled}, nil
 	}
-	result := service.store.DB().WithContext(ctx).Where("id IN ?", ids).Delete(&uploadRecord{})
-	if result.Error != nil {
-		return UploadCleanupSummary{}, result.Error
+	now := service.now().UTC()
+	var removed, retired int64
+	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if len(orphanFileIDs) > 0 {
+			result := tx.Model(&fileRecord{}).
+				Where("id IN ? AND purpose='project_chatbot_reference' AND deleted_at IS NULL", orphanFileIDs).
+				Where("NOT EXISTS (SELECT 1 FROM chat_context_references refs WHERE refs.file_id=files.id OR refs.image_file_id=files.id)").
+				Update("deleted_at", now)
+			if result.Error != nil {
+				return result.Error
+			}
+			retired = result.RowsAffected
+		}
+		if len(ids) > 0 {
+			result := tx.Where("id IN ?", ids).Delete(&uploadRecord{})
+			if result.Error != nil {
+				return result.Error
+			}
+			removed = result.RowsAffected
+		}
+		return nil
+	})
+	if err != nil {
+		return UploadCleanupSummary{}, err
 	}
-	return UploadCleanupSummary{ReconcileSummary: reconciled, Removed: result.RowsAffected}, nil
+	return UploadCleanupSummary{ReconcileSummary: reconciled, Removed: removed, RetiredFiles: retired}, nil
 }
 
 func (service *Service) Reconcile(ctx context.Context, limit int) (ReconcileSummary, error) {

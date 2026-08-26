@@ -12,20 +12,28 @@ test('new thread opens a composer draft and persists the first message without a
   assert.match(source, /if \(showCreate\)[\s\S]*?<NewThreadDraft/)
   assert.match(source, /const createThreadMutation = useMutation\(\{[\s\S]*?suggestedChatThreadTitle\(text\)[\s\S]*?createChatTurn\(projectUuid, thread\.uuid/)
   assert.doesNotMatch(source, /NewThreadDetail|chat\.thread\.title_field/)
-  assert.match(source, /title: suggestedChatThreadTitle\(text\),[\s\S]*?scope: 'project'/)
-  assert.doesNotMatch(source, /requestedScope/)
+  assert.match(source, /createChatThread\(projectUuid, \{[\s\S]*?title: suggestedChatThreadTitle\(text\),[\s\S]*?\}\)/)
+  assert.doesNotMatch(source, /requestedScope|subject_uuid|chat_scene|chat_scope/)
 })
 
-test('image scenes upload references and block sends until every attachment is ready', () => {
+test('entry Reference parameters are consumed once so cancellation survives remounts and explicit re-entry works', () => {
+  assert.match(source, /setSearchParams\(consumeProjectChatReferenceQuery\(searchParams\), \{ replace: true \}\)/)
+  assert.doesNotMatch(source, /seededReferenceKeyRef/)
+})
+
+test('every composer accepts finalized files and domain references without scene gating', () => {
   assert.match(source, /purpose: 'project_chatbot_reference'/)
-  assert.match(source, /attachmentBlocked = attachments\.some\([\s\S]*?'uploading'[\s\S]*?'error'/)
-  assert.match(source, /readyProjectChatUploadUUIDs\(attachments\)/)
-  assert.match(source, /<SceneThreadDraft[\s\S]*?attachments=\{attachments\}[\s\S]*?onPaste=\{handleAttachmentPaste\}/)
-  assert.match(source, /<ChatComposer[\s\S]*?scene=\{selectedThread\?\.scene\}[\s\S]*?onAddFiles=\{addAttachmentFiles\}/)
+  assert.match(source, /finalizeAssetUpload\(projectUuid, upload\.uuid, 'project_chatbot_reference'\)/)
+  assert.match(source, /referenceBlocked = references\.some\([\s\S]*?'uploading'[\s\S]*?'error'/)
+  assert.match(source, /readyProjectChatReferences\(references\)/)
+  assert.match(source, /<NewThreadDraft[\s\S]*?references=\{references\}[\s\S]*?onPaste=\{handleAttachmentPaste\}/)
+  assert.match(source, /<ChatComposer[\s\S]*?references=\{references\}[\s\S]*?onAddFiles=\{addAttachmentFiles\}/)
+  assert.match(source, /<ReferencePicker[\s\S]*?<AttachmentPicker/)
+  assert.match(source, /<ReferenceStrip projectUuid=\{projectUuid\} references=\{item\.references \|\| \[\]\}/)
   assert.match(source, /URL\.createObjectURL\(file\)/)
   assert.match(source, /function releaseAttachmentPreview[\s\S]*?URL\.revokeObjectURL/)
-  assert.match(source, /const retryAttachment[\s\S]*?uploadAttachmentDraft\(draft\)/)
-  assert.match(source, /const createSceneThreadMutation[\s\S]*?catch \(turnError\)[\s\S]*?return \{ thread, turnError \}[\s\S]*?setQueryData\(\['chat-thread'/)
+  assert.match(source, /const createThreadMutation[\s\S]*?catch \(turnError\)[\s\S]*?return \{ thread, turnError \}[\s\S]*?setQueryData\(\['chat-thread'/)
+  assert.doesNotMatch(source, /SceneThreadDraft|canProjectChatAttachImages|upload_uuids|image_references/)
 })
 
 test('running image and current-project API tools expose method-specific progress copy', () => {

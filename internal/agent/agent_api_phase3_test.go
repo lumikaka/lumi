@@ -386,7 +386,7 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 func TestPhase3WriteIntentIsIdempotentAcrossRestart(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 idempotency", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 idempotency", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +438,7 @@ func TestPhase3WriteIntentIsIdempotentAcrossRestart(t *testing.T) {
 func TestEveryPhase3RouteIntentMetadataAndResultRecoverAcrossRestart(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 route recovery", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 route recovery", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,7 +488,7 @@ func TestEveryPhase3RouteIntentMetadataAndResultRecoverAcrossRestart(t *testing.
 		if err != nil || completed || replay != nil {
 			t.Fatalf("persist %s: execution=%+v completed=%v replay=%s err=%v", route.ID, execution, completed, replay, err)
 		}
-		if execution.RouteID != route.ID || execution.Action != route.Action || execution.Method != route.Method || execution.Path != args["url"] || execution.Scene != SceneProjectAssistant || execution.TargetUUID == "" {
+		if execution.RouteID != route.ID || execution.Action != route.Action || execution.Method != route.Method || execution.Path != args["url"] || execution.TargetUUID == "" {
 			t.Fatalf("route metadata mismatch for %s: %+v", route.ID, execution)
 		}
 		result := json.RawMessage(`{"success":true,"data":{"recovered_route":"` + route.ID + `"}}`)
@@ -517,7 +517,7 @@ func TestEveryPhase3RouteIntentMetadataAndResultRecoverAcrossRestart(t *testing.
 func TestEveryPhase3DangerousRouteRequiresFingerprintConfirmation(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 dangerous policy", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Phase 3 dangerous policy", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -93,10 +93,6 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 	if len([]rune(title)) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) {
 		return Thread{}, domainError(CodeValidation, "Thread 参数无效", "title 最多 160 个字符。", nil)
 	}
-	scope, scene, subjectUUID, err := normalizeThreadScope(input.Scope, input.Scene, input.SubjectUUID)
-	if err != nil {
-		return Thread{}, err
-	}
 	threadUUID, err := newUUIDv7()
 	if err != nil {
 		return Thread{}, err
@@ -111,29 +107,7 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 		if err != nil {
 			return err
 		}
-		switch {
-		case scope == ThreadScopePremise && scene == SceneAssetReference:
-			var count int64
-			if err := store.DB().WithContext(ctx).Table("premise_assets").Where("project_id = ? AND uuid = ? AND deleted_at IS NULL", pid, subjectUUID).Count(&count).Error; err != nil {
-				return err
-			}
-			if count != 1 {
-				return domainError(CodeNotFound, "引用的设定项不存在", "只能引用当前项目的 active 设定项。", nil)
-			}
-		case scope == ThreadScopeProject && scene == SceneAssetReference:
-			var count int64
-			if err := store.DB().WithContext(ctx).Table("comic_sections AS sections").
-				Joins("JOIN chapter_comic_states AS states ON states.id = sections.chapter_comic_state_id").
-				Joins("JOIN chapters ON chapters.id = states.chapter_id").
-				Where("chapters.project_id = ? AND chapters.deleted_at IS NULL AND sections.uuid = ? AND sections.deleted_at IS NULL", pid, subjectUUID).
-				Count(&count).Error; err != nil {
-				return err
-			}
-			if count != 1 {
-				return domainError(CodeNotFound, "引用的 Section 不存在", "只能引用当前项目 active 章节中的 Section。", nil)
-			}
-		}
-		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, Scope: scope, Scene: scene, SubjectUUID: subjectUUID, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
+		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
 		return store.DB().WithContext(ctx).Create(&record).Error
 	})
 	if err != nil {
@@ -205,59 +179,7 @@ func (service *Service) GetThread(ctx context.Context, projectUUID, threadUUID s
 }
 
 func threadDTO(row threadRecord, projectUUID string) Thread {
-	return Thread{UUID: row.UUID, ProjectUUID: projectUUID, Title: row.Title, Status: row.Status, Scope: row.Scope, Scene: publicThreadScene(row.Scope, row.Scene), SubjectUUID: row.SubjectUUID, ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, ArchivedAt: row.ArchivedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
-}
-
-// The first shipped project schema only allows asset_reference as the generic
-// persisted reference discriminator. Project scope makes that value
-// unambiguous, while the Web/API contract remains storyboard_reference.
-func publicThreadScene(scope, scene string) string {
-	if scope == ThreadScopeProject && scene == SceneAssetReference {
-		return SceneStoryboardReference
-	}
-	return scene
-}
-
-func isStoryboardReferenceThread(thread threadRecord) bool {
-	return thread.Scope == ThreadScopeProject && thread.Scene == SceneAssetReference
-}
-
-func normalizeThreadScope(scope, scene, subjectUUID string) (string, string, string, error) {
-	scope = strings.ToLower(strings.TrimSpace(scope))
-	scene = strings.ToLower(strings.TrimSpace(scene))
-	subjectUUID = strings.TrimSpace(subjectUUID)
-	if scope == "" {
-		scope = ThreadScopeProject
-	}
-	if scope != ThreadScopeProject && scope != ThreadScopePremise {
-		return "", "", "", domainError(CodeValidation, "Thread scope 无效", "scope 只支持 project 或 premise。", nil)
-	}
-	if scope == ThreadScopeProject {
-		if scene == "" {
-			if subjectUUID != "" {
-				return "", "", "", domainError(CodeValidation, "项目 Thread subject 无效", "通用项目 thread 不能携带 subject_uuid。", nil)
-			}
-			return scope, "", "", nil
-		}
-		if scene != SceneStoryboardReference {
-			return "", "", "", domainError(CodeValidation, "项目 Thread 场景无效", "project scope 只支持 storyboard_reference 场景。", nil)
-		}
-		if !isUUIDv7(subjectUUID) {
-			return "", "", "", domainError(CodeValidation, "引用 Section UUID 无效", "storyboard_reference 必须提供 subject_uuid UUIDv7。", nil)
-		}
-		return scope, SceneAssetReference, subjectUUID, nil
-	}
-	if scene != "" && scene != ScenePremiseAsset && scene != SceneAssetReference {
-		return "", "", "", domainError(CodeValidation, "Premise scene 无效", "scene 不受支持。", nil)
-	}
-	if scene == SceneAssetReference {
-		if !isUUIDv7(subjectUUID) {
-			return "", "", "", domainError(CodeValidation, "引用设定项 UUID 无效", "asset_reference 必须提供 subject_uuid UUIDv7。", nil)
-		}
-	} else if subjectUUID != "" {
-		return "", "", "", domainError(CodeValidation, "Premise subject 无效", "只有 asset_reference scene 可以携带 subject_uuid。", nil)
-	}
-	return scope, scene, subjectUUID, nil
+	return Thread{UUID: row.UUID, ProjectUUID: projectUUID, Title: row.Title, Status: row.Status, ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, ArchivedAt: row.ArchivedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func notFound(err error, message string) error {
@@ -298,7 +220,7 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 		if err != nil {
 			return err
 		}
-		references, err := service.finalizeChatImageReferences(ctx, store, promptThread, input.UploadUUIDs)
+		references, err := service.resolveContextReferences(ctx, store, promptThread.ProjectID, input.References)
 		if err != nil {
 			return err
 		}
@@ -348,15 +270,15 @@ func projectIDSQL(ctx context.Context, tx *sql.Tx, projectUUID string) (int64, e
 
 func lockThreadSQL(ctx context.Context, tx *sql.Tx, projectID int64, threadUUID string) (threadRecord, error) {
 	var row threadRecord
-	err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,scope,scene,subject_uuid,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE project_id=? AND uuid=? AND archived_at IS NULL`, projectID, threadUUID).
-		Scan(&row.ID, &row.UUID, &row.ProjectID, &row.Title, &row.Status, &row.Scope, &row.Scene, &row.SubjectUUID, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.NextTurnSequence, &row.NextItemSequence, &row.NextEventSequence, &row.ArchivedAt, &row.CreatedAt, &row.UpdatedAt)
+	err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE project_id=? AND uuid=? AND archived_at IS NULL`, projectID, threadUUID).
+		Scan(&row.ID, &row.UUID, &row.ProjectID, &row.Title, &row.Status, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.NextTurnSequence, &row.NextItemSequence, &row.NextEventSequence, &row.ArchivedAt, &row.CreatedAt, &row.UpdatedAt)
 	if err != nil {
 		return row, notFound(err, "Chat thread 不存在")
 	}
 	return row, nil
 }
 
-func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, text, sourceType string, followUpID int64, maxSteps int, promptSnapshot contextPromptSet, references []storedImageReference) (turnRecord, runRecord, error) {
+func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, text, sourceType string, followUpID int64, maxSteps int, promptSnapshot contextPromptSet, references []storedContextReference) (turnRecord, runRecord, error) {
 	now := service.now().UTC()
 	queueSequence := thread.NextTurnSequence
 	turnUUID, err := newUUIDv7()
@@ -387,7 +309,7 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 	if err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
-	if err := attachItemImageReferencesTx(ctx, tx, userItem.ID, references, now); err != nil {
+	if err := attachItemReferencesTx(ctx, tx, userItem.ID, references, now); err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
 	if _, err := appendEventTx(ctx, tx, thread, &runID, "turn_queued", map[string]any{"project_uuid": projectUUID, "thread_uuid": thread.UUID, "turn_uuid": turnUUID, "run_uuid": runUUID, "status": TurnQueued}, now); err != nil {
@@ -617,7 +539,7 @@ func (service *Service) ListItems(ctx context.Context, projectUUID, threadUUID, 
 				_ = store.DB().WithContext(ctx).Raw("SELECT uuid FROM chat_runs WHERE id=?", *row.RunID).Scan(&runUUID).Error
 			}
 			item := itemDTO(row, threadUUID, turnUUID, runUUID)
-			item.ImageReferences, err = service.itemImageReferences(ctx, store, row.ID)
+			item.References, err = service.itemReferences(ctx, store, row.ID)
 			if err != nil {
 				return err
 			}

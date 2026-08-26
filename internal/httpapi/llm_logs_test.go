@@ -96,7 +96,7 @@ func TestProjectLLMLogsUnifyStoryAndChatCallsWithoutInternalIDs(t *testing.T) {
 		}
 
 		premiseThreadUUID, premiseTurnUUID, premiseRunUUID := newPublicUUID(t), newPublicUUID(t), newPublicUUID(t)
-		if err := store.DB().Exec(`INSERT INTO chat_threads(uuid,project_id,title,status,scope,scene,provider_uuid,model,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,'Premise Assistant','idle','premise','premise_asset_generation',?,'chat-model',2,1,1,?,?)`, premiseThreadUUID, projectID, providerUUID, premiseCreatedAt, premiseCreatedAt).Error; err != nil {
+		if err := store.DB().Exec(`INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,'Premise Assistant','idle',?,'chat-model',2,1,1,?,?)`, premiseThreadUUID, projectID, providerUUID, premiseCreatedAt, premiseCreatedAt).Error; err != nil {
 			return err
 		}
 		var premiseThreadID int64
@@ -200,11 +200,11 @@ func TestProjectLLMLogsUnifyStoryAndChatCallsWithoutInternalIDs(t *testing.T) {
 		t.Fatalf("missing LLM log detail = %d %s", missingDetail.Code, missingDetail.Body.String())
 	}
 	projectOnly := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+created.UUID+"/llm-logs?page=1&per_page=5&scope=project", nil)
-	if projectOnly.Code != http.StatusOK || !strings.Contains(projectOnly.Body.String(), `"uuid":"`+chatLogUUID+`"`) || !strings.Contains(projectOnly.Body.String(), comicProductionLogUUID) || !strings.Contains(projectOnly.Body.String(), workflowLogUUID) || !strings.Contains(projectOnly.Body.String(), `"scope":"project"`) || strings.Contains(projectOnly.Body.String(), premiseLogUUID) || strings.Contains(projectOnly.Body.String(), premiseProductionLogUUID) || strings.Contains(projectOnly.Body.String(), storyLogUUID) || !strings.Contains(projectOnly.Body.String(), `"provider_error_code":"InvalidParameter"`) || !strings.Contains(projectOnly.Body.String(), `"provider_request_id":"image-request-400"`) || !strings.Contains(projectOnly.Body.String(), `"total":3`) {
+	if projectOnly.Code != http.StatusOK || !strings.Contains(projectOnly.Body.String(), `"uuid":"`+chatLogUUID+`"`) || !strings.Contains(projectOnly.Body.String(), premiseLogUUID) || !strings.Contains(projectOnly.Body.String(), comicProductionLogUUID) || !strings.Contains(projectOnly.Body.String(), workflowLogUUID) || !strings.Contains(projectOnly.Body.String(), `"scope":"project"`) || strings.Contains(projectOnly.Body.String(), premiseProductionLogUUID) || strings.Contains(projectOnly.Body.String(), storyLogUUID) || !strings.Contains(projectOnly.Body.String(), `"provider_error_code":"InvalidParameter"`) || !strings.Contains(projectOnly.Body.String(), `"provider_request_id":"image-request-400"`) || !strings.Contains(projectOnly.Body.String(), `"total":4`) {
 		t.Fatalf("project scope = %d %s", projectOnly.Code, projectOnly.Body.String())
 	}
 	premiseOnly := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+created.UUID+"/llm-logs?page=1&per_page=5&scope=premise", nil)
-	if premiseOnly.Code != http.StatusOK || !strings.Contains(premiseOnly.Body.String(), `"uuid":"`+premiseLogUUID+`"`) || !strings.Contains(premiseOnly.Body.String(), premiseProductionLogUUID) || !strings.Contains(premiseOnly.Body.String(), `"scope":"premise"`) || strings.Contains(premiseOnly.Body.String(), chatLogUUID) || strings.Contains(premiseOnly.Body.String(), comicProductionLogUUID) || strings.Contains(premiseOnly.Body.String(), workflowLogUUID) || !strings.Contains(premiseOnly.Body.String(), `"total":2`) {
+	if premiseOnly.Code != http.StatusOK || !strings.Contains(premiseOnly.Body.String(), premiseProductionLogUUID) || !strings.Contains(premiseOnly.Body.String(), `"scope":"premise"`) || strings.Contains(premiseOnly.Body.String(), premiseLogUUID) || strings.Contains(premiseOnly.Body.String(), chatLogUUID) || strings.Contains(premiseOnly.Body.String(), comicProductionLogUUID) || strings.Contains(premiseOnly.Body.String(), workflowLogUUID) || !strings.Contains(premiseOnly.Body.String(), `"total":1`) {
 		t.Fatalf("premise scope = %d %s", premiseOnly.Code, premiseOnly.Body.String())
 	}
 	filtered := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+created.UUID+"/llm-logs?page=1&per_page=5&provider_uuid="+providerUUID+"&provider_type=openai_compatible&model=story-model&scenario=story_chapter_generation&status=completed&request_type=text&keyword=input", nil)

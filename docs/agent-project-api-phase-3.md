@@ -39,10 +39,11 @@
 
 嵌入范围只有：
 
-- `internal/agent/api-docs/*.md`：Overview 与领域 API Contract。
-- `internal/agent/api-docs/guides/*.md`：可复用能力流程。
+- `internal/agent/docs/overview.md`：能力与文档总索引。
+- `internal/agent/docs/api/*.md`：领域 API Contract。
+- `internal/agent/docs/guides/*.md`：可复用能力流程。
 
-`/api/v1/agent-docs/overview.md` 包含能力索引和领域 API Contract 文档索引，不展开具体 Route。能力索引固定列为 `capability_id`、说明、所需工具、上下文/输入前提、Guide 路径；文档索引指向 `chapter.md`、`comic*.md`、`generation.md`、`premise*.md`、`project*.md`、`story.md`、`storyboard.md` 和 `task.md`。Runtime 在创建 Turn 时渲染完整 Overview，将其写入冻结 Prompt snapshot，并原样追加到每次模型请求的 system prompt；模型据此选择并读取目标领域 Contract，具体 method/path 只进入需要它的调用上下文。
+`/api/v1/agent-docs/overview.md` 包含能力索引和领域 API Contract 文档索引，不展开具体 Route。能力索引固定列为 `capability_id`、说明、所需工具、上下文/输入前提、Guide 路径；文档索引指向 `api/chapter.md`、`api/comic*.md`、`api/generation.md`、`api/premise*.md`、`api/project*.md`、`api/story.md`、`api/storyboard.md` 和 `api/task.md`。Runtime 在创建 Turn 时渲染完整 Overview，将其写入冻结 Prompt snapshot，并原样追加到每次模型请求的 system prompt；模型据此选择并读取目标领域 Contract，具体 method/path 只进入需要它的调用上下文。
 
 三份 Guide：
 

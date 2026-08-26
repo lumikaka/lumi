@@ -32,8 +32,7 @@ func createStoryboardMigrationFixture(t *testing.T, harness *agentHarness) (stor
 		t.Fatal(err)
 	}
 	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{
-		Title: "Storyboard Project API 迁移", Scope: ThreadScopeProject, Scene: SceneStoryboardReference,
-		SubjectUUID: section.UUID, ProviderUUID: harness.provider.UUID,
+		Title: "Storyboard Project API 迁移", ProviderUUID: harness.provider.UUID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +44,7 @@ func TestStoryboardReferenceProjectAPIModeReadsAndReplacesCompleteStoryboard(t *
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	chapter, section, thread := createStoryboardMigrationFixture(t, harness)
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "把完整分镜改成雨夜重逢"})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "把完整分镜改成雨夜重逢", References: []ReferenceInput{{ResourceType: ReferenceTypeComicSection, ResourceUUID: section.UUID}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,12 +55,11 @@ func TestStoryboardReferenceProjectAPIModeReadsAndReplacesCompleteStoryboard(t *
 		if strings.Join(tools, ",") != strings.Join(wantTools, ",") {
 			t.Fatalf("call %d tools=%v want=%v", call, tools, wantTools)
 		}
-		if len(request.Messages) == 0 || !strings.Contains(request.Messages[0].Content, section.UUID) ||
-			!strings.Contains(request.Messages[0].Content, "默认对象") || !strings.Contains(request.Messages[0].Content, agentDocBasePath+"/guides/storyboard-update.md") {
-			t.Fatalf("storyboard Scene prompt did not retain context and Guide discovery: %+v", request.Messages)
+		if len(request.Messages) == 0 || strings.Contains(request.Messages[0].Content, section.UUID) {
+			t.Fatalf("comic section reference leaked into system prompt: %+v", request.Messages)
 		}
-		if strings.Contains(request.Messages[0].Content, "完整的新 Storyboard Markdown") {
-			t.Fatalf("storyboard workflow leaked back into the Scene prompt: %+v", request.Messages)
+		if !messagesContain(request.Messages[1:], section.UUID) || !messagesContain(request.Messages[1:], "current_turn_references") {
+			t.Fatalf("current Turn did not receive comic section reference data: %+v", request.Messages)
 		}
 		switch call {
 		case 1:
@@ -169,11 +167,11 @@ func TestStoryboardReferenceCanUseGenericImageGenWithoutAssetBinding(t *testing.
 		t.Fatal(err)
 	}
 	tc.ToolMode = ToolModeProjectAPI
-	value, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "雨夜车站的构图参考", "size": "1024x1536"})
+	value, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "雨夜车站的构图参考", "size": "1024x1536", "reference_uuids": []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if value["purpose"] != "project_chat_asset_image_generation" || len(value["reference_file_uuids"].([]string)) != 0 {
+	if value["purpose"] != "project_chat_image_generation" || len(value["reference_uuids"].([]string)) != 0 || len(value["resolved_file_uuids"].([]string)) != 0 {
 		t.Fatalf("storyboard image_gen inherited asset-reference semantics: %+v", value)
 	}
 }
@@ -282,7 +280,7 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 	}
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestColorPNG(t, color.RGBA{R: 60, G: 90, B: 180, A: 255}), MIMEType: "image/png", RevisedPrompt: "孤立的月亮邮局"}}
 	harness.service.WithImageClient(imageClient)
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "生成月亮邮局", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "生成月亮邮局", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,9 +296,6 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 		}
 		if len(request.Messages) == 0 {
 			t.Fatal("missing system prompt")
-		}
-		if !strings.Contains(request.Messages[0].Content, agentDocBasePath+"/guides/premise-asset-create.md") {
-			t.Fatalf("premise asset Scene prompt is missing its Guide path: %s", request.Messages[0].Content)
 		}
 		for _, workflowDetail := range []string{"纯白、无纹理背景", "一个完整主体", "512x512"} {
 			if strings.Contains(request.Messages[0].Content, workflowDetail) {
@@ -318,7 +313,7 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 			arguments, _ := json.Marshal(map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets", "response_filter": ".data.items[] | {uuid,asset_type,title}"})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "asset-list", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 3:
-			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "asset-image", Name: "image_gen", Arguments: `{"prompt":` + mustJSONText(t, imagePrompt) + `,"size":"512x512"}`}}}, FinishReason: "tool_calls"}, nil
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "asset-image", Name: "image_gen", Arguments: `{"prompt":` + mustJSONText(t, imagePrompt) + `,"size":"512x512","reference_uuids":[]}`}}}, FinishReason: "tool_calls"}, nil
 		case 4:
 			fileUUID := toolResultFileUUID(t, request.Messages)
 			arguments, _ := json.Marshal(map[string]any{
@@ -349,14 +344,14 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 	}
 }
 
-func TestPremiseAssetGenerationProjectAPIModeOrdersAndDeduplicatesAttachments(t *testing.T) {
+func TestProjectAPIImageGenSelectsCurrentTurnReferencesInArgumentOrder(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	firstBytes := agentTestColorPNG(t, color.RGBA{R: 220, A: 255})
 	secondBytes := agentTestColorPNG(t, color.RGBA{G: 220, A: 255})
 	explicitBytes := agentTestColorPNG(t, color.RGBA{B: 220, A: 255})
-	first := createChatReferenceUpload(t, harness.store, "first.png", firstBytes)
-	second := createChatReferenceUpload(t, harness.store, "second.png", secondBytes)
+	first := createChatReferenceFile(t, harness.store, "first.png", firstBytes)
+	second := createChatReferenceFile(t, harness.store, "second.png", secondBytes)
 	fileService := files.NewService(harness.store, nil)
 	explicitUpload, err := fileService.CreateUpload(ctx, files.CreateUploadInput{Purpose: "project_chatbot_reference", OriginalFilename: "explicit.png", Reader: bytes.NewReader(explicitBytes)})
 	if err != nil {
@@ -368,42 +363,52 @@ func TestPremiseAssetGenerationProjectAPIModeOrdersAndDeduplicatesAttachments(t 
 	}
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestPNG(t), MIMEType: "image/png"}}
 	harness.service.WithImageClient(imageClient)
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "附件顺序", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Reference 顺序", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "按附件生成", UploadUUIDs: []string{first.UUID, second.UUID}})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "按参考图生成", References: []ReferenceInput{
+		{ResourceType: ReferenceTypeFile, ResourceUUID: first.UUID},
+		{ResourceType: ReferenceTypeFile, ResourceUUID: second.UUID},
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := harness.service.ListItems(ctx, harness.project.UUID, thread.UUID, "", "", 20)
-	if err != nil || len(items.Items) != 1 || len(items.Items[0].ImageReferences) != 2 {
-		t.Fatalf("image references=%+v err=%v", items.Items, err)
+	if err != nil || len(items.Items) != 1 || len(items.Items[0].References) != 2 {
+		t.Fatalf("references=%+v err=%v", items.Items, err)
 	}
-	firstFile, secondFile := items.Items[0].ImageReferences[0].FileUUID, items.Items[0].ImageReferences[1].FileUUID
+	firstFile, secondFile := items.Items[0].References[0].ResourceUUID, items.Items[0].References[1].ResourceUUID
 	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tc.ToolMode = ToolModeProjectAPI
+	tc.ToolProtocol = ToolProtocolProjectAPI
 	value, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{
-		"prompt": "附件顺序测试", "size": "512x512", "reference_file_uuids": []any{secondFile, explicitFile.UUID, firstFile, explicitFile.UUID},
+		"prompt": "Reference 顺序测试", "size": "512x512", "reference_uuids": []any{secondFile, firstFile},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantRefs := []string{firstFile, secondFile, explicitFile.UUID}
-	if got := value["reference_file_uuids"].([]string); strings.Join(got, ",") != strings.Join(wantRefs, ",") {
+	wantRefs := []string{secondFile, firstFile}
+	if got := value["reference_uuids"].([]string); strings.Join(got, ",") != strings.Join(wantRefs, ",") {
 		t.Fatalf("reference order=%v want=%v", got, wantRefs)
 	}
 	imageClient.mu.Lock()
 	requests := append([]imagegen.Request(nil), imageClient.requests...)
 	imageClient.mu.Unlock()
-	if len(requests) != 1 || len(requests[0].Images) != 3 || !bytes.Equal(requests[0].Images[0].Data, firstBytes) || !bytes.Equal(requests[0].Images[1].Data, secondBytes) || !bytes.Equal(requests[0].Images[2].Data, explicitBytes) {
+	if len(requests) != 1 || len(requests[0].Images) != 2 || !bytes.Equal(requests[0].Images[0].Data, secondBytes) || !bytes.Equal(requests[0].Images[1].Data, firstBytes) {
 		t.Fatalf("ordered image inputs=%+v", requests)
 	}
-	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "通用尺寸", "size": "1024x1024"}); err != nil {
-		t.Fatalf("premise asset Scene retained a runtime-only size restriction: %v", err)
+	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "越界参考", "reference_uuids": []any{explicitFile.UUID}}); err == nil {
+		t.Fatal("image_gen accepted a File that was not a current Turn Reference")
+	}
+	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "旧参数", "reference_file_uuids": []any{firstFile}}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("new Turn accepted the project_api_v2 image argument: %v", err)
+	}
+	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "通用尺寸", "size": "1024x1024", "reference_uuids": []string{}}); err != nil {
+		t.Fatalf("generic image_gen size failed: %v", err)
 	}
 	imageClient.mu.Lock()
 	requests = append([]imagegen.Request(nil), imageClient.requests...)
@@ -418,7 +423,7 @@ func TestPremiseAssetGenerationProjectAPIModeSeparatesImageAndCreateRecovery(t *
 	ctx := context.Background()
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestPNG(t), MIMEType: "image/png"}}
 	harness.service.WithImageClient(imageClient)
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "创建恢复", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "创建恢复", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -432,7 +437,7 @@ func TestPremiseAssetGenerationProjectAPIModeSeparatesImageAndCreateRecovery(t *
 	}
 	tc.ToolMode = ToolModeProjectAPI
 	imageExecutionUUID := mustAgentUUID(t)
-	imageValue, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: imageExecutionUUID, ToolName: "image_gen"}, map[string]any{"prompt": "纯白背景的单一角色", "size": "512x512"})
+	imageValue, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: imageExecutionUUID, ToolName: "image_gen"}, map[string]any{"prompt": "纯白背景的单一角色", "size": "512x512", "reference_uuids": []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +467,7 @@ func TestPremiseAssetGenerationProjectAPIModeSeparatesImageAndCreateRecovery(t *
 	if err != nil || len(assets) != 1 {
 		t.Fatalf("recovery duplicated assets=%+v err=%v", assets, err)
 	}
-	replayedImage, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: imageExecutionUUID, ToolName: "image_gen"}, map[string]any{"prompt": "不会再次执行", "size": "512x512"})
+	replayedImage, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: imageExecutionUUID, ToolName: "image_gen"}, map[string]any{"prompt": "不会再次执行", "size": "512x512", "reference_uuids": []string{}})
 	if err != nil || stringArg(replayedImage, "file_uuid") != fileUUID {
 		t.Fatalf("replayed image=%+v err=%v", replayedImage, err)
 	}
@@ -486,7 +491,7 @@ func createAssetReferenceMigrationFixture(t *testing.T, harness *agentHarness) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "设定项引用迁移", Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: asset.UUID, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "设定项引用迁移", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,11 +504,11 @@ func TestProjectAssistantReadsCreateGuideAndDerivesAssetFromExistingImage(t *tes
 	source, _ := createAssetReferenceMigrationFixture(t, harness)
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestColorPNG(t, color.RGBA{R: 210, G: 180, B: 240, A: 255}), MIMEType: "image/png", RevisedPrompt: "derived starlight courier"}}
 	harness.service.WithImageClient(imageClient)
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "通用助手派生设定", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "通用助手派生设定", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "参考现有月光邮差，创建星光分拣员"})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "参考现有月光邮差，创建星光分拣员", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: source.UUID}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,10 +522,10 @@ func TestProjectAssistantReadsCreateGuideAndDerivesAssetFromExistingImage(t *tes
 			arguments, _ := json.Marshal(map[string]any{"path": guidePath})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-create-guide", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 2:
-			if !messagesContain(request.Messages, "不能直接作为 POST") || !messagesContain(request.Messages, "reference_file_uuids") {
+			if !messagesContain(request.Messages, "不能直接作为 POST") || !messagesContain(request.Messages, "reference_uuids") {
 				t.Fatalf("create Guide was not returned before image generation: %+v", request.Messages)
 			}
-			arguments, _ := json.Marshal(map[string]any{"prompt": "参考月光邮差的星光分拣员，保持同一视觉语言", "reference_file_uuids": []string{source.CurrentVariant.Asset.UUID}, "size": "512x512"})
+			arguments, _ := json.Marshal(map[string]any{"prompt": "参考月光邮差的星光分拣员，保持同一视觉语言", "reference_uuids": []string{source.UUID}, "size": "512x512"})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "derive-image", Name: "image_gen", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 3:
 			fileUUID := toolResultFileUUID(t, request.Messages)
@@ -560,7 +565,7 @@ func TestPremiseAssetCreateReportsPreciseFileSourceErrors(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	source, _ := createAssetReferenceMigrationFixture(t, harness)
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "来源校验", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "来源校验", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -590,7 +595,7 @@ func TestPremiseAssetCreateReportsPreciseFileSourceErrors(t *testing.T) {
 	}
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestPNG(t), MIMEType: "image/png"}}
 	harness.service.WithImageClient(imageClient)
-	generated, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "有效的新设定图", "reference_file_uuids": []any{source.CurrentVariant.Asset.UUID}})
+	generated, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "有效的新设定图", "reference_uuids": []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,26 +619,22 @@ func TestAssetReferenceProjectAPIModePreservesReferenceOrderAndMutationSemantics
 	productionService := production.NewService(harness.store, nil)
 	attachmentBytes := agentTestColorPNG(t, color.RGBA{G: 200, A: 255})
 	explicitBytes := agentTestColorPNG(t, color.RGBA{B: 200, A: 255})
-	attachment := createChatReferenceUpload(t, harness.store, "attachment.png", attachmentBytes)
-	explicitUpload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "project_chatbot_reference", OriginalFilename: "explicit.png", Reader: bytes.NewReader(explicitBytes)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	explicitFile, err := productionService.Files().FinalizeUpload(ctx, explicitUpload.UUID, "project_chatbot_reference")
-	if err != nil {
-		t.Fatal(err)
-	}
+	attachmentFile := createChatReferenceFile(t, harness.store, "attachment.png", attachmentBytes)
+	explicitFile := createChatReferenceFile(t, harness.store, "explicit.png", explicitBytes)
 	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestColorPNG(t, color.RGBA{R: 100, G: 120, B: 220, A: 255}), MIMEType: "image/png"}}
 	harness.service.WithImageClient(imageClient)
-	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "保持身份和画风，换成冬季制服", UploadUUIDs: []string{attachment.UUID}})
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "保持身份和画风，换成冬季制服", References: []ReferenceInput{
+		{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: source.UUID},
+		{ResourceType: ReferenceTypeFile, ResourceUUID: attachmentFile.UUID},
+		{ResourceType: ReferenceTypeFile, ResourceUUID: explicitFile.UUID},
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := harness.service.ListItems(ctx, harness.project.UUID, thread.UUID, "", "", 20)
-	if err != nil || len(items.Items) != 1 || len(items.Items[0].ImageReferences) != 1 {
+	if err != nil || len(items.Items) != 1 || len(items.Items[0].References) != 3 {
 		t.Fatalf("turn references=%+v err=%v", items.Items, err)
 	}
-	attachmentFileUUID := items.Items[0].ImageReferences[0].FileUUID
 	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
 	if err != nil {
 		t.Fatal(err)
@@ -645,13 +646,13 @@ func TestAssetReferenceProjectAPIModePreservesReferenceOrderAndMutationSemantics
 	}
 	firstImageExecution := toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}
 	firstImage, err := harness.service.executeImageGenTool(ctx, harness.store, tc, firstImageExecution, map[string]any{
-		"prompt": "保持月光邮差的银发身份与蓝色制服视觉语言，改为冬季版本", "reference_file_uuids": []any{attachmentFileUUID, explicitFile.UUID, attachmentFileUUID},
+		"prompt": "保持月光邮差的银发身份与蓝色制服视觉语言，改为冬季版本", "reference_uuids": []any{source.UUID, attachmentFile.UUID, explicitFile.UUID},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantReferences := []string{source.CurrentVariant.Asset.UUID, attachmentFileUUID, explicitFile.UUID}
-	if got := firstImage["reference_file_uuids"].([]string); strings.Join(got, ",") != strings.Join(wantReferences, ",") {
+	wantReferences := []string{source.UUID, attachmentFile.UUID, explicitFile.UUID}
+	if got := firstImage["reference_uuids"].([]string); strings.Join(got, ",") != strings.Join(wantReferences, ",") {
 		t.Fatalf("asset reference order=%v want=%v", got, wantReferences)
 	}
 	imageClient.mu.Lock()
@@ -681,7 +682,7 @@ func TestAssetReferenceProjectAPIModePreservesReferenceOrderAndMutationSemantics
 	}); err == nil {
 		t.Fatal("stale asset revision was accepted")
 	}
-	secondImage, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "保持同一画风，创建月光邮差的搭档"})
+	secondImage, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "保持同一画风，创建月光邮差的搭档", "reference_uuids": []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -816,12 +817,11 @@ func TestDangerousAgentAPIRoutePolicyIsSceneIndependent(t *testing.T) {
 	tests := []struct {
 		name  string
 		scene string
-		scope string
 	}{
-		{name: "project assistant", scene: SceneProjectAssistant, scope: ThreadScopeProject},
-		{name: "premise asset generation", scene: ScenePremiseAsset, scope: ThreadScopePremise},
-		{name: "asset reference", scene: SceneAssetReference, scope: ThreadScopePremise},
-		{name: "storyboard reference", scene: SceneStoryboardReference, scope: ThreadScopeProject},
+		{name: "project assistant", scene: legacySceneProjectAssistant},
+		{name: "premise asset generation", scene: ScenePremiseAsset},
+		{name: "asset reference", scene: SceneAssetReference},
+		{name: "storyboard reference", scene: SceneStoryboardReference},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -830,22 +830,21 @@ func TestDangerousAgentAPIRoutePolicyIsSceneIndependent(t *testing.T) {
 			asset, assetThread := createAssetReferenceMigrationFixture(t, harness)
 			thread := assetThread
 			switch test.scene {
-			case SceneProjectAssistant:
+			case legacySceneProjectAssistant:
 				var err error
-				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, Scope: test.scope, ProviderUUID: harness.provider.UUID})
+				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, ProviderUUID: harness.provider.UUID})
 				if err != nil {
 					t.Fatal(err)
 				}
 			case ScenePremiseAsset:
 				var err error
-				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, Scope: test.scope, Scene: test.scene, ProviderUUID: harness.provider.UUID})
+				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, ProviderUUID: harness.provider.UUID})
 				if err != nil {
 					t.Fatal(err)
 				}
 			case SceneStoryboardReference:
-				sectionUUID := createComicSectionFixture(t, harness.store)
 				var err error
-				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, Scope: test.scope, Scene: test.scene, SubjectUUID: sectionUUID, ProviderUUID: harness.provider.UUID})
+				thread, err = harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: test.name, ProviderUUID: harness.provider.UUID})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -880,11 +879,11 @@ func TestProjectAPIToolModeSnapshotSurvivesSteeringForEveryScene(t *testing.T) {
 	ctx := context.Background()
 	_, assetThread := createAssetReferenceMigrationFixture(t, harness)
 	_, _, storyboardThread := createStoryboardMigrationFixture(t, harness)
-	projectThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project snapshot", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	projectThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project snapshot", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	premiseThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Premise snapshot", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
+	premiseThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Premise snapshot", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -892,7 +891,7 @@ func TestProjectAPIToolModeSnapshotSurvivesSteeringForEveryScene(t *testing.T) {
 		scene  string
 		thread Thread
 	}{
-		{scene: SceneProjectAssistant, thread: projectThread},
+		{scene: legacySceneProjectAssistant, thread: projectThread},
 		{scene: ScenePremiseAsset, thread: premiseThread},
 		{scene: SceneAssetReference, thread: assetThread},
 		{scene: SceneStoryboardReference, thread: storyboardThread},
@@ -935,7 +934,7 @@ func TestProjectAPIToolModeSnapshotSurvivesSteeringForEveryScene(t *testing.T) {
 func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project Assistant API 迁移", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project Assistant API 迁移", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -955,8 +954,11 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"request_api", "read_agent_doc", harness.project.UUID, agentDocBasePath + "/guides/premise-asset-create.md", agentDocBasePath + "/guides/premise-asset-maintain.md", agentDocBasePath + "/guides/storyboard-update.md"} {
-		if !strings.Contains(prompts.Assistant+prompts.Scene, expected) {
+	if prompts.ProjectUUID != harness.project.UUID || prompts.Scene != "" || prompts.LanguageInstruction != "" {
+		t.Fatalf("project chat prompt facts=%+v", prompts)
+	}
+	for _, expected := range []string{"request_api", "read_agent_doc", agentDocBasePath + "/guides/premise-asset-create.md", agentDocBasePath + "/guides/premise-asset-maintain.md", agentDocBasePath + "/guides/storyboard-update.md"} {
+		if !strings.Contains(prompts.Assistant+prompts.APIOverview, expected) {
 			t.Fatalf("project assistant prompt missing %q: %+v", expected, prompts)
 		}
 	}

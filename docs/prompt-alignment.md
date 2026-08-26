@@ -44,7 +44,7 @@
 - 项目语言切换只迁移默认值；用户自定义版本不被覆盖。任务创建时冻结 generation_language、system/user/image prompt、Provider endpoint/model/参数、章节/Profile revision、Storyboard、候选设定项和文件 UUID。
 - River 重试读取快照，不重新读取项目语言、Prompt 版本或候选目录。Section 参考选择结果写入任务事件并在重试时复用；Story workflow 模型 JSON 写入 `story_prompt_results` 并可幂等恢复内容提交。
 - Story、Profile、批量章节计划和 Comic storyboard 的 LLM 日志使用各自真实 task kind 作为 scenario，便于逐步骤核验最终请求；迁移升级/回滚会显式备份恢复既有任务事件、Agent 审计和日志。
-- Project Chat 创建 Turn 时渲染只含能力与领域 Contract 文档入口的完整 `agent/api-docs/overview.md`，随 Prompt snapshot 冻结，并注入该 Turn 每次模型调用的 system prompt；具体 Route 不进入 Overview，模型通过 `read_agent_doc` 只读取当前目标领域的详细 API Contract。
+- Project Chat 创建 Turn 时渲染只含能力与领域 Contract 文档入口的完整 `agent/docs/overview.md`，随 Prompt snapshot 冻结，并注入该 Turn 每次模型调用的 system prompt；具体 Route 不进入 Overview，模型通过 `read_agent_doc` 只读取当前目标领域的详细 API Contract。
 - API/WS 只投影 UUIDv7；数据库关联继续使用 bigint `id`。所有新增 REST 接口位于 `/api/v1` 并使用统一 success/data/error 信封。
 
 ## 单机 Provider 适配

@@ -2,7 +2,7 @@
 
 能力 ID：`storyboard_update`
 
-本 Guide 用于读取 Comic Section 的完整当前 Storyboard，并以完整 Markdown 创建新的 Storyboard 版本。API 字段以 `/api/v1/agent-docs/comic-section.md` 和 `/api/v1/agent-docs/storyboard.md` 为准。
+本 Guide 用于读取 Comic Section 的完整当前 Storyboard，并以完整 Markdown 创建新的 Storyboard 版本。API 字段以 `/api/v1/agent-docs/api/comic-section.md` 和 `/api/v1/agent-docs/api/storyboard.md` 为准。
 
 ## 前置条件
 
@@ -30,5 +30,5 @@
 
 ## 对应 API Contract
 
-- `/api/v1/agent-docs/comic-section.md`
-- `/api/v1/agent-docs/storyboard.md`
+- `/api/v1/agent-docs/api/comic-section.md`
+- `/api/v1/agent-docs/api/storyboard.md`

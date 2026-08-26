@@ -15,9 +15,14 @@ import (
 	"lumi/internal/imagegen"
 	"lumi/internal/llmlog"
 	"lumi/internal/project"
+
+	"gorm.io/gorm"
 )
 
-const imageToolTimeout = 10 * time.Minute
+const (
+	imageToolTimeout      = 10 * time.Minute
+	maxImageGenReferences = 4
+)
 
 func (service *Service) executeImageGenTool(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (map[string]any, error) {
 	if service.image == nil {
@@ -35,26 +40,41 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if quality == "" {
 		quality = "medium"
 	}
-	purpose := "project_chat_asset_image_generation"
-	if logicalSceneKey(tc.Thread) == SceneAssetReference {
-		purpose = "project_chat_asset_reference_image"
+	purpose := "project_chat_image_generation"
+	legacyV2 := tc.ToolProtocol == ToolProtocolProjectV2 || normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped
+	if !legacyV2 {
+		if _, exists := args["reference_file_uuids"]; exists {
+			return nil, domainError(CodeToolValidation, "image_gen 参数已过期", "新 Turn 只能通过必填 reference_uuids 选择当前 Turn Reference。", nil)
+		}
+		if _, exists := args["reference_uuids"]; !exists {
+			return nil, domainError(CodeToolValidation, "image_gen 缺少 Reference 选择", "reference_uuids 为必填数组；不使用参考图时传空数组。", nil)
+		}
 	}
 	if existing, found, err := service.generatedImageForExecution(ctx, store, purpose, execution.UUID); err != nil {
 		return nil, err
 	} else if found {
-		return imageToolResult(existing, metadataStringSlice(existing.Metadata, "reference_file_uuids"), metadataText(existing.Metadata, "revised_prompt")), nil
+		result := imageToolResult(existing, metadataStringSlice(existing.Metadata, "reference_uuids"), metadataStringSlice(existing.Metadata, "resolved_file_uuids"), metadataText(existing.Metadata, "revised_prompt"))
+		if legacyV2 {
+			result["reference_file_uuids"] = metadataStringSlice(existing.Metadata, "resolved_file_uuids")
+		}
+		return result, nil
 	}
 
-	referenceUUIDs, err := service.resolveImageReferenceUUIDs(ctx, store, tc, stringSliceArg(args, "reference_file_uuids"))
+	var selectedReferences []selectedImageReference
+	if legacyV2 {
+		selectedReferences, err = service.resolveProjectAPIV2ImageReferences(ctx, store, tc, stringSliceArg(args, "reference_file_uuids"))
+	} else {
+		selectedReferences, err = service.resolveImageReferences(ctx, store, tc, stringSliceArg(args, "reference_uuids"))
+	}
 	if err != nil {
 		return nil, err
 	}
-	inputs := make([]imagegen.ImageInput, 0, len(referenceUUIDs))
+	inputs := make([]imagegen.ImageInput, 0, len(selectedReferences))
 	fileService := files.NewService(store, service.hub)
-	for _, fileUUID := range referenceUUIDs {
-		content, err := fileService.OpenContent(ctx, fileUUID)
+	for _, reference := range selectedReferences {
+		content, err := fileService.OpenContent(ctx, reference.FileUUID)
 		if err != nil {
-			return nil, domainError(CodeToolValidation, "参考图片不可用", "reference_file_uuids 必须引用当前项目中可读取的图片。", err)
+			return nil, domainError(CodeToolValidation, "Reference 图片不可用", "所选 Reference 的冻结图片当前无法读取。", err)
 		}
 		if content.Asset.Kind != "image" {
 			_ = content.File.Close()
@@ -88,7 +108,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Select("COALESCE(MAX(attempt),0)+1").Where("chat_run_id=? AND request_type=?", tc.Run.ID, llmlog.RequestImage).Scan(&attempt).Error; err != nil {
 		return nil, err
 	}
-	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID, SourceType: llmlog.SourceProjectChat, Scenario: "project_chat_asset_image_generation", RequestType: llmlog.RequestImage, Attempt: attempt, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: model, InputSummary: prompt, RequestPayload: requestPayload})
+	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID, SourceType: llmlog.SourceProjectChat, Scenario: "project_chat", RequestType: llmlog.RequestImage, Attempt: attempt, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: model, InputSummary: prompt, RequestPayload: requestPayload})
 	if err != nil {
 		return nil, err
 	}
@@ -117,15 +137,24 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		return nil, domainError(CodeProvider, "图片 Provider 返回了不受支持的格式", "生成结果必须是 PNG、JPEG、WebP 或可解码的 GIF。", err)
 	}
 	filename := generatedImageFilename(stringArg(args, "filename"), execution.UUID, generatedMIMEType)
-	metadata := map[string]any{"source": "project_chat_image_gen", "tool_execution_uuid": execution.UUID, "chat_thread_uuid": tc.Thread.UUID, "chat_run_uuid": tc.Run.UUID, "reference_file_uuids": referenceUUIDs, "revised_prompt": llmlog.Summarize(response.RevisedPrompt, 1000)}
-	if logicalSceneKey(tc.Thread) == SceneAssetReference {
-		metadata["premise_asset_uuid"] = tc.Thread.SubjectUUID
+	referenceUUIDs := make([]string, 0, len(selectedReferences))
+	referenceTypes := make([]string, 0, len(selectedReferences))
+	resolvedFileUUIDs := make([]string, 0, len(selectedReferences))
+	for _, reference := range selectedReferences {
+		referenceUUIDs = append(referenceUUIDs, reference.ResourceUUID)
+		referenceTypes = append(referenceTypes, reference.ResourceType)
+		resolvedFileUUIDs = append(resolvedFileUUIDs, reference.FileUUID)
 	}
+	metadata := map[string]any{"source": "project_chat_image_gen", "tool_execution_uuid": execution.UUID, "chat_thread_uuid": tc.Thread.UUID, "chat_run_uuid": tc.Run.UUID, "reference_uuids": referenceUUIDs, "reference_types": referenceTypes, "resolved_file_uuids": resolvedFileUUIDs, "revised_prompt": llmlog.Summarize(response.RevisedPrompt, 1000)}
 	asset, err := fileService.CommitReader(ctx, files.CommitInput{Purpose: purpose, OriginalFilename: filename, DisplayName: filename, SourceType: "generated", Metadata: metadata, Reader: bytes.NewReader(generatedBytes)})
 	if err != nil {
 		return nil, err
 	}
-	return imageToolResult(asset, referenceUUIDs, response.RevisedPrompt), nil
+	result := imageToolResult(asset, referenceUUIDs, resolvedFileUUIDs, response.RevisedPrompt)
+	if legacyV2 {
+		result["reference_file_uuids"] = resolvedFileUUIDs
+	}
+	return result, nil
 }
 
 func normalizeImageGenBytes(data []byte, mimeType string) ([]byte, string, error) {
@@ -157,39 +186,129 @@ func (service *Service) generatedImageForExecution(ctx context.Context, store *p
 	return asset, err == nil, err
 }
 
-func (service *Service) resolveImageReferenceUUIDs(ctx context.Context, store *project.Store, tc toolContext, explicit []string) ([]string, error) {
-	additional := []string{}
-	rows, err := store.DB().WithContext(ctx).Raw(`SELECT f.uuid FROM chat_items items JOIN chat_item_file_references refs ON refs.chat_item_id=items.id JOIN files f ON f.id=refs.file_id WHERE items.turn_id=? AND items.item_type='user_message' AND items.id=(SELECT latest.id FROM chat_items latest WHERE latest.turn_id=? AND latest.item_type='user_message' AND EXISTS (SELECT 1 FROM chat_item_file_references latest_refs WHERE latest_refs.chat_item_id=latest.id) ORDER BY latest.sequence DESC,latest.id DESC LIMIT 1) ORDER BY refs.position,refs.id`, tc.Turn.ID, tc.Turn.ID).Rows()
-	if err != nil {
-		return nil, err
+type selectedImageReference struct {
+	ResourceUUID string
+	ResourceType string
+	FileUUID     string
+}
+
+func (service *Service) resolveImageReferences(ctx context.Context, store *project.Store, tc toolContext, selected []string) ([]selectedImageReference, error) {
+	if len(selected) > maxImageGenReferences {
+		return nil, domainError(CodeToolValidation, "Reference 过多", "image_gen.reference_uuids 最多选择 4 项。", nil)
 	}
-	for rows.Next() {
-		var uuid string
-		if err := rows.Scan(&uuid); err != nil {
-			_ = rows.Close()
+	result := make([]selectedImageReference, 0, len(selected))
+	seen := map[string]bool{}
+	for _, resourceUUID := range selected {
+		resourceUUID = strings.TrimSpace(resourceUUID)
+		if !isUUIDv7(resourceUUID) {
+			return nil, domainError(CodeToolValidation, "Reference UUID 无效", "reference_uuids 只能包含当前 Turn Reference 的 UUIDv7。", nil)
+		}
+		if seen[resourceUUID] {
+			return nil, domainError(CodeToolValidation, "Reference 选择重复", "reference_uuids 不能包含重复项。", nil)
+		}
+		seen[resourceUUID] = true
+		var row struct {
+			ResourceUUID string
+			ResourceType string
+			ImageFileID  *int64
+			FileUUID     string
+			DeletedAt    *time.Time
+			ObjectState  string
+		}
+		err := store.DB().WithContext(ctx).Table("chat_context_references AS refs").
+			Select("refs.resource_uuid,refs.resource_type,refs.image_file_id,COALESCE(files.uuid,'') AS file_uuid,files.deleted_at,COALESCE(objects.state,'') AS object_state").
+			Joins("JOIN chat_items AS items ON items.id=refs.chat_item_id").
+			Joins("LEFT JOIN files ON files.id=refs.image_file_id").
+			Joins("LEFT JOIN file_objects AS objects ON objects.id=files.file_object_id").
+			Where("items.turn_id=? AND items.item_type='user_message' AND refs.resource_uuid=?", tc.Turn.ID, resourceUUID).
+			Order("items.sequence DESC,refs.position DESC,refs.id DESC").Limit(1).Take(&row).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domainError(CodeToolValidation, "Reference 不在当前 Turn", "reference_uuids 不能选择历史、未知或其他 Turn 的 Reference。", err)
+		}
+		if err != nil {
 			return nil, err
 		}
-		additional = append(additional, uuid)
+		if row.ImageFileID == nil || row.FileUUID == "" || row.DeletedAt != nil || row.ObjectState != files.ObjectReady {
+			return nil, domainError(CodeToolValidation, "Reference 没有可用图片", "所选 Reference 不包含冻结图片，无法用于 image_gen。", nil)
+		}
+		result = append(result, selectedImageReference{ResourceUUID: row.ResourceUUID, ResourceType: row.ResourceType, FileUUID: row.FileUUID})
 	}
-	if err := rows.Close(); err != nil {
+	return result, nil
+}
+
+// resolveProjectAPIV2ImageReferences is recovery-only. It translates the old
+// automatic attachment plus explicit file UUID contract onto migrated frozen
+// references, while keeping v3's active schema free of file UUID arguments.
+func (service *Service) resolveProjectAPIV2ImageReferences(ctx context.Context, store *project.Store, tc toolContext, explicit []string) ([]selectedImageReference, error) {
+	result := make([]selectedImageReference, 0, maxImageGenReferences)
+	appendReference := func(reference selectedImageReference) {
+		for _, existing := range result {
+			if existing.FileUUID == reference.FileUUID {
+				return
+			}
+		}
+		result = append(result, reference)
+	}
+	loadRows := func(query *gorm.DB) error {
+		rows, err := query.Rows()
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var reference selectedImageReference
+			if err := rows.Scan(&reference.ResourceUUID, &reference.ResourceType, &reference.FileUUID); err != nil {
+				return err
+			}
+			appendReference(reference)
+		}
+		return rows.Err()
+	}
+
+	if tc.Thread.Scene == SceneAssetReference && isUUIDv7(tc.Thread.SubjectUUID) {
+		query := store.DB().WithContext(ctx).Table("chat_context_references AS refs").
+			Select("refs.resource_uuid,refs.resource_type,files.uuid").
+			Joins("JOIN chat_items AS items ON items.id=refs.chat_item_id").
+			Joins("JOIN files ON files.id=refs.image_file_id AND files.deleted_at IS NULL").
+			Joins("JOIN file_objects AS objects ON objects.id=files.file_object_id AND objects.state=?", files.ObjectReady).
+			Where("items.turn_id=? AND items.item_type='user_message' AND refs.resource_type=? AND refs.resource_uuid=?", tc.Turn.ID, ReferenceTypePremiseAsset, tc.Thread.SubjectUUID).
+			Order("items.sequence DESC,refs.position,refs.id").Limit(1)
+		if err := loadRows(query); err != nil {
+			return nil, err
+		}
+		if len(result) == 0 {
+			return nil, domainError(CodeToolValidation, "当前设定图不可用", "冻结的 v2 asset_reference 上下文没有可用图片。", nil)
+		}
+	}
+
+	latestFileItem := store.DB().WithContext(ctx).Table("chat_items AS latest").
+		Select("latest.id").
+		Where("latest.turn_id=? AND latest.item_type='user_message' AND EXISTS (SELECT 1 FROM chat_context_references latest_refs WHERE latest_refs.chat_item_id=latest.id AND latest_refs.resource_type=?)", tc.Turn.ID, ReferenceTypeFile).
+		Order("latest.sequence DESC,latest.id DESC").Limit(1)
+	query := store.DB().WithContext(ctx).Table("chat_context_references AS refs").
+		Select("refs.resource_uuid,refs.resource_type,files.uuid").
+		Joins("JOIN files ON files.id=refs.image_file_id AND files.deleted_at IS NULL").
+		Joins("JOIN file_objects AS objects ON objects.id=files.file_object_id AND objects.state=?", files.ObjectReady).
+		Where("refs.chat_item_id=(?) AND refs.resource_type=?", latestFileItem, ReferenceTypeFile).
+		Order("refs.position,refs.id")
+	if err := loadRows(query); err != nil {
 		return nil, err
 	}
-	additional = append(additional, explicit...)
-	additional = stableUniqueUUIDs(additional)
-	if len(additional) > maxChatImageReferences {
-		return nil, domainError(CodeToolValidation, "参考图片过多", "当前消息附件与 reference_file_uuids 合计最多 4 张。", nil)
+
+	fileService := files.NewService(store, service.hub)
+	for _, fileUUID := range explicit {
+		fileUUID = strings.TrimSpace(fileUUID)
+		if !isUUIDv7(fileUUID) {
+			return nil, domainError(CodeToolValidation, "参考文件 UUID 无效", "冻结的 project_api_v2 reference_file_uuids 只能包含 UUIDv7。", nil)
+		}
+		asset, err := fileService.GetAsset(ctx, fileUUID, false)
+		if err != nil || asset.Kind != "image" {
+			return nil, domainError(CodeToolValidation, "参考图片不可用", "冻结的 project_api_v2 reference_file_uuids 必须引用当前项目的 active 图片。", err)
+		}
+		appendReference(selectedImageReference{ResourceUUID: fileUUID, ResourceType: ReferenceTypeFile, FileUUID: fileUUID})
 	}
-	if logicalSceneKey(tc.Thread) != SceneAssetReference {
-		return additional, nil
-	}
-	var currentFileUUID string
-	err = store.DB().WithContext(ctx).Table("premise_assets AS assets").Select("files.uuid").Joins("JOIN premise_asset_variants variants ON variants.id=assets.current_variant_id").Joins("JOIN files ON files.id=variants.file_id").Where("assets.project_id=? AND assets.uuid=? AND assets.deleted_at IS NULL AND files.deleted_at IS NULL", tc.Thread.ProjectID, tc.Thread.SubjectUUID).Scan(&currentFileUUID).Error
-	if err != nil || currentFileUUID == "" {
-		return nil, domainError(CodeToolValidation, "当前设定图不可用", "asset_reference 会话必须以当前设定项图片作为第一张参考图。", err)
-	}
-	result := stableUniqueUUIDs(append([]string{currentFileUUID}, additional...))
-	if len(result) > maxChatImageReferences {
-		return nil, domainError(CodeToolValidation, "参考图片过多", "当前设定图、当前消息附件与 reference_file_uuids 去重后合计最多 4 张。", nil)
+	if len(result) > maxImageGenReferences {
+		return nil, domainError(CodeToolValidation, "参考图片过多", "冻结的 project_api_v2 图片参考去重后最多 4 张。", nil)
 	}
 	return result, nil
 }
@@ -222,8 +341,8 @@ func generatedImageFilename(requested, executionUUID, mimeType string) string {
 	return strings.TrimSuffix(name, filepath.Ext(name)) + "." + ext
 }
 
-func imageToolResult(asset files.Asset, references []string, revisedPrompt string) map[string]any {
-	return map[string]any{"file_uuid": asset.UUID, "filename": asset.OriginalFilename, "content_url": asset.ContentURL, "mime_type": asset.MIMEType, "byte_size": asset.ByteSize, "purpose": asset.Purpose, "revised_prompt": revisedPrompt, "reference_file_uuids": references}
+func imageToolResult(asset files.Asset, references, resolvedFiles []string, revisedPrompt string) map[string]any {
+	return map[string]any{"file_uuid": asset.UUID, "filename": asset.OriginalFilename, "content_url": asset.ContentURL, "mime_type": asset.MIMEType, "byte_size": asset.ByteSize, "purpose": asset.Purpose, "revised_prompt": revisedPrompt, "reference_uuids": references, "resolved_file_uuids": resolvedFiles}
 }
 
 func metadataText(value any, key string) string {

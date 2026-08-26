@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ChevronUp,
   GripVertical,
-  Image,
   ImagePlus,
   MoreHorizontal,
   Route as RouteIcon,
@@ -17,7 +16,6 @@ import {
   PanelRightOpen,
   Pencil,
   Plus,
-  RefreshCw,
   Send,
   Square,
   Trash2,
@@ -50,7 +48,7 @@ import {
   steerFollowUp,
   updateFollowUp,
 } from '../api/chat.js'
-import { createAssetUpload } from '../api/assets.js'
+import { createAssetUpload, finalizeAssetUpload } from '../api/assets.js'
 import {
   captureChatScrollAnchor,
   chatComposerMode,
@@ -70,10 +68,12 @@ import {
   workflowProgressPercent,
 } from '../pages/chatAreaPresentation.js'
 import {
-  MAX_PROJECT_CHAT_IMAGE_REFERENCES,
-  canProjectChatAttachImages,
+  MAX_PROJECT_CHAT_REFERENCES,
+  appendProjectChatReference,
+  consumeProjectChatReferenceQuery,
   projectChatClipboardFiles,
-  readyProjectChatUploadUUIDs,
+  readyProjectChatReferences,
+  referenceKey,
   removeProjectChatAttachment,
   selectProjectChatClipboardImages,
   selectProjectChatImageFiles,
@@ -82,6 +82,7 @@ import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent,
 import { flattenProjectThreads, useProjectThreads } from '../pages/projectThreads.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
+import { ReferencePicker, ReferenceStrip } from './ChatReferences.jsx'
 import SafeMarkdown from './SafeMarkdown.jsx'
 
 const threadStatusCopy = {
@@ -128,38 +129,6 @@ function CollapseButton({ overlay, onToggle }) {
 
 function ErrorNotice({ error, onDismiss }) {
   return <LocalizedErrorMessage error={error} className="chat-error" onDismiss={onDismiss} />
-}
-
-function MessageImageReferences({ references = [] }) {
-  const { t } = useI18n()
-  if (!references.length) return null
-  return (
-    <div className="chat-message-references">
-      {references.map((reference) => (
-        <a href={reference.content_url} target="_blank" rel="noopener noreferrer" key={reference.file_uuid} title={reference.original_filename || reference.file_uuid}>
-          <img src={reference.content_url} alt="" loading="lazy" />
-          <span>{reference.original_filename || t('chat.attachment.image')}</span>
-        </a>
-      ))}
-    </div>
-  )
-}
-
-function AttachmentStrip({ attachments, onRemove, onRetry }) {
-  const { t } = useI18n()
-  if (!attachments.length) return null
-  return (
-    <div className="chat-attachment-strip">
-      {attachments.map((attachment) => (
-        <span className={`chat-attachment chat-attachment--${attachment.status}`} key={attachment.localId}>
-          {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" /> : <Image size={18} aria-hidden="true" />}
-          <span><b title={attachment.filename}>{attachment.filename}</b><em>{t(`chat.attachment.${attachment.status}`)}</em></span>
-          {attachment.status === 'error' && onRetry ? <button type="button" onClick={() => onRetry(attachment.localId)} aria-label={t('chat.attachment.retry', { filename: attachment.filename })}><RefreshCw size={12} /></button> : null}
-          <button type="button" onClick={() => onRemove(attachment.localId)} aria-label={t('chat.attachment.remove', { filename: attachment.filename })}><X size={12} /></button>
-        </span>
-      ))}
-    </div>
-  )
 }
 
 function AttachmentPicker({ disabled, onFiles }) {
@@ -286,14 +255,14 @@ function UserInputHistory({ request, presentation }) {
   )
 }
 
-function ChatItem({ item }) {
+function ChatItem({ item, projectUuid }) {
   const { t } = useI18n()
   if (item.item_type === 'error') {
     return <article className="chat-message chat-message--error"><div>{t('chat.item.error')}</div></article>
   }
 
   if (item.role === 'user') {
-    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><MessageImageReferences references={item.image_references} /></div></article>
+    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact /></div></article>
   }
 
   return (
@@ -388,7 +357,7 @@ function toolStatusLabel(status, t) {
   }[status] || t('common.status.unknown_with_code', { code: status })
 }
 
-function TurnGroup({ group, historyMayBePartial, requestByItemUuid, inputPending, onRespond, onCancel }) {
+function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid, inputPending, onRespond, onCancel }) {
   const { formatDateTime, t } = useI18n()
   const turn = group.turn
   const activity = projectChatTurnActivity(turn, group.items, { historyMayBePartial })
@@ -408,7 +377,7 @@ function TurnGroup({ group, historyMayBePartial, requestByItemUuid, inputPending
             {index === activity.summaryIndex ? summary : null}
             {item.item_type === 'user_input_request' && requestByItemUuid.get(item.uuid)
               ? <UserInputCard request={requestByItemUuid.get(item.uuid)} pending={inputPending} onRespond={onRespond} onCancel={onCancel} />
-              : <ChatItem item={item} />}
+              : <ChatItem item={item} projectUuid={projectUuid} />}
           </Fragment>
         ))}
         {activity.summaryIndex === activity.conversationItems.length ? summary : null}
@@ -585,7 +554,7 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
   )
 }
 
-function FollowUpQueue({ items, pending, canSteer, notice, onMove, onDelete, onEdit, onSteer }) {
+function FollowUpQueue({ projectUuid, items, pending, canSteer, notice, onMove, onDelete, onEdit, onSteer }) {
   const { formatDateTime, t } = useI18n()
   const [editingUuid, setEditingUuid] = useState('')
   const [editingText, setEditingText] = useState('')
@@ -617,8 +586,8 @@ function FollowUpQueue({ items, pending, canSteer, notice, onMove, onDelete, onE
             <button className="chat-queue__handle" type="button" disabled={pending} aria-grabbed={draggedUuid === item.uuid} aria-label={t('chat.queue.reorder', { number: index + 1 })} title={t('chat.queue.reorder_hint')} onKeyDown={(event) => keyboardMove(event, item, index)}><GripVertical size={15} aria-hidden="true" /></button>
             <div className="chat-queue__body">
               {editingUuid === item.uuid ? <form className="chat-queue__edit" onSubmit={(event) => { event.preventDefault(); saveEditing() }}><input autoFocus value={editingText} onChange={(event) => setEditingText(event.target.value)} maxLength="262144" aria-label={t('chat.queue.edit_label')} /><button type="submit" disabled={pending || !editingText.trim()} aria-label={t('common.action.save')}><Check size={14} /></button><button type="button" onClick={() => setEditingUuid('')} aria-label={t('common.action.cancel')}><X size={14} /></button></form> : <p title={item.input_text}>{item.input_text}</p>}
-              <small>{t('chat.queue.item', { time: formatDateTime(item.created_at, { hour: '2-digit', minute: '2-digit' }) })}{item.image_references?.length ? ` · ${t('chat.attachment.count', { count: item.image_references.length })}` : ''}</small>
-              {item.image_references?.length ? <div className="chat-queue__references">{item.image_references.map((reference) => <a href={reference.content_url} target="_blank" rel="noopener noreferrer" key={reference.file_uuid} title={reference.original_filename}><img src={reference.content_url} alt="" loading="lazy" /></a>)}</div> : null}
+              <small>{t('chat.queue.item', { time: formatDateTime(item.created_at, { hour: '2-digit', minute: '2-digit' }) })}{item.references?.length ? ` · ${t('chat.reference.count_short', { count: item.references.length })}` : ''}</small>
+              <ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact />
             </div>
             <div className="chat-queue__actions">
               <button type="button" disabled={pending || editingUuid === item.uuid} onClick={() => startEditing(item)} aria-label={t('chat.queue.edit')}><Pencil size={14} /></button>
@@ -634,11 +603,10 @@ function FollowUpQueue({ items, pending, canSteer, notice, onMove, onDelete, onE
   )
 }
 
-function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = false, scene = '', attachments = [], attachmentBlocked = false, onDraftChange, onSend, onAbort, onAddFiles, onRemoveAttachment, onRetryAttachment, onPaste }) {
+function ChatComposer({ projectUuid, activeTurn, draft, pending, abortPending, autoFocus = false, references = [], referenceBlocked = false, onDraftChange, onSend, onAbort, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
   const { t } = useI18n()
   const mode = chatComposerMode({ activeTurn, draft })
-  const canSteer = activeTurn?.status === 'in_progress' && draft.trim() && !pending && !attachmentBlocked
-  const canAttach = canProjectChatAttachImages(scene)
+  const canSteer = activeTurn?.status === 'in_progress' && draft.trim() && !pending && !referenceBlocked
   const actionTitle = mode === 'stop'
     ? t(abortPending ? 'chat.composer.stopping' : 'chat.composer.stop')
     : t(mode === 'queue' ? 'chat.composer.queue' : 'chat.composer.send')
@@ -666,12 +634,12 @@ function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = fa
   return (
     <form className="chat-composer" onSubmit={submit}>
       {activeTurn ? <p className="chat-composer__status">{activeTurn.status === 'waiting_for_input' ? t('chat.composer.waiting') : t('chat.composer.turn_running', { number: activeTurn.queue_sequence || '—' })}</p> : null}
-      {canAttach ? <AttachmentStrip attachments={attachments} onRemove={onRemoveAttachment} onRetry={onRetryAttachment} /> : null}
+      <ReferenceStrip projectUuid={projectUuid} references={references} onRemove={onRemoveReference} />
       <textarea
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={handleKeyDown}
-        onPaste={canAttach ? onPaste : undefined}
+        onPaste={onPaste}
         rows="6"
         maxLength="262144"
         placeholder={t(activeTurn ? 'chat.composer.follow_up_placeholder' : 'chat.composer.placeholder')}
@@ -680,13 +648,13 @@ function ChatComposer({ activeTurn, draft, pending, abortPending, autoFocus = fa
         disabled={pending}
       />
       <footer>
-        <div className="chat-composer__left">{canAttach ? <AttachmentPicker disabled={pending || attachments.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_IMAGE_REFERENCES} onFiles={onAddFiles} /> : null}<small className="chat-composer__hint">{t('chat.composer.hint')}</small></div>
+        <div className="chat-composer__left"><ReferencePicker projectUuid={projectUuid} references={references} disabled={pending} onToggle={onToggleReference} /><AttachmentPicker disabled={pending || references.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_REFERENCES} onFiles={onAddFiles} /><small className="chat-composer__hint">{t('chat.composer.hint')}</small></div>
         <button
           className={`chat-composer__send chat-composer__send--${mode}`}
           type="submit"
           title={actionTitle}
           aria-label={actionTitle}
-          disabled={mode === 'disabled' || pending || (mode !== 'stop' && attachmentBlocked) || (mode === 'stop' && abortPending)}
+          disabled={mode === 'disabled' || pending || (mode !== 'stop' && referenceBlocked) || (mode === 'stop' && abortPending)}
         >
           {mode === 'stop' ? <Square size={15} fill="currentColor" aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
         </button>
@@ -772,7 +740,7 @@ function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMo
   )
 }
 
-function NewThreadDraft({ draft, pending, error, overlay, onDraftChange, onSubmit, onBack, onToggle, onDismissError }) {
+function NewThreadDraft({ projectUuid, draft, pending, error, overlay, references, referenceBlocked, onDraftChange, onSubmit, onBack, onToggle, onDismissError, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
   const { t } = useI18n()
   return (
     <div className="chat-panel chat-panel--detail">
@@ -787,59 +755,8 @@ function NewThreadDraft({ draft, pending, error, overlay, onDraftChange, onSubmi
           <div className="chat-empty-state"><strong>{t('chat.thread.new_title')}</strong><span>{t('chat.thread.new_body')}</span></div>
         </div>
         <div className="chat-composer-shell">
-          <ChatComposer activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} />
+          <ChatComposer projectUuid={projectUuid} activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus references={references} referenceBlocked={referenceBlocked} onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} onAddFiles={onAddFiles} onRemoveReference={onRemoveReference} onToggleReference={onToggleReference} onPaste={onPaste} />
         </div>
-      </div>
-    </div>
-  )
-}
-
-const sceneCopy = {
-  premise_asset_generation: {
-    titleKey: 'chat.scene.generate.title',
-    descriptionKey: 'chat.scene.generate.description',
-    placeholderKey: 'chat.scene.generate.placeholder',
-  },
-  asset_reference: {
-    titleKey: 'chat.scene.reference.title',
-    descriptionKey: 'chat.scene.reference.description',
-    placeholderKey: 'chat.scene.reference.placeholder',
-  },
-  storyboard_reference: {
-    titleKey: 'chat.scene.storyboard.title',
-    eyebrowKey: 'chat.scene.storyboard.eyebrow',
-    cardTitleKey: 'chat.scene.storyboard.card_title',
-    descriptionKey: 'chat.scene.storyboard.description',
-    placeholderKey: 'chat.scene.storyboard.placeholder',
-    hintKey: 'chat.scene.storyboard.first_send',
-    useSubjectTitle: true,
-  },
-}
-
-function SceneThreadDraft({ scene, subjectTitle, draft, pending, error, overlay, attachments, attachmentBlocked, onDraftChange, onSubmit, onCancelScene, onBack, onToggle, onAddFiles, onRemoveAttachment, onRetryAttachment, onPaste }) {
-  const { t } = useI18n()
-  const copy = sceneCopy[scene] || sceneCopy.premise_asset_generation
-  return (
-    <div className="chat-panel chat-panel--detail">
-      <header className="chat-detail-header">
-        <button className="chat-back" type="button" onClick={onBack} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
-        <div><p>{t(copy.eyebrowKey || 'premise.title')}</p><h2>{copy.useSubjectTitle && subjectTitle ? subjectTitle : t(copy.titleKey)}</h2></div>
-        <div className="chat-detail-actions"><span className="chat-status chat-status--idle">{t('chat.thread.draft')}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
-      </header>
-      <div className="chat-detail-body">
-        <div className="chat-messages">
-          <section className="chat-scene-card">
-            <div><Bot size={18} aria-hidden="true" /><span><strong>{t(copy.cardTitleKey || copy.titleKey)}</strong>{subjectTitle ? <small>{subjectTitle}</small> : null}</span></div>
-            <p>{t(copy.descriptionKey)}</p>
-            <button type="button" className="button-quiet" onClick={onCancelScene}>{t('chat.scene.cancel')}</button>
-          </section>
-          {error ? <LocalizedErrorMessage error={error} compact /> : null}
-        </div>
-        <form className="chat-composer chat-composer--scene" onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
-          {canProjectChatAttachImages(scene) ? <AttachmentStrip attachments={attachments} onRemove={onRemoveAttachment} onRetry={onRetryAttachment} /> : null}
-          <textarea value={draft} onChange={(event) => onDraftChange(event.target.value)} onPaste={canProjectChatAttachImages(scene) ? onPaste : undefined} rows="6" maxLength="262144" placeholder={t(copy.placeholderKey)} aria-label={t(copy.titleKey)} autoFocus disabled={pending} />
-          <footer><div className="chat-composer__left">{canProjectChatAttachImages(scene) ? <AttachmentPicker disabled={pending || attachments.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_IMAGE_REFERENCES} onFiles={onAddFiles} /> : null}<small className="chat-composer__hint">{t(copy.hintKey || 'chat.scene.first_send')}</small></div><button className="chat-composer__send chat-composer__send--send" type="submit" aria-label={t('chat.composer.send')} disabled={pending || attachmentBlocked || !draft.trim()}>{pending ? <Square size={15} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}</button></footer>
-        </form>
       </div>
     </div>
   )
@@ -849,17 +766,20 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedScene = searchParams.get('chat_scene') || ''
-  const requestedSubjectUuid = searchParams.get('chat_subject_uuid') || ''
-  const requestedSubjectTitle = searchParams.get('chat_subject_title') || ''
-  const requestedNewThread = searchParams.get('chat_new') === '1'
+  const requestedReferenceType = searchParams.get('chat_reference_type') || ''
+  const requestedReferenceUuid = searchParams.get('chat_reference_uuid') || ''
+  const requestedReferenceTitle = searchParams.get('chat_reference_title') || ''
+  const requestedReference = ['premise_asset', 'comic_section', 'file'].includes(requestedReferenceType) && requestedReferenceUuid
+    ? { localId: `${requestedReferenceType}:${requestedReferenceUuid}`, resource_type: requestedReferenceType, resource_uuid: requestedReferenceUuid, title: requestedReferenceTitle, status: 'ready' }
+    : null
+  const requestedNewThread = searchParams.get('chat_new') === '1' || Boolean(requestedReference)
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(Boolean(searchParams.get('chat_thread_uuid') || searchParams.get('workflow_uuid') || requestedNewThread))
   const expanded = controlledExpanded ?? uncontrolledExpanded
   const [selectedThreadUuid, setSelectedThreadUuid] = useState(searchParams.get('chat_thread_uuid') || '')
   const [showCreate, setShowCreate] = useState(requestedNewThread)
   const [inputText, setInputText] = useState('')
-  const [attachments, setAttachments] = useState([])
-  const attachmentsRef = useRef([])
+  const [references, setReferences] = useState([])
+  const referencesRef = useRef([])
   const [error, setError] = useState(null)
   const [queueNotice, setQueueNotice] = useState('')
   useEffect(() => setQueueNotice(''), [selectedThreadUuid])
@@ -884,62 +804,85 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     if (requestedNewThread) {
       setShowCreate(true)
     }
-  }, [requestedNewThread, requestedScene, requestedSubjectTitle, searchParams, t])
+  }, [requestedNewThread, searchParams])
+
+  useEffect(() => {
+    if (!requestedReference) return
+    setSearchParams(consumeProjectChatReferenceQuery(searchParams), { replace: true })
+    if (!selectedThreadUuid) {
+      setShowCreate(true)
+      setReferences((current) => appendProjectChatReference(current, requestedReference))
+    }
+  }, [requestedReferenceType, requestedReferenceUuid, requestedReferenceTitle, selectedThreadUuid])
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
-  const attachmentScene = showCreate ? requestedScene : selectedThread?.scene || ''
-  const attachmentBlocked = attachments.some((item) => item.status === 'uploading' || item.status === 'error')
+  const referenceBlocked = references.some((item) => item.status === 'uploading' || item.status === 'error')
   const requestedWorkflow = searchParams.get('workflow_uuid')
   const selectedWorkflow = workflows.find((item) => item.uuid === requestedWorkflow)
     || workflows.find((item) => item.thread_uuid === selectedThreadUuid)
     || null
 
-  useEffect(() => { attachmentsRef.current = attachments }, [attachments])
-  useEffect(() => () => releaseAttachmentPreviews(attachmentsRef.current), [])
+  useEffect(() => { referencesRef.current = references }, [references])
+  useEffect(() => () => releaseAttachmentPreviews(referencesRef.current), [])
 
-  const clearAttachments = useCallback(() => {
-    setAttachments((current) => {
+  const clearReferences = useCallback(() => {
+    setReferences((current) => {
       releaseAttachmentPreviews(current)
       return []
     })
   }, [])
 
-  const removeAttachment = useCallback((localId) => {
-    setAttachments((current) => {
+  const removeReference = useCallback((localId) => {
+    setReferences((current) => {
       const removed = current.find((item) => item.localId === localId)
       releaseAttachmentPreview(removed)
       return removeProjectChatAttachment(current, localId)
     })
   }, [])
 
-  useEffect(() => {
-    if (!canProjectChatAttachImages(attachmentScene)) clearAttachments()
-  }, [attachmentScene, clearAttachments])
+  const toggleReference = useCallback((reference) => {
+    setReferences((current) => {
+      const key = referenceKey(reference)
+      const existing = current.find((item) => referenceKey(item) === key)
+      if (existing) {
+        releaseAttachmentPreview(existing)
+        return current.filter((item) => referenceKey(item) !== key)
+      }
+      if (current.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_REFERENCES) {
+        setError({ code: 'chat_reference_limit_exceeded' })
+        return current
+      }
+      return appendProjectChatReference(current, reference)
+    })
+  }, [])
 
   const uploadAttachmentDraft = useCallback((draft) => {
     createAssetUpload(projectUuid, {
       purpose: 'project_chatbot_reference',
       displayName: draft.filename,
       file: draft.file,
-    }).then((upload) => {
-      setAttachments((current) => current.map((item) => item.localId === draft.localId ? { ...item, status: 'ready', upload, error: null } : item))
+    }).then((upload) => finalizeAssetUpload(projectUuid, upload.uuid, 'project_chatbot_reference')).then((asset) => {
+      setReferences((current) => current.map((item) => item.localId === draft.localId ? { ...item, status: 'ready', resource_type: 'file', resource_uuid: asset.uuid, image_file_uuid: asset.uuid, image_available: true, asset, error: null } : item))
     }).catch((uploadError) => {
-      setAttachments((current) => current.map((item) => item.localId === draft.localId ? { ...item, status: 'error', error: uploadError } : item))
+      setReferences((current) => current.map((item) => item.localId === draft.localId ? { ...item, status: 'error', error: uploadError } : item))
       setError(uploadError)
     })
   }, [projectUuid])
 
   const addAttachmentFiles = useCallback((files) => {
-    const currentCount = attachments.filter((item) => item.status !== 'error').length
+    const currentCount = references.filter((item) => item.status !== 'error').length
     const selection = selectProjectChatImageFiles(files, currentCount)
     if (selection.rejectedNonImages) {
-      setError({ code: 'chat_image_reference_invalid_mime' })
+      setError({ code: 'chat_reference_invalid_mime' })
     } else if (selection.exceededLimit) {
-      setError({ code: 'chat_image_reference_limit_exceeded' })
+      setError({ code: 'chat_reference_limit_exceeded' })
     }
     const drafts = selection.acceptedFiles.map((file, index) => ({
       localId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${index}-${file.name}`,
+      resource_type: 'file',
+      resource_uuid: '',
+      title: file.name || t('chat.attachment.image'),
       filename: file.name || t('chat.attachment.image'),
       status: 'uploading',
       upload: null,
@@ -947,24 +890,16 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
     }))
     if (!drafts.length) return
-    setAttachments((current) => [...current, ...drafts])
+    setReferences((current) => [...current, ...drafts])
     drafts.forEach(uploadAttachmentDraft)
-  }, [attachments, t, uploadAttachmentDraft])
-
-  const retryAttachment = useCallback((localId) => {
-    const draft = attachments.find((item) => item.localId === localId && item.status === 'error' && item.file)
-    if (!draft) return
-    setAttachments((current) => current.map((item) => item.localId === localId ? { ...item, status: 'uploading', error: null } : item))
-    setError(null)
-    uploadAttachmentDraft(draft)
-  }, [attachments, uploadAttachmentDraft])
+  }, [references, t, uploadAttachmentDraft])
 
   const handleAttachmentPaste = useCallback((event) => {
-    const selected = selectProjectChatClipboardImages(event.clipboardData, attachments.filter((item) => item.status !== 'error').length)
+    const selected = selectProjectChatClipboardImages(event.clipboardData, references.filter((item) => item.status !== 'error').length)
     if (!selected.hasImages) return
     event.preventDefault()
     addAttachmentFiles(projectChatClipboardFiles(event.clipboardData))
-  }, [addAttachmentFiles, attachments])
+  }, [addAttachmentFiles, references])
   const itemsQuery = useInfiniteQuery({
     queryKey: ['chat-items', projectUuid, selectedThreadUuid, 'pages'],
     queryFn: ({ pageParam }) => listChatItems(projectUuid, selectedThreadUuid, { before: pageParam, limit: MESSAGE_PAGE_LIMIT }),
@@ -984,10 +919,9 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       const text = inputText.trim()
       const thread = await createChatThread(projectUuid, {
         title: suggestedChatThreadTitle(text),
-        scope: 'project',
       })
       try {
-        await createChatTurn(projectUuid, thread.uuid, { input_text: text })
+        await createChatTurn(projectUuid, thread.uuid, { input_text: text, references: readyProjectChatReferences(references) })
         return { thread, turnError: null }
       } catch (turnError) {
         return { thread, turnError }
@@ -1001,62 +935,26 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       next.set('chat_thread_uuid', thread.uuid)
       next.delete('workflow_uuid')
       next.delete('chat_new')
-      next.delete('chat_scene')
-      next.delete('chat_subject_uuid')
-      next.delete('chat_subject_title')
-      next.delete('chat_scope')
+      next.delete('chat_reference_type')
+      next.delete('chat_reference_uuid')
+      next.delete('chat_reference_title')
       setSearchParams(next, { replace: true })
       setShowCreate(false)
-      if (!turnError) setInputText('')
-      setError(turnError)
-    },
-    onError: setError,
-  })
-  const createSceneThreadMutation = useMutation({
-    mutationFn: async () => {
-      const scope = sceneThreadScope(requestedScene)
-      const thread = await createChatThread(projectUuid, {
-        title: sceneThreadTitle(t, requestedScene, requestedSubjectTitle),
-        scope,
-        scene: requestedScene,
-        subject_uuid: requestedSubjectUuid,
-      })
-      try {
-        await createChatTurn(projectUuid, thread.uuid, { input_text: inputText.trim(), upload_uuids: readyProjectChatUploadUUIDs(attachments) })
-        return { thread, turnError: null }
-      } catch (turnError) {
-        return { thread, turnError }
-      }
-    },
-    onSuccess: ({ thread, turnError }) => {
-      queryClient.setQueryData(['chat-thread', projectUuid, thread.uuid], thread)
-      queryClient.invalidateQueries({ queryKey: ['chat-threads', projectUuid] })
-      setSelectedThreadUuid(thread.uuid)
       if (!turnError) {
         setInputText('')
-        clearAttachments()
+        clearReferences()
       }
-      setShowCreate(false)
       setError(turnError)
-      const next = new URLSearchParams(searchParams)
-      next.delete('chat_scope')
-      next.set('chat_thread_uuid', thread.uuid)
-      next.delete('workflow_uuid')
-      next.delete('chat_new')
-      next.delete('chat_scene')
-      next.delete('chat_subject_uuid')
-      next.delete('chat_subject_title')
-      setSearchParams(next, { replace: true })
     },
     onError: setError,
   })
   const composerMutation = useMutation({
-    mutationFn: ({ mode, text, uploadUuids }) => {
-      if (mode === 'follow_up') return createFollowUp(projectUuid, selectedThreadUuid, text, uploadUuids)
-      if (mode === 'steering') return steerChatRun(projectUuid, selectedThreadUuid, text, uploadUuids)
-      return createChatTurn(projectUuid, selectedThreadUuid, { input_text: text, upload_uuids: uploadUuids })
+    mutationFn: ({ mode, text, referenceInputs }) => {
+      if (mode === 'follow_up') return createFollowUp(projectUuid, selectedThreadUuid, text, referenceInputs)
+      if (mode === 'steering') return steerChatRun(projectUuid, selectedThreadUuid, text, referenceInputs)
+      return createChatTurn(projectUuid, selectedThreadUuid, { input_text: text, references: referenceInputs })
     },
-    onSuccess: () => { setInputText(''); clearAttachments(); setError(null); invalidate() },
+    onSuccess: () => { setInputText(''); clearReferences(); setError(null); invalidate() },
     onError: setError,
   })
   const abortMutation = useMutation({ mutationFn: () => abortChatTurn(projectUuid, selectedThreadUuid), onSuccess: () => invalidate(), onError: setError })
@@ -1151,63 +1049,49 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     setShowCreate(false)
     setSelectedThreadUuid('')
     setInputText('')
-    clearAttachments()
+    clearReferences()
     const next = new URLSearchParams(searchParams)
     next.delete('chat_thread_uuid')
     next.delete('workflow_uuid')
     next.delete('chat_new')
-    next.delete('chat_scene')
-    next.delete('chat_subject_uuid')
-    next.delete('chat_subject_title')
-    next.delete('chat_scope')
+    next.delete('chat_reference_type')
+    next.delete('chat_reference_uuid')
+    next.delete('chat_reference_title')
     setSearchParams(next, { replace: true })
   }
   const startNewThread = () => {
     setSelectedThreadUuid('')
     setShowCreate(true)
     setInputText('')
-    clearAttachments()
+    clearReferences()
     setError(null)
     const next = new URLSearchParams(searchParams)
     next.delete('chat_thread_uuid')
     next.delete('workflow_uuid')
     next.set('chat_new', '1')
-    next.delete('chat_scene')
-    next.delete('chat_subject_uuid')
-    next.delete('chat_subject_title')
-    next.delete('chat_scope')
+    next.delete('chat_reference_type')
+    next.delete('chat_reference_uuid')
+    next.delete('chat_reference_title')
     setSearchParams(next, { replace: true })
   }
   const chooseThread = (uuid) => {
     setSelectedThreadUuid(uuid)
     setShowCreate(false)
     setInputText('')
-    clearAttachments()
+    clearReferences()
     const next = new URLSearchParams(searchParams)
     next.set('chat_thread_uuid', uuid)
     next.delete('workflow_uuid')
     next.delete('chat_new')
-    next.delete('chat_scene')
-    next.delete('chat_subject_uuid')
-    next.delete('chat_subject_title')
-    next.delete('chat_scope')
-    setSearchParams(next, { replace: true })
-  }
-  const cancelDraftScene = () => {
-    setInputText('')
-    clearAttachments()
-    const next = new URLSearchParams(searchParams)
-    next.set('chat_new', '1')
-    next.delete('chat_scene')
-    next.delete('chat_subject_uuid')
-    next.delete('chat_subject_title')
-    next.delete('chat_scope')
+    next.delete('chat_reference_type')
+    next.delete('chat_reference_uuid')
+    next.delete('chat_reference_title')
     setSearchParams(next, { replace: true })
   }
   const send = (mode) => {
     const text = inputText.trim()
-    if (!text || composerMutation.isPending || attachmentBlocked) return
-    composerMutation.mutate({ mode, text, uploadUuids: readyProjectChatUploadUUIDs(attachments) })
+    if (!text || composerMutation.isPending || referenceBlocked) return
+    composerMutation.mutate({ mode, text, referenceInputs: readyProjectChatReferences(references) })
   }
 
   if (!expanded) {
@@ -1219,10 +1103,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   }
 
   if (showCreate) {
-    if (requestedScene) {
-      return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t(sceneThreadScope(requestedScene) === 'project' ? 'chat.project' : 'premise.workspace')}><SceneThreadDraft scene={requestedScene} subjectTitle={requestedSubjectTitle} draft={inputText} pending={createSceneThreadMutation.isPending} error={error || createSceneThreadMutation.error} overlay={overlay} attachments={attachments} attachmentBlocked={attachmentBlocked} onDraftChange={setInputText} onSubmit={() => createSceneThreadMutation.mutate()} onCancelScene={cancelDraftScene} onBack={showThreadList} onToggle={toggleExpanded} onAddFiles={addAttachmentFiles} onRemoveAttachment={removeAttachment} onRetryAttachment={retryAttachment} onPaste={handleAttachmentPaste} /></aside>
-    }
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft projectUuid={projectUuid} draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} /></aside>
   }
 
   if (!selectedThreadUuid) {
@@ -1253,17 +1134,16 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
         <div className="chat-detail-body">
           <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
             {itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage ? <div className="chat-history-loader"><button type="button" className="button-quiet" disabled={!itemsQuery.hasPreviousPage || itemsQuery.isFetchingPreviousPage} onClick={loadEarlierMessages}>{t(itemsQuery.isFetchingPreviousPage ? 'chat.messages.loading_earlier' : 'chat.messages.load_earlier')}</button></div> : null}
-            {selectedThread?.scene ? <section className="chat-scene-card chat-scene-card--compact"><div><Bot size={16} aria-hidden="true" /><span><strong>{sceneCopy[selectedThread.scene]?.titleKey ? t(sceneCopy[selectedThread.scene].titleKey) : t('common.status.unknown_with_code', { code: selectedThread.scene })}</strong>{selectedThread.subject_uuid ? <small>{selectedThread.subject_uuid}</small> : null}</span></div></section> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
             <WorkflowProgress projectUuid={projectUuid} workflow={selectedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-            {turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasPreviousPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
+            {turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasPreviousPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
             {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
           </div>
           <div className="chat-composer-shell">
-            <FollowUpQueue items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
-            <ChatComposer activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} scene={selectedThread?.scene} attachments={attachments} attachmentBlocked={attachmentBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveAttachment={removeAttachment} onRetryAttachment={retryAttachment} onPaste={handleAttachmentPaste} />
+            <FollowUpQueue projectUuid={projectUuid} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
+            <ChatComposer projectUuid={projectUuid} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />
           </div>
         </div>
       </div>
@@ -1300,17 +1180,6 @@ function currentProjectAPIActivityKey(content) {
   } catch {
     return null
   }
-}
-
-function sceneThreadTitle(t, scene, subjectTitle = '') {
-  if (scene === 'storyboard_reference') return subjectTitle ? t('chat.title.storyboard', { title: subjectTitle }) : t('chat.scene.storyboard.title')
-  if (scene === 'asset_reference') return subjectTitle ? t('chat.title.reference', { title: subjectTitle }) : t('chat.scene.reference.title')
-  if (scene === 'premise_asset_generation') return t('chat.scene.generate.title')
-  return t('chat.title.premise_assistant')
-}
-
-function sceneThreadScope(scene) {
-  return scene === 'storyboard_reference' ? 'project' : 'premise'
 }
 
 function copyText(value) {

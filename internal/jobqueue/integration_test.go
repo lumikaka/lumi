@@ -411,7 +411,7 @@ func TestStoryGenerationPersistsAuditedIdempotentResult(t *testing.T) {
 	}
 	agents := agent.NewService(harness.projects, harness.queue.providers, nil, harness.queue, nil)
 	threads, err := agents.ListThreads(context.Background(), harness.project.UUID)
-	if err != nil || len(threads) != 1 || threads[0].SubjectUUID != chapter.UUID || threads[0].Status != agent.ThreadCompleted {
+	if err != nil || len(threads) != 1 || threads[0].Status != agent.ThreadCompleted {
 		t.Fatalf("chapter ChatArea thread=%+v err=%v", threads, err)
 	}
 	workflows, err := agents.ListWorkflows(context.Background(), harness.project.UUID)
@@ -563,7 +563,7 @@ func TestBatchPlanAndComicStoryboardWorkflowsApplyFrozenOutputs(t *testing.T) {
 			storyboardThread = thread
 		}
 	}
-	if storyboardThread.SubjectUUID != chapter.UUID || storyboardThread.Status != agent.ThreadCompleted {
+	if storyboardThread.Status != agent.ThreadCompleted {
 		t.Fatalf("storyboard ChatArea thread=%+v", storyboardThread)
 	}
 	step := workflow.Steps[0]

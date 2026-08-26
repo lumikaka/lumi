@@ -649,20 +649,29 @@ func (service *Service) ImportPremiseAsset(ctx context.Context, input CreateAsse
 }
 
 type projectChatImageFile struct {
-	ID               int64
-	Kind             string
-	Purpose          string
-	ChatThreadUUID   string
-	PremiseAssetUUID string
+	ID                 int64
+	Kind               string
+	Purpose            string
+	ChatThreadUUID     string
+	PremiseAssetUUID   string
+	ReferenceUUIDsJSON string
 }
 
 func loadProjectChatImageFile(tx *gorm.DB, projectID int64, fileUUID string) (projectChatImageFile, error) {
 	var file projectChatImageFile
 	err := tx.Table("files").
-		Select("id,kind,purpose,COALESCE(json_extract(metadata_json,'$.chat_thread_uuid'),'') AS chat_thread_uuid,COALESCE(json_extract(metadata_json,'$.premise_asset_uuid'),'') AS premise_asset_uuid").
+		Select("id,kind,purpose,COALESCE(json_extract(metadata_json,'$.chat_thread_uuid'),'') AS chat_thread_uuid,COALESCE(json_extract(metadata_json,'$.premise_asset_uuid'),'') AS premise_asset_uuid,COALESCE(json_extract(metadata_json,'$.reference_uuids'),'[]') AS reference_uuids_json").
 		Where("project_id=? AND uuid=? AND deleted_at IS NULL", projectID, fileUUID).
 		Take(&file).Error
 	return file, err
+}
+
+func projectChatReferenceUUIDs(raw string) []string {
+	result := []string{}
+	if json.Unmarshal([]byte(raw), &result) != nil {
+		return []string{}
+	}
+	return result
 }
 
 // CreatePremiseAssetFromFile binds an already durable chat-generated image to
@@ -711,16 +720,13 @@ func (service *Service) CreatePremiseAssetFromFile(ctx context.Context, input Cr
 			return notFound(err, "生成图片文件不存在")
 		}
 		if file.ChatThreadUUID != chatThreadUUID {
-			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前会话 image_gen 新返回的文件；已有项目图片只能作为 reference_file_uuids。", nil)
+			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前 Thread 的 image_gen 新输出；已有项目图片只能先作为当前 Turn Reference 使用。", nil)
 		}
-		if sourceAssetUUID != "" && file.PremiseAssetUUID != sourceAssetUUID {
-			return domainError(CodeValidation, "生成图片绑定上下文无效", "派生设定项只能使用当前绑定资产引用会话 image_gen 新生成的图片。", nil)
+		if sourceAssetUUID != "" && file.Purpose != "project_chat_image_generation" && file.PremiseAssetUUID != sourceAssetUUID {
+			return domainError(CodeValidation, "旧图片输出来源不匹配", "兼容恢复的派生写回要求图片来源与 source_premise_asset_uuid 匹配。", nil)
 		}
-		allowedPurpose := "project_chat_asset_image_generation"
-		if sourceAssetUUID != "" {
-			allowedPurpose = "project_chat_asset_reference_image"
-		}
-		if file.Kind != "image" || file.Purpose != allowedPurpose {
+		allowed := file.Purpose == "project_chat_image_generation" || (sourceAssetUUID == "" && file.Purpose == "project_chat_asset_image_generation") || (sourceAssetUUID != "" && file.Purpose == "project_chat_asset_reference_image")
+		if file.Kind != "image" || !allowed {
 			return domainError(CodeValidation, "生成图片用途无效", "新设定项只能使用当前会话 image_gen 生成的资产图片。", nil)
 		}
 		var used int64
@@ -746,10 +752,7 @@ func (service *Service) CreatePremiseAssetFromFile(ctx context.Context, input Cr
 		if err := replaceTags(tx, record.ID, tags, now); err != nil {
 			return err
 		}
-		payload := map[string]any{"asset_uuid": record.UUID, "variant_uuid": variant.UUID, "file_uuid": fileUUID, "tool_execution_uuid": executionUUID}
-		if sourceAssetUUID != "" {
-			payload["source_premise_asset_uuid"] = sourceAssetUUID
-		}
+		payload := map[string]any{"asset_uuid": record.UUID, "variant_uuid": variant.UUID, "file_uuid": fileUUID, "tool_execution_uuid": executionUUID, "source_reference_uuids": projectChatReferenceUUIDs(file.ReferenceUUIDsJSON)}
 		return appendPremiseAssetEvent(tx, record.ID, "asset_created_from_chat_image", payload, now)
 	})
 	if err != nil {
@@ -1150,13 +1153,13 @@ func (service *Service) UpdatePremiseAssetFromFile(ctx context.Context, assetUUI
 			return notFound(err, "生成图片文件不存在")
 		}
 		if file.ChatThreadUUID != chatThreadUUID {
-			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前绑定资产引用会话 image_gen 新返回的文件。", nil)
+			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须来自当前 Thread 的 image_gen 输出。", nil)
 		}
-		if file.PremiseAssetUUID != assetUUID {
-			return domainError(CodeValidation, "生成图片绑定上下文无效", "图片替换只能使用绑定当前 Premise Asset 的引用会话输出。", nil)
+		if file.Purpose != "project_chat_image_generation" && file.PremiseAssetUUID != assetUUID {
+			return domainError(CodeValidation, "旧图片输出来源不匹配", "兼容恢复的旧图片输出必须与目标 Premise Asset 匹配。", nil)
 		}
-		if file.Kind != "image" || file.Purpose != "project_chat_asset_reference_image" {
-			return domainError(CodeValidation, "生成图片用途无效", "设定项替换只能使用当前引用会话 image_gen 生成的图片。", nil)
+		if file.Kind != "image" || (file.Purpose != "project_chat_image_generation" && file.Purpose != "project_chat_asset_reference_image") {
+			return domainError(CodeValidation, "生成图片用途无效", "设定项替换只能使用当前 Thread 的 image_gen 生成图片。", nil)
 		}
 		var used int64
 		if err := tx.Model(&assetVariantRecord{}).Where("file_id=?", file.ID).Count(&used).Error; err != nil {
@@ -1227,7 +1230,7 @@ func (service *Service) UpdatePremiseAssetFromFile(ctx context.Context, assetUUI
 			}
 		}
 		domainID = asset.ID
-		return appendPremiseAssetEvent(tx, asset.ID, "image_replaced_from_chat", map[string]any{"asset_uuid": asset.UUID, "variant_uuid": variant.UUID, "file_uuid": fileUUID, "tool_execution_uuid": executionUUID}, now)
+		return appendPremiseAssetEvent(tx, asset.ID, "image_replaced_from_chat", map[string]any{"asset_uuid": asset.UUID, "variant_uuid": variant.UUID, "file_uuid": fileUUID, "tool_execution_uuid": executionUUID, "source_reference_uuids": projectChatReferenceUUIDs(file.ReferenceUUIDsJSON)}, now)
 	})
 	if err != nil {
 		return PremiseAsset{}, err
@@ -1503,12 +1506,22 @@ func premiseAssetDeleteBlocked(tx *gorm.DB, row premiseAssetRecord) (bool, error
 			UNION ALL
 			SELECT turns.id
 			FROM chat_turns turns
+			JOIN chat_items items ON items.turn_id=turns.id AND items.item_type='user_message'
+			JOIN chat_context_references refs ON refs.chat_item_id=items.id
 			JOIN chat_threads threads ON threads.id=turns.thread_id
-			WHERE threads.project_id=? AND threads.subject_uuid=?
+			WHERE threads.project_id=? AND refs.resource_type='premise_asset' AND refs.resource_uuid=?
 			  AND turns.status IN ('queued','in_progress','waiting_for_input')
+			UNION ALL
+			SELECT follow_ups.id
+			FROM chat_follow_ups follow_ups
+			JOIN chat_context_references refs ON refs.follow_up_id=follow_ups.id
+			JOIN chat_threads threads ON threads.id=follow_ups.thread_id
+			WHERE threads.project_id=? AND refs.resource_type='premise_asset' AND refs.resource_uuid=?
+			  AND follow_ups.status='queued' AND follow_ups.deleted_at IS NULL
 		)`,
 		row.ProjectID, row.UUID, row.UUID, row.ID, row.ID,
 		row.ProjectID, row.UUID, row.ID, row.ID,
+		row.ProjectID, row.UUID,
 		row.ProjectID, row.UUID,
 	).Scan(&count).Error
 	return count > 0, err
@@ -1560,8 +1573,7 @@ func premiseVariantFileRetained(tx *gorm.DB, fileID int64) (bool, error) {
 			EXISTS (SELECT 1 FROM comic_image_generations WHERE premise_file_id=?) OR
 			EXISTS (SELECT 1 FROM comic_exports WHERE output_file_id=?) OR
 			EXISTS (SELECT 1 FROM story_source_items WHERE file_id=?) OR
-			EXISTS (SELECT 1 FROM chat_item_file_references WHERE file_id=?) OR
-			EXISTS (SELECT 1 FROM chat_follow_up_file_references WHERE file_id=?) OR
+			EXISTS (SELECT 1 FROM chat_context_references WHERE file_id=? OR image_file_id=?) OR
 			EXISTS (SELECT 1 FROM files WHERE source_file_id=?) OR
 			EXISTS (SELECT 1 FROM upload_stashed WHERE finalized_file_id=? AND state<>'consumed') OR
 			EXISTS (SELECT 1 FROM production_task_runs t, json_tree(t.input_snapshot) j JOIN files f ON f.uuid=j.value WHERE f.id=?) OR
@@ -1575,8 +1587,8 @@ func premiseVariantFileRetained(tx *gorm.DB, fileID int64) (bool, error) {
 			EXISTS (SELECT 1 FROM workflow_steps t, json_tree(t.input_json) j JOIN files f ON f.uuid=j.value WHERE f.id=?) OR
 			EXISTS (SELECT 1 FROM workflow_steps t, json_tree(t.output_json) j JOIN files f ON f.uuid=j.value WHERE f.id=?)
 		THEN 1 ELSE 0 END`,
-		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
-		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
+		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
+		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
 	).Scan(&retained).Error
 	return retained == 1, err
 }

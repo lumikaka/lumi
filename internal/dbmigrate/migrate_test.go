@@ -56,7 +56,7 @@ func TestPictureBookProfileMigrationBackfillsPreProfileProjectsAndIsImmutable(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(5); err != nil {
+	if err := runner.Down(6); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_picture_book_profiles") {
@@ -129,7 +129,7 @@ func TestProjectModelSettingsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(7); err != nil {
+	if err := runner.Down(8); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -152,7 +152,7 @@ func TestProjectModelSettingsMigrationUpAndDown(t *testing.T) {
 	}
 }
 
-func TestProjectChatImageReferenceMigrationUpAndDown(t *testing.T) {
+func TestProjectChatContextReferenceMigrationUpAndDown(t *testing.T) {
 	dsn := "file:" + filepath.Join(t.TempDir(), "chat-image-references.sqlite") + "?_pragma=foreign_keys(1)"
 	runner, err := OpenProject(dsn)
 	if err != nil {
@@ -162,21 +162,233 @@ func TestProjectChatImageReferenceMigrationUpAndDown(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	for _, table := range []string{"chat_item_file_references", "chat_follow_up_file_references"} {
-		if !containsTable(tableNames(t, dsn), table) {
-			t.Fatalf("up migration missing %s", table)
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	const (
+		now                 = "2026-08-25T00:00:00Z"
+		projectUUID         = "01990000-0000-7000-8000-000000000101"
+		actorUUID           = "01990000-0000-7000-8000-000000000102"
+		providerUUID        = "01990000-0000-7000-8000-000000000103"
+		assetUUID           = "01990000-0000-7000-8000-000000000104"
+		assetVariantUUID    = "01990000-0000-7000-8000-000000000105"
+		chapterUUID         = "01990000-0000-7000-8000-000000000106"
+		comicStateUUID      = "01990000-0000-7000-8000-000000000107"
+		sectionUUID         = "01990000-0000-7000-8000-000000000108"
+		storyboardUUID      = "01990000-0000-7000-8000-000000000109"
+		comicImageUUID      = "01990000-0000-7000-8000-000000000110"
+		domainImageFileUUID = "01990000-0000-7000-8000-000000000111"
+		uploadFileUUID      = "01990000-0000-7000-8000-000000000112"
+		missingAssetUUID    = "01990000-0000-7000-8000-000000000113"
+	)
+	statements := []string{
+		`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,'` + projectUUID + `','References',1,24,'` + now + `','` + now + `')`,
+		`INSERT INTO actors(id,uuid,name,kind,created_at,updated_at) VALUES(1,'` + actorUUID + `','Tester','local_user','` + now + `','` + now + `')`,
+		`INSERT INTO file_objects(id,uuid,project_id,sha256,key_path,mime_type,canonical_ext,byte_size,width,height,state,created_at,verified_at) VALUES(1,'01990000-0000-7000-8000-000000000114',1,'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','objects/domain.png','image/png','png',2048,640,480,'ready','` + now + `','` + now + `')`,
+		`INSERT INTO file_objects(id,uuid,project_id,sha256,key_path,mime_type,canonical_ext,byte_size,width,height,state,created_at,verified_at) VALUES(2,'01990000-0000-7000-8000-000000000115',1,'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','objects/upload.png','image/png','png',1024,320,240,'ready','` + now + `','` + now + `')`,
+		`INSERT INTO files(id,uuid,project_id,file_object_id,kind,purpose,original_filename,display_name,source_type,metadata_json,created_at) VALUES(1,'` + domainImageFileUUID + `',1,1,'image','premise_asset','domain.png','Domain image','imported','{}','` + now + `')`,
+		`INSERT INTO files(id,uuid,project_id,file_object_id,kind,purpose,original_filename,display_name,source_type,metadata_json,created_at) VALUES(2,'` + uploadFileUUID + `',1,2,'image','chat_reference','upload.png','Upload image','imported','{}','` + now + `')`,
+		`INSERT INTO premise_assets(id,uuid,project_id,actor_id,asset_type,title,summary,revision,created_at,updated_at) VALUES(1,'` + assetUUID + `',1,1,'character','Mira','A compact migrated summary',3,'` + now + `','` + now + `')`,
+		`INSERT INTO premise_asset_tags(id,premise_asset_id,tag,created_at) VALUES(1,1,'hero','` + now + `')`,
+		`INSERT INTO premise_asset_variants(id,uuid,premise_asset_id,file_id,version_no,source_type,created_at) VALUES(1,'` + assetVariantUUID + `',1,1,1,'manual','` + now + `')`,
+		`UPDATE premise_assets SET current_variant_id=1 WHERE id=1`,
+		`INSERT INTO chapters(id,uuid,project_id,volume_no,chapter_no,chapter_code,sort_order,title,created_at,updated_at) VALUES(1,'` + chapterUUID + `',1,1,1,'chapter-001',1,'Opening','` + now + `','` + now + `')`,
+		`INSERT INTO chapter_comic_states(id,uuid,chapter_id,status,revision,created_at,updated_at) VALUES(1,'` + comicStateUUID + `',1,'ready',2,'` + now + `','` + now + `')`,
+		`INSERT INTO comic_sections(id,uuid,chapter_comic_state_id,actor_id,section_no,title,description_md,revision,created_at,updated_at) VALUES(1,'` + sectionUUID + `',1,1,1,'Arrival','Mira arrives.',4,'` + now + `','` + now + `')`,
+		`INSERT INTO comic_storyboard_variants(id,uuid,comic_section_id,actor_id,version_no,content_md,source_type,created_at) VALUES(1,'` + storyboardUUID + `',1,1,1,'Panel one','manual','` + now + `')`,
+		`INSERT INTO comic_image_variants(id,uuid,comic_section_id,file_id,actor_id,version_no,source_type,input_snapshot,created_at) VALUES(1,'` + comicImageUUID + `',1,1,1,1,'manual','{}','` + now + `')`,
+		`UPDATE comic_sections SET current_storyboard_variant_id=1,current_image_variant_id=1 WHERE id=1`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,scope,scene,subject_uuid,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000121',1,'Asset thread','idle','` + providerUUID + `','test-model','premise','asset_reference','` + assetUUID + `','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,scope,scene,subject_uuid,created_at,updated_at) VALUES(2,'01990000-0000-7000-8000-000000000122',1,'Comic thread','idle','` + providerUUID + `','test-model','project','asset_reference','` + sectionUUID + `','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,scope,scene,subject_uuid,created_at,updated_at) VALUES(3,'01990000-0000-7000-8000-000000000123',1,'Missing thread','idle','` + providerUUID + `','test-model','premise','asset_reference','` + missingAssetUUID + `','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,scope,scene,subject_uuid,created_at,updated_at) VALUES(4,'01990000-0000-7000-8000-000000000124',1,'Follow-up thread','idle','` + providerUUID + `','test-model','project','','','` + now + `','` + now + `')`,
+		`INSERT INTO chat_turns(id,uuid,thread_id,source_type,queue_sequence,input_text,status,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000131',1,'prompt',1,'Use Mira','completed','` + now + `','` + now + `')`,
+		`INSERT INTO chat_runs(id,uuid,thread_id,turn_id,trigger_type,status,provider_uuid,model,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000132',1,1,'prompt','completed','` + providerUUID + `','test-model','` + now + `','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,turn_id,run_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(1,'01990000-0000-7000-8000-000000000141',1,1,1,1,'user_message','user','Use Mira','{}','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(2,'01990000-0000-7000-8000-000000000142',2,1,'user_message','user','Use the section','{}','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(3,'01990000-0000-7000-8000-000000000143',3,1,'user_message','user','Use missing asset','{}','` + now + `')`,
+		`INSERT INTO chat_follow_ups(id,uuid,thread_id,input_text,position,status,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000151',4,'Use upload',1,'queued','` + now + `','` + now + `')`,
+		`INSERT INTO chat_item_file_references(id,uuid,chat_item_id,file_id,position,created_at) VALUES(1,'01990000-0000-7000-8000-000000000161',1,2,1,'` + now + `')`,
+		`INSERT INTO chat_item_file_references(id,uuid,chat_item_id,file_id,position,created_at) VALUES(2,'01990000-0000-7000-8000-000000000163',1,2,2,'` + now + `')`,
+		`INSERT INTO chat_follow_up_file_references(id,uuid,follow_up_id,file_id,position,created_at) VALUES(1,'01990000-0000-7000-8000-000000000162',1,2,1,'` + now + `')`,
+		`INSERT INTO chat_follow_up_file_references(id,uuid,follow_up_id,file_id,position,created_at) VALUES(2,'01990000-0000-7000-8000-000000000164',1,2,2,'` + now + `')`,
+	}
+	for _, statement := range statements {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("seed legacy chat references: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(8); err != nil {
+
+	if err := runner.Up(); err != nil {
 		t.Fatal(err)
+	}
+	if !containsTable(tableNames(t, dsn), "chat_context_references") {
+		t.Fatal("up migration missing chat_context_references")
 	}
 	for _, table := range []string{"chat_item_file_references", "chat_follow_up_file_references"} {
 		if containsTable(tableNames(t, dsn), table) {
-			t.Fatalf("down migration retained %s", table)
+			t.Fatalf("up migration retained legacy %s", table)
 		}
+	}
+	for _, column := range []string{"scope", "scene", "subject_uuid"} {
+		if tableHasColumn(t, db, "chat_threads", column) {
+			t.Fatalf("up migration retained chat_threads.%s", column)
+		}
+	}
+
+	type migratedReference struct {
+		position     int
+		resourceType string
+		resourceUUID string
+		status       string
+		targetID     sql.NullInt64
+		imageFileID  sql.NullInt64
+	}
+	readReference := func(ownerColumn string, ownerID int64, position int) migratedReference {
+		t.Helper()
+		var ref migratedReference
+		targetExpression := "COALESCE(file_id,premise_asset_id,comic_section_id)"
+		err := db.QueryRow(`SELECT position,resource_type,resource_uuid,json_extract(snapshot_json,'$.status'),`+targetExpression+`,image_file_id FROM chat_context_references WHERE `+ownerColumn+`=? AND position=?`, ownerID, position).Scan(
+			&ref.position, &ref.resourceType, &ref.resourceUUID, &ref.status, &ref.targetID, &ref.imageFileID,
+		)
+		if err != nil {
+			t.Fatalf("read migrated reference %s=%d position=%d: %v", ownerColumn, ownerID, position, err)
+		}
+		return ref
+	}
+	assetRef := readReference("chat_item_id", 1, 1)
+	if assetRef.resourceType != "premise_asset" || assetRef.resourceUUID != assetUUID || assetRef.status != "available" || assetRef.targetID.Int64 != 1 || assetRef.imageFileID.Int64 != 1 {
+		t.Fatalf("asset reference = %+v", assetRef)
+	}
+	uploadRef := readReference("chat_item_id", 1, 2)
+	if uploadRef.resourceType != "file" || uploadRef.resourceUUID != uploadFileUUID || uploadRef.targetID.Int64 != 2 || uploadRef.imageFileID.Int64 != 2 {
+		t.Fatalf("upload reference = %+v", uploadRef)
+	}
+	comicRef := readReference("chat_item_id", 2, 1)
+	if comicRef.resourceType != "comic_section" || comicRef.resourceUUID != sectionUUID || comicRef.status != "available" || comicRef.targetID.Int64 != 1 || comicRef.imageFileID.Int64 != 1 {
+		t.Fatalf("comic reference = %+v", comicRef)
+	}
+	missingRef := readReference("chat_item_id", 3, 1)
+	if missingRef.resourceType != "premise_asset" || missingRef.resourceUUID != missingAssetUUID || missingRef.status != "unavailable" || missingRef.targetID.Valid || missingRef.imageFileID.Valid {
+		t.Fatalf("missing reference = %+v", missingRef)
+	}
+	followUpRef := readReference("follow_up_id", 1, 1)
+	if followUpRef.resourceType != "file" || followUpRef.resourceUUID != uploadFileUUID || followUpRef.targetID.Int64 != 2 {
+		t.Fatalf("follow-up reference = %+v", followUpRef)
+	}
+	var legacyScope, legacyScene, legacySubject string
+	if err := db.QueryRow(`SELECT json_extract(metadata_json,'$.legacy_thread_context.scope'),json_extract(metadata_json,'$.legacy_thread_context.scene'),json_extract(metadata_json,'$.legacy_thread_context.subject_uuid') FROM chat_items WHERE id=1`).Scan(&legacyScope, &legacyScene, &legacySubject); err != nil {
+		t.Fatal(err)
+	}
+	if legacyScope != "premise" || legacyScene != "asset_reference" || legacySubject != assetUUID {
+		t.Fatalf("legacy context = %q %q %q", legacyScope, legacyScene, legacySubject)
+	}
+
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+	if containsTable(tableNames(t, dsn), "chat_context_references") {
+		t.Fatal("down migration retained chat_context_references")
+	}
+	for _, table := range []string{"chat_item_file_references", "chat_follow_up_file_references"} {
+		if !containsTable(tableNames(t, dsn), table) {
+			t.Fatalf("down migration missing legacy %s", table)
+		}
+	}
+	var scope, scene, subject string
+	if err := db.QueryRow(`SELECT scope,scene,subject_uuid FROM chat_threads WHERE id=1`).Scan(&scope, &scene, &subject); err != nil {
+		t.Fatal(err)
+	}
+	if scope != "premise" || scene != "asset_reference" || subject != assetUUID {
+		t.Fatalf("restored asset thread = %q %q %q", scope, scene, subject)
+	}
+	var itemFiles, followUpFiles int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM chat_item_file_references WHERE chat_item_id=1 AND file_id=2 AND position=1`).Scan(&itemFiles); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM chat_follow_up_file_references WHERE follow_up_id=1 AND file_id=2 AND position=1`).Scan(&followUpFiles); err != nil {
+		t.Fatal(err)
+	}
+	if itemFiles != 1 || followUpFiles != 1 {
+		t.Fatalf("restored file references item=%d follow_up=%d", itemFiles, followUpFiles)
 	}
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestProjectChatContextReferenceDownRejectsLossyData(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "chat-reference-protected-down.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	const now = "2026-08-25T00:00:00Z"
+	statements := []string{
+		`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000201','Protected down',1,24,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000202',1,'Protected','idle','01990000-0000-7000-8000-000000000203','test-model','` + now + `','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(1,'01990000-0000-7000-8000-000000000204',1,1,'user_message','user','Five files','{}','` + now + `')`,
+	}
+	for position := 1; position <= 5; position++ {
+		resourceUUID := "01990000-0000-7000-8000-00000000020" + string(rune('4'+position))
+		statements = append(statements, `INSERT INTO chat_context_references(chat_item_id,position,resource_type,resource_uuid,snapshot_json,created_at) VALUES(1,`+string(rune('0'+position))+`,'file','`+resourceUUID+`','{"resource_type":"file","status":"unavailable"}','`+now+`')`)
+	}
+	for _, statement := range statements {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("seed protected down: %v\n%s", err, statement)
+		}
+	}
+	if err := runner.Down(1); err == nil {
+		t.Fatal("down migration accepted five file references and would lose data")
+	}
+}
+
+func TestProjectChatContextReferenceDownRejectsTurnScopedDomainReference(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "chat-reference-turn-scoped-down.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	const now = "2026-08-25T00:00:00Z"
+	statements := []string{
+		`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000221','Turn scoped down',1,24,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,created_at,updated_at) VALUES(1,'01990000-0000-7000-8000-000000000222',1,'Turn scoped','idle','01990000-0000-7000-8000-000000000223','test-model','` + now + `','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(1,'01990000-0000-7000-8000-000000000224',1,1,'user_message','user','With reference','{}','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(2,'01990000-0000-7000-8000-000000000225',1,2,'user_message','user','Without reference','{}','` + now + `')`,
+		`INSERT INTO chat_context_references(chat_item_id,position,resource_type,resource_uuid,snapshot_json,created_at) VALUES(1,1,'premise_asset','01990000-0000-7000-8000-000000000226','{"resource_type":"premise_asset","status":"unavailable"}','` + now + `')`,
+	}
+	for _, statement := range statements {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("seed turn-scoped protected down: %v\n%s", err, statement)
+		}
+	}
+	if err := runner.Down(1); err == nil {
+		t.Fatal("down migration accepted a domain Reference that only applies to one Turn")
 	}
 }
 
@@ -191,7 +403,7 @@ func TestAssetStoreMigrationDownRemovesSchemaCleanly(t *testing.T) {
 	}
 	// Every later project migration depends on Asset Store, so roll back
 	// through the Asset Store migration before asserting its down contract.
-	if err := runner.Down(21); err != nil {
+	if err := runner.Down(22); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -255,7 +467,7 @@ func TestComicSectionPremiseMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -283,7 +495,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -345,7 +557,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertGraph("up")
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 	assertGraph("down")
@@ -362,7 +574,7 @@ func TestPremiseComicMigrationDownKeepsAssetStore(t *testing.T) {
 	}
 	// Roll back Prompt catalog, Premise Chat parity, project language and
 	// Chat/Yolo first, then Premise/Comic.
-	if err := runner.Down(19); err != nil {
+	if err := runner.Down(20); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -392,7 +604,7 @@ func TestPremiseChatParityMigrationPreservesExistingRowsAndForeignKeys(t *testin
 		t.Fatal(err)
 	}
 	// Roll back unified logs and Prompt catalog first, then Premise Chat parity.
-	if err := runner.Down(16); err != nil {
+	if err := runner.Down(17); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -449,9 +661,14 @@ func TestPremiseChatParityMigrationPreservesExistingRowsAndForeignKeys(t *testin
 	if err := db.QueryRow(`SELECT ignored_at,revision FROM premise_sources WHERE uuid=?`, sourceUUID).Scan(&ignored, &revision); err != nil || ignored != nil || revision != 0 {
 		t.Fatalf("source migration ignored=%v revision=%d err=%v", ignored, revision, err)
 	}
-	var scope, scene, subject string
-	if err := db.QueryRow(`SELECT scope,scene,subject_uuid FROM chat_threads WHERE uuid=?`, threadUUID).Scan(&scope, &scene, &subject); err != nil || scope != "project" || scene != "" || subject != "" {
-		t.Fatalf("thread migration scope=%q scene=%q subject=%q err=%v", scope, scene, subject, err)
+	var title, status string
+	if err := db.QueryRow(`SELECT title,status FROM chat_threads WHERE uuid=?`, threadUUID).Scan(&title, &status); err != nil || title != "Existing chat" || status != "idle" {
+		t.Fatalf("thread migration title=%q status=%q err=%v", title, status, err)
+	}
+	for _, column := range []string{"scope", "scene", "subject_uuid"} {
+		if tableHasColumn(t, db, "chat_threads", column) {
+			t.Fatalf("latest thread schema retained %s", column)
+		}
 	}
 	for table, uuid := range map[string]string{"project_prompt_versions": promptUUID, "production_task_runs": taskUUID, "production_task_events": eventUUID} {
 		var count int
@@ -479,7 +696,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(14); err != nil {
+	if err := runner.Down(15); err != nil {
 		t.Fatal(err)
 	}
 
@@ -577,7 +794,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 		t.Fatal(err)
 	}
 
-	if err := runner.Down(14); err != nil {
+	if err := runner.Down(15); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -630,7 +847,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -719,7 +936,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -745,7 +962,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -797,7 +1014,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -824,7 +1041,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -888,7 +1105,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -945,7 +1162,7 @@ func TestLLMUsageMetricsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(6); err != nil {
+	if err := runner.Down(7); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -999,9 +1216,9 @@ func TestStoryChapterWorkflowMigrationPreservesExistingGraphAndDropsOnlyProjecti
 		`INSERT INTO task_runs(id,uuid,project_id,kind,resource_uuid,input_version,input_snapshot,status,idempotency_key,retryable,provider_uuid,model,model_source,progress,attempt,max_attempts,created_at,updated_at) VALUES(1,'` + taskUUID + `',1,'story_chapter_generation','` + resourceUUID + `',2,'{}','completed','story-migration-task',1,'` + providerUUID + `','model','provider_default',100,1,3,'` + now + `','` + now + `')`,
 		`INSERT INTO agent_threads(id,uuid,project_id,kind,subject_type,subject_uuid,status,provider_uuid,model,created_at,updated_at) VALUES(1,'` + auditThread + `',1,'story_generation','chapter','` + resourceUUID + `','completed','` + providerUUID + `','model','` + now + `','` + now + `')`,
 		`INSERT INTO agent_runs(id,uuid,agent_thread_id,task_run_id,trigger_type,status,created_at,updated_at) VALUES(1,'` + auditRun + `',1,1,'job_step','completed','` + now + `','` + now + `')`,
-		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(1,'` + yoloThread + `',1,'Yolo','completed','` + providerUUID + `','model','provider_default',1,1,1,'project','','','` + now + `','` + now + `')`,
-		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(2,'` + chapterThread + `',1,'Chapter','completed','` + providerUUID + `','model','provider_default',1,1,1,'project','','` + resourceUUID + `','` + now + `','` + now + `')`,
-		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(3,'` + batchThread + `',1,'Batch','completed','` + providerUUID + `','model','provider_default',1,1,1,'project','','` + projectUUID + `','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(1,'` + yoloThread + `',1,'Yolo','completed','` + providerUUID + `','model','provider_default',1,1,1,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(2,'` + chapterThread + `',1,'Chapter','completed','` + providerUUID + `','model','provider_default',1,1,1,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(3,'` + batchThread + `',1,'Batch','completed','` + providerUUID + `','model','provider_default',1,1,1,'` + now + `','` + now + `')`,
 		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(1,'` + yoloWorkflow + `',1,1,'yolo_project_initialization','Yolo','completed',1,'{}','story-migration-yolo','` + providerUUID + `','model','provider_default','project_initialization','` + now + `','` + now + `')`,
 		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(2,'` + chapterWorkflow + `',1,2,'story_chapter_generation','Chapter','completed',1,'{}','story-migration-chapter','` + providerUUID + `','model','provider_default','story_chapter','` + now + `','` + now + `')`,
 		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(3,'` + batchWorkflow + `',1,3,'story_chapter_batch_plan','Batch','completed',1,'{}','story-migration-batch','` + providerUUID + `','model','provider_default','chapter_batch_plan','` + now + `','` + now + `')`,
@@ -1020,7 +1237,7 @@ func TestStoryChapterWorkflowMigrationPreservesExistingGraphAndDropsOnlyProjecti
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(3); err != nil {
+	if err := runner.Down(4); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1086,8 +1303,8 @@ func TestComicStoryboardWorkflowMigrationPreservesGraphAndRollsBackKind(t *testi
 	)
 	statements := []string{
 		`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,'` + projectUUID + `','Storyboard migration',1,20,'` + now + `','` + now + `')`,
-		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(1,'` + yoloThreadUUID + `',1,'Yolo','completed','` + providerUUID + `','model','provider_default',1,1,1,'project','','','` + now + `','` + now + `')`,
-		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(2,'` + storyThreadUUID + `',1,'Storyboard','completed','` + providerUUID + `','model','provider_default',1,1,1,'project','','01900000-0000-7000-8000-000000000110','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(1,'` + yoloThreadUUID + `',1,'Yolo','completed','` + providerUUID + `','model','provider_default',1,1,1,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(2,'` + storyThreadUUID + `',1,'Storyboard','completed','` + providerUUID + `','model','provider_default',1,1,1,'` + now + `','` + now + `')`,
 		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(1,'` + yoloWorkflowUUID + `',1,1,'yolo_project_initialization','Yolo','completed',1,'{}','migration-yolo','` + providerUUID + `','model','provider_default','project_initialization','` + now + `','` + now + `')`,
 		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(2,'` + storyWorkflowUUID + `',1,2,'comic_storyboard_generation','Storyboard','completed',1,'{}','migration-storyboard','` + providerUUID + `','model','provider_default','comic_storyboard','` + now + `','` + now + `')`,
 		`INSERT INTO workflow_steps(id,uuid,workflow_id,step_key,position,status,idempotency_key,input_json,output_json,created_at,updated_at) VALUES(1,'` + yoloStepUUID + `',1,'project_initialization',1,'completed','migration-yolo-step','{}','{}','` + now + `','` + now + `')`,
@@ -1103,7 +1320,7 @@ func TestComicStoryboardWorkflowMigrationPreservesGraphAndRollsBackKind(t *testi
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1165,7 +1382,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(2); err != nil {
+	if err := runner.Down(3); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1234,7 +1451,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(2); err != nil {
+	if err := runner.Down(3); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1269,7 +1486,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1315,7 +1532,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)

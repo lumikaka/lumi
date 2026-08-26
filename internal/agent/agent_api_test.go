@@ -14,49 +14,23 @@ import (
 //go:embed testdata/api-docs/*.md
 var agentAPIDocGoldenFiles embed.FS
 
-func TestSceneDefinitionsShareToolsAndRecommendRegisteredGuides(t *testing.T) {
-	subject := mustAgentUUID(t)
-	cases := []struct {
-		name   string
-		thread threadRecord
-		key    string
-		guides []string
-	}{
-		{name: "project assistant", thread: threadRecord{Scope: ThreadScopeProject}, key: SceneProjectAssistant, guides: []string{GuidePremiseAssetCreate, GuidePremiseAssetMaintain, GuideStoryboardUpdate}},
-		{name: "premise asset generation", thread: threadRecord{Scope: ThreadScopePremise, Scene: ScenePremiseAsset}, key: ScenePremiseAsset, guides: []string{GuidePremiseAssetCreate}},
-		{name: "asset reference", thread: threadRecord{Scope: ThreadScopePremise, Scene: SceneAssetReference, SubjectUUID: subject}, key: SceneAssetReference, guides: []string{GuidePremiseAssetCreate, GuidePremiseAssetMaintain}},
-		{name: "storyboard reference", thread: threadRecord{Scope: ThreadScopeProject, Scene: SceneAssetReference, SubjectUUID: subject}, key: SceneStoryboardReference, guides: []string{GuideStoryboardUpdate}},
-	}
+func TestProjectAPIToolsAndGuidesAreGloballyRegistered(t *testing.T) {
+	thread := threadRecord{}
 	registeredGuides := map[string]bool{}
 	for _, guide := range agentGuideDefinitions() {
 		registeredGuides[guide.ID] = true
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			definition, ok := sceneDefinitionForThread(tc.thread)
-			if !ok || definition.Key != tc.key || definition.BasePromptKey == "" || definition.ScenePromptKey == "" {
-				t.Fatalf("definition=%+v ok=%v", definition, ok)
-			}
-			got := definitionNames(llmToolDefinitionsForMode(tc.thread, ToolModeProjectAPI))
-			if strings.Join(got, ",") != strings.Join(projectAPIToolNames, ",") {
-				t.Fatalf("project API tools=%v want=%v", got, projectAPIToolNames)
-			}
-			legacy := definitionNames(llmToolDefinitionsForMode(tc.thread, ToolModeLegacyTyped))
-			if containsString(legacy, "request_api") || containsString(legacy, "read_agent_doc") {
-				t.Fatalf("legacy mode exposed project API tools: %v", legacy)
-			}
-			if containsString(got, currentProjectAPIToolName) || containsString(got, "get_premise") || containsString(got, "get_comic_section") {
-				t.Fatalf("project API mode exposed a duplicate legacy route: %v", got)
-			}
-			if strings.Join(definition.RecommendedGuideIDs, ",") != strings.Join(tc.guides, ",") {
-				t.Fatalf("guide recommendations=%v want=%v", definition.RecommendedGuideIDs, tc.guides)
-			}
-			for _, guideID := range definition.RecommendedGuideIDs {
-				if !registeredGuides[guideID] {
-					t.Fatalf("Scene recommends unregistered Guide %s", guideID)
-				}
-			}
-		})
+	got := definitionNames(llmToolDefinitionsForMode(thread, ToolModeProjectAPI))
+	if strings.Join(got, ",") != strings.Join(projectAPIToolNames, ",") {
+		t.Fatalf("project API tools=%v want=%v", got, projectAPIToolNames)
+	}
+	if containsString(got, currentProjectAPIToolName) || containsString(got, "get_premise") || containsString(got, "get_comic_section") {
+		t.Fatalf("project API mode exposed a duplicate legacy route: %v", got)
+	}
+	for _, guideID := range []string{GuidePremiseAssetCreate, GuidePremiseAssetMaintain, GuideStoryboardUpdate} {
+		if !registeredGuides[guideID] {
+			t.Fatalf("global guide registry is missing %s", guideID)
+		}
 	}
 }
 
@@ -71,13 +45,7 @@ func definitionNames(definitions []llm.ToolDefinition) []string {
 func TestSceneToolContextCostBaseline(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	_, assetThread := createAssetReferenceMigrationFixture(t, harness)
-	_, _, storyboardThread := createStoryboardMigrationFixture(t, harness)
-	projectThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project cost baseline", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	premiseThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Premise cost baseline", Scope: ThreadScopePremise, Scene: ScenePremiseAsset, ProviderUUID: harness.provider.UUID})
+	projectThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project cost baseline", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,12 +61,7 @@ func TestSceneToolContextCostBaseline(t *testing.T) {
 		scene     string
 		thread    threadRecord
 		toolCount int
-	}{
-		{scene: SceneProjectAssistant, thread: record(projectThread), toolCount: 4},
-		{scene: ScenePremiseAsset, thread: record(premiseThread), toolCount: 4},
-		{scene: SceneAssetReference, thread: record(assetThread), toolCount: 4},
-		{scene: SceneStoryboardReference, thread: record(storyboardThread), toolCount: 4},
-	}
+	}{{scene: "project_chat", thread: record(projectThread), toolCount: 4}}
 	for _, test := range cases {
 		definitions := llmToolDefinitionsForMode(test.thread, ToolModeProjectAPI)
 		if len(definitions) != test.toolCount {
@@ -108,17 +71,9 @@ func TestSceneToolContextCostBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		definition, ok := sceneDefinitionForThread(test.thread)
-		if !ok {
-			t.Fatalf("scene=%s has no definition", test.scene)
-		}
-		recommended := make(map[string]bool, len(definition.RecommendedGuideIDs))
-		for _, guideID := range definition.RecommendedGuideIDs {
-			recommended[guideID] = true
-		}
 		for _, guide := range agentGuideDefinitions() {
-			if strings.Contains(prompts.Scene, guide.Path) != recommended[guide.ID] {
-				t.Fatalf("scene=%s guide=%s presence=%v want=%v", test.scene, guide.ID, strings.Contains(prompts.Scene, guide.Path), recommended[guide.ID])
+			if strings.Contains(prompts.Scene, guide.Path) {
+				t.Fatalf("project chat system prompt contains scene guide %s", guide.ID)
 			}
 		}
 		for _, forbidden := range []string{
@@ -219,11 +174,11 @@ func TestRequestAPIRoutesAndSubjectsAreSceneIndependent(t *testing.T) {
 			{"method": "GET", "url": base + "/premise-assets/" + otherUUID, "response_filter": ".data | {uuid,revision}"},
 		} {
 			if _, err := parseAgentAPIRequest(tc, input); err != nil {
-				t.Fatalf("scene=%s rejected global route %v: %v", logicalSceneKey(tc.Thread), input, err)
+				t.Fatalf("thread rejected global route %v: %v", input, err)
 			}
 		}
 		if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": base + "/not-registered", "response_filter": ".data | {uuid}"}); err == nil || errorCode(err) != CodeToolNotAllowed {
-			t.Fatalf("scene=%s accepted unregistered route: %v", logicalSceneKey(tc.Thread), err)
+			t.Fatalf("thread accepted unregistered route: %v", err)
 		}
 	}
 }
@@ -290,6 +245,9 @@ func TestOverviewIndexesMatchGuideAndAPIDocRegistries(t *testing.T) {
 			t.Fatalf("API Contract index does not contain exactly one document: path=%s", doc.Path)
 		}
 	}
+	if strings.Contains(content, "`"+agentDocOverviewPath+"`") {
+		t.Fatal("overview indexes itself as an API Contract")
+	}
 	for _, route := range agentAPIRoutes() {
 		if strings.Contains(content, "`"+route.ID+"`") || strings.Contains(content, "`"+route.PathTemplate+"`") {
 			t.Fatalf("overview leaked concrete route %s", route.ID)
@@ -338,24 +296,17 @@ func TestDetailedAPIDocsUseVACSStyleTablesAndProjectorFields(t *testing.T) {
 }
 
 func TestComicSectionDocsMatchGoldenFiles(t *testing.T) {
-	cases := []struct {
-		scene      SceneDefinition
-		goldenPath string
-	}{
-		{scene: sceneDefinitions()[0], goldenPath: "testdata/api-docs/project_assistant-comic-section.md"},
-		{scene: sceneDefinitions()[3], goldenPath: "testdata/api-docs/storyboard_reference-comic-section.md"},
-	}
-	for _, tc := range cases {
+	for _, goldenPath := range []string{"testdata/api-docs/project_assistant-comic-section.md", "testdata/api-docs/storyboard_reference-comic-section.md"} {
 		got, err := renderAgentDoc(comicSectionDocPath)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want, err := agentAPIDocGoldenFiles.ReadFile(tc.goldenPath)
+		want, err := agentAPIDocGoldenFiles.ReadFile(goldenPath)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if got != string(want) {
-			t.Fatalf("rendered doc differs from %s\n--- got ---\n%s\n--- want ---\n%s", tc.goldenPath, got, want)
+			t.Fatalf("rendered doc differs from %s\n--- got ---\n%s\n--- want ---\n%s", goldenPath, got, want)
 		}
 	}
 }
@@ -491,7 +442,7 @@ func TestPersistedPreUpgradeRequestAPIIntentFallsBackToCompleteCompactResponse(t
 func TestProjectAPIToolModeRunsInProcessAndRecordsRouteAction(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project API", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Project API", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,10 +480,13 @@ func TestProjectAPIToolModeRunsInProcessAndRecordsRouteAction(t *testing.T) {
 	if err := harness.store.DB().Table("chat_items").Select("metadata_json").Where("item_type='tool_call' AND tool_name='request_api'").Take(&metadata).Error; err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{RouteStoryProfileGet, "读取故事档案", `"method":"GET"`, `"scene":"project_assistant"`} {
+	for _, expected := range []string{RouteStoryProfileGet, "读取故事档案", `"method":"GET"`} {
 		if !strings.Contains(metadata, expected) {
 			t.Fatalf("tool metadata missing %q: %s", expected, metadata)
 		}
+	}
+	if strings.Contains(metadata, `"scene"`) {
+		t.Fatalf("tool metadata retained public scene: %s", metadata)
 	}
 	var logResponse string
 	if err := harness.store.DB().Table("llm_logs").Select("response").Where("chat_run_id=(SELECT runs.id FROM chat_runs runs JOIN chat_turns turns ON turns.id=runs.turn_id WHERE turns.uuid=?)", turn.UUID).Order("id").Limit(1).Scan(&logResponse).Error; err != nil {
@@ -553,7 +507,7 @@ func TestProjectAPIToolModeRunsInProcessAndRecordsRouteAction(t *testing.T) {
 func TestProjectAPIV2RejectsOldProtocolAndToolName(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Protocol v2", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Protocol v2", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +541,7 @@ func TestProjectAPIV2RejectsOldProtocolAndToolName(t *testing.T) {
 func TestProjectAPIToolIntentRecoversModeAndRouteAfterRestart(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Recover API intent", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Recover API intent", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -690,7 +644,7 @@ func TestRequestUserInputMixedWithAnotherToolIsRejectedBeforeIntent(t *testing.T
 func TestAgentProjectAPIRouteExecutionKeepsRevisionAndIdempotencySemantics(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "API execution", Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "API execution", ProviderUUID: harness.provider.UUID})
 	if err != nil {
 		t.Fatal(err)
 	}

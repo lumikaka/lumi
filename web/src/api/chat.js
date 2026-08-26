@@ -62,12 +62,14 @@ export function listFollowUps(projectUuid, threadUuid) {
   return apiRequest(threadPath(projectUuid, threadUuid, '/follow_ups'))
 }
 
-export function createFollowUp(projectUuid, threadUuid, inputText, uploadUuids = []) {
-  return apiRequest(threadPath(projectUuid, threadUuid, '/follow_ups'), jsonRequest('POST', { input_text: inputText, upload_uuids: uploadUuids }))
+export function createFollowUp(projectUuid, threadUuid, inputText, references = []) {
+  return apiRequest(threadPath(projectUuid, threadUuid, '/follow_ups'), jsonRequest('POST', { input_text: inputText, references }))
 }
 
-export function updateFollowUp(projectUuid, threadUuid, followUpUuid, inputText) {
-  return apiRequest(threadPath(projectUuid, threadUuid, `/follow_ups/${encodeURIComponent(followUpUuid)}`), jsonRequest('PATCH', { input_text: inputText }))
+export function updateFollowUp(projectUuid, threadUuid, followUpUuid, inputText, references) {
+  const body = { input_text: inputText }
+  if (references !== undefined) body.references = references
+  return apiRequest(threadPath(projectUuid, threadUuid, `/follow_ups/${encodeURIComponent(followUpUuid)}`), jsonRequest('PATCH', body))
 }
 
 export function moveFollowUp(projectUuid, threadUuid, followUpUuid, position) {
@@ -82,8 +84,8 @@ export function steerFollowUp(projectUuid, threadUuid, followUpUuid) {
   return apiRequest(threadPath(projectUuid, threadUuid, `/follow_ups/${encodeURIComponent(followUpUuid)}/steerings`), jsonRequest('POST'))
 }
 
-export function steerChatRun(projectUuid, threadUuid, inputText, uploadUuids = []) {
-  return apiRequest(threadPath(projectUuid, threadUuid, '/steerings'), jsonRequest('POST', { input_text: inputText, upload_uuids: uploadUuids }))
+export function steerChatRun(projectUuid, threadUuid, inputText, references = []) {
+  return apiRequest(threadPath(projectUuid, threadUuid, '/steerings'), jsonRequest('POST', { input_text: inputText, references }))
 }
 
 export function abortChatTurn(projectUuid, threadUuid) {

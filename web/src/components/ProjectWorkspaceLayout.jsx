@@ -9,7 +9,6 @@ import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import { useI18n } from '../i18n/useI18n.js'
-import { projectChatSearchWithoutLegacyScope } from '../pages/chatAreaPresentation.js'
 
 const CHAT_COLLAPSED_KEY = 'lumi.projectChatAreaCollapsed'
 const COMPACT_CHAT_QUERY = '(max-width: 980px)'
@@ -43,12 +42,6 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
     if (compact) setOverlayOpen(true)
     else setCollapsed(false)
   }, [compact, location.search])
-
-  useEffect(() => {
-    if (!new URLSearchParams(location.search).has('chat_scope')) return
-    const params = projectChatSearchWithoutLegacyScope(location.search)
-    navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '', hash: location.hash }, { replace: true })
-  }, [location.hash, location.pathname, location.search, navigate])
 
   useEffect(() => {
     if (!overlayOpen) return undefined
@@ -110,5 +103,5 @@ function writeCollapsed(projectUuid, value) {
 
 function hasChatQuery(search) {
   const params = new URLSearchParams(search)
-  return Boolean(params.get('chat_thread_uuid') || params.get('workflow_uuid') || params.get('chat_new') === '1')
+  return Boolean(params.get('chat_thread_uuid') || params.get('workflow_uuid') || params.get('chat_new') === '1' || params.get('chat_reference_uuid'))
 }

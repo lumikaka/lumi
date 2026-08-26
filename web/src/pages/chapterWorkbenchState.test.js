@@ -235,13 +235,14 @@ test('chapter workbench uses CodeMirror and the shared single-prompt editor', ()
   assert.match(promptEditor, /disabled=\{!dirty \|\| invalid \|\| saveMutation\.isPending\}/)
 })
 
-test('storyboard AI draft routes through project ChatArea with a bound public Section UUID', () => {
+test('storyboard AI draft routes through project ChatArea with a preselected Section Reference', () => {
   const workbench = readFileSync(new URL('./ChapterWorkbenchPage.jsx', import.meta.url), 'utf8')
   const chatArea = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
-  assert.match(workbench, /chat_scene:\s*'storyboard_reference'/)
-  assert.match(workbench, /chat_subject_uuid:\s*selected\.uuid/)
-  assert.match(chatArea, /scene === 'storyboard_reference' \? 'project' : 'premise'/)
-  assert.match(chatArea, /subject_uuid:\s*requestedSubjectUuid/)
+  assert.match(workbench, /chat_reference_type:\s*'comic_section'/)
+  assert.match(workbench, /chat_reference_uuid:\s*selected\.uuid/)
+  assert.match(chatArea, /requestedReferenceType = searchParams\.get\('chat_reference_type'\)/)
+  assert.match(chatArea, /resource_type: requestedReferenceType, resource_uuid: requestedReferenceUuid/)
+  assert.doesNotMatch(chatArea, /chat_scene|chat_subject_uuid|subject_uuid/)
 })
 
 test('manual Section image workflows appear in ChatArea without changing the selected thread', () => {

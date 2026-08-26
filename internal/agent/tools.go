@@ -25,6 +25,7 @@ type toolContext struct {
 	Turn           turnRecord
 	Run            runRecord
 	ToolMode       string
+	ToolProtocol   string
 	RequestUUID    string
 	RequestOrdinal int
 }
@@ -32,7 +33,7 @@ type toolContext struct {
 type toolExecutionRecord struct {
 	ID, ThreadID, RunID, TurnID, ItemID                                            int64
 	UUID, ToolCallUUID, ToolName, TargetUUID, ArgumentsJSON, IdempotencyKey, State string
-	RouteID, Action, Method, Path, Scene                                           string
+	RouteID, Action, Method, Path                                                  string
 	ResultJSON                                                                     *string
 	ErrorCode, ErrorMessage                                                        string
 	StartedAt, CompletedAt                                                         *time.Time
@@ -62,10 +63,10 @@ func toolDefinitions() []map[string]any {
 		{"name": "read_agent_doc", "description": "Read a registered Agent Overview, reusable capability Guide, or Project API contract. Start with /api/v1/agent-docs/overview.md to discover capabilities and routes.", "parameters": object(map[string]any{
 			"path": stringField("Registered /api/v1/agent-docs/...md path"),
 		}, "path")},
-		{"name": "image_gen", "description": "Generate a project-scoped image synchronously. Eligible current-message attachments are supplied according to the Scene's image-reference policy; asset-reference threads also prepend the current asset image.", "parameters": object(map[string]any{
-			"prompt": stringField("Detailed image generation prompt"), "reference_file_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
+		{"name": "image_gen", "description": "Generate a project-scoped image synchronously. Select zero to four image-capable References from the current Turn by their resource_uuid; the backend resolves their frozen images in the supplied order.", "parameters": object(map[string]any{
+			"prompt": stringField("Detailed image generation prompt"), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
 			"size": map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
-		}, "prompt")},
+		}, "prompt", "reference_uuids")},
 		{"name": "request_user_input", "description": "Pause this run and ask the user a bounded choice question. For a dangerous Agent API route, include confirmation bound to the route, project, target UUID, expected revision, and exact request fingerprint.", "parameters": object(map[string]any{
 			"input_type": map[string]any{"type": "string", "enum": []string{"single_choice", "multiple_choice"}}, "question": stringField("Question shown to the user"),
 			"options": map[string]any{"type": "array", "minItems": 2, "maxItems": 8, "items": object(map[string]any{"label": stringField("Short option label"), "description": stringField("Optional explanation")}, "label")},
@@ -82,6 +83,10 @@ func validateToolArguments(name string, raw string) (map[string]any, error) {
 }
 
 func validateToolArgumentsForMode(name string, raw string, mode string) (map[string]any, error) {
+	return validateToolArgumentsForProtocol(name, raw, mode, "")
+}
+
+func validateToolArgumentsForProtocol(name string, raw string, mode, protocol string) (map[string]any, error) {
 	if !json.Valid([]byte(raw)) {
 		return nil, domainError(CodeToolValidation, "工具参数不是有效 JSON", "arguments 必须是 JSON object。", nil)
 	}
@@ -93,10 +98,7 @@ func validateToolArgumentsForMode(name string, raw string, mode string) (map[str
 		return nil, domainError(CodeToolValidation, "工具参数不是 JSON object", "arguments 必须是 JSON object。", err)
 	}
 	var parameters map[string]any
-	definitions := toolDefinitions()
-	if normalizedToolMode(mode) == ToolModeLegacyTyped {
-		definitions = legacyRecoveryToolDefinitions()
-	}
+	definitions := toolDefinitionsForProtocol(mode, protocol)
 	for _, definition := range definitions {
 		if definition["name"] == name {
 			parameters, _ = definition["parameters"].(map[string]any)
@@ -336,12 +338,12 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if !errors.Is(query.Error, gorm.ErrRecordNotFound) {
 		return existing, nil, false, query.Error
 	}
-	args, err := validateToolArgumentsForMode(name, raw, tc.ToolMode)
+	args, err := validateToolArgumentsForProtocol(name, raw, tc.ToolMode, tc.ToolProtocol)
 	if err != nil {
 		return existing, nil, false, err
 	}
 	if !toolAllowedForThreadMode(name, tc.Thread, tc.ToolMode) {
-		return existing, nil, false, domainError(CodeToolNotAllowed, "工具不适用于当前场景", "当前 Tool Mode 或 Scene 无法使用该工具。", nil)
+		return existing, nil, false, domainError(CodeToolNotAllowed, "工具不适用于当前 Run", "当前冻结的 Tool Mode 无法使用该工具。", nil)
 	}
 	var apiRequest agentAPIRequest
 	if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped {
@@ -360,7 +362,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 		}
 	}
 	if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped && !legacyRecoveryToolTargetAllowed(name, args, tc.Thread) {
-		return existing, nil, false, domainError(CodeToolNotAllowed, "工具目标不属于当前场景", "设定项引用 thread 只能读写其 subject_uuid。", nil)
+		return existing, nil, false, domainError(CodeToolNotAllowed, "旧协议工具目标越界", "恢复中的旧设定项引用只能读写其冻结 subject_uuid。", nil)
 	}
 	publicCallUUID, err := newUUIDv7()
 	if err != nil {
@@ -373,9 +375,6 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	targetUUID := ""
 	if name == "image_gen" {
 		targetUUID = tc.Thread.UUID
-		if tc.Thread.Scene == SceneAssetReference {
-			targetUUID = tc.Thread.SubjectUUID
-		}
 	} else if name == "request_api" {
 		targetUUID = apiRequest.TargetUUID
 	} else if name == "read_agent_doc" {
@@ -383,7 +382,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	} else if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped {
 		targetUUID = legacyRecoveryTargetUUID(name, args, tc.Thread)
 	}
-	routeID, action, method, path, scene := "", name, "", "", logicalSceneKey(tc.Thread)
+	routeID, action, method, path := "", name, "", ""
 	if name == "request_api" {
 		routeID, action, method, path = apiRequest.Route.ID, apiRequest.Route.Action, apiRequest.Method, apiRequest.Path
 	} else if name == "read_agent_doc" {
@@ -400,7 +399,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	}
 	if routeID != "" {
 		storedArgs["__route_id"], storedArgs["__action"] = routeID, action
-		storedArgs["__method"], storedArgs["__path"], storedArgs["__scene"] = method, path, scene
+		storedArgs["__method"], storedArgs["__path"] = method, path
 		storedArgs["__target_uuid"] = targetUUID
 	}
 	encodedArgs, _ := json.Marshal(storedArgs)
@@ -418,7 +417,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 		return existing, nil, false, err
 	}
 	now := service.now().UTC()
-	metadata := map[string]any{"purpose": name, "action": action, "target_uuid": targetUUID, "provider_call_id": providerCallID, "scene": scene}
+	metadata := map[string]any{"purpose": name, "action": action, "target_uuid": targetUUID, "provider_call_id": providerCallID}
 	if isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
 		metadata["request_ordinal"] = tc.RequestOrdinal
@@ -438,7 +437,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return existing, nil, false, err
 	}
-	toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "scene": scene, "target_uuid": targetUUID}
+	toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "target_uuid": targetUUID}
 	if isUUIDv7(tc.RequestUUID) {
 		toolEvent["request_uuid"] = tc.RequestUUID
 		toolEvent["request_ordinal"] = tc.RequestOrdinal
@@ -452,8 +451,8 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err := tx.Commit(); err != nil {
 		return existing, nil, false, err
 	}
-	existing = toolExecutionRecord{ID: id, ThreadID: tc.Thread.ID, RunID: tc.Run.ID, TurnID: tc.Turn.ID, ItemID: item.ID, UUID: executionUUID, ToolCallUUID: publicCallUUID, ToolName: name, TargetUUID: targetUUID, ArgumentsJSON: string(encodedArgs), IdempotencyKey: key, RouteID: routeID, Action: action, Method: method, Path: path, Scene: scene, State: "intent", CreatedAt: now, UpdatedAt: now}
-	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "scene": scene, "target_uuid": targetUUID, "status": "in_progress"})
+	existing = toolExecutionRecord{ID: id, ThreadID: tc.Thread.ID, RunID: tc.Run.ID, TurnID: tc.Turn.ID, ItemID: item.ID, UUID: executionUUID, ToolCallUUID: publicCallUUID, ToolName: name, TargetUUID: targetUUID, ArgumentsJSON: string(encodedArgs), IdempotencyKey: key, RouteID: routeID, Action: action, Method: method, Path: path, State: "intent", CreatedAt: now, UpdatedAt: now}
+	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "target_uuid": targetUUID, "status": "in_progress"})
 	return existing, nil, false, nil
 }
 
@@ -489,7 +488,7 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	code := errorCode(cause)
 	metadata := map[string]any{
 		"purpose": name, "action": name, "provider_call_id": providerCallID,
-		"scene": logicalSceneKey(tc.Thread), "validation_repair": true, "error_code": code,
+		"validation_repair": true, "error_code": code,
 	}
 	if isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
@@ -510,7 +509,7 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	eventBase := map[string]any{
 		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
 		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "", "scene": logicalSceneKey(tc.Thread),
+		"route_id": "", "action": name, "method": "", "path": "",
 		"target_uuid": "", "status": "failed", "error_code": code,
 	}
 	if isUUIDv7(tc.RequestUUID) {
@@ -537,13 +536,13 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{
 		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
 		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "", "scene": logicalSceneKey(tc.Thread),
+		"route_id": "", "action": name, "method": "", "path": "",
 		"target_uuid": "", "status": "failed", "error_code": code,
 	})
 	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", map[string]any{
 		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
 		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "", "scene": logicalSceneKey(tc.Thread),
+		"route_id": "", "action": name, "method": "", "path": "",
 		"target_uuid": "", "status": "failed", "error_code": code, "item_uuid": resultItem.UUID,
 	})
 	return true, nil
@@ -793,7 +792,7 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 		return tx.Commit()
 	}
 	now := service.now().UTC()
-	metadata := map[string]any{"purpose": execution.ToolName, "action": execution.Action, "route_id": execution.RouteID, "method": execution.Method, "path": execution.Path, "scene": execution.Scene, "target_uuid": execution.TargetUUID}
+	metadata := map[string]any{"purpose": execution.ToolName, "action": execution.Action, "route_id": execution.RouteID, "method": execution.Method, "path": execution.Path, "target_uuid": execution.TargetUUID}
 	var args map[string]any
 	_ = json.Unmarshal([]byte(execution.ArgumentsJSON), &args)
 	if value, ok := args["__provider_call_id"].(string); ok {
@@ -814,7 +813,7 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_items SET status='completed' WHERE id=? AND status='in_progress'`, execution.ItemID); err != nil {
 		return err
 	}
-	toolResultEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": execution.ToolCallUUID, "tool_name": execution.ToolName, "route_id": execution.RouteID, "action": execution.Action, "method": execution.Method, "path": execution.Path, "scene": execution.Scene, "target_uuid": execution.TargetUUID, "item_uuid": item.UUID}
+	toolResultEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": execution.ToolCallUUID, "tool_name": execution.ToolName, "route_id": execution.RouteID, "action": execution.Action, "method": execution.Method, "path": execution.Path, "target_uuid": execution.TargetUUID, "item_uuid": item.UUID}
 	if isUUIDv7(requestUUID) {
 		toolResultEvent["request_uuid"] = requestUUID
 		toolResultEvent["request_ordinal"] = intArg(args, "__request_ordinal")
@@ -828,7 +827,7 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": execution.ToolCallUUID, "tool_name": execution.ToolName, "route_id": execution.RouteID, "action": execution.Action, "method": execution.Method, "path": execution.Path, "scene": execution.Scene, "target_uuid": execution.TargetUUID, "status": "completed"})
+	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": execution.ToolCallUUID, "tool_name": execution.ToolName, "route_id": execution.RouteID, "action": execution.Action, "method": execution.Method, "path": execution.Path, "target_uuid": execution.TargetUUID, "status": "completed"})
 	return nil
 }
 

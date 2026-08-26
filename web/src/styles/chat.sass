@@ -389,64 +389,6 @@
   button
     font-size: $font-size-small
 
-.chat-scene-card
-  margin-bottom: 12px
-  padding: 12px
-  display: grid
-  gap: 9px
-  border: 1px solid rgba($color-action, .28)
-  border-radius: $radius-md
-  color: $color-text
-  background: #fff7f2
-
-  > div
-    min-width: 0
-    display: flex
-    align-items: center
-    gap: 8px
-
-    > svg
-      flex: 0 0 auto
-      color: $color-action
-
-    > span
-      min-width: 0
-      display: grid
-      gap: 2px
-
-    strong,
-    small
-      min-width: 0
-      overflow: hidden
-      text-overflow: ellipsis
-      white-space: nowrap
-
-    strong
-      font-size: 12px
-
-    small
-      color: $color-muted
-      font-size: $font-size-small
-
-  > p
-    margin: 0
-    color: $color-muted
-    font-size: $font-size-small
-    line-height: 1.55
-
-  > button
-    justify-self: start
-
-.chat-scene-card--compact
-  padding: 9px 10px
-  background: $color-surface-subtle
-
-.chat-composer--scene
-  border-top: 1px solid $color-border
-
-  textarea
-    min-height: 172px
-
 .chat-error
   margin: 0
   padding: 10px 11px
@@ -607,43 +549,6 @@
     overflow-wrap: anywhere
     font-size: 13px
     line-height: 1.55
-
-.chat-message-references
-  margin-top: 7px
-  display: flex
-  flex-wrap: wrap
-  gap: 5px
-
-  a
-    min-width: 0
-    max-width: 100%
-    padding: 3px 6px
-    display: inline-flex
-    align-items: center
-    gap: 4px
-    border: 1px solid $color-border-subtle
-    border-radius: $radius-sm
-    color: $color-muted
-    background: $color-surface
-    font-size: $font-size-small
-    text-decoration: none
-
-    > img
-      width: 34px
-      height: 34px
-      flex: 0 0 auto
-      border-radius: 4px
-      object-fit: cover
-
-    &:hover,
-    &:focus-visible
-      border-color: rgba($color-accent, .42)
-      color: $color-accent
-
-    span
-      overflow: hidden
-      text-overflow: ellipsis
-      white-space: nowrap
 
 .chat-message__assistant-body
   min-width: 0
@@ -1831,28 +1736,6 @@
     align-items: center
     justify-content: center
 
-.chat-queue__references
-  display: flex
-  gap: 4px
-
-  a,
-  img
-    width: 30px
-    height: 30px
-
-  a
-    overflow: hidden
-    border: 1px solid $color-border-subtle
-    border-radius: 4px
-
-    &:hover,
-    &:focus-visible
-      border-color: $color-accent
-
-  img
-    display: block
-    object-fit: cover
-
 .chat-queue__actions
   display: flex
   align-items: center
@@ -1923,16 +1806,26 @@
   min-width: 0
   flex: 1 1 auto
   display: flex
+  flex-wrap: wrap
   align-items: center
   gap: 7px
 
-.chat-attachment-strip
+.chat-reference-strip
   min-width: 0
+  margin-top: 7px
   display: flex
   flex-wrap: wrap
   gap: 6px
 
-.chat-attachment
+.chat-composer__left > .chat-reference-strip
+  width: 100%
+  margin-top: 0
+
+.chat-reference-strip--compact
+  margin-top: 4px
+  gap: 4px
+
+.chat-reference-chip
   min-width: 0
   max-width: 100%
   padding: 4px 5px 4px 7px
@@ -1952,7 +1845,7 @@
     border-radius: 4px
     object-fit: cover
 
-  > span
+  > .chat-reference-chip__copy
     min-width: 0
     max-width: 150px
     display: grid
@@ -1969,6 +1862,20 @@
   em
     color: $color-muted
     font-style: normal
+
+  small
+    color: $color-muted
+
+  > .chat-reference-chip__icon
+    width: 28px
+    height: 28px
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border-radius: 4px
+    color: $color-accent
+    background: $color-accent-muted
 
   button
     width: 22px
@@ -1987,9 +1894,203 @@
       color: $color-text
       background: $color-surface-muted
 
-.chat-attachment--error
+.chat-reference-chip--uploading
+  opacity: .72
+
+.chat-reference-chip--error
   border-color: rgba($color-danger, .3)
   color: $color-danger
+
+.chat-reference-strip--compact .chat-reference-chip
+  padding: 3px 4px
+
+  > img,
+  > .chat-reference-chip__icon
+    width: 26px
+    height: 26px
+
+  > .chat-reference-chip__copy
+    max-width: 120px
+
+.chat-reference-picker
+  position: relative
+  flex: 0 0 auto
+
+.chat-reference-picker__trigger
+  min-width: 32px
+  height: 32px
+  padding: 0 7px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 5px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface
+  font-size: $font-size-small
+  font-weight: 700
+
+  > span
+    max-width: 88px
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded="true"]
+    border-color: rgba($color-accent, .42)
+    color: $color-accent
+    background: $color-accent-muted
+
+  &[aria-expanded="true"]:hover
+    border-color: $color-accent
+    background: #dce8ff
+
+.chat-reference-picker__popover
+  position: absolute
+  bottom: calc(100% + 8px)
+  left: 0
+  z-index: 30
+  width: min(340px, calc(100vw - 32px))
+  max-height: min(520px, calc(100vh - 120px))
+  padding: 9px
+  display: grid
+  gap: 8px
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-md
+  color: $color-text
+  background: $color-surface
+  box-shadow: 0 14px 34px rgba($color-text, .16)
+
+  > header
+    display: flex
+    align-items: baseline
+    justify-content: space-between
+    gap: 8px
+
+    strong
+      font-size: 13px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+
+.chat-reference-picker__tabs
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 4px
+
+  button
+    min-width: 0
+    min-height: 31px
+    padding: 4px 7px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 5px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: $font-size-small
+    font-weight: 700
+
+    &:hover,
+    &:focus-visible
+      border-color: rgba($color-accent, .35)
+      color: $color-text
+      background: $color-accent-muted
+
+    &[aria-pressed="true"]
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+    &[aria-pressed="true"]:hover
+      border-color: #1d4ed8
+      color: #1d4ed8
+      background: #dce8ff
+
+.chat-reference-picker__chapter
+  display: grid
+  gap: 4px
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 700
+
+  select
+    width: 100%
+    min-height: 32px
+    padding: 4px 7px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface
+    font-size: 12px
+
+.chat-reference-picker__notice
+  margin: 0
+  padding: 6px 7px
+  border-radius: $radius-sm
+  color: $color-muted
+  background: $color-surface-muted
+  font-size: $font-size-small
+  line-height: 1.45
+
+.chat-reference-picker__list
+  min-height: 48px
+  max-height: 280px
+  display: grid
+  align-content: start
+  gap: 4px
+  overflow: auto
+
+  > p
+    margin: 0
+    padding: 12px 6px
+    color: $color-muted
+    font-size: $font-size-small
+    text-align: center
+
+  > button
+    min-width: 0
+    padding: 7px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 7px
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface
+    font-size: 12px
+    text-align: left
+
+    &:hover,
+    &:focus-visible
+      border-color: rgba($color-accent, .4)
+      background: $color-accent-muted
+
+    &[aria-pressed="true"]
+      border-color: $color-accent
+      color: $color-accent
+      background: $color-accent-muted
+
+    &[aria-pressed="true"]:hover
+      border-color: #1d4ed8
+      color: #1d4ed8
+      background: #dce8ff
+
+    > span
+      min-width: 0
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
 
 .chat-attachment-picker
   flex: 0 0 auto

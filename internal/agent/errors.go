@@ -21,13 +21,13 @@ const (
 	CodeProvider         = "agent_provider_failed"
 	CodeWorkflowNotReady = "workflow_not_ready"
 
-	CodeImageReferenceLimit       = "chat_image_reference_limit_exceeded"
-	CodeImageReferenceUnsupported = "chat_image_reference_scene_unsupported"
-	CodeImageReferenceInvalidUUID = "chat_image_reference_invalid_uuid"
-	CodeImageReferenceNotFound    = "chat_image_reference_not_found"
-	CodeImageReferenceProject     = "chat_image_reference_project_mismatch"
-	CodeImageReferenceIncomplete  = "chat_image_reference_incomplete"
-	CodeImageReferenceInvalidMIME = "chat_image_reference_invalid_mime"
+	CodeReferenceLimit       = "chat_reference_limit_exceeded"
+	CodeReferenceInvalidType = "chat_reference_invalid_type"
+	CodeReferenceInvalidUUID = "chat_reference_invalid_uuid"
+	CodeReferenceDuplicate   = "chat_reference_duplicate"
+	CodeReferenceNotFound    = "chat_reference_not_found"
+	CodeReferenceProject     = "chat_reference_project_mismatch"
+	CodeReferenceSnapshot    = "chat_reference_snapshot_too_large"
 )
 
 type Error struct {

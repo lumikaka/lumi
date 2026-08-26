@@ -11,7 +11,6 @@ import {
   isChatSteeringShortcut,
   projectChatTurnActivity,
   projectChatUserInput,
-  projectChatSearchWithoutLegacyScope,
   restoreChatScrollAnchor,
   shouldLoadEarlierChatItems,
   shouldShowAssistantPending,
@@ -43,14 +42,13 @@ test('thread pagination count shows progress until every thread is loaded', () =
   assert.equal(chatThreadCountLabel(0, 0), '0')
 })
 
-test('mixed project threads retain localized workflow titles and existing context copy', () => {
+test('mixed project threads retain localized workflow titles and use generic project context copy', () => {
   const t = (key) => `translated:${key}`
   const workflow = { kind: 'comic_storyboard_generation', title: 'internal' }
   assert.equal(workflowDisplayTitle(workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
   assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'translated:chat.workflow.kind.comic_storyboard_generation')
-  assert.equal(threadContextCopyKey({ scope: 'project' }, null), 'premise.threads.scene.project')
-  assert.equal(threadContextCopyKey({ scope: 'premise', scene: 'asset_reference' }, null), 'premise.threads.scene.reference')
-  assert.equal(threadContextCopyKey({ scope: 'project', scene: 'storyboard_reference' }, null), 'chat.scene.storyboard.title')
+  assert.equal(threadContextCopyKey({}, null), 'chat.thread.project_context')
+  assert.equal(threadContextCopyKey({ scope: 'premise', scene: 'asset_reference' }, null), 'chat.thread.project_context')
 })
 
 test('chapter workflows use prompt-aware localized titles with chapter context', () => {
@@ -66,13 +64,6 @@ test('workflow progress aggregates persisted step percentages', () => {
   assert.equal(workflowProgressPercent({ steps: [{ status: 'completed', progress: 0 }, { status: 'running', progress: 50 }] }), 75)
   assert.equal(workflowProgressPercent({ status: 'completed', steps: [] }), 100)
   assert.equal(workflowProgressPercent({ steps: [{ status: 'running', progress: 140 }, { status: 'queued', progress: -5 }] }), 50)
-})
-
-test('legacy chat scope is removed without dropping active thread or workspace state', () => {
-  const next = projectChatSearchWithoutLegacyScope('?chat_scope=premise&chat_thread_uuid=thread-uuid&workspace_tab=body')
-  assert.equal(next.has('chat_scope'), false)
-  assert.equal(next.get('chat_thread_uuid'), 'thread-uuid')
-  assert.equal(next.get('workspace_tab'), 'body')
 })
 
 test('chat items are grouped and ordered by public turn UUID and queue sequence', () => {

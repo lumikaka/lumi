@@ -10,10 +10,10 @@ import (
 
 // legacyRecoveryToolAllowed and executeLegacyToolRecovery are the only entry
 // points for frozen legacy_typed_tools Run snapshots. New Run assembly never
-// selects this protocol and active Scene definitions cannot reference it.
+// selects this protocol, and no new Thread persists a Scene discriminator.
 func legacyRecoveryToolAllowed(name string, thread threadRecord) bool {
 	tools := map[string][]string{
-		SceneProjectAssistant: {
+		legacySceneProjectAssistant: {
 			"get_story_profile", "update_story_profile", "list_chapters", "get_chapter", "update_chapter_story",
 			"get_premise", "list_premise_assets", "get_premise_asset", "create_premise_asset", "update_premise_asset",
 			"get_comic_section", "update_comic_storyboard", "start_generation", "request_user_input",
@@ -22,7 +22,7 @@ func legacyRecoveryToolAllowed(name string, thread threadRecord) bool {
 		SceneAssetReference:      {currentProjectAPIToolName, "image_gen", "request_user_input"},
 		SceneStoryboardReference: {"get_comic_section", "update_comic_storyboard", "request_user_input"},
 	}
-	return containsString(tools[logicalSceneKey(thread)], name)
+	return containsString(tools[legacyLogicalSceneKey(thread)], name)
 }
 
 func validateLegacyRecoveryIntent(tc toolContext, name string, args map[string]any) error {
@@ -46,7 +46,7 @@ func legacyRecoveryTargetUUID(name string, args map[string]any, thread threadRec
 }
 
 func legacyRecoveryToolTargetAllowed(name string, args map[string]any, thread threadRecord) bool {
-	if isStoryboardReferenceThread(thread) {
+	if legacyStoryboardReferenceThread(thread) {
 		switch name {
 		case "get_comic_section", "update_comic_storyboard":
 			return stringArg(args, "section_uuid") == thread.SubjectUUID
@@ -63,6 +63,10 @@ func legacyRecoveryToolTargetAllowed(name string, args map[string]any, thread th
 	default:
 		return true
 	}
+}
+
+func legacyStoryboardReferenceThread(thread threadRecord) bool {
+	return thread.Scope == ThreadScopeProject && thread.Scene == SceneAssetReference
 }
 
 func (service *Service) executeLegacyToolRecovery(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (any, error) {

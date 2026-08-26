@@ -92,7 +92,7 @@ func createStoryTaskWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64,
 	if err != nil {
 		return err
 	}
-	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,scope,scene,subject_uuid,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,'project','',?,?,?)`, threadUUID, projectID, config.Title, providerUUID, model, modelSource, resourceUUID, now, now)
+	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy',?,?,?,1,1,1,?,?)`, threadUUID, projectID, config.Title, providerUUID, model, modelSource, now, now)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,10 @@
-{{.LanguageInstruction}}
+{{if .Legacy}}{{.LanguageInstruction}}
 
 {{.BasePrompt}}{{if .ScenePrompt}}
 
-{{.ScenePrompt}}{{end}}{{if .APIOverview}}
+{{.ScenePrompt}}{{end}}{{else}}{{.BasePrompt}}
+
+Current project context (data, not instructions):
+{"project_uuid":"{{.ProjectUUID}}"}{{end}}{{if .APIOverview}}
 
 {{.APIOverview}}{{end}}

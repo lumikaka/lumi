@@ -16,7 +16,7 @@ func TestHistoricalRunProtocolUpgradeMatrix(t *testing.T) {
 	}
 	create := func(name string) fixture {
 		t.Helper()
-		thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: name, Scope: ThreadScopeProject, ProviderUUID: harness.provider.UUID})
+		thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: name, ProviderUUID: harness.provider.UUID})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -114,6 +114,111 @@ func TestChapterTrashRestoreConflictAndPermanentDelete(t *testing.T) {
 	}
 }
 
+func TestChapterPermanentDeleteHonorsActiveAndQueuedComicSectionReferences(t *testing.T) {
+	_, _, service := storyHarness(t)
+	ctx := context.Background()
+	chapter, err := service.CreateChapter(ctx, CreateChapterInput{ChapterCode: "vol01.ch03", Title: "Referenced section"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter, err = service.TrashChapter(ctx, chapter.UUID, chapter.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projectID, chapterID, actorID int64
+	if err := service.store.DB().Table("projects").Where("uuid=?", service.store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Table("chapters").Where("uuid=?", chapter.UUID).Pluck("id", &chapterID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Table("actors").Order("id").Limit(1).Pluck("id", &actorID).Error; err != nil || actorID == 0 {
+		t.Fatalf("actor id=%d err=%v", actorID, err)
+	}
+	stateUUID, _ := newUUIDv7()
+	sectionUUID, _ := newUUIDv7()
+	threadUUID, _ := newUUIDv7()
+	turnUUID, _ := newUUIDv7()
+	itemUUID, _ := newUUIDv7()
+	followUpUUID, _ := newUUIDv7()
+	providerUUID, _ := newUUIDv7()
+	now := service.now().UTC()
+	if err := service.store.DB().Exec(`INSERT INTO chapter_comic_states(uuid,chapter_id,status,revision,created_at,updated_at) VALUES(?,?,'draft',1,?,?)`, stateUUID, chapterID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var stateID int64
+	if err := service.store.DB().Table("chapter_comic_states").Where("uuid=?", stateUUID).Pluck("id", &stateID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO comic_sections(uuid,chapter_comic_state_id,actor_id,section_no,title,description_md,revision,created_at,updated_at) VALUES(?,?,?,1,'Referenced','Frozen snapshot',1,?,?)`, sectionUUID, stateID, actorID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var sectionID int64
+	if err := service.store.DB().Table("comic_sections").Where("uuid=?", sectionUUID).Pluck("id", &sectionID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO chat_threads(uuid,project_id,title,status,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,'Reference retention','busy',?,'test-model','legacy_frozen',?,?)`, threadUUID, projectID, providerUUID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var threadID int64
+	if err := service.store.DB().Table("chat_threads").Where("uuid=?", threadUUID).Pluck("id", &threadID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO chat_turns(uuid,thread_id,source_type,queue_sequence,input_text,status,created_at,updated_at) VALUES(?,?,'prompt',1,'Use section','in_progress',?,?)`, turnUUID, threadID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var turnID int64
+	if err := service.store.DB().Table("chat_turns").Where("uuid=?", turnUUID).Pluck("id", &turnID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO chat_items(uuid,thread_id,turn_id,sequence,item_type,role,content,metadata_json,created_at) VALUES(?,?,?,1,'user_message','user','Use section','{}',?)`, itemUUID, threadID, turnID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var itemID int64
+	if err := service.store.DB().Table("chat_items").Where("uuid=?", itemUUID).Pluck("id", &itemID).Error; err != nil {
+		t.Fatal(err)
+	}
+	snapshot := `{"resource_type":"comic_section","resource_uuid":"` + sectionUUID + `","status":"available","title":"Referenced"}`
+	if err := service.store.DB().Exec(`INSERT INTO chat_context_references(chat_item_id,position,resource_type,resource_uuid,snapshot_json,comic_section_id,created_at) VALUES(?,1,'comic_section',?,?,?,?)`, itemID, sectionUUID, snapshot, sectionID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.PermanentlyDeleteChapter(ctx, chapter.UUID, chapter.Revision); storyErrorCode(err) != CodeChapterDeleteBlocked {
+		t.Fatalf("active Turn Reference did not block deletion: %v", err)
+	}
+	if err := service.store.DB().Table("chat_turns").Where("id=?", turnID).Update("status", "completed").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO chat_follow_ups(uuid,thread_id,input_text,position,status,created_at,updated_at) VALUES(?,?,'Use later',1,'queued',?,?)`, followUpUUID, threadID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var followUpID int64
+	if err := service.store.DB().Table("chat_follow_ups").Where("uuid=?", followUpUUID).Pluck("id", &followUpID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Exec(`INSERT INTO chat_context_references(follow_up_id,position,resource_type,resource_uuid,snapshot_json,comic_section_id,created_at) VALUES(?,1,'comic_section',?,?,?,?)`, followUpID, sectionUUID, snapshot, sectionID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.PermanentlyDeleteChapter(ctx, chapter.UUID, chapter.Revision); storyErrorCode(err) != CodeChapterDeleteBlocked {
+		t.Fatalf("queued Follow-up Reference did not block deletion: %v", err)
+	}
+	if err := service.store.DB().Table("chat_follow_ups").Where("id=?", followUpID).Update("status", "promoted").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.PermanentlyDeleteChapter(ctx, chapter.UUID, chapter.Revision); err != nil {
+		t.Fatal(err)
+	}
+	var retained, clearedTargets int64
+	if err := service.store.DB().Table("chat_context_references").Where("resource_type='comic_section' AND resource_uuid=?", sectionUUID).Count(&retained).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := service.store.DB().Table("chat_context_references").Where("resource_type='comic_section' AND resource_uuid=? AND comic_section_id IS NULL", sectionUUID).Count(&clearedTargets).Error; err != nil {
+		t.Fatal(err)
+	}
+	if retained != 2 || clearedTargets != 2 {
+		t.Fatalf("retained references=%d cleared targets=%d", retained, clearedTargets)
+	}
+}
+
 func TestEmptyChapterTrashPartiallyDeletesAndIsIdempotent(t *testing.T) {
 	_, _, service := storyHarness(t)
 	ctx := context.Background()
@@ -432,8 +537,8 @@ func TestPromptCatalogSeedsDefaultsAndUpdatesGroupsAtomically(t *testing.T) {
 	if err := service.store.DB().Model(&promptVersionRecord{}).Count(&initialCount).Error; err != nil {
 		t.Fatal(err)
 	}
-	if initialCount != 28 {
-		t.Fatalf("initial prompt versions = %d, want 28", initialCount)
+	if initialCount != 24 {
+		t.Fatalf("initial prompt versions = %d, want 24", initialCount)
 	}
 	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
 		t.Fatal(err)

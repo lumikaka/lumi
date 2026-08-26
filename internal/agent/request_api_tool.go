@@ -57,14 +57,14 @@ func (service *Service) agentToolLogMetadata(tc toolContext, calls []llm.ToolCal
 			}
 			metadata = append(metadata, map[string]any{
 				"provider_call_id": call.ID, "route_id": request.Route.ID, "action": request.Route.Action,
-				"method": request.Method, "path": request.Path, "scene": logicalSceneKey(tc.Thread), "target_uuid": request.TargetUUID,
+				"method": request.Method, "path": request.Path, "target_uuid": request.TargetUUID,
 			})
 		case "read_agent_doc":
 			path := strings.TrimSpace(stringArg(args, "path"))
 			if validAgentDocPath(path) {
 				metadata = append(metadata, map[string]any{
 					"provider_call_id": call.ID, "route_id": "agent_doc.read", "action": "读取 Agent 文档",
-					"method": "READ", "path": path, "scene": logicalSceneKey(tc.Thread), "target_uuid": tc.Thread.UUID,
+					"method": "READ", "path": path, "target_uuid": tc.Thread.UUID,
 				})
 			}
 		}
@@ -91,9 +91,6 @@ func attachAgentToolLogMetadata(payload json.RawMessage, metadata []map[string]a
 func (service *Service) hydrateToolExecutionMetadata(tc toolContext, execution *toolExecutionRecord, args map[string]any) {
 	if execution == nil {
 		return
-	}
-	if execution.Scene == "" {
-		execution.Scene = logicalSceneKey(tc.Thread)
 	}
 	if execution.Action == "" {
 		execution.Action = execution.ToolName

@@ -188,13 +188,13 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		"expected_revision": apiInteger("刚读取到的最新 Chapter revision。"),
 	}, "content", "content_format", "expected_revision")
 	assetCreate := apiObject(map[string]any{
-		"file_uuid": apiString("当前会话 image_gen 刚返回、用途与当前创建上下文匹配且尚未消费的文件 UUIDv7；已有项目图片或现有设定项 current_variant.asset.uuid 不可直接使用。与 upload_uuid 必须且只能提供一个。"), "upload_uuid": apiString("当前项目已就绪且尚未消费的上传 UUIDv7；与 file_uuid 必须且只能提供一个。"),
+		"file_uuid": apiString("当前 Thread 的 image_gen 刚返回且尚未消费的通用生成图片 File UUIDv7；已有项目图片或现有设定项 current_variant.asset.uuid 不可直接使用。与 upload_uuid 必须且只能提供一个。"), "upload_uuid": apiString("当前项目已就绪且尚未消费的上传 UUIDv7；与 file_uuid 必须且只能提供一个。"),
 		"asset_type": map[string]any{"type": "string", "enum": []string{"character", "scene", "prop", "reference"}, "description": "设定项类型。"},
 		"title":      apiString("设定项标题。"), "summary": apiString("可选设定项简介。"),
 		"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "可选设定项标签。"},
 	}, "asset_type", "title")
 	assetUpdate := apiObject(map[string]any{
-		"expected_revision": apiInteger("刚读取到的最新 Premise Asset revision。"), "file_uuid": apiString("可选；必须是当前绑定资产引用会话 image_gen 刚返回、用途匹配且尚未消费的文件 UUIDv7。"),
+		"expected_revision": apiInteger("刚读取到的最新 Premise Asset revision。"), "file_uuid": apiString("可选；必须是当前 Thread 中 image_gen 刚返回、用途匹配且尚未消费的文件 UUIDv7。"),
 		"asset_type": map[string]any{"type": "string", "enum": []string{"character", "scene", "prop", "reference"}, "description": "设定项类型。"},
 		"title":      apiString("设定项标题。"), "summary": apiString("设定项简介。"),
 		"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "设定项标签。"},
@@ -244,10 +244,6 @@ func (service *Service) parseAgentAPIRequest(tc toolContext, args map[string]any
 func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes []agentAPIRoute) (agentAPIRequest, error) {
 	if normalizedToolMode(tc.ToolMode) != ToolModeProjectAPI || !isUUIDv7(tc.ProjectUUID) {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "request_api 不适用于当前 Tool Mode", "当前 Run 没有启用 project_api_tools。", nil)
-	}
-	_, ok := sceneDefinitionForThread(tc.Thread)
-	if !ok {
-		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "Scene 定义无效", "当前 thread 无法装配 Agent Project API。", nil)
 	}
 	method := stringArg(args, "method")
 	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
@@ -441,9 +437,6 @@ func routeTargetUUID(request agentAPIRequest, thread threadRecord) string {
 			}
 		}
 	}
-	if request.Route.ID == RoutePremiseAssetCreate && isUUIDv7(thread.SubjectUUID) {
-		return thread.SubjectUUID
-	}
 	if value := request.Params["project_uuid"]; isUUIDv7(value) {
 		return value
 	}
@@ -523,9 +516,6 @@ func createAgentPremiseAsset(ctx context.Context, service *production.Service, t
 	input := production.CreateAssetInput{
 		UploadUUID: uploadUUID, FileUUID: fileUUID, ToolExecutionUUID: execution.UUID, ChatThreadUUID: tc.Thread.UUID,
 		AssetType: stringArg(args, "asset_type"), Title: stringArg(args, "title"), Summary: stringArg(args, "summary"), Tags: stringSliceArg(args, "tags"), SourceType: "manual",
-	}
-	if logicalSceneKey(tc.Thread) == SceneAssetReference {
-		input.SourcePremiseAssetUUID = tc.Thread.SubjectUUID
 	}
 	if fileUUID != "" {
 		return service.CreatePremiseAssetFromFile(ctx, input)
