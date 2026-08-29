@@ -135,19 +135,17 @@ export default function GlobalSidebar({
         aria-labelledby={titleId}
       >
         <header className="global-sidebar__header">
-          <div className="global-sidebar__brand">
-            <button
-              className="global-sidebar__logo-button"
-              type="button"
-              aria-label={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
-              aria-pressed={collapsed}
-              title={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
-              onClick={onToggleCollapsed}
-            >
-              <img className="global-sidebar__logo" src="/favicon.png" alt="" aria-hidden="true" />
-            </button>
-            <Link className="global-sidebar__brand-name" id={titleId} to="/" title="Lumi">Lumi</Link>
-          </div>
+          <button
+            className="global-sidebar__brand"
+            type="button"
+            aria-label={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+            aria-pressed={collapsed}
+            title={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+            onClick={onToggleCollapsed}
+          >
+            <img className="global-sidebar__logo" src="/favicon.png" alt="" aria-hidden="true" />
+            <span className="global-sidebar__brand-name" id={titleId}>Lumi</span>
+          </button>
           <button
             ref={closeRef}
             className="global-sidebar__mobile-close"

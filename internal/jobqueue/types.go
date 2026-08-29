@@ -306,8 +306,12 @@ type CreateProductionGenerationInput struct {
 }
 
 type CreateComicImageGenerationBatchInput struct {
-	SectionUUIDs   []string `json:"section_uuids"`
-	IdempotencyKey string   `json:"idempotency_key"`
+	SectionUUIDs          []string `json:"section_uuids"`
+	ProviderUUID          string   `json:"-"`
+	Model                 string   `json:"-"`
+	SelectionProviderUUID string   `json:"-"`
+	SelectionModel        string   `json:"-"`
+	IdempotencyKey        string   `json:"idempotency_key"`
 }
 
 type ComicImageGenerationBatchTask struct {

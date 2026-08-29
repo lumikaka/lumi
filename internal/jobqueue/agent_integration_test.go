@@ -785,7 +785,9 @@ func (model *riverAgentModel) Complete(ctx context.Context, request llm.ChatRequ
 		content = `{"story_md":"# STORY.md\n\n月光小狐狸替月亮送信，帮助害怕黑夜的朋友。","chapter_plans":[{"chapter_code":"vol01.ch01","title":"月光邮差","outline":"小狐狸收到月亮信件并踏上旅程。"}]}`
 	case strings.Contains(user, "根据已有章节正文反推漫画 STORY.md") || strings.Contains(user, "Infer the comic STORY.md"):
 		content = `{"story_md":"# STORY.md\n\n## 故事梗概\n月光小狐狸替月亮送信，帮助害怕黑夜的朋友。","chapter_plans":[]}`
-	case strings.Contains(user, "漫画分集脚本") || strings.Contains(user, "comic episode script"):
+	case strings.Contains(user, "为当前绘本设计一张") || strings.Contains(user, "Design a front-cover storyboard"):
+		content = `{"title":"月光邮差","storyboard":"## 封面目标\n\n月光小狐狸举起一封发光的信。\n\n## 封面构图\n\n标题“月光邮差”位于顶部留白，主角脸部与信件不得被遮挡。"}`
+	case strings.Contains(user, "漫画分集脚本") || strings.Contains(user, "comic episode script") || strings.Contains(user, "根据当前绘本正文规划页面") || strings.Contains(user, "Plan pages from"):
 		content = `{"chapter_code":"vol01.ch01","title":"月光邮差","sections":[{"section_no":1,"title":"月下启程","storyboard":"## Section 核心剧情目标\n\n小狐狸收到月亮的信。\n\n## 关键视觉瞬间\n\n**瞬间 1：收信**（全屏 / 竖向 / 顶部）\n* **镜头与调度**：月光照入森林。"}]}`
 	}
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: content}, FinishReason: "stop"}, nil
@@ -879,7 +881,7 @@ func TestRiverAgentWorkerPersistsFIFOAcrossConcurrentEnqueue(t *testing.T) {
 	}
 }
 
-func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
+func TestRiverYoloCreatesCoverAndFirstBodyImageEndToEnd(t *testing.T) {
 	ctx := context.Background()
 	dataDir := filepath.Join(t.TempDir(), "app")
 	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
@@ -887,7 +889,7 @@ func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	providers := provider.NewService(app, provider.NewMemorySecretStore())
-	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/yolo-model", APIKey: "yolo-secret"})
+	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/yolo-model", DefaultImageModel: "openai/gpt-image-1", APIKey: "yolo-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -897,7 +899,7 @@ func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
 	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
-	created, err := projects.CreateWithInput(ctx, project.CreateInput{Name: "Yolo E2E", PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical}}, project.ExplicitNewProjectParent(t.TempDir()))
+	created, err := projects.CreateWithInput(ctx, project.CreateInput{Name: "Yolo E2E", PictureBook: &project.PictureBookInput{Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare}}}, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -925,6 +927,20 @@ func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
 			t.Fatalf("Yolo step not complete: %+v", step)
 		}
 	}
+	var finalOutput struct {
+		SectionUUID           string   `json:"section_uuid"`
+		BodySectionUUID       string   `json:"body_section_uuid"`
+		CoverSectionUUID      string   `json:"cover_section_uuid"`
+		ImageVariantUUID      string   `json:"image_variant_uuid"`
+		BodyImageVariantUUID  string   `json:"body_image_variant_uuid"`
+		CoverImageVariantUUID string   `json:"cover_image_variant_uuid"`
+		SectionUUIDs          []string `json:"section_uuids"`
+		ImageVariantUUIDs     []string `json:"image_variant_uuids"`
+		TaskUUIDs             []string `json:"task_uuids"`
+	}
+	if err := json.Unmarshal(workflow.Steps[len(workflow.Steps)-1].Output, &finalOutput); err != nil || finalOutput.SectionUUID != finalOutput.BodySectionUUID || finalOutput.ImageVariantUUID != finalOutput.BodyImageVariantUUID || !isUUIDv7(finalOutput.CoverSectionUUID) || !isUUIDv7(finalOutput.CoverImageVariantUUID) || len(finalOutput.SectionUUIDs) != 2 || len(finalOutput.ImageVariantUUIDs) != 2 || len(finalOutput.TaskUUIDs) != 2 {
+		t.Fatalf("Yolo final output=%+v error=%v", finalOutput, err)
+	}
 	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
 		chapters, err := story.NewService(store).ListChapters(ctx, "active")
 		if err != nil || len(chapters) != 1 || chapters[0].CurrentStory == nil {
@@ -936,11 +952,11 @@ func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
 			t.Fatalf("Yolo premise assets = %+v, error=%v", assets, err)
 		}
 		sections, err := service.ListSections(ctx, chapters[0].UUID)
-		if err != nil || len(sections) < 1 || len(sections) > 6 || sections[0].CurrentImage == nil {
+		if err != nil || len(sections) != 2 || sections[0].PageRole != production.PageRoleFrontCover || sections[1].PageRole != production.PageRoleBody || sections[0].CurrentStoryboard == nil || sections[0].CurrentStoryboard.SourceType != "generated" || sections[0].CurrentImage == nil || sections[1].CurrentImage == nil {
 			t.Fatalf("Yolo comic sections = %+v, error=%v", sections, err)
 		}
 		var workflowLogs, workflowSnapshots int64
-		if err := store.DB().Table("llm_logs AS logs").Joins("JOIN workflows ON workflows.id=logs.workflow_id").Where("workflows.uuid=? AND logs.source_type='workflow' AND logs.status='completed'", workflow.UUID).Count(&workflowLogs).Error; err != nil || workflowLogs != 3 {
+		if err := store.DB().Table("llm_logs AS logs").Joins("JOIN workflows ON workflows.id=logs.workflow_id").Where("workflows.uuid=? AND logs.source_type='workflow' AND logs.status='completed'", workflow.UUID).Count(&workflowLogs).Error; err != nil || workflowLogs != 4 {
 			t.Fatalf("Yolo workflow logs=%d error=%v", workflowLogs, err)
 		}
 		if err := store.DB().Table("llm_logs AS logs").Joins("JOIN workflows ON workflows.id=logs.workflow_id").Where("workflows.uuid=? AND logs.source_type='workflow' AND logs.status='completed' AND logs.request_payload IS NOT NULL AND logs.response IS NOT NULL", workflow.UUID).Count(&workflowSnapshots).Error; err != nil || workflowSnapshots != workflowLogs {
@@ -953,6 +969,18 @@ func TestRiverYoloCompletesSixDomainStepsEndToEnd(t *testing.T) {
 		var storyboardWorkflowCount int64
 		if err := store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicStoryboard).Count(&storyboardWorkflowCount).Error; err != nil || storyboardWorkflowCount != 0 {
 			t.Fatalf("Yolo created %d duplicate comic storyboard workflows, error=%v", storyboardWorkflowCount, err)
+		}
+		var imageTasks []struct {
+			ProviderUUID string
+			Model        string
+		}
+		if err := store.DB().Table("production_task_runs").Select("provider_uuid,model").Where("kind='comic_image_generation'").Order("id").Scan(&imageTasks).Error; err != nil || len(imageTasks) != 2 {
+			t.Fatalf("Yolo image tasks=%+v error=%v", imageTasks, err)
+		}
+		for _, task := range imageTasks {
+			if task.ProviderUUID != configured.UUID || task.Model != configured.DefaultImageModel {
+				t.Fatalf("Yolo image task drifted from frozen model: %+v", task)
+			}
 		}
 		return nil
 	}); err != nil {

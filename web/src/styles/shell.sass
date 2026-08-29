@@ -45,36 +45,22 @@
   align-items: center
   gap: 10px
   overflow: hidden
+  border: 0
   border-radius: 7px
   color: $color-text
+  background: transparent
   font-size: $font-size-body
   font-weight: $font-weight-regular
+  text-align: left
 
-  &:hover
+  &:hover,
+  &:focus-visible,
+  &[aria-pressed="true"]:hover
     color: $color-text
     background: rgba($color-surface, .42)
 
-.global-sidebar__logo-button
-  flex: 0 0 auto
-  width: 28px
-  height: 28px
-  padding: 0
-  display: grid
-  place-items: center
-  overflow: visible
-  border: 0
-  border-radius: 7px
-  color: inherit
-  background: transparent
-
-  &:hover,
-  &:focus-visible
-    background: transparent
-
-.global-sidebar__logo-button[aria-pressed="true"]:hover
-  background: transparent
-
 .global-sidebar__logo
+  flex: 0 0 auto
   width: 28px
   height: 28px
   display: block

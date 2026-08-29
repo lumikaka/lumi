@@ -14,7 +14,7 @@
 
 - `content_md` 是完整 Storyboard Markdown，不是增量修改。
 - `request_body`：`{"content_md":"完整分镜 Markdown","expected_revision":3}`。
-- 返回更新后的 Section；使用 `.data | {uuid,chapter_uuid,section_no,title,current_storyboard,revision}`。
+- 返回更新后的 Section；使用 `.data | {uuid,chapter_uuid,section_no,page_role,title,current_storyboard,revision}`。
 
 ## 选择历史版本
 

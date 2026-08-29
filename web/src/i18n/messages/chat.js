@@ -22,6 +22,7 @@ export const chat = defineMessages({
   'chat.workflow.step.comic_sections': ['拆分漫画画面段落', 'Break down comic sections'],
   'chat.workflow.step.pages': ['拆分绘本页面', 'Break down picture-book pages'],
   'chat.workflow.step.first_section_image': ['生成首图', 'Generate first image'],
+  'chat.workflow.step.cover_and_first_page_image': ['生成封面与首个正文页图片', 'Generate cover and first body-page images'],
   'chat.workflow.step.select_reference_assets': ['选择参考设定', 'Select reference assets'],
   'chat.workflow.step.save_section_premise': ['保存画面段落设定合图', 'Save visual-section premise'],
   'chat.workflow.step.save_page_premise': ['保存页面设定合图', 'Save page premise'],

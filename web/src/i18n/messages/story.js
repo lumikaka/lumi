@@ -91,7 +91,7 @@ export const story = defineMessages({
   'story.prompts.group.chapter': ['Chapter 提示词', 'Chapter prompts'],
   'story.prompts.group.chapter.description': ['漫画分集、设定引用与 Section 图片生成使用的模板和片段。', 'Templates and fragments used for comic storyboards, setting references, and Section images.'],
   'story.prompts.group.picture_book': ['绘本提示词', 'Picture-book prompts'],
-  'story.prompts.group.picture_book.description': ['页面脚本、设定引用与页面图片生成使用的模板和片段。', 'Templates and fragments used for page scripts, setting references, and page-image generation.'],
+  'story.prompts.group.picture_book.description': ['正文、封面与封底的页面脚本、设定引用和图片生成规则。', 'Page scripts, setting references, and image rules for body pages, front covers, and back covers.'],
   'story.prompts.group.premise_style': ['整体画风', 'Overall art style'],
   'story.prompts.group.premise_style.description': ['项目当前画风和可复用画风预设。预设需要应用到整体画风后才会参与生成。', 'The active project art style and reusable presets. A preset participates in generation only after it is applied to the overall style.'],
   'story.prompts.group.agent': ['Agent 提示词', 'Agent prompts'],

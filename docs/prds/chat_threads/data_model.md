@@ -58,6 +58,8 @@ chat_context_references ──> files / premise_assets / comic_sections
 - `image_file_id` — 可空 INTEGER FK → `files.id`，Reference 接受时冻结的图片 File；删除受限
 - `created_at` — DATETIME NOT NULL
 
+`comic_section` 类型的 `snapshot_json` 冻结 `chapter_uuid`、`section_no`、`page_role`、`body_page_no`、标题、描述、revision、`current_storyboard_uuid` 与可用的 `current_image_file_uuid`。`section_no` 是含封面和封底的绝对装订顺序；`body_page_no` 只在 `page_role=body` 时从 1 起计算，特殊页为 0。
+
 **索引：**
 
 - `(chat_item_id, position)` / `(follow_up_id, position)` — owner 内唯一顺序

@@ -94,6 +94,118 @@ Section constraints:
 - Write sound effects as comic SFX such as [HUMM--] or [BOOM]
 - Panels must always serve a vertical mobile scrolling comic; describe the reading flow and screen share`
 
+const coverStoryboardPromptZH = `为当前绘本设计一张可直接生成最终图片的封面分镜。
+
+绘本标题（必须逐字保留）：
+{{book_title}}
+
+当前绘本（技术对象 chapter）：
+{{chapter_context_json}}
+
+当前 STORY.md：
+<story-md>
+{{story_md}}
+</story-md>
+
+用户最初的故事创意：
+{{story_prompt}}
+
+正文第一页 storyboard：
+<first-body-storyboard>
+{{first_body_storyboard}}
+</first-body-storyboard>
+
+只输出以下 JSON object：
+{
+  "title": "{{book_title}}",
+  "storyboard": "markdown 格式的完整封面脚本"
+}
+
+封面规则：
+- title 必须与给定绘本标题完全一致
+- storyboard 必须描述一张平面的最终封面画布，不得生成书本样机、立体书、展开封套、书脊、封底、条码、出版社标识或作者署名
+- 使用一个强而清晰的主视觉概括故事主题，并与正文第一页在角色身份、服装、道具、场景和画风上连续
+- 不剧透结局，不把正文第一页机械复制到封面
+- 明确描述标题的准确文字、位置、字号层级、留白，以及不得遮挡的人物脸部和核心视觉
+- 除给定绘本标题外，不得自行添加副标题、宣传语、作者名、奖项或其他可读文字
+- storyboard 必须是 markdown 文本，不要使用代码块`
+
+const coverStoryboardPromptEN = `Design a front-cover storyboard that can be used directly to generate the final cover image for the current picture book.
+
+Picture-book title (preserve it verbatim):
+{{book_title}}
+
+Current picture book (technical chapter object):
+{{chapter_context_json}}
+
+Current STORY.md:
+<story-md>
+{{story_md}}
+</story-md>
+
+The user's original story idea:
+{{story_prompt}}
+
+Storyboard of the first body page:
+<first-body-storyboard>
+{{first_body_storyboard}}
+</first-body-storyboard>
+
+Output only this JSON object:
+{
+  "title": "{{book_title}}",
+  "storyboard": "complete front-cover script in markdown"
+}
+
+Front-cover rules:
+- title must exactly match the supplied picture-book title
+- storyboard must describe one flat final cover canvas; do not generate a book mockup, 3D book, unfolded dust jacket, spine, back cover, barcode, publisher mark, or author credit
+- Use one strong, clear hero visual that captures the story theme and stays continuous with the first body page in character identity, costume, props, setting, and art style
+- Do not spoil the ending or mechanically copy the first body page onto the cover
+- Specify the exact title copy, placement, typographic hierarchy, whitespace, and the faces and core visual elements that the title must not cover
+- Do not invent a subtitle, tagline, author name, award, or any other readable copy beyond the supplied picture-book title
+- storyboard must be markdown text without code fences`
+
+const coverBeforeImagePromptZH = `## 封面图片生成规则
+
+1. 当前输入是绘本 front cover 的完整 storyboard。生成一张可直接阅读和导出的平面最终封面图片，不是正文页。
+2. 严格按 storyboard 逐字绘制绘本标题；不得改写、漏字、增加副标题、宣传语、作者名、奖项、出版社标识或其他可读文字。
+3. 使用一个清晰有力的主视觉概括故事主题。标题应有明确层级与充足留白，不得遮挡人物脸部、核心动作或关键道具。
+4. 封面角色身份、服装、道具、场景与画风必须和设定参考及正文第一页连续一致，但不得机械复制正文第一页。
+5. 禁止生成书本样机、立体书、摆拍页面、展开封套、书脊、封底、条码、价格贴纸、装饰相框或多个独立缩略图拼贴。
+6. 正文页的无字、叙事句数、互动提问、漫画分格数量或连续剧情推进规则不适用于封面；以 storyboard 的封面构图和逐字标题为准。
+7. 有设定参考图时只参考主体身份与视觉特征，不得复制设定拼贴图的网格排版。`
+
+const coverBeforeImagePromptEN = `## Front-cover Image-generation Rules
+
+1. The current input is the complete storyboard for the picture book's front cover. Generate one flat final cover image ready for reading and export, not a body page.
+2. Render the picture-book title from the storyboard verbatim. Do not rewrite it, omit characters, or add a subtitle, tagline, author name, award, publisher mark, or any other readable copy.
+3. Use one clear, strong hero visual that captures the story theme. Give the title a clear hierarchy and sufficient whitespace, and do not cover faces, core actions, or key props.
+4. Keep character identity, costume, props, setting, and art style continuous with setting references and the first body page, but do not mechanically copy the first body page.
+5. Do not generate a book mockup, 3D book, photographed page, unfolded jacket, spine, back cover, barcode, price sticker, decorative frame, or collage of independent thumbnails.
+6. Body-page rules for wordlessness, narrative-sentence count, interactive questions, comic-panel count, or continuous plot progression do not apply to the cover. Follow the storyboard's cover composition and verbatim title instead.
+7. When setting references are present, use them only for subject identity and visual features; never copy the reference collage grid.`
+
+const backCoverBeforeImagePromptZH = `## 封底图片生成规则
+
+1. 当前输入是绘本 back cover 的完整 storyboard。生成一张可直接阅读和导出的平面最终封底图片，不是正文页，也不是正封面。
+2. 只绘制 storyboard 明确要求的可读文字并逐字保留；不得自行添加故事正文、互动提问、对白、宣传语、作者名、奖项、出版社标识、条码、价格或其他文案。
+3. 使用安静、收束性的辅助视觉延续整本书的主题与气氛，保持适当留白和较低视觉密度；不得把正封标题机械重复为封底主标题，除非 storyboard 明确要求。
+4. 封底角色身份、服装、道具、场景与画风必须和设定参考及正文连续一致，但不得机械复制正文页面或正封面。
+5. 禁止生成书本样机、立体书、摆拍页面、展开封套、书脊、正封面、装饰相框或多个独立缩略图拼贴。
+6. 正文页的无字、叙事句数、互动提问、漫画分格数量或连续剧情推进规则不适用于封底；以 storyboard 的封底构图和明确文案为准。
+7. 有设定参考图时只参考主体身份与视觉特征，不得复制设定拼贴图的网格排版。`
+
+const backCoverBeforeImagePromptEN = `## Back-cover Image-generation Rules
+
+1. The current input is the complete storyboard for the picture book's back cover. Generate one flat final back-cover image ready for reading and export, not a body page or front cover.
+2. Render only readable copy explicitly required by the storyboard and preserve it verbatim. Do not invent story prose, an interactive question, dialogue, a tagline, author name, award, publisher mark, barcode, price, or any other copy.
+3. Use a quiet, resolving supporting visual that extends the book's theme and atmosphere, with appropriate whitespace and lower visual density. Do not mechanically repeat the front-cover title as a back-cover headline unless the storyboard explicitly requires it.
+4. Keep character identity, costume, props, setting, and art style continuous with setting references and body pages, but do not mechanically copy a body page or the front cover.
+5. Do not generate a book mockup, 3D book, photographed page, unfolded jacket, spine, front cover, decorative frame, or collage of independent thumbnails.
+6. Body-page rules for wordlessness, narrative-sentence count, interactive questions, comic-panel count, or continuous plot progression do not apply to the back cover. Follow the storyboard's back-cover composition and explicit copy instead.
+7. When setting references are present, use them only for subject identity and visual features; never copy the reference collage grid.`
+
 const settingSelectionPromptZH = `你是漫画设定项选择器。请根据当前 storyboard，从给定的 comic-settings 设定项标题中选出本 section 会实际涉及的设定元素。
 
 规则：
@@ -320,8 +432,11 @@ func chapterDefinitions(language string) []Definition {
 	return []Definition{
 		meta("json_system", "JSON 系统提示词", "约束漫画分集脚本生成任务只返回 JSON object。", "JSON system prompt", "Constrains comic episode script generation tasks to return only a JSON object.", PromptTypeTemplate, jsonSystemPrompt),
 		meta("comic_storyboard", "漫画分集脚本", "从章节正文或输入文本生成手机竖向条漫的 section storyboard。", "Comic episode script", "Generate section storyboards for a vertical mobile scrolling comic from chapter prose or input text.", PromptTypeTemplate, choose(comicStoryboardPromptZH, comicStoryboardPromptEN)),
+		meta("cover_storyboard", "绘本封面分镜", "根据绘本标题、故事和正文第一页生成封面 storyboard。", "Picture-book cover storyboard", "Generate a front-cover storyboard from the picture-book title, story, and first body page.", PromptTypeTemplate, choose(coverStoryboardPromptZH, coverStoryboardPromptEN)),
 		meta("section_premise_selection", "Section 设定项选择", "根据当前 section storyboard 从 Premise 设定项中选择参考文件。", "Section setting asset selection", "Select reference files from Premise setting assets according to the current section storyboard.", PromptTypeTemplate, choose(settingSelectionPromptZH, settingSelectionPromptEN)),
 		meta("before_image", "Section 图片基础规则", "组合进 Section 图片模板的基础生成规则。", "Section image base rules", "Base generation rules composed into the Section image template.", PromptTypeFragment, before),
+		meta("cover_before_image", "封面图片基础规则", "生成 front cover 图片时替代正文页面基础规则。", "Front-cover image base rules", "Replace body-page base rules when generating a front-cover image.", PromptTypeFragment, choose(coverBeforeImagePromptZH, coverBeforeImagePromptEN)),
+		meta("back_cover_before_image", "封底图片基础规则", "生成 back cover 图片时替代正文页面基础规则。", "Back-cover image base rules", "Replace body-page base rules when generating a back-cover image.", PromptTypeFragment, choose(backCoverBeforeImagePromptZH, backCoverBeforeImagePromptEN)),
 		meta("section_reference_present", "有设定参考图时的说明", "Section 图片存在设定拼贴图时组合进生成提示词。", "Setting-reference-present instruction", "Composed into the Section image prompt when a setting collage is available.", PromptTypeFragment, referencePresent),
 		meta("section_reference_absent", "无设定参考图时的说明", "Section 图片没有设定拼贴图时组合进生成提示词。", "Setting-reference-absent instruction", "Composed into the Section image prompt when no setting collage is available.", PromptTypeFragment, referenceAbsent),
 		meta("section_additional_direction", "用户补充要求包装", "用户为 Section 图片补充要求时组合进生成提示词。", "Additional user direction wrapper", "Composed into the Section image prompt when the user adds generation guidance.", PromptTypeFragment, additionalDirection),

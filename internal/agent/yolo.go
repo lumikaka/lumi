@@ -92,8 +92,8 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		frozenPrompts := make(map[string]string, 7)
-		for _, identity := range [][2]string{{promptcatalog.GroupStory, "json_system"}, {promptcatalog.GroupStory, "story_profile"}, {promptcatalog.GroupStory, "profile_from_chapters"}, {promptcatalog.GroupChapter, "json_system"}, {promptcatalog.GroupChapter, "comic_storyboard"}, {promptcatalog.GroupPremiseStyle, "project_overall_style"}, {promptcatalog.GroupRuntime, "project_language_instruction"}} {
+		frozenPrompts := make(map[string]string, 8)
+		for _, identity := range [][2]string{{promptcatalog.GroupStory, "json_system"}, {promptcatalog.GroupStory, "story_profile"}, {promptcatalog.GroupStory, "profile_from_chapters"}, {promptcatalog.GroupChapter, "json_system"}, {promptcatalog.GroupChapter, "comic_storyboard"}, {promptcatalog.GroupChapter, "cover_storyboard"}, {promptcatalog.GroupPremiseStyle, "project_overall_style"}, {promptcatalog.GroupRuntime, "project_language_instruction"}} {
 			value, loadErr := storyService.EffectivePrompt(ctx, identity[0], identity[1])
 			if loadErr != nil {
 				return loadErr
@@ -135,7 +135,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		snapshot, _ := json.Marshal(yoloSnapshot{Version: 4, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String()})
+		snapshot, _ := json.Marshal(yoloSnapshot{Version: 5, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String()})
 		result, err = tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
@@ -349,8 +349,12 @@ func (service *Service) ExecuteWorkflowStep(ctx context.Context, store *project.
 	} else if !ready {
 		return ErrJobNotReady
 	}
-	if err := service.markWorkflowStepRunning(ctx, store, workflow, step); err != nil {
+	started, err := service.markWorkflowStepRunning(ctx, store, workflow, step)
+	if err != nil {
 		return err
+	}
+	if !started {
+		return nil
 	}
 	workflow.Status, workflow.CurrentStepKey = WorkflowRunning, step.StepKey
 	step.Status = "running"
@@ -359,8 +363,12 @@ func (service *Service) ExecuteWorkflowStep(ctx context.Context, store *project.
 		return service.failWorkflowStep(context.WithoutCancel(ctx), store, workflow, step, threadUUID, err)
 	}
 	if wait {
-		if err := service.markWorkflowStepWaiting(ctx, store, workflow, step); err != nil {
+		waiting, err := service.markWorkflowStepWaiting(ctx, store, workflow, step)
+		if err != nil {
 			return err
+		}
+		if !waiting {
+			return nil
 		}
 		return ErrJobNotReady
 	}
@@ -389,36 +397,57 @@ func (service *Service) workflowStepReady(ctx context.Context, store *project.St
 	return count == 0, err
 }
 
-func (service *Service) markWorkflowStepRunning(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) error {
+var errWorkflowTransitionInactive = errors.New("workflow transition is no longer active")
+
+func (service *Service) markWorkflowStepRunning(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (bool, error) {
 	now := service.now().UTC()
-	return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&workflowRecord{}).Where("id=? AND status IN ('queued','running','interrupted')", workflow.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": step.StepKey, "started_at": gorm.Expr("COALESCE(started_at,?)", now), "updated_at": now, "error_code": "", "error_message": ""}).Error; err != nil {
-			return err
+	err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&workflowRecord{}).Where("id=? AND status IN ('queued','running','interrupted')", workflow.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": step.StepKey, "started_at": gorm.Expr("COALESCE(started_at,?)", now), "updated_at": now, "error_code": "", "error_message": ""})
+		if result.Error != nil {
+			return result.Error
 		}
-		if err := tx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','waiting','running','interrupted')", step.ID).Updates(map[string]any{"status": "running", "started_at": gorm.Expr("COALESCE(started_at,?)", now), "updated_at": now, "error_code": "", "error_message": ""}).Error; err != nil {
-			return err
+		if result.RowsAffected != 1 {
+			return errWorkflowTransitionInactive
+		}
+		result = tx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','waiting','running','interrupted')", step.ID).Updates(map[string]any{"status": "running", "started_at": gorm.Expr("COALESCE(started_at,?)", now), "updated_at": now, "error_code": "", "error_message": ""})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return errWorkflowTransitionInactive
 		}
 		return appendWorkflowEventGormTx(ctx, tx, workflow.ID, &step.ID, "step_running", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": "running"}, now)
 	})
+	if errors.Is(err, errWorkflowTransitionInactive) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
-func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) error {
+func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (bool, error) {
 	now := service.now().UTC()
 	if err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&workflowStepRecord{}).Where("id=? AND status='running'", step.ID).Updates(map[string]any{"status": "waiting", "updated_at": now}).Error; err != nil {
-			return err
+		result := tx.Model(&workflowStepRecord{}).Where("id=? AND status='running'", step.ID).Updates(map[string]any{"status": "waiting", "updated_at": now})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return errWorkflowTransitionInactive
 		}
 		return appendWorkflowEventGormTx(ctx, tx, workflow.ID, &step.ID, "step_waiting", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": "waiting"}, now)
 	}); err != nil {
-		return err
+		if errors.Is(err, errWorkflowTransitionInactive) {
+			return false, nil
+		}
+		return false, err
 	}
 	service.broadcastWorkflow(store.ProjectUUID(), Workflow{UUID: workflow.UUID, ThreadUUID: "", Status: WorkflowRunning}, "workflow:step_changed", step.UUID)
-	return nil
+	return true, nil
 }
 
 func (service *Service) runYoloStep(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (map[string]any, bool, error) {
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4) || snapshot.ProjectUUID != store.ProjectUUID() {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5) || snapshot.ProjectUUID != store.ProjectUUID() {
 		return nil, false, domainError(CodeStateConflict, "Yolo 输入快照损坏", "workflow 无法安全恢复。", err)
 	}
 	if snapshot.ImageProviderUUID == "" {
@@ -666,10 +695,11 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 	if err != nil {
 		return nil, false, err
 	}
-	if len(sections) > 6 {
+	bodySections, frontCover := yoloSectionsByRole(sections)
+	if len(bodySections) > 6 {
 		return nil, false, domainError(CodeStateConflict, "Comic Section 数量冲突", "Yolo 不会覆盖已有的 6 个以上 Section。", nil)
 	}
-	if len(sections) == 0 {
+	if len(bodySections) == 0 {
 		profile, err := story.NewService(store).GetStoryProfile(ctx)
 		if err != nil {
 			return nil, false, err
@@ -706,25 +736,157 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 		if generated.ChapterCode != chapter.ChapterCode || len(generated.Sections) < 1 || len(generated.Sections) > 6 {
 			return nil, false, domainError(llm.CodeInvalidContent, "Comic Storyboard 生成失败", "模型返回的 chapter_code 或 sections 数量无效。", nil)
 		}
+		generatedSections := make([]production.GeneratedComicSection, len(generated.Sections))
 		for index, item := range generated.Sections {
 			if item.SectionNo != index+1 || strings.TrimSpace(item.Title) == "" || strings.TrimSpace(item.Storyboard) == "" {
 				return nil, false, domainError(llm.CodeInvalidContent, "Comic Storyboard 生成失败", "模型返回的 section 字段或顺序无效。", nil)
 			}
-			section, createErr := productionService.CreateSection(ctx, chapterUUID, production.CreateSectionInput{Title: item.Title, DescriptionMD: summarizeText(item.Storyboard, 600), StoryboardMD: item.Storyboard})
-			if createErr != nil {
-				return nil, false, createErr
-			}
-			sections = append(sections, section)
+			generatedSections[index] = production.GeneratedComicSection{Title: item.Title, StoryboardMD: item.Storyboard}
 		}
+		sections, err = productionService.CreateGeneratedSections(ctx, chapterUUID, generatedSections)
+		if err != nil {
+			return nil, false, err
+		}
+		bodySections, frontCover = yoloSectionsByRole(sections)
 	}
-	sectionUUIDs := make([]string, 0, len(sections))
-	for _, section := range sections {
+	if len(bodySections) == 0 {
+		return nil, false, domainError(CodeStateConflict, "正文页面缺失", "Yolo 页面规划完成后没有 body Section。", nil)
+	}
+	for _, section := range bodySections {
 		if section.CurrentStoryboard == nil {
 			return nil, false, domainError(CodeStateConflict, "Storyboard 缺失", "每个 Yolo Section 必须有 current storyboard。", nil)
 		}
+	}
+	if snapshot.Version >= 5 {
+		if snapshot.PictureBook == nil {
+			return nil, false, domainError(CodeStateConflict, "Yolo 绘本快照缺失", "v5 workflow 无法判断是否需要封面。", nil)
+		}
+		if snapshot.PictureBook.Format != project.PictureBookVertical {
+			frontCover, err = service.ensureYoloFrontCover(ctx, store, workflow, step, snapshot, chapter, bodySections[0], frontCover)
+			if err != nil {
+				return nil, false, err
+			}
+		}
+	}
+	sectionUUIDs := make([]string, 0, len(bodySections))
+	for _, section := range bodySections {
 		sectionUUIDs = append(sectionUUIDs, section.UUID)
 	}
-	return map[string]any{"chapter_uuid": chapterUUID, "section_uuids": sectionUUIDs, "first_section_uuid": sectionUUIDs[0]}, false, nil
+	output := map[string]any{
+		"chapter_uuid": chapterUUID, "section_uuids": sectionUUIDs,
+		"first_section_uuid": sectionUUIDs[0], "body_section_uuid": sectionUUIDs[0],
+	}
+	if frontCover.UUID != "" {
+		output["cover_section_uuid"] = frontCover.UUID
+	}
+	return output, false, nil
+}
+
+func yoloSectionsByRole(sections []production.ComicSection) ([]production.ComicSection, production.ComicSection) {
+	body := make([]production.ComicSection, 0, len(sections))
+	var cover production.ComicSection
+	for _, section := range sections {
+		role := strings.TrimSpace(section.PageRole)
+		if role == "" {
+			role = production.PageRoleBody
+		}
+		switch role {
+		case production.PageRoleFrontCover:
+			if cover.UUID == "" {
+				cover = section
+			}
+		case production.PageRoleBody:
+			body = append(body, section)
+		}
+	}
+	return body, cover
+}
+
+type yoloCoverDraft struct {
+	Title      string `json:"title"`
+	Storyboard string `json:"storyboard"`
+}
+
+func (service *Service) ensureYoloFrontCover(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot, chapter story.Chapter, firstBody, cover production.ComicSection) (production.ComicSection, error) {
+	if cover.UUID != "" && (cover.CurrentStoryboard != nil || cover.CurrentImage != nil) {
+		return cover, nil
+	}
+	draft, found := yoloCoverDraftCheckpoint(step.OutputJSON)
+	if !found {
+		profile, err := story.NewService(store).GetStoryProfile(ctx)
+		if err != nil {
+			return production.ComicSection{}, err
+		}
+		chapterContext, _ := json.Marshal(map[string]any{
+			"chapter_code": chapter.ChapterCode, "title": chapter.Title,
+			"content": chapter.CurrentStory.Content, "content_format": chapter.CurrentStory.ContentFormat,
+		})
+		template, err := service.yoloPrompt(ctx, store, snapshot, promptcatalog.GroupChapter, "cover_storyboard")
+		if err != nil {
+			return production.ComicSection{}, err
+		}
+		rendered, err := promptcatalog.Render(template, map[string]string{
+			"book_title": chapter.Title, "chapter_context_json": string(chapterContext),
+			"story_md": profile.StoryMD, "story_prompt": snapshot.StoryPrompt,
+			"first_body_storyboard": firstBody.CurrentStoryboard.ContentMD,
+		})
+		if err != nil {
+			return production.ComicSection{}, domainError(CodeValidation, "封面分镜提示词无法渲染", "项目提示词缺少规范占位符。", err)
+		}
+		if err := service.completeYoloJSON(ctx, store, workflow, step, snapshot, "cover_storyboard_generation", service.yoloSystemPrompt(ctx, store, snapshot, promptcatalog.GroupChapter), rendered, &draft); err != nil {
+			return production.ComicSection{}, err
+		}
+		draft.Title, draft.Storyboard = strings.TrimSpace(draft.Title), strings.TrimSpace(draft.Storyboard)
+		if draft.Title != strings.TrimSpace(chapter.Title) || draft.Storyboard == "" || len([]rune(draft.Storyboard)) > 262144 {
+			return production.ComicSection{}, domainError(llm.CodeInvalidContent, "封面分镜生成失败", "模型必须逐字返回绘本标题和有效 storyboard。", nil)
+		}
+		if err := service.checkpointWorkflowStepOutput(ctx, store, step.ID, map[string]any{"cover_storyboard_draft": draft}); err != nil {
+			return production.ComicSection{}, err
+		}
+	}
+	productionService := production.NewService(store, service.hub)
+	if cover.UUID == "" {
+		created, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+			Title: draft.Title, DescriptionMD: summarizeText(draft.Storyboard, 600),
+			PageRole: production.PageRoleFrontCover,
+		})
+		if err == nil {
+			cover = created
+		} else {
+			sections, reloadErr := productionService.ListSections(ctx, chapter.UUID)
+			if reloadErr != nil {
+				return production.ComicSection{}, err
+			}
+			_, cover = yoloSectionsByRole(sections)
+			if cover.UUID == "" {
+				return production.ComicSection{}, err
+			}
+			if cover.CurrentStoryboard != nil || cover.CurrentImage != nil {
+				return cover, nil
+			}
+		}
+	}
+	updated, err := productionService.CreateStoryboard(ctx, chapter.UUID, cover.UUID, draft.Storyboard, "generated", cover.Revision)
+	if err == nil {
+		return updated, nil
+	}
+	reloaded, reloadErr := productionService.GetSection(ctx, chapter.UUID, cover.UUID)
+	if reloadErr == nil && (reloaded.CurrentStoryboard != nil || reloaded.CurrentImage != nil) {
+		return reloaded, nil
+	}
+	return production.ComicSection{}, err
+}
+
+func yoloCoverDraftCheckpoint(raw string) (yoloCoverDraft, bool) {
+	var output struct {
+		Draft yoloCoverDraft `json:"cover_storyboard_draft"`
+	}
+	if json.Unmarshal([]byte(raw), &output) != nil {
+		return yoloCoverDraft{}, false
+	}
+	output.Draft.Title = strings.TrimSpace(output.Draft.Title)
+	output.Draft.Storyboard = strings.TrimSpace(output.Draft.Storyboard)
+	return output.Draft, output.Draft.Title != "" && output.Draft.Storyboard != ""
 }
 
 func yoloPageMomentPlan(profile project.PictureBookProfile) (string, string) {
@@ -747,6 +909,13 @@ func yoloPageMomentPlan(profile project.PictureBookProfile) (string, string) {
 }
 
 func (service *Service) runYoloFirstImage(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot) (map[string]any, bool, error) {
+	if snapshot.Version >= 5 {
+		return service.runYoloInitialPageImages(ctx, store, workflow, step, snapshot)
+	}
+	return service.runYoloLegacyFirstImage(ctx, store, workflow, step, snapshot)
+}
+
+func (service *Service) runYoloLegacyFirstImage(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot) (map[string]any, bool, error) {
 	chapterUUID, err := service.workflowOutputUUID(ctx, store, workflow.ID, "comic_sections", "chapter_uuid")
 	if err != nil {
 		return nil, false, err
@@ -780,6 +949,328 @@ func (service *Service) runYoloFirstImage(ctx context.Context, store *project.St
 	return map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID, "image_variant_uuid": section.CurrentImage.UUID, "task_uuid": task.UUID}, false, nil
 }
 
+func (service *Service) runYoloInitialPageImages(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot) (map[string]any, bool, error) {
+	if snapshot.PictureBook == nil {
+		return nil, false, domainError(CodeStateConflict, "Yolo 绘本快照缺失", "v5 workflow 无法判断初始页面范围。", nil)
+	}
+	chapterUUID, err := service.workflowOutputUUID(ctx, store, workflow.ID, "comic_sections", "chapter_uuid")
+	if err != nil {
+		return nil, false, err
+	}
+	bodyUUID, err := service.workflowOutputUUID(ctx, store, workflow.ID, "comic_sections", "body_section_uuid")
+	if err != nil {
+		return nil, false, err
+	}
+	productionService := production.NewService(store, service.hub)
+	body, err := productionService.GetSection(ctx, chapterUUID, bodyUUID)
+	if err != nil {
+		return nil, false, err
+	}
+	if body.PageRole != production.PageRoleBody {
+		return nil, false, domainError(CodeStateConflict, "Yolo 正文页角色冲突", "body_section_uuid 没有引用 body 页面。", nil)
+	}
+	targets := []production.ComicSection{body}
+	var cover production.ComicSection
+	if snapshot.PictureBook.Format != project.PictureBookVertical {
+		coverUUID, outputErr := service.workflowOutputUUID(ctx, store, workflow.ID, "comic_sections", "cover_section_uuid")
+		if outputErr != nil {
+			return nil, false, outputErr
+		}
+		cover, err = productionService.GetSection(ctx, chapterUUID, coverUUID)
+		if err != nil {
+			return nil, false, err
+		}
+		if cover.PageRole != production.PageRoleFrontCover {
+			return nil, false, domainError(CodeStateConflict, "Yolo 封面角色冲突", "cover_section_uuid 没有引用 front_cover 页面。", nil)
+		}
+		targets = []production.ComicSection{cover, body}
+	}
+	missing := make([]string, 0, len(targets))
+	for _, section := range targets {
+		if section.CurrentImage != nil {
+			continue
+		}
+		if section.CurrentStoryboard == nil {
+			return nil, false, domainError(CodeStateConflict, "页面 Storyboard 缺失", "Yolo 初始页面必须有 current storyboard 才能生成图片。", nil)
+		}
+		missing = append(missing, section.UUID)
+	}
+	if len(missing) > 0 {
+		batch, batchErr := service.ensureWorkflowDomainTaskBatch(ctx, store, step, DomainTaskBatchRequest{
+			Kind: "comic_image_generation", ResourceUUIDs: missing, ChapterUUID: chapterUUID,
+			ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel,
+			SelectionProviderUUID: snapshot.SelectionProviderUUID, SelectionModel: snapshot.SelectionModel,
+			IdempotencyKey: step.IdempotencyKey + ":images",
+		}, body.UUID)
+		if batchErr != nil {
+			return nil, false, batchErr
+		}
+		active, failed := yoloInitialImageBatchState(batch.Tasks)
+		if active {
+			return nil, true, nil
+		}
+		if failed != nil {
+			code := strings.TrimSpace(failed.ErrorCode)
+			if code == "" {
+				code = CodeStateConflict
+			}
+			return nil, false, domainError(code, "初始页面图片生成失败", failed.ErrorMessage, nil)
+		}
+	}
+	for index := range targets {
+		targets[index], err = productionService.GetSection(ctx, chapterUUID, targets[index].UUID)
+		if err != nil || targets[index].CurrentImage == nil {
+			return nil, false, domainError(CodeStateConflict, "初始页面图片结果缺失", "图片任务完成后页面没有 current image。", err)
+		}
+	}
+	if len(targets) == 2 {
+		cover, body = targets[0], targets[1]
+	} else {
+		body = targets[0]
+	}
+	output := map[string]any{
+		"chapter_uuid": chapterUUID,
+		"section_uuid": body.UUID, "image_variant_uuid": body.CurrentImage.UUID,
+		"body_section_uuid": body.UUID, "body_image_variant_uuid": body.CurrentImage.UUID,
+	}
+	sectionUUIDs, imageUUIDs := make([]string, 0, len(targets)), make([]string, 0, len(targets))
+	for _, section := range targets {
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+		imageUUIDs = append(imageUUIDs, section.CurrentImage.UUID)
+	}
+	output["section_uuids"], output["image_variant_uuids"] = sectionUUIDs, imageUUIDs
+	checkpoint, _ := service.workflowStepOutput(ctx, store, step.ID)
+	if taskUUIDs := workflowTaskUUIDs(checkpoint, ""); len(taskUUIDs) > 0 {
+		output["task_uuids"] = taskUUIDs
+	}
+	if bySection := workflowTaskUUIDBySection(checkpoint); isUUIDv7(bySection[body.UUID]) {
+		output["task_uuid"] = bySection[body.UUID]
+	}
+	if cover.UUID != "" {
+		output["cover_section_uuid"] = cover.UUID
+		output["cover_image_variant_uuid"] = cover.CurrentImage.UUID
+	}
+	return output, false, nil
+}
+
+func yoloInitialImageBatchState(tasks []DomainTask) (bool, *DomainTask) {
+	active := false
+	var failed *DomainTask
+	for _, task := range tasks {
+		switch task.Status {
+		case "queued", "running", "waiting_for_input":
+			active = true
+		case "completed":
+			// Wait for every task to become terminal before evaluating a
+			// sibling failure, so result handling is independent of batch order.
+		default:
+			if failed == nil {
+				copy := task
+				failed = &copy
+			}
+		}
+	}
+	return active, failed
+}
+
+func (service *Service) workflowStepOutput(ctx context.Context, store *project.Store, stepID int64) (string, error) {
+	var raw string
+	if err := store.DB().WithContext(ctx).Model(&workflowStepRecord{}).Select("output_json").Where("id=?", stepID).Scan(&raw).Error; err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(raw) == "" {
+		raw = "{}"
+	}
+	return raw, nil
+}
+
+func (service *Service) checkpointWorkflowStepOutput(ctx context.Context, store *project.Store, stepID int64, values map[string]any) error {
+	raw, err := service.workflowStepOutput(ctx, store, stepID)
+	if err != nil {
+		return err
+	}
+	var output map[string]any
+	if json.Unmarshal([]byte(raw), &output) != nil || output == nil {
+		output = map[string]any{}
+	}
+	for key, value := range values {
+		output[key] = value
+	}
+	encoded, err := json.Marshal(output)
+	if err != nil {
+		return err
+	}
+	result := store.DB().WithContext(ctx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", stepID).Updates(map[string]any{"output_json": string(encoded), "updated_at": service.now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return domainError(CodeCancelled, "Yolo 步骤已取消", "workflow step 已不再 active，未保存迟到的中间结果。", errWorkflowTransitionInactive)
+	}
+	return nil
+}
+
+func (service *Service) ensureWorkflowDomainTaskBatch(ctx context.Context, store *project.Store, step workflowStepRecord, request DomainTaskBatchRequest, primaryResourceUUID string) (DomainTaskBatch, error) {
+	if request.Invocation.Source == "" {
+		var threadUUID string
+		if err := store.DB().WithContext(ctx).Raw(`SELECT COALESCE(t.uuid,'') FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id WHERE w.id=?`, step.WorkflowID).Scan(&threadUUID).Error; err != nil {
+			return DomainTaskBatch{}, err
+		}
+		request.Invocation = WorkflowStepInvocationContext(threadUUID)
+	}
+	batch, batchErr := service.queue.StartDomainTaskBatch(ctx, store.ProjectUUID(), request)
+	if len(batch.Tasks) == 0 {
+		return batch, batchErr
+	}
+	checkpointCtx := context.WithoutCancel(ctx)
+	raw, err := service.workflowStepOutput(checkpointCtx, store, step.ID)
+	if err != nil {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
+		return DomainTaskBatch{}, err
+	}
+	var output map[string]any
+	if json.Unmarshal([]byte(raw), &output) != nil || output == nil {
+		output = map[string]any{}
+	}
+	taskUUIDs := workflowTaskUUIDs(raw, "")
+	seen := make(map[string]struct{}, len(taskUUIDs)+len(batch.Tasks))
+	for _, taskUUID := range taskUUIDs {
+		seen[taskUUID] = struct{}{}
+	}
+	bySection := workflowTaskUUIDBySection(raw)
+	for _, task := range batch.Tasks {
+		if !isUUIDv7(task.UUID) || !isUUIDv7(task.ResourceUUID) {
+			service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
+			return DomainTaskBatch{}, domainError(CodeStateConflict, "批量图片任务输出无效", "Domain task batch 必须返回公开 UUIDv7。", nil)
+		}
+		if _, exists := seen[task.UUID]; !exists {
+			taskUUIDs = append(taskUUIDs, task.UUID)
+			seen[task.UUID] = struct{}{}
+		}
+		bySection[task.ResourceUUID] = task.UUID
+	}
+	output["task_uuids"] = taskUUIDs
+	output["task_uuid_by_section"] = bySection
+	if primaryTaskUUID := bySection[primaryResourceUUID]; isUUIDv7(primaryTaskUUID) {
+		output["task_uuid"] = primaryTaskUUID
+	}
+	encoded, err := json.Marshal(output)
+	if err != nil {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
+		return DomainTaskBatch{}, err
+	}
+	currentTask, currentResource := "", ""
+	for _, task := range batch.Tasks {
+		if task.Status == "queued" || task.Status == "running" || task.Status == "waiting_for_input" {
+			currentTask, currentResource = task.UUID, task.ResourceUUID
+			if task.ResourceUUID == primaryResourceUUID {
+				break
+			}
+		}
+	}
+	if currentTask == "" {
+		if primaryTaskUUID := bySection[primaryResourceUUID]; isUUIDv7(primaryTaskUUID) {
+			currentTask, currentResource = primaryTaskUUID, primaryResourceUUID
+		} else {
+			last := batch.Tasks[len(batch.Tasks)-1]
+			currentTask, currentResource = last.UUID, last.ResourceUUID
+		}
+	}
+	result := store.DB().WithContext(checkpointCtx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{
+		"task_uuid": currentTask, "resource_uuid": currentResource,
+		"output_json": string(encoded), "updated_at": service.now().UTC(),
+	})
+	if result.Error != nil || result.RowsAffected != 1 {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
+		if result.Error != nil {
+			return DomainTaskBatch{}, result.Error
+		}
+		return DomainTaskBatch{}, domainError(CodeCancelled, "Yolo 步骤已取消", "批量任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
+	}
+	if batchErr != nil {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
+	}
+	return batch, batchErr
+}
+
+func (service *Service) cancelActiveDomainTasks(ctx context.Context, projectUUID, kind string, tasks []DomainTask) {
+	for _, task := range tasks {
+		if task.Status != "queued" && task.Status != "running" && task.Status != "waiting_for_input" {
+			continue
+		}
+		_ = service.queue.CancelDomainTask(ctx, projectUUID, kind, task.UUID)
+	}
+}
+
+func workflowTaskUUIDs(raw, fallback string) []string {
+	var output struct {
+		TaskUUID  string   `json:"task_uuid"`
+		TaskUUIDs []string `json:"task_uuids"`
+	}
+	_ = json.Unmarshal([]byte(raw), &output)
+	values := append([]string(nil), output.TaskUUIDs...)
+	values = append(values, output.TaskUUID, fallback)
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if !isUUIDv7(value) {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func appendUniqueTaskUUID(values []string, candidate string) []string {
+	if !isUUIDv7(candidate) {
+		return values
+	}
+	for _, value := range values {
+		if value == candidate {
+			return values
+		}
+	}
+	return append(values, candidate)
+}
+
+func yoloInitialImageSectionUUIDs(snapshot yoloSnapshot, comicOutput string) []string {
+	var output struct {
+		CoverSectionUUID string `json:"cover_section_uuid"`
+		BodySectionUUID  string `json:"body_section_uuid"`
+		FirstSectionUUID string `json:"first_section_uuid"`
+	}
+	_ = json.Unmarshal([]byte(comicOutput), &output)
+	if !isUUIDv7(output.BodySectionUUID) {
+		output.BodySectionUUID = output.FirstSectionUUID
+	}
+	result := make([]string, 0, 2)
+	if snapshot.PictureBook != nil && snapshot.PictureBook.Format != project.PictureBookVertical && isUUIDv7(output.CoverSectionUUID) {
+		result = append(result, output.CoverSectionUUID)
+	}
+	if isUUIDv7(output.BodySectionUUID) {
+		result = append(result, output.BodySectionUUID)
+	}
+	return result
+}
+
+func workflowTaskUUIDBySection(raw string) map[string]string {
+	var output struct {
+		BySection map[string]string `json:"task_uuid_by_section"`
+	}
+	_ = json.Unmarshal([]byte(raw), &output)
+	result := make(map[string]string, len(output.BySection))
+	for sectionUUID, taskUUID := range output.BySection {
+		if isUUIDv7(sectionUUID) && isUUIDv7(taskUUID) {
+			result[sectionUUID] = taskUUID
+		}
+	}
+	return result
+}
+
 func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *project.Store, step workflowStepRecord, request DomainTaskRequest) (DomainTask, error) {
 	if request.Invocation.Source == "" {
 		var threadUUID string
@@ -788,8 +1279,13 @@ func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *pro
 		}
 		request.Invocation = WorkflowStepInvocationContext(threadUUID)
 	}
+	checkpointCtx := context.WithoutCancel(ctx)
+	raw, loadErr := service.workflowStepOutput(ctx, store, step.ID)
+	if loadErr != nil {
+		return DomainTask{}, loadErr
+	}
 	var output map[string]any
-	_ = json.Unmarshal([]byte(step.OutputJSON), &output)
+	_ = json.Unmarshal([]byte(raw), &output)
 	taskUUID, _ := output[request.IdempotencyKey].(string)
 	if taskUUID != "" && isUUIDv7(taskUUID) {
 		return service.queue.GetDomainTask(ctx, store.ProjectUUID(), request.Kind, taskUUID)
@@ -798,14 +1294,31 @@ func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *pro
 	if err != nil {
 		return DomainTask{}, err
 	}
+	if !isUUIDv7(task.UUID) {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, []DomainTask{task})
+		return DomainTask{}, domainError(CodeStateConflict, "Domain task 输出无效", "任务必须返回公开 UUIDv7。", nil)
+	}
+	// Reload before merging so a duplicate worker cannot erase an earlier
+	// checkpoint written after this invocation loaded its stale step record.
+	raw, loadErr = service.workflowStepOutput(checkpointCtx, store, step.ID)
+	if loadErr != nil {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, []DomainTask{task})
+		return DomainTask{}, loadErr
+	}
+	_ = json.Unmarshal([]byte(raw), &output)
 	if output == nil {
 		output = map[string]any{}
 	}
 	output[request.IdempotencyKey] = task.UUID
 	encoded, _ := json.Marshal(output)
 	now := service.now().UTC()
-	if err := store.DB().WithContext(ctx).Model(&workflowStepRecord{}).Where("id=?", step.ID).Updates(map[string]any{"task_uuid": task.UUID, "resource_uuid": request.ResourceUUID, "output_json": string(encoded), "updated_at": now}).Error; err != nil {
-		return DomainTask{}, err
+	result := store.DB().WithContext(checkpointCtx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{"task_uuid": task.UUID, "resource_uuid": request.ResourceUUID, "output_json": string(encoded), "updated_at": now})
+	if result.Error != nil || result.RowsAffected != 1 {
+		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, []DomainTask{task})
+		if result.Error != nil {
+			return DomainTask{}, result.Error
+		}
+		return DomainTask{}, domainError(CodeCancelled, "Yolo 步骤已取消", "任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
 	}
 	return task, nil
 }
@@ -932,8 +1445,18 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	defer tx.Rollback()
 	now := service.now().UTC()
 	encoded, _ := json.Marshal(output)
-	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='completed',output_json=?,completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=?`, string(encoded), now, now, step.ID); err != nil {
+	result, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='completed',output_json=?,completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='running'`, string(encoded), now, now, step.ID)
+	if err != nil {
 		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		// Cancellation or another worker won the terminal transition. Roll the
+		// transaction back and do not queue a downstream step.
+		return nil
 	}
 	if err := appendWorkflowEventTx(ctx, tx, workflow.ID, &step.ID, "step_completed", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": "completed", "resource_uuid": publicOutputResource(output)}, now); err != nil {
 		return err
@@ -941,8 +1464,16 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	var next workflowStepRecord
 	err = tx.QueryRowContext(ctx, `SELECT id,uuid,workflow_id,step_key,position,status,idempotency_key,river_job_id,task_uuid,resource_uuid,input_json,output_json,error_code,error_message,started_at,completed_at,created_at,updated_at FROM workflow_steps WHERE workflow_id=? AND position>? ORDER BY position LIMIT 1`, workflow.ID, step.Position).Scan(&next.ID, &next.UUID, &next.WorkflowID, &next.StepKey, &next.Position, &next.Status, &next.IdempotencyKey, &next.RiverJobID, &next.TaskUUID, &next.ResourceUUID, &next.InputJSON, &next.OutputJSON, &next.ErrorCode, &next.ErrorMessage, &next.StartedAt, &next.CompletedAt, &next.CreatedAt, &next.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key='',completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=?`, now, now, workflow.ID); err != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key='',completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='running'`, now, now, workflow.ID)
+		if err != nil {
 			return err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows != 1 {
+			return domainError(CodeStateConflict, "Yolo 完成状态冲突", "workflow 已不再 running，未提交步骤结果。", nil)
 		}
 		if workflow.ThreadID != nil {
 			completionMessage, err := yoloCompletionMessage(output)
@@ -969,8 +1500,16 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	} else if err != nil {
 		return err
 	} else {
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',updated_at=? WHERE id=? AND status='pending'`, now, next.ID); err != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',updated_at=? WHERE id=? AND status='pending'`, now, next.ID)
+		if err != nil {
 			return err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows != 1 {
+			return domainError(CodeStateConflict, "Yolo 下一步骤状态冲突", "下一个 workflow step 已不再 pending，未重复入队。", nil)
 		}
 		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: next.UUID, ThreadUUID: threadUUID})
 		if err != nil {
@@ -979,8 +1518,16 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=? WHERE id=?`, jobID, next.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET current_step_key=?,updated_at=? WHERE id=?`, next.StepKey, now, workflow.ID); err != nil {
+		result, err = tx.ExecContext(ctx, `UPDATE workflows SET current_step_key=?,updated_at=? WHERE id=? AND status='running'`, next.StepKey, now, workflow.ID)
+		if err != nil {
 			return err
+		}
+		rows, err = result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows != 1 {
+			return domainError(CodeStateConflict, "Yolo Workflow 状态冲突", "workflow 已不再 running，未推进下一步骤。", nil)
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -996,16 +1543,37 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 
 func yoloCompletionMessage(output map[string]any) (string, error) {
 	chapterUUID, _ := output["chapter_uuid"].(string)
-	sectionUUID, _ := output["section_uuid"].(string)
-	if !isCanonicalUUIDv7(chapterUUID) || !isCanonicalUUIDv7(sectionUUID) {
+	bodyUUID, _ := output["body_section_uuid"].(string)
+	if bodyUUID == "" {
+		bodyUUID, _ = output["section_uuid"].(string)
+	}
+	if !isCanonicalUUIDv7(chapterUUID) || !isCanonicalUUIDv7(bodyUUID) {
 		return "", domainError(CodeStateConflict, "Yolo 完成资源无效", "最终步骤没有返回规范的 Chapter 与 Section UUIDv7。", nil)
 	}
+	if coverUUID, _ := output["cover_section_uuid"].(string); coverUUID != "" {
+		if !isCanonicalUUIDv7(coverUUID) {
+			return "", domainError(CodeStateConflict, "Yolo 封面资源无效", "最终步骤没有返回规范的封面 Section UUIDv7。", nil)
+		}
+		return fmt.Sprintf(
+			"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[页面脚本](@project/chapters/%s)、[封面](@project/chapters/%s/sections/%s)和[正文第一页](@project/chapters/%s/sections/%s)均已就绪。",
+			chapterUUID, chapterUUID, chapterUUID, coverUUID, chapterUUID, bodyUUID,
+		), nil
+	}
+	if bodyImageUUID, _ := output["body_image_variant_uuid"].(string); bodyImageUUID != "" {
+		if !isCanonicalUUIDv7(bodyImageUUID) {
+			return "", domainError(CodeStateConflict, "Yolo 正文页图片无效", "最终步骤没有返回规范的正文 Image Variant UUIDv7。", nil)
+		}
+		return fmt.Sprintf(
+			"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[画面段落](@project/chapters/%s)和[首个画面段落](@project/chapters/%s/sections/%s)均已就绪。",
+			chapterUUID, chapterUUID, chapterUUID, bodyUUID,
+		), nil
+	}
 	return fmt.Sprintf(
-		"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[六个 Comic Sections](@project/chapters/%s)和[首图](@project/chapters/%s/sections/%s)均已就绪。",
+		"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[Comic Sections](@project/chapters/%s)和[首图](@project/chapters/%s/sections/%s)均已就绪。",
 		chapterUUID,
 		chapterUUID,
 		chapterUUID,
-		sectionUUID,
+		bodyUUID,
 	), nil
 }
 
@@ -1024,21 +1592,37 @@ func (service *Service) failWorkflowStep(ctx context.Context, store *project.Sto
 		message = "Yolo 步骤执行失败。"
 	}
 	now := service.now().UTC()
+	transitioned := false
 	err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&workflowStepRecord{}).Where("id=?", step.ID).Updates(map[string]any{"status": "failed", "error_code": code, "error_message": message, "completed_at": now, "updated_at": now}).Error; err != nil {
-			return err
+		result := tx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting','interrupted')", step.ID).Updates(map[string]any{"status": "failed", "error_code": code, "error_message": message, "completed_at": now, "updated_at": now})
+		if result.Error != nil {
+			return result.Error
 		}
-		if err := tx.Model(&workflowRecord{}).Where("id=?", workflow.ID).Updates(map[string]any{"status": WorkflowFailed, "error_code": code, "error_message": message, "completed_at": now, "updated_at": now}).Error; err != nil {
-			return err
+		if result.RowsAffected != 1 {
+			return errWorkflowTransitionInactive
+		}
+		result = tx.Model(&workflowRecord{}).Where("id=? AND status IN ('queued','running','interrupted')", workflow.ID).Updates(map[string]any{"status": WorkflowFailed, "error_code": code, "error_message": message, "completed_at": now, "updated_at": now})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return errWorkflowTransitionInactive
 		}
 		if workflow.ThreadID != nil {
 			if _, err := recomputeThreadStatusGormTx(ctx, tx, *workflow.ThreadID, now); err != nil {
 				return err
 			}
 		}
-		return appendWorkflowEventGormTx(ctx, tx, workflow.ID, &step.ID, "step_failed", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": WorkflowFailed, "error_code": code}, now)
+		if err := appendWorkflowEventGormTx(ctx, tx, workflow.ID, &step.ID, "step_failed", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": WorkflowFailed, "error_code": code}, now); err != nil {
+			return err
+		}
+		transitioned = true
+		return nil
 	})
-	if err == nil {
+	if errors.Is(err, errWorkflowTransitionInactive) {
+		return nil
+	}
+	if err == nil && transitioned {
 		service.broadcastWorkflow(store.ProjectUUID(), Workflow{UUID: workflow.UUID, ThreadUUID: threadUUID, Status: WorkflowFailed, ErrorCode: code, ErrorMessage: message}, "workflow:failed", step.UUID)
 	}
 	return err
@@ -1081,7 +1665,8 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 		return result, getErr
 	}
 	var riverJobID int64
-	var currentTaskUUID, currentTaskKind, workUUID string
+	var currentTaskUUIDs []string
+	var currentTaskKind, workUUID string
 	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		now := service.now().UTC()
 		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -1089,16 +1674,84 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 			if err := tx.Where("uuid=?", workflowUUID).First(&row).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&row).Updates(map[string]any{"status": WorkflowCancelled, "cancel_requested_at": now, "completed_at": now, "updated_at": now, "error_code": CodeCancelled, "error_message": "用户已取消。"}).Error; err != nil {
-				return err
+			result := tx.Model(&workflowRecord{}).Where("id=? AND status NOT IN ('completed','cancelled')", row.ID).Updates(map[string]any{"status": WorkflowCancelled, "cancel_requested_at": now, "completed_at": now, "updated_at": now, "error_code": CodeCancelled, "error_message": "用户已取消。"})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return errWorkflowTransitionInactive
 			}
 			var step workflowStepRecord
-			_ = tx.Where("workflow_id=? AND status IN ('queued','running','waiting')", row.ID).Order("position").First(&step).Error
-			if step.ID != 0 {
-				riverJobID, currentTaskUUID, workUUID = valueInt64(step.RiverJobID), step.TaskUUID, step.UUID
-				currentTaskKind = yoloStepTaskKind(step.StepKey)
+			if row.CurrentStepKey != "" {
+				_ = tx.Where("workflow_id=? AND step_key=? AND status<>'completed'", row.ID, row.CurrentStepKey).First(&step).Error
 			}
-			if err := tx.Model(&workflowStepRecord{}).Where("workflow_id=? AND status IN ('pending','queued','running','waiting')", row.ID).Updates(map[string]any{"status": "cancelled", "error_code": CodeCancelled, "error_message": "用户已取消。", "completed_at": now, "updated_at": now}).Error; err != nil {
+			if step.ID == 0 {
+				_ = tx.Where("workflow_id=? AND status<>'completed'", row.ID).Order("position DESC").First(&step).Error
+			}
+			if step.ID != 0 {
+				riverJobID, workUUID = valueInt64(step.RiverJobID), step.UUID
+				currentTaskUUIDs = workflowTaskUUIDs(step.OutputJSON, step.TaskUUID)
+				currentTaskKind = yoloStepTaskKind(step.StepKey)
+				if row.Kind == WorkflowYolo && step.StepKey == "first_section_image" {
+					var snapshot yoloSnapshot
+					if json.Unmarshal([]byte(row.InputSnapshot), &snapshot) == nil && snapshot.Version >= 5 {
+						var comicStep workflowStepRecord
+						if err := tx.Where("workflow_id=? AND step_key='comic_sections' AND status='completed'", row.ID).First(&comicStep).Error; err == nil {
+							sectionUUIDs := yoloInitialImageSectionUUIDs(snapshot, comicStep.OutputJSON)
+							keys := make([]string, 0, len(sectionUUIDs))
+							for _, sectionUUID := range sectionUUIDs {
+								keys = append(keys, ComicImageBatchTaskKey(step.IdempotencyKey+":images", sectionUUID))
+							}
+							if len(keys) > 0 {
+								var discovered []struct {
+									UUID         string
+									ResourceUUID string `gorm:"column:resource_uuid"`
+									Status       string
+								}
+								if err := tx.Table("production_task_runs").Select("uuid,resource_uuid,status").Where("project_id=? AND kind='comic_image_generation' AND idempotency_key IN ?", row.ProjectID, keys).Scan(&discovered).Error; err != nil {
+									return err
+								}
+								taskUUIDs := workflowTaskUUIDs(step.OutputJSON, step.TaskUUID)
+								bySection := workflowTaskUUIDBySection(step.OutputJSON)
+								for _, task := range discovered {
+									taskUUIDs = appendUniqueTaskUUID(taskUUIDs, task.UUID)
+									if isUUIDv7(task.ResourceUUID) && isUUIDv7(task.UUID) {
+										bySection[task.ResourceUUID] = task.UUID
+									}
+									if task.Status != "completed" && task.Status != "cancelled" {
+										currentTaskUUIDs = appendUniqueTaskUUID(currentTaskUUIDs, task.UUID)
+									}
+								}
+								if len(discovered) > 0 {
+									var output map[string]any
+									if json.Unmarshal([]byte(step.OutputJSON), &output) != nil || output == nil {
+										output = map[string]any{}
+									}
+									output["task_uuids"] = taskUUIDs
+									output["task_uuid_by_section"] = bySection
+									primaryResourceUUID := sectionUUIDs[len(sectionUUIDs)-1]
+									primaryTaskUUID := bySection[primaryResourceUUID]
+									if isUUIDv7(primaryTaskUUID) {
+										output["task_uuid"] = primaryTaskUUID
+									}
+									encoded, err := json.Marshal(output)
+									if err != nil {
+										return err
+									}
+									updates := map[string]any{"output_json": string(encoded), "updated_at": now}
+									if isUUIDv7(primaryTaskUUID) {
+										updates["task_uuid"], updates["resource_uuid"] = primaryTaskUUID, primaryResourceUUID
+									}
+									if err := tx.Model(&workflowStepRecord{}).Where("id=?", step.ID).Updates(updates).Error; err != nil {
+										return err
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			if err := tx.Model(&workflowStepRecord{}).Where("workflow_id=? AND status IN ('pending','queued','running','waiting','failed','interrupted')", row.ID).Updates(map[string]any{"status": "cancelled", "error_code": CodeCancelled, "error_message": "用户已取消。", "completed_at": now, "updated_at": now}).Error; err != nil {
 				return err
 			}
 			if row.ThreadID != nil {
@@ -1109,6 +1762,9 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 			return appendWorkflowEventGormTx(ctx, tx, row.ID, nil, "workflow_cancelled", map[string]any{"project_uuid": projectUUID, "workflow_uuid": row.UUID, "status": WorkflowCancelled}, now)
 		})
 	})
+	if errors.Is(err, errWorkflowTransitionInactive) {
+		return service.GetWorkflow(ctx, projectUUID, workflowUUID)
+	}
 	if err != nil {
 		return Workflow{}, err
 	}
@@ -1118,8 +1774,10 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 	if riverJobID > 0 {
 		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, riverJobID)
 	}
-	if currentTaskUUID != "" && currentTaskKind != "" {
-		_ = service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, currentTaskKind, currentTaskUUID)
+	for _, taskUUID := range currentTaskUUIDs {
+		if currentTaskKind != "" {
+			_ = service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, currentTaskKind, taskUUID)
+		}
 	}
 	result, err := service.GetWorkflow(ctx, projectUUID, workflowUUID)
 	if err == nil {
@@ -1193,14 +1851,16 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 			continue
 		}
 		kind := yoloStepTaskKind(step.StepKey)
-		if step.TaskUUID != "" && kind != "" {
-			task, taskErr := service.queue.GetDomainTask(ctx, projectUUID, kind, step.TaskUUID)
-			if taskErr != nil {
-				return Workflow{}, taskErr
-			}
-			if task.Status == "failed" || task.Status == "cancelled" || task.Status == "interrupted" {
-				if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, kind, step.TaskUUID); taskErr != nil {
+		if kind != "" {
+			for _, taskUUID := range workflowTaskUUIDs(string(step.Output), step.TaskUUID) {
+				task, taskErr := service.queue.GetDomainTask(ctx, projectUUID, kind, taskUUID)
+				if taskErr != nil {
 					return Workflow{}, taskErr
+				}
+				if task.Status == "failed" || task.Status == "cancelled" || task.Status == "interrupted" {
+					if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, kind, taskUUID); taskErr != nil {
+						return Workflow{}, taskErr
+					}
 				}
 			}
 		}

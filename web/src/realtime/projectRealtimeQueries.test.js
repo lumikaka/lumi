@@ -65,6 +65,17 @@ test('comic export cleanup refreshes REST facts without polling', () => {
   assert.equal(result.invalidateAll, false)
   assert.ok(keyNames(result).includes('comic-exports'))
   assert.ok(keyNames(result).includes('production-tasks'))
+  assert.ok(result.queryKeys.some((key) => key.length === 1 && key[0] === 'recent-projects'))
+})
+
+test('comic resource changes reread recent project covers through REST', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'production:resource_changed', {
+    resource_uuid: 'cover-section-uuid',
+    kind: 'comic_image_generation',
+  })
+  assert.equal(result.invalidateAll, false)
+  assert.ok(keyNames(result).includes('comic-sections'))
+  assert.ok(result.queryKeys.some((key) => key.length === 1 && key[0] === 'recent-projects'))
 })
 
 test('project setup changes reread setup and project facts without trusting payload state', () => {

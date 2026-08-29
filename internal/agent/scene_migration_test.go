@@ -59,7 +59,7 @@ func TestStoryboardReferenceProjectAPIModeReadsAndReplacesCompleteStoryboard(t *
 		if len(request.Messages) == 0 || strings.Contains(request.Messages[0].Content, section.UUID) {
 			t.Fatalf("comic section reference leaked into system prompt: %+v", request.Messages)
 		}
-		if !messagesContain(request.Messages[1:], section.UUID) || !messagesContain(request.Messages[1:], "current_turn_references") {
+		if !messagesContain(request.Messages[1:], section.UUID) || !messagesContain(request.Messages[1:], "current_turn_references") || !messagesContain(request.Messages[1:], `"page_role":"body"`) {
 			t.Fatalf("current Turn did not receive comic section reference data: %+v", request.Messages)
 		}
 		switch call {
@@ -67,18 +67,18 @@ func TestStoryboardReferenceProjectAPIModeReadsAndReplacesCompleteStoryboard(t *
 			arguments, _ := json.Marshal(map[string]any{
 				"method":          "GET",
 				"url":             "/api/v1/projects/" + harness.project.UUID + "/chapters/" + chapter.UUID + "/comic-sections/" + section.UUID,
-				"response_filter": ".data | {uuid,title,current_storyboard,revision}",
+				"response_filter": ".data | {uuid,page_role,title,current_storyboard,revision}",
 			})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-read", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 2:
-			if !messagesContain(request.Messages, "# 原始 Storyboard") || !messagesContain(request.Messages, `"revision"`) {
+			if !messagesContain(request.Messages, "# 原始 Storyboard") || !messagesContain(request.Messages, `"revision"`) || !messagesContain(request.Messages, `"page_role":"body"`) {
 				t.Fatalf("write was selected before reading full fact state: %+v", request.Messages)
 			}
 			arguments, _ := json.Marshal(map[string]any{
 				"method":          "POST",
 				"url":             "/api/v1/projects/" + harness.project.UUID + "/chapters/" + chapter.UUID + "/comic-sections/" + section.UUID + "/storyboard-variants",
 				"request_body":    map[string]any{"content_md": newContent, "expected_revision": section.Revision},
-				"response_filter": ".data | {uuid,revision}",
+				"response_filter": ".data | {uuid,page_role,revision}",
 			})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "storyboard-write", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		default:

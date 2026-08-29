@@ -42,8 +42,39 @@ JOIN comic_image_variants ON comic_image_variants.id = comic_sections.current_im
 JOIN files ON files.id = comic_image_variants.file_id AND files.project_id = projects.id AND files.deleted_at IS NULL
 JOIN file_objects AS objects ON objects.id = files.file_object_id AND objects.project_id = projects.id AND objects.state = 'ready'
 WHERE projects.uuid = ?
+  AND comic_sections.page_role IN ('front_cover', 'body')
+ORDER BY chapters.sort_order, chapters.id,
+		 CASE comic_sections.page_role WHEN 'front_cover' THEN 0 ELSE 1 END,
+		 comic_sections.section_no, comic_sections.id
+LIMIT 1`
+
+// Recent-project thumbnails are read before a project is opened, so the
+// project database may still be on the schema immediately before page roles.
+// In that schema every comic section is effectively a body page.
+const recentProjectLegacyCoverQuery = `
+SELECT files.uuid, objects.key_path, objects.mime_type, objects.byte_size, objects.sha256,
+       COALESCE(files.original_filename, files.display_name, '')
+FROM projects
+JOIN chapters ON chapters.project_id = projects.id AND chapters.deleted_at IS NULL
+JOIN chapter_comic_states ON chapter_comic_states.chapter_id = chapters.id
+JOIN comic_sections ON comic_sections.chapter_comic_state_id = chapter_comic_states.id AND comic_sections.deleted_at IS NULL
+JOIN comic_image_variants ON comic_image_variants.id = comic_sections.current_image_variant_id
+JOIN files ON files.id = comic_image_variants.file_id AND files.project_id = projects.id AND files.deleted_at IS NULL
+JOIN file_objects AS objects ON objects.id = files.file_object_id AND objects.project_id = projects.id AND objects.state = 'ready'
+WHERE projects.uuid = ?
 ORDER BY chapters.sort_order, chapters.id, comic_sections.section_no, comic_sections.id
 LIMIT 1`
+
+func recentProjectCoverQueryForSchema(ctx context.Context, db *sql.DB) (string, error) {
+	var pageRoleColumns int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('comic_sections') WHERE name='page_role'`).Scan(&pageRoleColumns); err != nil {
+		return "", err
+	}
+	if pageRoleColumns == 0 {
+		return recentProjectLegacyCoverQuery, nil
+	}
+	return recentProjectCoverQuery, nil
+}
 
 func loadRecentProjectCoverReference(ctx context.Context, projectUUID, root string) (recentProjectCoverReference, error) {
 	if !isUUIDv7(projectUUID) {
@@ -61,8 +92,12 @@ func loadRecentProjectCoverReference(ctx context.Context, projectUUID, root stri
 		return recentProjectCoverReference{}, projectError(CodeInvalidProject, "无法打开项目封面", "project.sqlite 不是可读取的 SQLite 数据库。", err)
 	}
 	defer db.Close()
+	query, err := recentProjectCoverQueryForSchema(ctx, db)
+	if err != nil {
+		return recentProjectCoverReference{}, projectError(CodeInvalidProject, "无法读取项目封面", "项目数据库中的绘本画面结构不可读取。", err)
+	}
 	var cover recentProjectCoverReference
-	if err := db.QueryRowContext(ctx, recentProjectCoverQuery, projectUUID).Scan(
+	if err := db.QueryRowContext(ctx, query, projectUUID).Scan(
 		&cover.AssetUUID,
 		&cover.KeyPath,
 		&cover.MIMEType,

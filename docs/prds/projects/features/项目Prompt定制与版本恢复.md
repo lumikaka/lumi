@@ -10,6 +10,8 @@ Agent 活动 Catalog 只包含通用 `base` 与 `conversation_summary`。新 `pr
 
 `project_prompt_versions` 以 `(project_id, prompt_group, prompt_key, version_no)` 唯一保存不可变版本。每条记录含公开 UUIDv7、内容 hash、来源类型及可选 `restored_from_version_id` 内部关联；当前值由 Catalog 默认值与最新项目版本投影得出。
 
+Chapter Prompt group 包含 `cover_storyboard`、`cover_before_image` 与 `back_cover_before_image`：普通绘本 YOLO 冻结前者生成封面脚本，Section 图片任务依冻结的 `page_role` 在 `cover_before_image|before_image|back_cover_before_image` 中选择角色规则。`vertical_strip` 不使用特殊页 Prompt。
+
 Scene-era Agent Prompt key 已退出活动 Catalog。既有 `project_prompt_versions` 行不删除、不改写，只作为历史记录保留；已有 v2 或 legacy typed Run 从 User Item 中冻结的 Prompt snapshot 恢复，新的 Turn 不得选择旧协议或 Scene Prompt。
 
 ## api

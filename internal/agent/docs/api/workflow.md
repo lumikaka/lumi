@@ -12,6 +12,6 @@
 
 服务端按可信 `creation_session_uuid` 绑定幂等键。相同 bootstrap Turn 的重复 Tool Call、恢复或应用重启只返回同一个 Workflow，不创建第二个 Workflow 或 Thread。
 
-YOLO 固定执行 `project_initialization → story → story_profile → premise → comic_sections → first_section_image`，只创建或复用 `vol01.ch01`，生成 1～6 个 Comic Sections，并只为第一个 Section 生成漫画成品图。Premise 的 Setting Image 是既有步骤的一部分。
+YOLO 固定完成项目初始化、故事、Story Profile、Premise、正文页规划和初始页面图片，只创建或复用 `vol01.ch01`。它生成 1～6 个 `body` Comic Sections：普通绘本还会创建一个 `front_cover`，并默认为封面和第一个正文页生成成品图；`vertical_strip` 不创建封面，只为第一个画面段落生成成品图。Premise 的 Setting Image 仍是既有步骤的一部分。
 
 创建成功即代表“已排队”，不是全部创作已经完成。回复中使用 Tool Result 的 `ui_ref` 后立即结束当前 Turn；不得轮询状态、等待终态或手工模拟任何步骤。失败时报告公开错误并停止，后续恢复使用既有 Workflow retry，不要再次生产一个新 Workflow。

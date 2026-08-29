@@ -53,9 +53,9 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 	return []agentAPIDocDefinition{
 		{Path: chapterDocPath, Description: "Chapter、正文版本、导入、回收站与恢复。"},
 		{Path: comicExportDocPath, Description: "Comic Export readiness、创建与结果列表。"},
-		{Path: comicSectionDocPath, Description: "单个 Comic Section 详情。"},
+		{Path: comicSectionDocPath, Description: "单个 Comic Section 的页面角色与详情。"},
 		{Path: comicSnapshotDocPath, Description: "Comic Snapshot 列表、详情与恢复。"},
-		{Path: comicDocPath, Description: "Comic 状态、Section 集合与排序。"},
+		{Path: comicDocPath, Description: "Comic 状态、封面/正文页/封底集合与排序。"},
 		{Path: generationDocPath, Description: "Story、Chapter、Premise 与 Comic 生成入口。"},
 		{Path: premiseAssetDocPath, Description: "Premise Asset、图片 variant 与生命周期。"},
 		{Path: premiseDocPath, Description: "Premise、来源与 Setting Image。"},
@@ -132,7 +132,7 @@ func agentGuideDefinitions() []agentGuideDefinition {
 			Path:          agentDocBasePath + "/guides/生成漫画分镜.md",
 		},
 		{
-			Description:   "创建、修改、排序或删除漫画段落。",
+			Description:   "创建、修改、排序或删除封面、正文页、封底或画面段落。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID；修改或删除时需要 Section UUID 与最新 revision。",
 			Path:          agentDocBasePath + "/guides/管理漫画段落.md",

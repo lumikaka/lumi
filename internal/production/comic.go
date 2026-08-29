@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lumi/internal/files"
+	"lumi/internal/project"
 
 	"gorm.io/gorm"
 )
@@ -34,6 +35,7 @@ type comicSectionRecord struct {
 	UUID                                              string
 	ChapterComicStateID, ActorID                      int64
 	SectionNo                                         int
+	PageRole                                          string
 	Title, DescriptionMD                              string
 	CurrentStoryboardVariantID, CurrentImageVariantID *int64
 	Revision                                          int64
@@ -42,6 +44,27 @@ type comicSectionRecord struct {
 }
 
 func (comicSectionRecord) TableName() string { return "comic_sections" }
+
+func (service *Service) normalizePageRole(value string, defaultBody bool) (string, error) {
+	role := strings.ToLower(strings.TrimSpace(value))
+	if role == "" && defaultBody {
+		role = PageRoleBody
+	}
+	switch role {
+	case PageRoleFrontCover, PageRoleBody, PageRoleBackCover:
+	default:
+		return "", domainError(CodeValidation, "页面角色无效", "page_role 只支持 front_cover、body 或 back_cover。", nil)
+	}
+	if profile := service.store.OptionalPictureBookProfile(); profile != nil && profile.Format == project.PictureBookVertical && role != PageRoleBody {
+		return "", domainError(CodeValidation, "条漫不支持封面或封底页面", "vertical_strip 项目的 page_role 只能是 body。", nil)
+	}
+	return role, nil
+}
+
+func (service *Service) protectsLastBodyPage() bool {
+	profile := service.store.OptionalPictureBookProfile()
+	return profile == nil || profile.Format != project.PictureBookVertical
+}
 
 type storyboardRecord struct {
 	ID                      int64 `gorm:"primaryKey"`
@@ -160,6 +183,24 @@ func (service *Service) ListSections(ctx context.Context, chapterUUID string) ([
 	return items, nil
 }
 
+func sectionsWithPageRole(sections []ComicSection, pageRole string) []ComicSection {
+	items := make([]ComicSection, 0, len(sections))
+	for _, section := range sections {
+		if section.PageRole == pageRole {
+			items = append(items, section)
+		}
+	}
+	return items
+}
+
+func (service *Service) listSectionsByPageRole(ctx context.Context, chapterUUID, pageRole string) ([]ComicSection, error) {
+	sections, err := service.ListSections(ctx, chapterUUID)
+	if err != nil {
+		return nil, err
+	}
+	return sectionsWithPageRole(sections, pageRole), nil
+}
+
 func (service *Service) GetSection(ctx context.Context, chapterUUID, sectionUUID string) (ComicSection, error) {
 	state, chapter, err := service.ensureComicState(ctx, service.store.DB(), chapterUUID)
 	if err != nil {
@@ -176,6 +217,10 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 	title := strings.TrimSpace(input.Title)
 	description := strings.TrimSpace(input.DescriptionMD)
 	storyboard := strings.TrimSpace(input.StoryboardMD)
+	pageRole, err := service.normalizePageRole(input.PageRole, true)
+	if err != nil {
+		return ComicSection{}, err
+	}
 	if len([]rune(title)) > 160 || len([]rune(description)) > 262144 || len([]rune(storyboard)) > 262144 {
 		return ComicSection{}, domainError(CodeValidation, "Section 内容过长", "title 最多 160 字符，description_md 和 storyboard_md 最多 262144 字符。", nil)
 	}
@@ -195,12 +240,20 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 		if err != nil {
 			return err
 		}
+		if service.protectsLastBodyPage() && pageRole != PageRoleBody {
+			if err := ensureBodyPageExistsTx(tx, state.ID); err != nil {
+				return err
+			}
+		}
 		var max int
 		if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Select("COALESCE(MAX(section_no),0)").Scan(&max).Error; err != nil {
 			return err
 		}
+		if err := ensureSpecialPageRoleAvailableTx(tx, state.ID, pageRole, 0); err != nil {
+			return err
+		}
 		now := service.now().UTC()
-		row = comicSectionRecord{UUID: uuid, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: max + 1, Title: title, DescriptionMD: description, CreatedAt: now, UpdatedAt: now}
+		row = comicSectionRecord{UUID: uuid, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: max + 1, PageRole: pageRole, Title: title, DescriptionMD: description, CreatedAt: now, UpdatedAt: now}
 		if err := tx.Create(&row).Error; err != nil {
 			return conflictErr(err)
 		}
@@ -214,10 +267,16 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 				return err
 			}
 		}
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		if err := tx.First(&row, row.ID).Error; err != nil {
+			return err
+		}
 		if err := updateComicStateTx(tx, state.ID, now); err != nil {
 			return err
 		}
-		if err := appendSectionEvent(tx, row.ID, "section_created", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo}, now); err != nil {
+		if err := appendSectionEvent(tx, row.ID, "section_created", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "page_role": row.PageRole}, now); err != nil {
 			return err
 		}
 		return service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "section_created")
@@ -239,11 +298,11 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 	if err := normalizeGeneratedSections(generated); err != nil {
 		return nil, err
 	}
-	var existing []ComicSection
-	existing, err := service.ListSections(ctx, chapterUUID)
+	allSections, err := service.ListSections(ctx, chapterUUID)
 	if err != nil {
 		return nil, err
 	}
+	existing := sectionsWithPageRole(allSections, PageRoleBody)
 	if len(existing) > 0 {
 		if len(existing) != len(generated) {
 			state, stateErr := service.GetComicState(ctx, chapterUUID)
@@ -274,12 +333,17 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 			return err
 		}
 		now := service.now().UTC()
+		var max int
+		if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Select("COALESCE(MAX(section_no),0)").Scan(&max).Error; err != nil {
+			return err
+		}
+		created := make([]comicSectionRecord, 0, len(generated))
 		for index, item := range generated {
 			sectionUUID, uuidErr := newUUIDv7()
 			if uuidErr != nil {
 				return uuidErr
 			}
-			row := comicSectionRecord{UUID: sectionUUID, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: index + 1, Title: item.Title, CreatedAt: now, UpdatedAt: now}
+			row := comicSectionRecord{UUID: sectionUUID, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: max + index + 1, PageRole: PageRoleBody, Title: item.Title, CreatedAt: now, UpdatedAt: now}
 			if err := tx.Create(&row).Error; err != nil {
 				return err
 			}
@@ -290,7 +354,16 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 			if err := tx.Model(&row).Update("current_storyboard_variant_id", variant.ID).Error; err != nil {
 				return err
 			}
-			if err := appendSectionEvent(tx, row.ID, "section_created", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "source_type": "generated"}, now); err != nil {
+			created = append(created, row)
+		}
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		for _, createdRow := range created {
+			if err := tx.First(&createdRow, createdRow.ID).Error; err != nil {
+				return err
+			}
+			if err := appendSectionEvent(tx, createdRow.ID, "section_created", map[string]any{"section_uuid": createdRow.UUID, "section_no": createdRow.SectionNo, "page_role": createdRow.PageRole, "source_type": "generated"}, now); err != nil {
 				return err
 			}
 		}
@@ -302,7 +375,7 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 	if err != nil {
 		return nil, err
 	}
-	items, err := service.ListSections(ctx, chapterUUID)
+	items, err := service.listSectionsByPageRole(ctx, chapterUUID, PageRoleBody)
 	if err == nil {
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "generated": true})
 	}
@@ -327,7 +400,7 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 			return err
 		}
 		var existing []comicSectionRecord
-		if err := tx.Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Order("section_no ASC").Find(&existing).Error; err != nil {
+		if err := tx.Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL", state.ID, PageRoleBody).Order("section_no ASC").Find(&existing).Error; err != nil {
 			return err
 		}
 		matches, err := generatedSectionsMatchTx(tx, existing, generated)
@@ -349,7 +422,7 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 			if err := service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "before_storyboard_overwrite"); err != nil {
 				return err
 			}
-			if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Updates(map[string]any{
+			if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL", state.ID, PageRoleBody).Updates(map[string]any{
 				"deleted_at": now, "revision": gorm.Expr("revision + 1"), "updated_at": now,
 			}).Error; err != nil {
 				return err
@@ -360,12 +433,17 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 				}
 			}
 		}
+		var max int
+		if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Select("COALESCE(MAX(section_no),0)").Scan(&max).Error; err != nil {
+			return err
+		}
+		created := make([]comicSectionRecord, 0, len(generated))
 		for index, item := range generated {
 			sectionUUID, uuidErr := newUUIDv7()
 			if uuidErr != nil {
 				return uuidErr
 			}
-			row := comicSectionRecord{UUID: sectionUUID, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: index + 1, Title: item.Title, CreatedAt: now, UpdatedAt: now}
+			row := comicSectionRecord{UUID: sectionUUID, ChapterComicStateID: state.ID, ActorID: actor.ID, SectionNo: max + index + 1, PageRole: PageRoleBody, Title: item.Title, CreatedAt: now, UpdatedAt: now}
 			if err := tx.Create(&row).Error; err != nil {
 				return err
 			}
@@ -376,7 +454,16 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 			if err := tx.Model(&row).Update("current_storyboard_variant_id", variant.ID).Error; err != nil {
 				return err
 			}
-			if err := appendSectionEvent(tx, row.ID, "section_created", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "source_type": "generated", "reason": "storyboard_overwrite"}, now); err != nil {
+			created = append(created, row)
+		}
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		for _, createdRow := range created {
+			if err := tx.First(&createdRow, createdRow.ID).Error; err != nil {
+				return err
+			}
+			if err := appendSectionEvent(tx, createdRow.ID, "section_created", map[string]any{"section_uuid": createdRow.UUID, "section_no": createdRow.SectionNo, "page_role": createdRow.PageRole, "source_type": "generated", "reason": "storyboard_overwrite"}, now); err != nil {
 				return err
 			}
 		}
@@ -392,7 +479,7 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 	if err != nil {
 		return nil, err
 	}
-	items, err := service.ListSections(ctx, chapterUUID)
+	items, err := service.listSectionsByPageRole(ctx, chapterUUID, PageRoleBody)
 	if err == nil && changed {
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "generated": true, "overwritten": true})
 	}
@@ -433,6 +520,14 @@ func generatedSectionsMatchTx(tx *gorm.DB, existing []comicSectionRecord, genera
 }
 
 func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionUUID string, input UpdateSectionInput) (ComicSection, error) {
+	var pageRole *string
+	if input.PageRole != nil {
+		normalized, err := service.normalizePageRole(*input.PageRole, false)
+		if err != nil {
+			return ComicSection{}, err
+		}
+		pageRole = &normalized
+	}
 	var row comicSectionRecord
 	var actorID int64
 	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -447,6 +542,11 @@ func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionU
 		actorID = actor.ID
 		if err := tx.Where("uuid = ? AND chapter_comic_state_id = ? AND deleted_at IS NULL", sectionUUID, state.ID).First(&row).Error; err != nil {
 			return notFound(err, "Comic section 不存在")
+		}
+		if service.protectsLastBodyPage() && pageRole != nil && row.PageRole == PageRoleBody && *pageRole != PageRoleBody {
+			if err := ensureBodyPageRemainsTx(tx, state.ID, row.ID); err != nil {
+				return err
+			}
 		}
 		updates := map[string]any{"revision": gorm.Expr("revision + 1"), "updated_at": service.now().UTC()}
 		if input.Title != nil {
@@ -463,17 +563,30 @@ func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionU
 			}
 			updates["description_md"] = value
 		}
+		if pageRole != nil {
+			if err := ensureSpecialPageRoleAvailableTx(tx, state.ID, *pageRole, row.ID); err != nil {
+				return err
+			}
+			updates["page_role"] = *pageRole
+		}
 		result := tx.Model(&row).Where("revision = ?", input.ExpectedRevision).Updates(updates)
 		if result.Error != nil {
-			return result.Error
+			return conflictErr(result.Error)
 		}
 		if result.RowsAffected != 1 {
 			return domainError(CodeConflict, "Section 已被修改", "刷新后重试。", nil)
 		}
-		if err := appendSectionEvent(tx, row.ID, "section_updated", map[string]any{"section_uuid": row.UUID}, service.now().UTC()); err != nil {
+		now := service.now().UTC()
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
 			return err
 		}
-		if err := updateComicStateTx(tx, state.ID, service.now().UTC()); err != nil {
+		if err := tx.First(&row, row.ID).Error; err != nil {
+			return err
+		}
+		if err := appendSectionEvent(tx, row.ID, "section_updated", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "page_role": row.PageRole}, now); err != nil {
+			return err
+		}
+		if err := updateComicStateTx(tx, state.ID, now); err != nil {
 			return err
 		}
 		return service.createChapterSnapshotTx(ctx, tx, state.ID, actorID, "section_updated")
@@ -502,6 +615,11 @@ func (service *Service) DeleteSection(ctx context.Context, chapterUUID, sectionU
 		if err := tx.Where("uuid = ? AND chapter_comic_state_id = ? AND deleted_at IS NULL", sectionUUID, state.ID).First(&row).Error; err != nil {
 			return notFound(err, "Comic section 不存在")
 		}
+		if service.protectsLastBodyPage() && row.PageRole == PageRoleBody {
+			if err := ensureBodyPageRemainsTx(tx, state.ID, row.ID); err != nil {
+				return err
+			}
+		}
 		now := service.now().UTC()
 		result := tx.Model(&row).Where("revision = ?", expectedRevision).Updates(map[string]any{"deleted_at": now, "revision": gorm.Expr("revision + 1"), "updated_at": now})
 		if result.Error != nil {
@@ -510,7 +628,7 @@ func (service *Service) DeleteSection(ctx context.Context, chapterUUID, sectionU
 		if result.RowsAffected != 1 {
 			return domainError(CodeConflict, "Section 已被修改", "刷新后重试。", nil)
 		}
-		if err := compactSectionOrderTx(tx, state.ID); err != nil {
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
 			return err
 		}
 		if err := appendSectionEvent(tx, row.ID, "section_deleted", map[string]any{"section_uuid": row.UUID}, now); err != nil {
@@ -541,29 +659,67 @@ func (service *Service) ReorderSections(ctx context.Context, chapterUUID string,
 		if err := tx.Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Order("section_no").Find(&rows).Error; err != nil {
 			return err
 		}
-		if len(rows) != len(orderedUUIDs) {
-			return domainError(CodeValidation, "Section 顺序不完整", "必须提供当前章节全部 active section UUID。", nil)
-		}
-		byUUID := map[string]comicSectionRecord{}
+		bodyRows := make([]comicSectionRecord, 0, len(rows))
+		bodyByUUID := map[string]comicSectionRecord{}
+		activeByUUID := make(map[string]comicSectionRecord, len(rows))
 		for _, row := range rows {
-			byUUID[row.UUID] = row
-		}
-		for _, uuid := range orderedUUIDs {
-			if _, ok := byUUID[uuid]; !ok {
-				return domainError(CodeValidation, "Section 顺序包含未知 UUID", "只能排序当前章节的 active section。", nil)
+			activeByUUID[row.UUID] = row
+			if row.PageRole == PageRoleBody {
+				bodyRows = append(bodyRows, row)
+				bodyByUUID[row.UUID] = row
 			}
+		}
+		orderedBodyUUIDs := make([]string, 0, len(bodyRows))
+		seen := make(map[string]struct{}, len(orderedUUIDs))
+		switch {
+		case len(orderedUUIDs) == len(bodyRows):
+			for _, uuid := range orderedUUIDs {
+				if _, ok := bodyByUUID[uuid]; !ok {
+					return domainError(CodeValidation, "正文页顺序包含未知 UUID", "body-only 顺序只能包含当前章节的 active body 页面。", nil)
+				}
+				if _, ok := seen[uuid]; ok {
+					return domainError(CodeValidation, "正文页顺序包含重复 UUID", "每个 active body 页面必须且只能出现一次。", nil)
+				}
+				seen[uuid] = struct{}{}
+				orderedBodyUUIDs = append(orderedBodyUUIDs, uuid)
+			}
+		case len(orderedUUIDs) == len(rows):
+			for _, uuid := range orderedUUIDs {
+				row, ok := activeByUUID[uuid]
+				if !ok {
+					return domainError(CodeValidation, "页面顺序包含未知 UUID", "full-list 顺序只能包含当前章节的 active 页面。", nil)
+				}
+				if _, ok := seen[uuid]; ok {
+					return domainError(CodeValidation, "页面顺序包含重复 UUID", "每个 active 页面必须且只能出现一次。", nil)
+				}
+				seen[uuid] = struct{}{}
+				if row.PageRole == PageRoleBody {
+					orderedBodyUUIDs = append(orderedBodyUUIDs, uuid)
+				}
+			}
+		default:
+			return domainError(CodeValidation, "正文页顺序不完整", "section_uuids 必须包含全部 active body 页面，或兼容性地包含全部 active 页面。", nil)
 		}
 		now := service.now().UTC()
-		for index, uuid := range orderedUUIDs {
-			if err := tx.Model(&comicSectionRecord{}).Where("id = ?", byUUID[uuid].ID).Updates(map[string]any{"section_no": 1_000_000 + index, "updated_at": now}).Error; err != nil {
-				return err
+		orderedRows := make([]comicSectionRecord, 0, len(rows))
+		for _, row := range rows {
+			if row.PageRole == PageRoleFrontCover {
+				orderedRows = append(orderedRows, row)
 			}
 		}
-		for index, uuid := range orderedUUIDs {
-			row := byUUID[uuid]
-			if err := tx.Model(&comicSectionRecord{}).Where("id = ?", row.ID).Updates(map[string]any{"section_no": index + 1, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error; err != nil {
-				return err
+		incrementRevision := make(map[int64]struct{}, len(orderedBodyUUIDs))
+		for _, uuid := range orderedBodyUUIDs {
+			row := bodyByUUID[uuid]
+			orderedRows = append(orderedRows, row)
+			incrementRevision[row.ID] = struct{}{}
+		}
+		for _, row := range rows {
+			if row.PageRole == PageRoleBackCover {
+				orderedRows = append(orderedRows, row)
 			}
+		}
+		if err := writeSectionOrderTx(tx, orderedRows, incrementRevision, now); err != nil {
+			return err
 		}
 		if err := updateComicStateTx(tx, state.ID, now); err != nil {
 			return err
@@ -717,6 +873,10 @@ func (service *Service) ImportSectionImage(ctx context.Context, chapterUUID, sec
 }
 
 func (service *Service) CommitGeneratedSectionImage(ctx context.Context, chapterUUID, sectionUUID, generationUUID string, snapshot json.RawMessage, reader filesReader) (ComicSection, error) {
+	expectedPageRole, enforcePageRole, err := service.generatedImageSnapshotPageRole(snapshot)
+	if err != nil {
+		return ComicSection{}, err
+	}
 	variantUUID, err := newUUIDv7()
 	if err != nil {
 		return ComicSection{}, err
@@ -733,6 +893,9 @@ func (service *Service) CommitGeneratedSectionImage(ctx context.Context, chapter
 		var section comicSectionRecord
 		if err := tx.Where("uuid = ? AND chapter_comic_state_id = ? AND deleted_at IS NULL", sectionUUID, state.ID).First(&section).Error; err != nil {
 			return notFound(err, "Comic section 不存在")
+		}
+		if enforcePageRole && section.PageRole != expectedPageRole {
+			return domainError(CodeConflict, "Section 页面角色已变化", "图片生成期间 page_role 已变化，请基于当前页面角色重新发起生成。", nil)
 		}
 		var generationID *int64
 		if generationUUID != "" {
@@ -781,6 +944,27 @@ func (service *Service) CommitGeneratedSectionImage(ctx context.Context, chapter
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID})
 	}
 	return dto, err
+}
+
+// generatedImageSnapshotPageRole keeps v1-v4 image tasks compatible: those
+// durable snapshots predate page roles and therefore cannot participate in the
+// role-drift check. Version 5 and later must freeze one valid page role.
+func (service *Service) generatedImageSnapshotPageRole(snapshot json.RawMessage) (string, bool, error) {
+	if strings.TrimSpace(string(snapshot)) == "" {
+		return "", false, nil
+	}
+	var frozen GenerationSnapshot
+	if err := json.Unmarshal(snapshot, &frozen); err != nil {
+		return "", false, domainError(CodeValidation, "图片生成快照已损坏", "input_snapshot 不是有效 JSON。", err)
+	}
+	if frozen.Version < 5 {
+		return "", false, nil
+	}
+	pageRole, err := service.normalizePageRole(frozen.PageRole, false)
+	if err != nil {
+		return "", false, domainError(CodeValidation, "图片生成快照页面角色无效", "v5 图片生成快照必须包含有效的 page_role。", err)
+	}
+	return pageRole, true, nil
 }
 
 func (service *Service) ListImageVariants(ctx context.Context, chapterUUID, sectionUUID string) ([]ImageVariant, error) {
@@ -902,6 +1086,10 @@ func (service *Service) GetChapterSnapshot(ctx context.Context, chapterUUID, sna
 	})
 	detailSections := make([]ChapterSnapshotSection, 0, len(sections))
 	for index, item := range sections {
+		pageRole, roleErr := service.normalizePageRole(item.PageRole, true)
+		if roleErr != nil {
+			return ChapterSnapshotDetail{}, domainError(CodeSnapshotInvalid, "章节快照页面角色无效", "快照 page_role 无法读取。", roleErr)
+		}
 		storyboard := strings.TrimSpace(item.StoryboardMD)
 		if storyboard == "" && item.StoryboardUUID != "" {
 			var variant storyboardRecord
@@ -918,7 +1106,7 @@ func (service *Service) GetChapterSnapshot(ctx context.Context, chapterUUID, sna
 			sectionNo = index + 1
 		}
 		detailSections = append(detailSections, ChapterSnapshotSection{
-			UUID: item.UUID, SectionNo: sectionNo, Title: item.Title, StoryboardMD: storyboard,
+			UUID: item.UUID, SectionNo: sectionNo, PageRole: pageRole, Title: item.Title, StoryboardMD: storyboard,
 			CurrentImage: currentImage, PremiseReference: premiseReference,
 		})
 	}
@@ -1015,6 +1203,35 @@ func (service *Service) RestoreChapterSnapshot(ctx context.Context, chapterUUID,
 		if err := json.Unmarshal([]byte(snapshot.SnapshotJSON), &value); err != nil {
 			return domainError(CodeSnapshotInvalid, "章节快照损坏", "快照无法恢复。", err)
 		}
+		pageRoles := make([]string, len(value.Sections))
+		seenSections := make(map[string]struct{}, len(value.Sections))
+		frontCoverCount, bodyCount, backCoverCount := 0, 0, 0
+		for index, item := range value.Sections {
+			pageRole, roleErr := service.normalizePageRole(item.PageRole, true)
+			if roleErr != nil {
+				return domainError(CodeSnapshotInvalid, "章节快照页面角色无效", "快照 page_role 无法恢复。", roleErr)
+			}
+			if _, exists := seenSections[item.UUID]; exists {
+				return domainError(CodeSnapshotInvalid, "章节快照包含重复 Section", "同一个 Section 不能在页面序列中出现多次。", nil)
+			}
+			seenSections[item.UUID] = struct{}{}
+			pageRoles[index] = pageRole
+			if pageRole == PageRoleFrontCover {
+				frontCoverCount++
+			}
+			if pageRole == PageRoleBody {
+				bodyCount++
+			}
+			if pageRole == PageRoleBackCover {
+				backCoverCount++
+			}
+		}
+		if frontCoverCount > 1 || backCoverCount > 1 {
+			return domainError(CodeSnapshotInvalid, "章节快照包含重复特殊页面", "快照最多只能包含一个封面和一个封底。", nil)
+		}
+		if service.protectsLastBodyPage() && bodyCount == 0 {
+			return domainError(CodeSnapshotInvalid, "章节快照缺少正文页", "普通绘本快照至少需要包含一个 body 页面。", nil)
+		}
 		var all []comicSectionRecord
 		if err := tx.Where("chapter_comic_state_id = ?", state.ID).Find(&all).Error; err != nil {
 			return err
@@ -1032,7 +1249,7 @@ func (service *Service) RestoreChapterSnapshot(ctx context.Context, chapterUUID,
 			if !ok {
 				return domainError(CodeSnapshotInvalid, "章节快照引用已永久移除的 Section", "无法安全恢复该快照。", nil)
 			}
-			updates := map[string]any{"section_no": index + 1, "title": item.Title, "description_md": item.DescriptionMD, "deleted_at": nil, "revision": gorm.Expr("revision + 1"), "updated_at": now, "current_storyboard_variant_id": nil, "current_image_variant_id": nil}
+			updates := map[string]any{"section_no": index + 1, "page_role": pageRoles[index], "title": item.Title, "description_md": item.DescriptionMD, "deleted_at": nil, "revision": gorm.Expr("revision + 1"), "updated_at": now, "current_storyboard_variant_id": nil, "current_image_variant_id": nil}
 			if item.StoryboardUUID != "" {
 				var variant storyboardRecord
 				if err := tx.Where("uuid = ? AND comic_section_id = ?", item.StoryboardUUID, row.ID).First(&variant).Error; err != nil {
@@ -1051,6 +1268,9 @@ func (service *Service) RestoreChapterSnapshot(ctx context.Context, chapterUUID,
 				return err
 			}
 		}
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
+			return err
+		}
 		if err := updateComicStateTx(tx, state.ID, now); err != nil {
 			return err
 		}
@@ -1065,6 +1285,7 @@ func (service *Service) RestoreChapterSnapshot(ctx context.Context, chapterUUID,
 
 type snapshotSection struct {
 	UUID             string `json:"uuid"`
+	PageRole         string `json:"page_role,omitempty"`
 	Title            string `json:"title"`
 	DescriptionMD    string `json:"description_md"`
 	StoryboardUUID   string `json:"storyboard_uuid,omitempty"`
@@ -1087,9 +1308,9 @@ func (service *Service) createChapterSnapshotTx(ctx context.Context, tx *gorm.DB
 	if err := tx.WithContext(ctx).Table("chapters AS chapters").Select("chapters.uuid,chapters.chapter_code,chapters.title").Joins("JOIN chapter_comic_states AS states ON states.chapter_id=chapters.id").Where("states.id = ?", stateID).Scan(&chapter).Error; err != nil {
 		return err
 	}
-	payload := chapterSnapshotPayload{Version: 2, Chapter: chapter, Sections: make([]snapshotSection, 0, len(rows))}
+	payload := chapterSnapshotPayload{Version: 3, Chapter: chapter, Sections: make([]snapshotSection, 0, len(rows))}
 	for _, row := range rows {
-		item := snapshotSection{UUID: row.UUID, SectionNo: row.SectionNo, Title: row.Title, DescriptionMD: row.DescriptionMD}
+		item := snapshotSection{UUID: row.UUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD}
 		if row.CurrentStoryboardVariantID != nil {
 			var storyboard storyboardRecord
 			if err := tx.Where("id = ?", *row.CurrentStoryboardVariantID).First(&storyboard).Error; err != nil {
@@ -1121,32 +1342,103 @@ func ensureSnapshotRestoreIdle(ctx context.Context, tx *gorm.DB, stateID int64, 
 	var activeCount int64
 	if err := tx.WithContext(ctx).Raw(`SELECT
 		(SELECT COUNT(*) FROM task_runs WHERE resource_uuid=? AND kind IN ('story_chapter_generation','comic_storyboard_generation') AND status IN ('queued','running')) +
-		(SELECT COUNT(*) FROM production_task_runs AS tasks JOIN comic_sections AS sections ON sections.uuid=tasks.resource_uuid WHERE sections.chapter_comic_state_id=? AND tasks.kind='comic_image_generation' AND tasks.status IN ('queued','running'))`, chapterUUID, stateID).Scan(&activeCount).Error; err != nil {
+		(SELECT COUNT(*) FROM production_task_runs AS tasks JOIN comic_sections AS sections ON sections.uuid=tasks.resource_uuid WHERE sections.chapter_comic_state_id=? AND tasks.kind='comic_image_generation' AND tasks.status IN ('queued','running')) +
+		(SELECT COUNT(*) FROM workflows WHERE project_id=(SELECT chapters.project_id FROM chapter_comic_states JOIN chapters ON chapters.id=chapter_comic_states.chapter_id WHERE chapter_comic_states.id=?) AND kind='yolo_project_initialization' AND status IN ('queued','running','interrupted'))`, chapterUUID, stateID, stateID).Scan(&activeCount).Error; err != nil {
 		return err
 	}
 	if activeCount > 0 {
-		return domainError(CodeSnapshotBusy, "章节正在生成，无法恢复快照", "请等待章节正文、漫画脚本或 Section 图片生成任务结束后再恢复。", nil)
+		return domainError(CodeSnapshotBusy, "章节正在生成，无法恢复快照", "请等待 Yolo、章节正文、漫画脚本或页面图片生成任务结束后再恢复。", nil)
 	}
 	return nil
 }
 
-func compactSectionOrderTx(tx *gorm.DB, stateID int64) error {
-	var rows []comicSectionRecord
-	if err := tx.Where("chapter_comic_state_id = ? AND deleted_at IS NULL", stateID).Order("section_no").Find(&rows).Error; err != nil {
+func ensureSpecialPageRoleAvailableTx(tx *gorm.DB, stateID int64, pageRole string, excludeSectionID int64) error {
+	if pageRole != PageRoleFrontCover && pageRole != PageRoleBackCover {
+		return nil
+	}
+	query := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL", stateID, pageRole)
+	if excludeSectionID > 0 {
+		query = query.Where("id <> ?", excludeSectionID)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
 		return err
 	}
+	if count > 0 {
+		return domainError(CodeConflict, "特殊页面已存在", fmt.Sprintf("当前绘本最多只能有一个 active %s 页面。", pageRole), nil)
+	}
+	return nil
+}
+
+func ensureBodyPageRemainsTx(tx *gorm.DB, stateID, excludedSectionID int64) error {
+	var count int64
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL AND id <> ?", stateID, PageRoleBody, excludedSectionID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return domainError(CodeConflict, "绘本必须保留正文页", "已有正文页的绘本至少需要保留一个 active body 页面。", nil)
+	}
+	return nil
+}
+
+func ensureBodyPageExistsTx(tx *gorm.DB, stateID int64) error {
+	var count int64
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL", stateID, PageRoleBody).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return domainError(CodeValidation, "请先创建正文页", "普通绘本创建封面或封底前，至少需要一个 active body 页面。", nil)
+	}
+	return nil
+}
+
+func pageRoleOrder(pageRole string) int {
+	switch pageRole {
+	case PageRoleFrontCover:
+		return 0
+	case PageRoleBackCover:
+		return 2
+	default:
+		return 1
+	}
+}
+
+func normalizeSectionOrderTx(tx *gorm.DB, stateID int64, now time.Time) error {
+	var rows []comicSectionRecord
+	if err := tx.Where("chapter_comic_state_id = ? AND deleted_at IS NULL", stateID).Order("section_no,id").Find(&rows).Error; err != nil {
+		return err
+	}
+	sort.SliceStable(rows, func(left, right int) bool {
+		return pageRoleOrder(rows[left].PageRole) < pageRoleOrder(rows[right].PageRole)
+	})
+	return writeSectionOrderTx(tx, rows, nil, now)
+}
+
+func writeSectionOrderTx(tx *gorm.DB, rows []comicSectionRecord, incrementRevision map[int64]struct{}, now time.Time) error {
+	maxSectionNo := 0
+	for _, row := range rows {
+		if row.SectionNo > maxSectionNo {
+			maxSectionNo = row.SectionNo
+		}
+	}
+	temporaryStart := maxSectionNo + len(rows) + 1
 	for index, row := range rows {
-		if err := tx.Model(&row).Update("section_no", 1_000_000+index).Error; err != nil {
+		if err := tx.Model(&comicSectionRecord{}).Where("id = ?", row.ID).Updates(map[string]any{"section_no": temporaryStart + index, "updated_at": now}).Error; err != nil {
 			return err
 		}
 	}
 	for index, row := range rows {
-		if err := tx.Model(&row).Update("section_no", index+1).Error; err != nil {
+		updates := map[string]any{"section_no": index + 1, "updated_at": now}
+		if _, ok := incrementRevision[row.ID]; ok {
+			updates["revision"] = gorm.Expr("revision + 1")
+		}
+		if err := tx.Model(&comicSectionRecord{}).Where("id = ?", row.ID).Updates(updates).Error; err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
 func createStoryboardTx(tx *gorm.DB, section comicSectionRecord, actorID int64, content, sourceType string, now time.Time) (storyboardRecord, error) {
 	var version int
 	if err := tx.Model(&storyboardRecord{}).Where("comic_section_id = ?", section.ID).Select("COALESCE(MAX(version_no),0)+1").Scan(&version).Error; err != nil {
@@ -1160,18 +1452,27 @@ func createStoryboardTx(tx *gorm.DB, section comicSectionRecord, actorID int64, 
 	return record, tx.Create(&record).Error
 }
 func updateComicStateTx(tx *gorm.DB, stateID int64, now time.Time) error {
-	var sections, storyboards, images int64
-	tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", stateID).Count(&sections)
-	tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL AND current_storyboard_variant_id IS NOT NULL", stateID).Count(&storyboards)
-	tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL AND current_image_variant_id IS NOT NULL", stateID).Count(&images)
+	var sections, bodySections, storyboards, images int64
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", stateID).Count(&sections).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND page_role = ? AND deleted_at IS NULL", stateID, PageRoleBody).Count(&bodySections).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL AND current_storyboard_variant_id IS NOT NULL", stateID).Count(&storyboards).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL AND current_image_variant_id IS NOT NULL", stateID).Count(&images).Error; err != nil {
+		return err
+	}
 	status := "empty"
 	if sections > 0 {
 		status = "draft"
 	}
-	if sections > 0 && storyboards == sections {
+	if bodySections > 0 && storyboards == sections {
 		status = "storyboarded"
 	}
-	if sections > 0 && images == sections {
+	if bodySections > 0 && images == sections {
 		status = "ready"
 	}
 	return tx.Model(&comicStateRecord{}).Where("id = ?", stateID).Updates(map[string]any{"status": status, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error
@@ -1231,7 +1532,7 @@ func (service *Service) imageVariantDTO(ctx context.Context, row imageVariantRec
 	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: row.SourceType, GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
 }
 func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, chapterUUID string) (ComicSection, error) {
-	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, Title: row.Title, DescriptionMD: row.DescriptionMD, Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	if row.CurrentStoryboardVariantID != nil {
 		var variant storyboardRecord
 		if err := service.store.DB().WithContext(ctx).First(&variant, *row.CurrentStoryboardVariantID).Error; err == nil {

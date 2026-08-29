@@ -2,8 +2,11 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -181,11 +184,23 @@ type DomainTaskRequest struct {
 }
 
 type DomainTaskBatchRequest struct {
-	Kind           string
-	ResourceUUIDs  []string
-	ChapterUUID    string
-	IdempotencyKey string
-	Invocation     DomainInvocationContext
+	Kind                  string
+	ResourceUUIDs         []string
+	ChapterUUID           string
+	ProviderUUID          string
+	Model                 string
+	SelectionProviderUUID string
+	SelectionModel        string
+	IdempotencyKey        string
+	Invocation            DomainInvocationContext
+}
+
+// ComicImageBatchTaskKey is shared by workflow orchestration and the durable
+// production queue so a cancelled workflow can rediscover tasks even if the
+// process stopped after task creation but before checkpointing their UUIDs.
+func ComicImageBatchTaskKey(batchKey, sectionUUID string) string {
+	digest := sha256.Sum256([]byte(strings.TrimSpace(batchKey) + "\x00" + sectionUUID))
+	return fmt.Sprintf("comic-image-batch:%x", digest[:])
 }
 
 type DomainTask struct {

@@ -1935,6 +1935,27 @@ $sage: $color-success
   > header
     margin-bottom: 10px
 
+    select
+      min-width: 0
+
+.comic-section-list--pages
+  > header
+    flex-wrap: wrap
+    gap: 6px
+
+    h2
+      margin-right: auto
+
+    select
+      order: 2
+      flex: 1 1 100%
+
+  .comic-section-row > button:first-child
+    grid-template-columns: 1fr
+
+    span
+      grid-row: auto
+
 .comic-section-row
   margin-top: 6px
   border-radius: $radius-md
@@ -1996,6 +2017,12 @@ $sage: $color-success
 
     .eyebrow
       margin-bottom: 4px
+
+.comic-meta-card > label
+  display: grid
+  gap: 4px
+  color: $color-muted
+  font-size: $font-size-small
 
 .storyboard-editor-card button[aria-pressed="true"]
   color: white
@@ -6067,6 +6094,9 @@ $sage: $color-success
   button
     min-height: 32px
 
+  .section-meta-editor__role
+    flex: 0 0 116px
+
 .chapter-workbench__empty
   min-height: 420px
   display: flex
@@ -7710,6 +7740,12 @@ $sage: $color-success
     color: $color-muted
     font-size: 12px
 
+  select
+    min-height: 28px
+    height: 28px
+    padding: 0 24px 0 7px
+    font-size: 12px
+
   button
     min-height: 28px
     height: 28px
@@ -8540,6 +8576,15 @@ $sage: $color-success
   .section-timeline__actions
     justify-content: flex-start
     flex-wrap: wrap
+
+  .section-meta-editor
+    flex-wrap: wrap
+
+    > label:first-child
+      flex: 1 1 100%
+
+    .section-meta-editor__role
+      flex: 1 1 116px
 
   .chapter-body-editor-dialog__body
     grid-template-columns: 1fr

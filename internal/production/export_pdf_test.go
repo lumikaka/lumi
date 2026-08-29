@@ -161,7 +161,7 @@ func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if zipHash != explicitZIPHash || zipSnapshot.Version != 4 || explicitZIP.Format != "" || explicitZIP.ProjectTitle != "" || explicitZIP.PDFLayout != nil {
+	if zipHash != explicitZIPHash || zipSnapshot.Version != exportSnapshotV6 || explicitZIP.Format != "" || explicitZIP.ProjectTitle != "" || explicitZIP.PDFLayout != nil {
 		t.Fatalf("zip compatibility hash=%s/%s snapshot=%+v", zipHash, explicitZIPHash, explicitZIP)
 	}
 	for _, entry := range explicitZIP.Entries {
@@ -174,7 +174,7 @@ func TestPDFSnapshotAndRendererSupportImageFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || snapshot.ProjectTitle != h.project.Name || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns || snapshot.PDFLayout.RendererVersion != 2 {
+	if snapshot.Version != exportSnapshotV6 || snapshot.Format != ExportFormatPDF || snapshot.ProjectTitle != h.project.Name || len(pdfHash) != 64 || pdfHash == zipHash || snapshot.PDFLayout == nil || snapshot.PDFLayout.Placement != ExportPDFTwoUpColumns || snapshot.PDFLayout.RendererVersion != 2 {
 		t.Fatalf("pdf snapshot=%+v hash=%s", snapshot, pdfHash)
 	}
 	if len(snapshot.Entries) != len(fixtures) {
@@ -249,6 +249,66 @@ func TestProjectPDFNeverPairsDifferentChapters(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertPDFDocument(t, output.Bytes(), 2)
+}
+
+func TestPDFCoversAreOneUpWhileBodyKeepsConfiguredLayout(t *testing.T) {
+	h := newProductionHarnessWithFormat(t, project.PictureBookClassic)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "One", Content: "Story", ContentFormat: "md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Body", StoryboardMD: "Body", PageRole: PageRoleBody})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err = h.service.ImportSectionImage(ctx, chapter.UUID, section.UUID, upload(t, h.service, "comic_section_image", imageBytes(t, 41)), section.Revision)
+	if err != nil || section.CurrentImage == nil {
+		t.Fatalf("section=%+v err=%v", section, err)
+	}
+	asset := section.CurrentImage.Asset
+	width, height := 1, 1
+	if asset.Width != nil {
+		width = *asset.Width
+	}
+	if asset.Height != nil {
+		height = *asset.Height
+	}
+	entry := func(role string, sectionNo int) ExportEntry {
+		return ExportEntry{
+			ChapterUUID: chapter.UUID, ChapterCode: chapter.ChapterCode, SectionNo: sectionNo,
+			SectionUUID: mustUUID(t), PageRole: role, ImageAssetUUID: asset.UUID,
+			MIMEType: asset.MIMEType, Width: width, Height: height, Extension: "png",
+		}
+	}
+	snapshot := ExportSnapshot{
+		Version: exportSnapshotV6, Format: ExportFormatPDF, ProjectUUID: h.project.UUID, Scope: "chapter",
+		ActiveChapterCount: 1, SectionCount: 5, ExportedSectionCount: 5,
+		PDFLayout: &ExportPDFLayout{PageSize: ExportPDFPageSizeA4Portrait, Placement: ExportPDFTwoUpStacked, MarginMM: 12, GutterMM: 6, RendererVersion: 1},
+		Entries: []ExportEntry{
+			entry(PageRoleFrontCover, 1),
+			entry(PageRoleBody, 2),
+			entry(PageRoleBody, 3),
+			entry(PageRoleBody, 4),
+			entry(PageRoleBackCover, 5),
+		},
+	}
+	var output bytes.Buffer
+	if err := h.service.writePDF(ctx, &output, snapshot, nil); err != nil {
+		t.Fatal(err)
+	}
+	assertPDFDocument(t, output.Bytes(), 4)
+
+	legacy := snapshot
+	legacy.Version = 5
+	for index := range legacy.Entries {
+		legacy.Entries[index].PageRole = ""
+	}
+	output.Reset()
+	if err := h.service.writePDF(ctx, &output, legacy, nil); err != nil {
+		t.Fatal(err)
+	}
+	assertPDFDocument(t, output.Bytes(), 3)
 }
 
 func assertPDFDocument(t *testing.T, value []byte, pages int) {

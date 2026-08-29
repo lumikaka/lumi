@@ -39,13 +39,16 @@ test('chapter workbench normalizes shareable tab state without dropping an open 
 })
 
 test('chapter workbench exposes the configured chapter prompt families', () => {
-  const items = ['json_system', 'comic_storyboard', 'section_premise_selection', 'section_image', 'before_image']
+  const items = ['json_system', 'comic_storyboard', 'cover_storyboard', 'section_premise_selection', 'section_image', 'cover_before_image', 'back_cover_before_image', 'before_image']
     .map((prompt_key) => ({ prompt_key }))
   assert.deepEqual(chapterWorkbenchPrompts(items).map((item) => item.prompt_key), [
     'json_system',
     'comic_storyboard',
+    'cover_storyboard',
     'section_premise_selection',
     'section_image',
+    'cover_before_image',
+    'back_cover_before_image',
   ])
 })
 
@@ -182,6 +185,17 @@ test('chapter workbench submits selected images through one batch request', () =
   assert.doesNotMatch(source, /for \(const section of targets\)/)
 })
 
+test('picture-book page management sends roles and reorders only body pages', () => {
+  const source = readFileSync(new URL('./ChapterWorkbenchPage.jsx', import.meta.url), 'utf8')
+  assert.match(source, /createComicSection\([^)]*[\s\S]*pageMode \? \{ page_role: role \} : \{\}/)
+  assert.match(source, /updateComicSection\([^)]*[\s\S]*pageMode \? \{ page_role: pageRole \} : \{\}/)
+  assert.match(source, /reorderedComicBodyUuids/)
+  assert.match(source, /data-reorderable=\{!pageMode \|\| comicPageRole\(section\) === 'body'/)
+  assert.match(source, /comicPageRoleOptionDisabled\(sections, role, selected\.uuid\)/)
+  assert.match(source, /projectQuery\.isLoading && !projectQuery\.data/)
+  assert.match(source, /invalidateQueries\(\{ queryKey: \['recent-projects'\] \}\)/)
+})
+
 test('timeline management disables destructive controls during generation and every mutation', () => {
   assert.deepEqual(timelineManageDisabledState({ index: 0, total: 3 }), {
     pending: false,
@@ -203,6 +217,13 @@ test('timeline management disables destructive controls during generation and ev
   const last = timelineManageDisabledState({ index: 2, total: 3 })
   assert.equal(last.moveBeforeDisabled, false)
   assert.equal(last.moveAfterDisabled, true)
+  const fixedCover = timelineManageDisabledState({ fixedPosition: true, index: 0, total: 3 })
+  assert.equal(fixedCover.dragDisabled, true)
+  assert.equal(fixedCover.moveBeforeDisabled, true)
+  assert.equal(fixedCover.moveAfterDisabled, true)
+  assert.equal(fixedCover.deleteDisabled, false)
+  assert.equal(timelineManageDisabledState({ deleteProtected: true }).deleteDisabled, true)
+  assert.equal(timelineManageDisabledState({ index: 0, total: 1 }).dragDisabled, true)
 })
 
 test('timeline drag intent supports start, cancel, before/after completion, and edge scrolling', () => {

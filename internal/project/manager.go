@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -251,8 +252,8 @@ func (manager *Manager) RecentProjects(ctx context.Context) ([]Summary, error) {
 			UUID: recent.UUID, Name: recent.Name, RootPath: recent.RootPath,
 			Status: "recent", Available: true, UpdatedAt: recent.UpdatedAt, LastOpenedAt: recent.LastOpenedAt,
 		}
-		if _, coverErr := loadRecentProjectCoverReference(ctx, recent.UUID, recent.RootPath); coverErr == nil {
-			item.CoverImageURL = "/media/recent-projects/" + recent.UUID + "/cover"
+		if cover, coverErr := loadRecentProjectCoverReference(ctx, recent.UUID, recent.RootPath); coverErr == nil {
+			item.CoverImageURL = "/media/recent-projects/" + recent.UUID + "/cover?v=" + url.QueryEscape(cover.SHA256)
 		}
 		if openRoots[recent.UUID] == recent.RootPath {
 			item.Open = true

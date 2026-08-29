@@ -59,8 +59,9 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		_ = runtime.failProduction(context.WithoutCancel(ctx), record, "invalid_input_snapshot", "生产输入快照损坏。", job.Attempt)
 		return river.JobCancel(errors.New("production snapshot mismatch"))
 	}
-	validVersion := snapshot.Version == 1 || snapshot.Version == 2 || ((snapshot.Version == 3 || snapshot.Version == 4) && snapshot.Kind == KindComicImageGeneration)
-	if !validVersion || snapshot.Kind != record.Kind || snapshot.ResourceUUID != record.ResourceUUID {
+	validVersion := snapshot.Version == 1 || snapshot.Version == 2 || ((snapshot.Version == 3 || snapshot.Version == 4 || snapshot.Version == 5) && snapshot.Kind == KindComicImageGeneration)
+	validPageRole := snapshot.Version < 5 || snapshot.Kind != KindComicImageGeneration || snapshot.PageRole == production.PageRoleFrontCover || snapshot.PageRole == production.PageRoleBody || snapshot.PageRole == production.PageRoleBackCover
+	if !validVersion || !validPageRole || snapshot.Kind != record.Kind || snapshot.ResourceUUID != record.ResourceUUID {
 		_ = runtime.failProduction(context.WithoutCancel(ctx), record, "invalid_input_snapshot", "生产输入快照损坏。", job.Attempt)
 		return river.JobCancel(errors.New("production snapshot mismatch"))
 	}

@@ -1,6 +1,14 @@
 const MAIN_TABS = new Set(['storyboard', 'body', 'prompts'])
 const PREVIEW_TABS = new Set(['current', 'reference', 'candidates'])
-const CHAPTER_PROMPT_KEYS = new Set(['json_system', 'comic_storyboard', 'section_premise_selection', 'section_image'])
+const CHAPTER_PROMPT_KEYS = new Set([
+  'json_system',
+  'comic_storyboard',
+  'cover_storyboard',
+  'section_premise_selection',
+  'section_image',
+  'cover_before_image',
+  'back_cover_before_image',
+])
 const ACTIVE_IMAGE_TASK_STATUSES = new Set(['queued', 'running'])
 
 export function normalizedChapterTab(value) {
@@ -89,6 +97,8 @@ export function timelineManageDisabledState({
   deletePending = false,
   reorderPending = false,
   imageGenerationActive = false,
+  fixedPosition = false,
+  deleteProtected = false,
   index = -1,
   total = 0,
 } = {}) {
@@ -97,10 +107,10 @@ export function timelineManageDisabledState({
     pending,
     createDisabled: pending,
     doneDisabled: pending,
-    dragDisabled: pending,
-    deleteDisabled: pending || imageGenerationActive,
-    moveBeforeDisabled: pending || index <= 0,
-    moveAfterDisabled: pending || index < 0 || index >= total - 1,
+    dragDisabled: pending || fixedPosition || total <= 1,
+    deleteDisabled: pending || imageGenerationActive || deleteProtected,
+    moveBeforeDisabled: pending || fixedPosition || index <= 0,
+    moveAfterDisabled: pending || fixedPosition || index < 0 || index >= total - 1,
   }
 }
 

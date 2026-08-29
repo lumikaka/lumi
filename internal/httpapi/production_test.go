@@ -50,6 +50,8 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, s
 	e.GET("/api/v1/projects/:project_uuid/premise-setting-images", handler.ListSettingImages)
 	e.PATCH("/api/v1/projects/:project_uuid/premise-sources/:source_uuid", handler.UpdatePremiseSource)
 	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections", handler.CreateSection)
+	e.PATCH("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", handler.UpdateSection)
+	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-section-order", handler.ReorderSections)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic", handler.ShowComicState)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots", handler.ListSnapshots)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots/:snapshot_uuid", handler.ShowSnapshot)
@@ -102,7 +104,7 @@ func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
 		t.Fatalf("section status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	section := envelopeData(t, recorder)
-	if !productionUUIDv7(section["uuid"]) || section["chapter_uuid"] != chapter.UUID {
+	if !productionUUIDv7(section["uuid"]) || section["chapter_uuid"] != chapter.UUID || section["page_role"] != production.PageRoleBody {
 		t.Fatalf("section=%#v", section)
 	}
 	snapshotsResponse := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+projectUUID+"/chapters/"+chapter.UUID+"/comic-snapshots", nil)
@@ -112,7 +114,7 @@ func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
 	snapshotItems := envelopeData(t, snapshotsResponse)["items"].([]any)
 	snapshotUUID := snapshotItems[0].(map[string]any)["uuid"].(string)
 	detailResponse := requestJSON(t, e, http.MethodGet, "/api/v1/projects/"+projectUUID+"/chapters/"+chapter.UUID+"/comic-snapshots/"+snapshotUUID, nil)
-	if detailResponse.Code != http.StatusOK || !strings.Contains(detailResponse.Body.String(), `"chapter_code":"vol01.ch01"`) || !strings.Contains(detailResponse.Body.String(), `"storyboard_md":"# Wide shot"`) || strings.Contains(detailResponse.Body.String(), `"snapshot_json"`) || strings.Contains(detailResponse.Body.String(), `"key_path"`) || strings.Contains(detailResponse.Body.String(), `"id":`) {
+	if detailResponse.Code != http.StatusOK || !strings.Contains(detailResponse.Body.String(), `"chapter_code":"vol01.ch01"`) || !strings.Contains(detailResponse.Body.String(), `"storyboard_md":"# Wide shot"`) || !strings.Contains(detailResponse.Body.String(), `"page_role":"body"`) || strings.Contains(detailResponse.Body.String(), `"snapshot_json"`) || strings.Contains(detailResponse.Body.String(), `"key_path"`) || strings.Contains(detailResponse.Body.String(), `"id":`) {
 		t.Fatalf("snapshot detail status=%d body=%s", detailResponse.Code, detailResponse.Body.String())
 	}
 	for _, forbidden := range []string{`"id"`, "river_job_id", "file_object_id", "key_path", "project.sqlite", "/Users/", "/private/"} {
@@ -154,6 +156,53 @@ func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
 	e.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusUnprocessableEntity || !strings.Contains(recorder.Body.String(), `"success":false`) {
 		t.Fatalf("permanent delete validation status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestProductionAPIComicSectionPageRoleContract(t *testing.T) {
+	e, _, projectUUID, chapter := productionAPIHarness(t)
+	base := "/api/v1/projects/" + projectUUID + "/chapters/" + chapter.UUID
+	emptyFrontResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{
+		"title": "Front", "storyboard_md": "Front board", "page_role": production.PageRoleFrontCover,
+	})
+	if emptyFrontResponse.Code != http.StatusUnprocessableEntity || !strings.Contains(emptyFrontResponse.Body.String(), `"code":"production_validation_failed"`) {
+		t.Fatalf("empty front status=%d body=%s", emptyFrontResponse.Code, emptyFrontResponse.Body.String())
+	}
+	bodyResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{
+		"title": "Body", "storyboard_md": "Body board",
+	})
+	if bodyResponse.Code != http.StatusCreated {
+		t.Fatalf("body status=%d body=%s", bodyResponse.Code, bodyResponse.Body.String())
+	}
+	body := envelopeData(t, bodyResponse)
+	if body["page_role"] != production.PageRoleBody || body["section_no"] != float64(1) {
+		t.Fatalf("body=%#v", body)
+	}
+	frontResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{
+		"title": "Front", "storyboard_md": "Front board", "page_role": production.PageRoleFrontCover,
+	})
+	if frontResponse.Code != http.StatusCreated {
+		t.Fatalf("front status=%d body=%s", frontResponse.Code, frontResponse.Body.String())
+	}
+	front := envelopeData(t, frontResponse)
+	if front["page_role"] != production.PageRoleFrontCover || front["section_no"] != float64(1) {
+		t.Fatalf("front=%#v", front)
+	}
+	backResponse := requestJSON(t, e, http.MethodPatch, base+"/comic-sections/"+front["uuid"].(string), map[string]any{
+		"page_role": production.PageRoleBackCover, "expected_revision": front["revision"],
+	})
+	if backResponse.Code != http.StatusOK {
+		t.Fatalf("back update status=%d body=%s", backResponse.Code, backResponse.Body.String())
+	}
+	back := envelopeData(t, backResponse)
+	if back["page_role"] != production.PageRoleBackCover || back["section_no"] != float64(2) {
+		t.Fatalf("back=%#v", back)
+	}
+	reorderResponse := requestJSON(t, e, http.MethodPut, base+"/comic-section-order", map[string]any{
+		"section_uuids": []string{body["uuid"].(string)},
+	})
+	if reorderResponse.Code != http.StatusOK || !strings.Contains(reorderResponse.Body.String(), `"page_role":"body"`) || !strings.Contains(reorderResponse.Body.String(), `"page_role":"back_cover"`) {
+		t.Fatalf("reorder status=%d body=%s", reorderResponse.Code, reorderResponse.Body.String())
 	}
 }
 

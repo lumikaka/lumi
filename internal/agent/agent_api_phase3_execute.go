@@ -147,7 +147,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		items, err := productionService.ListSections(ctx, chapterUUID)
 		return map[string]any{"items": items}, true, err
 	case RouteComicSectionCreate:
-		value, err := productionService.CreateSection(ctx, chapterUUID, production.CreateSectionInput{Title: stringArg(args, "title"), DescriptionMD: stringArg(args, "description_md"), StoryboardMD: stringArg(args, "storyboard_md")})
+		value, err := productionService.CreateSection(ctx, chapterUUID, production.CreateSectionInput{Title: stringArg(args, "title"), DescriptionMD: stringArg(args, "description_md"), StoryboardMD: stringArg(args, "storyboard_md"), PageRole: stringArg(args, "page_role")})
 		return value, true, err
 	case RouteComicSectionUpdate:
 		input := production.UpdateSectionInput{ExpectedRevision: intArg(args, "expected_revision")}
@@ -156,6 +156,9 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		}
 		if value, ok := args["description_md"].(string); ok {
 			input.DescriptionMD = &value
+		}
+		if value, ok := args["page_role"].(string); ok {
+			input.PageRole = &value
 		}
 		value, err := productionService.UpdateSection(ctx, chapterUUID, sectionUUID, input)
 		return value, true, err

@@ -1,7 +1,20 @@
+import { isVerticalStripPictureBook } from './pictureBookProfile.js'
+
 export function chatComposerMode({ activeTurn = null, draft = '' } = {}) {
   const hasDraft = String(draft).trim().length > 0
   if (activeTurn) return hasDraft ? 'queue' : 'stop'
   return hasDraft ? 'send' : 'disabled'
+}
+
+export function workflowFirstImageStepCopyKey(workflow, pictureBook) {
+  const snapshot = workflowSnapshot(workflow)
+  const frozenPictureBook = snapshot.picture_book && typeof snapshot.picture_book === 'object'
+    ? snapshot.picture_book
+    : pictureBook
+  const version = Number(snapshot.version || 0)
+  return version >= 5 && !isVerticalStripPictureBook(frozenPictureBook)
+    ? 'chat.workflow.step.cover_and_first_page_image'
+    : 'chat.workflow.step.first_section_image'
 }
 
 export function isChatSteeringShortcut(event) {

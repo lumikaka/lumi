@@ -31,8 +31,8 @@
 ## Comic
 
 - `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-storyboard-generations`
-  - 依据章节正文创建完整分镜规划，调用前必须获得确认。
-  - `request_body`：`prompt` 必填；`max_section_count` 可选，范围 1–48；`model` 可选。
+  - 依据章节正文创建完整正文页分镜规划，调用前必须获得确认。只生成或替换 `body`，不会删除已有封面或封底。
+  - `request_body`：`prompt` 必填；`max_section_count` 可选，范围 1–48，仅计正文页；`model` 可选。
   - 示例：`{"prompt":"按主要情节点拆分分镜","max_section_count":8}`。
 - `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations`
   - 只用于生成一个 Section。

@@ -18,6 +18,7 @@ test('project workspace owns realtime presence and query synchronization', () =>
   assert.match(realtime, /channel\.onMessage\(handleMessage\)/)
   assert.match(realtime, /channel\.on\('phx_joined', resyncProject\)/)
   assert.match(realtime, /refetchType: 'active'/)
+  assert.match(realtime, /projectQueryKeys\.recent\(\)/)
   assert.match(realtime, /queueMicrotask\(flush\)/)
   assert.match(realtime, /channel\.join\(\)/)
   assert.match(realtime, /channel\.leave\(\)/)
@@ -37,4 +38,11 @@ test('system lifecycle events refresh open and recent project state', () => {
 	assert.match(source, /window\.addEventListener\('focus'/)
 	assert.match(source, /document\.addEventListener\('visibilitychange'/)
 	assert.doesNotMatch(source, /project-activation/)
+})
+
+test('legacy comic workspace waits for the picture-book profile and generates missing body pages', () => {
+  const source = readFileSync(new URL('../pages/ProductionWorkspaces.jsx', import.meta.url), 'utf8')
+  assert.match(source, /projectQuery\.isLoading && !projectQuery\.data/)
+  assert.match(source, /pageMode \? \{ page_role: pageRole \} : \{\}/)
+  assert.match(source, /disabled=\{bodySections\.length > 0 \|\| comicGenerate\.isPending/)
 })

@@ -9,6 +9,7 @@ import ImageRatioNotice from '../components/ImageRatioNotice.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { ProductionImage } from './ProductionWorkspaces.jsx'
+import { comicPageFallbackTitle, comicPageLabel } from './comicPageRoles.js'
 import { formatTerminologyMessageKey } from './pictureBookProfile.js'
 
 export default function ChapterComicPreviewPage({ projectUuid }) {
@@ -95,13 +96,13 @@ export default function ChapterComicPreviewPage({ projectUuid }) {
 		    {sections.map((section) => <LazyPreviewSection key={section.uuid} projectUuid={projectUuid} section={section} unit="section" targetRatio={targetRatio} pictureBook={pictureBook} />)}
 		  </section>
 		) : (
-		  <section className="chapter-preview__pager" aria-label={t('comic.workbench.preview_page.page_region')}>
-		    <nav className="chapter-preview__pager-controls" aria-label={t('comic.workbench.preview_page.pagination')}>
-		      <button className="button-secondary" type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))}><ChevronLeft size={16} aria-hidden="true" />{t('common.action.previous_page')}</button>
-		      <strong>{t('comic.workbench.preview_page.page_position', { current: pageIndex + 1, total: sections.length })}</strong>
+			  <section className="chapter-preview__pager" aria-label={t('comic.workbench.preview_page.page_region')}>
+			    <nav className="chapter-preview__pager-controls" aria-label={t('comic.workbench.preview_page.pagination')}>
+			      <button className="button-secondary" type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((index) => Math.max(0, index - 1))}><ChevronLeft size={16} aria-hidden="true" />{t('common.action.previous_page')}</button>
+			      <strong>{t('comic.workbench.preview_page.page_position_role', { label: currentPage ? comicPageLabel(t, sections, currentPage) : '', current: pageIndex + 1, total: sections.length })}</strong>
 		      <button className="button-secondary" type="button" disabled={pageIndex === sections.length - 1} onClick={() => setPageIndex((index) => Math.min(sections.length - 1, index + 1))}>{t('common.action.next_page')}<ChevronRight size={16} aria-hidden="true" /></button>
 		    </nav>
-		    {currentPage ? <LazyPreviewSection key={currentPage.uuid} projectUuid={projectUuid} section={currentPage} unit="page" targetRatio={targetRatio} pictureBook={pictureBook} /> : null}
+			    {currentPage ? <LazyPreviewSection key={currentPage.uuid} projectUuid={projectUuid} section={currentPage} sections={sections} unit="page" targetRatio={targetRatio} pictureBook={pictureBook} /> : null}
 		  </section>
 		)
       )}
@@ -109,13 +110,14 @@ export default function ChapterComicPreviewPage({ projectUuid }) {
   )
 }
 
-function LazyPreviewSection({ projectUuid, section, unit = 'section', targetRatio, pictureBook }) {
+function LazyPreviewSection({ projectUuid, section, sections = [], unit = 'section', targetRatio, pictureBook }) {
   const { t } = useI18n()
   const sectionRef = useRef(null)
   const [visible, setVisible] = useState(false)
   const asset = section.current_image?.asset
   const ready = Boolean(asset?.status === 'ready' && asset?.content_url)
-  const title = section.title || t(unit === 'page' ? 'comic.page.untitled' : 'comic.section.untitled')
+  const title = section.title || (unit === 'page' ? comicPageFallbackTitle(t, section) : t('comic.section.untitled'))
+  const label = unit === 'page' ? comicPageLabel(t, sections, section) : t('comic.workbench.section_label', { number: section.section_no })
 
   useEffect(() => {
     if (visible || !ready) return undefined
@@ -137,7 +139,7 @@ function LazyPreviewSection({ projectUuid, section, unit = 'section', targetRati
   return (
     <article className="chapter-preview__section" ref={sectionRef}>
       <header>
-        <div><p>{t(unit === 'page' ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: section.section_no })}</p><h2>{title}</h2></div>
+        <div><p>{label}</p><h2>{title}</h2></div>
         {ready ? <a href={asset.content_url} target="_blank" rel="noreferrer" aria-label={t('comic.workbench.preview_page.open_source', { title })}><ExternalLink size={16} aria-hidden="true" /></a> : null}
       </header>
       <div className="chapter-preview__media" style={{ aspectRatio: previewAspectRatio(asset, targetRatio) }}>

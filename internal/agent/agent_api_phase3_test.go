@@ -11,6 +11,7 @@ import (
 
 	"lumi/internal/files"
 	"lumi/internal/production"
+	"lumi/internal/project"
 	"lumi/internal/story"
 )
 
@@ -230,7 +231,10 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	call(RouteProjectGet, nil, nil, nil)
-	call(RouteYoloWorkflowCreate, nil, nil, map[string]any{"story_prompt": "一只小狐狸替月亮送信。"})
+	yoloWorkflow := call(RouteYoloWorkflowCreate, nil, nil, map[string]any{"story_prompt": "一只小狐狸替月亮送信。"}).(map[string]any)
+	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, stringArg(yoloWorkflow, "uuid")); err != nil {
+		t.Fatalf("cancel isolated Yolo route fixture: %v", err)
+	}
 	call(RouteProjectUpdate, nil, nil, map[string]any{"name": "Phase 3 Agent API", "description": "route integration", "generation_language": "zh-Hans", "expected_revision": revision(project.Revision)})
 
 	call(RouteChapterCreate, nil, nil, map[string]any{"chapter_code": "vol09.ch01", "title": "Phase 3", "content": "initial", "content_format": "md"})
@@ -318,17 +322,24 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	call(RoutePremiseAssetVariantSelect, map[string]string{"premise_asset_uuid": asset.UUID, "variant_uuid": variants[0].UUID}, nil, map[string]any{"expected_revision": revision(asset.Revision)})
 
 	call(RouteComicStateGet, chapterParams, nil, nil)
-	call(RouteComicSectionCreate, chapterParams, nil, map[string]any{"title": "Opening", "description_md": "Moonlight", "storyboard_md": "# Opening"})
+	bodyPage := call(RouteComicSectionCreate, chapterParams, nil, map[string]any{"title": "Opening", "description_md": "Moonlight", "storyboard_md": "# Opening", "page_role": "body"}).(map[string]any)
+	if bodyPage["page_role"] != production.PageRoleBody {
+		t.Fatalf("body-page route result=%+v", bodyPage)
+	}
+	secondBodyPage := call(RouteComicSectionCreate, chapterParams, nil, map[string]any{"title": "Continuation", "description_md": "Dawn", "storyboard_md": "# Continuation", "page_role": "body"}).(map[string]any)
+	if secondBodyPage["page_role"] != production.PageRoleBody {
+		t.Fatalf("second body-page route result=%+v", secondBodyPage)
+	}
 	sections, err := productionService.ListSections(ctx, chapter.UUID)
-	if err != nil || len(sections) != 1 {
+	if err != nil || len(sections) != 2 || sections[0].PageRole != production.PageRoleBody || sections[1].PageRole != production.PageRoleBody {
 		t.Fatalf("sections=%+v err=%v", sections, err)
 	}
 	section := sections[0]
 	sectionParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": section.UUID}
 	call(RouteComicSectionList, chapterParams, nil, nil)
-	call(RouteComicSectionUpdate, sectionParams, nil, map[string]any{"title": "Opening updated", "description_md": "Moonlit station", "expected_revision": revision(section.Revision)})
+	call(RouteComicSectionUpdate, sectionParams, nil, map[string]any{"title": "Opening updated", "description_md": "Moonlit station", "page_role": "body", "expected_revision": revision(section.Revision)})
 	section, _ = productionService.GetSection(ctx, chapter.UUID, section.UUID)
-	call(RouteComicSectionReorder, chapterParams, nil, map[string]any{"section_uuids": []any{section.UUID}})
+	call(RouteComicSectionReorder, chapterParams, nil, map[string]any{"section_uuids": []any{section.UUID, stringArg(secondBodyPage, "uuid")}})
 	section, _ = productionService.GetSection(ctx, chapter.UUID, section.UUID)
 	call(RouteStoryboardList, sectionParams, nil, nil)
 	storyboards, err := productionService.ListStoryboards(ctx, chapter.UUID, section.UUID)
@@ -360,6 +371,10 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	call(RouteComicSnapshotGet, snapshotParams, nil, nil)
 	call(RouteComicSectionDelete, sectionParams, nil, map[string]any{"expected_revision": revision(section.Revision)})
 	call(RouteComicSnapshotRestore, snapshotParams, nil, map[string]any{})
+	restoredSections, err := productionService.ListSections(ctx, chapter.UUID)
+	if err != nil || len(restoredSections) != 2 || restoredSections[0].PageRole != production.PageRoleBody || restoredSections[1].PageRole != production.PageRoleBody {
+		t.Fatalf("snapshot restore lost page roles: sections=%+v err=%v", restoredSections, err)
+	}
 
 	call(RouteComicExportReadiness, nil, map[string]any{"scope": "chapter", "chapter_uuid": chapter.UUID}, nil)
 	call(RouteComicExportList, nil, map[string]any{"page": float64(1), "per_page": float64(10)}, nil)
@@ -391,6 +406,194 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 			}
 		}
 		t.Fatalf("executed=%d want=%d missing=%v", len(executed), len(phase3AgentAPIRoutes()), missing)
+	}
+}
+
+func TestComicSectionAgentRoutesRoundTripPictureBookPageRoles(t *testing.T) {
+	harness := newAgentHarnessWithPictureBook(t, &project.PictureBookInput{
+		Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectPortrait},
+	})
+	ctx := context.Background()
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Page roles", Content: "Story", ContentFormat: "md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapterParams := map[string]string{"chapter_uuid": chapter.UUID}
+	create := func(title, role string) map[string]any {
+		t.Helper()
+		value, err := executePageRoleAgentRoute(t, harness, RouteComicSectionCreate, chapterParams, map[string]any{"title": title, "storyboard_md": "# " + title, "page_role": role})
+		if err != nil {
+			t.Fatalf("create %s: %v", role, err)
+		}
+		result, _ := value.(map[string]any)
+		if !isUUIDv7(stringArg(result, "uuid")) || stringArg(result, "page_role") != role {
+			t.Fatalf("created %s result=%+v", role, result)
+		}
+		return result
+	}
+
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionCreate, chapterParams, map[string]any{"title": "Premature front", "page_role": production.PageRoleFrontCover}); err == nil {
+		t.Fatal("Agent route created a front cover before the first body page")
+	}
+	bodyOne := create("Body one", production.PageRoleBody)
+	front := create("Front cover", production.PageRoleFrontCover)
+	bodyTwo := create("Body two", production.PageRoleBody)
+	back := create("Back cover", production.PageRoleBackCover)
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionCreate, chapterParams, map[string]any{"title": "Duplicate front", "page_role": production.PageRoleFrontCover}); err == nil {
+		t.Fatal("Agent route created a duplicate active front cover")
+	}
+
+	backParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(back, "uuid")}
+	updated, err := executePageRoleAgentRoute(t, harness, RouteComicSectionUpdate, backParams, map[string]any{"page_role": production.PageRoleBody, "expected_revision": float64(intArg(back, "revision"))})
+	if err != nil || stringArg(updated.(map[string]any), "page_role") != production.PageRoleBody {
+		t.Fatalf("update back cover to body: value=%+v err=%v", updated, err)
+	}
+	updatedMap := updated.(map[string]any)
+	updated, err = executePageRoleAgentRoute(t, harness, RouteComicSectionUpdate, backParams, map[string]any{"page_role": production.PageRoleBackCover, "expected_revision": float64(intArg(updatedMap, "revision"))})
+	if err != nil || stringArg(updated.(map[string]any), "page_role") != production.PageRoleBackCover {
+		t.Fatalf("restore back-cover role: value=%+v err=%v", updated, err)
+	}
+
+	reordered, err := executePageRoleAgentRoute(t, harness, RouteComicSectionReorder, chapterParams, map[string]any{"section_uuids": []any{stringArg(bodyTwo, "uuid"), stringArg(bodyOne, "uuid")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAgentSectionRoles(t, reordered, []string{production.PageRoleFrontCover, production.PageRoleBody, production.PageRoleBody, production.PageRoleBackCover})
+	items := reordered.(map[string]any)["items"].([]any)
+	if stringArg(items[1].(map[string]any), "uuid") != stringArg(bodyTwo, "uuid") || stringArg(items[2].(map[string]any), "uuid") != stringArg(bodyOne, "uuid") {
+		t.Fatalf("body reorder result=%+v", reordered)
+	}
+
+	readBody, err := executePageRoleAgentRoute(t, harness, RouteComicSectionGet, map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(bodyTwo, "uuid")}, nil)
+	if err != nil || stringArg(readBody.(map[string]any), "page_role") != production.PageRoleBody {
+		t.Fatalf("read body role: value=%+v err=%v", readBody, err)
+	}
+
+	productionService := production.NewService(harness.store, nil)
+	snapshots, err := productionService.ListChapterSnapshots(ctx, chapter.UUID)
+	if err != nil || len(snapshots) == 0 {
+		t.Fatalf("snapshots=%+v err=%v", snapshots, err)
+	}
+	snapshotParams := map[string]string{"chapter_uuid": chapter.UUID, "snapshot_uuid": snapshots[0].UUID}
+	detail, err := executePageRoleAgentRoute(t, harness, RouteComicSnapshotGet, snapshotParams, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailSections := detail.(map[string]any)["sections"].([]any)
+	if len(detailSections) != 4 || stringArg(detailSections[0].(map[string]any), "page_role") != production.PageRoleFrontCover || stringArg(detailSections[3].(map[string]any), "page_role") != production.PageRoleBackCover {
+		t.Fatalf("snapshot detail lost roles: %+v", detail)
+	}
+
+	frontParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(front, "uuid")}
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionDelete, frontParams, map[string]any{"expected_revision": float64(intArg(front, "revision"))}); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := executePageRoleAgentRoute(t, harness, RouteComicSnapshotRestore, snapshotParams, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAgentSectionRoles(t, restored, []string{production.PageRoleFrontCover, production.PageRoleBody, production.PageRoleBody, production.PageRoleBackCover})
+	restoredItems := restored.(map[string]any)["items"].([]any)
+	firstRestoredBody := restoredItems[1].(map[string]any)
+	firstRestoredBodyParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(firstRestoredBody, "uuid")}
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionDelete, firstRestoredBodyParams, map[string]any{"expected_revision": float64(intArg(firstRestoredBody, "revision"))}); err != nil {
+		t.Fatalf("delete one of two classic body pages: %v", err)
+	}
+	remaining, err := executePageRoleAgentRoute(t, harness, RouteComicSectionList, chapterParams, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remainingItems := remaining.(map[string]any)["items"].([]any)
+	var lastBody map[string]any
+	for _, item := range remainingItems {
+		section := item.(map[string]any)
+		if stringArg(section, "page_role") == production.PageRoleBody {
+			lastBody = section
+			break
+		}
+	}
+	if lastBody == nil {
+		t.Fatalf("classic picture book lost every body page: %+v", remaining)
+	}
+	lastBodyParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(lastBody, "uuid")}
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionDelete, lastBodyParams, map[string]any{"expected_revision": float64(intArg(lastBody, "revision"))}); err == nil {
+		t.Fatal("classic picture-book Agent route deleted the last body page")
+	}
+}
+
+func TestComicSectionAgentRouteRejectsCoverForVerticalStrip(t *testing.T) {
+	harness := newAgentHarness(t)
+	chapter, err := story.NewService(harness.store).CreateChapter(context.Background(), story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Strip", Content: "Story", ContentFormat: "md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = executePageRoleAgentRoute(t, harness, RouteComicSectionCreate, map[string]string{"chapter_uuid": chapter.UUID}, map[string]any{"title": "Invalid cover", "page_role": production.PageRoleFrontCover})
+	if err == nil {
+		t.Fatal("vertical_strip Agent route accepted a front cover")
+	}
+	chapterParams := map[string]string{"chapter_uuid": chapter.UUID}
+	body, err := executePageRoleAgentRoute(t, harness, RouteComicSectionCreate, chapterParams, map[string]any{"title": "Only panel", "page_role": production.PageRoleBody})
+	if err != nil {
+		t.Fatalf("create vertical_strip body: %v", err)
+	}
+	bodyMap := body.(map[string]any)
+	bodyParams := map[string]string{"chapter_uuid": chapter.UUID, "section_uuid": stringArg(bodyMap, "uuid")}
+	if _, err := executePageRoleAgentRoute(t, harness, RouteComicSectionDelete, bodyParams, map[string]any{"expected_revision": float64(intArg(bodyMap, "revision"))}); err != nil {
+		t.Fatalf("vertical_strip should allow deleting its final body: %v", err)
+	}
+	remaining, err := executePageRoleAgentRoute(t, harness, RouteComicSectionList, chapterParams, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if items := remaining.(map[string]any)["items"].([]any); len(items) != 0 {
+		t.Fatalf("vertical_strip should return to empty after deleting its final body: %+v", remaining)
+	}
+}
+
+func executePageRoleAgentRoute(t *testing.T, harness *agentHarness, routeID string, params map[string]string, body map[string]any) (any, error) {
+	t.Helper()
+	var route agentAPIRoute
+	for _, candidate := range agentAPIRoutes() {
+		if candidate.ID == routeID {
+			route = candidate
+			break
+		}
+	}
+	if route.ID == "" {
+		t.Fatalf("unknown route %s", routeID)
+	}
+	path := strings.ReplaceAll(route.PathTemplate, "{project_uuid}", harness.project.UUID)
+	for key, value := range params {
+		path = strings.ReplaceAll(path, "{"+key+"}", value)
+	}
+	args := map[string]any{"method": route.Method, "url": path, "response_filter": recommendedAgentAPIResponseFilter(route)}
+	if body != nil {
+		args["request_body"] = body
+	}
+	tc := toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
+	request, err := parseAgentAPIRequest(tc, args)
+	if err != nil {
+		return nil, err
+	}
+	value, err := executeAgentAPIRoute(context.Background(), harness.service, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "page-role:" + routeID + ":" + mustAgentUUID(t)}, request)
+	if err != nil {
+		return nil, err
+	}
+	return compactAgentRouteValue(route, value)
+}
+
+func assertAgentSectionRoles(t *testing.T, value any, want []string) {
+	t.Helper()
+	root, _ := value.(map[string]any)
+	items, _ := root["items"].([]any)
+	if len(items) != len(want) {
+		t.Fatalf("section count=%d want=%d value=%+v", len(items), len(want), value)
+	}
+	for index, role := range want {
+		item, _ := items[index].(map[string]any)
+		if stringArg(item, "page_role") != role || intArg(item, "section_no") != int64(index+1) {
+			t.Fatalf("section %d=%+v want role=%s section_no=%d", index, item, role, index+1)
+		}
 	}
 }
 

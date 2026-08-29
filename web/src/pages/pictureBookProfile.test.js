@@ -114,5 +114,6 @@ test('chapter preview keeps continuous vertical strips and adds single-page keyb
   assert.match(source, /chapter-preview__pager/)
   assert.match(source, /event\.key === 'ArrowLeft'/)
   assert.match(source, /event\.key === 'ArrowRight'/)
+  assert.match(source, /comicPageLabel\(t, sections, currentPage\)/)
   assert.match(source, /<ImageRatioNotice pictureBook=\{pictureBook\}/)
 })

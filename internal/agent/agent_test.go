@@ -36,6 +36,7 @@ type agentQueueFake struct {
 	nextID        int64
 	jobs          []JobSpec
 	cancels       []string
+	domainCancels []string
 	tasks         map[string]DomainTask
 	retries       []string
 	requests      []DomainTaskRequest
@@ -130,7 +131,14 @@ func (queue *agentQueueFake) ListDomainTaskEvents(context.Context, string, strin
 	return []DomainTaskEvent{}, CursorPagination{PerPage: 50}, nil
 }
 
-func (queue *agentQueueFake) CancelDomainTask(context.Context, string, string, string) error {
+func (queue *agentQueueFake) CancelDomainTask(_ context.Context, _ string, _ string, taskUUID string) error {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	queue.domainCancels = append(queue.domainCancels, taskUUID)
+	if task, ok := queue.tasks[taskUUID]; ok {
+		task.Status = "cancelled"
+		queue.tasks[taskUUID] = task
+	}
 	return nil
 }
 
@@ -293,6 +301,603 @@ func TestYoloPageMomentPlanCoversVerticalStripAndOtherFormats(t *testing.T) {
 	classic, classicMax := yoloPageMomentPlan(project.PictureBookProfile{Format: project.PictureBookClassic})
 	if classic != "[1,1,1,1,1,1]" || classicMax != "1" {
 		t.Fatalf("classic plan=%q max=%s", classic, classicMax)
+	}
+}
+
+func TestYoloV5VerticalStripKeepsBodyOnly(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "竖向故事", Content: "小狐狸出发。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err := production.NewService(harness.store, nil).CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "第一页", StoryboardMD: "## Section 核心剧情目标\n\n小狐狸出发。",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "竖向兼容", StoryPrompt: "小狐狸出发。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "vertical-body-only",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND step_key='story'`, `{"chapter_uuid":"`+chapter.UUID+`"}`, workflowDTO.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='comic_sections'", workflow.ID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 5 {
+		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
+	}
+	output, wait, err := harness.service.runYoloComic(ctx, harness.store, workflow, step, snapshot)
+	if err != nil || wait || output["body_section_uuid"] != section.UUID || output["cover_section_uuid"] != nil {
+		t.Fatalf("output=%+v wait=%v err=%v", output, wait, err)
+	}
+	sections, err := production.NewService(harness.store, nil).ListSections(ctx, chapter.UUID)
+	if err != nil || len(sections) != 1 || sections[0].PageRole != production.PageRoleBody {
+		t.Fatalf("sections=%+v err=%v", sections, err)
+	}
+}
+
+func TestYoloV5ReusesExistingFrontCover(t *testing.T) {
+	harness := newAgentHarnessWithPictureBook(t, &project.PictureBookInput{
+		Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+	})
+	ctx := context.Background()
+	imageProvider, err := harness.providers.Create(ctx, provider.CreateInput{
+		AccountID: "fedcba9876543210fedcba9876543210", DefaultModel: "test/cover-model",
+		DefaultImageModel: "openai/gpt-image-1", APIKey: "cover-test-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "已有封面", Content: "故事正文。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	productionService := production.NewService(harness.store, nil)
+	body, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "第一页", StoryboardMD: "## 页面目标\n\n故事正文。",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cover, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "手工封面", StoryboardMD: "## 封面目标\n\n保留这张手工封面。", PageRole: production.PageRoleFrontCover,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "复用封面", StoryPrompt: "不要替换已有封面。", ProviderUUID: imageProvider.UUID, IdempotencyKey: "reuse-existing-cover",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND step_key='story'`, `{"chapter_uuid":"`+chapter.UUID+`"}`, workflowDTO.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='comic_sections'", workflow.ID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	output, wait, err := harness.service.runYoloComic(ctx, harness.store, workflow, step, snapshot)
+	if err != nil || wait || output["cover_section_uuid"] != cover.UUID || output["body_section_uuid"] != body.UUID {
+		t.Fatalf("output=%+v wait=%v err=%v", output, wait, err)
+	}
+	sections, err := productionService.ListSections(ctx, chapter.UUID)
+	if err != nil || len(sections) != 2 || sections[0].UUID != cover.UUID || sections[0].CurrentStoryboard == nil || sections[0].CurrentStoryboard.ContentMD != "## 封面目标\n\n保留这张手工封面。" {
+		t.Fatalf("sections=%+v err=%v", sections, err)
+	}
+	if len(harness.model.requests) != 0 {
+		t.Fatalf("reusing cover unexpectedly called model: %+v", harness.model.requests)
+	}
+}
+
+func TestYoloV4FirstImageResumesThroughLegacySingleTask(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "旧工作流", Content: "第一页。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err := production.NewService(harness.store, nil).CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "旧第一页", StoryboardMD: "## Section 核心剧情目标\n\n旧第一页。",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "旧版恢复", StoryPrompt: "旧版恢复。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "legacy-first-image-v4",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyOutput := `{"chapter_uuid":"` + chapter.UUID + `","section_uuids":["` + section.UUID + `"],"first_section_uuid":"` + section.UUID + `"}`
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND step_key='comic_sections'`, legacyOutput, workflowDTO.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='first_section_image'", workflow.ID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowStepRecord{}).Where("id=?", step.ID).Update("status", "running").Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	snapshot.Version = 4
+	output, wait, err := harness.service.runYoloFirstImage(ctx, harness.store, workflow, step, snapshot)
+	if err != nil || !wait || output != nil || len(harness.queue.requests) != 1 || len(harness.queue.batchRequests) != 0 || harness.queue.requests[0].ResourceUUID != section.UUID {
+		t.Fatalf("output=%+v wait=%v requests=%+v batches=%+v err=%v", output, wait, harness.queue.requests, harness.queue.batchRequests, err)
+	}
+}
+
+func TestYoloV5InitialImageBatchUsesFrozenModels(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "冻结模型", Content: "第一页。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err := production.NewService(harness.store, nil).CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "第一页", StoryboardMD: "## Section 核心剧情目标\n\n第一页。",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "批量冻结", StoryPrompt: "批量冻结。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "v5-image-batch-freeze",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	comicOutput := `{"chapter_uuid":"` + chapter.UUID + `","section_uuids":["` + section.UUID + `"],"first_section_uuid":"` + section.UUID + `","body_section_uuid":"` + section.UUID + `"}`
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND step_key='comic_sections'`, comicOutput, workflowDTO.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='first_section_image'", workflow.ID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowStepRecord{}).Where("id=?", step.ID).Update("status", "running").Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 5 {
+		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
+	}
+	output, wait, err := harness.service.runYoloFirstImage(ctx, harness.store, workflow, step, snapshot)
+	if err != nil || !wait || output != nil || len(harness.queue.requests) != 0 || len(harness.queue.batchRequests) != 1 {
+		t.Fatalf("output=%+v wait=%v requests=%+v batches=%+v err=%v", output, wait, harness.queue.requests, harness.queue.batchRequests, err)
+	}
+	request := harness.queue.batchRequests[0]
+	if len(request.ResourceUUIDs) != 1 || request.ResourceUUIDs[0] != section.UUID || request.ProviderUUID != snapshot.ImageProviderUUID || request.Model != snapshot.ImageModel || request.SelectionProviderUUID != snapshot.SelectionProviderUUID || request.SelectionModel != snapshot.SelectionModel {
+		t.Fatalf("batch request drifted from snapshot: request=%+v snapshot=%+v", request, snapshot)
+	}
+	var persisted workflowStepRecord
+	if err := harness.store.DB().Where("id=?", step.ID).First(&persisted).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(workflowTaskUUIDs(persisted.OutputJSON, persisted.TaskUUID)) != 1 || persisted.ResourceUUID != section.UUID {
+		t.Fatalf("batch checkpoint=%+v", persisted)
+	}
+}
+
+func TestYoloV5ImageBatchCheckpointCancelsAndRetriesEveryTask(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	workflow, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "批量恢复", StoryPrompt: "验证两张初始页图片可一起取消和重试。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "v5-image-batch-recovery",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var imageStep WorkflowStep
+	for _, step := range workflow.Steps {
+		if step.StepKey == "first_section_image" {
+			imageStep = step
+			break
+		}
+	}
+	if imageStep.UUID == "" {
+		t.Fatal("first_section_image step missing")
+	}
+	coverTaskUUID, _ := newUUIDv7()
+	bodyTaskUUID, _ := newUUIDv7()
+	coverSectionUUID, _ := newUUIDv7()
+	bodySectionUUID, _ := newUUIDv7()
+	harness.queue.mu.Lock()
+	harness.queue.tasks = map[string]DomainTask{
+		coverTaskUUID: {UUID: coverTaskUUID, Kind: "comic_image_generation", ResourceUUID: coverSectionUUID, Status: "queued"},
+		bodyTaskUUID:  {UUID: bodyTaskUUID, Kind: "comic_image_generation", ResourceUUID: bodySectionUUID, Status: "queued"},
+	}
+	harness.queue.mu.Unlock()
+	checkpoint, _ := json.Marshal(map[string]any{
+		"task_uuid": bodyTaskUUID, "task_uuids": []string{coverTaskUUID, bodyTaskUUID},
+		"task_uuid_by_section": map[string]string{coverSectionUUID: coverTaskUUID, bodySectionUUID: bodyTaskUUID},
+	})
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status=CASE WHEN position<? THEN 'completed' WHEN uuid=? THEN 'waiting' ELSE 'pending' END,task_uuid=CASE WHEN uuid=? THEN ? ELSE task_uuid END,output_json=CASE WHEN uuid=? THEN ? ELSE output_json END WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?)`, imageStep.Position, imageStep.UUID, imageStep.UUID, bodyTaskUUID, imageStep.UUID, string(checkpoint), workflow.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflows SET status='running',current_step_key='first_section_image' WHERE uuid=?`, workflow.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	cancelled, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || cancelled.Status != WorkflowCancelled {
+		t.Fatalf("cancelled workflow=%+v err=%v", cancelled, err)
+	}
+	harness.queue.mu.Lock()
+	domainCancels := append([]string(nil), harness.queue.domainCancels...)
+	harness.queue.mu.Unlock()
+	if len(domainCancels) != 2 || domainCancels[0] != coverTaskUUID || domainCancels[1] != bodyTaskUUID {
+		t.Fatalf("domain cancels=%v", domainCancels)
+	}
+	retried, err := harness.service.RetryWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || retried.Status != WorkflowQueued {
+		t.Fatalf("retried workflow=%+v err=%v", retried, err)
+	}
+	harness.queue.mu.Lock()
+	retries := append([]string(nil), harness.queue.retries...)
+	harness.queue.mu.Unlock()
+	if len(retries) != 2 || retries[0] != coverTaskUUID || retries[1] != bodyTaskUUID {
+		t.Fatalf("domain retries=%v", retries)
+	}
+}
+
+func TestYoloV5BatchCheckpointCancelsTasksWhenStepLostCancellationRace(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	workflow, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "取消竞态", StoryPrompt: "批量任务创建后步骤恰好被取消。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "v5-batch-checkpoint-cancel-race",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflow.Steps[len(workflow.Steps)-1].UUID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowStepRecord{}).Where("id=?", step.ID).Updates(map[string]any{"status": "cancelled", "output_json": "{}"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	coverSectionUUID, _ := newUUIDv7()
+	bodySectionUUID, _ := newUUIDv7()
+	_, err = harness.service.ensureWorkflowDomainTaskBatch(ctx, harness.store, step, DomainTaskBatchRequest{
+		Kind: "comic_image_generation", ResourceUUIDs: []string{coverSectionUUID, bodySectionUUID}, ChapterUUID: mustAgentUUID(t),
+		IdempotencyKey: step.IdempotencyKey + ":images",
+	}, bodySectionUUID)
+	var agentErr *Error
+	if !errors.As(err, &agentErr) || agentErr.Code != CodeCancelled {
+		t.Fatalf("checkpoint race error=%v", err)
+	}
+	harness.queue.mu.Lock()
+	domainCancels := append([]string(nil), harness.queue.domainCancels...)
+	tasks := make(map[string]DomainTask, len(harness.queue.tasks))
+	for taskUUID, task := range harness.queue.tasks {
+		tasks[taskUUID] = task
+	}
+	harness.queue.mu.Unlock()
+	if len(domainCancels) != 2 {
+		t.Fatalf("domain cancels=%v", domainCancels)
+	}
+	for _, taskUUID := range domainCancels {
+		if tasks[taskUUID].Status != "cancelled" {
+			t.Fatalf("task %s survived checkpoint race: %+v", taskUUID, tasks[taskUUID])
+		}
+	}
+	var persisted workflowStepRecord
+	if err := harness.store.DB().Where("id=?", step.ID).First(&persisted).Error; err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Status != "cancelled" || persisted.TaskUUID != "" || persisted.OutputJSON != "{}" {
+		t.Fatalf("cancelled step was revived by checkpoint: %+v", persisted)
+	}
+}
+
+func TestYoloTerminalTransitionsCannotReviveCancelledStep(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "终态竞态", StoryPrompt: "取消后迟到的 worker 不得推进。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "yolo-terminal-cancel-cas",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, step, threadUUID, err := harness.service.loadWorkflowStep(ctx, harness.store, workflowDTO.Steps[0].UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowRecord{}).Where("id=?", workflow.ID).Update("status", WorkflowCancelled).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowStepRecord{}).Where("id=?", step.ID).Update("status", "cancelled").Error; err != nil {
+		t.Fatal(err)
+	}
+	checkpointErr := harness.service.checkpointWorkflowStepOutput(ctx, harness.store, step.ID, map[string]any{"cover_storyboard_draft": map[string]string{"title": "迟到封面", "storyboard": "不得保存"}})
+	var agentErr *Error
+	if !errors.As(checkpointErr, &agentErr) || agentErr.Code != CodeCancelled {
+		t.Fatalf("late cover checkpoint error=%v", checkpointErr)
+	}
+	if started, err := harness.service.markWorkflowStepRunning(ctx, harness.store, workflow, step); err != nil || started {
+		t.Fatalf("late running transition started=%v err=%v", started, err)
+	}
+	if waiting, err := harness.service.markWorkflowStepWaiting(ctx, harness.store, workflow, step); err != nil || waiting {
+		t.Fatalf("late waiting transition waiting=%v err=%v", waiting, err)
+	}
+	if err := harness.service.completeWorkflowStep(ctx, harness.store, workflow, step, threadUUID, map[string]any{"project_uuid": harness.project.UUID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.service.failWorkflowStep(ctx, harness.store, workflow, step, threadUUID, domainError(CodeStateConflict, "迟到失败", "不得覆盖取消状态。", nil)); err != nil {
+		t.Fatal(err)
+	}
+	current, err := harness.service.GetWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.Status != WorkflowCancelled || current.Steps[0].Status != "cancelled" || current.Steps[1].Status != "pending" {
+		t.Fatalf("cancelled workflow was revived: %+v", current)
+	}
+	if strings.Contains(string(current.Steps[0].Output), "迟到封面") {
+		t.Fatalf("cancelled step saved late cover draft: %s", current.Steps[0].Output)
+	}
+}
+
+func TestYoloCancelFailedWorkflowFindsBatchTasksOnFailedStep(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	workflow, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "失败后取消", StoryPrompt: "失败步骤仍需定位批量任务。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "yolo-failed-batch-cancel",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var imageStep WorkflowStep
+	for _, step := range workflow.Steps {
+		if step.StepKey == "first_section_image" {
+			imageStep = step
+			break
+		}
+	}
+	failedTaskUUID, _ := newUUIDv7()
+	runningTaskUUID, _ := newUUIDv7()
+	failedSectionUUID, _ := newUUIDv7()
+	runningSectionUUID, _ := newUUIDv7()
+	harness.queue.mu.Lock()
+	harness.queue.tasks = map[string]DomainTask{
+		failedTaskUUID:  {UUID: failedTaskUUID, Kind: "comic_image_generation", ResourceUUID: failedSectionUUID, Status: "failed"},
+		runningTaskUUID: {UUID: runningTaskUUID, Kind: "comic_image_generation", ResourceUUID: runningSectionUUID, Status: "running"},
+	}
+	harness.queue.mu.Unlock()
+	checkpoint, _ := json.Marshal(map[string]any{
+		"task_uuid": runningTaskUUID, "task_uuids": []string{failedTaskUUID, runningTaskUUID},
+		"task_uuid_by_section": map[string]string{failedSectionUUID: failedTaskUUID, runningSectionUUID: runningTaskUUID},
+	})
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status=CASE WHEN position<? THEN 'completed' WHEN uuid=? THEN 'failed' ELSE 'pending' END,task_uuid=CASE WHEN uuid=? THEN ? ELSE task_uuid END,output_json=CASE WHEN uuid=? THEN ? ELSE output_json END WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?)`, imageStep.Position, imageStep.UUID, imageStep.UUID, runningTaskUUID, imageStep.UUID, string(checkpoint), workflow.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflows SET status='failed',current_step_key='first_section_image',error_code='provider_failed' WHERE uuid=?`, workflow.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	cancelled, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || cancelled.Status != WorkflowCancelled {
+		t.Fatalf("cancelled workflow=%+v err=%v", cancelled, err)
+	}
+	harness.queue.mu.Lock()
+	domainCancels := append([]string(nil), harness.queue.domainCancels...)
+	harness.queue.mu.Unlock()
+	if len(domainCancels) != 2 || domainCancels[0] != failedTaskUUID || domainCancels[1] != runningTaskUUID {
+		t.Fatalf("failed-step domain cancels=%v", domainCancels)
+	}
+}
+
+func TestYoloCancelRediscoversBatchTasksMissingFromStepCheckpoint(t *testing.T) {
+	harness := newAgentHarnessWithPictureBook(t, &project.PictureBookInput{
+		Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+	})
+	ctx := context.Background()
+	imageProvider, err := harness.providers.Create(ctx, provider.CreateInput{
+		AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/cover-model",
+		DefaultImageModel: "openai/gpt-image-1", APIKey: "crash-window-test-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "崩溃窗口取消", StoryPrompt: "任务已落库但步骤尚未 checkpoint。", ProviderUUID: imageProvider.UUID, IdempotencyKey: "yolo-batch-crash-window-cancel",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "崩溃窗口", Content: "正文。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	productionService := production.NewService(harness.store, nil)
+	body, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "正文第一页", StoryboardMD: "## 页面目标\n\n正文。"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cover, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "封面", StoryboardMD: "## 封面目标\n\n标题。", PageRole: production.PageRoleFrontCover})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflowRecordValue workflowRecord
+	if err := harness.store.DB().Where("uuid=?", workflow.UUID).First(&workflowRecordValue).Error; err != nil {
+		t.Fatal(err)
+	}
+	var comicStep, imageStep workflowStepRecord
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='comic_sections'", workflowRecordValue.ID).First(&comicStep).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='first_section_image'", workflowRecordValue.ID).First(&imageStep).Error; err != nil {
+		t.Fatal(err)
+	}
+	comicOutput, _ := json.Marshal(map[string]any{
+		"chapter_uuid": chapter.UUID, "section_uuids": []string{body.UUID},
+		"first_section_uuid": body.UUID, "body_section_uuid": body.UUID, "cover_section_uuid": cover.UUID,
+	})
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status=CASE WHEN position<=? THEN 'completed' WHEN id=? THEN 'waiting' ELSE 'pending' END,output_json=CASE WHEN id=? THEN ? WHEN id=? THEN '{}' ELSE output_json END WHERE workflow_id=?`, comicStep.Position, imageStep.ID, comicStep.ID, string(comicOutput), imageStep.ID, workflowRecordValue.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowRecord{}).Where("id=?", workflowRecordValue.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": "first_section_image"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	coverTaskUUID, _ := newUUIDv7()
+	bodyTaskUUID, _ := newUUIDv7()
+	var projectID int64
+	if err := harness.store.DB().Table("projects").Where("uuid=?", harness.project.UUID).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	for _, task := range []struct {
+		uuid, sectionUUID, status string
+	}{
+		{coverTaskUUID, cover.UUID, "queued"},
+		{bodyTaskUUID, body.UUID, "running"},
+	} {
+		key := ComicImageBatchTaskKey(imageStep.IdempotencyKey+":images", task.sectionUUID)
+		if err := harness.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,created_at,updated_at) VALUES(?,?,'comic_image_generation',?,'{}',?,?,?,?)`, task.uuid, projectID, task.sectionUUID, task.status, key, now, now).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	harness.queue.mu.Lock()
+	harness.queue.tasks = map[string]DomainTask{
+		coverTaskUUID: {UUID: coverTaskUUID, Kind: "comic_image_generation", ResourceUUID: cover.UUID, Status: "queued"},
+		bodyTaskUUID:  {UUID: bodyTaskUUID, Kind: "comic_image_generation", ResourceUUID: body.UUID, Status: "running"},
+	}
+	harness.queue.mu.Unlock()
+	cancelled, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || cancelled.Status != WorkflowCancelled {
+		t.Fatalf("cancelled workflow=%+v err=%v", cancelled, err)
+	}
+	harness.queue.mu.Lock()
+	domainCancels := append([]string(nil), harness.queue.domainCancels...)
+	harness.queue.mu.Unlock()
+	cancelledTasks := map[string]bool{}
+	for _, taskUUID := range domainCancels {
+		cancelledTasks[taskUUID] = true
+	}
+	if len(domainCancels) != 2 || !cancelledTasks[coverTaskUUID] || !cancelledTasks[bodyTaskUUID] {
+		t.Fatalf("rediscovered domain cancels=%v", domainCancels)
+	}
+	var persistedStep workflowStepRecord
+	if err := harness.store.DB().Where("id=?", imageStep.ID).First(&persistedStep).Error; err != nil {
+		t.Fatal(err)
+	}
+	checkpointTasks := workflowTaskUUIDs(persistedStep.OutputJSON, persistedStep.TaskUUID)
+	if len(checkpointTasks) != 2 || workflowTaskUUIDBySection(persistedStep.OutputJSON)[cover.UUID] != coverTaskUUID || workflowTaskUUIDBySection(persistedStep.OutputJSON)[body.UUID] != bodyTaskUUID {
+		t.Fatalf("rediscovered checkpoint=%s task_uuid=%s", persistedStep.OutputJSON, persistedStep.TaskUUID)
+	}
+	retried, err := harness.service.RetryWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || retried.Status != WorkflowQueued {
+		t.Fatalf("single retry after crash-window cancellation=%+v err=%v", retried, err)
+	}
+	harness.queue.mu.Lock()
+	retries := append([]string(nil), harness.queue.retries...)
+	harness.queue.mu.Unlock()
+	retriedTasks := map[string]bool{}
+	for _, taskUUID := range retries {
+		retriedTasks[taskUUID] = true
+	}
+	if len(retries) != 2 || !retriedTasks[coverTaskUUID] || !retriedTasks[bodyTaskUUID] {
+		t.Fatalf("single retry did not recover rediscovered tasks: %v", retries)
+	}
+}
+
+func TestYoloCompletedWorkflowCannotBeCancelledAfterCompletionWins(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "完成竞态", StoryPrompt: "完成先于取消提交。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "yolo-complete-before-cancel",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	var finalStep workflowStepRecord
+	if err := harness.store.DB().Where("workflow_id=?", workflow.ID).Order("position DESC").First(&finalStep).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status=CASE WHEN id=? THEN 'running' ELSE 'completed' END WHERE workflow_id=?`, finalStep.ID, workflow.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowRecord{}).Where("id=?", workflow.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": finalStep.StepKey}).Error; err != nil {
+		t.Fatal(err)
+	}
+	chapterUUID, _ := newUUIDv7()
+	bodyUUID, _ := newUUIDv7()
+	if err := harness.service.completeWorkflowStep(ctx, harness.store, workflow, finalStep, workflowDTO.ThreadUUID, map[string]any{"chapter_uuid": chapterUUID, "section_uuid": bodyUUID}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || result.Status != WorkflowCompleted || result.Steps[len(result.Steps)-1].Status != "completed" {
+		t.Fatalf("completed workflow changed on cancel: %+v err=%v", result, err)
+	}
+	var cancelledEvents int64
+	if err := harness.store.DB().Table("workflow_events").Where("workflow_id=? AND event_type='workflow_cancelled'", workflow.ID).Count(&cancelledEvents).Error; err != nil {
+		t.Fatal(err)
+	}
+	if cancelledEvents != 0 {
+		t.Fatalf("completed workflow appended %d cancellation events", cancelledEvents)
+	}
+}
+
+func TestYoloInitialImageBatchWaitsForActiveSiblingBeforeReportingFailure(t *testing.T) {
+	failedUUID, _ := newUUIDv7()
+	runningUUID, _ := newUUIDv7()
+	for _, tasks := range [][]DomainTask{
+		{{UUID: failedUUID, Status: "failed", ErrorCode: "provider_failed"}, {UUID: runningUUID, Status: "running"}},
+		{{UUID: runningUUID, Status: "waiting_for_input"}, {UUID: failedUUID, Status: "failed", ErrorCode: "provider_failed"}},
+	} {
+		active, failed := yoloInitialImageBatchState(tasks)
+		if !active || failed == nil || failed.UUID != failedUUID {
+			t.Fatalf("mixed batch state active=%v failed=%+v tasks=%+v", active, failed, tasks)
+		}
+	}
+	active, failed := yoloInitialImageBatchState([]DomainTask{{UUID: runningUUID, Status: "completed"}, {UUID: failedUUID, Status: "failed", ErrorCode: "provider_failed"}})
+	if active || failed == nil || failed.UUID != failedUUID {
+		t.Fatalf("terminal batch state active=%v failed=%+v", active, failed)
 	}
 }
 
@@ -524,6 +1129,9 @@ func TestStoryboardReferenceThreadStaysBoundToOneComicSection(t *testing.T) {
 		t.Fatal(err)
 	}
 	productionService := production.NewService(harness.store, nil)
+	if _, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "序页", StoryboardMD: "## 序页分镜\n月光越过屋檐。"}); err != nil {
+		t.Fatal(err)
+	}
 	section, err := productionService.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "窗边来信", StoryboardMD: "## 原始分镜\n月光落在信封上。"})
 	if err != nil {
 		t.Fatal(err)
@@ -553,6 +1161,19 @@ func TestStoryboardReferenceThreadStaysBoundToOneComicSection(t *testing.T) {
 	items, err := harness.service.ListItems(ctx, harness.project.UUID, thread.UUID, "", "", 20)
 	if err != nil || len(items.Items) != 1 || len(items.Items[0].References) != 1 || items.Items[0].References[0].ResourceUUID != section.UUID {
 		t.Fatalf("comic section reference item=%+v err=%v", items.Items, err)
+	}
+	var sectionSnapshot struct {
+		ResourceUUID string `json:"resource_uuid"`
+		ChapterUUID  string `json:"chapter_uuid"`
+		SectionNo    int    `json:"section_no"`
+		PageRole     string `json:"page_role"`
+		BodyPageNo   int    `json:"body_page_no"`
+	}
+	if err := json.Unmarshal(items.Items[0].References[0].Snapshot, &sectionSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if sectionSnapshot.ResourceUUID != section.UUID || sectionSnapshot.ChapterUUID != chapter.UUID || sectionSnapshot.SectionNo != section.SectionNo || sectionSnapshot.PageRole != production.PageRoleBody || sectionSnapshot.BodyPageNo != 2 {
+		t.Fatalf("comic section reference snapshot=%+v", sectionSnapshot)
 	}
 	missingUUID, _ := newUUIDv7()
 	missingThread := harness.createThread(t)
@@ -1968,6 +2589,7 @@ func TestYoloWorkflowFreezesEffectivePromptSet(t *testing.T) {
 		storyService := story.NewService(store)
 		for _, update := range []story.UpdatePromptGroupInput{
 			{PromptGroup: "story", Prompts: map[string]string{"story_profile": "FROZEN YOLO STORY"}, ExpectedCurrentVersions: map[string]int{"story_profile": 1}},
+			{PromptGroup: "chapter", Prompts: map[string]string{"cover_storyboard": "FROZEN YOLO COVER {{book_title}} {{chapter_context_json}} {{story_md}} {{story_prompt}} {{first_body_storyboard}}"}, ExpectedCurrentVersions: map[string]int{"cover_storyboard": 1}},
 			{PromptGroup: "premise_style", Prompts: map[string]string{"project_overall_style": "FROZEN YOLO STYLE"}, ExpectedCurrentVersions: map[string]int{"project_overall_style": 1}},
 			{PromptGroup: "runtime", Prompts: map[string]string{"project_language_instruction": "FROZEN YOLO LANGUAGE"}, ExpectedCurrentVersions: map[string]int{"project_language_instruction": 1}},
 		} {
@@ -1984,6 +2606,7 @@ func TestYoloWorkflowFreezesEffectivePromptSet(t *testing.T) {
 		storyService := story.NewService(store)
 		for _, update := range []story.UpdatePromptGroupInput{
 			{PromptGroup: "story", Prompts: map[string]string{"story_profile": "NEWER YOLO STORY"}, ExpectedCurrentVersions: map[string]int{"story_profile": 2}},
+			{PromptGroup: "chapter", Prompts: map[string]string{"cover_storyboard": "NEWER YOLO COVER {{book_title}} {{chapter_context_json}} {{story_md}} {{story_prompt}} {{first_body_storyboard}}"}, ExpectedCurrentVersions: map[string]int{"cover_storyboard": 2}},
 			{PromptGroup: "premise_style", Prompts: map[string]string{"project_overall_style": "NEWER YOLO STYLE"}, ExpectedCurrentVersions: map[string]int{"project_overall_style": 2}},
 			{PromptGroup: "runtime", Prompts: map[string]string{"project_language_instruction": "NEWER YOLO LANGUAGE"}, ExpectedCurrentVersions: map[string]int{"project_language_instruction": 2}},
 		} {
@@ -1998,6 +2621,7 @@ func TestYoloWorkflowFreezesEffectivePromptSet(t *testing.T) {
 	}
 	for identity, expected := range map[string]string{
 		"story/story_profile":                  "FROZEN YOLO STORY",
+		"chapter/cover_storyboard":             "FROZEN YOLO COVER {{book_title}} {{chapter_context_json}} {{story_md}} {{story_prompt}} {{first_body_storyboard}}",
 		"premise_style/project_overall_style":  "FROZEN YOLO STYLE",
 		"runtime/project_language_instruction": "FROZEN YOLO LANGUAGE",
 	} {

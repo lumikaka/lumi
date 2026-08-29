@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	agentprompts "lumi/internal/agent/prompts"
 	"lumi/internal/llm"
 	"lumi/internal/story"
 )
@@ -457,7 +458,8 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 		"不得创建、选择或切换 Candidate",
 		"1～3 个相互关联的问题",
 		"vol01.ch01",
-		"只为第一个 Section 生成漫画成品图",
+		"默认生成封面和第一个正文页的成品图",
+		"vertical_strip",
 		"不得退化为手工生产",
 		"立即结束当前 Turn",
 	} {
@@ -536,10 +538,102 @@ func TestComicImageGuideRequiresOneBatchRequestForMultipleSections(t *testing.T)
 		"comic-image-generation-batches",
 		"禁止循环调用单图接口",
 		"禁止使用通用 `image_gen`",
+		"冻结目标的 `page_role`",
+		"角色漂移",
 		"只表示图片任务已创建",
 	} {
 		if !strings.Contains(guide, required) {
 			t.Fatalf("comic image Guide missing batch rule %q: %s", required, guide)
+		}
+	}
+}
+
+func TestComicSectionPageRoleIsExposedByReviewedAgentContract(t *testing.T) {
+	projector, ok := agentAPIProjectorByKey("comic_section")
+	if !ok || !containsString(agentAPIProjectorFieldNames(projector), "page_role") || !containsString(projector.RecommendedFields, "page_role") {
+		t.Fatalf("comic section projector does not expose page_role: %+v", projector)
+	}
+
+	routes := map[string]agentAPIRoute{}
+	for _, route := range agentAPIRoutes() {
+		routes[route.ID] = route
+	}
+	for _, routeID := range []string{RouteComicSectionGet, RouteComicSectionList, RouteComicSectionCreate, RouteComicSectionUpdate, RouteStoryboardUpdate, RouteStoryboardSelect, RouteComicSnapshotRestore} {
+		route := routes[routeID]
+		if route.ID == "" || !strings.Contains(recommendedAgentAPIResponseFilter(route), "page_role") {
+			t.Fatalf("route %s does not recommend page_role: %+v filter=%q", routeID, route, recommendedAgentAPIResponseFilter(route))
+		}
+	}
+
+	wantRoles := "front_cover,body,back_cover"
+	for _, routeID := range []string{RouteComicSectionCreate, RouteComicSectionUpdate} {
+		properties, _ := routes[routeID].BodySchema["properties"].(map[string]any)
+		roleSchema, _ := properties["page_role"].(map[string]any)
+		roles, _ := roleSchema["enum"].([]string)
+		if strings.Join(roles, ",") != wantRoles {
+			t.Fatalf("route %s page_role enum=%v", routeID, roles)
+		}
+	}
+	createProperties, _ := routes[RouteComicSectionCreate].BodySchema["properties"].(map[string]any)
+	createRoleSchema, _ := createProperties["page_role"].(map[string]any)
+	if description, _ := createRoleSchema["description"].(string); !strings.Contains(description, "空页面序列首项必须为 body") {
+		t.Fatalf("comic section create schema lost body-first invariant: %q", description)
+	}
+
+	projectUUID, chapterUUID, sectionUUID := mustAgentUUID(t), mustAgentUUID(t), mustAgentUUID(t)
+	tc := toolContext{ProjectUUID: projectUUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
+	base := "/api/v1/projects/" + projectUUID + "/chapters/" + chapterUUID + "/comic-sections"
+	validRequests := []map[string]any{
+		{"method": "POST", "url": base, "request_body": map[string]any{"title": "封面", "page_role": "front_cover"}, "response_filter": recommendedAgentAPIResponseFilter(routes[RouteComicSectionCreate])},
+		{"method": "PATCH", "url": base + "/" + sectionUUID, "request_body": map[string]any{"page_role": "back_cover", "expected_revision": float64(1)}, "response_filter": recommendedAgentAPIResponseFilter(routes[RouteComicSectionUpdate])},
+	}
+	for _, request := range validRequests {
+		if _, err := parseAgentAPIRequest(tc, request); err != nil {
+			t.Fatalf("valid page_role request rejected: request=%+v err=%v", request, err)
+		}
+	}
+	invalid := cloneToolArguments(validRequests[0])
+	invalid["request_body"].(map[string]any)["page_role"] = "cover"
+	if _, err := parseAgentAPIRequest(tc, invalid); err == nil || errorCode(err) != CodeToolValidation {
+		t.Fatalf("invalid page_role accepted: %v", err)
+	}
+
+	comicDoc, err := renderAgentDoc(comicDocPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guide, err := renderAgentDoc(agentDocBasePath + "/guides/管理漫画段落.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"front_cover", "body", "back_cover", "绝对装订顺序", "vertical_strip", "全部 active `body`", "空页面序列必须先创建 `body`", "条漫可删除最后一个", "冻结目标 Section 的 `page_role`"} {
+		if !strings.Contains(comicDoc+guide, required) {
+			t.Fatalf("comic page-role docs missing %q", required)
+		}
+	}
+	snapshotDoc, err := renderAgentDoc(comicSnapshotDocPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoreGuide, err := renderAgentDoc(agentDocBasePath + "/guides/恢复漫画快照.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"至少一个 active `body`", "空快照", "只有封面/封底", "条漫可恢复 empty"} {
+		if !strings.Contains(snapshotDoc+restoreGuide, required) {
+			t.Fatalf("comic snapshot page-role docs missing %q", required)
+		}
+	}
+	zhPrompt := agentprompts.MustRead("base", "zh-Hans")
+	enPrompt := agentprompts.MustRead("base", "en")
+	for _, required := range []string{"front_cover", "正文页", "封底", "绝对装订顺序", "空页面序列必须先创建 `body`"} {
+		if !strings.Contains(zhPrompt, required) {
+			t.Fatalf("Chinese base prompt missing page-role term %q", required)
+		}
+	}
+	for _, required := range []string{"front cover", "body page", "back cover", "absolute binding order", "empty page sequence must start with body"} {
+		if !strings.Contains(enPrompt, required) {
+			t.Fatalf("English base prompt missing page-role term %q", required)
 		}
 	}
 }

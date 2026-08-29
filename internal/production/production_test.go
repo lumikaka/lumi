@@ -32,6 +32,10 @@ type productionHarness struct {
 }
 
 func newProductionHarness(t *testing.T) *productionHarness {
+	return newProductionHarnessWithFormat(t, project.PictureBookVertical)
+}
+
+func newProductionHarnessWithFormat(t *testing.T, format string) *productionHarness {
 	t.Helper()
 	ctx := context.Background()
 	dataDir := filepath.Join(t.TempDir(), "app")
@@ -42,7 +46,7 @@ func newProductionHarness(t *testing.T) *productionHarness {
 	manager := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	created, err := manager.CreateWithInput(ctx, project.CreateInput{
 		Name:        "Production",
-		PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical},
+		PictureBook: &project.PictureBookInput{Format: format},
 	}, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
@@ -843,7 +847,7 @@ func TestExportReadinessCountsMissingSectionsAndFreezesAuditSnapshot(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 4 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || !snapshot.AllowMissingImages || snapshot.ActiveChapterCount != 2 || snapshot.SectionCount != 3 || snapshot.ExportedSectionCount != 1 || snapshot.MissingSectionCount != 2 || len(snapshot.MissingSectionUUIDs) != 2 || len(snapshot.Entries) != 1 {
+	if snapshot.Version != exportSnapshotV6 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || !snapshot.AllowMissingImages || snapshot.ActiveChapterCount != 2 || snapshot.SectionCount != 3 || snapshot.ExportedSectionCount != 1 || snapshot.MissingSectionCount != 2 || len(snapshot.MissingSectionUUIDs) != 2 || len(snapshot.Entries) != 1 {
 		t.Fatalf("export snapshot=%+v", snapshot)
 	}
 	secondReadiness, err := h.service.ExportReadiness(ctx, "chapter", second.UUID)
@@ -895,6 +899,30 @@ func TestExportNamingDistinguishesVerticalStripAndPageFormats(t *testing.T) {
 			snapshot:   ExportSnapshot{Version: 2, Entries: []ExportEntry{entry}},
 			wantEntry:  "vol01.ch01/sections/section-002.png",
 			wantPrefix: "comic-project-",
+		},
+		{
+			name: "v6 front cover",
+			snapshot: ExportSnapshot{Version: exportSnapshotV6, PictureBook: &project.PictureBookProfile{Format: project.PictureBookClassic}, Entries: []ExportEntry{
+				{ChapterCode: entry.ChapterCode, SectionNo: 1, PageRole: PageRoleFrontCover, ImageAssetUUID: fileUUID, Extension: "png"},
+			}},
+			wantEntry:  "vol01.ch01/front-cover.png",
+			wantPrefix: "picture-book-project-",
+		},
+		{
+			name: "v6 body page",
+			snapshot: ExportSnapshot{Version: exportSnapshotV6, PictureBook: &project.PictureBookProfile{Format: project.PictureBookClassic}, Entries: []ExportEntry{
+				{ChapterCode: entry.ChapterCode, SectionNo: 2, PageRole: PageRoleBody, BodyPageNo: 1, ImageAssetUUID: fileUUID, Extension: "png"},
+			}},
+			wantEntry:  "vol01.ch01/pages/page-001.png",
+			wantPrefix: "picture-book-project-",
+		},
+		{
+			name: "v6 back cover",
+			snapshot: ExportSnapshot{Version: exportSnapshotV6, PictureBook: &project.PictureBookProfile{Format: project.PictureBookClassic}, Entries: []ExportEntry{
+				{ChapterCode: entry.ChapterCode, SectionNo: 3, PageRole: PageRoleBackCover, ImageAssetUUID: fileUUID, Extension: "png"},
+			}},
+			wantEntry:  "vol01.ch01/back-cover.png",
+			wantPrefix: "picture-book-project-",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -1197,7 +1225,7 @@ func TestComicSnapshotDetailSupportsLegacyMediaPlaceholdersAndSafeRestore(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.SchemaVersion != 2 || detail.Chapter.UUID != chapter.UUID || detail.Chapter.ChapterCode != chapter.ChapterCode || len(detail.Sections) != 2 || detail.Sections[0].UUID != first.UUID || detail.Sections[1].UUID != second.UUID {
+	if detail.SchemaVersion != 3 || detail.Chapter.UUID != chapter.UUID || detail.Chapter.ChapterCode != chapter.ChapterCode || len(detail.Sections) != 2 || detail.Sections[0].UUID != first.UUID || detail.Sections[1].UUID != second.UUID || detail.Sections[0].PageRole != PageRoleBody || detail.Sections[1].PageRole != PageRoleBody {
 		t.Fatalf("sorted detail=%+v", detail)
 	}
 	if detail.Sections[0].StoryboardMD != "# First storyboard" || detail.Sections[0].CurrentImage.Status != files.ObjectReady || detail.Sections[0].CurrentImage.AssetUUID == "" || detail.Sections[0].PremiseReference.Status != files.ObjectReady {
@@ -1259,6 +1287,23 @@ func TestComicSnapshotDetailSupportsLegacyMediaPlaceholdersAndSafeRestore(t *tes
 		t.Fatalf("active image restore error=%v", err)
 	}
 	if err := h.service.store.DB().Table("production_task_runs").Where("uuid=?", imageTaskUUID).Update("status", "failed").Error; err != nil {
+		t.Fatal(err)
+	}
+	yoloWorkflowUUID, _ := newUUIDv7()
+	yoloProviderUUID, _ := newUUIDv7()
+	if err := h.service.store.DB().Exec(`INSERT INTO workflows(uuid,project_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,created_at,updated_at) VALUES(?,?,'yolo_project_initialization','Snapshot restore guard','running',1,'{"version":5}',?,?, 'snapshot-test',?,?)`, yoloWorkflowUUID, projectID, "snapshot-yolo-"+yoloWorkflowUUID, yoloProviderUUID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.RestoreChapterSnapshot(ctx, chapter.UUID, legacy.UUID); !productionErrorIs(err, CodeSnapshotBusy) {
+		t.Fatalf("active Yolo restore error=%v", err)
+	}
+	if err := h.service.store.DB().Table("workflows").Where("uuid=?", yoloWorkflowUUID).Update("status", "interrupted").Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.RestoreChapterSnapshot(ctx, chapter.UUID, legacy.UUID); !productionErrorIs(err, CodeSnapshotBusy) {
+		t.Fatalf("retryable interrupted Yolo restore error=%v", err)
+	}
+	if err := h.service.store.DB().Table("workflows").Where("uuid=?", yoloWorkflowUUID).Update("status", "failed").Error; err != nil {
 		t.Fatal(err)
 	}
 	beforeRestore, _ := h.service.ListChapterSnapshots(ctx, chapter.UUID)

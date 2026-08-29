@@ -21,6 +21,7 @@ import {
   comicExportSnapshotMetrics,
   retryableComicExportStatuses,
 } from '../pages/comicExportState.js'
+import { comicPageFallbackTitle, comicPageLabel } from '../pages/comicPageRoles.js'
 import LumiDialog from './LumiDialog.jsx'
 
 export default function ComicExportDialog({ projectUuid, request, onClose }) {
@@ -229,7 +230,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
         {stage === 'confirm' ? <>
           {formatSelector}
           <div className="comic-export-dialog__summary"><strong>{t(pageMode ? 'projects.exports.incomplete_title_pages' : 'projects.exports.incomplete_title')}</strong><p>{t(pageMode ? 'projects.exports.incomplete_body_pages' : 'projects.exports.incomplete_body', { ready: readiness.image_section_count, missing: readiness.missing_section_count })}</p></div>
-          <ul className="comic-export-dialog__missing">{(readiness.missing_sections || []).map((section) => <li key={section.uuid}><strong>{t(pageMode ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: section.section_no })}</strong><span>{section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</span></li>)}</ul>
+          <ul className="comic-export-dialog__missing">{(readiness.missing_sections || []).map((section) => <li key={section.uuid}><strong>{pageMode ? comicPageLabel(t, readiness.missing_sections, section) : t('comic.workbench.section_label', { number: section.section_no })}</strong><span>{section.title || (pageMode ? comicPageFallbackTitle(t, section) : t('comic.section.untitled'))}</span></li>)}</ul>
         </> : null}
         {stage === 'check_failed' || stage === 'create_failed' ? <LocalizedErrorMessage error={error} /> : null}
         {stage === 'operation' ? <>

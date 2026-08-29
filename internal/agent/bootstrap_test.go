@@ -539,7 +539,7 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	confirmation := map[string]any{
 		"questions": []map[string]any{{
 			"header": "创建确认", "id": bootstrapYoloConfirmationQuestionID,
-			"question": "是否定稿当前设置并立即启动只创建首章和首张漫画图的 YOLO？",
+			"question": "是否定稿当前设置并立即启动首章与首个正文页图片的 YOLO（条漫不创建封面）？",
 			"options": []map[string]any{
 				{"label": "继续修改 (Recommended)", "description": "保留草稿，不定稿也不启动。"},
 				{"label": "定稿并启动 YOLO", "description": "定稿后启动固定范围的 YOLO。"},

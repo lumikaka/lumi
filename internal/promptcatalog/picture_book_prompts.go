@@ -59,6 +59,22 @@ func pictureBookDirective(language string, options PictureBookOptions) string {
 	return base
 }
 
+func pictureBookCoverDirective(language string, options PictureBookOptions) string {
+	ratio := fmt.Sprintf("%d:%d", options.AspectWidth, options.AspectHeight)
+	if NormalizeLanguage(language) == LanguageEnglish {
+		return "This is the picture book's front cover, not a body page. Generate one flat final cover canvas at an aspect ratio of " + ratio + ". Body-page rules for wordlessness, narrative-sentence count, interactive questions, or comic-panel count do not apply to the cover; follow the exact title-only copy and cover-composition rules below. Never render a book mockup, 3D book, unfolded jacket, spine, or back cover."
+	}
+	return "这是绘本封面，不是正文页。生成一张宽高比为 " + ratio + " 的平面最终封面画布。正文页的无字、叙事句数、互动提问或漫画分格数量规则不适用于封面；封面只遵循下方逐字标题和封面构图规则。禁止生成书本样机、立体书、展开封套、书脊或封底。"
+}
+
+func pictureBookBackCoverDirective(language string, options PictureBookOptions) string {
+	ratio := fmt.Sprintf("%d:%d", options.AspectWidth, options.AspectHeight)
+	if NormalizeLanguage(language) == LanguageEnglish {
+		return "This is the picture book's back cover, not a body page or front cover. Generate one flat final back-cover canvas at an aspect ratio of " + ratio + ". Body-page rules for wordlessness, narrative-sentence count, interactive questions, or comic-panel count do not apply to the back cover; render only copy explicitly required by the storyboard. Never render a book mockup, 3D book, unfolded jacket, spine, or front cover."
+	}
+	return "这是绘本封底，不是正文页或正封面。生成一张宽高比为 " + ratio + " 的平面最终封底画布。正文页的无字、叙事句数、互动提问或漫画分格数量规则不适用于封底；只绘制 storyboard 明确要求的文字。禁止生成书本样机、立体书、展开封套、书脊或正封面。"
+}
+
 func interactiveDirectiveZH(mode string) string {
 	switch mode {
 	case "make_a_choice":
@@ -187,7 +203,7 @@ const pictureBookBeforeImageEN = `{{picture_book_directive}}
 6. Use clear linework, stable color blocks, age-appropriate readable composition, and avoid photorealism, posters, character standees, setting sheets, or collages of independent thumbnails.
 7. Any visible copy must use the project language, be clearly sized with sufficient contrast and whitespace, and preserve the storyboard wording verbatim.`
 
-// DefinitionsForPictureBook returns a complete 28-key catalog. The protected
+// DefinitionsForPictureBook returns the complete catalog. The protected
 // vertical-strip branch returns Definitions directly, keeping every existing
 // strip prompt byte unchanged.
 func DefinitionsForPictureBook(language string, options PictureBookOptions) []Definition {
@@ -204,6 +220,12 @@ func DefinitionsForPictureBook(language string, options PictureBookOptions) []De
 			definition.DefaultValue = strings.ReplaceAll(choosePictureBook(english, pictureBookStoryboardZH, pictureBookStoryboardEN), "{{picture_book_directive}}", directive)
 			definition.Title = choosePictureBook(english, "绘本页面规划", "Picture-book page planning")
 			definition.Description = choosePictureBook(english, "从绘本正文规划完整页面。", "Plan complete pages from picture-book prose.")
+		case definition.Group == GroupChapter && definition.Key == "cover_storyboard":
+			definition.DefaultValue = strings.TrimSpace(pictureBookCoverDirective(language, options) + "\n\n" + definition.DefaultValue)
+		case definition.Group == GroupChapter && definition.Key == "cover_before_image":
+			definition.DefaultValue = strings.TrimSpace(pictureBookCoverDirective(language, options) + "\n\n" + definition.DefaultValue)
+		case definition.Group == GroupChapter && definition.Key == "back_cover_before_image":
+			definition.DefaultValue = strings.TrimSpace(pictureBookBackCoverDirective(language, options) + "\n\n" + definition.DefaultValue)
 		case definition.Group == GroupChapter && definition.Key == "before_image":
 			definition.DefaultValue = strings.ReplaceAll(choosePictureBook(english, pictureBookBeforeImageZH, pictureBookBeforeImageEN), "{{picture_book_directive}}", directive)
 			definition.Title = choosePictureBook(english, "页面图片基础规则", "Page image base rules")

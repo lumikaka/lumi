@@ -21,6 +21,8 @@
 
 应用库保存本机的 `recent_projects` 发现索引；每个项目目录保存自己的 `project.sqlite` 与业务数据。两个库不共享内部 `id`，项目目录身份以 UUIDv7 为准而不是本机路径。
 
+最近项目卡片的 `cover_image_url` 是读取项目库得到的临时投影，不写入应用库：按 Chapter 顺序选择第一本存在 ready 候选的绘本，并在该绘本内优先封面、其次第一张正文图，永不使用封底。
+
 ### 项目级创作配置
 
 `project_story_profiles` 是项目总纲的结构化事实源，`STORY.md` 只是可读投影。`project_prompt_versions` 为内置 Prompt Catalog 保存项目级追加式覆盖，不把当前值直接写回内置定义。
@@ -43,7 +45,7 @@
 
 | 模块 | 关系 |
 |---|---|
-| 绘本 / 章节 | `chapters.project_id` 归属项目；Chapter 正文生成可读取项目总纲和 Prompt。 |
+| 绘本 / 章节 | `chapters.project_id` 归属项目；Chapter 正文生成可读取项目总纲和 Prompt，最近项目卡片按 Chapter 边界选择封面或正文候选。 |
 | 对话线程 | 创建 Saga 在草稿项目中恰好一次建立普通 `conversation` Thread、首个 Turn/Run 和原始用户 Item，并把已就绪参考图按清单顺序冻结为 Item Reference；Agent 通过受控 Setup API 推进唯一的 Setup Draft。 |
 | 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可启动服务端绑定幂等键的 existing YOLO，后续 ready Turn 才开放普通业务编排。 |
 | AI 运行时 | `project_model_settings` 以项目为边界保存模型覆盖。 |

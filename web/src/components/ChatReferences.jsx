@@ -5,7 +5,8 @@ import { BookOpen, Check, ChevronDown, Image, Layers3, Paperclip, X } from 'luci
 import { listPremiseAssets, listComicSections } from '../api/production.js'
 import { listChapters } from '../api/story.js'
 import { MAX_PROJECT_CHAT_REFERENCES, referenceKey } from '../pages/projectChatAttachments.js'
-import { formatTerminologyKey } from '../pages/pictureBookProfile.js'
+import { formatTerminologyKey, isVerticalStripPictureBook } from '../pages/pictureBookProfile.js'
+import { comicPageFallbackTitle, comicPageLabel } from '../pages/comicPageRoles.js'
 import { useI18n } from '../i18n/useI18n.js'
 
 function snapshotOf(reference) {
@@ -19,6 +20,11 @@ export function referenceTitle(reference, fallback = '') {
 }
 
 function referenceTypeLabel(reference, t, pictureBook) {
+  const snapshot = snapshotOf(reference)
+  if (reference?.resource_type === 'comic_section' && !isVerticalStripPictureBook(pictureBook) && snapshot.page_role) {
+    if (snapshot.page_role === 'body' && !(Number(snapshot.body_page_no) > 0)) return t('comic.page_role.body_option')
+    return comicPageLabel(t, [snapshot], snapshot)
+  }
   const key = {
     file: 'chat.reference.type.file',
     premise_asset: 'chat.reference.type.premise_asset',
@@ -117,11 +123,18 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
   const choose = (candidate) => {
     const resourceType = tab
     const imageUuid = resourceType === 'premise_asset' ? premiseImageUuid(candidate) : resourceType === 'comic_section' ? sectionImageUuid(candidate) : ''
+    const candidateTitle = resourceType === 'comic_section' && !isVerticalStripPictureBook(pictureBook)
+      ? candidate.title?.trim()
+        ? `${comicPageLabel(t, sectionsQuery.data?.items || [], candidate)} · ${candidate.title}`
+        : comicPageLabel(t, sectionsQuery.data?.items || [], candidate)
+      : resourceType === 'chapter'
+        ? [candidate.chapter_code, candidate.title].filter(Boolean).join(' · ')
+        : candidate.title || candidate.chapter_code || candidate.uuid
     onToggle({
       localId: `${resourceType}:${candidate.uuid}`,
       resource_type: resourceType,
       resource_uuid: candidate.uuid,
-      title: resourceType === 'chapter' ? [candidate.chapter_code, candidate.title].filter(Boolean).join(' · ') : candidate.title || candidate.chapter_code || candidate.uuid,
+      title: candidateTitle,
       image_file_uuid: imageUuid,
       image_available: Boolean(imageUuid),
       status: 'ready',
@@ -148,7 +161,9 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
             {candidates.map((candidate) => {
               const key = `${tab}:${candidate.uuid}`
               const pressed = selected.has(key)
-              return <button type="button" aria-pressed={pressed} disabled={!pressed && atLimit} onClick={() => choose(candidate)} key={candidate.uuid}><span>{tab === 'comic_section' && candidate.section_no ? `${candidate.section_no}. ` : ''}{tab === 'chapter' && candidate.chapter_code ? `${candidate.chapter_code} · ` : ''}{candidate.title || t('chat.reference.untitled')}</span>{pressed ? <Check size={14} /> : null}</button>
+              const pageLabel = tab === 'comic_section' && !isVerticalStripPictureBook(pictureBook) ? comicPageLabel(t, candidates, candidate) : ''
+              const fallbackTitle = tab === 'comic_section' && !isVerticalStripPictureBook(pictureBook) ? comicPageFallbackTitle(t, candidate) : t('chat.reference.untitled')
+              return <button type="button" aria-pressed={pressed} disabled={!pressed && atLimit} onClick={() => choose(candidate)} key={candidate.uuid}><span>{pageLabel ? `${pageLabel} · ` : tab === 'comic_section' && candidate.section_no ? `${candidate.section_no}. ` : ''}{tab === 'chapter' && candidate.chapter_code ? `${candidate.chapter_code} · ` : ''}{candidate.title || fallbackTitle}</span>{pressed ? <Check size={14} /> : null}</button>
             })}
           </div>
         </section>

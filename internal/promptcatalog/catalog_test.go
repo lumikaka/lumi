@@ -34,14 +34,14 @@ func TestCatalogLanguagesHaveIdenticalKeysGroupsAndPlaceholders(t *testing.T) {
 func TestCatalogContainsCanonicalKeys(t *testing.T) {
 	want := map[string][]string{
 		GroupStory:        {"json_system", "story_profile", "story_chapter", "chapter_batch_plan", "next_story_chapter", "profile_from_chapters"},
-		GroupChapter:      {"json_system", "comic_storyboard", "section_premise_selection", "before_image", "section_reference_present", "section_reference_absent", "section_additional_direction", "section_image"},
+		GroupChapter:      {"json_system", "comic_storyboard", "cover_storyboard", "section_premise_selection", "before_image", "cover_before_image", "back_cover_before_image", "section_reference_present", "section_reference_absent", "section_additional_direction", "section_image"},
 		GroupPremise:      {"setting_image", "asset_breakdown", "single_asset_generation"},
 		GroupPremiseStyle: {"project_overall_style", "simple_cel_anime", "hong_kong_comic", "minimal_japanese_handdrawn"},
 		GroupAgent:        {"base", "conversation_summary"},
 		GroupRuntime:      {"project_language_instruction"},
 	}
-	if definitions := Definitions(LanguageChinese); len(definitions) != 24 {
-		t.Fatalf("catalog size = %d, want 24", len(definitions))
+	if definitions := Definitions(LanguageChinese); len(definitions) != 27 {
+		t.Fatalf("catalog size = %d, want 27", len(definitions))
 	}
 	for group, keys := range want {
 		for _, key := range keys {
@@ -54,10 +54,13 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 		}
 	}
 	before, _ := Lookup(GroupChapter, "before_image", LanguageChinese)
+	coverBefore, _ := Lookup(GroupChapter, "cover_before_image", LanguageChinese)
+	backCoverBefore, _ := Lookup(GroupChapter, "back_cover_before_image", LanguageChinese)
 	section, _ := Lookup(GroupChapter, "section_image", LanguageChinese)
+	cover, _ := Lookup(GroupChapter, "cover_storyboard", LanguageChinese)
 	preset, _ := Lookup(GroupPremiseStyle, "simple_cel_anime", LanguageChinese)
-	if before.PromptType != PromptTypeFragment || preset.PromptType != PromptTypePreset || section.PromptType != PromptTypeTemplate || !strings.Contains(section.DefaultValue, "{{before_image_prompt}}") {
-		t.Fatalf("prompt types or composition are invalid: before=%q preset=%q section=%q", before.PromptType, preset.PromptType, section.PromptType)
+	if before.PromptType != PromptTypeFragment || coverBefore.PromptType != PromptTypeFragment || backCoverBefore.PromptType != PromptTypeFragment || preset.PromptType != PromptTypePreset || section.PromptType != PromptTypeTemplate || cover.PromptType != PromptTypeTemplate || !strings.Contains(section.DefaultValue, "{{before_image_prompt}}") || !strings.Contains(cover.DefaultValue, "{{first_body_storyboard}}") {
+		t.Fatalf("prompt types or composition are invalid: before=%q cover_before=%q back_cover_before=%q preset=%q section=%q cover=%q", before.PromptType, coverBefore.PromptType, backCoverBefore.PromptType, preset.PromptType, section.PromptType, cover.PromptType)
 	}
 }
 
@@ -180,6 +183,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 	wordless, _ := LookupForPictureBook(GroupChapter, "before_image", LanguageChinese, PictureBookOptions{Format: "wordless_picture_book", AspectWidth: 1, AspectHeight: 1})
 	interactive, _ := LookupForPictureBook(GroupChapter, "before_image", LanguageChinese, PictureBookOptions{Format: "interactive_picture_book", AspectWidth: 4, AspectHeight: 3, InteractionMode: "follow_along"})
 	fourPanel, _ := LookupForPictureBook(GroupChapter, "comic_storyboard", LanguageEnglish, PictureBookOptions{Format: "comic_story", AspectWidth: 3, AspectHeight: 4, ComicLayout: "four_panel"})
+	wordlessCover, _ := LookupForPictureBook(GroupChapter, "cover_storyboard", LanguageChinese, PictureBookOptions{Format: "wordless_picture_book", AspectWidth: 1, AspectHeight: 1})
+	interactiveBackCover, _ := LookupForPictureBook(GroupChapter, "back_cover_before_image", LanguageChinese, PictureBookOptions{Format: "interactive_picture_book", AspectWidth: 4, AspectHeight: 3, InteractionMode: "follow_along"})
 	if !strings.Contains(classic.DefaultValue, "1–3 句") || !strings.Contains(minimal.DefaultValue, "0–1 句") {
 		t.Fatal("classic minimal-text option did not change the page prompt")
 	}
@@ -192,17 +197,29 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 	if !strings.Contains(fourPanel.DefaultValue, "exactly four sequential comic panels") || !strings.Contains(fourPanel.DefaultValue, "one section is one page") {
 		t.Fatal("four-panel prompt lost panel or page planning rules")
 	}
+	if !strings.Contains(wordlessCover.DefaultValue, "正文页的无字") || !strings.Contains(wordlessCover.DefaultValue, "逐字标题") {
+		t.Fatal("wordless cover prompt did not separate cover copy from body-page no-text rules")
+	}
+	if !strings.Contains(interactiveBackCover.DefaultValue, "封底") || !strings.Contains(interactiveBackCover.DefaultValue, "互动提问") || strings.Contains(interactiveBackCover.DefaultValue, "必须展示一个简单、安全") {
+		t.Fatal("interactive back-cover prompt did not separate special-page composition from body interaction rules")
+	}
 }
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "eecc8438dd3dfd4d9a0831f0aa9bb689df20b8515fc8f048ecc6b5786c23a7bd",
-		LanguageEnglish: "398755b0d81963251af9d756a84cec343ae98c499e8ade22037b020afb81bffe",
+		LanguageChinese: "90d6fc97e4681821e3115afa80f40b41bc41e8122201aafb29c4dd9a856cf9d6",
+		LanguageEnglish: "c71c05cfa0319cad242cae682cd4e62114bdcaa9b819b987a28377706d1d0013",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
 		stripDefinitions := DefinitionsForPictureBook(language, PictureBookOptions{Format: "vertical_strip", AspectWidth: 1, AspectHeight: 3})
 		for _, definition := range stripDefinitions {
+			// The special-page prompt keys are new picture-book-only capabilities. Keep the
+			// canary pinned to the pre-existing vertical-strip suite so adding the
+			// unused key does not require blessing changes to protected prompts.
+			if definition.Group == GroupChapter && (definition.Key == "cover_storyboard" || definition.Key == "cover_before_image" || definition.Key == "back_cover_before_image") {
+				continue
+			}
 			_, _ = fmt.Fprintf(hasher, "%s\x00%s\x00%s\x00%s\x00", language, definition.Group, definition.Key, definition.DefaultValue)
 		}
 		got := hex.EncodeToString(hasher.Sum(nil))

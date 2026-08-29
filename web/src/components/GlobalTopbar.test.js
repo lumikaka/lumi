@@ -20,7 +20,7 @@ test('topbar, persistent sidebar and group tabs preserve the existing routes', (
   assert.match(topbarSource, /workspaceRoute\(projectUuid, section\.route, location\.search\)/)
   assert.match(topbarSource, /projects\.recent_used/)
   assert.match(sidebarSource, /lumi\.globalSidebarCollapsed/)
-  assert.match(sidebarSource, /global-sidebar__logo-button[\s\S]*onClick=\{onToggleCollapsed\}/)
+  assert.match(sidebarSource, /className="global-sidebar__brand"[\s\S]*onClick=\{onToggleCollapsed\}/)
   assert.match(sidebarSource, /stableRecentProjects\.slice\(0, 6\)/)
   assert.match(sidebarSource, /lumi\.globalSidebarProjectOrder/)
   assert.match(sidebarSource, /icon=\{House\}/)

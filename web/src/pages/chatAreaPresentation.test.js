@@ -21,6 +21,7 @@ import {
   threadContextCopyKey,
   threadDisplayTitle,
   workflowDisplayTitle,
+  workflowFirstImageStepCopyKey,
   workflowProgressPercent,
 } from './chatAreaPresentation.js'
 
@@ -83,6 +84,15 @@ test('workflow progress aggregates persisted step percentages', () => {
   assert.equal(workflowProgressPercent({ steps: [{ status: 'completed', progress: 0 }, { status: 'running', progress: 50 }] }), 75)
   assert.equal(workflowProgressPercent({ status: 'completed', steps: [] }), 100)
   assert.equal(workflowProgressPercent({ steps: [{ status: 'running', progress: 140 }, { status: 'queued', progress: -5 }] }), 50)
+})
+
+test('YOLO v5 labels cover and first-body image work without rewriting historical workflows', () => {
+  const pictureBook = { format: 'classic_picture_book' }
+  assert.equal(workflowFirstImageStepCopyKey({ input_snapshot: { version: 5 } }, pictureBook), 'chat.workflow.step.cover_and_first_page_image')
+  assert.equal(workflowFirstImageStepCopyKey({ input_snapshot: { version: 4 } }, pictureBook), 'chat.workflow.step.first_section_image')
+  assert.equal(workflowFirstImageStepCopyKey({ input_snapshot: { version: 5 } }, { format: 'vertical_strip' }), 'chat.workflow.step.first_section_image')
+  assert.equal(workflowFirstImageStepCopyKey({ input_snapshot: { version: 5, picture_book: { format: 'vertical_strip' } } }, pictureBook), 'chat.workflow.step.first_section_image')
+  assert.equal(workflowFirstImageStepCopyKey({ input_snapshot: JSON.stringify({ version: 5, picture_book: pictureBook }) }, { format: 'vertical_strip' }), 'chat.workflow.step.cover_and_first_page_image')
 })
 
 test('chat items are grouped and ordered by public turn UUID and queue sequence', () => {

@@ -42,6 +42,7 @@ const (
 	ExportFormatZIP     = "zip"
 	ExportFormatPDF     = "pdf"
 	ExportRetentionDays = 7
+	exportSnapshotV6    = 6
 	exportCleanupLimit  = 1000
 	exportRetention     = time.Duration(ExportRetentionDays) * 24 * time.Hour
 )
@@ -156,7 +157,7 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 		return ExportSnapshot{}, "", err
 	}
 	if !readiness.CanExport {
-		return ExportSnapshot{}, "", domainError(CodeExportEmpty, "没有可导出的图片", "至少一个 active Section 必须有可用的 current image。", nil)
+		return ExportSnapshot{}, "", domainError(CodeExportEmpty, "没有可导出的正文图片", "至少一个 active 正文页必须有可用的 current image。", nil)
 	}
 	if !readiness.Complete && !allowMissingImages {
 		return ExportSnapshot{}, "", domainError(CodeExportIncomplete, "漫画仍有缺图 Section", "请先补齐图片，或明确允许仅导出已有图片。", nil)
@@ -166,11 +167,12 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 		missingUUIDs = append(missingUUIDs, item.UUID)
 	}
 	snapshot := ExportSnapshot{
-		Version: 4, ProjectUUID: projectUUID, Scope: readiness.Scope, ChapterUUID: readiness.ChapterUUID,
+		Version: exportSnapshotV6, ProjectUUID: projectUUID, Scope: readiness.Scope, ChapterUUID: readiness.ChapterUUID,
 		AllowMissingImages: allowMissingImages,
 		ActiveChapterCount: readiness.ActiveChapterCount, SectionCount: readiness.ActiveSectionCount,
 		ExportedSectionCount: readiness.ImageSectionCount, MissingSectionCount: readiness.MissingSectionCount,
-		MissingSectionUUIDs: missingUUIDs, Entries: entries, PictureBook: &pictureBook,
+		MissingSectionUUIDs: missingUUIDs, MissingSections: readiness.MissingSections,
+		Entries: entries, PictureBook: &pictureBook,
 	}
 	if format == ExportFormatPDF {
 		for _, entry := range entries {
@@ -178,14 +180,13 @@ func buildExportSnapshot(ctx context.Context, queryer exportQueryer, projectUUID
 				return ExportSnapshot{}, "", domainError(CodeExportUnavailable, "PDF 图片元数据不完整", "所有导出图片都必须具有受支持的 MIME 和有效尺寸。", nil)
 			}
 		}
-		snapshot.Version = 5
 		snapshot.Format = ExportFormatPDF
 		snapshot.ProjectTitle = strings.TrimSpace(projectTitle)
 		layout := pdfLayoutForPictureBook(pictureBook)
 		snapshot.PDFLayout = &layout
 	} else {
-		// ZIP v4 hashes are a compatibility boundary. The PDF-only metadata is
-		// removed before marshaling so existing canonical ZIPs remain reusable.
+		// PDF-only metadata is removed before marshaling ZIP snapshots. PageRole
+		// remains frozen because it is part of the v6 export ordering contract.
 		for index := range snapshot.Entries {
 			snapshot.Entries[index].ChapterUUID = ""
 			snapshot.Entries[index].MIMEType = ""
@@ -216,7 +217,12 @@ func queryExportReadiness(ctx context.Context, queryer exportQueryer, projectID 
 		}
 	}
 	query := `
-SELECT c.uuid,c.chapter_code,c.title,s.uuid,s.section_no,s.title,
+SELECT c.uuid,c.chapter_code,c.title,s.uuid,s.section_no,s.title,s.page_role,
+       CASE WHEN s.page_role='body' THEN
+         SUM(CASE WHEN s.page_role='body' THEN 1 ELSE 0 END) OVER (
+           PARTITION BY c.id ORDER BY s.section_no,s.id ROWS UNBOUNDED PRECEDING
+         )
+       ELSE NULL END,
        CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN f.uuid ELSE NULL END,
        CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.canonical_ext ELSE NULL END,
        CASE WHEN iv.id IS NOT NULL AND f.deleted_at IS NULL AND fo.state='ready' THEN fo.mime_type ELSE NULL END,
@@ -248,9 +254,9 @@ WHERE c.project_id=? AND c.deleted_at IS NULL`
 	seenChapters := make(map[string]struct{})
 	for rows.Next() {
 		var rowChapterUUID, chapterCode, chapterTitle string
-		var sectionUUID, sectionTitle, imageUUID, extension, mimeType sql.NullString
-		var sectionNo, width, height sql.NullInt64
-		if err := rows.Scan(&rowChapterUUID, &chapterCode, &chapterTitle, &sectionUUID, &sectionNo, &sectionTitle, &imageUUID, &extension, &mimeType, &width, &height); err != nil {
+		var sectionUUID, sectionTitle, pageRole, imageUUID, extension, mimeType sql.NullString
+		var sectionNo, bodyPageNo, width, height sql.NullInt64
+		if err := rows.Scan(&rowChapterUUID, &chapterCode, &chapterTitle, &sectionUUID, &sectionNo, &sectionTitle, &pageRole, &bodyPageNo, &imageUUID, &extension, &mimeType, &width, &height); err != nil {
 			return ExportReadiness{}, nil, err
 		}
 		if _, exists := seenChapters[rowChapterUUID]; !exists {
@@ -260,19 +266,25 @@ WHERE c.project_id=? AND c.deleted_at IS NULL`
 		if !sectionUUID.Valid {
 			continue
 		}
+		role := strings.TrimSpace(pageRole.String)
+		if role == "" {
+			role = PageRoleBody
+		}
 		readiness.ActiveSectionCount++
 		if imageUUID.Valid {
 			readiness.ImageSectionCount++
-			entries = append(entries, ExportEntry{ChapterUUID: rowChapterUUID, ChapterCode: chapterCode, ChapterTitle: chapterTitle, SectionNo: int(sectionNo.Int64), SectionUUID: sectionUUID.String, ImageAssetUUID: imageUUID.String, Extension: extension.String, MIMEType: mimeType.String, Width: int(width.Int64), Height: int(height.Int64)})
+			entries = append(entries, ExportEntry{ChapterUUID: rowChapterUUID, ChapterCode: chapterCode, ChapterTitle: chapterTitle, SectionNo: int(sectionNo.Int64), SectionUUID: sectionUUID.String, PageRole: role, BodyPageNo: int(bodyPageNo.Int64), ImageAssetUUID: imageUUID.String, Extension: extension.String, MIMEType: mimeType.String, Width: int(width.Int64), Height: int(height.Int64)})
+			if role == PageRoleBody {
+				readiness.CanExport = true
+			}
 			continue
 		}
-		readiness.MissingSections = append(readiness.MissingSections, ExportMissingSection{UUID: sectionUUID.String, SectionNo: int(sectionNo.Int64), Title: sectionTitle.String, ChapterUUID: rowChapterUUID})
+		readiness.MissingSections = append(readiness.MissingSections, ExportMissingSection{UUID: sectionUUID.String, SectionNo: int(sectionNo.Int64), Title: sectionTitle.String, ChapterUUID: rowChapterUUID, PageRole: role, BodyPageNo: int(bodyPageNo.Int64)})
 	}
 	if err := rows.Err(); err != nil {
 		return ExportReadiness{}, nil, err
 	}
 	readiness.MissingSectionCount = len(readiness.MissingSections)
-	readiness.CanExport = readiness.ImageSectionCount > 0
 	readiness.Complete = readiness.CanExport && readiness.MissingSectionCount == 0
 	return readiness, entries, nil
 }
@@ -610,7 +622,12 @@ func (service *Service) writeZip(ctx context.Context, output io.Writer, snapshot
 			_ = archive.Close()
 			return err
 		}
-		name := fmt.Sprintf("%s/sections/section-%03d.%s", safeSegment(entry.ChapterCode), entry.SectionNo, safeExtension(entry.Extension))
+		name, err := exportZIPEntryName(snapshot.Version, entry)
+		if err != nil {
+			content.File.Close()
+			_ = archive.Close()
+			return err
+		}
 		writer, err := archive.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate})
 		if err == nil {
 			_, err = io.Copy(writer, content.File)
@@ -633,6 +650,27 @@ func (service *Service) writeZip(ctx context.Context, output io.Writer, snapshot
 		return err
 	}
 	return nil
+}
+
+func exportZIPEntryName(snapshotVersion int, entry ExportEntry) (string, error) {
+	chapter := safeSegment(entry.ChapterCode)
+	extension := safeExtension(entry.Extension)
+	if snapshotVersion < exportSnapshotV6 {
+		return fmt.Sprintf("%s/sections/section-%03d.%s", chapter, entry.SectionNo, extension), nil
+	}
+	switch entry.PageRole {
+	case PageRoleFrontCover:
+		return fmt.Sprintf("%s/front-cover.%s", chapter, extension), nil
+	case PageRoleBody:
+		if entry.BodyPageNo <= 0 {
+			return "", domainError(CodeSnapshotInvalid, "正文页码无效", "v6 ZIP 的 body 条目必须冻结正数 body_page_no。", nil)
+		}
+		return fmt.Sprintf("%s/pages/page-%03d.%s", chapter, entry.BodyPageNo, extension), nil
+	case PageRoleBackCover:
+		return fmt.Sprintf("%s/back-cover.%s", chapter, extension), nil
+	default:
+		return "", domainError(CodeSnapshotInvalid, "页面角色无效", "v6 ZIP 的每个图片条目都必须冻结有效的 page_role。", nil)
+	}
 }
 
 type exportCountingWriter struct {

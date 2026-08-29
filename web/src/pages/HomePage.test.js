@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
 
-import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
+import { projectCoverSource, projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 
 test('unavailable local projects stay recoverable without an open action', () => {
 	assert.deepEqual(projectRowActions({ open: false, available: false }), ['relocate', 'forget'])
@@ -19,13 +19,20 @@ test('project rows use the available action that enters the workspace', () => {
 	assert.equal(projectRowPrimaryAction({ open: false, available: false }), null)
 })
 
+test('project covers preserve backend content versions and retain the empty fallback', () => {
+  const versionedURL = '/media/recent-projects/019-project/cover?v=0123456789abcdef'
+  assert.equal(projectCoverSource({ cover_image_url: versionedURL }), versionedURL)
+  assert.equal(projectCoverSource({ cover_image_url: '' }), '/favicon.png')
+  assert.equal(projectCoverSource(null), '/favicon.png')
+})
+
 test('recent projects render picture-book covers with secondary details in the more menu', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
   assert.match(source, /className="project-card-grid" role="list"/)
   assert.match(source, /className=\{`project-card \$\{onActivate/)
   assert.match(source, /className=\{`project-card__cover \$\{project\.cover_image_url/)
-  assert.match(source, /src=\{project\.cover_image_url \|\| '\/favicon\.png'\}/)
+  assert.match(source, /src=\{projectCoverSource\(project\)\}/)
   assert.match(source, /project-index-menu__path/)
   assert.doesNotMatch(source, /project-index-table/)
   assert.match(styles, /\.project-card-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
@@ -103,7 +110,7 @@ test('home conversation composer preserves input, retry identity, and public nav
   assert.match(source, /const creationPending = creationMutation\.isPending/)
   assert.match(source, /creationSession\?\.status === 'failed'/)
   assert.match(source, /creationError \? <div className="project-creation-composer__failure"/)
-  assert.match(source, /disabled=\{creationPending \|\| !creationCheckpoint\} onClick=\{retryCreation\}/)
+  assert.match(source, /disabled=\{creationPending \|\| \(selectedCreationProject \? !creationInput\.trim\(\) : !creationCheckpoint\)\} onClick=\{retryCreation\}/)
   assert.match(source, /navigate\(`\/projects\/\$\{encodeURIComponent\(session\.project_uuid\)\}\?chat_thread_uuid=\$\{encodeURIComponent\(session\.thread_uuid\)\}`\)/)
   assert.match(source, /retryProjectCreationSession/)
   assert.match(api, /\/api\/v1\/project-creation-sessions/)
@@ -129,4 +136,19 @@ test('home conversation composer carries recoverable image references into the f
   assert.doesNotMatch(lockedFill[1], /filename: file\.name|mimeType: file\.type|byteSize: file\.size/)
   assert.match(api, /reference_files: referenceFiles/)
   assert.match(api, /references\/\$\{encodeURIComponent\(referenceUuid\)\}\/uploads/)
+})
+
+test('home conversation composer can publish into a selected project and open its new thread', () => {
+  const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
+  assert.match(source, /className="project-creation-composer__context"[\s\S]*aria-haspopup="menu"/)
+  assert.match(source, /selectableCreationProjects\.map\(\(project\) => <button[\s\S]*role="menuitemradio"/)
+  assert.match(source, /createAssetUpload\(projectUuid,[\s\S]*finalizeAssetUpload\(projectUuid/)
+  assert.match(source, /createChatThread\(projectUuid, \{ title: suggestedChatThreadTitle\(inputText\) \}\)/)
+  assert.match(source, /createChatTurn\(projectUuid, thread\.uuid, \{ input_text: inputText, references: referenceInputs \}\)/)
+  assert.match(source, /setCreationTargetThread\(\{ projectUuid, threadUuid: thread\.uuid \}\)/)
+  assert.match(source, /navigate\(`\/projects\/\$\{encodeURIComponent\(projectUuid\)\}\?chat_thread_uuid=\$\{encodeURIComponent\(thread\.uuid\)\}`\)/)
+  assert.match(styles, /\.project-creation-composer__context-menu[\s\S]*position: absolute/)
+  assert.match(styles, /\[aria-expanded="true"\]:hover/)
+  assert.match(styles, /\.project-creation-composer__context-menu[\s\S]*?&\[aria-checked="true"\]:hover[\s\S]*?color: \$color-text[\s\S]*?background: \$color-surface-muted/)
 })

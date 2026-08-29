@@ -455,6 +455,7 @@ func (handler *ProductionHandler) CreateSection(c echo.Context) error {
 		Title         string `json:"title"`
 		DescriptionMD string `json:"description_md"`
 		StoryboardMD  string `json:"storyboard_md"`
+		PageRole      string `json:"page_role"`
 	}
 	if err := decodeJSONLimit(c, &request, 1<<20); err != nil {
 		return err
@@ -462,7 +463,7 @@ func (handler *ProductionHandler) CreateSection(c echo.Context) error {
 	var value production.ComicSection
 	if err := handler.withService(c, func(service *production.Service) error {
 		var err error
-		value, err = service.CreateSection(c.Request().Context(), c.Param("chapter_uuid"), production.CreateSectionInput{Title: request.Title, DescriptionMD: request.DescriptionMD, StoryboardMD: request.StoryboardMD})
+		value, err = service.CreateSection(c.Request().Context(), c.Param("chapter_uuid"), production.CreateSectionInput{Title: request.Title, DescriptionMD: request.DescriptionMD, StoryboardMD: request.StoryboardMD, PageRole: request.PageRole})
 		return err
 	}); err != nil {
 		return err
@@ -484,6 +485,7 @@ func (handler *ProductionHandler) UpdateSection(c echo.Context) error {
 	var request struct {
 		Title            *string `json:"title"`
 		DescriptionMD    *string `json:"description_md"`
+		PageRole         *string `json:"page_role"`
 		ExpectedRevision *int64  `json:"expected_revision"`
 	}
 	if err := decodeJSON(c, &request); err != nil {
@@ -496,7 +498,7 @@ func (handler *ProductionHandler) UpdateSection(c echo.Context) error {
 	var value production.ComicSection
 	if err := handler.withService(c, func(service *production.Service) error {
 		var err error
-		value, err = service.UpdateSection(c.Request().Context(), c.Param("chapter_uuid"), c.Param("section_uuid"), production.UpdateSectionInput{Title: request.Title, DescriptionMD: request.DescriptionMD, ExpectedRevision: revision})
+		value, err = service.UpdateSection(c.Request().Context(), c.Param("chapter_uuid"), c.Param("section_uuid"), production.UpdateSectionInput{Title: request.Title, DescriptionMD: request.DescriptionMD, PageRole: request.PageRole, ExpectedRevision: revision})
 		return err
 	}); err != nil {
 		return err

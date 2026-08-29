@@ -90,10 +90,17 @@ type ComicState struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+const (
+	PageRoleFrontCover = "front_cover"
+	PageRoleBody       = "body"
+	PageRoleBackCover  = "back_cover"
+)
+
 type ComicSection struct {
 	UUID              string             `json:"uuid"`
 	ChapterUUID       string             `json:"chapter_uuid"`
 	SectionNo         int                `json:"section_no"`
+	PageRole          string             `json:"page_role"`
 	Title             string             `json:"title"`
 	DescriptionMD     string             `json:"description_md"`
 	CurrentStoryboard *StoryboardVariant `json:"current_storyboard"`
@@ -179,6 +186,7 @@ type ChapterSnapshotChapter struct {
 type ChapterSnapshotSection struct {
 	UUID             string               `json:"uuid"`
 	SectionNo        int                  `json:"section_no"`
+	PageRole         string               `json:"page_role"`
 	Title            string               `json:"title"`
 	StoryboardMD     string               `json:"storyboard_md"`
 	CurrentImage     ChapterSnapshotMedia `json:"current_image"`
@@ -263,6 +271,7 @@ type CreateSectionInput struct {
 	Title         string
 	DescriptionMD string
 	StoryboardMD  string
+	PageRole      string
 }
 
 type GeneratedComicSection struct {
@@ -273,6 +282,7 @@ type GeneratedComicSection struct {
 type UpdateSectionInput struct {
 	Title            *string
 	DescriptionMD    *string
+	PageRole         *string
 	ExpectedRevision int64
 }
 
@@ -299,6 +309,7 @@ type GenerationSnapshot struct {
 	StyleSnapshot             string                      `json:"style_snapshot"`
 	StoryboardUUID            string                      `json:"storyboard_uuid,omitempty"`
 	StoryboardMD              string                      `json:"storyboard_md,omitempty"`
+	PageRole                  string                      `json:"page_role,omitempty"`
 	PremiseAssets             []PremiseAssetReference     `json:"premise_assets,omitempty"`
 	PremiseCandidates         []PremiseAssetReference     `json:"premise_candidates,omitempty"`
 	AssetOperation            string                      `json:"asset_operation,omitempty"`
@@ -337,6 +348,7 @@ type ExportSnapshot struct {
 	ExportedSectionCount int                         `json:"exported_section_count"`
 	MissingSectionCount  int                         `json:"missing_section_count"`
 	MissingSectionUUIDs  []string                    `json:"missing_section_uuids"`
+	MissingSections      []ExportMissingSection      `json:"missing_sections"`
 	Entries              []ExportEntry               `json:"entries"`
 	PictureBook          *project.PictureBookProfile `json:"picture_book,omitempty"`
 	PDFLayout            *ExportPDFLayout            `json:"pdf_layout,omitempty"`
@@ -348,6 +360,8 @@ type ExportEntry struct {
 	ChapterTitle   string `json:"chapter_title"`
 	SectionNo      int    `json:"section_no"`
 	SectionUUID    string `json:"section_uuid"`
+	PageRole       string `json:"page_role"`
+	BodyPageNo     int    `json:"body_page_no,omitempty"`
 	ImageAssetUUID string `json:"image_asset_uuid"`
 	Extension      string `json:"extension"`
 	MIMEType       string `json:"mime_type,omitempty"`
@@ -368,6 +382,8 @@ type ExportMissingSection struct {
 	SectionNo   int    `json:"section_no"`
 	Title       string `json:"title"`
 	ChapterUUID string `json:"chapter_uuid"`
+	PageRole    string `json:"page_role"`
+	BodyPageNo  int    `json:"body_page_no,omitempty"`
 }
 
 type ExportReadiness struct {

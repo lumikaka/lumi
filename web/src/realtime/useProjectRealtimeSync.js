@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { getRealtimeSocket } from '../api/realtime.js'
 import { ensureProjectOpen } from '../api/projects.js'
-import { isProjectBusinessQuery } from '../api/projectQueryKeys.js'
+import { isProjectBusinessQuery, projectQueryKeys } from '../api/projectQueryKeys.js'
 import { projectRealtimeInvalidation } from './projectRealtimeQueries.js'
 
 export function useProjectRealtimeSync(projectUuid) {
@@ -27,6 +27,7 @@ export function useProjectRealtimeSync(projectUuid) {
           predicate: (query) => isProjectBusinessQuery(query, projectUuid),
           refetchType: 'active',
         })
+        void queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent(), refetchType: 'active' })
         return
       }
       const queryKeys = Array.from(pending.values())

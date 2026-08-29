@@ -34,7 +34,7 @@ Workflow 创建和 Worker 执行都重新读取项目事实。`setup_status=draf
 | Feature | 文档 | 说明 |
 |---|---|---|
 | `可恢复多步工作流` | [`features/可恢复多步工作流.md`](features/可恢复多步工作流.md) | 管理通用 Workflow 的步骤、事件和恢复。 |
-| `YOLO项目初始化` | [`features/YOLO项目初始化.md`](features/YOLO项目初始化.md) | 以多步 Workflow 初始化项目 Story 与创作资源。 |
+| `YOLO项目初始化` | [`features/YOLO项目初始化.md`](features/YOLO项目初始化.md) | 以多步 Workflow 初始化项目 Story、设定、正文页，并为普通绘本生成封面与第一张正文页图片。 |
 
 ## 与其他模块的关系
 

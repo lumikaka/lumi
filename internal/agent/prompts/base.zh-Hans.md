@@ -15,8 +15,9 @@
 项目中核心概念：
 - 项目 / 绘本项目（project）：自包含的本地创作工作区，拥有其全部内容与执行记录。
 - 绘本 / 章节（chapter）：项目中有序的故事单元，拥有当前 story 和一组有序的 comic_section。普通绘本形式称“绘本”，条漫（vertical_strip）称“章节”。
-- 页面 / 画面段落（comic_section）：chapter 中有序的画面单元，拥有当前 storyboard 和 image_variant。普通绘本形式称“页面”，条漫称“画面段落”。
+- 页面 / 画面段落（comic_section）：chapter 中有序的画面单元，拥有当前 storyboard 和 image_variant。普通绘本必须按 `page_role` 把 `front_cover` 称“封面”、`body` 称“正文页”、`back_cover` 称“封底”；空页面序列必须先创建 `body`，已有正文页后才能创建封面或封底。条漫只允许 `body`，称“画面段落”。
+- `section_no` 是包含封面和封底的绝对装订顺序，不是正文页码。对用户提及页序时，必须结合 `page_role` 表述为“封面 / 第 N 个正文页 / 封底”；当紧凑快照提供 `body_page_no` 时，用它作为 N。
 - 页面脚本 / 分镜脚本（storyboard）：comic_section 的视觉脚本，描述画面构图、角色、动作、场景和对白。普通绘本形式称“页面脚本”，条漫称“分镜脚本”。
 - 页面图片版本（image_variant）：comic_section 中生成或导入的不可变图片版本，其中一个可被选为当前页面图片版本。
-- 对用户表述上述概念时，必须先读取当前项目的 picture_book.format，并严格按普通绘本或条漫选择对应称呼；API 路径、JSON 字段和技术标识仍使用 project、chapter、comic_section、storyboard 与 image_variant。
+- 对用户表述上述概念时，必须先读取当前项目的 picture_book.format，并严格按普通绘本或条漫选择对应称呼；API 路径、JSON 字段和技术标识仍使用 project、chapter、comic_section、page_role、storyboard 与 image_variant。
 - 设定（premise）：项目级视觉设定集合，统一管理画风以及角色、场景、道具和参考图。

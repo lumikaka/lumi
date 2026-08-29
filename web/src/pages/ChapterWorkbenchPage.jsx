@@ -61,8 +61,18 @@ import {
   comicImageModelLabel,
   comicImageTitle,
 } from './comicImagePresentation.js'
-import { activeTaskFor, moveSection } from './productionWorkspaceState.js'
+import { activeTaskFor } from './productionWorkspaceState.js'
 import { comicExportDialogRequest } from './comicExportState.js'
+import {
+  COMIC_PAGE_ROLES,
+  comicBodyReorderUuids,
+  comicBodySections,
+  comicPageFallbackTitle,
+  comicPageLabel,
+  comicPageRole,
+  comicPageRoleOptionDisabled,
+  reorderedComicBodyUuids,
+} from './comicPageRoles.js'
 import { formatTerminologyMessageKey, readImageFileDimensions } from './pictureBookProfile.js'
 import {
   enterTimelineMultiSelect,
@@ -70,7 +80,6 @@ import {
   normalizedChapterTab,
   normalizedPreviewTab,
   patchWorkbenchSearch,
-  reorderedTimelineUuids,
   sectionImageGenerationActive,
   timelineDragScrollDelta,
   timelineDragTransition,
@@ -149,6 +158,7 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
     queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['story-chapter', projectUuid, chapterUuid] })
+    queryClient.invalidateQueries({ queryKey: ['recent-projects'] })
   }, [chapterUuid, projectUuid, queryClient])
 
   useEffect(() => {
@@ -196,8 +206,8 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
     return next.toString()
   }, [searchParams])
 
-  if (chapterQuery.isLoading) return <p className="workspace-loading">{term('story.chapter.loading')}</p>
-  if (chapterQuery.isError && !chapter) return <LocalizedErrorMessage error={chapterQuery.error} />
+  if (chapterQuery.isLoading || (projectQuery.isLoading && !projectQuery.data)) return <p className="workspace-loading">{term('story.chapter.loading')}</p>
+  if ((chapterQuery.isError && !chapter) || (projectQuery.isError && !projectQuery.data)) return <LocalizedErrorMessage error={chapterQuery.error || projectQuery.error} />
 
   return (
     <div className="chapter-workbench">
@@ -259,6 +269,7 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
 }
 
 function SnapshotDetail({ projectUuid, detail, t, unit = 'section' }) {
+  const sections = detail.sections || []
   return (
     <div className="chapter-snapshot-detail">
       <header>
@@ -266,9 +277,9 @@ function SnapshotDetail({ projectUuid, detail, t, unit = 'section' }) {
         <dl><div><dt>{t('comic.workbench.snapshot.version')}</dt><dd>v{detail.version_no}</dd></div><div><dt>{t('common.label.source')}</dt><dd>{snapshotSource(t, detail.source)}</dd></div><div><dt>{t('comic.workbench.snapshot.reason')}</dt><dd>{snapshotReason(t, detail.reason, unit)}</dd></div></dl>
       </header>
       <div className="chapter-snapshot-detail__sections">
-        {(detail.sections || []).map((section, index) => (
+        {sections.map((section, index) => (
           <article className="chapter-snapshot-section" key={section.uuid || `${detail.uuid}-${index}`}>
-			<header><strong>{t(unit === 'page' ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: section.section_no || index + 1 })}</strong><span>{section.title || t(unit === 'page' ? 'comic.page.untitled' : 'comic.section.untitled')}</span></header>
+				<header><strong>{unit === 'page' ? comicPageLabel(t, sections, section) : t('comic.workbench.section_label', { number: section.section_no || index + 1 })}</strong><span>{section.title || (unit === 'page' ? comicPageFallbackTitle(t, section) : t('comic.section.untitled'))}</span></header>
             {section.storyboard_md ? <MarkdownPreview value={section.storyboard_md} /> : <p className="chapter-snapshot-section__empty">{t(unit === 'page' ? 'comic.workbench.snapshot.storyboard_missing_page' : 'comic.workbench.snapshot.storyboard_missing')}</p>}
             <div className="chapter-snapshot-section__media">
               <SnapshotMedia projectUuid={projectUuid} media={section.current_image} label={t('comic.workbench.snapshot.current_image')} t={t} />
@@ -309,6 +320,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
   const previewTab = normalizedPreviewTab(searchParams.get('preview_tab'))
   const [storyboard, setStoryboard] = useState('')
   const [title, setTitle] = useState('')
+  const [pageRole, setPageRole] = useState('body')
+  const [newPageRole, setNewPageRole] = useState('body')
   const [multiSelect, setMultiSelect] = useState(false)
   const [manageMode, setManageMode] = useState(false)
   const [checkedSections, setCheckedSections] = useState(() => new Set())
@@ -352,14 +365,22 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
   const latestImageTask = selected ? tasks.find((task) => task.kind === 'comic_image_generation' && task.resource_uuid === selected.uuid) : null
   const showImageTask = Boolean(latestImageTask && ['queued', 'running', 'failed', 'interrupted'].includes(latestImageTask.status))
   const pageMode = unit === 'page'
+  const bodySections = comicBodySections(sections)
+  const selectedBodyIndex = bodySections.findIndex((section) => section.uuid === selected?.uuid)
+  const selectedPageRole = comicPageRole(selected)
+  const sectionLabel = (section) => pageMode
+    ? comicPageLabel(t, sections, section)
+    : t('comic.workbench.section_label', { number: section.section_no })
+  const sectionFallbackTitle = (section) => pageMode ? comicPageFallbackTitle(t, section) : t('comic.section.untitled')
 
   useEffect(() => {
     setStoryboard(currentStoryboard)
     setTitle(selected?.title || '')
-	setImageFile(null)
+		setPageRole(comicPageRole(selected))
+		setImageFile(null)
 	setImageFileDimensions(null)
     setNotice('')
-  }, [currentStoryboard, selected?.title, selected?.uuid])
+  }, [currentStoryboard, selected?.page_role, selected?.title, selected?.uuid])
 
   useEffect(() => {
     setCheckedSections((current) => filterTimelineSelection(current, selectableSectionUuids))
@@ -419,12 +440,12 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     onError: setError,
   })
   const sectionCreate = useMutation({
-    mutationFn: () => createComicSection(projectUuid, chapterUuid, { title: '', description_md: '', storyboard_md: '' }),
-    onSuccess: (section) => { mutationOptions.onSuccess(); selectSection(section.uuid) },
+    mutationFn: (role = 'body') => createComicSection(projectUuid, chapterUuid, { title: '', description_md: '', storyboard_md: '', ...(pageMode ? { page_role: role } : {}) }),
+    onSuccess: (section) => { mutationOptions.onSuccess(); setNewPageRole('body'); selectSection(section.uuid) },
     onError: setError,
   })
   const sectionUpdate = useMutation({
-    mutationFn: () => updateComicSection(projectUuid, chapterUuid, selected.uuid, { title, description_md: selected.description_md || '', expected_revision: selected.revision }),
+    mutationFn: () => updateComicSection(projectUuid, chapterUuid, selected.uuid, { title, description_md: selected.description_md || '', ...(pageMode ? { page_role: pageRole } : {}), expected_revision: selected.revision }),
     ...mutationOptions,
   })
   const sectionDelete = useMutation({
@@ -440,8 +461,10 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     deletePending: sectionDelete.isPending,
     reorderPending: reorder.isPending,
     imageGenerationActive: sectionImageGenerationActive(tasks, selected?.uuid),
-    index: selectedIndex,
-    total: sections.length,
+    fixedPosition: pageMode && selectedPageRole !== 'body',
+    deleteProtected: pageMode && selectedPageRole === 'body' && bodySections.length <= 1,
+    index: pageMode ? selectedBodyIndex : selectedIndex,
+    total: pageMode ? bodySections.length : sections.length,
   })
 
   const clearSectionDrag = (type = 'cancel') => {
@@ -477,25 +500,29 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       deletePending: sectionDelete.isPending,
       reorderPending: reorder.isPending,
       imageGenerationActive: sectionImageGenerationActive(tasks, section.uuid),
+      deleteProtected: pageMode && comicPageRole(section) === 'body' && bodySections.length <= 1,
     })
     if (state.deleteDisabled) return
-	if (window.confirm(t(pageMode ? 'comic.workbench.pages.delete_confirm' : 'comic.workbench.sections.delete_confirm', { title: section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled') }))) sectionDelete.mutate(section)
+		if (window.confirm(t(pageMode ? 'comic.workbench.pages.delete_confirm' : 'comic.workbench.sections.delete_confirm', { title: section.title || sectionFallbackTitle(section) }))) sectionDelete.mutate(section)
   }
   const moveSelected = (direction) => {
     if (selectedIndex < 0 || isSectionManagePending) return
-    reorder.mutate(moveSection(sections.map((section) => section.uuid), selectedIndex, direction))
+    const next = pageMode
+      ? comicBodyReorderUuids(sections, selected.uuid, direction)
+      : comicBodyReorderUuids(sections.map((section) => ({ ...section, page_role: 'body' })), selected.uuid, direction)
+    if (next) reorder.mutate(next)
   }
   const timelineIntentForPointer = (timelineElement, clientX, clientY, draggingUuid) => {
     if (!timelineElement) return null
     const timelineRect = timelineElement.getBoundingClientRect()
-    const sectionRects = [...timelineElement.querySelectorAll('[data-section-uuid]')].map((element) => {
+    const sectionRects = [...timelineElement.querySelectorAll('[data-section-uuid][data-reorderable="true"]')].map((element) => {
       const rect = element.getBoundingClientRect()
       return { uuid: element.dataset.sectionUuid, left: rect.left, width: rect.width, height: rect.height }
     })
     return timelineSectionDropIntent({ timelineRect, sectionRects, clientX, clientY, draggingUuid })
   }
   const startTimelineSectionDrag = (event, section, imageState) => {
-    if (!manageMode || isSectionManagePending) return
+    if (!manageMode || isSectionManagePending || (pageMode && comicPageRole(section) !== 'body')) return
     event.preventDefault()
     event.stopPropagation()
     const itemElement = event.currentTarget.closest('[data-section-uuid]')
@@ -519,8 +546,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       type: 'start',
       sectionUuid: section.uuid,
       preview: {
-        sectionNo: section.section_no,
-		title: section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled'),
+        label: sectionLabel(section),
+			title: section.title || sectionFallbackTitle(section),
         imageState,
         left: event.clientX - dragOffsetX,
         top: event.clientY - dragOffsetY,
@@ -558,7 +585,12 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     const targetUuid = intent?.targetUuid || drag.targetUuid
     const placement = intent?.placement || drag.placement
     clearSectionDrag('complete')
-    const next = reorderedTimelineUuids(sections.map((section) => section.uuid), drag.sectionUuid, targetUuid, placement)
+    const next = reorderedComicBodyUuids(
+      pageMode ? sections : sections.map((section) => ({ ...section, page_role: 'body' })),
+      drag.sectionUuid,
+      targetUuid,
+      placement,
+    )
     if (next && !isSectionManagePending) reorder.mutate(next)
   }
   const cancelTimelineSectionDrag = (event) => {
@@ -590,7 +622,11 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       chat_new: '1',
       chat_reference_type: 'comic_section',
       chat_reference_uuid: selected.uuid,
-      chat_reference_title: t(pageMode ? 'comic.workbench.ai.page_subject_title' : 'comic.workbench.ai.subject_title', { number: selected.section_no, title: selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled') }),
+      chat_reference_title: pageMode
+        ? selected.title?.trim()
+          ? t('comic.workbench.ai.page_role_subject_title', { label: sectionLabel(selected), title: selected.title })
+          : sectionLabel(selected)
+        : t('comic.workbench.ai.subject_title', { number: selected.section_no, title: selected.title || sectionFallbackTitle(selected) }),
     })
   }
   const availableBatchCount = selectionControls.selectedCount
@@ -610,7 +646,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
         <Layers3 size={30} aria-hidden="true" />
         <h2>{t(pageMode ? 'comic.page.empty' : 'comic.section.empty')}</h2>
         <p>{t(pageMode ? 'comic.page.empty_body' : 'comic.section.empty_body')}</p>
-        <button type="button" disabled={sectionCreate.isPending} onClick={() => sectionCreate.mutate()}><Plus size={16} aria-hidden="true" />{t(pageMode ? 'comic.page.add' : 'comic.section.add')}</button>
+        {pageMode ? <label>{t('comic.page_role.create_label')}<select value={newPageRole} onChange={(event) => setNewPageRole(event.target.value)}>{COMIC_PAGE_ROLES.map((role) => <option key={role} value={role} disabled={comicPageRoleOptionDisabled(sections, role)}>{t(`comic.page_role.${role}_option`)}</option>)}</select></label> : null}
+        <button type="button" disabled={sectionCreate.isPending || (pageMode && comicPageRoleOptionDisabled(sections, newPageRole))} onClick={() => sectionCreate.mutate(newPageRole)}><Plus size={16} aria-hidden="true" />{t(pageMode ? 'comic.page.add' : 'comic.section.add')}</button>
       </section>
     )
   }
@@ -640,7 +677,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
         <section className="section-preview" aria-label={t(pageMode ? 'comic.images.page_title' : 'comic.images.title')}>
           <header className="section-preview__header">
             <div className="section-preview__title">
-			  <h2>{t(pageMode ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: selected.section_no })}</h2>
+			  <h2>{sectionLabel(selected)}</h2>
               <div className="section-preview__navigation" aria-label={t(pageMode ? 'comic.workbench.preview.page_navigation' : 'comic.workbench.preview.navigation')}>
                 <button type="button" className="button-secondary" aria-label={t(pageMode ? 'common.action.previous_page' : 'comic.workbench.preview.previous')} disabled={selectedIndex <= 0} onClick={() => stepSection(-1)}><ChevronLeft size={15} aria-hidden="true" /></button>
                 <button type="button" className="button-secondary" aria-label={t(pageMode ? 'common.action.next_page' : 'comic.workbench.preview.next')} disabled={selectedIndex >= sections.length - 1} onClick={() => stepSection(1)}><ChevronRight size={15} aria-hidden="true" /></button>
@@ -658,7 +695,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
           </header>
           <div className="section-preview__canvas" role="tabpanel">
 			{previewTab === 'current' ? <CurrentImage projectUuid={projectUuid} section={selected} onOpen={(variant) => setImageDialog({ mode: 'preview', variant })} t={t} pictureBook={pictureBook} unit={unit} /> : null}
-            {previewTab === 'reference' ? <ReferenceImage projectUuid={projectUuid} section={selected} t={t} unit={unit} /> : null}
+            {previewTab === 'reference' ? <ReferenceImage projectUuid={projectUuid} section={selected} pageLabel={sectionLabel(selected)} t={t} unit={unit} /> : null}
             {previewTab === 'candidates' ? <div className="section-preview__candidate-view">
               <div className="section-preview__candidate-tools">
 				<label className="button-secondary section-preview__import">{t('comic.images.replace')}<input name="section_image_upload" type="file" accept="image/*" onChange={(event) => selectImageFile(event.target.files?.[0] || null)} /></label>
@@ -679,7 +716,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
           <div className="section-timeline__actions">
             <span>{multiSelect ? `${selectionControls.selectedCount}/${selectionControls.selectableCount}` : sections.length}</span>
             {manageMode ? <>
-			  <button type="button" className="button-secondary" disabled={isSectionManagePending} onClick={() => sectionCreate.mutate()}><Plus size={14} aria-hidden="true" />{t(pageMode ? 'comic.workbench.pages.add' : 'comic.workbench.sections.add')}</button>
+			  {pageMode ? <select aria-label={t('comic.page_role.create_label')} value={newPageRole} disabled={isSectionManagePending} onChange={(event) => setNewPageRole(event.target.value)}>{COMIC_PAGE_ROLES.map((role) => <option key={role} value={role} disabled={comicPageRoleOptionDisabled(sections, role)}>{t(`comic.page_role.${role}_option`)}</option>)}</select> : null}
+			  <button type="button" className="button-secondary" disabled={isSectionManagePending || (pageMode && comicPageRoleOptionDisabled(sections, newPageRole))} onClick={() => sectionCreate.mutate(newPageRole)}><Plus size={14} aria-hidden="true" />{t(pageMode ? 'comic.workbench.pages.add' : 'comic.workbench.sections.add')}</button>
               <button type="button" className="button-secondary" disabled={isSectionManagePending} onClick={exitManageMode}>{t('comic.workbench.sections.done')}</button>
             </> : multiSelect ? <>
               <button type="button" className="button-secondary" aria-pressed="true" disabled={batchGenerate.isPending} onClick={exitMultiSelectMode}>{t('comic.workbench.sections.exit_multi')}</button>
@@ -704,13 +742,16 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
             const isDragging = sectionDragState?.sectionUuid === section.uuid
             const isDropBefore = isDragging === false && sectionDragState?.targetUuid === section.uuid && sectionDragState?.placement === 'before'
             const isDropAfter = isDragging === false && sectionDragState?.targetUuid === section.uuid && sectionDragState?.placement === 'after'
+            const isLastBodyPage = pageMode && comicPageRole(section) === 'body' && bodySections.length <= 1
             const manageState = timelineManageDisabledState({
               createPending: sectionCreate.isPending || sectionUpdate.isPending,
               deletePending: sectionDelete.isPending,
               reorderPending: reorder.isPending,
               imageGenerationActive: isProcessing,
-              index,
-              total: sections.length,
+              fixedPosition: pageMode && comicPageRole(section) !== 'body',
+              deleteProtected: isLastBodyPage,
+              index: pageMode ? bodySections.findIndex((item) => item.uuid === section.uuid) : index,
+              total: pageMode ? bodySections.length : sections.length,
             })
             const isDeleting = sectionDelete.isPending && sectionDelete.variables?.uuid === section.uuid
             const cardClassName = [
@@ -730,6 +771,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
               key={section.uuid}
               className={cardClassName}
               data-section-uuid={section.uuid}
+              data-reorderable={!pageMode || comicPageRole(section) === 'body' ? 'true' : undefined}
               aria-busy={isDeleting ? 'true' : undefined}
             >
               <button
@@ -738,13 +780,13 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
                 disabled={multiSelect && !isSelectable}
                 aria-current={isActive ? 'true' : undefined}
                 aria-pressed={multiSelect ? isChecked : undefined}
-                title={multiSelect && !isSelectable ? t(pageMode ? 'comic.workbench.pages.selection_unavailable' : 'comic.workbench.sections.selection_unavailable', { number: section.section_no }) : undefined}
+                title={multiSelect && !isSelectable ? (pageMode ? t('comic.workbench.pages.selection_unavailable_role', { label: sectionLabel(section) }) : t('comic.workbench.sections.selection_unavailable', { number: section.section_no })) : undefined}
                 onClick={() => selectTimelineSection(section)}
               >
                 {multiSelect ? <span className="section-timeline-card__check" aria-hidden="true" /> : null}
                 <span className="section-timeline-card__copy">
-				  <strong>{t(pageMode ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: section.section_no })}</strong>
-				  <span>{section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</span>
+				  <strong>{sectionLabel(section)}</strong>
+				  <span>{section.title || sectionFallbackTitle(section)}</span>
                 </span>
               </button>
               <i className={`section-timeline-card__status ${imageState}`} role="img" aria-label={t(isProcessing ? 'comic.task.syncing' : section.current_image ? 'comic.section.has_image' : pageMode ? 'comic.page.has_script' : 'comic.section.has_storyboard')} />
@@ -753,8 +795,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
                   type="button"
                   className="section-timeline-card__drag"
                   disabled={manageState.dragDisabled}
-                  aria-label={t(pageMode ? 'comic.workbench.pages.drag' : 'comic.workbench.sections.drag', { number: section.section_no })}
-                  title={t('comic.workbench.sections.drag_title')}
+                  aria-label={pageMode ? t('comic.workbench.pages.drag_role', { label: sectionLabel(section) }) : t('comic.workbench.sections.drag', { number: section.section_no })}
+                  title={t(pageMode && comicPageRole(section) !== 'body' ? 'comic.workbench.pages.fixed_title' : 'comic.workbench.sections.drag_title')}
                   onPointerDown={(event) => startTimelineSectionDrag(event, section, imageState)}
                   onPointerMove={updateTimelineSectionDrag}
                   onPointerUp={finishTimelineSectionDrag}
@@ -765,8 +807,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
                   type="button"
                   className="section-timeline-card__delete"
                   disabled={manageState.deleteDisabled}
-                  aria-label={t(pageMode ? 'comic.workbench.pages.delete_numbered' : 'comic.workbench.sections.delete_numbered', { number: section.section_no })}
-                  title={t(isProcessing ? (pageMode ? 'comic.workbench.pages.delete_generating_title' : 'comic.workbench.sections.delete_generating_title') : (pageMode ? 'comic.workbench.pages.delete_title' : 'comic.workbench.sections.delete_title'))}
+                  aria-label={pageMode ? t('comic.workbench.pages.delete_role', { label: sectionLabel(section) }) : t('comic.workbench.sections.delete_numbered', { number: section.section_no })}
+                  title={t(isLastBodyPage ? 'comic.workbench.pages.delete_last_body_title' : isProcessing ? (pageMode ? 'comic.workbench.pages.delete_generating_title' : 'comic.workbench.sections.delete_generating_title') : (pageMode ? 'comic.workbench.pages.delete_title' : 'comic.workbench.sections.delete_title'))}
                   onClick={() => confirmDelete(section)}
                 ><Trash2 size={13} aria-hidden="true" /></button>
               </> : null}
@@ -789,7 +831,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
         >
           <i className={`section-timeline-card__status ${sectionDragState.preview.imageState}`} />
           <span className="section-timeline-card__copy">
-			<strong>{t(pageMode ? 'comic.workbench.page_label' : 'comic.workbench.section_label', { number: sectionDragState.preview.sectionNo })}</strong>
+			<strong>{sectionDragState.preview.label}</strong>
             <span>{sectionDragState.preview.title}</span>
           </span>
         </div>
@@ -798,7 +840,8 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
       {manageMode ? (
         <section className="section-meta-editor">
 		  <label>{t(pageMode ? 'comic.page.title' : 'comic.section.title')}<input name="section_title" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-          <button type="button" disabled={title === selected.title || selectedManageState.pending} onClick={() => sectionUpdate.mutate()}>{t(pageMode ? 'comic.page.save' : 'comic.section.save')}</button>
+          {pageMode ? <label className="section-meta-editor__role">{t('comic.page_role.label')}<select name="page_role" value={pageRole} disabled={selectedManageState.pending} onChange={(event) => setPageRole(event.target.value)}>{COMIC_PAGE_ROLES.map((role) => <option key={role} value={role} disabled={comicPageRoleOptionDisabled(sections, role, selected.uuid)}>{t(`comic.page_role.${role}_option`)}</option>)}</select></label> : null}
+          <button type="button" disabled={(title === selected.title && (!pageMode || pageRole === selectedPageRole)) || selectedManageState.pending} onClick={() => sectionUpdate.mutate()}>{t(pageMode ? 'comic.page.save' : 'comic.section.save')}</button>
           <button type="button" className="button-secondary" aria-label={t(pageMode ? 'comic.workbench.pages.move_before' : 'comic.workbench.sections.move_before')} disabled={selectedManageState.moveBeforeDisabled} onClick={() => moveSelected(-1)}><ChevronUp size={16} aria-hidden="true" /></button>
           <button type="button" className="button-secondary" aria-label={t(pageMode ? 'comic.workbench.pages.move_after' : 'comic.workbench.sections.move_after')} disabled={selectedManageState.moveAfterDisabled} onClick={() => moveSelected(1)}><ChevronDown size={16} aria-hidden="true" /></button>
         </section>
@@ -806,14 +849,14 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
 
       {storyboardDialogOpen ? (
         <WorkbenchDialog className="storyboard-candidates-dialog" dismissDisabled={storyboardSelect.isPending} onClose={() => setStoryboardDialogOpen(false)}>
-			  <header className="lumi-dialog__header"><div><h2>{t(pageMode ? 'comic.workbench.page_script_candidates' : 'comic.workbench.storyboard_candidates')}</h2><p>{selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</p></div><button type="button" className="button-quiet" disabled={storyboardSelect.isPending} aria-label={t('common.action.close')} onClick={() => setStoryboardDialogOpen(false)}><X size={18} aria-hidden="true" /></button></header>
+			  <header className="lumi-dialog__header"><div><h2>{t(pageMode ? 'comic.workbench.page_script_candidates' : 'comic.workbench.storyboard_candidates')}</h2><p>{selected.title || sectionFallbackTitle(selected)}</p></div><button type="button" className="button-quiet" disabled={storyboardSelect.isPending} aria-label={t('common.action.close')} onClick={() => setStoryboardDialogOpen(false)}><X size={18} aria-hidden="true" /></button></header>
           <div className="lumi-dialog__body storyboard-candidates-dialog__body">
             {storyboards.map((variant) => <article key={variant.uuid} className={variant.uuid === selected.current_storyboard?.uuid ? 'is-current' : ''}><header><strong>v{variant.version_no}</strong><span>{sourceTypeLabel(t, variant.source_type)}</span></header><pre data-user-content>{variant.content_md}</pre><button type="button" className="button-secondary" disabled={variant.uuid === selected.current_storyboard?.uuid || storyboardSelect.isPending} onClick={() => storyboardSelect.mutate(variant)}>{t(variant.uuid === selected.current_storyboard?.uuid ? 'comic.workbench.preview.selected' : 'common.action.restore')}</button></article>)}
             {!storyboardsQuery.isLoading && storyboards.length === 0 ? <div className="workspace-empty"><h2>{t(pageMode ? 'comic.workbench.page_storyboard_empty' : 'comic.workbench.storyboard_empty')}</h2></div> : null}
           </div>
         </WorkbenchDialog>
       ) : null}
-	  {imageDialog?.mode === 'preview' ? <CurrentImagePreviewDialog projectUuid={projectUuid} section={selected} variant={imageDialog.variant} onClose={() => setImageDialog(null)} pictureBook={pictureBook} unit={unit} /> : null}
+	  {imageDialog?.mode === 'preview' ? <CurrentImagePreviewDialog projectUuid={projectUuid} section={selected} pageLabel={sectionLabel(selected)} variant={imageDialog.variant} onClose={() => setImageDialog(null)} pictureBook={pictureBook} unit={unit} /> : null}
 	  {imageDialog?.mode === 'candidate' ? <ImageVariantDetailDialog projectUuid={projectUuid} variant={imageDialog.variant} current={selected.current_image?.uuid === imageDialog.variant.uuid || (imageSelect.isSuccess && imageSelect.variables?.uuid === imageDialog.variant.uuid)} pending={imageSelect.isPending} onClose={() => setImageDialog(null)} onSelect={() => imageSelect.mutate(imageDialog.variant)} pictureBook={pictureBook} /> : null}
       {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={() => setExportRequest(null)} /> : null}
     </div>
@@ -847,13 +890,13 @@ function CurrentImage({ projectUuid, section, onOpen, t, pictureBook, unit = 'se
   return <div className="section-preview__empty"><ImagePlus size={30} aria-hidden="true" /><strong>{t(unit === 'page' ? 'comic.workbench.preview.page_current_empty' : 'comic.workbench.preview.current_empty')}</strong><p>{t(unit === 'page' ? 'comic.workbench.preview.page_current_empty_body' : 'comic.workbench.preview.current_empty_body')}</p></div>
 }
 
-function ReferenceImage({ projectUuid, section, t, unit = 'section' }) {
+function ReferenceImage({ projectUuid, section, pageLabel, t, unit = 'section' }) {
   const premise = section.current_image?.section_premise
   if (premise?.asset) {
     const titles = premise.selected_titles?.length ? premise.selected_titles : (premise.selected_assets || []).map((asset) => asset.title).filter(Boolean)
     return (
       <figure className="comic-section-visual comic-section-visual--premise">
-        <div className="comic-section-visual__media"><ProductionImage projectUuid={projectUuid} asset={premise.asset} alt={t(unit === 'page' ? 'comic.workbench.image_detail.reference_alt_page' : 'comic.workbench.image_detail.reference_alt', { number: section.section_no })} profile="detail_1024" /></div>
+        <div className="comic-section-visual__media"><ProductionImage projectUuid={projectUuid} asset={premise.asset} alt={unit === 'page' ? t('comic.workbench.image_detail.reference_alt_role', { label: pageLabel }) : t('comic.workbench.image_detail.reference_alt', { number: section.section_no })} profile="detail_1024" /></div>
         <ImageMetadata as="figcaption" items={[comicImageDimensions(premise.asset), comicImageTitle({ asset: premise.asset })]} />
         {titles.length ? <div className="comic-section-visual__files" aria-label={t('comic.workbench.image_detail.selected_references')}>{titles.map((title) => <span key={title}>{title}</span>)}</div> : null}
         {premise.selection_reason ? <p className="comic-section-visual__reason" data-user-content>{premise.selection_reason}</p> : null}
@@ -897,14 +940,14 @@ function ImageCandidates({ projectUuid, section, images, pending, onOpen, onSele
   )
 }
 
-function CurrentImagePreviewDialog({ projectUuid, section, variant, onClose, pictureBook, unit = 'section' }) {
+function CurrentImagePreviewDialog({ projectUuid, section, pageLabel, variant, onClose, pictureBook, unit = 'section' }) {
   const { t } = useI18n()
   const asset = variant.asset
   const titleId = 'section-image-dialog-title'
   return (
     <WorkbenchDialog className="section-image-dialog" onClose={onClose} aria-labelledby={titleId}>
       <header className="section-image-dialog__header">
-        <div><p className="eyebrow">{t('comic.workbench.image_detail.preview_eyebrow')}</p><h2 id={titleId}>{t(unit === 'page' ? 'comic.workbench.image_detail.preview_title_page' : 'comic.workbench.image_detail.preview_title')}</h2></div>
+        <div><p className="eyebrow">{unit === 'page' ? pageLabel : t('comic.workbench.image_detail.preview_eyebrow')}</p><h2 id={titleId}>{t(unit === 'page' ? 'comic.workbench.image_detail.preview_title_page' : 'comic.workbench.image_detail.preview_title')}</h2></div>
         <button className="section-image-dialog__close" type="button" aria-label={t('common.action.close')} onClick={onClose}>×</button>
       </header>
 	  <div className="section-image-dialog__media"><ProductionImage projectUuid={projectUuid} asset={asset} alt={section.title || t(unit === 'page' ? 'comic.page' : 'comic.section')} profile="detail_1024" /></div>

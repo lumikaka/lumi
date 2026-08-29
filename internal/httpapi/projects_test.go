@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -135,7 +136,8 @@ func TestRecentProjectsExposeFirstPictureBookImageAsCover(t *testing.T) {
 		t.Fatalf("close status=%d body=%s", response.Code, response.Body.String())
 	}
 	recent := requestJSON(t, e, http.MethodGet, "/api/v1/recent-projects", nil)
-	expectedURL := "/media/recent-projects/" + projectUUID + "/cover"
+	contentSHA256 := fmt.Sprintf("%x", sha256.Sum256(content))
+	expectedURL := "/media/recent-projects/" + projectUUID + "/cover?v=" + contentSHA256
 	if recent.Code != http.StatusOK || !strings.Contains(recent.Body.String(), `"cover_image_url":"`+expectedURL+`"`) || strings.Contains(recent.Body.String(), `"id"`) {
 		t.Fatalf("recent status=%d body=%s", recent.Code, recent.Body.String())
 	}

@@ -21,7 +21,7 @@ Thread 以 `thread_type=conversation|workflow` 区分普通对话与公开 UI �
 
 ### Reference
 
-Reference 是用户对当前输入所需项目资源的显式引用，支持 `file`、`premise_asset`、`chapter` 和 `comic_section`。服务在接受输入时校验项目边界并冻结紧凑快照；后续 Turn 不自动继承，历史资源发生删除或修改也不重写已有快照。Chapter 工作台中的新会话会预选当前 Chapter，但用户可在发送前移除。
+Reference 是用户对当前输入所需项目资源的显式引用，支持 `file`、`premise_asset`、`chapter` 和 `comic_section`。服务在接受输入时校验项目边界并冻结紧凑快照；`comic_section` 快照同时保存绝对 `section_no`、`page_role` 和正文页的 `body_page_no`，让 Agent 能稳定称呼封面、正文第 N 页或封底。后续 Turn 不自动继承，历史资源发生删除或修改也不重写已有快照。Chapter 工作台中的新会话会预选当前 Chapter，但用户可在发送前移除。
 
 ### 受控交互
 

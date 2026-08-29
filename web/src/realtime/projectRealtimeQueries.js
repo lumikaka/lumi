@@ -33,7 +33,10 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     add('workflows')
     if (payload.workflow_uuid) workflowDetailKeys.forEach((name) => add(name, payload.workflow_uuid))
   }
-  const addComic = () => comicKeys.forEach((name) => add(name))
+  const addComic = () => {
+    comicKeys.forEach((name) => add(name))
+    queryKeys.push(['recent-projects'])
+  }
   const addPremise = () => premiseKeys.forEach((name) => add(name))
 
   let matched = true

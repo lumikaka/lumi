@@ -2,7 +2,6 @@ package jobqueue
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/agent"
 	"lumi/internal/modelsettings"
 	"lumi/internal/picturebook"
 	"lumi/internal/production"
@@ -387,7 +387,11 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 			result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(existing.DTO()))
 			continue
 		}
-		task, createErr := manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{IdempotencyKey: key}, createVisibleWorkflow)
+		task, createErr := manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
+			ProviderUUID: input.ProviderUUID, Model: input.Model,
+			SelectionProviderUUID: input.SelectionProviderUUID, SelectionModel: input.SelectionModel,
+			IdempotencyKey: key,
+		}, createVisibleWorkflow)
 		if createErr != nil {
 			result.AcceptedCount = len(result.Tasks)
 			return result, createErr
@@ -399,8 +403,7 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 }
 
 func comicImageBatchTaskKey(batchKey, sectionUUID string) string {
-	digest := sha256.Sum256([]byte(strings.TrimSpace(batchKey) + "\x00" + sectionUUID))
-	return fmt.Sprintf("comic-image-batch:%x", digest[:])
+	return agent.ComicImageBatchTaskKey(batchKey, sectionUUID)
 }
 
 func comicImageGenerationBatchTask(task ProductionTask) ComicImageGenerationBatchTask {
@@ -458,7 +461,14 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 	if err != nil {
 		return ProductionTask{}, err
 	}
-	beforeImagePrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "before_image")
+	beforeImagePromptKey := "before_image"
+	switch section.PageRole {
+	case production.PageRoleFrontCover:
+		beforeImagePromptKey = "cover_before_image"
+	case production.PageRoleBackCover:
+		beforeImagePromptKey = "back_cover_before_image"
+	}
+	beforeImagePrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, beforeImagePromptKey)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -537,9 +547,9 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		return ProductionTask{}, err
 	}
 	parameters, _ := json.Marshal(input.Parameters)
-	snapshot := production.GenerationSnapshot{Version: 4, Kind: KindComicImageGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: section.UUID, ChapterUUID: chapterUUID,
+	snapshot := production.GenerationSnapshot{Version: 5, Kind: KindComicImageGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: section.UUID, ChapterUUID: chapterUUID,
 		Prompt: prompt, PromptTemplate: imageTemplate, LanguageInstruction: languageInstruction, ReferencePresentPrompt: referencePresentPrompt, ReferenceAbsentPrompt: referenceAbsentPrompt, AdditionalDirectionPrompt: additionalDirectionPrompt, SelectionPrompt: selectionPrompt, SelectionProviderUUID: selectionProvider.UUID, SelectionBaseURL: selectionProvider.BaseURL, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource,
-		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD,
+		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
 		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
 	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
 		generationUUID, err := newUUIDv7()

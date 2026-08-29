@@ -31,6 +31,8 @@ projects ──< actors
 - `name` / `root_path` — 最后已知展示名与本机目录；路径可能失效，不能代替项目身份
 - `last_opened_at` / `updated_at` — 最近打开和索引更新时间
 
+最近项目 API 的 `cover_image_url` 不对应 `recent_projects` 持久字段。服务端只读项目库，在第一本存在 ready `front_cover|body` 候选的 Chapter 内优先 `front_cover`、否则取首个 `body`；`back_cover` 不参与候选。URL 携带由所选图片内容 SHA-256 派生的 `v` 查询参数，current 图片变化时浏览器地址随之变化，避免沿用旧缩略图缓存。
+
 ## 表：projects 与 actors
 
 项目库只存在一个 `projects` 记录；创建项目时同时创建默认 `local_user` actor。

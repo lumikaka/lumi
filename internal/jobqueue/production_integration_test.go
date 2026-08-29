@@ -26,6 +26,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
+	"lumi/internal/sitesettings"
 	"lumi/internal/story"
 
 	"github.com/riverqueue/river"
@@ -66,7 +67,7 @@ func TestPictureBookImageTaskFreezesProfileAndExactOutputSize(t *testing.T) {
 	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 4 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookComicStory || snapshot.PictureBook.ComicLayout == nil || *snapshot.PictureBook.ComicLayout != project.ComicLayoutFourPanel || snapshot.OutputSize != "1024x1024" {
+	if snapshot.Version != 5 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookComicStory || snapshot.PictureBook.ComicLayout == nil || *snapshot.PictureBook.ComicLayout != project.ComicLayoutFourPanel || snapshot.OutputSize != "1024x1024" {
 		t.Fatalf("snapshot=%+v", snapshot)
 	}
 }
@@ -102,6 +103,128 @@ func TestUnsupportedPictureBookImageRatioIsRejectedBeforeTaskPersistence(t *test
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFrontCoverImageTaskUsesCoverRulesInsteadOfBodyPageRules(t *testing.T) {
+	harness := newQueueHarnessWithPictureBook(t, &project.PictureBookInput{
+		Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+	})
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch36")
+	body, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Body", StoryboardMD: "## 页面目标\n\n正文第一页。"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cover, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+		Title: "Cover", StoryboardMD: "## 封面目标\n\n逐字标题《月光邮差》。", PageRole: production.PageRoleFrontCover,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverTask, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, cover.UUID, CreateProductionGenerationInput{IdempotencyKey: "cover-image-rules"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyTask, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, body.UUID, CreateProductionGenerationInput{IdempotencyKey: "body-image-rules"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var coverSnapshot, bodySnapshot production.GenerationSnapshot
+	if err := json.Unmarshal(coverTask.InputSnapshot, &coverSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(bodyTask.InputSnapshot, &bodySnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(coverSnapshot.PromptTemplate, "封面图片生成规则") || !strings.Contains(coverSnapshot.PromptTemplate, "正文页的无字") || strings.Contains(coverSnapshot.PromptTemplate, "1–3 句") {
+		t.Fatalf("cover prompt used body rules: %q", coverSnapshot.PromptTemplate)
+	}
+	if !strings.Contains(bodySnapshot.PromptTemplate, "1–3 句") || strings.Contains(bodySnapshot.PromptTemplate, "封面图片生成规则") {
+		t.Fatalf("body prompt used cover rules: %q", bodySnapshot.PromptTemplate)
+	}
+	if coverSnapshot.PageRole != production.PageRoleFrontCover || bodySnapshot.PageRole != production.PageRoleBody {
+		t.Fatalf("image snapshot roles: cover=%q body=%q", coverSnapshot.PageRole, bodySnapshot.PageRole)
+	}
+}
+
+func TestBackCoverImageTaskUsesBackCoverRulesAcrossPictureBookFormats(t *testing.T) {
+	minimal := false
+	interaction := project.InteractionFollowAlong
+	layout := project.ComicLayoutFourPanel
+	tests := []struct {
+		name          string
+		pictureBook   *project.PictureBookInput
+		forbiddenBody string
+	}{
+		{name: "classic", pictureBook: &project.PictureBookInput{Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare}, LargeImageMinimalText: &minimal}, forbiddenBody: "1–3 句"},
+		{name: "interactive", pictureBook: &project.PictureBookInput{Format: project.PictureBookInteractive, InteractionMode: &interaction}, forbiddenBody: "跟着做"},
+		{name: "comic_story", pictureBook: &project.PictureBookInput{Format: project.PictureBookComicStory, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare}, ComicLayout: &layout}, forbiddenBody: "严格使用四个连续漫画分格"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			harness := newQueueHarnessWithPictureBook(t, test.pictureBook)
+			ctx := context.Background()
+			if _, _, err := harness.queue.providers.Settings().Update(ctx, map[string]any{
+				sitesettings.BailianWorkspaceKey: "back-cover-workspace",
+				sitesettings.BailianRegionKey:    "cn-beijing",
+				sitesettings.BailianAPIKeyKey:    "back-cover-secret",
+			}); err != nil {
+				t.Fatal(err)
+			}
+			providers, err := harness.queue.providers.List(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var imageProvider provider.Provider
+			for _, candidate := range providers {
+				if candidate.ProviderType == provider.TypeAliyunBailian {
+					imageProvider = candidate
+					break
+				}
+			}
+			if imageProvider.UUID == "" {
+				t.Fatal("Aliyun Bailian provider missing")
+			}
+			if _, err := harness.queue.providers.MarkVerified(ctx, imageProvider.UUID); err != nil {
+				t.Fatal(err)
+			}
+			var service *production.Service
+			if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+				service = production.NewService(store, nil)
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			chapter := harness.createChapter(t, "vol01.ch37")
+			if _, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Body", StoryboardMD: "## 页面目标\n\n正文。"}); err != nil {
+				t.Fatal(err)
+			}
+			backCover, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+				Title: "Back cover", StoryboardMD: "## 封底目标\n\n安静的月光与明确指定的文案。", PageRole: production.PageRoleBackCover,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			task, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, backCover.UUID, CreateProductionGenerationInput{ProviderUUID: imageProvider.UUID, Model: "qwen-image-3.0", IdempotencyKey: "back-cover-rules-" + test.name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var snapshot production.GenerationSnapshot
+			if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
+				t.Fatal(err)
+			}
+			if snapshot.PageRole != production.PageRoleBackCover || !strings.Contains(snapshot.PromptTemplate, "封底图片生成规则") || !strings.Contains(snapshot.PromptTemplate, "正文页的无字") || strings.Contains(snapshot.PromptTemplate, test.forbiddenBody) || strings.Contains(snapshot.PromptTemplate, "封面图片生成规则") {
+				t.Fatalf("back-cover snapshot used body/front rules: role=%q prompt=%q", snapshot.PageRole, snapshot.PromptTemplate)
+			}
+		})
 	}
 }
 
@@ -262,6 +385,22 @@ func (provider blockingImageProvider) Generate(ctx context.Context, _ imagegen.R
 	return imagegen.Response{}, ctx.Err()
 }
 
+type releasedImageProvider struct {
+	started chan struct{}
+	release chan struct{}
+	content []byte
+}
+
+func (provider releasedImageProvider) Generate(ctx context.Context, _ imagegen.Request) (imagegen.Response, error) {
+	close(provider.started)
+	select {
+	case <-provider.release:
+		return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+	case <-ctx.Done():
+		return imagegen.Response{}, ctx.Err()
+	}
+}
+
 type restartingImageProvider struct {
 	mu       sync.Mutex
 	attempts int
@@ -323,6 +462,67 @@ func productionPNG(t *testing.T) []byte {
 	}
 	return buffer.Bytes()
 }
+
+func TestComicImageTaskRejectsPageRoleDriftBeforeCommit(t *testing.T) {
+	tests := []struct {
+		name, fromRole, toRole string
+	}{
+		{name: "body to front cover", fromRole: production.PageRoleBody, toRole: production.PageRoleFrontCover},
+		{name: "front cover to body", fromRole: production.PageRoleFrontCover, toRole: production.PageRoleBody},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			harness := newQueueHarnessWithPictureBook(t, &project.PictureBookInput{
+				Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+			})
+			started, release := make(chan struct{}), make(chan struct{})
+			harness.queue.WithImageClient(releasedImageProvider{started: started, release: release, content: productionPNG(t)})
+			ctx := context.Background()
+			var service *production.Service
+			if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+				service = production.NewService(store, nil)
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			chapter := harness.createChapter(t, "vol01.ch37")
+			if _, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Body invariant", StoryboardMD: "A body page remains."}); err != nil {
+				t.Fatal(err)
+			}
+			target, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Role target", StoryboardMD: "Generate with the frozen role.", PageRole: test.fromRole})
+			if err != nil {
+				t.Fatal(err)
+			}
+			task, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, target.UUID, CreateProductionGenerationInput{IdempotencyKey: "role-drift-" + strings.ReplaceAll(test.name, " ", "-")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var snapshot production.GenerationSnapshot
+			if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil || snapshot.Version != 5 || snapshot.PageRole != test.fromRole {
+				t.Fatalf("snapshot=%+v error=%v", snapshot, err)
+			}
+			select {
+			case <-started:
+			case <-time.After(5 * time.Second):
+				t.Fatal("image provider did not start")
+			}
+			updated, err := service.UpdateSection(ctx, chapter.UUID, target.UUID, production.UpdateSectionInput{PageRole: &test.toRole, ExpectedRevision: target.Revision})
+			if err != nil || updated.PageRole != test.toRole {
+				t.Fatalf("role update=%+v error=%v", updated, err)
+			}
+			close(release)
+			failed := waitProductionStatus(t, harness.queue, harness.project.UUID, task.UUID, StatusFailed)
+			if failed.ErrorCode != production.CodeConflict {
+				t.Fatalf("failed task=%+v", failed)
+			}
+			current, err := service.GetSection(ctx, chapter.UUID, target.UUID)
+			if err != nil || current.PageRole != test.toRole || current.CurrentImage != nil {
+				t.Fatalf("role-drift commit changed section=%+v error=%v", current, err)
+			}
+		})
+	}
+}
+
 func waitProductionStatus(t *testing.T, manager *Manager, projectUUID, taskUUID, wanted string) ProductionTask {
 	t.Helper()
 	deadline := time.Now().Add(8 * time.Second)
@@ -1284,7 +1484,7 @@ func TestComicGenerationSnapshotFreezesCurrentStoryboardAndPremiseVariants(t *te
 	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 4 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || snapshot.OutputSize != "1024x1536" || snapshot.StoryboardUUID != section.CurrentStoryboard.UUID || len(snapshot.PremiseAssets) != 1 || snapshot.PremiseAssets[0].AssetUUID != asset.UUID || snapshot.PremiseAssets[0].VariantUUID != asset.CurrentVariant.UUID || !strings.Contains(snapshot.PromptTemplate, "FROZEN BASE IMAGE RULES") || strings.Contains(snapshot.PromptTemplate, "{{before_image_prompt}}") || snapshot.ReferencePresentPrompt != "FROZEN REFERENCES\n{{reference_titles}}" || snapshot.ReferenceAbsentPrompt != "FROZEN NO REFERENCES" || snapshot.AdditionalDirectionPrompt != "FROZEN DIRECTION\n{{guidance_prompt}}" || snapshot.LanguageInstruction != "FROZEN COMIC LANGUAGE" {
+	if snapshot.Version != 5 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || snapshot.OutputSize != "1024x1536" || snapshot.StoryboardUUID != section.CurrentStoryboard.UUID || len(snapshot.PremiseAssets) != 1 || snapshot.PremiseAssets[0].AssetUUID != asset.UUID || snapshot.PremiseAssets[0].VariantUUID != asset.CurrentVariant.UUID || !strings.Contains(snapshot.PromptTemplate, "FROZEN BASE IMAGE RULES") || strings.Contains(snapshot.PromptTemplate, "{{before_image_prompt}}") || snapshot.ReferencePresentPrompt != "FROZEN REFERENCES\n{{reference_titles}}" || snapshot.ReferenceAbsentPrompt != "FROZEN NO REFERENCES" || snapshot.AdditionalDirectionPrompt != "FROZEN DIRECTION\n{{guidance_prompt}}" || snapshot.LanguageInstruction != "FROZEN COMIC LANGUAGE" {
 		t.Fatalf("snapshot=%+v", snapshot)
 	}
 	if _, err := harness.stories.UpdatePromptGroup(ctx, story.UpdatePromptGroupInput{

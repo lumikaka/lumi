@@ -238,6 +238,8 @@ func resolveComicSectionReference(ctx context.Context, store *project.Store, pro
 		UUID                  string
 		ChapterUUID           string
 		SectionNo             int
+		PageRole              string
+		BodyPageNo            int
 		Title                 string
 		Description           string
 		Revision              int64
@@ -248,7 +250,7 @@ func resolveComicSectionReference(ctx context.Context, store *project.Store, pro
 		CurrentImageFileUUID  string
 	}
 	err := store.DB().WithContext(ctx).Table("comic_sections AS sections").
-		Select("sections.id,chapters.project_id,sections.uuid,chapters.uuid AS chapter_uuid,sections.section_no,sections.title,sections.description_md AS description,sections.revision,sections.deleted_at,chapters.deleted_at AS chapter_deleted_at,COALESCE(storyboards.uuid,'') AS current_storyboard_uuid,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN files.id ELSE NULL END AS current_image_file_id,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN COALESCE(files.uuid,'') ELSE '' END AS current_image_file_uuid").
+		Select("sections.id,chapters.project_id,sections.uuid,chapters.uuid AS chapter_uuid,sections.section_no,sections.page_role,CASE WHEN sections.page_role='body' THEN (SELECT COUNT(*) FROM comic_sections AS body_sections WHERE body_sections.chapter_comic_state_id=sections.chapter_comic_state_id AND body_sections.deleted_at IS NULL AND body_sections.page_role='body' AND body_sections.section_no<=sections.section_no) ELSE 0 END AS body_page_no,sections.title,sections.description_md AS description,sections.revision,sections.deleted_at,chapters.deleted_at AS chapter_deleted_at,COALESCE(storyboards.uuid,'') AS current_storyboard_uuid,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN files.id ELSE NULL END AS current_image_file_id,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN COALESCE(files.uuid,'') ELSE '' END AS current_image_file_uuid").
 		Joins("JOIN chapter_comic_states AS states ON states.id=sections.chapter_comic_state_id").
 		Joins("JOIN chapters ON chapters.id=states.chapter_id").
 		Joins("LEFT JOIN comic_storyboard_variants AS storyboards ON storyboards.id=sections.current_storyboard_variant_id").
@@ -270,7 +272,7 @@ func resolveComicSectionReference(ctx context.Context, store *project.Store, pro
 	}
 	snapshot := map[string]any{
 		"resource_type": ReferenceTypeComicSection, "resource_uuid": row.UUID, "status": "available",
-		"chapter_uuid": row.ChapterUUID, "section_no": row.SectionNo, "title": row.Title,
+		"chapter_uuid": row.ChapterUUID, "section_no": row.SectionNo, "page_role": row.PageRole, "body_page_no": row.BodyPageNo, "title": row.Title,
 		"description": row.Description, "revision": row.Revision,
 		"current_storyboard_uuid": row.CurrentStoryboardUUID, "current_image_file_uuid": row.CurrentImageFileUUID,
 	}

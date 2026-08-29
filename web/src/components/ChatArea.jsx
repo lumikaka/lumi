@@ -68,6 +68,7 @@ import {
   suggestedChatThreadTitle,
   threadDisplayTitle,
   workflowDisplayTitle,
+  workflowFirstImageStepCopyKey,
   workflowProgressPercent,
 } from '../pages/chatAreaPresentation.js'
 import {
@@ -117,6 +118,13 @@ const stepCopy = {
 }
 
 const MESSAGE_PAGE_LIMIT = 30
+
+function workflowStepTitle(workflow, stepKey, pictureBook, term, t) {
+  const copyKey = stepKey === 'first_section_image'
+    ? workflowFirstImageStepCopyKey(workflow, pictureBook)
+    : stepCopy[stepKey]
+  return copyKey ? term(copyKey) : t('common.status.unknown_with_code', { code: stepKey })
+}
 
 function threadTrajectoryHref(projectUuid, threadUuid) {
   return `/projects/${encodeURIComponent(projectUuid)}/threads/${encodeURIComponent(threadUuid)}/trajectory`
@@ -525,7 +533,7 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
       <header><div><span>{t('chat.workflow.title')}</span><strong>{workflowDisplayTitle(workflow, term)}</strong></div><b className={`workflow-status workflow-status--${workflow.status}`}>{workflowStatusCopy[workflow.status] ? t(workflowStatusCopy[workflow.status]) : t('common.status.unknown_with_code', { code: workflow.status })}</b></header>
       <div className="workflow-progress__meter"><progress max="100" value={progress} aria-label={t('chat.workflow.progress', { progress })} /><small>{progress}%</small></div>
       <ol>{workflow.steps?.map((step) => {
-        const title = stepCopy[step.step_key] ? term(stepCopy[step.step_key]) : t('common.status.unknown_with_code', { code: step.step_key })
+        const title = workflowStepTitle(workflow, step.step_key, pictureBook, term, t)
         return (
           <li key={step.uuid} className={`workflow-step workflow-step--${step.status}`}>
             <button type="button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
@@ -609,10 +617,10 @@ function WorkflowDiagnostics({ projectUuid, pictureBook, workflow, open, onOpenC
           <h4>{t('chat.workflow.runs')}</h4>
           {runsQuery.isLoading ? <p>{t('chat.loading')}</p> : null}
           {!runsQuery.isLoading && !runsQuery.error && runs.length === 0 ? <p>{t('chat.workflow.no_runs')}</p> : null}
-          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{stepCopy[run.step_key] ? term(stepCopy[run.step_key]) : t('common.status.unknown_with_code', { code: run.step_key })}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {Math.min(100, Math.max(0, Number(run.progress) || 0))}% · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
+          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{workflowStepTitle(workflow, run.step_key, pictureBook, term, t)}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {Math.min(100, Math.max(0, Number(run.progress) || 0))}% · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
           {focusedStep ? (
             <article className="workflow-diagnostics__step-detail">
-              <header><strong>{stepCopy[focusedStep.step_key] ? term(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key })}</strong><button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button></header>
+              <header><strong>{workflowStepTitle(workflow, focusedStep.step_key, pictureBook, term, t)}</strong><button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button></header>
               <dl>
                 <div><dt>{t('chat.workflow.step_uuid')}</dt><dd><code>{focusedStep.uuid}</code></dd></div>
                 <div><dt>{t('chat.workflow.workflow_uuid')}</dt><dd><code>{workflow.uuid}</code></dd></div>
@@ -641,7 +649,7 @@ function WorkflowDiagnostics({ projectUuid, pictureBook, workflow, open, onOpenC
         </section>
         <section>
           <div className="workflow-diagnostics__section-heading"><h4>{t('chat.workflow.llm_logs')}</h4>{focusStepUuid ? <button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button> : null}</div>
-          {focusedStep ? <p>{t('chat.workflow.filtered_step', { title: stepCopy[focusedStep.step_key] ? term(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key }) })}</p> : null}
+          {focusedStep ? <p>{t('chat.workflow.filtered_step', { title: workflowStepTitle(workflow, focusedStep.step_key, pictureBook, term, t) })}</p> : null}
           {logsQuery.isLoading ? <p>{t('chat.loading')}</p> : null}
           {!logsQuery.isLoading && !logsQuery.error && logs.length === 0 ? <p>{t(focusStepUuid ? 'chat.workflow.no_llm_logs_for_step' : 'chat.workflow.no_llm_logs')}</p> : null}
           <div className="workflow-diagnostics__logs">{logs.map((log) => <button type="button" aria-pressed={selectedLog?.uuid === log.uuid} key={log.uuid} onClick={() => setSelectedLog((current) => !focusStepUuid && current?.uuid === log.uuid ? null : log)}><span><strong>{log.scenario}</strong><small>{log.model} · {formatDateTime(log.created_at)}</small></span><em>{log.status}</em></button>)}</div>

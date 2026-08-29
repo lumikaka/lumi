@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUp, FolderOpen, Link, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react'
+import { ArrowUp, Check, ChevronDown, FolderOpen, Link, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
@@ -10,7 +10,8 @@ import { ReferenceStrip } from '../components/ChatReferences.jsx'
 import { projectStatusCopy } from '../components/RecentProjectsView.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
-import { createYoloWorkflow } from '../api/chat.js'
+import { createChatThread, createChatTurn, createYoloWorkflow } from '../api/chat.js'
+import { createAssetUpload, finalizeAssetUpload } from '../api/assets.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import {
   overallStyleForLanguage,
@@ -18,7 +19,7 @@ import {
   projectCreationErrors,
   projectDefaultOverallStyle,
 } from './projectCreationForm.js'
-import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
+import { projectCoverSource, projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 import {
   createProject,
   createProjectCreationSession,
@@ -42,6 +43,7 @@ import {
   selectProjectChatClipboardImages,
   selectProjectChatImageFiles,
 } from './projectChatAttachments.js'
+import { suggestedChatThreadTitle } from './chatAreaPresentation.js'
 
 const CREATION_CHECKPOINT_KEY = 'lumi.homeProjectCreation'
 
@@ -167,6 +169,10 @@ export default function HomePage() {
   const [creationReferences, setCreationReferences] = useState(() => creationReferencesFromCheckpoint(loadCreationCheckpoint()))
   const [creationReferenceError, setCreationReferenceError] = useState(null)
   const [creationValidationAttempted, setCreationValidationAttempted] = useState(false)
+  const [creationProjectUuid, setCreationProjectUuid] = useState('')
+  const [creationContextOpen, setCreationContextOpen] = useState(false)
+  const [creationTargetThread, setCreationTargetThread] = useState(null)
+  const [creationTargetError, setCreationTargetError] = useState(null)
   const nameInputRef = useRef(null)
   const storyPromptInputRef = useRef(null)
   const parentPathInputRef = useRef(null)
@@ -177,6 +183,8 @@ export default function HomePage() {
   const openMenuTriggerRef = useRef(null)
   const creationReferenceInputRef = useRef(null)
   const creationReferencesRef = useRef([])
+  const creationContextRef = useRef(null)
+  const creationContextTriggerRef = useRef(null)
 
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const openProjectsQuery = useQuery({ queryKey: projectQueryKeys.openProjects(), queryFn: listOpenProjects })
@@ -323,12 +331,74 @@ export default function HomePage() {
     },
     onSuccess: (session, variables) => acceptCreationSession(session, variables.checkpoint),
   })
+  const projectThreadMutation = useMutation({
+    mutationFn: async ({ projectUuid, inputText, references, threadUuid }) => {
+      const referenceInputs = []
+      for (const reference of references) {
+        if (reference.status === 'ready' && reference.resource_uuid && reference.projectUuid === projectUuid) {
+          referenceInputs.push({ resource_type: reference.resource_type, resource_uuid: reference.resource_uuid })
+          continue
+        }
+        if (!reference.file) throw Object.assign(new Error('Reference file is not ready'), { code: 'project_creation_reference_not_ready' })
+        const position = reference.position
+        updateCreationReference(position, { status: 'uploading', error: null })
+        try {
+          const upload = await createAssetUpload(projectUuid, {
+            purpose: 'project_chatbot_reference',
+            displayName: reference.filename,
+            file: reference.file,
+          })
+          const asset = await finalizeAssetUpload(projectUuid, upload.uuid, 'project_chatbot_reference')
+          updateCreationReference(position, {
+            status: 'ready',
+            error: null,
+            projectUuid,
+            resource_type: 'file',
+            resource_uuid: asset.uuid,
+            image_file_uuid: asset.uuid,
+            image_available: true,
+          })
+          referenceInputs.push({ resource_type: 'file', resource_uuid: asset.uuid })
+        } catch (uploadError) {
+          updateCreationReference(position, { status: 'error', error: uploadError })
+          throw uploadError
+        }
+      }
+      const thread = threadUuid
+        ? { uuid: threadUuid }
+        : await createChatThread(projectUuid, { title: suggestedChatThreadTitle(inputText) })
+      try {
+        await createChatTurn(projectUuid, thread.uuid, { input_text: inputText, references: referenceInputs })
+        return { projectUuid, thread, turnError: null }
+      } catch (turnError) {
+        return { projectUuid, thread, turnError }
+      }
+    },
+    onMutate: () => setCreationTargetError(null),
+    onSuccess: ({ projectUuid, thread, turnError }) => {
+      queryClient.setQueryData(['chat-thread', projectUuid, thread.uuid], (current) => ({ ...current, ...thread }))
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', projectUuid] })
+      queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
+      queryClient.invalidateQueries({ queryKey: projectQueryKeys.openProjects() })
+      if (turnError) {
+        setCreationTargetThread({ projectUuid, threadUuid: thread.uuid })
+        setCreationTargetError(turnError)
+        return
+      }
+      setCreationTargetThread(null)
+      setCreationTargetError(null)
+      navigate(`/projects/${encodeURIComponent(projectUuid)}?chat_thread_uuid=${encodeURIComponent(thread.uuid)}`)
+    },
+    onError: setCreationTargetError,
+  })
 
   useEffect(() => {
     if (creationSessionQuery.data) acceptCreationSession(creationSessionQuery.data, creationCheckpoint)
   }, [creationSessionQuery.data])
 
   const projects = recentQuery.data?.items || []
+  const selectableCreationProjects = projects.filter((project) => project.available)
+  const selectedCreationProject = selectableCreationProjects.find((project) => project.uuid === creationProjectUuid) || null
 
 	const pageError = actionError || projectDefaultsQuery.error || recentQuery.error || openProjectsQuery.error
   const pending = createMutation.isPending || yoloMutation.isPending || openPathMutation.isPending || selectDirectoryMutation.isPending || relocateMutation.isPending || forgetMutation.isPending
@@ -361,8 +431,11 @@ export default function HomePage() {
     nextSearchParams.delete('create_project')
     setSearchParams(nextSearchParams, { replace: true })
   }, [searchParams, setSearchParams]) // eslint-disable-line react-hooks/exhaustive-deps
-  const creationPending = creationMutation.isPending
-  const creationError = creationMutation.error || creationSessionQuery.error
+  const creationPending = creationMutation.isPending || projectThreadMutation.isPending
+  const creationError = selectedCreationProject
+    ? creationTargetError || projectThreadMutation.error
+    : creationMutation.error || creationSessionQuery.error
+  const creationContextLocked = creationPending || Boolean(creationCheckpoint?.sessionUuid) || Boolean(creationTargetThread?.threadUuid)
   const unresolvedCreationReferences = creationReferences.filter((reference) => reference.status !== 'ready')
   const missingCreationReferenceFiles = unresolvedCreationReferences.filter((reference) => !reference.file).length
   const submitCreationComposer = (event) => {
@@ -370,6 +443,15 @@ export default function HomePage() {
     if (creationPending) return
     setCreationValidationAttempted(true)
     if (!creationInput.trim()) return
+    if (selectedCreationProject) {
+      projectThreadMutation.mutate({
+        projectUuid: selectedCreationProject.uuid,
+        inputText: creationInput.trim(),
+        references: creationReferences,
+        threadUuid: creationTargetThread?.projectUuid === selectedCreationProject.uuid ? creationTargetThread.threadUuid : '',
+      })
+      return
+    }
     const referenceFiles = creationReferenceManifest(creationReferences)
     const checkpoint = creationCheckpoint?.inputText === creationInput && sameCreationReferenceManifest(creationCheckpoint.referenceFiles, referenceFiles)
       ? creationCheckpoint
@@ -380,7 +462,18 @@ export default function HomePage() {
     creationMutation.mutate({ inputText: creationInput, idempotencyKey: checkpoint.idempotencyKey, referenceFiles: checkpoint.referenceFiles || referenceFiles, references: creationReferences, sessionUuid: checkpoint.sessionUuid, checkpoint })
   }
   const retryCreation = () => {
-    if (creationPending || !creationCheckpoint) return
+    if (creationPending) return
+    if (selectedCreationProject) {
+      if (!creationInput.trim()) return
+      projectThreadMutation.mutate({
+        projectUuid: selectedCreationProject.uuid,
+        inputText: creationInput.trim(),
+        references: creationReferences,
+        threadUuid: creationTargetThread?.projectUuid === selectedCreationProject.uuid ? creationTargetThread.threadUuid : '',
+      })
+      return
+    }
+    if (!creationCheckpoint) return
     creationMutation.mutate({
       inputText: creationCheckpoint.inputText,
       idempotencyKey: creationCheckpoint.idempotencyKey,
@@ -439,7 +532,7 @@ export default function HomePage() {
     }
     setCreationReferences((current) => {
       const target = current.find((reference) => reference.localId === localId)
-      if (!target || target.status === 'ready') return current
+      if (!target || (target.status === 'ready' && !selectedCreationProject)) return current
       releaseCreationReferencePreview(target)
       if (serverManifestLocked) return current.map((reference) => reference.localId === localId ? { ...reference, file: null, previewUrl: '', status: 'missing', error: null } : reference)
       return current.filter((reference) => reference.localId !== localId).map((reference, index) => ({ ...reference, position: index + 1 }))
@@ -451,6 +544,48 @@ export default function HomePage() {
     event.preventDefault()
     addCreationReferenceFiles(projectChatClipboardFiles(event.clipboardData))
   }
+  const selectCreationContext = (projectUuid) => {
+    if (creationContextLocked) return
+    setCreationProjectUuid(projectUuid)
+    setCreationContextOpen(false)
+    setCreationTargetThread(null)
+    setCreationTargetError(null)
+    projectThreadMutation.reset()
+    setCreationSession(null)
+    setCreationCheckpoint(null)
+    saveCreationCheckpoint(null)
+    setCreationReferences((current) => current.map((reference) => {
+      if (reference.status !== 'ready' || !reference.projectUuid || reference.projectUuid === projectUuid) return reference
+      return {
+        ...reference,
+        status: reference.file ? 'selected' : 'missing',
+        error: null,
+        projectUuid: '',
+        resource_uuid: '',
+        image_file_uuid: '',
+        image_available: false,
+      }
+    }))
+    creationContextTriggerRef.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!creationContextOpen) return undefined
+    const closeCreationContextOnPointerDown = (event) => {
+      if (!creationContextRef.current?.contains(event.target)) setCreationContextOpen(false)
+    }
+    const closeCreationContextOnEscape = (event) => {
+      if (event.key !== 'Escape') return
+      setCreationContextOpen(false)
+      creationContextTriggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', closeCreationContextOnPointerDown)
+    document.addEventListener('keydown', closeCreationContextOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeCreationContextOnPointerDown)
+      document.removeEventListener('keydown', closeCreationContextOnEscape)
+    }
+  }, [creationContextOpen])
 
   useEffect(() => {
     if (!openMenuUuid) return undefined
@@ -488,20 +623,40 @@ export default function HomePage() {
             <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} onPaste={handleCreationReferencePaste} placeholder={t('projects.conversation.placeholder')} disabled={creationPending || Boolean(creationCheckpoint?.sessionUuid)} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
             {creationValidationAttempted && !creationInput.trim() ? <p className="project-field-error" role="alert">{t('projects.conversation.required')}</p> : null}
             <div className="project-creation-composer__attachments">
-              <span className="project-creation-composer__context"><Link size={16} aria-hidden="true" />{t('projects.conversation.unlinked')}</span>
+              <div className="project-creation-composer__context-wrap" ref={creationContextRef}>
+                <button ref={creationContextTriggerRef} type="button" className="project-creation-composer__context" aria-label={t('projects.conversation.context.choose', { target: selectedCreationProject?.name || t('projects.conversation.unlinked') })} aria-haspopup="menu" aria-expanded={creationContextOpen} disabled={creationContextLocked} onClick={() => setCreationContextOpen((open) => !open)}>
+                  <Link size={16} aria-hidden="true" />
+                  <span className="project-creation-composer__context-label">{selectedCreationProject?.name || t('projects.conversation.unlinked')}</span>
+                  <ChevronDown className="project-creation-composer__context-chevron" size={14} aria-hidden="true" />
+                </button>
+                {creationContextOpen ? <div className="project-creation-composer__context-menu" role="menu" aria-label={t('projects.conversation.context.menu')}>
+                  <button type="button" role="menuitemradio" aria-checked={!selectedCreationProject} onClick={() => selectCreationContext('')}>
+                    <span className="project-creation-composer__context-icon"><Link size={15} aria-hidden="true" /></span>
+                    <span>{t('projects.conversation.unlinked')}</span>
+                    {!selectedCreationProject ? <Check size={15} aria-hidden="true" /> : null}
+                  </button>
+                  {selectableCreationProjects.length ? <span className="project-creation-composer__context-separator" role="separator" /> : null}
+                  {selectableCreationProjects.map((project) => <button key={project.uuid} type="button" role="menuitemradio" aria-checked={project.uuid === selectedCreationProject?.uuid} onClick={() => selectCreationContext(project.uuid)}>
+                    <span className="project-creation-composer__context-icon"><img src={projectCoverSource(project)} alt="" /></span>
+                    <span>{project.name}</span>
+                    {project.uuid === selectedCreationProject?.uuid ? <Check size={15} aria-hidden="true" /> : null}
+                  </button>)}
+                  {!recentQuery.isLoading && !selectableCreationProjects.length ? <p>{t('projects.conversation.context.empty')}</p> : null}
+                </div> : null}
+              </div>
               <button type="button" className="project-creation-composer__attachment-button" aria-label={t('projects.conversation.reference.add')} title={t('projects.conversation.reference.add')} disabled={creationPending || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><Paperclip size={16} aria-hidden="true" /></button>
               <input ref={creationReferenceInputRef} className="project-creation-composer__file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={creationPending} onChange={(event) => { addCreationReferenceFiles(event.target.files); event.target.value = '' }} />
               {creationReferences.length ? <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span> : null}
             </div>
-            <ReferenceStrip projectUuid={creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file))} compact />
+            <ReferenceStrip projectUuid={selectedCreationProject?.uuid || creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && (selectedCreationProject ? true : reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file)))} compact />
             <LocalizedErrorMessage error={creationReferenceError} className="project-creation-composer__reference-error" compact onDismiss={() => setCreationReferenceError(null)} />
             {creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0 ? <p className="project-creation-composer__reference-notice" role="status">{t('projects.conversation.reference.reselect', { count: missingCreationReferenceFiles })}</p> : null}
             <div className="project-creation-composer__footer">
-              <p id="project-creation-hint">{t('projects.conversation.path_hint')}</p>
-              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}>{t(creationPending ? 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.send')}<ArrowUp size={16} aria-hidden="true" /></button>
+              <p id="project-creation-hint">{t(selectedCreationProject ? 'projects.conversation.project_hint' : 'projects.conversation.path_hint')}</p>
+              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}>{t(creationPending ? selectedCreationProject ? 'projects.conversation.publishing' : 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.send')}<ArrowUp size={16} aria-hidden="true" /></button>
             </div>
           </form>
-          {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey="projects.conversation.failed" /><button type="button" className="button-secondary" disabled={creationPending || !creationCheckpoint} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
+          {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey={selectedCreationProject ? 'projects.conversation.project_failed' : 'projects.conversation.failed'} /><button type="button" className="button-secondary" disabled={creationPending || (selectedCreationProject ? !creationInput.trim() : !creationCheckpoint)} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
           {creationSession?.status === 'failed' ? <div className="project-creation-composer__failure" role="alert"><div><strong>{t('projects.conversation.failed')}</strong><p>{creationSession.error_message || t('errors.generic')}</p>{creationSession.error_code ? <code>{creationSession.error_code}</code> : null}</div><button type="button" className="button-secondary" disabled={creationPending} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
         </section>
         <LocalizedErrorMessage error={pageError} className="project-alert project-index-alert" titleKey="projects.error.action_title" onDismiss={actionError ? () => setActionError(null) : undefined} />
@@ -602,7 +757,7 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       onKeyDown={activateOnKeyDown}
     >
       <div className={`project-card__cover ${project.cover_image_url ? '' : 'is-empty'}`}>
-        <img src={project.cover_image_url || '/favicon.png'} alt={project.cover_image_url ? t('projects.row.cover_alt', { name: project.name }) : ''} />
+        <img src={projectCoverSource(project)} alt={project.cover_image_url ? t('projects.row.cover_alt', { name: project.name }) : ''} />
       </div>
       <div className="project-card__body">
         <div className="project-index-name"><strong>{project.name}</strong></div>

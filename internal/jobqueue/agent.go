@@ -161,7 +161,9 @@ func (manager *Manager) StartDomainTaskBatch(ctx context.Context, projectUUID st
 		return agent.DomainTaskBatch{}, taskError(CodeInvalidTask, "Domain task batch 不在 allowlist", "Agent 只能批量启动已注册的图片生成任务。", nil)
 	}
 	batch, err := manager.createComicImageGenerationBatch(ctx, projectUUID, request.ChapterUUID, CreateComicImageGenerationBatchInput{
-		SectionUUIDs: request.ResourceUUIDs, IdempotencyKey: request.IdempotencyKey,
+		SectionUUIDs: request.ResourceUUIDs, ProviderUUID: request.ProviderUUID, Model: request.Model,
+		SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel,
+		IdempotencyKey: request.IdempotencyKey,
 	}, false)
 	result := agent.DomainTaskBatch{
 		ChapterUUID: batch.ChapterUUID, RequestedCount: batch.RequestedCount,

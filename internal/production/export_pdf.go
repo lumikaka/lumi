@@ -55,8 +55,17 @@ func pdfLayoutForPictureBook(profile project.PictureBookProfile) ExportPDFLayout
 }
 
 func validateExportPDFSnapshot(snapshot ExportSnapshot) (ExportPDFLayout, error) {
-	if snapshot.Version != 5 || snapshot.Format != ExportFormatPDF || snapshot.PDFLayout == nil {
-		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出快照无效", "PDF 必须使用包含布局的 v5 快照。", nil)
+	if (snapshot.Version != 5 && snapshot.Version != exportSnapshotV6) || snapshot.Format != ExportFormatPDF || snapshot.PDFLayout == nil {
+		return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 导出快照无效", "PDF 必须使用包含布局的 v5 或 v6 快照。", nil)
+	}
+	if snapshot.Version >= exportSnapshotV6 {
+		for _, entry := range snapshot.Entries {
+			switch entry.PageRole {
+			case PageRoleFrontCover, PageRoleBody, PageRoleBackCover:
+			default:
+				return ExportPDFLayout{}, domainError(CodeSnapshotInvalid, "PDF 页面角色无效", "v6 PDF 的每个图片条目都必须冻结有效的 page_role。", nil)
+			}
+		}
 	}
 	layout := *snapshot.PDFLayout
 	if layout.PageSize != ExportPDFPageSizeA4Portrait || layout.MarginMM != exportPDFMarginMM || layout.GutterMM != exportPDFGutterMM || (layout.RendererVersion != exportPDFLegacyRendererVersion && layout.RendererVersion != exportPDFRendererVersion) {
@@ -132,19 +141,30 @@ func (service *Service) writePDF(ctx context.Context, output io.Writer, snapshot
 	rendered := 0
 	lastProgress := 10
 	for _, entries := range groups {
-		for offset := 0; offset < len(entries); offset += len(slots) {
+		for offset := 0; offset < len(entries); {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
 			pdf.AddPage()
-			for slotIndex := range slots {
+			pageSlots := slots
+			if exportPDFEntryPageRole(entries[offset], snapshot.Version) != PageRoleBody {
+				pageSlots = exportPDFSlots(ExportPDFLayout{Placement: ExportPDFOneUp, MarginMM: layout.MarginMM, GutterMM: layout.GutterMM})
+			}
+			consumed := 0
+			for slotIndex := range pageSlots {
 				entryIndex := offset + slotIndex
 				if entryIndex >= len(entries) {
 					break
 				}
-				if err := service.drawExportPDFEntry(ctx, pdf, entries[entryIndex], slots[slotIndex], layout.RendererVersion); err != nil {
+				// Covers always occupy a physical page by themselves. A cover at
+				// the next position also stops a partially filled body page.
+				if slotIndex > 0 && exportPDFEntryPageRole(entries[entryIndex], snapshot.Version) != PageRoleBody {
+					break
+				}
+				if err := service.drawExportPDFEntry(ctx, pdf, entries[entryIndex], pageSlots[slotIndex], layout.RendererVersion); err != nil {
 					return fmt.Errorf("render section %s: %w", entries[entryIndex].SectionUUID, err)
 				}
+				consumed++
 				rendered++
 				progress := 10 + rendered*70/len(snapshot.Entries)
 				if progress > lastProgress {
@@ -154,9 +174,17 @@ func (service *Service) writePDF(ctx context.Context, output io.Writer, snapshot
 					lastProgress = progress
 				}
 			}
+			offset += consumed
 		}
 	}
 	return pdf.Write(output)
+}
+
+func exportPDFEntryPageRole(entry ExportEntry, snapshotVersion int) string {
+	if snapshotVersion < exportSnapshotV6 || strings.TrimSpace(entry.PageRole) == "" {
+		return PageRoleBody
+	}
+	return entry.PageRole
 }
 
 func groupExportPDFEntries(snapshot ExportSnapshot) ([][]ExportEntry, error) {
