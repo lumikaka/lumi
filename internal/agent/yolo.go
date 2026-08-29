@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -54,6 +55,18 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 	}
 	var createdUUID string
 	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
+		if err := store.RequireReady(); err != nil {
+			return err
+		}
+		if err := store.DB().WithContext(ctx).Raw(`SELECT workflows.uuid
+			FROM workflows JOIN projects ON projects.id=workflows.project_id
+			WHERE projects.uuid=? AND workflows.kind=? AND workflows.idempotency_key=?
+			LIMIT 1`, projectUUID, WorkflowYolo, key).Scan(&createdUUID).Error; err != nil {
+			return err
+		}
+		if createdUUID != "" {
+			return nil
+		}
 		storyService := story.NewService(store)
 		detail, err := storyService.GetProject(ctx)
 		if err != nil {
@@ -67,7 +80,10 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		pictureBook := store.PictureBookProfile()
+		pictureBook, err := store.RequirePictureBookProfile()
+		if err != nil {
+			return err
+		}
 		outputSize, err := picturebook.ResolveImageSize(pictureBook, imageResolved.ProviderType, imageModel)
 		if err != nil {
 			return domainError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；Yolo 尚未创建。", err)
@@ -663,7 +679,11 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 		if err != nil {
 			return nil, false, err
 		}
-		momentPlan, maxMoments := yoloPageMomentPlan(store.PictureBookProfile())
+		pictureBook, err := store.RequirePictureBookProfile()
+		if err != nil {
+			return nil, false, err
+		}
+		momentPlan, maxMoments := yoloPageMomentPlan(pictureBook)
 		rendered, err := promptcatalog.Render(template, map[string]string{
 			"chapter_context_json": string(chapterContext), "story_md": profile.StoryMD,
 			"input_text": chapter.CurrentStory.Content, "moment_count_plan": momentPlan,
@@ -925,11 +945,15 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			return err
 		}
 		if workflow.ThreadID != nil {
+			completionMessage, err := yoloCompletionMessage(output)
+			if err != nil {
+				return err
+			}
 			var thread threadRecord
 			if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&thread.ID, &thread.UUID, &thread.ProjectID, &thread.Title, &thread.Status, &thread.ProviderUUID, &thread.Model, &thread.ModelSource, &thread.NextTurnSequence, &thread.NextItemSequence, &thread.NextEventSequence, &thread.ArchivedAt, &thread.CreatedAt, &thread.UpdatedAt); err != nil {
 				return err
 			}
-			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已完成：第一章、Story Profile、Premise、六个 Comic Sections 和首图均已就绪。", "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {
+			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", completionMessage, "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {
 				return err
 			}
 			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
@@ -968,6 +992,21 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	}
 	service.broadcastWorkflow(store.ProjectUUID(), Workflow{UUID: workflow.UUID, ThreadUUID: threadUUID, Status: status}, "workflow:step_changed", step.UUID)
 	return nil
+}
+
+func yoloCompletionMessage(output map[string]any) (string, error) {
+	chapterUUID, _ := output["chapter_uuid"].(string)
+	sectionUUID, _ := output["section_uuid"].(string)
+	if !isCanonicalUUIDv7(chapterUUID) || !isCanonicalUUIDv7(sectionUUID) {
+		return "", domainError(CodeStateConflict, "Yolo 完成资源无效", "最终步骤没有返回规范的 Chapter 与 Section UUIDv7。", nil)
+	}
+	return fmt.Sprintf(
+		"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[六个 Comic Sections](@project/chapters/%s)和[首图](@project/chapters/%s/sections/%s)均已就绪。",
+		chapterUUID,
+		chapterUUID,
+		chapterUUID,
+		sectionUUID,
+	), nil
 }
 
 func publicOutputResource(output map[string]any) string {

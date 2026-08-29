@@ -30,6 +30,9 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 	if err != nil {
 		return ProductionTask{}, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return ProductionTask{}, err
+	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
 	if err != nil {
 		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "无法读取项目生成语言", "任务尚未创建。", err)
@@ -88,6 +91,9 @@ func (manager *Manager) CreatePremiseBreakdown(ctx context.Context, projectUUID,
 	}
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
+		return ProductionTask{}, err
+	}
+	if err := runtime.store.RequireReady(); err != nil {
 		return ProductionTask{}, err
 	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
@@ -177,6 +183,9 @@ func (manager *Manager) CreatePremiseAssetGeneration(ctx context.Context, projec
 	}
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
+		return ProductionTask{}, err
+	}
+	if err := runtime.store.RequireReady(); err != nil {
 		return ProductionTask{}, err
 	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
@@ -309,6 +318,9 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	if err != nil {
 		return result, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return result, err
+	}
 	service := production.NewService(runtime.store, manager.hub)
 	sections, err := service.ListSections(ctx, chapterUUID)
 	if err != nil {
@@ -406,6 +418,9 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 	if err != nil {
 		return ProductionTask{}, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return ProductionTask{}, err
+	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
 	if err != nil {
 		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "无法读取项目生成语言", "任务尚未创建。", err)
@@ -422,7 +437,10 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 	if err != nil {
 		return ProductionTask{}, err
 	}
-	pictureBook := runtime.store.PictureBookProfile()
+	pictureBook, err := runtime.store.RequirePictureBookProfile()
+	if err != nil {
+		return ProductionTask{}, err
+	}
 	outputSize, err := picturebook.ResolveImageSize(pictureBook, resolved.ProviderType, model)
 	if err != nil {
 		return ProductionTask{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。", err)
@@ -550,6 +568,9 @@ type ComicExportOperation struct {
 func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID string, input CreateExportInput) (ComicExportOperation, error) {
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
+		return ComicExportOperation{}, err
+	}
+	if err := runtime.store.RequireReady(); err != nil {
 		return ComicExportOperation{}, err
 	}
 	service := production.NewService(runtime.store, manager.hub)

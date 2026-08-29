@@ -16,7 +16,10 @@ import (
 var promptKeyPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{0,119}$`)
 
 func (service *Service) promptOptions() promptcatalog.PictureBookOptions {
-	profile := service.store.PictureBookProfile()
+	profile := service.store.OptionalPictureBookProfile()
+	if profile == nil {
+		return promptcatalog.PictureBookOptions{}
+	}
 	options := promptcatalog.PictureBookOptions{
 		Format: profile.Format, AspectWidth: profile.AspectRatio.Width, AspectHeight: profile.AspectRatio.Height,
 	}

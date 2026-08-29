@@ -24,7 +24,7 @@ Workflow、Step 与 Event 的内部关联使用 bigint `id`；外部 API 和实�
 
 `(project_id, kind, idempotency_key)` 唯一。
 
-`thread_id` 的含义由调用上下文决定：公开 UI 生成关联独立 `workflow` Thread；Chat Tool 生成关联当前 `conversation` Thread；内部 Workflow Step 投影可以为空。
+`thread_id` 的含义由调用上下文决定：公开 UI 与对话式 bootstrap YOLO 关联独立 `workflow` Thread；普通 Chat Tool 生成关联当前 `conversation` Thread；内部 Workflow Step 投影可以为空。bootstrap YOLO 不创建 `workflow_awaits`，其原 conversation Turn 在拿到 Workflow 引用后完成。
 
 ## 表：workflow_steps 与 workflow_events
 

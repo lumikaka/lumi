@@ -25,6 +25,9 @@ type storyGenerationWorker struct {
 
 func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[riverArgs]) error {
 	runtime := worker.runtime
+	if err := runtime.store.RequireReady(); err != nil {
+		return river.JobCancel(err)
+	}
 	workCtx, workCancel := context.WithCancel(ctx)
 	runtime.registerWork(job.Args.TaskUUID, workCancel)
 	defer func() {

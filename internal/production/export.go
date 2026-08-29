@@ -113,7 +113,10 @@ func (service *Service) BuildExportSnapshotForFormat(ctx context.Context, scope,
 	if err != nil {
 		return ExportSnapshot{}, "", err
 	}
-	pictureBook := service.store.PictureBookProfile()
+	pictureBook, err := service.store.RequirePictureBookProfile()
+	if err != nil {
+		return ExportSnapshot{}, "", err
+	}
 	return buildExportSnapshot(ctx, db, service.store.ProjectUUID(), p.Name, p.ID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 
@@ -135,7 +138,10 @@ func (service *Service) BuildExportSnapshotTxForFormat(ctx context.Context, tx *
 	if err := tx.QueryRowContext(ctx, "SELECT id,name FROM projects WHERE uuid = ?", service.store.ProjectUUID()).Scan(&projectID, &projectTitle); err != nil {
 		return ExportSnapshot{}, "", err
 	}
-	pictureBook := service.store.PictureBookProfile()
+	pictureBook, err := service.store.RequirePictureBookProfile()
+	if err != nil {
+		return ExportSnapshot{}, "", err
+	}
 	return buildExportSnapshot(ctx, tx, service.store.ProjectUUID(), projectTitle, projectID, scope, chapterUUID, allowMissingImages, format, pictureBook)
 }
 

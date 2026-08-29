@@ -4,7 +4,7 @@ Lumi 的产品需求按 domain 组织。默认以聚合根表族命名；`ai_pro
 
 | Domain | 文档 | 说明 |
 |---|---|---|
-| 项目 | [`projects/overview.md`](projects/overview.md) | 管理 local-first 项目生命周期、项目资料、总纲投影和项目 Prompt 配置。 |
+| 项目 | [`projects/overview.md`](projects/overview.md) | 管理 local-first 项目生命周期、对话式草稿初始化、项目资料、总纲投影和项目 Prompt 配置。 |
 | 章节 | [`chapters/overview.md`](chapters/overview.md) | 管理 Chapter 正文版本、导入、回收站和 Story 生成。 |
 | 设定资产 | [`premise_assets/overview.md`](premise_assets/overview.md) | 管理 Premise、候选设定图、资产 Variant 与生命周期。 |
 | 漫画段落 | [`comic_sections/overview.md`](comic_sections/overview.md) | 管理 Section、分镜、图片和可恢复漫画快照。 |

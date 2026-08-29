@@ -27,6 +27,10 @@ Reference 是用户对当前输入所需项目资源的显式引用，支持 `fi
 
 Agent 的工具调用、用户选择题和图片引用均先写入持久记录再执行。对外投影递归清理内部 ID、路径、密钥和凭据，业务修改仍由对应领域服务校验。
 
+### 创建会话 Bootstrap
+
+首页对话式创建项目时仍使用普通 `conversation` Thread。项目库事务把 Thread、首个 Turn、原文 User Item、Run、队列 Job 和 `project_creation_bootstraps` 唯一记录一起提交；失败整体回滚，按公开 `creation_session_uuid` 重试不会产生影子 Thread 或重复首条消息。
+
 ## Feature 列表
 
 | Feature | 文档 | 说明 |
@@ -40,6 +44,7 @@ Agent 的工具调用、用户选择题和图片引用均先写入持久记录�
 | 模块 | 关系 |
 |---|---|
 | AI 运行时 | 创建 Thread/Run 时冻结模型；调用明细统一进入 `llm_logs`。 |
+| 项目 | 对话式项目创建把首页原始输入恰好一次 bootstrap 为普通首 Turn；`draft` 阶段仅允许继续聊天和维护 Project Setup。 |
 | 工作流 | `direct_ui` Workflow 使用独立 `workflow` Thread；`chat_tool` Workflow 复用当前 `conversation` Thread，并以持久 await 暂停/恢复父 Run。 |
 | 文件 | 普通上传图片作为 `file` Reference；实际上传、内容服务和冻结图片引用保护由 `files` 管理。 |
 | Chapter / Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |

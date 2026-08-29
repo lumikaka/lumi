@@ -20,6 +20,7 @@ import (
 	"lumi/internal/llm"
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
+	"lumi/internal/projectcreation"
 	"lumi/internal/provider"
 	"lumi/internal/realtime"
 	"lumi/internal/sitesettings"
@@ -66,6 +67,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	providerService := provider.NewService(appStore, sitesettings.NewOSMasterKeyStore())
 	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient)
 	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient)
+	projectCreationService := projectcreation.NewService(appStore, projects, agentService)
 	taskManager.WithAgentService(agentService)
 	api := e.Group("/api/v1")
 	api.Use(projectRequestLease(projects))
@@ -77,6 +79,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	directorySelectionHandler := httpapi.NewDirectorySelectionHandler(directorypicker.NewNative())
 	directoryOpeningHandler := httpapi.NewDirectoryOpeningHandler(directoryopener.NewNative())
 	projectHandler := httpapi.NewProjectHandler(projects)
+	projectCreationSessionHandler := httpapi.NewProjectCreationSessionHandler(projectCreationService)
 	projectDefaultsHandler := httpapi.NewProjectDefaultsHandler()
 	imagePreflightHandler := httpapi.NewImageGenerationPreflightHandler(providerService)
 	openProjectHandler := httpapi.NewOpenProjectHandler(projects)
@@ -99,6 +102,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	projectImagePreflightHandler := httpapi.NewProjectImageGenerationPreflightHandler(projects, modelResolver)
 	filesHandler := httpapi.NewFilesHandler(projects, realtimeHub, taskManager)
 	agentHandler := httpapi.NewAgentHandler(agentService)
+	projectSetupHandler := httpapi.NewProjectSetupHandler(projects, realtimeHub)
 	api.GET("/providers", providerHandler.Index)
 	api.GET("/providers/active", providerHandler.Active)
 	api.GET("/providers/:provider_uuid", providerHandler.Show)
@@ -110,6 +114,9 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.POST("/directory-openings", directoryOpeningHandler.Create)
 	api.GET("/project-defaults", projectDefaultsHandler.Show)
 	api.POST("/projects", projectHandler.Create)
+	api.POST("/project-creation-sessions", projectCreationSessionHandler.Create)
+	api.GET("/project-creation-sessions/:session_uuid", projectCreationSessionHandler.Show)
+	api.POST("/project-creation-sessions/:session_uuid/retries", projectCreationSessionHandler.Retry)
 	api.POST("/image-generation-preflights", imagePreflightHandler.Create)
 	api.GET("/open-projects", openProjectHandler.Index)
 	api.POST("/open-projects", openProjectHandler.Create)
@@ -119,6 +126,9 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.PATCH("/recent-projects/:project_uuid", recentProjectHandler.Update)
 	api.DELETE("/recent-projects/:project_uuid", recentProjectHandler.Delete)
 	api.GET("/projects/:project_uuid", storyHandler.ShowProject)
+	api.GET("/projects/:project_uuid/project-setup", projectSetupHandler.Show)
+	api.PATCH("/projects/:project_uuid/project-setup", projectSetupHandler.Update)
+	api.POST("/projects/:project_uuid/project-setup-finalizations", projectSetupHandler.Finalize)
 	api.POST("/projects/:project_uuid/image-generation-preflights", projectImagePreflightHandler.Create)
 	api.GET("/projects/:project_uuid/llm-logs", llmLogHandler.Index)
 	api.GET("/projects/:project_uuid/llm-logs/:log_uuid", llmLogHandler.Show)
@@ -254,6 +264,9 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/cancellations", productionHandler.CancelProductionTask)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/retries", productionHandler.RetryProductionTask)
 	configureAgentProjectAPIGateway(e, agentService)
+	if err := projectCreationService.Reconcile(context.Background()); err != nil {
+		return nil, err
+	}
 	e.GET("/media/projects/:project_uuid/assets/:asset_uuid/content", filesHandler.Content, projectRequestLease(projects))
 	e.GET("/media/projects/:project_uuid/comic-exports/:export_uuid/content", productionHandler.ExportContent, projectRequestLease(projects))
 	lifecycleContext, lifecycleCancel := context.WithCancel(context.Background())
@@ -334,7 +347,11 @@ func projectRequestLease(projects *project.Manager) echo.MiddlewareFunc {
 				return next(c)
 			}
 			var handlerErr error
-			if err := projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(*project.Store) error {
+			if err := projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
+				if store.SetupStatus() == project.SetupStatusDraft && !draftProjectRequestAllowed(c.Request().Method, path) {
+					handlerErr = httpapi.NewError(http.StatusConflict, project.CodeProjectSetupIncomplete, "项目设置尚未定稿", "请先在 ChatArea 中确认绘本规格。", nil)
+					return nil
+				}
 				handlerErr = next(c)
 				return nil
 			}); err != nil {
@@ -343,6 +360,19 @@ func projectRequestLease(projects *project.Manager) echo.MiddlewareFunc {
 			return handlerErr
 		}
 	}
+}
+
+func draftProjectRequestAllowed(method, path string) bool {
+	if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
+		return true
+	}
+	if path == "/api/v1/projects/:project_uuid/project-setup" && method == http.MethodPatch {
+		return true
+	}
+	if path == "/api/v1/projects/:project_uuid/project-setup-finalizations" && method == http.MethodPost {
+		return true
+	}
+	return strings.HasPrefix(path, "/api/v1/projects/:project_uuid/chat_threads")
 }
 
 func trustedWriteOrigin(frontendURL string) echo.MiddlewareFunc {

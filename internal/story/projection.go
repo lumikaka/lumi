@@ -17,6 +17,9 @@ import (
 const DefaultStoryMD = "# STORY\n\n<!-- Lumi Goal 02 将在这里维护故事正文。 -->\n"
 
 func ReconcileOnOpen(ctx context.Context, store *project.Store) error {
+	if store.SetupStatus() == project.SetupStatusDraft {
+		return nil
+	}
 	service := NewService(store)
 	if _, err := service.GetStoryProfile(ctx); err != nil {
 		return err

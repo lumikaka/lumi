@@ -24,8 +24,8 @@ func TestPhase3RouteContractsAreCompleteAndSecure(t *testing.T) {
 		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
 	}
 	routes := phase3AgentAPIRoutes()
-	if len(routes) != 56 || len(agentAPIRoutes()) != 75 {
-		t.Fatalf("phase3 routes=%d total=%d want=56/75", len(routes), len(agentAPIRoutes()))
+	if len(routes) != 57 || len(agentAPIRoutes()) != 79 {
+		t.Fatalf("phase3 routes=%d total=%d want=57/79", len(routes), len(agentAPIRoutes()))
 	}
 	seenIDs := map[string]bool{}
 	seenMethodPaths := map[string]bool{}
@@ -147,12 +147,17 @@ func TestRequestAPIRejectsDuplicateQueryAndBodyFields(t *testing.T) {
 func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
-	tc := toolContext{
-		ProjectUUID: harness.project.UUID,
-		ToolMode:    ToolModeProjectAPI,
-		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
-		Run:         runRecord{ProviderUUID: harness.provider.UUID},
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "Phase 3 reviewed route coverage"})
+	if err != nil {
+		t.Fatal(err)
 	}
+	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode = ToolModeProjectAPI
+	tc = seedReadyBootstrapYoloAuthorization(t, harness, tc, mustAgentUUID(t))
 	executed := map[string]bool{}
 	call := func(routeID string, params map[string]string, query, body map[string]any) any {
 		t.Helper()
@@ -225,6 +230,7 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	call(RouteProjectGet, nil, nil, nil)
+	call(RouteYoloWorkflowCreate, nil, nil, map[string]any{"story_prompt": "一只小狐狸替月亮送信。"})
 	call(RouteProjectUpdate, nil, nil, map[string]any{"name": "Phase 3 Agent API", "description": "route integration", "generation_language": "zh-Hans", "expected_revision": revision(project.Revision)})
 
 	call(RouteChapterCreate, nil, nil, map[string]any{"chapter_code": "vol09.ch01", "title": "Phase 3", "content": "initial", "content_format": "md"})

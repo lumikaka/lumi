@@ -30,6 +30,7 @@ type Project struct {
 	Revision           int64
 	FormatVersion      int64
 	SchemaVersion      int64
+	SetupStatus        string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -59,7 +60,7 @@ type Store struct {
 	root        string
 	metaMu      sync.RWMutex
 	project     Project
-	pictureBook PictureBookProfile
+	pictureBook *PictureBookProfile
 	lock        *projectLock
 	fileMu      sync.Mutex
 	closing     bool
@@ -81,10 +82,38 @@ func (store *Store) ProjectName() string {
 	return store.project.Name
 }
 
-func (store *Store) PictureBookProfile() PictureBookProfile {
+func (store *Store) SetupStatus() string {
 	store.metaMu.RLock()
 	defer store.metaMu.RUnlock()
-	return clonePictureBookProfile(store.pictureBook)
+	return store.project.SetupStatus
+}
+
+func (store *Store) OptionalPictureBookProfile() *PictureBookProfile {
+	store.metaMu.RLock()
+	defer store.metaMu.RUnlock()
+	if store.pictureBook == nil {
+		return nil
+	}
+	profile := clonePictureBookProfile(*store.pictureBook)
+	return &profile
+}
+
+func (store *Store) RequirePictureBookProfile() (PictureBookProfile, error) {
+	store.metaMu.RLock()
+	defer store.metaMu.RUnlock()
+	if store.project.SetupStatus != SetupStatusReady {
+		return PictureBookProfile{}, projectError(CodeProjectSetupIncomplete, "项目设置尚未定稿", "请先在 ChatArea 中确认绘本规格。", nil)
+	}
+	if store.pictureBook == nil {
+		return PictureBookProfile{}, projectError(CodeInvalidProject, "项目绘本配置缺失", "ready 项目必须且只能包含一份正式绘本规格。", nil)
+	}
+	return clonePictureBookProfile(*store.pictureBook), nil
+
+}
+
+func (store *Store) RequireReady() error {
+	_, err := store.RequirePictureBookProfile()
+	return err
 }
 
 func (store *Store) RefreshProject(ctx context.Context) error {
@@ -95,9 +124,20 @@ func (store *Store) RefreshProject(ctx context.Context) error {
 	if err := store.db.WithContext(ctx).Where("id = ?", projectID).First(&current).Error; err != nil {
 		return err
 	}
+	pictureBook, err := loadPictureBookProfileOptional(ctx, store.db, current.ID)
+	if err != nil {
+		return err
+	}
+	if current.SetupStatus == SetupStatusReady && pictureBook == nil {
+		return projectError(CodeInvalidProject, "项目绘本配置缺失", "ready 项目必须且只能包含一份正式绘本规格。", nil)
+	}
+	if current.SetupStatus == SetupStatusDraft && pictureBook != nil {
+		return projectError(CodeInvalidProject, "草稿项目包含正式绘本配置", "draft 项目在定稿前不得包含正式绘本规格。", nil)
+	}
 	store.metaMu.Lock()
 	defer store.metaMu.Unlock()
 	store.project = current
+	store.pictureBook = pictureBook
 	return nil
 }
 
@@ -258,7 +298,7 @@ func migrateProjectWith(ctx context.Context, root string, header *Header, now ti
 	return latest, projectError(CodeMigrationFailed, "项目 migration 失败", details, migrationFailure)
 }
 
-func initializeStore(ctx context.Context, root, projectUUID, projectName, generationLanguage, actorUUID string, pictureBook PictureBookProfile, overallStyle string, now time.Time, lock *projectLock) (*Store, error) {
+func initializeStore(ctx context.Context, root, projectUUID, projectName, generationLanguage, actorUUID string, pictureBook *PictureBookProfile, overallStyle string, setupDraft *SetupDraftInitialization, now time.Time, lock *projectLock) (*Store, error) {
 	latest, err := migrateProject(ctx, root, nil, now)
 	if err != nil {
 		return nil, err
@@ -277,7 +317,10 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 	}
 	project := Project{
 		UUID: projectUUID, Name: projectName, GenerationLanguage: generationLanguage, FormatVersion: SupportedFormatVersion,
-		SchemaVersion: int64(latest), Revision: 1, CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
+		SchemaVersion: int64(latest), Revision: 1, SetupStatus: SetupStatusReady, CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
+	}
+	if setupDraft != nil {
+		project.SetupStatus = SetupStatusDraft
 	}
 	actor := Actor{UUID: actorUUID, Name: "本地创作者", Kind: "local_user", CreatedAt: now.UTC(), UpdatedAt: now.UTC()}
 	styleHash := fmt.Sprintf("%x", sha256.Sum256([]byte(overallStyle)))
@@ -294,13 +337,18 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 		`, premiseUUID, project.ID, overallStyle, now.UTC(), now.UTC()).Error; err != nil {
 			return err
 		}
-		if err := tx.Exec(`
+		if setupDraft == nil {
+			if err := tx.Exec(`
 			INSERT INTO project_prompt_versions(
 				uuid, project_id, actor_id, prompt_group, prompt_key, version_no,
 				prompt, prompt_hash, source_type, created_at
 			) VALUES(?, ?, ?, 'premise_style', 'project_overall_style', 1, ?, ?, 'project_created', ?)
-		`, styleVersionUUID, project.ID, actor.ID, overallStyle, styleHash, now.UTC()).Error; err != nil {
-			return err
+			`, styleVersionUUID, project.ID, actor.ID, overallStyle, styleHash, now.UTC()).Error; err != nil {
+				return err
+			}
+		}
+		if setupDraft != nil {
+			return createSetupDraftRecord(tx, project.ID, *setupDraft, now.UTC())
 		}
 		return tx.Create(&pictureBookProfileRecord{
 			ProjectID: project.ID, Format: pictureBook.Format,
@@ -315,7 +363,12 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 		}
 		return nil, projectError(CodeInvalidProject, "无法初始化项目身份", "项目数据库未能创建默认项目和本地创作者。", err)
 	}
-	return &Store{db: db, root: root, project: project, pictureBook: clonePictureBookProfile(pictureBook), lock: lock}, nil
+	var storedProfile *PictureBookProfile
+	if pictureBook != nil {
+		profile := clonePictureBookProfile(*pictureBook)
+		storedProfile = &profile
+	}
+	return &Store{db: db, root: root, project: project, pictureBook: storedProfile, lock: lock}, nil
 }
 
 func openStore(ctx context.Context, root string, header Header, now time.Time, lock *projectLock) (*Store, error) {
@@ -353,15 +406,37 @@ func openStore(ctx context.Context, root string, header Header, now time.Time, l
 		}
 		projects[0].SchemaVersion = int64(latest)
 	}
-	pictureBook, err := loadPictureBookProfile(ctx, db, projects[0].ID)
+	pictureBook, err := loadPictureBookProfileOptional(ctx, db, projects[0].ID)
 	if err != nil {
 		sqlDB, _ := db.DB()
 		if sqlDB != nil {
 			_ = sqlDB.Close()
 		}
-		return nil, projectError(CodeInvalidProject, "项目绘本配置无效", "项目必须包含一份有效且不可变的绘本形式配置。", err)
+		return nil, projectError(CodeInvalidProject, "项目绘本配置无效", "项目正式绘本规格损坏。", err)
+	}
+	if projects[0].SetupStatus == SetupStatusReady && pictureBook == nil {
+		closeProjectDB(db)
+		return nil, projectError(CodeInvalidProject, "项目绘本配置无效", "ready 项目必须包含一份有效且不可变的绘本形式配置。", nil)
+	}
+	if projects[0].SetupStatus == SetupStatusDraft && pictureBook != nil {
+		closeProjectDB(db)
+		return nil, projectError(CodeInvalidProject, "草稿项目绘本配置无效", "draft 项目在定稿前不得包含正式绘本规格。", nil)
+	}
+	if projects[0].SetupStatus != SetupStatusReady && projects[0].SetupStatus != SetupStatusDraft {
+		closeProjectDB(db)
+		return nil, projectError(CodeInvalidProject, "项目设置状态无效", "setup_status 只支持 draft 或 ready。", nil)
 	}
 	return &Store{db: db, root: root, project: projects[0], pictureBook: pictureBook, lock: lock}, nil
+}
+
+func closeProjectDB(db *gorm.DB) {
+	if db == nil {
+		return
+	}
+	sqlDB, _ := db.DB()
+	if sqlDB != nil {
+		_ = sqlDB.Close()
+	}
 }
 
 func removeNewProject(root string) {

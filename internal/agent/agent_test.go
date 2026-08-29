@@ -40,11 +40,15 @@ type agentQueueFake struct {
 	retries       []string
 	requests      []DomainTaskRequest
 	batchRequests []DomainTaskBatchRequest
+	enqueueErr    error
 }
 
 func (queue *agentQueueFake) EnqueueAgentTx(_ context.Context, _ string, _ *sql.Tx, spec JobSpec) (int64, error) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
+	if queue.enqueueErr != nil {
+		return 0, queue.enqueueErr
+	}
 	queue.nextID++
 	queue.jobs = append(queue.jobs, spec)
 	return queue.nextID, nil
@@ -310,6 +314,29 @@ func TestYoloRejectsUnsupportedPictureBookRatioBeforeCreatingWorkflow(t *testing
 	}
 	if workflows != 0 || threads != 0 {
 		t.Fatalf("preflight persisted workflows=%d threads=%d", workflows, threads)
+	}
+}
+
+func TestChatTurnRejectsThreadFromAnotherProject(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Cross-project thread", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherProjectUUID := mustAgentUUID(t)
+	now := time.Now().UTC()
+	if err := harness.store.DB().Exec(`INSERT INTO projects(uuid,name,format_version,schema_version,created_at,updated_at) VALUES(?,?,1,30,?,?)`, otherProjectUUID, "Other project", now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE chat_threads SET project_id=(SELECT id FROM projects WHERE uuid=?) WHERE uuid=?`, otherProjectUUID, thread.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "must be rejected"}); errorCode(err) != CodeNotFound {
+		t.Fatalf("cross-project Thread error=%v", err)
+	}
+	if len(harness.queue.jobs) != 0 {
+		t.Fatalf("cross-project Thread queued jobs=%+v", harness.queue.jobs)
 	}
 }
 
@@ -1904,6 +1931,14 @@ func TestYoloWorkflowIsIdempotentRecoverableAndCancellable(t *testing.T) {
 	replayed, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, input)
 	if err != nil || replayed.UUID != workflow.UUID || len(workflow.Steps) != len(YoloStepKeys) {
 		t.Fatalf("replayed workflow = %+v, error=%v", replayed, err)
+	}
+	restartedWithoutProviderState := NewService(harness.projects, nil, harness.model, harness.queue, nil)
+	recovered, err := restartedWithoutProviderState.CreateYoloWorkflow(context.Background(), harness.project.UUID, input)
+	if err != nil || recovered.UUID != workflow.UUID {
+		t.Fatalf("recovered existing workflow without mutable provider state = %+v, error=%v", recovered, err)
+	}
+	if len(harness.queue.jobs) != 1 || harness.queue.jobs[0].JobKind != JobWorkflowStep {
+		t.Fatalf("idempotent workflow queued duplicate jobs: %+v", harness.queue.jobs)
 	}
 	if err := harness.execute(t, workflow.ThreadUUID, workflow.Steps[0].UUID, JobWorkflowStep); err != nil {
 		t.Fatal(err)

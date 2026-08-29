@@ -20,7 +20,9 @@ import {
 import { projectRowActions, projectRowPrimaryAction } from './projectIndexState.js'
 import {
   createProject,
+  createProjectCreationSession,
   forgetRecentProject,
+	getProjectCreationSession,
 	getProjectDefaults,
 	listOpenProjects,
   listRecentProjects,
@@ -28,6 +30,7 @@ import {
   preflightImageGeneration,
   revealProjectDirectory,
   relocateRecentProject,
+  retryProjectCreationSession,
   selectProjectDirectory,
 } from '../api/projects.js'
 import { defaultPictureBookDraft, pictureBookDraftIsValid, pictureBookPayload } from './pictureBookProfile.js'
@@ -38,6 +41,28 @@ const SORT_OPTIONS = [
   { value: 'name_asc', labelKey: 'projects.index.sort.name_asc' },
   { value: 'name_desc', labelKey: 'projects.index.sort.name_desc' },
 ]
+
+const CREATION_CHECKPOINT_KEY = 'lumi.homeProjectCreation'
+
+function loadCreationCheckpoint() {
+  if (typeof window === 'undefined') return null
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(CREATION_CHECKPOINT_KEY) || 'null')
+    return value && typeof value.inputText === 'string' && typeof value.idempotencyKey === 'string' ? value : null
+  } catch { return null }
+}
+
+function saveCreationCheckpoint(value) {
+  if (typeof window === 'undefined') return
+  try {
+    if (value) window.sessionStorage.setItem(CREATION_CHECKPOINT_KEY, JSON.stringify(value))
+    else window.sessionStorage.removeItem(CREATION_CHECKPOINT_KEY)
+  } catch { /* restricted browser */ }
+}
+
+function newCreationIdempotencyKey() {
+  return `home-project-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`
+}
 
 function useProjectMutation(queryClient, setActionError, mutationFn, afterSuccess) {
   return useMutation({
@@ -74,6 +99,10 @@ export default function HomePage() {
   const [createValidationAttempted, setCreateValidationAttempted] = useState(false)
   const [openMenuUuid, setOpenMenuUuid] = useState('')
   const [actionError, setActionError] = useState(null)
+  const [creationCheckpoint, setCreationCheckpoint] = useState(loadCreationCheckpoint)
+  const [creationInput, setCreationInput] = useState(() => loadCreationCheckpoint()?.inputText || '')
+  const [creationSession, setCreationSession] = useState(null)
+  const [creationValidationAttempted, setCreationValidationAttempted] = useState(false)
   const nameInputRef = useRef(null)
   const storyPromptInputRef = useRef(null)
   const parentPathInputRef = useRef(null)
@@ -86,6 +115,12 @@ export default function HomePage() {
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const openProjectsQuery = useQuery({ queryKey: projectQueryKeys.openProjects(), queryFn: listOpenProjects })
   const projectDefaultsQuery = useQuery({ queryKey: ['project-defaults'], queryFn: getProjectDefaults })
+  const creationSessionQuery = useQuery({
+    queryKey: ['project-creation-session', creationCheckpoint?.sessionUuid || ''],
+    queryFn: () => getProjectCreationSession(creationCheckpoint.sessionUuid),
+    enabled: Boolean(creationCheckpoint?.sessionUuid),
+    retry: false,
+  })
   const defaultProjectParentPath = projectDefaultsQuery.data?.parent_path || ''
   const defaultOverallStyles = projectDefaultsQuery.data?.default_overall_styles || null
   const defaultOverallStyle = projectDefaultOverallStyle(defaultOverallStyles, generationLanguage)
@@ -160,6 +195,30 @@ export default function HomePage() {
     onError: setActionError,
   })
 
+  const acceptCreationSession = (session, checkpoint) => {
+    const nextCheckpoint = { ...checkpoint, sessionUuid: session.uuid }
+    setCreationCheckpoint(nextCheckpoint)
+    setCreationSession(session)
+    saveCreationCheckpoint(nextCheckpoint)
+    if (session.status !== 'active' || !session.project_uuid || !session.thread_uuid) return
+    saveCreationCheckpoint(null)
+    queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
+    queryClient.invalidateQueries({ queryKey: projectQueryKeys.openProjects() })
+    navigate(`/projects/${encodeURIComponent(session.project_uuid)}?chat_thread_uuid=${encodeURIComponent(session.thread_uuid)}`)
+  }
+  const creationMutation = useMutation({
+    mutationFn: createProjectCreationSession,
+    onSuccess: (session, variables) => acceptCreationSession(session, { inputText: variables.inputText, idempotencyKey: variables.idempotencyKey }),
+  })
+  const creationRetryMutation = useMutation({
+    mutationFn: retryProjectCreationSession,
+    onSuccess: (session) => acceptCreationSession(session, creationCheckpoint),
+  })
+
+  useEffect(() => {
+    if (creationSessionQuery.data) acceptCreationSession(creationSessionQuery.data, creationCheckpoint)
+  }, [creationSessionQuery.data])
+
   const projects = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase()
     const items = [...(recentQuery.data?.items || [])].filter((project) => !needle || project.name.toLocaleLowerCase().includes(needle) || project.root_path.toLocaleLowerCase().includes(needle))
@@ -195,6 +254,35 @@ export default function HomePage() {
   }
   const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
   const openExistingDialog = () => { setActionError(null); setDialog('open') }
+  const creationPending = creationMutation.isPending || creationRetryMutation.isPending
+  const creationError = creationMutation.error || creationRetryMutation.error || creationSessionQuery.error
+  const submitCreationComposer = (event) => {
+    event.preventDefault()
+    if (creationPending) return
+    setCreationValidationAttempted(true)
+    if (!creationInput.trim()) return
+    const checkpoint = creationCheckpoint?.inputText === creationInput
+      ? creationCheckpoint
+      : { inputText: creationInput, idempotencyKey: newCreationIdempotencyKey() }
+    setCreationCheckpoint(checkpoint)
+    setCreationSession(null)
+    saveCreationCheckpoint(checkpoint)
+    creationMutation.mutate({ inputText: creationInput, idempotencyKey: checkpoint.idempotencyKey })
+  }
+  const retryCreation = () => {
+    if (creationPending || !creationCheckpoint) return
+    if (creationCheckpoint.sessionUuid) creationRetryMutation.mutate(creationCheckpoint.sessionUuid)
+    else creationMutation.mutate({ inputText: creationCheckpoint.inputText, idempotencyKey: creationCheckpoint.idempotencyKey })
+  }
+  const changeCreationInput = (value) => {
+    setCreationInput(value)
+    setCreationValidationAttempted(false)
+    if (value !== creationCheckpoint?.inputText) {
+      setCreationSession(null)
+      setCreationCheckpoint(null)
+      saveCreationCheckpoint(null)
+    }
+  }
 
   useEffect(() => {
     if (!openMenuUuid) return undefined
@@ -220,6 +308,24 @@ export default function HomePage() {
       actions={<><button className="project-topbar__action" type="button" aria-label={t('projects.action.open_existing')} title={t('projects.action.open_existing')} onClick={openExistingDialog}><FolderOpen size={15} aria-hidden="true" /><span>{t('projects.action.open_existing')}</span></button><button className="project-topbar__action" type="button" aria-label={t('projects.action.new')} title={t('projects.action.new')} onClick={openCreateDialog}><Plus size={15} aria-hidden="true" /><span>{t('projects.action.new')}</span></button></>}
     >
       <div className="project-index-content">
+        <section className="project-creation-composer" aria-labelledby="project-creation-composer-title">
+          <div className="project-creation-composer__copy">
+            <p className="story-eyebrow">{t('projects.conversation.eyebrow')}</p>
+            <h2 id="project-creation-composer-title">{t('projects.conversation.title')}</h2>
+            <p>{t('projects.conversation.body')}</p>
+          </div>
+          <form onSubmit={submitCreationComposer}>
+            <label htmlFor="project-creation-input">{t('projects.conversation.label')}</label>
+            <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} placeholder={t('projects.conversation.placeholder')} disabled={creationPending} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
+            {creationValidationAttempted && !creationInput.trim() ? <p className="project-field-error" role="alert">{t('projects.conversation.required')}</p> : null}
+            <div className="project-creation-composer__footer">
+              <p id="project-creation-hint">{t('projects.conversation.path_hint')}</p>
+              <button type="submit" disabled={creationPending || !creationInput.trim()}><Plus size={16} aria-hidden="true" />{t(creationPending ? 'projects.conversation.creating' : 'projects.conversation.submit')}</button>
+            </div>
+          </form>
+          {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey="projects.conversation.failed" /><button type="button" className="button-secondary" disabled={creationPending || !creationCheckpoint} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
+          {creationSession?.status === 'failed' ? <div className="project-creation-composer__failure" role="alert"><div><strong>{t('projects.conversation.failed')}</strong><p>{creationSession.error_message || t('errors.generic')}</p>{creationSession.error_code ? <code>{creationSession.error_code}</code> : null}</div><button type="button" className="button-secondary" disabled={creationPending} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
+        </section>
         <LocalizedErrorMessage error={pageError} className="project-alert project-index-alert" titleKey="projects.error.action_title" onDismiss={actionError ? () => setActionError(null) : undefined} />
         <section className="project-index-main">
           <div className="project-index-toolbar">

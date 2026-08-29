@@ -33,6 +33,9 @@ func (manager *Manager) CreateMaintenanceTask(ctx context.Context, projectUUID s
 	if err != nil {
 		return MaintenanceTask{}, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return MaintenanceTask{}, err
+	}
 	input.Kind = strings.TrimSpace(input.Kind)
 	input.PlanUUID = strings.TrimSpace(input.PlanUUID)
 	if !validMaintenanceKind(input.Kind) {

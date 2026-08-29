@@ -47,6 +47,7 @@ type agentAPIRoute struct {
 	RequiresConfirmation                                          bool
 	Passthrough                                                   bool
 	ServerRoute                                                   bool
+	StrictSchema                                                  bool
 	Risk                                                          string
 }
 
@@ -210,6 +211,9 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		"prompt":     apiString("生成指令。"), "model": apiString("可选模型覆盖值。"),
 	}, "prompt_key", "prompt")
 	base := []agentAPIRoute{
+		{ID: RouteProjectSetupGet, Action: "读取项目初始化候选", Method: "GET", PathTemplate: project + "/project-setup", Handler: routeProjectAPIDispatch, Projector: "project_setup", DocPath: projectSetupDocPath, RecommendedResponseFilter: ".data | {uuid,project_uuid,setup_status,status,revision,candidate,field_sources,missing_information,final_picture_book,updated_at}", ReadOnly: true, StrictSchema: true, Risk: RiskLow},
+		{ID: RouteProjectSetupUpdate, Action: "更新项目初始化候选", Method: "PATCH", PathTemplate: project + "/project-setup", Handler: routeProjectAPIDispatch, Projector: "project_setup", DocPath: projectSetupDocPath, BodySchema: projectSetupUpdateBodySchema(), ExpectedRevision: true, StrictSchema: true, Risk: RiskWrite},
+		{ID: RouteProjectSetupFinalize, Action: "定稿项目初始化设置", Method: "POST", PathTemplate: project + "/project-setup-finalizations", Handler: routeProjectAPIDispatch, Projector: "project_setup", DocPath: projectSetupDocPath, BodySchema: apiObject(map[string]any{"expected_revision": apiBoundedInteger("刚读取到且已经完整的设置 revision。", 1, 1<<31-1)}, "expected_revision"), ExpectedRevision: true, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
 		{ID: RouteStoryProfileGet, Action: "读取故事档案", Method: "GET", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileGet, Projector: "story_profile", DocPath: storyDocPath, RecommendedResponseFilter: ".data | {uuid,revision,story_md,projection_state}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryProfileUpdate, Action: "更新故事档案", Method: "PUT", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileUpdate, Projector: "story_profile", DocPath: storyDocPath, BodySchema: storyUpdate, ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteChapterList, Action: "列出章节", Method: "GET", PathTemplate: project + "/chapters", Handler: RouteChapterList, Projector: "chapter_list", DocPath: chapterDocPath, ReadOnly: true, Risk: RiskLow},
@@ -306,7 +310,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	useDispatcher := matched.Passthrough
 	if !matched.Passthrough {
 		if shapeErr := validateReviewedAgentAPIRequestShape(*matched, query, hasQuery, body, hasBody); shapeErr != nil {
-			if !matched.ServerRoute {
+			if !matched.ServerRoute || matched.StrictSchema {
 				return agentAPIRequest{}, shapeErr
 			}
 			useDispatcher = true

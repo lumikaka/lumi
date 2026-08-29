@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -90,6 +92,7 @@ type Summary struct {
 	StatusDetail string              `json:"status_detail"`
 	Available    bool                `json:"available"`
 	Open         bool                `json:"open"`
+	SetupStatus  string              `json:"setup_status,omitempty"`
 	UpdatedAt    time.Time           `json:"updated_at"`
 	LastOpenedAt time.Time           `json:"last_opened_at"`
 	PictureBook  *PictureBookProfile `json:"picture_book,omitempty"`
@@ -100,6 +103,16 @@ type CreateInput struct {
 	GenerationLanguage string
 	PictureBook        *PictureBookInput
 	OverallStyle       string
+}
+
+const DraftProjectPlaceholderName = "Lumi Draft"
+
+type DraftCreateInput struct {
+	ProjectUUID        string
+	SetupUUID          string
+	RootPath           string
+	InitialInput       string
+	GenerationLanguage string
 }
 
 func NewManager(app *appstore.Store) *Manager {
@@ -365,11 +378,10 @@ func (manager *Manager) Current() *Summary {
 }
 
 func summaryForStore(store *Store, openedAt time.Time) Summary {
-	profile := store.PictureBookProfile()
 	return Summary{
 		UUID: store.ProjectUUID(), Name: store.ProjectName(), RootPath: store.Root(),
-		Status: "open", Available: true, Open: true, UpdatedAt: openedAt, LastOpenedAt: openedAt,
-		PictureBook: &profile,
+		Status: "open", SetupStatus: store.SetupStatus(), Available: true, Open: true, UpdatedAt: openedAt, LastOpenedAt: openedAt,
+		PictureBook: store.OptionalPictureBookProfile(),
 	}
 }
 
@@ -431,7 +443,7 @@ func (manager *Manager) CreateWithInput(ctx context.Context, input CreateInput, 
 	if err != nil {
 		return Summary{}, err
 	}
-	store, err := initializeStore(ctx, root, projectUUID, name, generationLanguage, actorUUID, pictureBook, overallStyle, now, lock)
+	store, err := initializeStore(ctx, root, projectUUID, name, generationLanguage, actorUUID, &pictureBook, overallStyle, nil, now, lock)
 	if err != nil {
 		_ = lock.Close()
 		return Summary{}, err
@@ -456,6 +468,105 @@ func (manager *Manager) CreateWithInput(ctx context.Context, input CreateInput, 
 	}
 	manager.finishOpening(entry, store, nil)
 	manager.notifyLifecycle(projectUUID, true)
+	committed = true
+	return summaryForStore(store, now), nil
+}
+
+func (manager *Manager) PlanDraftProjectRoot(ctx context.Context) (string, error) {
+	parent, err := (DefaultNewProjectParent{}).SelectNewProjectParent(ctx)
+	if err != nil {
+		return "", err
+	}
+	return planNewProjectDirectory(parent, projectDirectoryName(DraftProjectPlaceholderName))
+}
+
+func (manager *Manager) CreateDraftAt(ctx context.Context, input DraftCreateInput) (Summary, error) {
+	if !isUUIDv7(input.ProjectUUID) || !isUUIDv7(input.SetupUUID) {
+		return Summary{}, projectError(CodeInvalidUUID, "草稿项目 UUID 无效", "项目和设置草稿必须使用 UUIDv7。", nil)
+	}
+	initialInput := input.InitialInput
+	if strings.TrimSpace(initialInput) == "" || len(initialInput) > 256<<10 {
+		return Summary{}, projectError(CodeProjectSetupInvalid, "首页输入无效", "input_text 必须包含非空内容且不超过 256 KiB。", nil)
+	}
+	language, valid := NormalizeGenerationLanguage(input.GenerationLanguage)
+	if !valid {
+		language = DefaultGenerationLanguage
+	}
+	defaultParent, err := DefaultNewProjectParentPath()
+	if err != nil {
+		return Summary{}, err
+	}
+	defaultParent, err = normalizeDirectory(defaultParent)
+	if err != nil {
+		return Summary{}, err
+	}
+	root := filepath.Clean(strings.TrimSpace(input.RootPath))
+	if !filepath.IsAbs(root) || !sameDirectoryPath(filepath.Dir(root), defaultParent) {
+		return Summary{}, projectError(CodeInvalidPath, "草稿项目路径无效", "草稿项目只能创建在服务端默认父目录中。", nil)
+	}
+	if info, statErr := os.Stat(root); statErr == nil {
+		if !info.IsDir() {
+			return Summary{}, projectError(CodeInvalidPath, "草稿项目路径无效", "计划路径已经被文件占用。", nil)
+		}
+		preparedRoot, header, prepareErr := prepareExistingProject(ctx, ExplicitExistingDirectory(root), input.ProjectUUID)
+		if prepareErr != nil {
+			return Summary{}, prepareErr
+		}
+		return manager.openPrepared(ctx, preparedRoot, header)
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return Summary{}, projectError(CodeInvalidPath, "无法检查草稿项目路径", "请检查默认项目目录权限。", statErr)
+	}
+	if err := os.Mkdir(root, 0o755); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return Summary{}, projectError(CodeIdentityMismatch, "草稿项目目录发生冲突", "请重试以规划新的安全目录名。", err)
+		}
+		return Summary{}, projectError(CodePermissionDenied, "无法创建草稿项目目录", "请检查默认项目目录的写权限。", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			removeNewProject(root)
+		}
+	}()
+	if err := createProjectLayout(root, DraftProjectPlaceholderName); err != nil {
+		return Summary{}, projectError(CodePermissionDenied, "无法创建项目文件", "请检查目录写权限与磁盘可用空间。", err)
+	}
+	actorUUID, err := newUUIDv7()
+	if err != nil {
+		return Summary{}, err
+	}
+	now := manager.now().UTC()
+	lock, err := acquireProjectLock(root, input.ProjectUUID, now)
+	if err != nil {
+		return Summary{}, err
+	}
+	store, err := initializeStore(ctx, root, input.ProjectUUID, DraftProjectPlaceholderName, language, actorUUID, nil, "", &SetupDraftInitialization{
+		UUID: input.SetupUUID, OriginalInput: initialInput, GenerationLanguage: language,
+	}, now, lock)
+	if err != nil {
+		_ = lock.Close()
+		return Summary{}, err
+	}
+	entry, owner, err := manager.startOpening(ctx, input.ProjectUUID, root)
+	if err != nil || !owner {
+		_ = store.Close()
+		if err != nil {
+			return Summary{}, err
+		}
+		return summaryForStore(entry.store, entry.openedAt), nil
+	}
+	if err := manager.runOpenHooks(context.WithValue(ctx, openHookContextKey{}, true), store); err != nil {
+		openErr, retained := manager.failOpening(ctx, entry, store, err)
+		committed = retained
+		return Summary{}, openErr
+	}
+	if err := manager.app.RecordProject(ctx, input.ProjectUUID, DraftProjectPlaceholderName, root, now); err != nil {
+		openErr, retained := manager.failOpening(ctx, entry, store, err)
+		committed = retained
+		return Summary{}, openErr
+	}
+	manager.finishOpening(entry, store, nil)
+	manager.notifyLifecycle(input.ProjectUUID, true)
 	committed = true
 	return summaryForStore(store, now), nil
 }

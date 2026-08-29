@@ -150,6 +150,29 @@ func reserveNewProjectDirectory(parent, directoryName string) (string, error) {
 	)
 }
 
+func planNewProjectDirectory(parent, directoryName string) (string, error) {
+	for number := 1; number <= maxProjectDirectoryNumber; number++ {
+		candidateName := directoryName
+		if number > 1 {
+			candidateName = fmt.Sprintf("%s-%d", directoryName, number)
+		}
+		root := filepath.Join(parent, candidateName)
+		_, err := os.Lstat(root)
+		if errors.Is(err, os.ErrNotExist) {
+			return root, nil
+		}
+		if err != nil {
+			return "", projectError(CodeInvalidPath, "无法检查项目目录", "请检查默认项目目录的权限。", err)
+		}
+	}
+	return "", projectError(
+		CodeProjectDirectoryNameExhausted,
+		"项目目录名称已用尽",
+		"草稿目录名及自动编号 -2 至 -1000 均已被占用。",
+		nil,
+	)
+}
+
 func createProjectLayout(root, name string) error {
 	for _, directory := range projectDirectories {
 		mode := os.FileMode(0o755)

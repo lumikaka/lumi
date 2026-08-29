@@ -25,6 +25,7 @@ import {
   createPremiseSource,
   generateSettingImage,
   getPremise,
+  getPremiseAsset,
   importSettingImage,
   listPremiseAssets,
   listPremiseAssetVariants,
@@ -113,6 +114,7 @@ export default function PremiseWorkspace({ projectUuid }) {
   const { formatDateTime, locale, t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+	const linkedAssetUuid = searchParams.get('premise_asset_uuid') || ''
   const addMenuRef = useRef(null)
   const fileInputRef = useRef(null)
   const uploadTitleRefs = useRef(new Map())
@@ -150,6 +152,11 @@ export default function PremiseWorkspace({ projectUuid }) {
   })
   const activeAssetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid, { state: 'active' }) })
   const trashAssetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', true], queryFn: () => listPremiseAssets(projectUuid, { state: 'trashed' }) })
+	const linkedAssetQuery = useQuery({
+		queryKey: ['premise-asset', projectUuid, linkedAssetUuid],
+		queryFn: () => getPremiseAsset(projectUuid, linkedAssetUuid),
+		enabled: Boolean(linkedAssetUuid),
+	})
   const variantsQuery = useQuery({
     queryKey: ['premise-variants', projectUuid, historyAsset?.uuid],
     queryFn: () => listPremiseAssetVariants(projectUuid, historyAsset.uuid),
@@ -167,7 +174,7 @@ export default function PremiseWorkspace({ projectUuid }) {
   const projectThreadsQuery = useProjectThreads(projectUuid)
 
   const refresh = useCallback(() => {
-    ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-variants', 'production-tasks', 'story-project', 'asset-scans', 'asset-maintenance-tasks'].forEach((key) => {
+	['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-asset', 'premise-variants', 'production-tasks', 'story-project', 'asset-scans', 'asset-maintenance-tasks'].forEach((key) => {
       queryClient.invalidateQueries({ queryKey: [key, projectUuid] })
     })
   }, [projectUuid, queryClient])
@@ -455,8 +462,24 @@ export default function PremiseWorkspace({ projectUuid }) {
     setDetailDraft({ assetType: asset.asset_type, title: asset.title, summary: asset.summary || '', tags: (asset.tags || []).join(', ') })
   }
 
+	useEffect(() => {
+		const asset = linkedAssetQuery.data
+		if (!linkedAssetUuid) return
+		if (!asset || asset.uuid !== linkedAssetUuid) {
+			setHistoryAsset(null)
+			setDetailDraft(null)
+			setReplacementFile(null)
+			return
+		}
+		setActiveTab(asset.deleted_at ? 'trash' : 'assets')
+		setHistoryAsset(asset)
+		setDetailDraft({ assetType: asset.asset_type, title: asset.title, summary: asset.summary || '', tags: (asset.tags || []).join(', ') })
+		setReplacementFile(null)
+	}, [linkedAssetQuery.data, linkedAssetUuid])
+
   const updateChatQuery = ({ threadUuid = '', reference = null } = {}) => {
     const next = new URLSearchParams(searchParams)
+		next.delete('premise_asset_uuid')
     next.delete('workflow_uuid')
     if (threadUuid) {
       next.set('chat_thread_uuid', threadUuid)
@@ -480,7 +503,11 @@ export default function PremiseWorkspace({ projectUuid }) {
 
   const openChat = (reference = null) => {
     updateChatQuery({ reference })
-    if (historyAsset) closeAssetDetail()
+	if (historyAsset) {
+		setHistoryAsset(null)
+		setDetailDraft(null)
+		setReplacementFile(null)
+	}
   }
 
   const toggleSourceDetails = (sourceUuid) => {
@@ -497,6 +524,11 @@ export default function PremiseWorkspace({ projectUuid }) {
     setHistoryAsset(null)
     setDetailDraft(null)
     setReplacementFile(null)
+		if (searchParams.has('premise_asset_uuid')) {
+			const next = new URLSearchParams(searchParams)
+			next.delete('premise_asset_uuid')
+			setSearchParams(next, { replace: true })
+		}
   }
 
   useEffect(() => {
@@ -504,9 +536,7 @@ export default function PremiseWorkspace({ projectUuid }) {
     const closeOnEscape = (event) => {
       if (event.key !== 'Escape') return
       if (historyAsset && !replaceImage.isPending && !updateAsset.isPending) {
-        setHistoryAsset(null)
-        setDetailDraft(null)
-        setReplacementFile(null)
+		closeAssetDetail()
         return
       }
       if (uploadDialogOpen && !uploadMutation.isPending) {
@@ -520,7 +550,7 @@ export default function PremiseWorkspace({ projectUuid }) {
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [batchDialogOpen, batchMutation.isPending, historyAsset, replaceImage.isPending, updateAsset.isPending, uploadDialogOpen, uploadDrafts, uploadMutation.isPending])
+	}, [batchDialogOpen, batchMutation.isPending, historyAsset, linkedAssetUuid, replaceImage.isPending, updateAsset.isPending, uploadDialogOpen, uploadDrafts, uploadMutation.isPending])
 
   const tabs = [
     { key: 'assets', labelKey: 'premise.tab.assets', count: activeAssets.length },
@@ -531,7 +561,7 @@ export default function PremiseWorkspace({ projectUuid }) {
     { key: 'llm_logs', labelKey: 'premise.tab.llm_logs' },
   ]
 
-  const queryError = error || premiseQuery.error || sourcesQuery.error || settingsError || activeAssetsQuery.error || trashAssetsQuery.error || tasksQuery.error
+	const queryError = error || premiseQuery.error || sourcesQuery.error || settingsError || activeAssetsQuery.error || trashAssetsQuery.error || linkedAssetQuery.error || tasksQuery.error
   if (premiseQuery.isLoading) return <p className="workspace-loading">{t('premise.loading')}</p>
 
   return (

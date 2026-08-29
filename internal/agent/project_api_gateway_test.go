@@ -18,10 +18,14 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/v1/projects/:project_uuid/llm-logs"},
 		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/model-settings"},
 		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/prompt-groups/:prompt_group"},
+		{Method: http.MethodGet, Path: "/api/v1/projects/:project_uuid/project-setup"},
+		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/project-setup"},
+		{Method: http.MethodPost, Path: "/api/v1/projects/:project_uuid/project-setup-finalizations"},
+		{Method: http.MethodPost, Path: "/api/v1/projects/:project_uuid/workflows"},
 		{Method: http.MethodGet, Path: "/api/v1/providers"},
 	}, nil)
-	if len(service.requestAPIRoutes()) != 5 {
-		t.Fatalf("routes=%d want=5", len(service.requestAPIRoutes()))
+	if len(service.requestAPIRoutes()) != 9 {
+		t.Fatalf("routes=%d want=9", len(service.requestAPIRoutes()))
 	}
 
 	byKey := map[string]agentAPIRoute{}
@@ -36,6 +40,18 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 	}
 	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/model-settings")]; route.Handler != routeProjectAPIDispatch || !route.Passthrough || route.Risk != RiskDangerous || !route.RequiresConfirmation {
 		t.Fatalf("discovered write route did not fail closed: %+v", route)
+	}
+	if route := byKey[agentAPIRouteKey(http.MethodGet, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupGet || route.Passthrough || !route.ReadOnly || !route.StrictSchema || route.DocPath != projectSetupDocPath {
+		t.Fatalf("reviewed setup GET route invalid: %+v", route)
+	}
+	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupUpdate || route.Passthrough || route.Risk != RiskWrite || !route.ExpectedRevision || !route.StrictSchema {
+		t.Fatalf("reviewed setup PATCH route invalid: %+v", route)
+	}
+	if route := byKey[agentAPIRouteKey(http.MethodPost, "/api/v1/projects/{project_uuid}/project-setup-finalizations")]; route.ID != RouteProjectSetupFinalize || route.Passthrough || route.Risk != RiskDangerous || !route.RequiresConfirmation || !route.ExpectedRevision || !route.StrictSchema {
+		t.Fatalf("reviewed setup finalization route invalid: %+v", route)
+	}
+	if route := byKey[agentAPIRouteKey(http.MethodPost, "/api/v1/projects/{project_uuid}/workflows")]; route.ID != RouteYoloWorkflowCreate || route.Passthrough || route.Risk != RiskWrite || route.RequiresConfirmation || !route.StrictSchema || route.DocPath != workflowDocPath {
+		t.Fatalf("reviewed YOLO route invalid: %+v", route)
 	}
 
 	tc := toolContext{ProjectUUID: projectUUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
@@ -69,6 +85,32 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 		"method": http.MethodGet, "url": "/api/v1/projects/" + projectUUID + "/not-real", "response_filter": ".data",
 	}); err == nil || errorCode(err) != CodeToolNotAllowed {
 		t.Fatalf("unknown route accepted: %v", err)
+	}
+	otherProjectUUID := mustAgentUUID(t)
+	if _, err := service.parseAgentAPIRequest(tc, map[string]any{
+		"method": http.MethodGet, "url": "/api/v1/projects/" + otherProjectUUID + "/project-setup",
+		"response_filter": ".data | {uuid,project_uuid,setup_status,revision}",
+	}); err == nil {
+		t.Fatal("cross-project Project Setup request was accepted")
+	}
+	if _, err := service.parseAgentAPIRequest(tc, map[string]any{
+		"method": http.MethodPatch, "url": "/api/v1/projects/" + projectUUID + "/project-setup",
+		"request_body":    map[string]any{"expected_revision": float64(1), "setup_uuid": mustAgentUUID(t)},
+		"response_filter": ".data | {uuid,project_uuid,setup_status,revision}",
+	}); err == nil {
+		t.Fatal("caller-controlled setup_uuid was accepted")
+	}
+	for _, forbidden := range []string{"title", "provider_uuid", "idempotency_key", "chapter_count", "max_section_count"} {
+		body := map[string]any{"story_prompt": "月光邮差", forbidden: "forbidden"}
+		if forbidden == "chapter_count" || forbidden == "max_section_count" {
+			body[forbidden] = float64(6)
+		}
+		if _, err := service.parseAgentAPIRequest(tc, map[string]any{
+			"method": http.MethodPost, "url": "/api/v1/projects/" + projectUUID + "/workflows",
+			"request_body": body, "response_filter": ".data | {uuid,thread_uuid,status}",
+		}); err == nil || errorCode(err) != CodeToolValidation {
+			t.Fatalf("caller-controlled YOLO field %s was accepted: %v", forbidden, err)
+		}
 	}
 
 	overview, err := service.readAgentDoc(tc, map[string]any{"path": agentDocOverviewPath})
@@ -144,6 +186,9 @@ func TestDiscoveredProjectAPIRoutesAreGroupedIntoDomainContracts(t *testing.T) {
 		{path: "/api/v1/projects/{project_uuid}/story-profile", doc: storyDocPath},
 		{path: "/api/v1/projects/{project_uuid}/story-profile/generations", doc: generationDocPath},
 		{path: "/api/v1/projects/{project_uuid}/production-tasks", doc: taskDocPath},
+		{path: "/api/v1/projects/{project_uuid}/project-setup", doc: projectSetupDocPath},
+		{path: "/api/v1/projects/{project_uuid}/project-setup-finalizations", doc: projectSetupDocPath},
+		{path: "/api/v1/projects/{project_uuid}/workflows", doc: workflowDocPath},
 	}
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {

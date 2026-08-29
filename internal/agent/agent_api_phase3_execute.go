@@ -19,6 +19,29 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 	args := cloneToolArguments(request.Body)
 	chapterUUID, sectionUUID := request.Params["chapter_uuid"], request.Params["section_uuid"]
 	switch request.Route.Handler {
+	case RouteYoloWorkflowCreate:
+		if !isBootstrapToolContext(tc) {
+			return nil, true, bootstrapYoloNotAuthorizedError()
+		}
+		authorized, err := bootstrapYoloAuthorized(ctx, store, tc)
+		if err != nil {
+			return nil, true, err
+		}
+		if !authorized {
+			return nil, true, bootstrapYoloNotAuthorizedError()
+		}
+		projectDetail, err := storyService.GetProject(ctx)
+		if err != nil {
+			return nil, true, err
+		}
+		workflow, err := service.CreateYoloWorkflow(ctx, tc.ProjectUUID, CreateYoloInput{
+			Title: projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
+			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + tc.BootstrapCreationSessionUUID,
+		})
+		if err != nil {
+			return nil, true, err
+		}
+		return agentYoloWorkflowValue(workflow), true, nil
 	case RouteProjectGet:
 		value, err := storyService.GetProject(ctx)
 		return value, true, err
@@ -230,6 +253,23 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		return value, true, err
 	default:
 		return nil, false, nil
+	}
+}
+
+func agentYoloWorkflowValue(workflow Workflow) map[string]any {
+	steps := make([]map[string]any, 0, len(workflow.Steps))
+	for _, step := range workflow.Steps {
+		steps = append(steps, map[string]any{
+			"uuid": step.UUID, "step_key": step.StepKey, "position": step.Position,
+			"status": step.Status, "progress": step.Progress, "resource_uuid": step.ResourceUUID,
+			"error_code": step.ErrorCode,
+		})
+	}
+	return map[string]any{
+		"uuid": workflow.UUID, "thread_uuid": workflow.ThreadUUID,
+		"presentation_mode": workflow.PresentationMode, "kind": workflow.Kind,
+		"title": workflow.Title, "status": workflow.Status,
+		"current_step_key": workflow.CurrentStepKey, "steps": steps,
 	}
 }
 

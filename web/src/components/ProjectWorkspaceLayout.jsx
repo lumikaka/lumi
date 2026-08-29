@@ -7,6 +7,7 @@ import { listRecentProjects } from '../api/projects.js'
 import { getChapter } from '../api/story.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import { projectChapterUuidFromPath } from '../pages/projectChatAttachments.js'
+import { projectChatControlKey } from '../pages/projectReferences.js'
 import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
@@ -23,6 +24,7 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
   const [compact, setCompact] = useState(readCompact)
 	const [collapsed, setCollapsed] = useState(() => readCollapsed(projectUuid))
   const [overlayOpen, setOverlayOpen] = useState(false)
+	const chatControlKey = projectChatControlKey(location.search)
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const currentChapterUuid = projectChapterUuidFromPath(location.pathname, projectUuid)
   const currentChapterQuery = useQuery({
@@ -56,10 +58,10 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
 	}, [collapsed, projectUuid])
 
   useEffect(() => {
-    if (!hasChatQuery(location.search)) return
-    if (compact) setOverlayOpen(true)
-    else setCollapsed(false)
-  }, [compact, location.search])
+	if (!hasChatQuery(chatControlKey)) return
+	if (compact) setOverlayOpen(true)
+	else setCollapsed(false)
+	}, [chatControlKey, compact])
 
   useEffect(() => {
     if (!overlayOpen) return undefined

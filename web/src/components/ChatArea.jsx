@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -83,10 +83,12 @@ import {
 } from '../pages/projectChatAttachments.js'
 import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent, comicStoryboardOverwriteRequest, workflowControls } from '../pages/chatWorkspaceState.js'
 import { flattenProjectThreads, useProjectThreads } from '../pages/projectThreads.js'
+import { isPlainProjectReferenceClick, resolveProjectReference } from '../pages/projectReferences.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { ReferencePicker, ReferenceStrip } from './ChatReferences.jsx'
 import SafeMarkdown from './SafeMarkdown.jsx'
+import ProjectSetupCard from './ProjectSetupCard.jsx'
 
 const threadStatusCopy = {
   idle: 'chat.status.idle', busy: 'chat.status.busy', waiting_for_input: 'chat.status.waiting_for_input', completed: 'common.status.completed',
@@ -308,7 +310,22 @@ function OptionCopy({ option, recommendedText }) {
   )
 }
 
-function ChatItem({ item, projectUuid }) {
+function ProjectReferenceLink({ children, projectUuid, reference, onNavigate }) {
+	const location = useLocation()
+	const target = resolveProjectReference(reference, { projectUuid, search: location.search })
+	if (!target) return <span>{children}</span>
+	return (
+		<Link
+			to={target}
+			onClick={(event) => {
+				if (!isPlainProjectReferenceClick(event)) return
+				onNavigate?.()
+			}}
+		>{children}</Link>
+	)
+}
+
+function ChatItem({ item, projectUuid, onProjectReferenceNavigate }) {
   const { t } = useI18n()
   if (item.item_type === 'error') {
     return <article className="chat-message chat-message--error"><div>{t('chat.item.error')}</div></article>
@@ -322,7 +339,12 @@ function ChatItem({ item, projectUuid }) {
     <article className={`chat-message chat-message--${item.role || 'assistant'}`}>
       <div className="chat-message__assistant-body">
         <span className="chat-message__type"><Bot size={13} aria-hidden="true" />{item.role === 'system' ? t('chat.item.system') : 'Lumi Agent'}</span>
-        <SafeMarkdown value={item.content} />
+		<SafeMarkdown
+			value={item.content}
+			renderProjectReference={({ children, reference }) => (
+				<ProjectReferenceLink projectUuid={projectUuid} reference={reference} onNavigate={onProjectReferenceNavigate}>{children}</ProjectReferenceLink>
+			)}
+		/>
       </div>
     </article>
   )
@@ -410,7 +432,7 @@ function toolStatusLabel(status, t) {
   }[status] || t('common.status.unknown_with_code', { code: status })
 }
 
-function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict }) {
+function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict, onProjectReferenceNavigate }) {
   const { formatDateTime, t } = useI18n()
   const turn = group.turn
   const activity = projectChatTurnActivity(turn, group.items, { historyMayBePartial })
@@ -448,7 +470,7 @@ function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid,
 			{index === activity.summaryIndex ? <>{workflowCards}{summary}</> : null}
             {item.item_type === 'user_input_request' && requestByItemUuid.get(item.uuid)
               ? <UserInputCard request={requestByItemUuid.get(item.uuid)} pending={inputPending} onRespond={onRespond} onCancel={onCancel} />
-              : <ChatItem item={item} projectUuid={projectUuid} />}
+			  : <ChatItem item={item} projectUuid={projectUuid} onProjectReferenceNavigate={onProjectReferenceNavigate} />}
           </Fragment>
         ))}
 		{activity.summaryIndex === activity.conversationItems.length ? <>{workflowCards}{summary}</> : null}
@@ -911,7 +933,10 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
 		if (!requestedWorkflowMatch?.thread_uuid || requestedWorkflowMatch.thread_uuid === selectedThreadUuid) return
 		setSelectedThreadUuid(requestedWorkflowMatch.thread_uuid)
 		setShowCreate(false)
-	}, [requestedWorkflowMatch?.thread_uuid, selectedThreadUuid])
+		const next = new URLSearchParams(searchParams)
+		next.set('chat_thread_uuid', requestedWorkflowMatch.thread_uuid)
+		setSearchParams(next, { replace: true })
+	}, [requestedWorkflowMatch?.thread_uuid, searchParams, selectedThreadUuid, setSearchParams])
 
 	useEffect(() => {
 		if (!requestedWorkflow || !requestedWorkflowMatch || requestedWorkflowMatch.thread_uuid !== selectedThreadUuid) return
@@ -1253,10 +1278,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
           <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
             {itemsQuery.isFetchingNextPage ? <div className="chat-history-loader" role="status"><span>{t('chat.messages.loading_earlier')}</span></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
+			<ProjectSetupCard projectUuid={projectUuid} enabled={expanded && Boolean(selectedThreadUuid)} />
 			<WorkflowProgress projectUuid={projectUuid} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />)}
+			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
             {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
           </div>
           <div className="chat-composer-shell">

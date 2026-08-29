@@ -6,6 +6,8 @@
 
 业务结果归各业务 domain：例如 Chapter 生成追加正文版本，Premise/漫画生成写入其 variant，导出发布短期产物。运行时只负责调度状态、取消、重试、幂等与恢复边界。
 
+业务任务创建和 Worker 执行都要求项目 `setup_status=ready`。草稿项目以 `project_setup_incomplete` 失败关闭；Worker 不能只相信任务入队时的状态，避免在 Project Setup 尚未定稿时执行 Story、图片、生产、维护或导出副作用。
+
 ## data_model
 
 `task_runs` 和 `production_task_runs` 均保存公开 `uuid`、项目内部关联、kind、resource UUID、输入快照、冻结模型、状态、进度、尝试次数、取消时间、错误和生命周期时间。`task_events` 与 `production_task_events` 以任务内递增 sequence 保存 append-only 事件。旧 Story Agent 链使用 `agent_threads`、`agent_runs` 和 `agent_events` 保留相同恢复原则。

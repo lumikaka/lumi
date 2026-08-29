@@ -67,6 +67,21 @@ test('comic export cleanup refreshes REST facts without polling', () => {
   assert.ok(keyNames(result).includes('production-tasks'))
 })
 
+test('project setup changes reread setup and project facts without trusting payload state', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'project:setup_changed', {
+    setup_uuid: 'setup-uuid',
+    status: 'finalized',
+    revision: 4,
+  })
+  assert.equal(result.invalidateAll, false)
+  assert.deepEqual(result.queryKeys, [
+    ['project-setup', projectUuid],
+    ['story-project', projectUuid],
+    ['recent-projects'],
+    ['open-projects'],
+  ])
+})
+
 test('unknown business events fall back to a project resync while protocol events do not', () => {
   assert.deepEqual(projectRealtimeInvalidation(projectUuid, 'future_domain:changed', {}), { queryKeys: [], invalidateAll: true })
   assert.deepEqual(projectRealtimeInvalidation(projectUuid, 'phx_close', {}), { queryKeys: [], invalidateAll: false })

@@ -15,6 +15,7 @@ import (
 )
 
 var ErrRecentProjectNotFound = errors.New("recent project not found")
+var ErrProjectCreationSessionNotFound = errors.New("project creation session not found")
 
 type RecentProject struct {
 	ID           int64 `gorm:"primaryKey;autoIncrement" json:"-"`
@@ -27,6 +28,28 @@ type RecentProject struct {
 }
 
 func (RecentProject) TableName() string { return "recent_projects" }
+
+type ProjectCreationSession struct {
+	ID                 int64 `gorm:"primaryKey;autoIncrement" json:"-"`
+	UUID               string
+	IdempotencyKey     string
+	InputText          string
+	Status             string
+	PlannedProjectUUID string
+	PlannedRootPath    string
+	RecentProjectID    *int64
+	ThreadUUID         string
+	TurnUUID           string
+	ErrorCode          string
+	ErrorMessage       string
+	AttemptCount       int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	CompletedAt        *time.Time
+	FailedAt           *time.Time
+}
+
+func (ProjectCreationSession) TableName() string { return "project_creation_sessions" }
 
 type Store struct {
 	db      *gorm.DB
@@ -151,4 +174,78 @@ func (store *Store) ForgetProject(ctx context.Context, projectUUID string) error
 		return ErrRecentProjectNotFound
 	}
 	return nil
+}
+
+func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, session ProjectCreationSession) (ProjectCreationSession, bool, error) {
+	var result ProjectCreationSession
+	created := false
+	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		lookup := tx.Where("idempotency_key = ?", session.IdempotencyKey).Limit(1).Find(&result)
+		if lookup.Error != nil {
+			return lookup.Error
+		}
+		if lookup.RowsAffected == 1 {
+			return nil
+		}
+		if err := tx.Create(&session).Error; err != nil {
+			// A racing retry may have inserted the unique idempotency key.
+			if retryErr := tx.Where("idempotency_key = ?", session.IdempotencyKey).First(&result).Error; retryErr == nil {
+				return nil
+			}
+			return err
+		}
+		result, created = session, true
+		return nil
+	})
+	if err != nil {
+		return ProjectCreationSession{}, false, fmt.Errorf("create project creation session: %w", err)
+	}
+	return result, created, nil
+}
+
+func (store *Store) ProjectCreationSession(ctx context.Context, sessionUUID string) (ProjectCreationSession, error) {
+	var session ProjectCreationSession
+	result := store.db.WithContext(ctx).Where("uuid = ?", sessionUUID).Limit(1).Find(&session)
+	if result.Error != nil {
+		return ProjectCreationSession{}, fmt.Errorf("read project creation session: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return ProjectCreationSession{}, ErrProjectCreationSessionNotFound
+	}
+	return session, nil
+}
+
+func (store *Store) ResumableProjectCreationSessions(ctx context.Context) ([]ProjectCreationSession, error) {
+	var sessions []ProjectCreationSession
+	err := store.db.WithContext(ctx).
+		Where("status IN ?", []string{"pending", "creating_project", "creating_conversation", "failed"}).
+		Order("updated_at, id").Find(&sessions).Error
+	if err != nil {
+		return nil, fmt.Errorf("list resumable project creation sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+func (store *Store) UpdateProjectCreationSession(ctx context.Context, sessionUUID string, updates map[string]any) (ProjectCreationSession, error) {
+	result := store.db.WithContext(ctx).Model(&ProjectCreationSession{}).Where("uuid = ?", sessionUUID).Updates(updates)
+	if result.Error != nil {
+		return ProjectCreationSession{}, fmt.Errorf("update project creation session: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		if _, err := store.ProjectCreationSession(ctx, sessionUUID); err != nil {
+			return ProjectCreationSession{}, err
+		}
+	}
+	return store.ProjectCreationSession(ctx, sessionUUID)
+}
+
+func (store *Store) RecentProjectID(ctx context.Context, projectUUID string) (int64, error) {
+	var id int64
+	if err := store.db.WithContext(ctx).Table("recent_projects").Select("id").Where("uuid = ?", projectUUID).Scan(&id).Error; err != nil {
+		return 0, fmt.Errorf("read recent project id: %w", err)
+	}
+	if id == 0 {
+		return 0, ErrRecentProjectNotFound
+	}
+	return id, nil
 }

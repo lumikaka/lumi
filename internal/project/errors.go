@@ -18,6 +18,9 @@ const (
 	CodeInvalidPictureBook              = "invalid_picture_book_profile"
 	CodePictureBookImmutable            = "picture_book_profile_immutable"
 	CodeInvalidOverallStyle             = "invalid_overall_style"
+	CodeProjectSetupIncomplete          = "project_setup_incomplete"
+	CodeProjectSetupConflict            = "project_setup_revision_conflict"
+	CodeProjectSetupInvalid             = "invalid_project_setup"
 )
 
 type Error struct {

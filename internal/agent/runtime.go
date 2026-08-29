@@ -19,6 +19,9 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		return domainError(CodeValidation, "Agent job 参数无效", "Job 只能引用当前项目的公开 UUIDv7。", nil)
 	}
 	if spec.JobKind == JobWorkflowStep {
+		if err := store.RequireReady(); err != nil {
+			return err
+		}
 		return service.ExecuteWorkflowStep(ctx, store, spec.ResourceUUID)
 	}
 	if spec.JobKind != JobChatTurn && spec.JobKind != JobChatResume {
@@ -441,6 +444,7 @@ func (service *Service) loadToolContext(ctx context.Context, store *project.Stor
 			SubjectUUID string `json:"subject_uuid"`
 		} `json:"legacy_thread_context"`
 	}
+	tc := toolContext{ProjectUUID: store.ProjectUUID(), Thread: thread, Turn: turn, Run: run}
 	if json.Unmarshal([]byte(metadataJSON), &metadata) == nil {
 		if metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectAPI || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV3 || metadata.PromptSnapshot.ToolProtocol == ToolProtocolProjectV2 {
 			// Only persisted project-api protocols need to be distinguished here.
@@ -449,13 +453,23 @@ func (service *Service) loadToolContext(ctx context.Context, store *project.Stor
 			thread.Scope = metadata.LegacyThreadContext.Scope
 			thread.Scene = metadata.LegacyThreadContext.Scene
 			thread.SubjectUUID = metadata.LegacyThreadContext.SubjectUUID
-			return toolContext{ProjectUUID: store.ProjectUUID(), Thread: thread, Turn: turn, Run: run, ToolProtocol: threadProtocol}, nil
+			tc.Thread = thread
+			tc.ToolProtocol = threadProtocol
+		} else {
+			thread.Scope = metadata.LegacyThreadContext.Scope
+			thread.Scene = metadata.LegacyThreadContext.Scene
+			thread.SubjectUUID = metadata.LegacyThreadContext.SubjectUUID
+			tc.Thread = thread
 		}
-		thread.Scope = metadata.LegacyThreadContext.Scope
-		thread.Scene = metadata.LegacyThreadContext.Scene
-		thread.SubjectUUID = metadata.LegacyThreadContext.SubjectUUID
 	}
-	return toolContext{ProjectUUID: store.ProjectUUID(), Thread: thread, Turn: turn, Run: run}, nil
+	if err := store.DB().WithContext(ctx).Table("project_creation_bootstraps").
+		Select("creation_session_uuid").
+		Where("project_id=? AND turn_id=?", pid, turn.ID).
+		Limit(1).
+		Scan(&tc.BootstrapCreationSessionUUID).Error; err != nil {
+		return toolContext{}, err
+	}
+	return tc, nil
 }
 
 func (service *Service) turnFIFOReady(ctx context.Context, store *project.Store, tc toolContext) (bool, error) {

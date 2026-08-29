@@ -17,6 +17,9 @@ type assetMaintenanceWorker struct {
 }
 
 func (worker *assetMaintenanceWorker) Work(ctx context.Context, job *river.Job[maintenanceArgs]) error {
+	if err := worker.runtime.store.RequireReady(); err != nil {
+		return river.JobCancel(err)
+	}
 	runtime := worker.runtime
 	workCtx, cancel := context.WithCancel(ctx)
 	runtime.registerWork(job.Args.TaskUUID, cancel)

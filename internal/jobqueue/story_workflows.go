@@ -25,6 +25,9 @@ func (manager *Manager) CreateStoryWorkflow(ctx context.Context, projectUUID, ki
 	if err != nil {
 		return Task{}, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return Task{}, err
+	}
 	input.ProviderUUID = strings.TrimSpace(input.ProviderUUID)
 	input.Model = strings.TrimSpace(input.Model)
 	input.Prompt = strings.TrimSpace(input.Prompt)
@@ -91,7 +94,10 @@ func buildStoryWorkflowSnapshot(ctx context.Context, service *story.Service, pro
 	if err != nil {
 		return storyGenerationSnapshot{}, "", err
 	}
-	pictureBook := service.PictureBookProfile()
+	pictureBook, err := service.PictureBookProfile()
+	if err != nil {
+		return storyGenerationSnapshot{}, "", err
+	}
 	snapshot := storyGenerationSnapshot{Version: 3, ProjectUUID: projectUUID, GenerationLanguage: language, WorkflowKind: kind, ResourceRevision: profile.Revision, ChapterCount: input.ChapterCount, PictureBook: &pictureBook}
 	group, promptKey, systemKey, resourceUUID := promptcatalog.GroupStory, "", "json_system", projectUUID
 	values := map[string]string{}

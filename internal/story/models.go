@@ -109,15 +109,16 @@ type promptVersionRecord struct {
 func (promptVersionRecord) TableName() string { return "project_prompt_versions" }
 
 type ProjectDetail struct {
-	UUID               string                     `json:"uuid"`
-	Name               string                     `json:"name"`
-	Description        string                     `json:"description"`
-	GenerationLanguage string                     `json:"generation_language"`
-	Revision           int64                      `json:"revision"`
-	ChapterCount       int64                      `json:"chapter_count"`
-	TrashCount         int64                      `json:"trash_count"`
-	UpdatedAt          time.Time                  `json:"updated_at"`
-	PictureBook        project.PictureBookProfile `json:"picture_book"`
+	UUID               string                      `json:"uuid"`
+	Name               string                      `json:"name"`
+	Description        string                      `json:"description"`
+	GenerationLanguage string                      `json:"generation_language"`
+	Revision           int64                       `json:"revision"`
+	ChapterCount       int64                       `json:"chapter_count"`
+	TrashCount         int64                       `json:"trash_count"`
+	UpdatedAt          time.Time                   `json:"updated_at"`
+	SetupStatus        string                      `json:"setup_status"`
+	PictureBook        *project.PictureBookProfile `json:"picture_book"`
 }
 
 type ChapterStory struct {

@@ -71,7 +71,10 @@ func (handler *ProjectImageGenerationPreflightHandler) Create(c echo.Context) er
 		if err != nil {
 			return err
 		}
-		profile := store.PictureBookProfile()
+		profile, err := store.RequirePictureBookProfile()
+		if err != nil {
+			return err
+		}
 		size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model)
 		if err != nil {
 			return err

@@ -63,4 +63,11 @@ export const errors = defineMessages({
   'errors.code.image_timeout': ['图片生成超时，请稍后重试。', 'Image generation timed out. Please try again.'],
   'errors.code.image_network_error': ['无法连接图片模型服务。', 'Could not connect to the image-model service.'],
   'errors.code.image_provider_unavailable': ['图片模型服务暂时不可用。', 'The image-model service is temporarily unavailable.'],
+  'errors.code.project_creation_invalid': ['首页项目描述或幂等信息无效，请检查后重试。', 'The project description or idempotency information is invalid. Review it and try again.'],
+  'errors.code.project_creation_idempotency_conflict': ['这次安全重试键已用于另一条输入，请重新提交当前描述。', 'This safe-retry key belongs to a different input. Submit the current description again.'],
+  'errors.code.project_creation_session_not_found': ['找不到这次项目创建会话，请从首页重新提交。', 'This project-creation session is unavailable. Submit again from the home page.'],
+  'errors.code.project_creation_failed': ['草稿项目创建暂时失败，可以使用同一输入安全重试。', 'Draft project creation failed temporarily. You can safely retry with the same input.'],
+  'errors.code.project_setup_incomplete': ['项目设置尚未定稿，请先在 ChatArea 中确认绘本规格。', 'Project setup is not finalized. Confirm the picture-book setup in ChatArea first.'],
+  'errors.code.project_setup_revision_conflict': ['项目设置已更新，请重新读取候选后再修改或定稿。', 'Project setup changed. Reread the candidates before updating or finalizing.'],
+  'errors.code.invalid_project_setup': ['项目设置不完整或无效，请检查候选值。', 'Project setup is incomplete or invalid. Review the candidates.'],
 })

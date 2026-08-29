@@ -10,36 +10,65 @@ import (
 )
 
 func executeRequestAPITool(ctx context.Context, service *Service, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (any, error) {
+	output, err := executeRequestAPIToolWithUIRef(ctx, service, store, tc, execution, args)
+	return output.Data, err
+}
+
+func executeRequestAPIToolWithUIRef(ctx context.Context, service *Service, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (requestAPIToolOutput, error) {
 	request, err := service.parseAgentAPIRequest(tc, args)
 	if err != nil {
-		return nil, err
+		return requestAPIToolOutput{}, err
+	}
+	if store != nil && store.SetupStatus() == project.SetupStatusDraft && request.Method != "GET" && request.Route.ID != RouteProjectSetupUpdate && request.Route.ID != RouteProjectSetupFinalize {
+		return requestAPIToolOutput{}, domainError(project.CodeProjectSetupIncomplete, "项目设置尚未定稿", "draft 阶段只允许读取项目事实和修改或定稿 project setup。", nil)
+	}
+	if store != nil && store.SetupStatus() == project.SetupStatusReady && isBootstrapToolContext(tc) && request.Method != "GET" {
+		switch request.Route.ID {
+		case RouteProjectSetupFinalize:
+			// A confirmed finalization replay may be recovered after the project
+			// has already transitioned to ready.
+		case RouteYoloWorkflowCreate:
+			authorized, policyErr := bootstrapYoloAuthorized(ctx, store, tc)
+			if policyErr != nil {
+				return requestAPIToolOutput{}, policyErr
+			}
+			if !authorized {
+				return requestAPIToolOutput{}, bootstrapYoloNotAuthorizedError()
+			}
+		default:
+			return requestAPIToolOutput{}, bootstrapProductionRequiresYoloError()
+		}
 	}
 	if err := authorizeDangerousAgentAPIRequest(ctx, store, tc, request); err != nil {
-		return nil, err
+		return requestAPIToolOutput{}, err
 	}
 	value, err := executeAgentAPIRoute(ctx, service, store, tc, execution, request)
 	if err != nil {
-		return nil, err
+		return requestAPIToolOutput{}, err
 	}
 	value, err = compactAgentRouteValue(request.Route, value)
 	if err != nil {
-		return nil, err
+		return requestAPIToolOutput{}, err
 	}
 	if err := validateAgentAPIResponse(value); err != nil {
-		return nil, err
+		return requestAPIToolOutput{}, err
 	}
+	output := requestAPIToolOutput{Data: value, UIRef: projectReferenceForAgentAPI(request, value)}
 	if request.ResponseFilter != "" {
 		encoded, err := json.Marshal(value)
 		if err != nil {
-			return nil, err
+			return requestAPIToolOutput{}, err
 		}
 		var publicValue any
 		if err := json.Unmarshal(encoded, &publicValue); err != nil {
-			return nil, err
+			return requestAPIToolOutput{}, err
 		}
-		return runResponseFilter(map[string]any{"success": true, "data": publicValue}, request.ResponseFilter)
+		output.Data, err = runResponseFilter(map[string]any{"success": true, "data": publicValue}, request.ResponseFilter)
+		if err != nil {
+			return requestAPIToolOutput{}, err
+		}
 	}
-	return value, nil
+	return output, nil
 }
 
 func (service *Service) agentToolLogMetadata(tc toolContext, calls []llm.ToolCall) []map[string]any {

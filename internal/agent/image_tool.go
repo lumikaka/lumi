@@ -25,6 +25,12 @@ const (
 )
 
 func (service *Service) executeImageGenTool(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (map[string]any, error) {
+	if err := store.RequireReady(); err != nil {
+		return nil, domainError(project.CodeProjectSetupIncomplete, "项目设置尚未定稿", "draft 阶段禁止调用 image_gen。", err)
+	}
+	if isBootstrapToolContext(tc) {
+		return nil, bootstrapProductionRequiresYoloError()
+	}
 	if service.image == nil {
 		return nil, domainError(CodeStateConflict, "图片生成服务不可用", "Image client 尚未初始化。", nil)
 	}

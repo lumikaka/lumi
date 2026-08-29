@@ -21,6 +21,7 @@ export const importSettingImage = (projectUuid, payload) => apiRequest(root(proj
 export const selectSettingImage = (projectUuid, settingUuid) => apiRequest(root(projectUuid, `/premise-setting-images/${encodeURIComponent(settingUuid)}/selections`), json('POST'))
 export const breakdownSettingImage = (projectUuid, settingUuid, payload) => apiRequest(root(projectUuid, `/premise-setting-images/${encodeURIComponent(settingUuid)}/breakdowns`), json('POST', payload))
 export const listPremiseAssets = (projectUuid, { tag = '', state = 'active' } = {}) => apiRequest(root(projectUuid, `/premise-assets?${new URLSearchParams({ tag, state })}`))
+export const getPremiseAsset = (projectUuid, assetUuid) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}`))
 export const createPremiseAsset = (projectUuid, payload) => apiRequest(root(projectUuid, '/premise-assets'), json('POST', payload))
 export const updatePremiseAsset = (projectUuid, assetUuid, payload) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}`), json('PATCH', payload))
 export const trashPremiseAsset = (projectUuid, assetUuid, revision) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}?expected_revision=${encodeURIComponent(revision)}`), { method: 'DELETE' })

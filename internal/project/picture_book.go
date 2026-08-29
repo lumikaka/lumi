@@ -219,12 +219,26 @@ func invalidPictureBook(details string) error {
 }
 
 func loadPictureBookProfile(ctx context.Context, db *gorm.DB, projectID int64) (PictureBookProfile, error) {
-	var records []pictureBookProfileRecord
-	if err := db.WithContext(ctx).Where("project_id = ?", projectID).Limit(2).Find(&records).Error; err != nil {
+	profile, err := loadPictureBookProfileOptional(ctx, db, projectID)
+	if err != nil {
 		return PictureBookProfile{}, err
 	}
+	if profile == nil {
+		return PictureBookProfile{}, fmt.Errorf("project must contain exactly one picture book profile, found 0")
+	}
+	return *profile, nil
+}
+
+func loadPictureBookProfileOptional(ctx context.Context, db *gorm.DB, projectID int64) (*PictureBookProfile, error) {
+	var records []pictureBookProfileRecord
+	if err := db.WithContext(ctx).Where("project_id = ?", projectID).Limit(2).Find(&records).Error; err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
 	if len(records) != 1 {
-		return PictureBookProfile{}, fmt.Errorf("project must contain exactly one picture book profile, found %d", len(records))
+		return nil, fmt.Errorf("project must contain at most one picture book profile, found %d", len(records))
 	}
 	record := records[0]
 	profile := PictureBookProfile{
@@ -244,10 +258,10 @@ func loadPictureBookProfile(ctx context.Context, db *gorm.DB, projectID int64) (
 	input.LargeImageMinimalText, input.InteractionMode, input.ComicLayout = profile.LargeImageMinimalText, profile.InteractionMode, profile.ComicLayout
 	normalized, err := NormalizePictureBookInput(input)
 	if err != nil {
-		return PictureBookProfile{}, err
+		return nil, err
 	}
 	if normalized.AspectRatio != profile.AspectRatio {
-		return PictureBookProfile{}, fmt.Errorf("picture book aspect ratio is not canonical")
+		return nil, fmt.Errorf("picture book aspect ratio is not canonical")
 	}
-	return normalized, nil
+	return &normalized, nil
 }

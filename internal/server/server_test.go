@@ -40,6 +40,32 @@ func TestRequestLogLevel(t *testing.T) {
 	}
 }
 
+func TestDraftProjectRequestGateAllowsOnlyChatSetupAndReads(t *testing.T) {
+	allowed := []struct{ method, path string }{
+		{http.MethodGet, "/api/v1/projects/:project_uuid/chapters"},
+		{http.MethodPatch, "/api/v1/projects/:project_uuid/project-setup"},
+		{http.MethodPost, "/api/v1/projects/:project_uuid/project-setup-finalizations"},
+		{http.MethodPost, "/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/turns"},
+	}
+	for _, request := range allowed {
+		if !draftProjectRequestAllowed(request.method, request.path) {
+			t.Errorf("expected allowed: %s %s", request.method, request.path)
+		}
+	}
+	blocked := []string{
+		"/api/v1/projects/:project_uuid/chapters",
+		"/api/v1/projects/:project_uuid/workflows",
+		"/api/v1/projects/:project_uuid/image-generation-preflights",
+		"/api/v1/projects/:project_uuid/comic-exports",
+		"/api/v1/projects/:project_uuid/assets",
+	}
+	for _, path := range blocked {
+		if draftProjectRequestAllowed(http.MethodPost, path) {
+			t.Errorf("expected blocked: POST %s", path)
+		}
+	}
+}
+
 func TestRequestLoggerFiltersAndClassifiesByLevel(t *testing.T) {
 	for _, scenario := range []struct {
 		name      string
@@ -107,6 +133,8 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 
 	websocketRouteFound := false
 	workflowConflictRouteFound := false
+	creationSessionRoutes := 0
+	projectSetupRoutes := 0
 	for _, route := range application.Routes() {
 		if route.Method == http.MethodGet && route.Path == "/api/v1/ws" {
 			websocketRouteFound = true
@@ -114,8 +142,14 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 		if route.Method == http.MethodPost && route.Path == "/api/v1/projects/:project_uuid/workflows/:workflow_uuid/conflict-resolutions" {
 			workflowConflictRouteFound = true
 		}
+		if strings.HasPrefix(route.Path, "/api/v1/project-creation-sessions") {
+			creationSessionRoutes++
+		}
+		if route.Path == "/api/v1/projects/:project_uuid/project-setup" || route.Path == "/api/v1/projects/:project_uuid/project-setup-finalizations" {
+			projectSetupRoutes++
+		}
 	}
-	if !websocketRouteFound || !workflowConflictRouteFound || application.RealtimeHub() == nil {
+	if !websocketRouteFound || !workflowConflictRouteFound || creationSessionRoutes != 3 || projectSetupRoutes != 3 || application.RealtimeHub() == nil {
 		t.Fatal("application realtime or workflow conflict endpoint was not initialized")
 	}
 	serverProjectRoutes := projectAPIRouteSpecs(application.Echo)

@@ -100,6 +100,10 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   } else if (event === 'project:model_settings_changed') {
     add('project-model-settings')
     add('project-image-generation-preflight')
+  } else if (event === 'project:setup_changed') {
+    add('project-setup')
+    add('story-project')
+    queryKeys.push(['recent-projects'], ['open-projects'])
   } else {
     matched = false
   }

@@ -2,17 +2,23 @@
 
 ## overview
 
-该 Feature 使用 `yolo_project_initialization` Workflow 根据用户输入生成并初始化项目 Story 与后续创作资源。它把项目初始化拆成可观测步骤，允许中断、恢复和诊断，而不是把整次生成压缩成不可恢复的单一请求。
+该 Feature 使用 `yolo_project_initialization` Workflow 根据用户输入生成并初始化项目 Story 与后续创作资源。它把项目初始化拆成可观测步骤，允许中断、恢复和诊断，而不是把整次生成压缩成不可恢复的单一请求。首页直接入口保持原行为；对话式项目创建在 Project Setup 明确确认并定稿后，由同一 bootstrap Run 调用严格受审的同一创建 route，不引入新的 Workflow kind 或执行器。
+
+对话式入口创建成功后使用 `dedicated_thread` 展示，并立即结束 bootstrap Turn。该 Turn 不等待、轮询或 await Workflow 终态，也不逐步模拟 YOLO；失败时报告安全错误并停止。这样 Workflow Worker 是唯一生产者，聊天模型不能循环创建 `vol01.ch02` 到 `vol01.ch06`。
 
 ## data_model
 
-YOLO Workflow 使用 `workflows.input_snapshot` 固化用户输入、Prompt 与模型，`workflow_steps` 保存各阶段的业务 Task 或资源 UUID。可选 `thread_id` 关联用户发起初始化时的对话，但 Workflow 生命周期独立。
+YOLO Workflow 使用 `workflows.input_snapshot` 固化用户输入、Prompt 与模型，`workflow_steps` 保存各阶段的业务 Task 或资源 UUID。`thread_id` 关联独立 Workflow Thread，Workflow 生命周期不依赖发起它的 bootstrap conversation。
+
+对话式入口的幂等键由服务端根据可信 `project_creation_bootstraps.creation_session_uuid` 生成：`project-creation-yolo:<creation_session_uuid>`。项目内 `(project_id, kind, idempotency_key)` 唯一约束保证模型重复 Tool Call、Tool Result 丢失、恢复重放、应用重启或不同 `story_prompt` 重放都只返回同一个 Workflow 与 dedicated Thread。模型不能覆盖 title、Provider、幂等键或产出数量。
+
+既有步骤固定为 `project_initialization → story → story_profile → premise → comic_sections → first_section_image`。fresh project 只创建或复用 `vol01.ch01`，生成 1～6 个 Comic Sections，只有第一个 Section 获得漫画 current image；Premise Setting Image 继续属于设定步骤，不计入“第一张漫画图”的约束。
 
 ## api
 
 | 接口 | 方法 | 说明 |
 |---|---|---|
-| `/api/v1/projects/:project_uuid/workflows` | POST | 创建 `yolo_project_initialization` Workflow。 |
+| `/api/v1/projects/:project_uuid/workflows` | POST | 创建 `yolo_project_initialization` Workflow；对话式 Agent overlay 只接受 `story_prompt` 和可选文本模型，并由服务端补齐项目名、当前 Run 与创建会话幂等键。 |
 | `/api/v1/projects/:project_uuid/workflows/:workflow_uuid` | GET | 读取初始化进度、步骤和公开错误。 |
 | `/api/v1/projects/:project_uuid/workflows/:workflow_uuid/cancellations` | POST | 取消初始化。 |
 | `/api/v1/projects/:project_uuid/workflows/:workflow_uuid/retries` | POST | 使用冻结输入重试。 |
@@ -21,8 +27,11 @@ YOLO Workflow 使用 `workflows.input_snapshot` 固化用户输入、Prompt 与�
 
 | 页面 / 入口 | 说明 |
 |---|---|
-| 新建项目 YOLO 流程 | 以步骤状态展示初始化，失败或中断时提供受控重试。 |
+| 新建项目 YOLO 流程 | 以 dedicated Thread 和步骤状态展示初始化，失败或中断时提供受控重试。 |
+| bootstrap 对话 | 创建成功的 Tool Result 返回 `@project/workflows/{workflow_uuid}`；点击后选择对应 dedicated Thread，状态继续由 WebSocket 提示失效并经 REST 重读。 |
 
 ## others
 
 Workflow 只编排；总纲、Chapter、Premise 或漫画结果各自按所属 domain 的 revision、版本和幂等约束提交。
+
+项目必须为 `setup_status=ready`，且对话式入口还必须存在当前 Run 已消费的 `confirm_setup_and_start_yolo` 明确确认与成功 finalization 事实。缺少前者返回 `project_setup_incomplete`，缺少后者返回 `bootstrap_yolo_not_authorized`。Workflow 创建后首次 Turn 的其他生产写操作和 `image_gen` 仍由 bootstrap 门禁拒绝；后续普通 Turn 不受此专用限制。

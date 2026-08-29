@@ -90,7 +90,7 @@ test('answered user input collapses in place while pending input stays interacti
 })
 
 test('second-stage chat parity includes safe markdown, paged history, queue steering and workflow diagnostics', () => {
-  assert.match(source, /<SafeMarkdown value=\{item\.content\}/)
+	assert.match(source, /<SafeMarkdown[\s\S]*?value=\{item\.content\}/)
   assert.match(source, /const threadsQuery = useProjectThreads\(projectUuid, expanded\)/)
   assert.match(projectThreadsSource, /queryKey: projectThreadsQueryKey\(projectUuid\)/)
   assert.match(projectThreadsSource, /return \['chat-threads', projectUuid, 'pages'\]/)
@@ -116,6 +116,17 @@ test('second-stage chat parity includes safe markdown, paged history, queue stee
   assert.match(source, /openStepDiagnostics\(step\.uuid\)[\s\S]*?focusStepUuid=\{diagnosticStepUuid\}/)
   assert.match(source, /listWorkflowLLMLogs\(projectUuid, workflow\.uuid, \{ page: pageParam, perPage: 10, stepUuid: focusStepUuid \}\)/)
   assert.match(source, /workflow-diagnostics__step-detail[\s\S]*?prettyDiagnosticJSON\(focusedStep\.input\)[\s\S]*?prettyDiagnosticJSON\(focusedStep\.output\)/)
+})
+
+test('assistant project references use current-project Router links and only plain mobile clicks close the overlay', () => {
+	const layoutSource = readFileSync(new URL('./ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
+	assert.match(source, /function ProjectReferenceLink[\s\S]*?useLocation\(\)[\s\S]*?resolveProjectReference\(reference, \{ projectUuid, search: location\.search \}\)/)
+	assert.match(source, /<Link[\s\S]*?to=\{target\}[\s\S]*?isPlainProjectReferenceClick\(event\)[\s\S]*?onNavigate\?\.\(\)/)
+	assert.match(source, /renderProjectReference=\{\(\{ children, reference \}\) =>/)
+	assert.match(source, /onProjectReferenceNavigate=\{overlay \? onToggle : undefined\}/)
+	assert.match(layoutSource, /chatControlKey = projectChatControlKey\(location\.search\)/)
+	assert.match(layoutSource, /\[chatControlKey, compact\]/)
+	assert.match(source, /requestedWorkflowMatch\.thread_uuid[\s\S]*?setSelectedThreadUuid\(requestedWorkflowMatch\.thread_uuid\)[\s\S]*?next\.set\('chat_thread_uuid', requestedWorkflowMatch\.thread_uuid\)/)
 })
 
 test('workflow diagnostics load only while open and rely on project realtime reconciliation', () => {

@@ -22,6 +22,9 @@ const (
 	CodeProvider         = "agent_provider_failed"
 	CodeWorkflowNotReady = "workflow_not_ready"
 
+	CodeBootstrapProductionRequiresYolo = "bootstrap_production_requires_yolo"
+	CodeBootstrapYoloNotAuthorized      = "bootstrap_yolo_not_authorized"
+
 	CodeReferenceLimit       = "chat_reference_limit_exceeded"
 	CodeReferenceInvalidType = "chat_reference_invalid_type"
 	CodeReferenceInvalidUUID = "chat_reference_invalid_uuid"

@@ -37,6 +37,9 @@ type productionWorker struct {
 }
 
 func (worker *productionWorker) Work(ctx context.Context, job *river.Job[productionArgs]) error {
+	if err := worker.runtime.store.RequireReady(); err != nil {
+		return river.JobCancel(err)
+	}
 	runtime := worker.runtime
 	workCtx, cancel := context.WithCancel(ctx)
 	runtime.registerWork(job.Args.TaskUUID, cancel)

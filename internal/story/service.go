@@ -38,8 +38,8 @@ func NewService(store *project.Store) *Service {
 	return service
 }
 
-func (service *Service) PictureBookProfile() project.PictureBookProfile {
-	return service.store.PictureBookProfile()
+func (service *Service) PictureBookProfile() (project.PictureBookProfile, error) {
+	return service.store.RequirePictureBookProfile()
 }
 
 func newUUIDv7() (string, error) {
@@ -128,7 +128,7 @@ func (service *Service) GetProject(ctx context.Context) (ProjectDetail, error) {
 	if err := db.Where("deleted_at IS NOT NULL").Count(&trashCount).Error; err != nil {
 		return ProjectDetail{}, err
 	}
-	return ProjectDetail{UUID: projectRecord.UUID, Name: projectRecord.Name, Description: projectRecord.Description, GenerationLanguage: projectRecord.GenerationLanguage, Revision: projectRecord.Revision, ChapterCount: activeCount, TrashCount: trashCount, UpdatedAt: projectRecord.UpdatedAt, PictureBook: service.store.PictureBookProfile()}, nil
+	return ProjectDetail{UUID: projectRecord.UUID, Name: projectRecord.Name, Description: projectRecord.Description, GenerationLanguage: projectRecord.GenerationLanguage, Revision: projectRecord.Revision, ChapterCount: activeCount, TrashCount: trashCount, UpdatedAt: projectRecord.UpdatedAt, SetupStatus: projectRecord.SetupStatus, PictureBook: service.store.OptionalPictureBookProfile()}, nil
 }
 
 type UpdateProjectInput struct {

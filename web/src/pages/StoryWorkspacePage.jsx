@@ -652,6 +652,7 @@ function AssetsPanel({ projectUuid }) {
 }
 
 export default function StoryWorkspacePage() {
+  const { t } = useI18n()
   const { projectUuid } = useParams()
   const location = useLocation()
   const projectQuery = useQuery({ queryKey: ['story-project', projectUuid], queryFn: () => getStoryProject(projectUuid) })
@@ -659,11 +660,12 @@ export default function StoryWorkspacePage() {
   const activeSection = workspaceSectionForPath(location.pathname)
   const chapterPreview = /\/chapters\/[^/]+\/preview$/.test(location.pathname)
   const trajectoryView = /\/threads\/[^/]+\/trajectory$/.test(location.pathname)
+  const draftProject = projectQuery.data?.setup_status === 'draft'
   return (
     <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview || trajectoryView}>
-      {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} /> : null}
+      {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} hidden={draftProject} /> : null}
       <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
-        <Routes>
+        {draftProject ? <section className="draft-project-workspace"><span>✦</span><p className="eyebrow">{t('projects.draft.eyebrow')}</p><h1>{t('projects.draft.title')}</h1><p>{t('projects.draft.body')}</p><small>{t('projects.draft.directory_hint')}</small></section> : <Routes>
           <Route index element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview" element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview/summary" element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
@@ -683,7 +685,7 @@ export default function StoryWorkspacePage() {
           <Route path="trash" element={<TrashPanel projectUuid={projectUuid} />} />
           <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
           <Route path="*" element={<RouteRedirect to={`${base}/overview/summary`} />} />
-        </Routes>
+        </Routes>}
       </main>
     </ProjectWorkspaceLayout>
   )

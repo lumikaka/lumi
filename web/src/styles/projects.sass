@@ -8,11 +8,141 @@
   align-items: start
   gap: 18px
 
+.project-creation-composer
+  grid-column: 1 / -1
+  padding: clamp(18px, 3vw, 30px)
+  display: grid
+  grid-template-columns: minmax(220px, .7fr) minmax(360px, 1.3fr)
+  gap: 20px 28px
+  border: 1px solid rgba($color-accent, .28)
+  border-radius: $radius-lg
+  background: linear-gradient(135deg, $color-surface 0%, $color-accent-muted 145%)
+  box-shadow: 0 16px 38px rgba($color-text, .07)
+
+  h2,
+  p
+    margin: 0
+
+  h2
+    margin-top: 4px
+    font-size: clamp(23px, 3vw, 34px)
+    line-height: 1.12
+
+  form
+    min-width: 0
+    display: grid
+    gap: 8px
+
+    > label
+      font-size: 13px
+      font-weight: 800
+
+    textarea
+      width: 100%
+      min-height: 108px
+      resize: vertical
+
+.project-creation-composer__copy
+  display: grid
+  align-content: center
+  gap: 8px
+
+  > p:last-child
+    color: $color-muted
+    line-height: 1.55
+
+.project-creation-composer__footer
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.45
+
+  button
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    gap: 7px
+
+.project-creation-composer__error,
+.project-creation-composer__failure
+  grid-column: 2
+
+.project-creation-composer__failure
+  padding: 11px 12px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  border: 1px solid rgba($color-danger, .28)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-danger-muted
+
+  p
+    margin: 3px 0
+    font-size: 13px
+
+  code
+    font-size: $font-size-small
+
+@media (max-width: 760px)
+  .project-creation-composer
+    grid-template-columns: minmax(0, 1fr)
+
+  .project-creation-composer__error,
+  .project-creation-composer__failure
+    grid-column: 1
+
+  .project-creation-composer__footer,
+  .project-creation-composer__failure
+    align-items: stretch
+    flex-direction: column
+
 .project-index-main,
 .project-index-side
   min-width: 0
   display: grid
   gap: 18px
+
+.draft-project-workspace
+  min-height: min(62vh, 560px)
+  padding: 28px
+  display: grid
+  align-content: center
+  justify-items: center
+  gap: 9px
+  color: $color-muted
+  text-align: center
+
+  > span
+    width: 54px
+    height: 54px
+    display: grid
+    place-items: center
+    border-radius: 999px
+    color: $color-accent
+    background: $color-accent-muted
+    font-size: 25px
+
+  h1,
+  p
+    max-width: 620px
+    margin: 0
+
+  h1
+    color: $color-text
+    font-size: clamp(25px, 4vw, 42px)
+
+  > p:not(.eyebrow)
+    line-height: 1.65
+
+  small
+    max-width: 560px
 
 .project-index-side
   position: sticky

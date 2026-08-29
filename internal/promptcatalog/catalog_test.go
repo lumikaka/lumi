@@ -88,7 +88,12 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 2 || definition.PreviousDefaultValues[0] == definition.DefaultValue || !strings.Contains(definition.PreviousDefaultValues[0], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[0], "确认选项索引") || !strings.Contains(definition.PreviousDefaultValues[1], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[1], "流程或来源约束不确定") {
+				if len(definition.PreviousDefaultValues) != 4 ||
+					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
+					strings.Contains(definition.PreviousDefaultValues[0], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[0], "bootstrap 首个 Turn") ||
+					!strings.Contains(definition.PreviousDefaultValues[0], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[1], "ui_ref") ||
+					!strings.Contains(definition.PreviousDefaultValues[2], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[2], "确认选项索引") ||
+					!strings.Contains(definition.PreviousDefaultValues[3], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[3], "流程或来源约束不确定") {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -191,8 +196,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "b98024b2d0cc32a18b67078315a8c568138164cada7aed5c8bb36b9f6a0556f9",
-		LanguageEnglish: "dc98280a7de4f15b73be47dd163ed4c11cf9566e0441315d2e4886b5aa334f3e",
+		LanguageChinese: "eecc8438dd3dfd4d9a0831f0aa9bb689df20b8515fc8f048ecc6b5786c23a7bd",
+		LanguageEnglish: "398755b0d81963251af9d756a84cec343ae98c499e8ade22037b020afb81bffe",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

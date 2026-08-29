@@ -3,9 +3,10 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { WORKSPACE_GROUP_ITEMS, workspaceRoute } from './workspaceNavigation.js'
 import { useI18n } from '../i18n/useI18n.js'
 
-export default function WorkspaceGroupTabs({ projectUuid, activeSection }) {
+export default function WorkspaceGroupTabs({ projectUuid, activeSection, hidden = false }) {
   const { t } = useI18n()
   const location = useLocation()
+  if (hidden) return null
   if (activeSection === 'premise' && location.pathname.endsWith('/premise')) return null
   if (activeSection === 'chapters' && (location.pathname.endsWith('/chapters') || /\/chapters\/[^/]+(?:\/preview)?$/.test(location.pathname))) return null
   const items = WORKSPACE_GROUP_ITEMS[activeSection] || WORKSPACE_GROUP_ITEMS.overview

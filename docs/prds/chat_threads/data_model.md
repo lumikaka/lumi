@@ -13,6 +13,8 @@ projects ──< chat_threads
                  ├──< workflow_awaits >── workflows
                  └──< agent_context_summaries
 
+project_creation_bootstraps ──> chat_threads / chat_turns
+
 chat_context_references ──> files / premise_assets / comic_sections
                         ├──> files（冻结 image_file_id）
                         └── chapter（仅 resource_uuid + snapshot_json）
@@ -62,9 +64,20 @@ chat_context_references ──> files / premise_assets / comic_sections
 - `(chat_item_id, resource_type, resource_uuid)` / `(follow_up_id, resource_type, resource_uuid)` — owner 内资源去重
 - 四个目标 FK 字段（含 `image_file_id`）均有反向查询索引，用于生命周期检查和 GC
 
+## 表：project_creation_bootstraps
+
+首页创建 Session 与普通 Chat 首轮之间的恰好一次关联；该表归项目创建 Feature 所有，但其内部外键落在 Chat 聚合内。
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键和 JOIN
+- `uuid` — TEXT NOT NULL UNIQUE，UUIDv7
+- `project_id` — INTEGER NOT NULL FK → `projects.id`
+- `creation_session_uuid` — TEXT NOT NULL UNIQUE，跨应用库的公开相关性 UUID，不伪造外键
+- `thread_id` / `turn_id` — INTEGER NOT NULL UNIQUE FK → `chat_threads.id` / `chat_turns.id`
+- `created_at` — DATETIME NOT NULL
+
 ## 数据生命周期
 
-1. 首次发送时创建通用 Thread 和首个 Turn；Reference 在用户输入落库前校验并冻结到 User Item。
+1. 普通首次发送创建通用 Thread 和首个 Turn；首页项目创建则在同一项目库事务额外写入唯一 bootstrap、首个 User Item、Run 和队列 Job。bootstrap 的 `turn_id` 仅授权该 Turn 在定稿后幂等启动 existing YOLO，后续 Turn 不继承。Reference 在用户输入落库前校验并冻结到 User Item。
 2. 执行创建 Run、Item、工具和用户输入记录，事件只追加；当前 Turn 的 Steering 可追加自己的 Reference。
 3. Follow-up 保存自己的 Reference，可原子替换、提升为 Turn、立即引导或逻辑删除。
 4. 目标资源删除后保留 `resource_uuid` 与快照；冻结图片继续保护对应 File/Object，直到 Reference owner 删除。
@@ -72,3 +85,4 @@ chat_context_references ──> files / premise_assets / comic_sections
 6. Thread 状态由集中函数重算：用户输入或决策优先为 `waiting_for_input`；存在 queued、in-progress、Workflow-waiting Turn 或活动 Workflow 时为 `busy`；普通对话无活动项为 `idle`；仅独立 `workflow` Thread 镜像 Workflow 终态。
 7. 客户端以 REST 重读列表、items 和 events；实时消息只触发目标 Thread 查询失效。
 8. v4 回答必须覆盖请求中每个 question id，每题恰好使用一个所属选项 UUID 或非空 Other；写入回答、同 Tool call 的 Codex 形状 Tool Result、Run/Turn 排队和唯一 Resume Job 在同一事务完成。
+9. 项目仍为 `draft` 时，Agent 每次工具执行都重读 `setup_status`；Project Setup 定稿后，同一 Run 的后续工具即可按 `ready` 能力继续。

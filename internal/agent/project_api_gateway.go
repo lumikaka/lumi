@@ -162,6 +162,8 @@ func projectAPIDocPath(path string) string {
 	switch {
 	case suffix == "":
 		return projectDocPath
+	case strings.HasPrefix(suffix, "/project-setup"):
+		return projectSetupDocPath
 	case strings.HasPrefix(suffix, "/comic-exports"):
 		return comicExportDocPath
 	case strings.Contains(suffix, "/comic-snapshots"):
@@ -178,9 +180,10 @@ func projectAPIDocPath(path string) string {
 		return generationDocPath
 	case strings.HasPrefix(suffix, "/tasks"),
 		strings.HasPrefix(suffix, "/production-tasks"),
-		strings.HasPrefix(suffix, "/workflows"),
 		strings.HasPrefix(suffix, "/asset-maintenance-tasks"):
 		return taskDocPath
+	case strings.HasPrefix(suffix, "/workflows"):
+		return workflowDocPath
 	case strings.HasPrefix(suffix, "/asset-uploads"),
 		strings.HasPrefix(suffix, "/assets"),
 		strings.HasPrefix(suffix, "/integrity-scans"),

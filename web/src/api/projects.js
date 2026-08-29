@@ -24,6 +24,22 @@ export async function createProject({ name, parentPath, generationLanguage = 'zh
   return apiRequest('/api/v1/projects', jsonRequest('POST', { name, parent_path: parentPath, generation_language: generationLanguage, picture_book: pictureBook, overall_style: overallStyle }))
 }
 
+export async function createProjectCreationSession({ inputText, idempotencyKey }) {
+  return apiRequest('/api/v1/project-creation-sessions', jsonRequest('POST', { input_text: inputText, idempotency_key: idempotencyKey }))
+}
+
+export async function getProjectCreationSession(sessionUuid) {
+  return apiRequest(`/api/v1/project-creation-sessions/${encodeURIComponent(sessionUuid)}`)
+}
+
+export async function retryProjectCreationSession(sessionUuid) {
+  return apiRequest(`/api/v1/project-creation-sessions/${encodeURIComponent(sessionUuid)}/retries`, jsonRequest('POST', {}))
+}
+
+export async function getProjectSetup(projectUuid) {
+  return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/project-setup`)
+}
+
 export async function preflightImageGeneration(pictureBook) {
   return apiRequest('/api/v1/image-generation-preflights', jsonRequest('POST', { picture_book: pictureBook }))
 }

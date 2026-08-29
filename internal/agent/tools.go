@@ -21,14 +21,15 @@ import (
 )
 
 type toolContext struct {
-	ProjectUUID    string
-	Thread         threadRecord
-	Turn           turnRecord
-	Run            runRecord
-	ToolMode       string
-	ToolProtocol   string
-	RequestUUID    string
-	RequestOrdinal int
+	ProjectUUID                  string
+	BootstrapCreationSessionUUID string
+	Thread                       threadRecord
+	Turn                         turnRecord
+	Run                          runRecord
+	ToolMode                     string
+	ToolProtocol                 string
+	RequestUUID                  string
+	RequestOrdinal               int
 }
 
 type toolExecutionRecord struct {
@@ -758,10 +759,13 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 	service.hydrateToolExecutionMetadata(tc, &execution, args)
 	_ = store.DB().WithContext(ctx).Model(&toolExecutionRecord{}).Table("agent_tool_executions").Where("id=? AND state='intent'", execution.ID).Updates(map[string]any{"state": "executing", "started_at": service.now().UTC(), "updated_at": service.now().UTC()}).Error
 	var value any
+	var uiRef *agentUIReference
 	var err error
 	switch execution.ToolName {
 	case "request_api":
-		value, err = executeRequestAPITool(ctx, service, store, tc, execution, args)
+		var output requestAPIToolOutput
+		output, err = executeRequestAPIToolWithUIRef(ctx, service, store, tc, execution, args)
+		value, uiRef = output.Data, output.UIRef
 	case "read_agent_doc":
 		value, err = service.readAgentDoc(tc, args)
 	case "image_gen":
@@ -779,7 +783,11 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 		}
 		return toolErrorResult(err), nil
 	}
-	return compactToolResult(map[string]any{"success": true, "data": value}, execution.TargetUUID), nil
+	envelope := map[string]any{"success": true, "data": value}
+	if uiRef != nil {
+		envelope["ui_ref"] = uiRef
+	}
+	return compactToolResult(envelope, execution.TargetUUID), nil
 }
 
 func stringArg(args map[string]any, key string) string {
@@ -927,7 +935,10 @@ func toolErrorResult(err error) json.RawMessage {
 		var storyErr *story.Error
 		var productionErr *production.Error
 		var imageErr *imagegen.Error
+		var projectErr *project.Error
 		switch {
+		case errors.As(err, &projectErr):
+			code, message, details = projectErr.Code, projectErr.Message, projectErr.Details
 		case errors.As(err, &storyErr):
 			code, message = storyErr.Code, storyErr.Message
 		case errors.As(err, &productionErr):
@@ -952,7 +963,13 @@ func compactToolResult(value any, targetUUID string) json.RawMessage {
 	if len(previewBytes) > 8<<10 {
 		previewBytes = previewBytes[:8<<10]
 	}
-	compacted, _ := json.Marshal(map[string]any{"success": true, "data": map[string]any{"compacted": true, "target_uuid": targetUUID, "byte_size": len(encoded), "preview": string(previewBytes)}})
+	result := map[string]any{"success": true, "data": map[string]any{"compacted": true, "target_uuid": targetUUID, "byte_size": len(encoded), "preview": string(previewBytes)}}
+	if envelope, ok := value.(map[string]any); ok {
+		if uiRef, exists := envelope["ui_ref"]; exists {
+			result["ui_ref"] = uiRef
+		}
+	}
+	compacted, _ := json.Marshal(result)
 	return compacted
 }
 

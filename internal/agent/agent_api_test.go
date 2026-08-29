@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -25,6 +26,7 @@ func TestProjectAPIToolsAndGuidesAreGloballyRegistered(t *testing.T) {
 		t.Fatalf("project API mode exposed a duplicate legacy route: %v", got)
 	}
 	expectedGuidePaths := []string{
+		agentDocBasePath + "/guides/初始化新项目.md",
 		agentDocBasePath + "/guides/管理故事总纲.md",
 		agentDocBasePath + "/guides/创建章节.md",
 		agentDocBasePath + "/guides/修改章节.md",
@@ -348,8 +350,8 @@ func TestOverviewIndexesMatchGuideAndAPIDocRegistries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(agentGuideDefinitions()) != 14 {
-		t.Fatalf("guide count=%d want=14", len(agentGuideDefinitions()))
+	if len(agentGuideDefinitions()) != 15 {
+		t.Fatalf("guide count=%d want=15", len(agentGuideDefinitions()))
 	}
 	for _, guide := range agentGuideDefinitions() {
 		if strings.Count(content, "`"+guide.Path+"`") != 1 {
@@ -397,8 +399,12 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render Guide %s: %v", guide.Path, err)
 		}
-		if len(content) > 2048 {
-			t.Fatalf("Guide %s is not concise: %d bytes", guide.Path, len(content))
+		maximumBytes := 2048
+		if guide.Path == agentDocBasePath+"/guides/初始化新项目.md" {
+			maximumBytes = 4096
+		}
+		if len(content) > maximumBytes {
+			t.Fatalf("Guide %s is not concise: %d bytes (maximum %d)", guide.Path, len(content), maximumBytes)
 		}
 		if strings.Count(content, "## API 调用顺序和说明") != 1 {
 			t.Fatalf("Guide %s missing fixed API order section: %s", guide.Path, content)
@@ -435,6 +441,35 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 	} {
 		if seenPaths[path] {
 			t.Fatalf("removed Guide path remains registered: %s", path)
+		}
+	}
+}
+
+func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T) {
+	guide, err := renderAgentDoc(agentDocBasePath + "/guides/初始化新项目.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		workflowDocPath,
+		bootstrapYoloConfirmationQuestionID,
+		"1～3 个相互关联的问题",
+		"vol01.ch01",
+		"只为第一个 Section 生成漫画成品图",
+		"不得退化为手工生产",
+		"立即结束当前 Turn",
+	} {
+		if !strings.Contains(guide, required) {
+			t.Fatalf("bootstrap Guide missing %q: %s", required, guide)
+		}
+	}
+	workflowDoc, err := renderAgentDoc(workflowDocPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"`POST /api/v1/projects/{project_uuid}/workflows`", "creation_session_uuid", "dedicated Thread", "不得轮询状态"} {
+		if !strings.Contains(workflowDoc, required) {
+			t.Fatalf("Workflow Contract missing %q: %s", required, workflowDoc)
 		}
 	}
 }
@@ -872,5 +907,31 @@ func TestAgentProjectAPIRouteExecutionKeepsRevisionAndIdempotencySemantics(t *te
 	stale := map[string]any{"url": args["url"], "method": "PUT", "request_body": map[string]any{"story_md": "# 冲突内容", "expected_revision": float64(profile.Revision)}, "response_filter": args["response_filter"]}
 	if _, err := executeRequestAPITool(ctx, harness.service, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "request_api", IdempotencyKey: "stale"}, stale); err == nil {
 		t.Fatal("stale expected_revision was accepted")
+	}
+}
+
+func TestProjectSetupFinalizationRequiresFingerprintBoundConfirmation(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "Setup confirmation", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "请展示摘要后让我确认定稿"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode = ToolModeProjectAPI
+	_, err = executeRequestAPITool(ctx, harness.service, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "setup-finalize-confirmation"}, map[string]any{
+		"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup-finalizations",
+		"request_body": map[string]any{"expected_revision": float64(2)}, "response_filter": ".data | {project_uuid,setup_status,status,revision,final_picture_book}",
+	})
+	var domainErr *Error
+	if !errors.As(err, &domainErr) || domainErr.Code != CodeToolConfirmation || !strings.Contains(domainErr.Details, "request_fingerprint") || !strings.Contains(domainErr.Details, RouteProjectSetupFinalize) {
+		t.Fatalf("confirmation error=%+v", err)
 	}
 }

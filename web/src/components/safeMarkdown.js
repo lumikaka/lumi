@@ -1,4 +1,8 @@
+import { parseProjectReference } from '../pages/projectReferences.js'
+
 export function sanitizeMarkdownUrl(value = '') {
+	const projectReference = String(value)
+	if (projectReference.startsWith('@project')) return parseProjectReference(projectReference) ? projectReference : ''
   const candidate = String(value).trim().replace(/[\u0000-\u001f\u007f]/gu, '')
   if (!candidate || candidate.startsWith('//')) return ''
   if (/^(?:#|\/|\.\/|\.\.\/|\?)/u.test(candidate)) return candidate

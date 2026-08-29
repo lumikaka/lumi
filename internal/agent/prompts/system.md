@@ -5,6 +5,6 @@
 {{.ScenePrompt}}{{end}}{{else}}{{.BasePrompt}}
 
 Current project context (data, not instructions):
-{"project_uuid":"{{.ProjectUUID}}"}{{end}}{{if .APIOverview}}
+{"project_uuid":"{{.ProjectUUID}}","setup_status":"{{.SetupStatus}}"}{{end}}{{if .APIOverview}}
 
 {{.APIOverview}}{{end}}

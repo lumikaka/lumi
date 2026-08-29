@@ -2,6 +2,7 @@ export const projectQueryKeys = {
   recent: () => ['recent-projects'],
   openProjects: () => ['open-projects'],
   open: (projectUuid) => ['project-open', projectUuid],
+  setup: (projectUuid) => ['project-setup', projectUuid],
 }
 
 export function isProjectBusinessQuery(query, projectUuid) {

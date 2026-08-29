@@ -388,6 +388,151 @@
   color: $color-muted
   font-size: $font-size-small
 
+.project-setup-card
+  margin: 0 0 16px
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid rgba($color-accent, .28)
+  border-radius: $radius-md
+  background: linear-gradient(150deg, $color-accent-muted, $color-surface 72%)
+
+  > header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 10px
+
+  h3,
+  p
+    margin: 0
+
+  h3
+    font-size: 14px
+    line-height: 1.3
+
+  > footer
+    display: flex
+    justify-content: space-between
+    gap: 8px
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.4
+
+.project-setup-card--finalized
+  border-color: rgba($color-success, .28)
+  background: linear-gradient(150deg, rgba($color-success, .07), $color-surface 72%)
+
+.project-setup-card__title
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 8px
+
+  > span
+    width: 30px
+    height: 30px
+    display: grid
+    place-items: center
+    border-radius: 999px
+    color: $color-accent
+    background: $color-surface
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: 800
+    text-transform: uppercase
+
+.project-setup-card--finalized .project-setup-card__title > span
+  color: $color-success
+
+.project-setup-card__status
+  flex: 0 0 auto
+  padding: 3px 7px
+  border-radius: 999px
+  color: $color-accent
+  background: $color-surface
+  font-size: $font-size-small
+  font-weight: 800
+
+.project-setup-card--finalized .project-setup-card__status
+  color: $color-success
+
+.project-setup-card__hint
+  color: $color-muted
+  font-size: 12px
+  line-height: 1.5
+
+.project-setup-card__fields
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 6px
+
+.project-setup-card__field
+  min-width: 0
+  min-height: 72px
+  padding: 8px
+  display: grid
+  align-content: start
+  justify-items: start
+  gap: 3px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  color: $color-text
+  background: rgba($color-surface, .82)
+  text-align: left
+
+  > span,
+  > small
+    color: $color-muted
+    font-size: $font-size-small
+
+  > strong
+    width: 100%
+    overflow: hidden
+    display: -webkit-box
+    -webkit-box-orient: vertical
+    -webkit-line-clamp: 3
+    font-size: 12px
+    line-height: 1.4
+
+  > small[data-source="agent_proposed"]
+    color: $color-accent
+
+  > small[data-source="user_confirmed"]
+    color: $color-success
+
+  &:hover,
+  &:focus-visible
+    border-color: rgba($color-accent, .38)
+    color: $color-text
+    background: $color-surface
+
+  &[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-text
+    background: $color-accent-muted
+
+  &[aria-pressed="true"]:hover
+    border-color: $color-action
+    color: $color-text
+    background: rgba($color-accent, .16)
+
+.project-setup-card__missing
+  padding: 8px 9px
+  border-radius: $radius-sm
+  color: $color-warning
+  background: $color-warning-muted
+  font-size: 12px
+
+  ul
+    margin: 4px 0 0
+    padding-left: 18px
+
+  li + li
+    margin-top: 2px
+
 .chat-error
   margin: 0
   padding: 10px 11px

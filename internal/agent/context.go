@@ -32,6 +32,7 @@ type systemPromptTemplateData struct {
 	ScenePrompt         string
 	APIOverview         string
 	ProjectUUID         string
+	SetupStatus         string
 }
 
 func (service *Service) buildContext(ctx context.Context, store *project.Store, tc toolContext, toolSets ...[]llm.ToolDefinition) ([]llm.ChatMessage, int, int64, error) {
@@ -47,6 +48,7 @@ func (service *Service) buildContext(ctx context.Context, store *project.Store, 
 		}
 	}
 	prompts.ToolMode = normalizedToolMode(prompts.ToolMode)
+	prompts.SetupStatus = store.SetupStatus()
 	var tools []llm.ToolDefinition
 	if len(toolSets) > 0 {
 		tools = toolSets[0]
@@ -340,6 +342,7 @@ type contextPromptSet struct {
 	Summary             string `json:"summary"`
 	LanguageInstruction string `json:"language_instruction"`
 	ProjectUUID         string `json:"project_uuid,omitempty"`
+	SetupStatus         string `json:"setup_status,omitempty"`
 	ToolProtocol        string `json:"tool_protocol,omitempty"`
 	ToolMode            string `json:"tool_mode,omitempty"`
 }
@@ -382,7 +385,16 @@ func loadContextPromptsForMode(ctx context.Context, store *project.Store, thread
 
 func loadContextPromptsForModeWithRoutes(ctx context.Context, store *project.Store, thread threadRecord, mode string, routes []agentAPIRoute) (contextPromptSet, error) {
 	service := story.NewService(store)
-	load := func(key string) (string, error) { return service.EffectivePrompt(ctx, promptcatalog.GroupAgent, key) }
+	load := func(key string) (string, error) {
+		if store.SetupStatus() == project.SetupStatusDraft {
+			definition, ok := promptcatalog.Lookup(promptcatalog.GroupAgent, key, project.DefaultGenerationLanguage)
+			if !ok {
+				return "", domainError(CodeStateConflict, "Agent Prompt 缺失", "内置 Agent Prompt 不完整。", nil)
+			}
+			return definition.DefaultValue, nil
+		}
+		return service.EffectivePrompt(ctx, promptcatalog.GroupAgent, key)
+	}
 	mode = normalizedToolMode(mode)
 	if mode == "" {
 		return contextPromptSet{}, domainError(CodeToolNotAllowed, "Tool Protocol 无效", "新 Run 必须显式使用 project_api_tools；空 mode 不会回退到 legacy typed tools。", nil)
@@ -402,7 +414,7 @@ func loadContextPromptsForModeWithRoutes(ctx context.Context, store *project.Sto
 	if err != nil {
 		return contextPromptSet{}, err
 	}
-	return contextPromptSet{Assistant: assistant, APIOverview: apiOverview, Summary: summary, ProjectUUID: store.ProjectUUID(), ToolProtocol: ToolProtocolProjectAPI, ToolMode: mode}, nil
+	return contextPromptSet{Assistant: assistant, APIOverview: apiOverview, Summary: summary, ProjectUUID: store.ProjectUUID(), SetupStatus: store.SetupStatus(), ToolProtocol: ToolProtocolProjectAPI, ToolMode: mode}, nil
 }
 
 func promptTemplateValue(value string) string {
@@ -480,6 +492,7 @@ func renderSystemPrompt(languageInstruction string, prompts contextPromptSet) st
 		ScenePrompt:         strings.TrimSpace(prompts.Scene),
 		APIOverview:         strings.TrimSpace(prompts.APIOverview),
 		ProjectUUID:         promptTemplateValue(prompts.ProjectUUID),
+		SetupStatus:         promptTemplateValue(prompts.SetupStatus),
 	})
 	if err != nil {
 		panic(fmt.Sprintf("render embedded Agent system prompt: %v", err))

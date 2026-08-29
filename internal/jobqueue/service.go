@@ -26,6 +26,9 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	if err != nil {
 		return Task{}, err
 	}
+	if err := runtime.store.RequireReady(); err != nil {
+		return Task{}, err
+	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
 	if err != nil {
 		return Task{}, taskError(CodeTaskPersistenceFailed, "无法读取项目生成语言", "任务尚未创建。", err)
