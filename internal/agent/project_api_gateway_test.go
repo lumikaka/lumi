@@ -41,7 +41,7 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/model-settings")]; route.Handler != routeProjectAPIDispatch || !route.Passthrough || route.Risk != RiskDangerous || !route.RequiresConfirmation {
 		t.Fatalf("discovered write route did not fail closed: %+v", route)
 	}
-	if route := byKey[agentAPIRouteKey(http.MethodGet, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupGet || route.Passthrough || !route.ReadOnly || !route.StrictSchema || route.DocPath != projectSetupDocPath {
+	if route := byKey[agentAPIRouteKey(http.MethodGet, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupGet || route.Passthrough || !route.ReadOnly || !route.StrictSchema || route.DocPath != projectSetupDocPath || !strings.Contains(route.RecommendedResponseFilter, "draft_values") || strings.Contains(route.RecommendedResponseFilter, "candidate") {
 		t.Fatalf("reviewed setup GET route invalid: %+v", route)
 	}
 	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupUpdate || route.Passthrough || route.Risk != RiskWrite || !route.ExpectedRevision || !route.StrictSchema {

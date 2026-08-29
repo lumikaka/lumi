@@ -26,7 +26,7 @@ const (
 	SetupSourceUserConfirmed = "user_confirmed"
 )
 
-var setupCandidateFields = []string{
+var setupDraftFields = []string{
 	"project_name", "generation_language", "overall_style", "format", "aspect_ratio",
 	"large_image_minimal_text", "interaction_mode", "comic_layout",
 }
@@ -67,7 +67,7 @@ type setupDraftRecord struct {
 
 func (setupDraftRecord) TableName() string { return "project_setup_drafts" }
 
-type SetupCandidate struct {
+type SetupDraftValues struct {
 	ProjectName        string              `json:"project_name,omitempty"`
 	GenerationLanguage string              `json:"generation_language,omitempty"`
 	OverallStyle       string              `json:"overall_style,omitempty"`
@@ -81,7 +81,7 @@ type SetupState struct {
 	Status             string              `json:"status"`
 	Revision           int64               `json:"revision"`
 	OriginalInput      string              `json:"original_input,omitempty"`
-	Candidate          SetupCandidate      `json:"candidate"`
+	DraftValues        SetupDraftValues    `json:"draft_values"`
 	FieldSources       map[string]string   `json:"field_sources"`
 	MissingInformation []string            `json:"missing_information"`
 	FinalPictureBook   *PictureBookProfile `json:"final_picture_book,omitempty"`
@@ -92,7 +92,7 @@ type SetupState struct {
 	FinalizedAt        *time.Time          `json:"finalized_at,omitempty"`
 }
 
-type SetupPatchInput struct {
+type SetupDraftPatchInput struct {
 	ExpectedRevision   int64
 	ProjectName        *string
 	GenerationLanguage *string
@@ -149,8 +149,8 @@ func setupState(projectRecord Project, record *setupDraftRecord, profile *Pictur
 		FinalPictureBook: profile,
 	}
 	if record == nil {
-		state.Candidate = SetupCandidate{ProjectName: projectRecord.Name, GenerationLanguage: projectRecord.GenerationLanguage, PictureBook: profile}
-		for _, field := range setupCandidateFields {
+		state.DraftValues = SetupDraftValues{ProjectName: projectRecord.Name, GenerationLanguage: projectRecord.GenerationLanguage, PictureBook: profile}
+		for _, field := range setupDraftFields {
 			state.FieldSources[field] = SetupSourceUserConfirmed
 		}
 		return state
@@ -160,15 +160,15 @@ func setupState(projectRecord Project, record *setupDraftRecord, profile *Pictur
 	state.MissingInformation = decodeMissingFields(record.MissingFieldsJSON)
 	state.ErrorCode, state.ErrorMessage = record.ErrorCode, record.ErrorMessage
 	state.CreatedAt, state.UpdatedAt, state.FinalizedAt = record.CreatedAt, record.UpdatedAt, record.FinalizedAt
-	state.Candidate.PictureBook = setupRecordPictureBook(*record)
+	state.DraftValues.PictureBook = setupRecordPictureBook(*record)
 	if record.ProjectName != nil {
-		state.Candidate.ProjectName = *record.ProjectName
+		state.DraftValues.ProjectName = *record.ProjectName
 	}
 	if record.GenerationLanguage != nil {
-		state.Candidate.GenerationLanguage = *record.GenerationLanguage
+		state.DraftValues.GenerationLanguage = *record.GenerationLanguage
 	}
 	if record.OverallStyle != nil {
-		state.Candidate.OverallStyle = *record.OverallStyle
+		state.DraftValues.OverallStyle = *record.OverallStyle
 	}
 	return state
 }
@@ -215,7 +215,7 @@ func setupMissing(record setupDraftRecord) []string {
 	return missing
 }
 
-func (store *Store) UpdateProjectSetup(ctx context.Context, input SetupPatchInput) (SetupState, error) {
+func (store *Store) UpdateProjectSetupDraft(ctx context.Context, input SetupDraftPatchInput) (SetupState, error) {
 	if input.ExpectedRevision < 1 {
 		return SetupState{}, projectError(CodeProjectSetupConflict, "项目设置版本冲突", "expected_revision 必须是刚读取到的正整数 revision。", nil)
 	}
@@ -301,7 +301,7 @@ func (store *Store) UpdateProjectSetup(ctx context.Context, input SetupPatchInpu
 			changed = true
 		}
 		if !changed {
-			return projectError(CodeProjectSetupInvalid, "项目设置没有变化", "至少提供一个候选字段。", nil)
+			return projectError(CodeProjectSetupInvalid, "项目设置没有变化", "至少提供一个初始化草稿字段。", nil)
 		}
 		missing := setupMissing(record)
 		sourcesJSON, _ := json.Marshal(sources)
@@ -360,7 +360,7 @@ func (store *Store) FinalizeProjectSetup(ctx context.Context, expectedRevision i
 		}
 		profile := setupRecordPictureBook(record)
 		if profile == nil {
-			return projectError(CodeProjectSetupInvalid, "绘本规格无效", "候选绘本规格不完整。", nil)
+			return projectError(CodeProjectSetupInvalid, "绘本规格无效", "初始化草稿中的绘本规格不完整。", nil)
 		}
 		input := &PictureBookInput{Format: profile.Format, LargeImageMinimalText: profile.LargeImageMinimalText, InteractionMode: profile.InteractionMode, ComicLayout: profile.ComicLayout}
 		if profile.Format != PictureBookVertical && profile.Format != PictureBookInteractive {
@@ -374,7 +374,7 @@ func (store *Store) FinalizeProjectSetup(ctx context.Context, expectedRevision i
 			return err
 		}
 		if normalized.AspectRatio != profile.AspectRatio {
-			return projectError(CodeProjectSetupInvalid, "绘本比例不是规范值", "请重新提交候选绘本规格。", nil)
+			return projectError(CodeProjectSetupInvalid, "绘本比例不是规范值", "请重新提交初始化草稿中的绘本规格。", nil)
 		}
 		if err := tx.Create(&pictureBookProfileRecord{
 			ProjectID: projectRecord.ID, Format: normalized.Format, AspectRatioMode: normalized.AspectRatio.Mode,

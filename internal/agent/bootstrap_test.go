@@ -138,7 +138,7 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 			if decodeErr := json.Unmarshal(encoded, &request); decodeErr != nil {
 				return ProjectAPIDispatchResponse{}, decodeErr
 			}
-			state, err = harness.store.UpdateProjectSetup(ctx, project.SetupPatchInput{
+			state, err = harness.store.UpdateProjectSetupDraft(ctx, project.SetupDraftPatchInput{
 				ExpectedRevision: request.ExpectedRevision, ProjectName: request.ProjectName,
 				GenerationLanguage: request.GenerationLanguage, OverallStyle: request.OverallStyle,
 				PictureBook: request.PictureBook,
@@ -163,7 +163,7 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 }
 
 func TestBootstrapConversationIsExactlyOnceAndRunsInDraftContext(t *testing.T) {
-	harness := newAgentHarness(t, finalResponse("我会先整理候选设置。"))
+	harness := newAgentHarness(t, finalResponse("我会先整理初始化草稿。"))
 	ctx := context.Background()
 	creationSessionUUID := mustAgentUUID(t)
 	originalInput := "  我要一本水彩风格、讲小狐狸给月亮送信的儿童绘本。\n"
@@ -525,7 +525,7 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 			"expected_revision": float64(1), "project_name": "月光邮差", "generation_language": "zh-Hans",
 			"overall_style": "温暖透明水彩，柔和月光", "picture_book": map[string]any{"format": "vertical_strip"},
 		},
-		"response_filter": ".data | {uuid,setup_status,status,revision,candidate,field_sources,missing_information}",
+		"response_filter": ".data | {uuid,setup_status,status,revision,draft_values,field_sources,missing_information}",
 	}
 	finalization := map[string]any{
 		"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup-finalizations",

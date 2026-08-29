@@ -61,7 +61,7 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 		{Path: premiseDocPath, Description: "Premise、来源与 Setting Image。"},
 		{Path: projectAssetDocPath, Description: "项目资产的读取、元数据与生命周期。"},
 		{Path: projectDocPath, Description: "项目元数据与生成语言。"},
-		{Path: projectSetupDocPath, Description: "对话式项目初始化候选、字段来源与定稿。"},
+		{Path: projectSetupDocPath, Description: "对话式项目初始化草稿、字段来源与定稿。"},
 		{Path: storyDocPath, Description: "Story Profile、版本、导入与投影。"},
 		{Path: storyboardDocPath, Description: "Storyboard variant、全量更新与选择。"},
 		{Path: taskDocPath, Description: "Story 与 Production 任务的状态、事件、取消和重试。"},
@@ -72,7 +72,7 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 func agentGuideDefinitions() []agentGuideDefinition {
 	return []agentGuideDefinition{
 		{
-			Description:   "从首页一句话初始化 draft 项目，补齐候选与 YOLO Brief，并在用户确认后定稿和启动受控 YOLO。",
+			Description:   "从首页一句话初始化 draft 项目，补齐 Setup Draft 与 YOLO Brief，并在用户确认后定稿和启动受控 YOLO。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "当前项目 setup_status 为 draft；保留用户原始输入并使用最新设置 revision。",
 			Path:          agentDocBasePath + "/guides/初始化新项目.md",

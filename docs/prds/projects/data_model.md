@@ -98,7 +98,7 @@ projects ──< actors
 
 ## 表：project_setup_drafts
 
-项目库中的初始化候选事实源；每个对话式草稿项目唯一一行。
+项目库中的 Setup Draft 事实源；每个对话式草稿项目唯一一行。
 
 - `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键和 JOIN
 - `uuid` — TEXT NOT NULL UNIQUE，公开 Setup UUIDv7
@@ -106,16 +106,16 @@ projects ──< actors
 - `status` — `draft|pending_confirmation|finalized|failed`
 - `revision` — 从 1 开始的乐观锁版本
 - `original_input` — TEXT NOT NULL，逐字保存的首页原始需求
-- `project_name` / `generation_language` / `overall_style` — 可空候选资料
-- `format` / `aspect_ratio_mode` / `aspect_width` / `aspect_height` — 可空候选绘本形式与规范比例
-- `large_image_minimal_text` / `interaction_mode` / `comic_layout` — 由绘本形式约束的可空专属候选
+- `project_name` / `generation_language` / `overall_style` — 可空草稿资料
+- `format` / `aspect_ratio_mode` / `aspect_width` / `aspect_height` — 可空草稿绘本形式与规范比例
+- `large_image_minimal_text` / `interaction_mode` / `comic_layout` — 由绘本形式约束的可空草稿专属设置
 - `field_sources_json` / `missing_fields_json` — 合法 JSON object/array，记录 `system_default|agent_proposed|user_confirmed` 和缺失项
 - `error_code` / `error_message` / `finalized_revision` — 失败和幂等定稿信息
-- `finalized_at` / `failed_at` / 生命周期时间 — 候选生命周期
+- `finalized_at` / `failed_at` / 生命周期时间 — Setup Draft 生命周期
 
 **索引：**
 
-- `(project_id, status)` — 按项目读取候选状态
+- `(project_id, status)` — 按项目读取 Setup Draft 状态
 
 **主要相关 Feature：**
 

@@ -32,7 +32,7 @@ func (handler *ProjectSetupHandler) Show(c echo.Context) error {
 	return Success(c, http.StatusOK, state)
 }
 
-type updateProjectSetupRequest struct {
+type updateProjectSetupDraftRequest struct {
 	ExpectedRevision   int64                     `json:"expected_revision"`
 	ProjectName        *string                   `json:"project_name"`
 	GenerationLanguage *string                   `json:"generation_language"`
@@ -41,14 +41,14 @@ type updateProjectSetupRequest struct {
 }
 
 func (handler *ProjectSetupHandler) Update(c echo.Context) error {
-	var request updateProjectSetupRequest
+	var request updateProjectSetupDraftRequest
 	if err := decodeUniqueJSON(c, &request); err != nil {
 		return err
 	}
 	var state project.SetupState
 	err := handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
 		var err error
-		state, err = store.UpdateProjectSetup(c.Request().Context(), project.SetupPatchInput{
+		state, err = store.UpdateProjectSetupDraft(c.Request().Context(), project.SetupDraftPatchInput{
 			ExpectedRevision: request.ExpectedRevision, ProjectName: request.ProjectName,
 			GenerationLanguage: request.GenerationLanguage, OverallStyle: request.OverallStyle,
 			PictureBook: request.PictureBook,

@@ -297,6 +297,6 @@ export const projects = defineMessages({
   'projects.conversation.reference.continue': ['继续上传并开始对话', 'Continue upload and start chatting'],
   'projects.draft.eyebrow': ['项目初始化', 'PROJECT SETUP'],
   'projects.draft.title': ['在 ChatArea 中完成项目设置', 'Complete setup in ChatArea'],
-  'projects.draft.body': ['你的第一条消息已经保存在普通项目会话中。Agent 会先提出少量候选设置，只在关键歧义处提问，并在你明确确认前保持项目为草稿。', 'Your first message is saved in a normal project thread. The agent proposes a small set of settings, asks only about material ambiguity, and keeps the project as a draft until you explicitly confirm.'],
+  'projects.draft.body': ['你的第一条消息已经保存在普通项目会话中。Agent 会先整理初始化草稿，只在关键歧义处提问，并在你明确确认前保持项目为草稿。', 'Your first message is saved in a normal project thread. The agent prepares a setup draft, asks only about material ambiguity, and keeps the project as a draft until you explicitly confirm.'],
   'projects.draft.directory_hint': ['项目显示名称与本地草稿文件夹名可以不同；本功能不会移动或重命名已打开目录。', 'The project display name may differ from its local draft folder; this flow never moves or renames the open folder.'],
 })

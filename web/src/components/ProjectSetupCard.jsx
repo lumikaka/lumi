@@ -26,8 +26,8 @@ function valueOrMissing(value, t) {
   return value === '' || value === null || value === undefined ? t('chat.setup.value.missing') : value
 }
 
-function pictureBookFields(candidate, t) {
-  const profile = candidate?.picture_book
+function pictureBookFields(draftValues, t) {
+  const profile = draftValues?.picture_book
   if (!profile) return [{ key: 'format', sourceKey: 'format', label: t('chat.setup.field.format'), value: '' }]
   const fields = [
     { key: 'format', sourceKey: 'format', label: t('chat.setup.field.format'), value: t(`projects.picture_book.format.${profile.format}`) },
@@ -51,12 +51,12 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
   if (setupQuery.isError) return <LocalizedErrorMessage error={setupQuery.error} className="chat-error project-setup-card__error" />
   if (!setup || (!setup.uuid && setup.setup_status !== 'draft')) return null
 
-  const candidate = setup.candidate || {}
+  const draftValues = setup.draft_values || {}
   const fields = [
-    { key: 'project_name', sourceKey: 'project_name', label: t('chat.setup.field.project_name'), value: candidate.project_name },
-    { key: 'generation_language', sourceKey: 'generation_language', label: t('chat.setup.field.generation_language'), value: candidate.generation_language ? t(`common.language.${candidate.generation_language === 'zh-Hans' ? 'zh_hans' : 'en'}`) : '' },
-    { key: 'overall_style', sourceKey: 'overall_style', label: t('chat.setup.field.overall_style'), value: candidate.overall_style },
-    ...pictureBookFields(candidate, t),
+    { key: 'project_name', sourceKey: 'project_name', label: t('chat.setup.field.project_name'), value: draftValues.project_name },
+    { key: 'generation_language', sourceKey: 'generation_language', label: t('chat.setup.field.generation_language'), value: draftValues.generation_language ? t(`common.language.${draftValues.generation_language === 'zh-Hans' ? 'zh_hans' : 'en'}`) : '' },
+    { key: 'overall_style', sourceKey: 'overall_style', label: t('chat.setup.field.overall_style'), value: draftValues.overall_style },
+    ...pictureBookFields(draftValues, t),
   ]
   const statusKey = setup.setup_status === 'ready' ? 'finalized' : setup.status
   return (

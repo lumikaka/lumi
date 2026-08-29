@@ -58,6 +58,9 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	if initial.UUID != setupUUID || initial.Revision != 1 || initial.OriginalInput != originalInput || initial.FieldSources["generation_language"] != SetupSourceSystemDefault {
 		t.Fatalf("initial setup=%+v", initial)
 	}
+	if initial.DraftValues.GenerationLanguage != GenerationLanguageSimplifiedChinese {
+		t.Fatalf("initial draft values=%+v", initial.DraftValues)
+	}
 	if _, err := store.FinalizeProjectSetup(ctx, initial.Revision); errorCode(err) != CodeProjectSetupInvalid {
 		t.Fatalf("incomplete finalization error=%v", err)
 	}
@@ -72,7 +75,7 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	store = openStoreForTest(t, manager, projectUUID)
 	projectName, overallStyle := "月亮信使", "透明水彩、柔和月光、纸张颗粒"
 	profileInput := &PictureBookInput{Format: PictureBookClassic}
-	updated, err := store.UpdateProjectSetup(ctx, SetupPatchInput{
+	updated, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{
 		ExpectedRevision: initial.Revision, ProjectName: &projectName,
 		OverallStyle: &overallStyle, PictureBook: profileInput,
 	})
@@ -82,10 +85,13 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	if updated.Revision != 2 || updated.Status != SetupDraftStatusPendingConfirmation || len(updated.MissingInformation) != 0 {
 		t.Fatalf("updated setup=%+v", updated)
 	}
+	if updated.DraftValues.ProjectName != projectName || updated.DraftValues.OverallStyle != overallStyle || updated.DraftValues.PictureBook == nil {
+		t.Fatalf("updated draft values=%+v", updated.DraftValues)
+	}
 	if updated.FieldSources["project_name"] != SetupSourceAgentProposed || updated.FieldSources["aspect_ratio"] != SetupSourceSystemDefault {
 		t.Fatalf("sources=%+v", updated.FieldSources)
 	}
-	if _, err := store.UpdateProjectSetup(ctx, SetupPatchInput{ExpectedRevision: initial.Revision, ProjectName: &projectName}); errorCode(err) != CodeProjectSetupConflict {
+	if _, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: initial.Revision, ProjectName: &projectName}); errorCode(err) != CodeProjectSetupConflict {
 		t.Fatalf("stale update error=%v", err)
 	}
 

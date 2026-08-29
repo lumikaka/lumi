@@ -162,6 +162,16 @@ func TestProjectSetupLifecycleMigrationKeepsExistingProjectsReady(t *testing.T) 
 	if setupStatus != "ready" || profileCount != 1 {
 		t.Fatalf("migrated setup_status=%q profile_count=%d", setupStatus, profileCount)
 	}
+	for _, column := range []string{"project_name", "generation_language", "overall_style", "format", "field_sources_json", "missing_fields_json"} {
+		if !tableHasColumn(t, db, "project_setup_drafts", column) {
+			t.Fatalf("project_setup_drafts missing structured draft column %q", column)
+		}
+	}
+	for _, legacyColumn := range []string{"candidate", "candidate_json", "candidate_values"} {
+		if tableHasColumn(t, db, "project_setup_drafts", legacyColumn) {
+			t.Fatalf("project_setup_drafts retained candidate column %q", legacyColumn)
+		}
+	}
 	if _, err := db.Exec(`DELETE FROM project_picture_book_profiles WHERE project_id=1`); err == nil {
 		t.Fatal("setup lifecycle migration left an existing formal profile deletable")
 	}

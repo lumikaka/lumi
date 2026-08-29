@@ -453,6 +453,8 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 	for _, required := range []string{
 		workflowDocPath,
 		bootstrapYoloConfirmationQuestionID,
+		"Setup Draft",
+		"不得创建、选择或切换 Candidate",
 		"1～3 个相互关联的问题",
 		"vol01.ch01",
 		"只为第一个 Section 生成漫画成品图",
@@ -462,6 +464,18 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 		if !strings.Contains(guide, required) {
 			t.Fatalf("bootstrap Guide missing %q: %s", required, guide)
 		}
+	}
+	setupDoc, err := renderAgentDoc(projectSetupDocPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"Setup Draft", "`draft_values`", "`expected_revision`"} {
+		if !strings.Contains(setupDoc, required) {
+			t.Fatalf("Project Setup Contract missing %q: %s", required, setupDoc)
+		}
+	}
+	if strings.Contains(setupDoc, "`candidate`") || strings.Contains(setupDoc, "候选项目设置") {
+		t.Fatalf("Project Setup Contract retained candidate modeling: %s", setupDoc)
 	}
 	workflowDoc, err := renderAgentDoc(workflowDocPath)
 	if err != nil {

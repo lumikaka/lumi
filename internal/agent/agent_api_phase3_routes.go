@@ -79,7 +79,7 @@ func apiEnum(description string, values ...string) map[string]any {
 	return map[string]any{"type": "string", "description": description, "enum": values}
 }
 
-func projectSetupUpdateBodySchema() map[string]any {
+func projectSetupDraftUpdateBodySchema() map[string]any {
 	setupPictureBook := apiObject(map[string]any{
 		"format":                   apiEnum("绘本形式。", "classic_picture_book", "wordless_picture_book", "interactive_picture_book", "comic_story", "vertical_strip"),
 		"aspect_ratio":             apiObject(map[string]any{"mode": apiEnum("画面比例模式。", "landscape", "square", "portrait", "custom"), "width": apiBoundedInteger("custom 模式的宽。", 1, 100), "height": apiBoundedInteger("custom 模式的高。", 1, 100)}, "mode"),
@@ -89,9 +89,9 @@ func projectSetupUpdateBodySchema() map[string]any {
 	}, "format")
 	return apiObject(map[string]any{
 		"expected_revision":   apiBoundedInteger("刚读取到的最新设置 revision。", 1, 1<<31-1),
-		"project_name":        apiLimitedString("候选项目名称。", 120),
+		"project_name":        apiLimitedString("初始化草稿中的项目名称。", 120),
 		"generation_language": apiEnum("生成语言。", "zh-Hans", "en"),
-		"overall_style":       apiLimitedString("候选整体画风。", 12000),
+		"overall_style":       apiLimitedString("初始化草稿中的整体画风。", 12000),
 		"picture_book":        setupPictureBook,
 	}, "expected_revision")
 }
@@ -106,7 +106,7 @@ func phase3AgentAPIProjectors() []agentAPIProjector {
 	}
 	return []agentAPIProjector{
 		{Key: "project", Fields: fields("uuid", "name", "description", "generation_language", "revision", "chapter_count", "trash_count", "updated_at"), RecommendedFields: []string{"uuid", "name", "description", "generation_language", "revision", "chapter_count", "trash_count", "updated_at"}},
-		{Key: "project_setup", Fields: fields("uuid", "project_uuid", "setup_status", "status", "revision", "original_input", "candidate", "field_sources", "missing_information", "final_picture_book", "error_code", "error_message", "created_at", "updated_at", "finalized_at"), RecommendedFields: []string{"uuid", "project_uuid", "setup_status", "status", "revision", "candidate", "field_sources", "missing_information", "final_picture_book", "updated_at"}},
+		{Key: "project_setup", Fields: fields("uuid", "project_uuid", "setup_status", "status", "revision", "original_input", "draft_values", "field_sources", "missing_information", "final_picture_book", "error_code", "error_message", "created_at", "updated_at", "finalized_at"), RecommendedFields: []string{"uuid", "project_uuid", "setup_status", "status", "revision", "draft_values", "field_sources", "missing_information", "final_picture_book", "updated_at"}},
 		{Key: "workflow", Fields: fields("uuid", "thread_uuid", "presentation_mode", "kind", "title", "status", "current_step_key", "steps"), RecommendedFields: []string{"uuid", "thread_uuid", "presentation_mode", "kind", "title", "status", "current_step_key", "steps"}},
 		{Key: "chapter_story", Fields: fields("uuid", "version_no", "source_type", "source_uuid", "source_item_uuid", "content", "content_format", "char_count", "created_at"), RecommendedFields: []string{"uuid", "version_no", "source_type", "source_uuid", "source_item_uuid", "content_format", "char_count", "created_at"}},
 		{Key: "chapter_story_list", List: true, ItemProjector: "chapter_story"},

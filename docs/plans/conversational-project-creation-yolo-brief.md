@@ -25,10 +25,10 @@ plan_state: finished
 ## product_flow
 
 1. 首页一句话创建 draft 项目并进入 bootstrap conversation，现有 Saga 与导航保持不变。
-2. Agent 读取初始化 Guide、Project Setup Contract 和当前 Setup，保留 `original_input` 原文，提取项目候选及 YOLO Brief 候选。
+2. Agent 读取初始化 Guide、Project Setup Contract 和当前 Setup，保留 `original_input` 原文，整理唯一的 Setup Draft 及 YOLO Brief 草稿。
 3. 信息足够时不提问；信息不足时一次提出 1～3 个相互关联的问题。问题只覆盖会显著影响首章的主角/世界、核心目标或冲突、目标年龄/基调/结局方向，以及尚未确定的绘本结构字段。
 4. 原则上只问一轮；只有用户答案发生冲突或仍无法形成合法绘本规格时才追加一轮。可以合理补全的剧情细节作为 `agent_proposed` 展示，不把流程变成长问卷。
-5. Agent PATCH 完整候选并展示最终摘要。确认问题使用稳定 `question_id=confirm_setup_and_start_yolo`，安全推荐项为“继续修改”，确认项明确写为“定稿并启动 YOLO”，并继续绑定 Setup finalization 的 route、revision 与 request fingerprint。
+5. Agent PATCH 完整的 Setup Draft 并展示最终摘要。确认问题使用稳定 `question_id=confirm_setup_and_start_yolo`，安全推荐项为“继续修改”，确认项明确写为“定稿并启动 YOLO”，并继续绑定 Setup finalization 的 route、revision 与 request fingerprint。
 6. 用户确认后，运行时自动完成 Setup finalization。Agent 重新 GET 验证 `setup_status=ready`，将原始输入、用户补充和明确标注的 Agent 建议整理为不超过现有 YOLO 上限的 `story_prompt`。
 7. Agent 通过 reviewed `POST /api/v1/projects/{project_uuid}/workflows` 启动 YOLO；title 使用定稿后的项目名，Provider/模型继续由现有项目模型解析，幂等键由服务端注入。
 8. 创建成功后当前 Turn 返回 dedicated Workflow 引用并停止。YOLO 后端固定运行 `project_initialization → story → story_profile → premise → comic_sections → first_section_image`；不得由聊天 Agent逐步模拟这些步骤。
@@ -40,7 +40,7 @@ plan_state: finished
 
 - `original_input` 始终作为用户原始需求保留；Workflow `story_prompt` 可以把原文、后续回答和已展示的 Agent 建议整理成结构化 Brief，但不得回写或覆盖原文。
 - 优先从原文确定主角、背景、目标、冲突、情绪基调、目标读者和结局方向。原文已经能形成连贯首章时不要追问。
-- “帮我做一本儿童绘本”一类缺少故事核心的输入可以询问；“一只怕水的小狐狸为了救朋友渡河，温暖水彩”一类输入直接提出候选并进入摘要。
+- “帮我做一本儿童绘本”一类缺少故事核心的输入可以询问；“一只怕水的小狐狸为了救朋友渡河，温暖水彩”一类输入可直接形成 Setup Draft 并进入摘要。
 - 不询问 YOLO 能安全决定的镜头细节、Section 标题、具体分镜数量或模型参数；不要求用户填写完整创作问卷。
 - Setup 中的语言、画风、绘本形式、比例和形式专属字段仍以 Project Setup 为事实；Brief 不创建第二份结构配置。
 
