@@ -107,7 +107,7 @@ Thread → Turn → Item
 
 现有 `chat_runs` 可以继续作为内部执行和恢复实体，不要为了 Trajectory 重构或删除它；Trajectory UI 不把 Run 渲染成公共层级。
 
-现有 `step_count/max_steps` 也不要求在本任务中迁移，但 Trajectory UI 不使用 “Step” 指代模型请求，应显示 `Request #N`。
+旧 `step_count/max_steps` 仅作物理兼容，运行时使用 `model_request_count` 生成 ordinal；Trajectory UI 不使用 “Step” 指代模型请求，应显示 `Request #N`。
 
 ## 4. 独立 URL 与 ChatArea 入口
 

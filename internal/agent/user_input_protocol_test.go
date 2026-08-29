@@ -193,6 +193,7 @@ func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
 	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {
 		t.Run(protocol, func(t *testing.T) {
 			harness := newAgentHarness(t)
+			harness.service.turnBudget.MaxModelRequests = 3
 			ctx := context.Background()
 			asset, thread := createAssetReferenceMigrationFixture(t, harness)
 			turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 2})

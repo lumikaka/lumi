@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -1026,6 +1027,7 @@ func TestToolValidationRepairLimitFailsAfterTwoFeedbacks(t *testing.T) {
 		invalidUserInputOptionsResponse("invalid-input-3"),
 		finalResponse("should not be reached"),
 	)
+	harness.service.turnBudget.MaxNoProgressRounds = 10
 	thread := harness.createThread(t)
 	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一个角色"})
 	if err != nil {
@@ -1430,9 +1432,17 @@ func TestContextCompactionKeepsOriginalAuditItems(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for index := 0; index < 30; index++ {
-			content := strings.Repeat(string(rune('a'+index%20)), 20_000)
-			if _, err := appendItemTx(context.Background(), tx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "assistant_message", "assistant", content, "text", "completed", "", "", "", map[string]any{}, harness.service.now().UTC()); err != nil {
+		for index := 0; index < 20; index++ {
+			requestUUID, _ := newUUIDv7()
+			callUUID, _ := newUUIDv7()
+			providerCallID := fmt.Sprintf("context-call-%d", index)
+			metadata := map[string]any{"request_uuid": requestUUID, "request_ordinal": index + 1, "provider_call_id": providerCallID}
+			arguments, _ := json.Marshal(map[string]any{"payload": strings.Repeat(string(rune('a'+index%20)), 15_000)})
+			if _, err := appendItemTx(context.Background(), tx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", string(arguments), "json", "completed", callUUID, "context_test", thread.UUID, metadata, harness.service.now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+			result, _ := json.Marshal(map[string]any{"success": true, "data": map[string]any{"payload": strings.Repeat(string(rune('A'+index%20)), 15_000)}})
+			if _, err := appendItemTx(context.Background(), tx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "tool_result", "tool", string(result), "json", "completed", callUUID, "context_test", thread.UUID, metadata, harness.service.now().UTC()); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -1443,14 +1453,107 @@ func TestContextCompactionKeepsOriginalAuditItems(t *testing.T) {
 			t.Fatal(err)
 		}
 		messages, contextBytes, _, err := harness.service.buildContext(context.Background(), store, tc)
-		if err != nil || contextBytes > MaxContextBytes || len(messages) != 22 || !strings.Contains(messages[1].Content, "既有对话派生的摘要") {
+		if err != nil || contextBytes > ContextCompactionTargetBytes || len(messages) < 5 || !strings.Contains(messages[1].Content, "既有对话派生的摘要") || !messagesContain(messages, "保留这条原始消息") {
 			t.Fatalf("compacted context messages=%d bytes=%d error=%v", len(messages), contextBytes, err)
 		}
 		var itemCount, summaryCount int64
 		_ = store.DB().Table("chat_items").Where("thread_id=?", tc.Thread.ID).Count(&itemCount).Error
 		_ = store.DB().Table("agent_context_summaries").Where("thread_id=?", tc.Thread.ID).Count(&summaryCount).Error
-		if itemCount != 31 || summaryCount != 1 {
+		if itemCount != 41 || summaryCount != 1 {
 			t.Fatalf("audit retention items=%d summaries=%d", itemCount, summaryCount)
+		}
+
+		secondTx, err := sqlDB.BeginTx(context.Background(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		threadRow, err = lockThreadSQL(context.Background(), secondTx, tc.Thread.ProjectID, thread.UUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lastProviderCallID := ""
+		for index := 0; index < 14; index++ {
+			requestUUID, _ := newUUIDv7()
+			callUUID, _ := newUUIDv7()
+			lastProviderCallID = fmt.Sprintf("context-second-call-%d", index)
+			metadata := map[string]any{"request_uuid": requestUUID, "request_ordinal": 21 + index, "provider_call_id": lastProviderCallID}
+			arguments, _ := json.Marshal(map[string]any{"payload": strings.Repeat("新", 5_000)})
+			if _, err := appendItemTx(context.Background(), secondTx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", string(arguments), "json", "completed", callUUID, "context_test", thread.UUID, metadata, harness.service.now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+			result, _ := json.Marshal(map[string]any{"success": true, "data": map[string]any{"payload": strings.Repeat("续", 5_000)}})
+			if _, err := appendItemTx(context.Background(), secondTx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "tool_result", "tool", string(result), "json", "completed", callUUID, "context_test", thread.UUID, metadata, harness.service.now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := secondTx.Exec(`UPDATE chat_threads SET next_item_sequence=? WHERE id=?`, threadRow.NextItemSequence, threadRow.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := secondTx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		messages, contextBytes, _, err = harness.service.buildContext(context.Background(), store, tc)
+		if err != nil || contextBytes > ContextCompactionTargetBytes || !messagesContain(messages, "保留这条原始消息") {
+			t.Fatalf("incremental compacted context messages=%d bytes=%d error=%v", len(messages), contextBytes, err)
+		}
+		hasLatestCall, hasLatestResult := false, false
+		for _, message := range messages {
+			for _, call := range message.ToolCalls {
+				hasLatestCall = hasLatestCall || call.ID == lastProviderCallID
+			}
+			hasLatestResult = hasLatestResult || message.ToolCallID == lastProviderCallID
+		}
+		var compactionEvents int64
+		_ = store.DB().Table("chat_items").Where("thread_id=?", tc.Thread.ID).Count(&itemCount).Error
+		_ = store.DB().Table("agent_context_summaries").Where("thread_id=?", tc.Thread.ID).Count(&summaryCount).Error
+		_ = store.DB().Table("chat_events").Where("run_id=? AND event_type='compaction_created'", tc.Run.ID).Count(&compactionEvents).Error
+		if itemCount != 69 || summaryCount != 2 || compactionEvents != 2 || !hasLatestCall || !hasLatestResult {
+			t.Fatalf("incremental audit items=%d summaries=%d events=%d latest call=%v result=%v", itemCount, summaryCount, compactionEvents, hasLatestCall, hasLatestResult)
+		}
+	})
+}
+
+func TestContextCompactionKeepsProtectedCurrentTurnUnderHardLimit(t *testing.T) {
+	harness := newAgentHarness(t)
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: strings.Repeat("首", 70_000)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	harness.withStore(t, func(store *project.Store) {
+		tc, err := harness.service.loadToolContext(context.Background(), store, thread.UUID, turn.UUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sqlDB, _ := store.DB().DB()
+		tx, err := sqlDB.BeginTx(context.Background(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		threadRow, err := lockThreadSQL(context.Background(), tx, tc.Thread.ProjectID, thread.UUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for index := 0; index < 2; index++ {
+			if _, err := appendItemTx(context.Background(), tx, &threadRow, &tc.Turn.ID, &tc.Run.ID, "user_message", "user", strings.Repeat("约", 70_000), "text", "completed", "", "", "", map[string]any{"steering": true}, harness.service.now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := tx.Exec(`UPDATE chat_threads SET next_item_sequence=? WHERE id=?`, threadRow.NextItemSequence, threadRow.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		_, requestBytes, _, err := harness.service.buildContext(context.Background(), store, tc, llmToolDefinitionsForContext(tc))
+		if err == nil || errorCode(err) != CodeContextTooLarge || requestBytes <= MaxContextBytes {
+			t.Fatalf("protected context bytes=%d error=%v", requestBytes, err)
+		}
+		var items, summaries int64
+		_ = store.DB().Table("chat_items").Where("thread_id=?", tc.Thread.ID).Count(&items).Error
+		_ = store.DB().Table("agent_context_summaries").Where("thread_id=?", tc.Thread.ID).Count(&summaries).Error
+		if items != 3 || summaries != 0 {
+			t.Fatalf("protected audit items=%d summaries=%d", items, summaries)
 		}
 	})
 }
@@ -1594,6 +1697,12 @@ func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
 	if err != nil || len(requests) != 1 || requests[0].Status != "pending" || requests[0].SchemaVersion != userInputSchemaCodexQuestions || len(requests[0].Questions) != 2 {
 		t.Fatalf("input requests = %+v, error=%v", requests, err)
 	}
+	if err := harness.store.DB().Table("chat_runs").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Updates(map[string]any{
+		"no_progress_streak":     2,
+		"last_cycle_fingerprint": strings.Repeat("c", 64),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
 	answered, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
 		"art_style":  {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
 		"page_count": {OtherText: "12 页"},
@@ -1653,6 +1762,14 @@ func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
 	if err != nil || len(items.Items) != 5 || items.Items[len(items.Items)-1].Content != "已采用你的选择" {
 		t.Fatalf("resumed items = %+v, error=%v", items.Items, err)
 	}
+	var noProgress int
+	var fingerprint string
+	if err := harness.store.DB().Raw(`SELECT no_progress_streak,last_cycle_fingerprint FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)`, turn.UUID).Row().Scan(&noProgress, &fingerprint); err != nil {
+		t.Fatal(err)
+	}
+	if noProgress != 0 || fingerprint != "" {
+		t.Fatalf("user answer did not reset no-progress state: streak=%d fingerprint=%q", noProgress, fingerprint)
+	}
 }
 
 func TestSteeringDuringModelCallRecomputesBeforeCompletion(t *testing.T) {
@@ -1666,6 +1783,9 @@ func TestSteeringDuringModelCallRecomputesBeforeCompletion(t *testing.T) {
 	harness.model.onCall = func(call int) {
 		if call != 1 {
 			return
+		}
+		if err := harness.store.DB().Table("chat_runs").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Updates(map[string]any{"no_progress_streak": 2, "last_cycle_fingerprint": strings.Repeat("a", 64)}).Error; err != nil {
+			t.Errorf("seed no-progress state: %v", err)
 		}
 		if _, err := harness.service.Steer(context.Background(), harness.project.UUID, thread.UUID, SteeringInput{InputText: "改成更温暖的结局"}); err != nil {
 			t.Errorf("steer during model call: %v", err)
@@ -1699,6 +1819,10 @@ func TestSteeringDuringModelCallRecomputesBeforeCompletion(t *testing.T) {
 	}
 	if page.Items[len(page.Items)-1].Content != "已按 Steering 调整" {
 		t.Fatalf("final item = %+v", page.Items[len(page.Items)-1])
+	}
+	var run runRecord
+	if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Take(&run).Error; err != nil || run.NoProgressStreak != 0 || run.LastCycleFingerprint != "" {
+		t.Fatalf("steering did not reset no-progress state: run=%+v err=%v", run, err)
 	}
 }
 

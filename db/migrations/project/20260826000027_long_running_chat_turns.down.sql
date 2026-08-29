@@ -1,0 +1,11 @@
+ALTER TABLE chat_runs DROP COLUMN finalization_attempted_at;
+ALTER TABLE chat_runs DROP COLUMN limit_reason;
+ALTER TABLE chat_runs DROP COLUMN last_cycle_fingerprint;
+ALTER TABLE chat_runs DROP COLUMN max_no_progress_rounds;
+ALTER TABLE chat_runs DROP COLUMN no_progress_streak;
+ALTER TABLE chat_runs DROP COLUMN max_token_units;
+ALTER TABLE chat_runs DROP COLUMN token_units;
+ALTER TABLE chat_runs DROP COLUMN max_active_duration_ms;
+ALTER TABLE chat_runs DROP COLUMN active_duration_ms;
+ALTER TABLE chat_runs DROP COLUMN max_model_requests;
+ALTER TABLE chat_runs DROP COLUMN model_request_count;

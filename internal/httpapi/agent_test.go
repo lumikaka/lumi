@@ -148,7 +148,7 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	if invalidScene.Code != http.StatusBadRequest {
 		t.Fatalf("legacy thread fields = %d %s", invalidScene.Code, invalidScene.Body.String())
 	}
-	turnResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads/"+threadUUID+"/turns", map[string]any{"input_text": "继续创作", "references": []map[string]any{{"resource_type": "comic_section", "resource_uuid": storyboardSection.UUID}}})
+	turnResponse := requestJSON(t, e, http.MethodPost, base+"/chat_threads/"+threadUUID+"/turns", map[string]any{"input_text": "继续创作", "max_steps": 999, "references": []map[string]any{{"resource_type": "comic_section", "resource_uuid": storyboardSection.UUID}}})
 	if turnResponse.Code != http.StatusCreated {
 		t.Fatalf("create turn = %d %s", turnResponse.Code, turnResponse.Body.String())
 	}

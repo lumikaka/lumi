@@ -44,7 +44,7 @@ Provider UUID 字段非空时长度必须为 36；模型名 trim 后长度为 1�
 - `chat_runs` — 每次会话执行的冻结选择
 - `workflows` — YOLO 与漫画图片多步 Workflow
 
-`task_runs`、`production_task_runs`、`chat_threads`、`chat_runs` 与 `workflows` 的 `provider_uuid`、`model` 保存实际执行选择，`model_source` 保存解析来源。Chat Thread 不保存业务 Scene 或 subject；Chat Run 的首个 User Item metadata 冻结 Prompt 内容、`tool_mode` 与活动 `project_api_v4` 协议，Reference 另存于对应 User Item。冻结的 `project_api_v3`、`project_api_v2` 和 `legacy_typed_tools` 只用于恢复，不改写 schema；迁移前记录使用 `legacy_frozen`，不推断历史来源。任务业务结果分别由章节、项目、漫画或导出 domain 解释。
+`task_runs`、`production_task_runs`、`chat_threads`、`chat_runs` 与 `workflows` 的 `provider_uuid`、`model` 保存实际执行选择，`model_source` 保存解析来源。Chat Thread 不保存业务 Scene 或 subject；Chat Run 的首个 User Item metadata 冻结 Prompt 内容、`tool_mode` 与活动 `project_api_v4` 协议，Reference 另存于对应 User Item。Chat Run 还持久化同一 Turn 内累计的模型请求、主动执行时长、token、无进展指纹以及单次预算收尾标记；等待和恢复不会重置这些值。冻结的 `project_api_v3`、`project_api_v2` 和 `legacy_typed_tools` 只用于恢复，不改写 schema；迁移前记录使用 `legacy_frozen`，不推断历史来源。任务业务结果分别由章节、项目、漫画或导出 domain 解释。
 
 ## 表：llm_logs
 

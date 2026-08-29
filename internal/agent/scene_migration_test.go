@@ -746,6 +746,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 
 	t.Run("ambiguous intent and resume", func(t *testing.T) {
 		harness := newAgentHarness(t)
+		harness.service.turnBudget.MaxModelRequests = 4
 		ctx := context.Background()
 		asset, thread := createAssetReferenceMigrationFixture(t, harness)
 		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 3})
@@ -833,6 +834,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 
 	t.Run("safe choice does not replay", func(t *testing.T) {
 		harness := newAgentHarness(t)
+		harness.service.turnBudget.MaxModelRequests = 3
 		ctx := context.Background()
 		asset, thread := createAssetReferenceMigrationFixture(t, harness)
 		turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 2})
@@ -890,6 +892,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 
 	t.Run("storyboard generation replays the persisted request", func(t *testing.T) {
 		harness := newAgentHarness(t)
+		harness.service.turnBudget.MaxModelRequests = 3
 		ctx := context.Background()
 		chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
 			ChapterCode: "vol03.ch01", Title: "自动确认分镜", Content: "雨夜重逢。", ContentFormat: "md",
@@ -970,7 +973,7 @@ func TestDangerousAgentAPIRouteRequiresExplicitOrBoundConfirmation(t *testing.T)
 			t.Fatalf("storyboard automatic replay requests=%+v", harness.queue.requests)
 		}
 		var run runRecord
-		if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Take(&run).Error; err != nil || run.Status != TurnCompleted || run.StepCount != run.MaxSteps {
+		if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Take(&run).Error; err != nil || run.Status != TurnCompleted || run.ModelRequestCount != run.MaxModelRequests || run.LimitReason != BudgetReasonModelRequests {
 			t.Fatalf("storyboard finalization run=%+v err=%v", run, err)
 		}
 	})

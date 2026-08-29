@@ -325,6 +325,9 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		if err := attachItemReferencesTx(ctx, tx, row.ID, references, now); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_runs SET no_progress_streak=0,last_cycle_fingerprint='',updated_at=? WHERE id=?`, now, runID); err != nil {
+			return err
+		}
 		if _, err := appendEventTx(ctx, tx, &thread, &runID, "steering_queued", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": turnUUID, "run_uuid": runUUID, "item_uuid": row.UUID}, now); err != nil {
 			return err
 		}
@@ -407,6 +410,9 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 			return err
 		}
 		if err := attachItemReferencesTx(ctx, tx, row.ID, references, now); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_runs SET no_progress_streak=0,last_cycle_fingerprint='',updated_at=? WHERE id=?`, now, runID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM chat_context_references WHERE follow_up_id=?`, followUp.ID); err != nil {

@@ -102,6 +102,7 @@ export const ERROR_CODE_KEYS = Object.freeze({
   agent_context_too_large: 'errors.too_large',
   agent_tool_result_too_large: 'errors.too_large',
   agent_max_steps_exceeded: 'errors.limit_reached',
+  agent_turn_budget_exceeded: 'errors.limit_reached',
   agent_cancelled: 'errors.cancelled',
   agent_interrupted: 'errors.interrupted',
   agent_provider_failed: 'errors.provider_unavailable',

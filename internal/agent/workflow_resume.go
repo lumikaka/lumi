@@ -49,6 +49,11 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	if err := service.persistToolResult(ctx, store, tc, execution, result); err != nil {
 		return false, err
 	}
+	// Reset before advancing the await marker. If the process exits between
+	// these writes, recovery may repeat this idempotent reset but cannot miss it.
+	if err := service.resetNoProgress(ctx, store, tc.Run.ID); err != nil {
+		return false, err
+	}
 	if err := store.DB().WithContext(ctx).Table("workflow_awaits").Where("id=? AND status IN ('ready','resuming')", state.AwaitID).Updates(map[string]any{"status": "resumed", "resumed_at": now, "updated_at": now}).Error; err != nil {
 		return false, err
 	}

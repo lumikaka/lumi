@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode/utf8"
 
 	agentprompts "lumi/internal/agent/prompts"
 	"lumi/internal/llm"
@@ -33,7 +34,7 @@ type systemPromptTemplateData struct {
 	ProjectUUID         string
 }
 
-func (service *Service) buildContext(ctx context.Context, store *project.Store, tc toolContext) ([]llm.ChatMessage, int, int64, error) {
+func (service *Service) buildContext(ctx context.Context, store *project.Store, tc toolContext, toolSets ...[]llm.ToolDefinition) ([]llm.ChatMessage, int, int64, error) {
 	items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.ID, tc.Turn.QueueSequence)
 	if err != nil {
 		return nil, 0, 0, err
@@ -46,29 +47,208 @@ func (service *Service) buildContext(ctx context.Context, store *project.Store, 
 		}
 	}
 	prompts.ToolMode = normalizedToolMode(prompts.ToolMode)
+	var tools []llm.ToolDefinition
+	if len(toolSets) > 0 {
+		tools = toolSets[0]
+	}
 	throughSequence := maxItemSequence(items)
-	messages := contextMessages(items, "", tc.Turn.ID, prompts)
-	encoded, _ := json.Marshal(messages)
-	if len(encoded) <= MaxContextBytes {
-		return messages, len(encoded), throughSequence, nil
+	latest, err := loadLatestContextSummary(ctx, store, tc.Thread.ID)
+	if err != nil {
+		return nil, 0, throughSequence, err
 	}
-	if len(items) < 24 {
-		return nil, len(encoded), throughSequence, domainError(CodeContextTooLarge, "Agent 上下文过大", "单次模型上下文超过本机配置限制。", nil)
+	protected := protectedContextItems(items, tc.Turn.ID)
+	retained := retainedContextItems(items, latest.ThroughItemSequence, protected)
+	messages := contextMessages(retained, latest.Summary, tc.Turn.ID, prompts)
+	requestBytes := contextRequestBytes(messages, tools)
+	if requestBytes <= ContextCompactionTriggerBytes {
+		return messages, requestBytes, throughSequence, nil
 	}
-	cut := len(items) - 20
-	summary := summarizeItems(items[:cut])
-	if strings.TrimSpace(summary) == "" {
-		return nil, len(encoded), throughSequence, domainError(CodeContextTooLarge, "Agent 上下文无法压缩", "请创建新 thread 继续。", nil)
+
+	boundaries := compactionBoundaries(items, latest.ThroughItemSequence, tc.Turn.ID)
+	bestMessages, bestSummary, bestBytes, bestThrough := messages, latest.Summary, requestBytes, latest.ThroughItemSequence
+	for _, boundary := range boundaries {
+		newItems := itemsBetweenSequences(items, latest.ThroughItemSequence, boundary)
+		summary := summarizeItemsIncremental(latest.Summary, newItems)
+		if strings.TrimSpace(summary) == "" {
+			continue
+		}
+		candidateItems := retainedContextItems(items, boundary, protected)
+		candidateMessages := contextMessages(candidateItems, summary, tc.Turn.ID, prompts)
+		candidateBytes := contextRequestBytes(candidateMessages, tools)
+		if candidateBytes < bestBytes {
+			bestMessages, bestSummary, bestBytes, bestThrough = candidateMessages, summary, candidateBytes, boundary
+		}
+		if candidateBytes <= ContextCompactionTargetBytes {
+			break
+		}
 	}
-	if err := service.persistSummary(ctx, store, tc, maxItemSequence(items[:cut]), summary, len(encoded)); err != nil {
-		return nil, len(encoded), throughSequence, err
+	if bestThrough > latest.ThroughItemSequence {
+		if err := service.persistSummary(ctx, store, tc, bestThrough, bestSummary, requestBytes); err != nil {
+			return nil, bestBytes, throughSequence, err
+		}
 	}
-	messages = contextMessages(items[cut:], summary, tc.Turn.ID, prompts)
-	encoded, _ = json.Marshal(messages)
-	if len(encoded) > MaxContextBytes {
-		return nil, len(encoded), throughSequence, domainError(CodeContextTooLarge, "Agent 上下文过大", "压缩后仍超过本机配置限制，请创建新 thread。", nil)
+	if bestBytes > MaxContextBytes {
+		return nil, bestBytes, throughSequence, domainError(CodeContextTooLarge, "Agent 上下文过大", "受保护上下文本身超过本机配置限制。", nil)
 	}
-	return messages, len(encoded), throughSequence, nil
+	return bestMessages, bestBytes, throughSequence, nil
+}
+
+type contextSummaryRecord struct {
+	ThroughItemSequence int64
+	Summary             string
+}
+
+func loadLatestContextSummary(ctx context.Context, store *project.Store, threadID int64) (contextSummaryRecord, error) {
+	var record contextSummaryRecord
+	result := store.DB().WithContext(ctx).Table("agent_context_summaries").Select("through_item_sequence,summary").Where("thread_id=?", threadID).Order("through_item_sequence DESC,id DESC").Limit(1).Find(&record)
+	return record, result.Error
+}
+
+func contextRequestBytes(messages []llm.ChatMessage, tools []llm.ToolDefinition) int {
+	wireMessages := make([]map[string]any, 0, len(messages))
+	for _, message := range messages {
+		item := map[string]any{"role": message.Role}
+		if message.Content != "" || message.Role != "assistant" {
+			item["content"] = message.Content
+		}
+		if message.ToolCallID != "" {
+			item["tool_call_id"] = message.ToolCallID
+		}
+		if len(message.ToolCalls) > 0 {
+			calls := make([]map[string]any, 0, len(message.ToolCalls))
+			for _, call := range message.ToolCalls {
+				calls = append(calls, map[string]any{"id": call.ID, "type": "function", "function": map[string]any{"name": call.Name, "arguments": call.Arguments}})
+			}
+			item["tool_calls"] = calls
+		}
+		wireMessages = append(wireMessages, item)
+	}
+	payload := map[string]any{"messages": wireMessages}
+	if len(tools) > 0 {
+		wireTools := make([]map[string]any, 0, len(tools))
+		for _, tool := range tools {
+			wireTools = append(wireTools, map[string]any{"type": "function", "function": map[string]any{"name": tool.Name, "description": tool.Description, "parameters": tool.Parameters}})
+		}
+		payload["tools"] = wireTools
+		payload["tool_choice"] = "auto"
+	}
+	encoded, _ := json.Marshal(payload)
+	return len(encoded)
+}
+
+func protectedContextItems(items []contextItem, currentTurnID int64) map[int64]bool {
+	protected := make(map[int64]bool)
+	protectedToolCalls := make(map[string]bool)
+	latestBatch, latestBatchSequence := "", int64(0)
+	latestLegacyCall := ""
+	for _, item := range items {
+		if item.TurnID != nil && *item.TurnID == currentTurnID && item.ItemType == "user_message" {
+			protected[item.ID] = true
+		}
+		if item.TurnID != nil && *item.TurnID == currentTurnID && item.ItemType == "tool_result" && item.ToolName == "request_user_input" {
+			protected[item.ID] = true
+			protectedToolCalls[item.RemoteItemUUID] = true
+		}
+		if item.Status == "pending" || item.Status == "in_progress" || item.ItemType == "user_input_request" {
+			protected[item.ID] = true
+		}
+		if (item.ItemType == "tool_call" || item.ItemType == "tool_result") && (item.Status == "completed" || item.Status == "failed" || item.Status == "cancelled") {
+			if requestUUID := metadataString(item.MetadataJSON, "request_uuid"); requestUUID != "" && item.Sequence >= latestBatchSequence {
+				latestBatch, latestBatchSequence = requestUUID, item.Sequence
+			} else if latestBatch == "" && item.Sequence >= latestBatchSequence {
+				latestLegacyCall, latestBatchSequence = item.RemoteItemUUID, item.Sequence
+			}
+		}
+	}
+	for _, item := range items {
+		if protectedToolCalls[item.RemoteItemUUID] && (item.ItemType == "tool_call" || item.ItemType == "tool_result") {
+			protected[item.ID] = true
+		}
+		if latestBatch != "" && metadataString(item.MetadataJSON, "request_uuid") == latestBatch {
+			protected[item.ID] = true
+		}
+		if latestBatch == "" && latestLegacyCall != "" && item.RemoteItemUUID == latestLegacyCall && (item.ItemType == "tool_call" || item.ItemType == "tool_result") {
+			protected[item.ID] = true
+		}
+	}
+	return protected
+}
+
+func retainedContextItems(items []contextItem, through int64, protected map[int64]bool) []contextItem {
+	retained := make([]contextItem, 0, len(items))
+	for _, item := range items {
+		if item.Sequence > through || protected[item.ID] {
+			retained = append(retained, item)
+		}
+	}
+	return retained
+}
+
+func itemsBetweenSequences(items []contextItem, after, through int64) []contextItem {
+	selected := make([]contextItem, 0)
+	for _, item := range items {
+		if item.Sequence > after && item.Sequence <= through {
+			selected = append(selected, item)
+		}
+	}
+	return selected
+}
+
+func compactionBoundaries(items []contextItem, after, currentTurnID int64) []int64 {
+	type group struct {
+		key                      string
+		end                      int64
+		historical, hasTool      bool
+		complete, nonCompactable bool
+	}
+	groups := make([]group, 0)
+	for _, item := range items {
+		if item.Sequence <= after {
+			continue
+		}
+		key := contextToolBatchKey(item)
+		if key == "" {
+			key = fmt.Sprintf("item:%d", item.ID)
+		}
+		if len(groups) == 0 || groups[len(groups)-1].key != key {
+			groups = append(groups, group{key: key, complete: true})
+		}
+		current := &groups[len(groups)-1]
+		current.end = item.Sequence
+		current.historical = current.historical || item.TurnID == nil || *item.TurnID != currentTurnID
+		current.hasTool = current.hasTool || item.ItemType == "tool_call" || item.ItemType == "tool_result"
+		if item.Status == "pending" || item.Status == "in_progress" || item.ItemType == "user_input_request" {
+			current.complete = false
+			current.nonCompactable = true
+		}
+	}
+	boundaries := make([]int64, 0, len(groups))
+	blocked := false
+	for _, current := range groups {
+		if current.nonCompactable {
+			blocked = true
+		}
+		if blocked {
+			continue
+		}
+		if current.historical || (current.hasTool && current.complete) {
+			boundaries = append(boundaries, current.end)
+		}
+	}
+	return boundaries
+}
+
+func contextToolBatchKey(item contextItem) string {
+	if item.ItemType != "tool_call" && item.ItemType != "tool_result" {
+		return ""
+	}
+	if requestUUID := metadataString(item.MetadataJSON, "request_uuid"); requestUUID != "" {
+		return "request:" + requestUUID
+	}
+	if item.RemoteItemUUID != "" {
+		return "call:" + item.RemoteItemUUID
+	}
+	return ""
 }
 
 func loadContextItems(ctx context.Context, store *project.Store, threadID, currentTurnID, throughTurnSequence int64) ([]contextItem, error) {
@@ -317,23 +497,83 @@ func metadataString(raw, key string) string {
 }
 
 func summarizeItems(items []contextItem) string {
-	var builder strings.Builder
+	return summarizeItemsIncremental("", items)
+}
+
+func summarizeItemsIncremental(previous string, items []contextItem) string {
+	entries := make([]string, 0, len(items)+16)
+	for _, line := range strings.Split(strings.TrimSpace(previous), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			entries = append(entries, line)
+		}
+	}
 	for _, item := range items {
-		if builder.Len() >= MaxSummaryBytes {
+		entries = append(entries, summarizeContextItem(item))
+	}
+	selected := make([]string, 0, len(entries))
+	used := 0
+	for index := len(entries) - 1; index >= 0; index-- {
+		entryBytes := len(entries[index])
+		if len(selected) > 0 {
+			entryBytes++
+		}
+		if used+entryBytes > MaxSummaryBytes {
 			break
 		}
-		content := strings.TrimSpace(item.Content)
-		if len(content) > 1200 {
-			content = content[:1200] + "…"
-		}
-		line := fmt.Sprintf("[%d %s/%s] %s\n", item.Sequence, item.Role, item.ItemType, content)
-		remaining := MaxSummaryBytes - builder.Len()
-		if len(line) > remaining {
-			line = line[:remaining]
-		}
-		builder.WriteString(line)
+		selected = append(selected, entries[index])
+		used += entryBytes
 	}
-	return strings.TrimSpace(builder.String())
+	for left, right := 0, len(selected)-1; left < right; left, right = left+1, right-1 {
+		selected[left], selected[right] = selected[right], selected[left]
+	}
+	return strings.Join(selected, "\n")
+}
+
+func summarizeContextItem(item contextItem) string {
+	limit := 2 << 10
+	switch item.ItemType {
+	case "user_message":
+		limit = 4 << 10
+	case "assistant_message":
+		limit = 2 << 10
+	case "tool_call":
+		limit = 4 << 10
+	case "tool_result":
+		limit = 8 << 10
+	case "error":
+		limit = 4 << 10
+	}
+	entry := struct {
+		Sequence   int64  `json:"sequence"`
+		Type       string `json:"type"`
+		Role       string `json:"role"`
+		ToolName   string `json:"tool_name,omitempty"`
+		TargetUUID string `json:"target_uuid,omitempty"`
+		Status     string `json:"status"`
+		Excerpt    string `json:"excerpt"`
+	}{
+		Sequence: item.Sequence, Type: item.ItemType, Role: item.Role, ToolName: item.ToolName,
+		TargetUUID: item.TargetUUID, Status: item.Status, Excerpt: truncateSummaryUTF8Bytes(strings.TrimSpace(item.Content), limit),
+	}
+	encoded, _ := json.Marshal(entry)
+	return string(encoded)
+}
+
+func truncateSummaryUTF8Bytes(value string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	if len(value) <= limit {
+		return value
+	}
+	if limit <= len("…") {
+		return ""
+	}
+	cut := limit - len("…")
+	for cut > 0 && !utf8.ValidString(value[:cut]) {
+		cut--
+	}
+	return value[:cut] + "…"
 }
 
 func (service *Service) persistSummary(ctx context.Context, store *project.Store, tc toolContext, through int64, summary string, sourceBytes int) error {

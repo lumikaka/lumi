@@ -60,11 +60,23 @@ const (
 	JobChatTurn      = "chat_turn"
 	JobChatResume    = "chat_resume"
 	JobWorkflowStep  = "workflow_step"
-	DefaultMaxSteps  = 20
 	MaxToolResult    = 64 << 10
 	MaxContextBytes  = 512 << 10
 	MaxSummaryBytes  = 24 << 10
 	DefaultItemsPage = 100
+
+	DefaultMaxModelRequests    = 256
+	DefaultMaxActiveDurationMS = int64(2 * time.Hour / time.Millisecond)
+	DefaultMaxTokenUnits       = int64(1_000_000)
+	DefaultMaxNoProgressRounds = 2
+
+	ContextCompactionTriggerBytes = 384 << 10
+	ContextCompactionTargetBytes  = 256 << 10
+
+	BudgetReasonNoProgress     = "no_progress"
+	BudgetReasonModelRequests  = "model_request_limit"
+	BudgetReasonTokens         = "token_limit"
+	BudgetReasonActiveDuration = "active_duration_limit"
 )
 
 type InvocationSource string
@@ -532,12 +544,19 @@ type turnRecord struct {
 func (turnRecord) TableName() string { return "chat_turns" }
 
 type runRecord struct {
-	ID, ThreadID, TurnID                                      int64
-	UUID, TriggerType, Status                                 string
-	StepCount, MaxSteps, ContextBytes                         int
-	ProviderUUID, Model, ModelSource, ErrorCode, ErrorMessage string
-	CancelRequestedAt, StartedAt, CompletedAt                 *time.Time
-	CreatedAt, UpdatedAt                                      time.Time
+	ID, ThreadID, TurnID                       int64
+	UUID, TriggerType, Status                  string
+	StepCount, MaxSteps, ContextBytes          int
+	ModelRequestCount, MaxModelRequests        int
+	ActiveDurationMS, MaxActiveDurationMS      int64
+	TokenUnits, MaxTokenUnits                  int64
+	NoProgressStreak, MaxNoProgressRounds      int
+	LastCycleFingerprint, LimitReason          string
+	ProviderUUID, Model, ModelSource           string
+	ErrorCode, ErrorMessage                    string
+	CancelRequestedAt, FinalizationAttemptedAt *time.Time
+	StartedAt, CompletedAt                     *time.Time
+	CreatedAt, UpdatedAt                       time.Time
 }
 
 func (runRecord) TableName() string { return "chat_runs" }

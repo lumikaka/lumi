@@ -16,6 +16,7 @@ const (
 	CodeContextTooLarge  = "agent_context_too_large"
 	CodeResultTooLarge   = "agent_tool_result_too_large"
 	CodeMaxSteps         = "agent_max_steps_exceeded"
+	CodeTurnBudget       = "agent_turn_budget_exceeded"
 	CodeCancelled        = "agent_cancelled"
 	CodeInterrupted      = "agent_interrupted"
 	CodeProvider         = "agent_provider_failed"

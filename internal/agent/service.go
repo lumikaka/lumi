@@ -32,11 +32,26 @@ type Service struct {
 	hub                  *realtime.Hub
 	projectAPIRoutes     []agentAPIRoute
 	projectAPIDispatcher ProjectAPIDispatcher
+	turnBudget           turnBudgetLimits
 	now                  func() time.Time
 }
 
+type turnBudgetLimits struct {
+	MaxModelRequests    int
+	MaxActiveDurationMS int64
+	MaxTokenUnits       int64
+	MaxNoProgressRounds int
+}
+
+var defaultTurnBudgetLimits = turnBudgetLimits{
+	MaxModelRequests:    DefaultMaxModelRequests,
+	MaxActiveDurationMS: DefaultMaxActiveDurationMS,
+	MaxTokenUnits:       DefaultMaxTokenUnits,
+	MaxNoProgressRounds: DefaultMaxNoProgressRounds,
+}
+
 func NewService(projects *project.Manager, providers *provider.Service, model llm.ToolClient, queue Queue, hub *realtime.Hub) *Service {
-	return &Service{projects: projects, providers: providers, models: modelsettings.NewResolver(providers), model: model, queue: queue, hub: hub, now: time.Now}
+	return &Service{projects: projects, providers: providers, models: modelsettings.NewResolver(providers), model: model, queue: queue, hub: hub, turnBudget: defaultTurnBudgetLimits, now: time.Now}
 }
 
 func (service *Service) WithImageClient(client imagegen.Client) *Service {
@@ -197,13 +212,6 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 	if !isUUIDv7(threadUUID) {
 		return Turn{}, domainError(CodeValidation, "Thread UUID 无效", "thread_uuid 必须是 UUIDv7。", nil)
 	}
-	maxSteps := input.MaxSteps
-	if maxSteps == 0 {
-		maxSteps = DefaultMaxSteps
-	}
-	if maxSteps < 1 || maxSteps > 64 {
-		return Turn{}, domainError(CodeValidation, "最大步骤无效", "max_steps 必须为 1 到 64。", nil)
-	}
 	var created Turn
 	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		var promptThread threadRecord
@@ -244,7 +252,7 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 		thread.ProviderUUID = resolved.UUID
 		thread.Model = model
 		thread.ModelSource = modelSource
-		turn, _, err := service.createTurnTx(ctx, tx, projectUUID, &thread, text, "prompt", 0, maxSteps, promptSnapshot, references)
+		turn, _, err := service.createTurnTx(ctx, tx, projectUUID, &thread, text, "prompt", 0, promptSnapshot, references)
 		if err != nil {
 			return err
 		}
@@ -278,7 +286,7 @@ func lockThreadSQL(ctx context.Context, tx *sql.Tx, projectID int64, threadUUID 
 	return row, nil
 }
 
-func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, text, sourceType string, followUpID int64, maxSteps int, promptSnapshot contextPromptSet, references []storedContextReference) (turnRecord, runRecord, error) {
+func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, text, sourceType string, followUpID int64, promptSnapshot contextPromptSet, references []storedContextReference) (turnRecord, runRecord, error) {
 	now := service.now().UTC()
 	queueSequence := thread.NextTurnSequence
 	turnUUID, err := newUUIDv7()
@@ -297,7 +305,8 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 	if err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
-	result, err = tx.ExecContext(ctx, `INSERT INTO chat_runs(uuid,thread_id,turn_id,trigger_type,status,max_steps,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?,?,?,?,?)`, runUUID, thread.ID, turnID, sourceType, maxSteps, thread.ProviderUUID, thread.Model, thread.ModelSource, now, now)
+	limits := service.turnBudget
+	result, err = tx.ExecContext(ctx, `INSERT INTO chat_runs(uuid,thread_id,turn_id,trigger_type,status,provider_uuid,model,model_source,max_model_requests,max_active_duration_ms,max_token_units,max_no_progress_rounds,created_at,updated_at) VALUES(?,?,?,?,'queued',?,?,?,?,?,?,?,?,?)`, runUUID, thread.ID, turnID, sourceType, thread.ProviderUUID, thread.Model, thread.ModelSource, limits.MaxModelRequests, limits.MaxActiveDurationMS, limits.MaxTokenUnits, limits.MaxNoProgressRounds, now, now)
 	if err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
@@ -330,7 +339,7 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 		return turnRecord{}, runRecord{}, err
 	}
 	turn := turnRecord{ID: turnID, ThreadID: thread.ID, UUID: turnUUID, SourceType: sourceType, SourceFollowUpID: followUpID, QueueSequence: queueSequence, InputText: text, Status: TurnQueued, RiverJobID: &jobID, CreatedAt: now, UpdatedAt: now}
-	run := runRecord{ID: runID, ThreadID: thread.ID, TurnID: turnID, UUID: runUUID, TriggerType: sourceType, Status: TurnQueued, MaxSteps: maxSteps, ProviderUUID: thread.ProviderUUID, Model: thread.Model, ModelSource: thread.ModelSource, CreatedAt: now, UpdatedAt: now}
+	run := runRecord{ID: runID, ThreadID: thread.ID, TurnID: turnID, UUID: runUUID, TriggerType: sourceType, Status: TurnQueued, MaxModelRequests: limits.MaxModelRequests, MaxActiveDurationMS: limits.MaxActiveDurationMS, MaxTokenUnits: limits.MaxTokenUnits, MaxNoProgressRounds: limits.MaxNoProgressRounds, ProviderUUID: thread.ProviderUUID, Model: thread.Model, ModelSource: thread.ModelSource, CreatedAt: now, UpdatedAt: now}
 	return turn, run, nil
 }
 

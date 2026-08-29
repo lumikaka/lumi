@@ -32,7 +32,7 @@ chat_context_references ──> files / premise_assets / comic_sections
 ## 关联表
 
 - `chat_turns` — 排队输入、来源、状态、取消和执行时间；每个 Thread 内 queue sequence 有序。等待异步 Workflow 时底层保持 `in_progress`，REST 投影为 `waiting_for_workflow`。
-- `chat_runs` — Turn 的一次 Agent 执行，保存冻结模型、上下文大小、步骤数和终态；Workflow 等待语义由唯一 `workflow_awaits` 关系补充。
+- `chat_runs` — Turn 的一次 Agent 执行，保存冻结模型、上下文大小、模型请求数、主动执行时长、累计 token、无进展状态、预算收尾状态和终态；同一 Turn 在等待用户或 Workflow 后恢复同一 Run。旧 `step_count/max_steps` 列仅为迁移兼容保留，不再参与运行时限制；Workflow 等待语义由唯一 `workflow_awaits` 关系补充。
 - `chat_items` — 用户、Assistant、工具、错误或输入请求等可读序列项。
 - `chat_events` — Thread 内 append-only 诊断事件。
 - `chat_follow_ups` — 可排序的待发送追问及其 promoted Turn。

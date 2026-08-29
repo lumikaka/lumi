@@ -253,6 +253,11 @@ func TestChatToolWorkflowFailureAndCancellationResumeStructuredToolResults(t *te
 				t.Fatal("chapter Workflow did not start")
 			}
 			workflow := waitInlineWorkflow(t, env, thread.UUID)
+			if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+				return store.DB().Table("chat_runs").Where("turn_id=(SELECT id FROM chat_turns WHERE thread_id=(SELECT id FROM chat_threads WHERE uuid=?) ORDER BY id DESC LIMIT 1)", thread.UUID).Updates(map[string]any{"no_progress_streak": 2, "last_cycle_fingerprint": strings.Repeat("b", 64)}).Error
+			}); err != nil {
+				t.Fatal(err)
+			}
 			if test.fail {
 				close(model.releaseStory)
 			} else if _, err := env.agents.CancelWorkflow(env.ctx, env.project.UUID, workflow.UUID); err != nil {
@@ -294,12 +299,16 @@ func TestChatToolWorkflowFailureAndCancellationResumeStructuredToolResults(t *te
 				t.Fatalf("results=%d replies=%d items=%+v", results, replies, items.Items)
 			}
 			if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
-				var status string
+				var status, fingerprint string
+				var noProgress int
 				if err := store.DB().Table("workflow_awaits").Select("status").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Scan(&status).Error; err != nil {
 					return err
 				}
-				if status != "resumed" {
-					t.Fatalf("await status=%s", status)
+				if err := store.DB().Raw(`SELECT no_progress_streak,last_cycle_fingerprint FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE thread_id=(SELECT id FROM chat_threads WHERE uuid=?) ORDER BY id DESC LIMIT 1)`, thread.UUID).Row().Scan(&noProgress, &fingerprint); err != nil {
+					return err
+				}
+				if status != "resumed" || noProgress != 0 || fingerprint != "" {
+					t.Fatalf("await status=%s no-progress=%d fingerprint=%q", status, noProgress, fingerprint)
 				}
 				return nil
 			}); err != nil {

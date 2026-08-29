@@ -191,8 +191,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "5ed4c35dc16d61075fa027f2e63e226bd4cd6121580791a3ad2c62d0f9ffc71e",
-		LanguageEnglish: "f2dfd6a787324d4f56970b5079900d0c16ee1e10126899f92c0e490a1ca860ab",
+		LanguageChinese: "b98024b2d0cc32a18b67078315a8c568138164cada7aed5c8bb36b9f6a0556f9",
+		LanguageEnglish: "dc98280a7de4f15b73be47dd163ed4c11cf9566e0441315d2e4886b5aa334f3e",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

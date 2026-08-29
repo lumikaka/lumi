@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"lumi/internal/llm"
-	"lumi/internal/llmlog"
 	"lumi/internal/project"
 	"lumi/internal/provider"
 
@@ -49,10 +48,20 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 		}
 	}
+	if currentRun, refreshErr := service.refreshRun(ctx, store, tc.Run.ID); refreshErr != nil {
+		return refreshErr
+	} else {
+		tc.Run = currentRun
+	}
+	if tc.Run.LimitReason != "" && tc.Run.FinalizationAttemptedAt != nil {
+		return service.failBudgetRun(context.WithoutCancel(ctx), store, tc)
+	}
 	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
 	if err != nil {
 		return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 	}
+	tools := llmToolDefinitionsForContext(tc)
+	var lastContextThrough int64
 	for {
 		if err := ctx.Err(); err != nil {
 			return service.cancelRun(context.WithoutCancel(ctx), store, tc)
@@ -76,7 +85,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 					return ErrWaitingInput
 				}
 			}
-			result, err := service.executeTool(ctx, store, tc, pending)
+			result, err := service.executeToolTracked(ctx, store, tc, pending)
 			if err != nil {
 				if errors.Is(err, ErrWaitingWorkflow) {
 					return err
@@ -86,6 +95,9 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			if err := service.persistToolResult(ctx, store, tc, pending, result); err != nil {
 				return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 			}
+			if err := service.recordRecoveredToolBatchProgress(ctx, store, tc, pending); err != nil {
+				return err
+			}
 			continue
 		}
 		currentRun, err := service.refreshRun(ctx, store, tc.Run.ID)
@@ -93,88 +105,45 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return err
 		}
 		tc.Run = currentRun
-		if tc.Run.StepCount > tc.Run.MaxSteps {
-			return service.failRun(context.WithoutCancel(ctx), store, tc, CodeMaxSteps, "Agent 已达到最大工具步骤。")
+		if lastContextThrough > 0 {
+			if steered, err := service.hasSteeringAfter(ctx, store, tc.Run.ID, lastContextThrough); err != nil {
+				return err
+			} else if steered {
+				if err := service.resetNoProgress(ctx, store, tc.Run.ID); err != nil {
+					return err
+				}
+				tc.Run.NoProgressStreak = 0
+				tc.Run.LastCycleFingerprint = ""
+			}
 		}
-		if tc.Run.StepCount == tc.Run.MaxSteps {
-			return service.completeRun(ctx, store, tc, stepLimitHandoffMessage, map[string]any{
-				"runtime_generated": true,
-				"completion_reason": "step_limit",
-			})
+		if tc.Run.LimitReason != "" && tc.Run.FinalizationAttemptedAt != nil {
+			return service.failBudgetRun(context.WithoutCancel(ctx), store, tc)
 		}
-		messages, contextBytes, contextThrough, err := service.buildContext(ctx, store, tc)
+		if reason := budgetReason(tc.Run); reason != "" {
+			return service.finalizeBudget(ctx, store, &tc, resolved, reason)
+		}
+		messages, contextBytes, contextThrough, err := service.buildContext(ctx, store, tc, tools)
 		if err != nil {
 			return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
 		}
-		if err := service.recordModelStart(ctx, store, tc, contextBytes, true); err != nil {
-			return err
-		}
-		request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: llmToolDefinitionsForContext(tc), MaxTokens: 4096}
-		requestOrdinal := tc.Run.StepCount + 1
-		requestPayload, err := llmlog.EncodeChatRequest(request)
-		if err != nil {
-			return err
-		}
-		logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
-			ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID,
-			SourceType: llmlog.SourceProjectChat, Scenario: "project_chat", RequestType: llmlog.RequestText, Attempt: requestOrdinal,
-			ProviderUUID: tc.Run.ProviderUUID, ProviderType: resolved.ProviderType, Model: tc.Run.Model,
-			RequestPayload: requestPayload,
-		})
-		if err != nil {
-			return err
-		}
-		tc.RequestUUID = logHandle.UUID
-		tc.RequestOrdinal = requestOrdinal
-		if err := service.recordModelRequestEvent(ctx, store, tc, "model_request_started", "pending"); err != nil {
-			return err
-		}
-		response, err := service.model.Complete(ctx, request)
-		var responsePayload []byte
-		if err == nil {
-			responsePayload, err = llmlog.EncodeChatResponse(response, request.APIKey)
-			if err == nil {
-				responsePayload = attachAgentToolLogMetadata(responsePayload, service.agentToolLogMetadata(tc, response.Message.ToolCalls))
-			}
-		}
-		finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
-			OutputSummary: response.Message.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
-			FinishReason: response.FinishReason, Response: responsePayload, Err: err,
-		})
-		if finishErr != nil {
-			if err != nil {
-				err = errors.Join(err, finishErr)
-			} else {
-				return finishErr
-			}
-		}
-		requestStatus := "completed"
-		if err != nil {
-			requestStatus = "failed"
-			if errors.Is(err, context.Canceled) {
-				requestStatus = "cancelled"
-			}
-		}
-		_ = store.DB().WithContext(context.WithoutCancel(ctx)).Table("llm_logs").Select("status").Where("uuid=? AND chat_run_id=?", tc.RequestUUID, tc.Run.ID).Scan(&requestStatus).Error
-		if eventErr := service.recordModelRequestEvent(context.WithoutCancel(ctx), store, tc, "model_request_completed", requestStatus); eventErr != nil {
-			if err != nil {
-				err = errors.Join(err, eventErr)
-			} else {
-				return eventErr
-			}
-		}
+		lastContextThrough = contextThrough
+		response, err := service.performChatModelRequest(ctx, store, &tc, resolved, messages, tools, contextBytes, "project_chat")
 		if err != nil {
 			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 		}
 		if steered, err := service.hasSteeringAfter(ctx, store, tc.Run.ID, contextThrough); err != nil {
 			return err
 		} else if steered {
+			if err := service.resetNoProgress(ctx, store, tc.Run.ID); err != nil {
+				return err
+			}
 			continue
 		}
 		if len(response.Message.ToolCalls) > 0 {
 			if mixedRequestUserInputCalls(response.Message.ToolCalls) {
 				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeToolValidation, "request_user_input 必须是本次模型响应中唯一的 Tool Call。")
 			}
+			cycle := make([]toolCycleEntry, 0, len(response.Message.ToolCalls))
 			for _, call := range response.Message.ToolCalls {
 				execution, persistedResult, completed, err := service.persistToolIntent(ctx, store, tc, call.ID, call.Name, call.Arguments)
 				if err != nil {
@@ -186,6 +155,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 								return persistErr
 							}
 							if repaired {
+								cycle = append(cycle, cycleEntry(call.Name, call.Arguments, "", toolResult))
 								continue
 							}
 						}
@@ -194,10 +164,11 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 					if persistErr := service.persistToolResult(ctx, store, tc, execution, toolResult); persistErr != nil {
 						return persistErr
 					}
+					cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, toolResult))
 					continue
 				}
 				if completed {
-					_ = persistedResult
+					cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, persistedResult))
 					continue
 				}
 				if execution.ToolName == "request_user_input" {
@@ -206,7 +177,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 					}
 					return ErrWaitingInput
 				}
-				result, err := service.executeTool(ctx, store, tc, execution)
+				result, err := service.executeToolTracked(ctx, store, tc, execution)
 				if err != nil {
 					if errors.Is(err, ErrWaitingWorkflow) {
 						return err
@@ -216,6 +187,10 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 				if err := service.persistToolResult(ctx, store, tc, execution, result); err != nil {
 					return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 				}
+				cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, result))
+			}
+			if err := service.recordToolCycleProgress(ctx, store, tc, cycle); err != nil {
+				return err
 			}
 			continue
 		}
@@ -234,7 +209,6 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 }
 
 const (
-	stepLimitHandoffMessage         = "本轮已达到处理步骤上限，已执行的操作均已保存。若仍有未完成内容，请回复「继续」，我会从当前进度接着处理。"
 	invalidToolMarkupHandoffMessage = "模型返回了未执行的工具调用文本；为避免误操作，本轮已安全停止，且没有执行其中的操作。请回复「继续」以从当前进度重试。"
 )
 
@@ -525,8 +499,18 @@ func (service *Service) claimRun(ctx context.Context, store *project.Store, tc *
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET status='in_progress',started_at=COALESCE(started_at,?),updated_at=? WHERE id=? AND status='queued'`, now, now, tc.Turn.ID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_user_input_requests SET status='resumed',resumed_at=?,updated_at=? WHERE run_id=? AND status='resuming'`, now, now, tc.Run.ID); err != nil {
+	inputResult, err := tx.ExecContext(ctx, `UPDATE chat_user_input_requests SET status='resumed',resumed_at=?,updated_at=? WHERE run_id=? AND status='resuming'`, now, now, tc.Run.ID)
+	if err != nil {
 		return err
+	}
+	resumedUserInput, err := inputResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if resumedUserInput > 0 {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_runs SET no_progress_streak=0,last_cycle_fingerprint='',updated_at=? WHERE id=?`, now, tc.Run.ID); err != nil {
+			return err
+		}
 	}
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "run_started", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "status": TurnInProgress}, now); err != nil {
 		return err
@@ -541,6 +525,9 @@ func (service *Service) claimRun(ctx context.Context, store *project.Store, tc *
 		return err
 	}
 	tc.Run.Status, tc.Run.StartedAt, tc.Run.UpdatedAt = TurnInProgress, &now, now
+	if resumedUserInput > 0 {
+		tc.Run.NoProgressStreak, tc.Run.LastCycleFingerprint = 0, ""
+	}
 	tc.Turn.Status, tc.Turn.StartedAt, tc.Turn.UpdatedAt = TurnInProgress, &now, now
 	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:run_status", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "status": TurnInProgress})
 	return nil
@@ -567,13 +554,20 @@ func (service *Service) cancelRequested(ctx context.Context, store *project.Stor
 	return cancelled, err
 }
 
-func (service *Service) recordModelStart(ctx context.Context, store *project.Store, tc toolContext, contextBytes int, countStep bool) error {
+func (service *Service) recordModelStart(ctx context.Context, store *project.Store, tc toolContext, contextBytes int) (int, error) {
 	now := service.now().UTC()
-	updates := map[string]any{"context_bytes": contextBytes, "updated_at": now}
-	if countStep {
-		updates["step_count"] = gorm.Expr("step_count + 1")
+	var ordinal int
+	err := store.DB().WithContext(ctx).Raw(`UPDATE chat_runs
+		SET context_bytes=?,model_request_count=model_request_count+1,updated_at=?
+		WHERE id=? AND status='in_progress'
+		RETURNING model_request_count`, contextBytes, now, tc.Run.ID).Row().Scan(&ordinal)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, domainError(CodeStateConflict, "Model Request 无法开始", "Run 已不在执行状态。", nil)
 	}
-	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(updates).Error
+	if err != nil {
+		return 0, err
+	}
+	return ordinal, nil
 }
 
 func (service *Service) recordModelRequestEvent(ctx context.Context, store *project.Store, tc toolContext, eventType, status string) error {
@@ -718,7 +712,7 @@ func (service *Service) promoteNextFollowUpTx(ctx context.Context, tx *sql.Tx, p
 	if err != nil {
 		return err
 	}
-	turn, _, err := service.createTurnTx(ctx, tx, projectUUID, thread, follow.InputText, "follow_up", follow.ID, DefaultMaxSteps, promptSnapshot, references)
+	turn, _, err := service.createTurnTx(ctx, tx, projectUUID, thread, follow.InputText, "follow_up", follow.ID, promptSnapshot, references)
 	if err != nil {
 		return err
 	}

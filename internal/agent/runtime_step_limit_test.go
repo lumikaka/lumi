@@ -3,16 +3,17 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"lumi/internal/llm"
 )
 
-func TestCreateTurnUsesTwentyStepDefault(t *testing.T) {
+func TestCreateTurnIgnoresLegacyMaxStepsAndPersistsLongTurnBudgets(t *testing.T) {
 	harness := newAgentHarness(t)
 	thread := harness.createThread(t)
-	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "使用默认步骤上限"})
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "旧字段不再限制执行", MaxSteps: 999})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,15 +21,12 @@ func TestCreateTurnUsesTwentyStepDefault(t *testing.T) {
 	if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Take(&run).Error; err != nil {
 		t.Fatal(err)
 	}
-	if DefaultMaxSteps != 20 {
-		t.Fatalf("default max steps constant=%d", DefaultMaxSteps)
-	}
-	if run.MaxSteps != DefaultMaxSteps {
-		t.Fatalf("default max steps=%d constant=%d", run.MaxSteps, DefaultMaxSteps)
+	if run.MaxModelRequests != DefaultMaxModelRequests || run.MaxActiveDurationMS != DefaultMaxActiveDurationMS || run.MaxTokenUnits != DefaultMaxTokenUnits || run.MaxNoProgressRounds != DefaultMaxNoProgressRounds {
+		t.Fatalf("unexpected long-turn budgets: %+v", run)
 	}
 }
 
-func TestStepLimitUsesDeterministicHandoffWithoutFinalizationRequest(t *testing.T) {
+func TestSingleTurnCanExceedLegacySixtyFourRequests(t *testing.T) {
 	harness := newAgentHarness(t)
 	thread := harness.createThread(t)
 	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "读取文档后继续", MaxSteps: 1})
@@ -36,34 +34,43 @@ func TestStepLimitUsesDeterministicHandoffWithoutFinalizationRequest(t *testing.
 		t.Fatal(err)
 	}
 	harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
-		if call != 1 {
-			return finalResponse(`<invoke name="request_api"><parameter name="method">POST</parameter></invoke>`), nil
+		if call > 65 {
+			response := finalResponse("已在同一 Turn 完成长期运行。")
+			response.Usage = llm.Usage{InputTokens: 1, OutputTokens: 1}
+			return response, nil
 		}
-		arguments, _ := json.Marshal(map[string]any{"path": "/api/v1/agent-docs/guides/创建章节.md"})
-		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-guide", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+		path := "/api/v1/agent-docs/overview.md"
+		if call%2 == 0 {
+			path = "/api/v1/agent-docs/guides/创建章节.md"
+		}
+		arguments, _ := json.Marshal(map[string]any{"path": path})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: fmt.Sprintf("read-guide-%d", call), Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls", Usage: llm.Usage{InputTokens: 1, OutputTokens: 1}}, nil
 	}
 	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); err != nil {
 		t.Fatal(err)
 	}
-	if harness.model.calls != 1 {
-		t.Fatalf("model calls=%d, want 1", harness.model.calls)
+	if harness.model.calls != 66 {
+		t.Fatalf("model calls=%d, want 66", harness.model.calls)
 	}
 	var item itemRecord
 	if err := harness.store.DB().Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND item_type='assistant_message'", turn.UUID).Order("sequence DESC").Take(&item).Error; err != nil {
 		t.Fatal(err)
 	}
-	if item.Content != stepLimitHandoffMessage || strings.Contains(item.Content, "<invoke") {
-		t.Fatalf("unexpected handoff content: %q", item.Content)
+	if item.Content != "已在同一 Turn 完成长期运行。" || strings.Contains(item.Content, "回复「继续」") {
+		t.Fatalf("unexpected completion content: %q", item.Content)
 	}
-	if !strings.Contains(item.MetadataJSON, `"runtime_generated":true`) || !strings.Contains(item.MetadataJSON, `"completion_reason":"step_limit"`) || strings.Contains(item.MetadataJSON, `"request_uuid"`) {
-		t.Fatalf("unexpected handoff metadata: %s", item.MetadataJSON)
+	if !strings.Contains(item.MetadataJSON, `"request_uuid"`) {
+		t.Fatalf("missing model request linkage: %s", item.MetadataJSON)
 	}
-	var finalizationLogs int64
+	var runs, finalizationLogs int64
+	if err := harness.store.DB().Table("chat_runs").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Count(&runs).Error; err != nil {
+		t.Fatal(err)
+	}
 	if err := harness.store.DB().Table("llm_logs").Where("chat_run_id=? AND scenario='project_chat_finalization'", item.RunID).Count(&finalizationLogs).Error; err != nil {
 		t.Fatal(err)
 	}
-	if finalizationLogs != 0 {
-		t.Fatalf("finalization logs=%d", finalizationLogs)
+	if runs != 1 || finalizationLogs != 0 {
+		t.Fatalf("runs=%d finalization logs=%d", runs, finalizationLogs)
 	}
 }
 
