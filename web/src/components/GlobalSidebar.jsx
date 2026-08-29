@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import {
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
-  FolderKanban,
-  Home,
-  PanelTop,
+  Activity,
+  Cpu,
+  House,
+  Languages,
+  MessageSquareWarning,
+  PanelLeftClose,
+  Plus,
+  Search,
   Settings,
+  User,
   X,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
@@ -15,15 +18,15 @@ import { useI18n } from '../i18n/useI18n.js'
 
 export const GLOBAL_SIDEBAR_COLLAPSED_KEY = 'lumi.globalSidebarCollapsed'
 
-const PRIMARY_ITEMS = [
-  { labelKey: 'projects.title', to: '/', icon: Home },
+const SETTINGS_ITEMS = [
+  { labelKey: 'settings.user_account', to: '/settings/account', icon: User },
+  { labelKey: 'settings.language_preference', to: '/settings/account#language', icon: Languages },
+  { labelKey: 'settings.model_configuration', to: '/settings/providers', icon: Cpu },
+  { labelKey: 'settings.llm_calls', to: '/settings/llm-logs', icon: Activity },
+  { labelKey: 'settings.feedback', to: '/about', icon: MessageSquareWarning },
 ]
 
-const UTILITY_ITEMS = [
-  { labelKey: 'settings.ai', to: '/settings/providers', icon: Settings },
-  { labelKey: 'settings.about', to: '/about', icon: CircleHelp },
-  { labelKey: 'settings.admin', to: '/admin', icon: PanelTop, external: true },
-]
+const PROJECT_TONES = ['warm', 'accent', 'muted', 'warm', 'accent', 'muted']
 
 export function useGlobalSidebarState() {
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -50,11 +53,34 @@ export default function GlobalSidebar({
   const { t } = useI18n()
   const location = useLocation()
   const titleId = useId()
+  const settingsMenuId = useId()
   const closeRef = useRef(null)
+  const settingsRef = useRef(null)
+  const settingsTriggerRef = useRef(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
+    setSettingsOpen(false)
     onClose?.()
-  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.hash, location.pathname, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!settingsOpen) return undefined
+    const handlePointerDown = (event) => {
+      if (!settingsRef.current?.contains(event.target)) setSettingsOpen(false)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      setSettingsOpen(false)
+      settingsTriggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [settingsOpen])
 
   useEffect(() => {
     if (!mobileOpen) return undefined
@@ -71,6 +97,8 @@ export default function GlobalSidebar({
     }
   }, [mobileOpen, onClose])
 
+  const settingsActive = location.pathname.startsWith('/settings/') || location.pathname === '/about'
+
   return (
     <>
       {mobileOpen ? (
@@ -86,10 +114,19 @@ export default function GlobalSidebar({
         aria-labelledby={titleId}
       >
         <header className="global-sidebar__header">
-          <Link className="global-sidebar__brand" to="/" title="Lumi">
-            <img src="/favicon.png" alt="" aria-hidden="true" />
-            <span id={titleId}>Lumi</span>
-          </Link>
+          <div className="global-sidebar__brand">
+            <button
+              className="global-sidebar__logo-button"
+              type="button"
+              aria-label={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+              aria-pressed={collapsed}
+              title={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+              onClick={onToggleCollapsed}
+            >
+              <img className="global-sidebar__logo" src="/favicon.png" alt="" aria-hidden="true" />
+            </button>
+            <Link className="global-sidebar__brand-name" id={titleId} to="/" title="Lumi">Lumi</Link>
+          </div>
           <button
             ref={closeRef}
             className="global-sidebar__mobile-close"
@@ -102,67 +139,115 @@ export default function GlobalSidebar({
         </header>
 
         <nav className="global-sidebar__nav" aria-label={t('common.navigation.main')}>
-          {PRIMARY_ITEMS.map((item) => (
-            <SidebarLink key={item.to} item={item} label={t(item.labelKey)} active={isActivePath(location.pathname, item.to)} />
-          ))}
+          <SidebarLink
+            to="/"
+            label={t('common.navigation.home')}
+            icon={House}
+            active={location.pathname === '/'}
+          />
+          <button
+            className="global-sidebar__link global-sidebar__search"
+            type="button"
+            aria-disabled="true"
+            title={t('common.action.search')}
+          >
+            <Search size={16} aria-hidden="true" />
+            <span>{t('common.action.search')}</span>
+          </button>
         </nav>
 
-        <section className="global-sidebar__recent" aria-labelledby={`${titleId}-recent`}>
-          <h2 id={`${titleId}-recent`}>{t('projects.recent')}</h2>
-          <nav aria-label={t('projects.recent')}>
-            {recentProjects.slice(0, 6).map((project) => (
-              <RecentProjectLink key={project.uuid} project={project} onSwitchProject={onSwitchProject} t={t} />
+        <section className="global-sidebar__recent" aria-labelledby={`${titleId}-projects`}>
+          <header className="global-sidebar__section-header">
+            <h2 id={`${titleId}-projects`}>{t('projects.title')}</h2>
+            <Link className="global-sidebar__add-project" to="/?create_project=1" aria-label={t('projects.action.new')}>
+              <Plus size={16} aria-hidden="true" />
+            </Link>
+          </header>
+          <nav aria-label={t('projects.title')}>
+            {recentProjects.slice(0, 6).map((project, index) => (
+              <RecentProjectLink
+                key={project.uuid}
+                active={isProjectActive(location.pathname, project.uuid)}
+                project={project}
+                tone={PROJECT_TONES[index]}
+                onSwitchProject={onSwitchProject}
+              />
             ))}
           </nav>
         </section>
 
-        <nav className="global-sidebar__nav global-sidebar__nav--utility" aria-label={t('common.navigation.main')}>
-          {UTILITY_ITEMS.map((item) => (
-            <SidebarLink key={item.to} item={item} label={t(item.labelKey)} active={isActivePath(location.pathname, item.to)} />
-          ))}
-        </nav>
+        <footer className="global-sidebar__footer" ref={settingsRef}>
+          <button
+            ref={settingsTriggerRef}
+            className={`global-sidebar__link global-sidebar__settings ${settingsActive ? 'is-active' : ''}`}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={settingsOpen}
+            aria-controls={settingsOpen ? settingsMenuId : undefined}
+            title={t('settings.title')}
+            onClick={() => setSettingsOpen((current) => !current)}
+          >
+            <Settings size={16} aria-hidden="true" />
+            <span>{t('settings.title')}</span>
+          </button>
 
-        <button
-          className="global-sidebar__collapse"
-          type="button"
-          aria-label={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
-          aria-pressed={collapsed}
-          onClick={onToggleCollapsed}
-        >
-          {collapsed ? <ChevronRight size={17} aria-hidden="true" /> : <ChevronLeft size={17} aria-hidden="true" />}
-          <span>{t('common.navigation.close')}</span>
-        </button>
+          {settingsOpen ? (
+            <nav className="global-sidebar__settings-menu" id={settingsMenuId} role="menu" aria-label={t('settings.menu')}>
+              {SETTINGS_ITEMS.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link className="global-sidebar__menu-item" key={`${item.to}-${item.labelKey}`} role="menuitem" to={item.to}>
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{t(item.labelKey)}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+          ) : null}
+
+          <button
+            className="global-sidebar__collapse"
+            type="button"
+            aria-label={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+            aria-pressed={collapsed}
+            title={collapsed ? t('common.navigation.open_lumi') : t('common.navigation.close')}
+            onClick={onToggleCollapsed}
+          >
+            <PanelLeftClose size={16} aria-hidden="true" />
+            <span>{t('common.navigation.collapse')}</span>
+          </button>
+        </footer>
       </aside>
     </>
   )
 }
 
-function SidebarLink({ item, label, active }) {
-  const Icon = item.icon
-  const className = `global-sidebar__link ${active ? 'is-active' : ''}`
-  const content = <><Icon size={17} aria-hidden="true" /><span>{label}</span></>
-  if (item.external) return <a className={className} href={item.to} title={label}>{content}</a>
-  return <Link className={className} to={item.to} title={label}>{content}</Link>
+function SidebarLink({ active, icon: Icon, label, to }) {
+  return (
+    <Link className={`global-sidebar__link ${active ? 'is-active' : ''}`} to={to} title={label} aria-current={active ? 'page' : undefined}>
+      <Icon size={16} aria-hidden="true" />
+      <span>{label}</span>
+    </Link>
+  )
 }
 
-function RecentProjectLink({ project, onSwitchProject, t }) {
+function RecentProjectLink({ active, project, onSwitchProject, tone }) {
   const content = (
     <>
-      <FolderKanban size={16} aria-hidden="true" />
-      <span className="global-sidebar__project-copy">
-        <span data-no-i18n>{project.name}</span>
-        <small>{t(project.open ? 'projects.open' : project.available ? 'projects.recent_used' : 'projects.relocate_required')}</small>
-      </span>
+      <span className={`global-sidebar__project-mark is-${tone}`} aria-hidden="true">{project.name?.trim().charAt(0) || '·'}</span>
+      <span className="global-sidebar__project-copy" data-no-i18n>{project.name}</span>
     </>
   )
+  const className = `global-sidebar__link global-sidebar__project ${active ? 'is-active' : ''}`
   if (!project.available) {
-    return <Link className="global-sidebar__link global-sidebar__project" to="/" title={project.root_path}>{content}</Link>
+    return <Link className={className} to="/" title={project.name} aria-current={active ? 'page' : undefined}>{content}</Link>
   }
   return (
     <button
-      className="global-sidebar__link global-sidebar__project"
+      className={className}
       type="button"
-      title={project.root_path}
+      title={project.name}
+      aria-current={active ? 'page' : undefined}
       onClick={() => onSwitchProject?.(project.uuid)}
     >
       {content}
@@ -170,9 +255,8 @@ function RecentProjectLink({ project, onSwitchProject, t }) {
   )
 }
 
-function isActivePath(pathname, target) {
-  if (target === '/') return pathname === '/' || pathname.startsWith('/projects/')
-  return pathname === target || pathname.startsWith(`${target}/`)
+function isProjectActive(pathname, projectUuid) {
+  return pathname === `/projects/${encodeURIComponent(projectUuid)}` || pathname.startsWith(`/projects/${encodeURIComponent(projectUuid)}/`)
 }
 
 function readCollapsed() {

@@ -8,12 +8,14 @@ import { useI18n } from '../i18n/useI18n.js'
 
 export default function GlobalTopbar({
   title,
+  subtitle,
   projectUuid,
   activeSection,
   actions,
   recentProjects = [],
   onSwitchProject,
   onOpenNavigation,
+  showAccount = true,
   switchingProjectUuid = '',
 }) {
   const { t } = useI18n()
@@ -65,7 +67,7 @@ export default function GlobalTopbar({
                 <ChevronDown size={15} aria-hidden="true" />
               </button>
             </h1>
-          ) : projectUuid ? <h1 data-no-i18n>{title}</h1> : <h1>{title}</h1>}
+          ) : projectUuid ? <h1 data-no-i18n>{title}</h1> : <div className="project-topbar__index-title"><strong>{title}</strong>{subtitle ? <span>{subtitle}</span> : null}</div>}
           {switcherOpen ? (
             <div className="project-switcher-popover" role="dialog" aria-label={t('projects.open_switcher')}>
               {availableProjects.map((project) => (
@@ -102,7 +104,7 @@ export default function GlobalTopbar({
         </nav>
       ) : null}
 
-      <div className="project-topbar__actions">{actions}<AccountMenu /></div>
+      <div className="project-topbar__actions">{actions}{showAccount ? <AccountMenu /> : null}</div>
     </header>
   )
 }

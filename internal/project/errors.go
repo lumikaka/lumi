@@ -7,6 +7,7 @@ const (
 	CodeDefaultProjectParentUnavailable = "default_project_parent_unavailable"
 	CodeInvalidUUID                     = "invalid_uuid"
 	CodeProjectNotFound                 = "project_not_found"
+	CodeProjectCoverNotFound            = "project_cover_not_found"
 	CodeProjectNotOpen                  = "project_not_open"
 	CodePermissionDenied                = "project_permission_denied"
 	CodeInvalidProject                  = "invalid_project"

@@ -1,9 +1,16 @@
 import { defineMessages } from './defineMessages.js'
 
 export const settings = defineMessages({
+  'settings.title': ['设置', 'Settings'],
+  'settings.menu': ['设置菜单', 'Settings menu'],
   'settings.ai': ['AI 设置', 'AI settings'],
   'settings.about': ['关于 Lumi', 'About Lumi'],
   'settings.admin': ['管理后台', 'Admin'],
+  'settings.user_account': ['用户账号', 'User account'],
+  'settings.language_preference': ['语言偏好', 'Language preferences'],
+  'settings.model_configuration': ['模型配置', 'Model configuration'],
+  'settings.llm_calls': ['LLM 调用', 'LLM calls'],
+  'settings.feedback': ['问题反馈', 'Feedback'],
   'settings.account': ['账户设置', 'Account settings'],
   'settings.account_menu': ['账号菜单', 'Account menu'],
   'settings.local_account': ['本地账户', 'Local account'],

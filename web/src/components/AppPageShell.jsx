@@ -7,7 +7,7 @@ import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import GlobalSidebar, { useGlobalSidebarState } from './GlobalSidebar.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 
-export default function AppPageShell({ title, actions, children }) {
+export default function AppPageShell({ title, subtitle, actions, children, className = '', showAccount = true }) {
   const navigate = useNavigate()
   const [sidebarCollapsed, setSidebarCollapsed] = useGlobalSidebarState()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -15,7 +15,7 @@ export default function AppPageShell({ title, actions, children }) {
   const switchProject = (uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)
 
   return (
-    <main className={`app-route-shell ${sidebarCollapsed ? 'global-sidebar-collapsed' : ''}`}>
+    <main className={`app-route-shell ${sidebarCollapsed ? 'global-sidebar-collapsed' : ''} ${className}`.trim()}>
       <GlobalSidebar
         collapsed={sidebarCollapsed}
         mobileOpen={sidebarOpen}
@@ -24,7 +24,7 @@ export default function AppPageShell({ title, actions, children }) {
         recentProjects={recentQuery.data?.items || []}
         onSwitchProject={switchProject}
       />
-      <GlobalTopbar title={title} actions={actions} onOpenNavigation={() => setSidebarOpen(true)} />
+      <GlobalTopbar title={title} subtitle={subtitle} actions={actions} showAccount={showAccount} onOpenNavigation={() => setSidebarOpen(true)} />
       <div className="app-page-content">{children}</div>
     </main>
   )

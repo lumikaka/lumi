@@ -270,6 +270,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	}
 	e.GET("/media/projects/:project_uuid/assets/:asset_uuid/content", filesHandler.Content, projectRequestLease(projects))
 	e.GET("/media/projects/:project_uuid/comic-exports/:export_uuid/content", productionHandler.ExportContent, projectRequestLease(projects))
+	e.GET("/media/recent-projects/:project_uuid/cover", recentProjectHandler.Cover)
 	lifecycleContext, lifecycleCancel := context.WithCancel(context.Background())
 	lifecycleDone := make(chan struct{})
 	lifecycle := newProjectLifecycleController(projects, projectIdleGrace)

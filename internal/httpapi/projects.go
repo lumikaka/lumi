@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"lumi/internal/project"
@@ -141,6 +142,24 @@ func (handler *RecentProjectHandler) Index(c echo.Context) error {
 	return Success(c, http.StatusOK, map[string]any{"items": items})
 }
 
+func (handler *RecentProjectHandler) Cover(c echo.Context) error {
+	content, err := handler.manager.OpenRecentProjectCover(c.Request().Context(), c.Param("project_uuid"))
+	if err != nil {
+		return projectAPIError(err)
+	}
+	defer content.File.Close()
+	headers := c.Response().Header()
+	headers.Set(echo.HeaderContentType, content.MIMEType)
+	headers.Set(echo.HeaderContentLength, strconv.FormatInt(content.ByteSize, 10))
+	headers.Set("ETag", content.ETag)
+	headers.Set("Last-Modified", content.LastModified.Format(http.TimeFormat))
+	headers.Set("X-Content-Type-Options", "nosniff")
+	headers.Set("Cache-Control", "private, max-age=0, must-revalidate")
+	headers.Set("Content-Disposition", `inline; filename="cover.`+safeHeaderExtension(content.MIMEType)+`"; filename*=`+filesContentDisposition(content.Filename))
+	http.ServeContent(c.Response(), c.Request(), content.Filename, content.LastModified, content.File)
+	return nil
+}
+
 type relocateProjectRequest struct {
 	RootPath string `json:"root_path"`
 }
@@ -265,7 +284,7 @@ func ProjectAPIError(err error) error {
 	}
 	status := http.StatusUnprocessableEntity
 	switch projectErr.Code {
-	case project.CodeProjectNotFound:
+	case project.CodeProjectNotFound, project.CodeProjectCoverNotFound:
 		status = http.StatusNotFound
 	case project.CodePermissionDenied:
 		status = http.StatusForbidden

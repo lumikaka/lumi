@@ -7,7 +7,7 @@ test('the person icon is the final topbar action and opens local account resourc
   const menuSource = readFileSync(new URL('./AccountMenu.jsx', import.meta.url), 'utf8')
   const shellStyles = readFileSync(new URL('../styles/shell.sass', import.meta.url), 'utf8')
 
-  assert.match(topbarSource, /\{actions\}<AccountMenu \/>/)
+  assert.match(topbarSource, /\{actions\}\{showAccount \? <AccountMenu \/> : null\}/)
   assert.match(menuSource, /className="account-menu__icon"/)
   assert.match(menuSource, /to="\/settings\/account"/)
   assert.match(menuSource, /to="\/settings\/providers"[\s\S]*settings\.llm_management/)

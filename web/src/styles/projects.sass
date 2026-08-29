@@ -6,22 +6,22 @@
   padding-top: 46px
   display: grid
   align-items: start
-  gap: 34px
+  gap: 38px
 
 .project-creation-composer
   display: grid
-  gap: 20px
+  gap: 26px
 
   h2,
   p
     margin: 0
 
   h2
-    margin-top: 3px
-    font-size: clamp(27px, 3vw, 34px)
-    font-weight: $font-weight-semibold
-    line-height: 1.16
-    letter-spacing: -.025em
+    max-width: 620px
+    font-size: 32px
+    font-weight: $font-weight-medium
+    line-height: 1.35
+    letter-spacing: -.02em
 
   form
     width: calc(100% - 96px)
@@ -49,7 +49,7 @@
       width: 100%
       height: 92px
       min-height: 92px
-      padding: 14px
+      padding: 16px
       border: 0
       border-bottom: 1px solid $color-border-subtle
       border-radius: 0
@@ -66,11 +66,18 @@
   display: grid
   align-content: center
   justify-items: start
-  gap: 7px
+  gap: 10px
   text-align: left
 
   h2
     max-width: 620px
+
+  > .story-eyebrow
+    color: $color-accent-strong
+    font-size: 13px
+    line-height: 21px
+    letter-spacing: 0
+    text-transform: none
 
   > p:last-child
     max-width: 650px
@@ -79,19 +86,47 @@
 
 .project-creation-composer__attachments
   grid-column: 1
-  padding: 8px 0 8px 10px
+  height: 51px
+  margin-top: 5.5px
+  padding: 8px 0 8px 8px
   display: flex
   align-items: center
   gap: 10px
 
-  button
+  button,
+  .project-creation-composer__context
     display: inline-flex
     align-items: center
-    gap: 7px
+    gap: 6px
+
+  .project-creation-composer__context
+    min-height: 30px
+    padding: 0 9px
+    border-radius: 5px
+    color: $color-muted
+    background: $color-surface-muted
+
+  .project-creation-composer__attachment-button
+    width: 34px
+    height: 34px
+    padding: 0
+    justify-content: center
+    border: 1px solid transparent
+    color: $color-text
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-border
+      background: $color-surface-muted
 
   span
     color: $color-muted
     font-size: $font-size-small
+
+  .project-creation-composer__context,
+  .project-creation-composer__context span
+    font-size: $font-size-body
 
 .project-creation-composer__file-input
   position: absolute
@@ -119,7 +154,9 @@
 
 .project-creation-composer__footer
   grid-column: 3
-  padding: 8px 10px 8px 0
+  height: 51px
+  margin-top: 5.5px
+  padding: 8px 8px 8px 0
   display: flex
   align-items: center
   justify-content: space-between
@@ -135,9 +172,17 @@
 
   button
     flex: 0 0 auto
+    min-height: 34px
+    height: 34px
+    padding: 0 12px
     display: inline-flex
     align-items: center
     gap: 7px
+    border: 0
+    font-size: $font-size-body
+
+    &:disabled
+      opacity: 1
 
 .project-creation-composer__error,
 .project-creation-composer__failure
@@ -212,17 +257,40 @@
 
   h2
     margin: 0
-    font-size: 18px
-    font-weight: $font-weight-semibold
-    line-height: 1.2
+    font-size: 15px
+    font-weight: $font-weight-medium
+    line-height: 1.25
 
 .project-index-toolbar__controls
-  min-width: min(100%, 560px)
   display: flex
   align-items: center
   justify-content: flex-end
-  flex-wrap: wrap
-  gap: 8px
+  gap: 4px
+
+.project-index-open-button,
+.project-index-new-button
+  min-height: 30px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-muted
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface-muted
+
+.project-index-open-button
+  width: 30px
+  padding: 0
+
+.project-index-new-button
+  padding: 0 6px
+  gap: 7px
 
 .project-index-search,
 .project-index-sort
@@ -266,29 +334,26 @@
 .project-card
   position: relative
   min-width: 0
-  min-height: 132px
-  padding: 15px
-  display: grid
-  grid-template-rows: auto 1fr auto
-  align-content: start
-  gap: 12px
+  height: 166px
+  padding: 0
+  display: block
+  overflow: hidden
   border: 1px solid $color-border
-  border-top: 3px solid $color-warm
-  border-radius: $radius-md
+  border-radius: 7px
   background: $color-surface
-  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease
 
   &:hover,
   &:focus-within
     border-color: $color-border-strong
-    border-top-color: $color-warm
-    background: $color-surface-subtle
+    box-shadow: 0 6px 18px rgba($color-text, .07)
+    transform: translateY(-1px)
 
   &.is-menu-open
     z-index: 8
+    overflow: visible
     border-color: $color-accent
-    border-top-color: $color-warm
-    background: $color-surface-subtle
+    box-shadow: 0 6px 18px rgba($color-text, .08)
 
   &.is-activatable
     cursor: pointer
@@ -299,19 +364,42 @@
 
 .project-card.is-menu-open:hover
   border-color: $color-accent-strong
-  border-top-color: $color-warm
-  background: $color-accent-muted
+  box-shadow: 0 6px 18px rgba($color-text, .1)
 
-.project-card__heading
-  min-width: 0
-  padding-right: 30px
+.project-card__cover
+  width: 100%
+  height: 94px
   display: grid
-  gap: 8px
+  place-items: center
+  overflow: hidden
+  background: $color-surface-muted
+  border-radius: 6px 6px 0 0
+
+  img
+    width: 100%
+    height: 100%
+    display: block
+    object-fit: cover
+
+  &.is-empty img
+    width: 30px
+    height: 30px
+    object-fit: contain
+    opacity: .42
+
+.project-card__body
+  min-width: 0
+  height: 70px
+  padding: 11px 40px 10px 12px
+  display: grid
+  align-content: start
+  gap: 4px
 
 .project-card__meta
   min-width: 0
   display: flex
-  align-items: flex-end
+  align-items: center
+  gap: 6px
 
 .project-index-name
   min-width: 0
@@ -325,8 +413,8 @@
     white-space: nowrap
 
   strong
-    font-size: 15px
-    font-weight: $font-weight-semibold
+    font-size: 14px
+    font-weight: $font-weight-medium
 
   small
     color: $color-muted
@@ -334,7 +422,7 @@
 
 .project-index-status
   width: fit-content
-  padding: 3px 7px
+  padding: 1px 6px
   border-radius: 999px
   color: $color-muted
   background: $color-surface-muted
@@ -371,8 +459,8 @@
 
 .project-index-more
   position: absolute
-  top: 10px
-  right: 10px
+  right: 8px
+  bottom: 18px
 
 .project-index-more-button
   width: 32px
@@ -385,6 +473,8 @@
   border-radius: $radius-sm
   color: $color-muted
   background: transparent
+  opacity: 0
+  transition: opacity 120ms ease
 
   &:hover,
   &:focus-visible
@@ -396,11 +486,16 @@
     border-color: $color-border
     color: $color-text
     background: $color-surface
+    opacity: 1
 
   &[aria-expanded="true"]:hover
     border-color: $color-accent
     color: $color-accent
     background: $color-accent-muted
+
+.project-card:hover .project-index-more-button,
+.project-card:focus-within .project-index-more-button
+  opacity: 1
 
 .project-index-menu
   position: absolute
@@ -810,12 +905,15 @@
 
 @media (max-width: 1199px)
   .project-card-grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-columns: repeat(3, minmax(0, 1fr))
 
 @media (max-width: 760px)
   .project-index-content
     padding-top: 24px
-    gap: 30px
+    gap: 38px
+
+  .project-index-main
+    gap: 14px
 
   .project-creation-composer h2
     font-size: 26px
@@ -834,12 +932,11 @@
     flex-direction: column
 
   .project-index-toolbar
-    align-items: flex-start
-    flex-direction: column
+    align-items: center
 
   .project-index-toolbar__controls
-    width: 100%
-    justify-content: stretch
+    width: auto
+    justify-content: flex-end
 
   .project-path-picker
     grid-template-columns: 1fr
@@ -850,10 +947,22 @@
   .project-card-grid
     grid-template-columns: 1fr
 
+  .project-card
+    height: 142px
+
+  .project-card__cover
+    height: 70px
+
+  .project-card__body
+    height: 70px
+
 @media (max-width: 560px)
   .project-index-toolbar__controls
-    display: grid
-    grid-template-columns: 1fr auto
+    display: flex
 
   .project-index-search
     grid-column: 1 / -1
+
+@media (hover: none)
+  .project-index-more-button
+    opacity: 1

@@ -85,17 +85,18 @@ type Manager struct {
 }
 
 type Summary struct {
-	UUID         string              `json:"uuid"`
-	Name         string              `json:"name"`
-	RootPath     string              `json:"root_path"`
-	Status       string              `json:"status"`
-	StatusDetail string              `json:"status_detail"`
-	Available    bool                `json:"available"`
-	Open         bool                `json:"open"`
-	SetupStatus  string              `json:"setup_status,omitempty"`
-	UpdatedAt    time.Time           `json:"updated_at"`
-	LastOpenedAt time.Time           `json:"last_opened_at"`
-	PictureBook  *PictureBookProfile `json:"picture_book,omitempty"`
+	UUID          string              `json:"uuid"`
+	Name          string              `json:"name"`
+	RootPath      string              `json:"root_path"`
+	CoverImageURL string              `json:"cover_image_url,omitempty"`
+	Status        string              `json:"status"`
+	StatusDetail  string              `json:"status_detail"`
+	Available     bool                `json:"available"`
+	Open          bool                `json:"open"`
+	SetupStatus   string              `json:"setup_status,omitempty"`
+	UpdatedAt     time.Time           `json:"updated_at"`
+	LastOpenedAt  time.Time           `json:"last_opened_at"`
+	PictureBook   *PictureBookProfile `json:"picture_book,omitempty"`
 }
 
 type CreateInput struct {
@@ -249,6 +250,9 @@ func (manager *Manager) RecentProjects(ctx context.Context) ([]Summary, error) {
 		item := Summary{
 			UUID: recent.UUID, Name: recent.Name, RootPath: recent.RootPath,
 			Status: "recent", Available: true, UpdatedAt: recent.UpdatedAt, LastOpenedAt: recent.LastOpenedAt,
+		}
+		if _, coverErr := loadRecentProjectCoverReference(ctx, recent.UUID, recent.RootPath); coverErr == nil {
+			item.CoverImageURL = "/media/recent-projects/" + recent.UUID + "/cover"
 		}
 		if openRoots[recent.UUID] == recent.RootPath {
 			item.Open = true

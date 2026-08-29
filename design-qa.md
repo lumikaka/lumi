@@ -1,73 +1,42 @@
-# Design QA
+# Lumi Project List Design QA
 
-## Evidence
+## Comparison target
 
-- Source visual truth: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`
-- Source global-home capture: `/tmp/lumi-target-global-home-1280x720-current.png`
-- Implementation global-home capture: `/tmp/lumi-implementation-home-1280x720-final.png`
-- Full-view global-home comparison: `/tmp/lumi-home-comparison-final.png`
-- Focused composer/card comparison: `/tmp/lumi-home-focus-comparison.png`
-- Source project-workspace capture: `/tmp/lumi-target-project-1280x720.png`
-- Implementation project-workspace capture: `/tmp/lumi-implementation-project-1280x720-final.png`
-- Full-view project comparison: `/tmp/lumi-project-comparison-final.png`
-- Focused Agent comparison: `/tmp/lumi-agent-focus-comparison.png`
-- Implementation URL: `http://127.0.0.1:5803/`
+- Source visual truth: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`.
+- Desktop source capture: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-reference-home-list-desktop.png`.
+- Desktop implementation capture: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-implementation-home-list-desktop.png`.
+- Desktop combined comparison: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-home-list-desktop-comparison.png`.
+- Mobile source capture: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-reference-home-list-mobile-exact.png`.
+- Mobile implementation capture: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-implementation-home-list-mobile.png`.
+- Mobile combined comparison: `/Users/qingyang/.codex/visualizations/2026/08/29/01a04d5c-1d82-7712-af0a-d69ecf3c1eec/lumi-home-list-mobile-comparison.png`.
+- Viewports: 1728 × 992 CSS px and 390 × 844 CSS px. Source and implementation captures use matching dimensions and device scale.
 
-The primary comparison viewport was `1280 x 720` CSS pixels at device scale factor `1`. Every source and implementation screenshot used for the main comparison is `1280 x 720` pixels, so no density resampling was needed. Focused comparisons use identical crops from those normalized screenshots: home `880 x 480` per side and Agent `340 x 720` per side.
+## Required fidelity surfaces
 
-## State
+- Shell: passed. Desktop sidebar is 224px, topbar is 58px, and the mobile navigation collapses behind the target menu control.
+- Main layout: passed. Desktop home content is 880px with a 784px inner column. Mobile content uses 20px page gutters and a 350px inner width.
+- Typography: passed. Kicker, 32px/26px headline, recent-project heading, project name, and relative edit time match the reference hierarchy and line heights.
+- Composer: passed. The desktop and mobile form positions, 150.5px height, 92px textarea, 51px footer, context tag, attachment control, and send button match the source geometry.
+- Project cards: passed. Desktop uses three 253.33 × 166px cards with 12px gaps and 94px covers. Mobile uses 350 × 142px cards with 70px covers.
+- Media: passed. Every recent project resolves its earliest current comic image through the read-only recent-project cover endpoint. Projects without an eligible image keep the Lumi fallback without exposing internal file paths or IDs.
+- Responsive behavior: passed at both requested comparison sizes. No clipping, horizontal overflow, or broken fixed-height regions were observed.
+- Interaction and accessibility: passed. Mobile navigation opens and closes; the new-picture-book dialog opens and dismisses; composer input enables the send action; card overflow menus open and dismiss; controls retain accessible names and keyboard semantics.
 
-- Light user application only.
-- Global home compared with the desktop sidebar expanded.
-- Project workspace compared with the sidebar collapsed and the `330px` Agent visible, matching the target region split.
-- Product-specific project data and copy differ between the prototype and Lumi implementation. Existing Lumi information architecture, routes, and business content were intentionally preserved.
-- The target's project-cover imagery was not implemented because this iteration explicitly excludes covers, placeholder art, and cover APIs.
+## Comparison history
+
+1. Initial desktop comparison found a tinted main canvas, a 6.6px headline/composer offset, a 2.5px composer-height mismatch, a lighter disabled send action, and an extra recent-project toolbar action. These were corrected against measured source geometry.
+2. Initial mobile comparison found 6px narrow gutters and redistributed vertical spacing around the recent-project header. The final implementation matches the source at x=20, form y=233.1875, toolbar y=421.6875, and first card y=465.6875.
+3. Final combined desktop and mobile comparisons found no actionable P0, P1, or P2 differences. Project names, cover artwork, project count, and relative timestamps intentionally come from the local SQLite data and therefore differ from the prototype fixture.
 
 ## Findings
 
-No actionable P0, P1, or P2 visual differences remain within the agreed scope.
+No actionable P0, P1, or P2 findings remain.
 
-- Fonts and typography: the implementation uses the target-style system sans stack with `14px` body, `12px` secondary, and `11px` micro text; weights are constrained to `430/500/600`. Headline wrapping differs where Lumi's real copy differs, but hierarchy and density are aligned.
-- Spacing and layout rhythm: the desktop sidebar is `224px`, collapsed sidebar `60px`, title bar `58px`, home composer `784px` wide with a `92px` input region, and project Agent `330px`. The normalized full-view and focused comparisons confirm the major region proportions.
-- Colors and visual tokens: page, sidebar, surfaces, borders, green accent, warm decorative color, radii, and restrained elevation follow the target palette. Secondary text was darkened to `#666b63` because the initially planned `#73786f` did not meet AA on every target-style surface.
-- Image quality and asset fidelity: existing Lumi favicon and Lucide icons remain sharp and code-native. No target project imagery was approximated or replaced with fake placeholders; omission is intentional and required by scope.
-- Copy and content: Lumi's existing business wording, actions, routes, project states, and recovery behavior remain unchanged. The visual hierarchy was migrated without inventing a target-only search route or new product content.
-- Accessibility and interaction: visible focus styles, keyboard activation, selected/active/expanded hover combinations, drawer escape dismissal, menu dismissal, and unavailable-project recovery affordances were retained.
+## Verification
 
-## Comparison History
-
-### Pass 1 — blocked by P2 differences
-
-- [P2] Home content was too wide and centered differently from the source. The composer/card region measured about `880px` instead of the target `784px`, and the hero alignment drifted.
-- [P2] The creation composer was too tall at roughly `200px`, versus the target's roughly `150px` shell and `92px` text area.
-- [P2] The Agent used a hard white surface instead of the source's soft panel background.
-- [P2] The planned `#73786f` secondary color produced insufficient contrast on the page/sidebar surfaces.
-
-Fixes: constrained and left-aligned the home content region, set the composer to `784 x 148` with a `92px` text area, moved Agent surfaces to the soft token, and changed secondary text to `#666b63`.
-
-### Pass 2 — passed
-
-Post-fix evidence is in `/tmp/lumi-home-comparison-final.png`, `/tmp/lumi-home-focus-comparison.png`, `/tmp/lumi-project-comparison-final.png`, and `/tmp/lumi-agent-focus-comparison.png`. The implementation now matches the target's major geometry, surface hierarchy, density, and responsive shell while retaining Lumi-specific content and the explicit no-cover constraint.
-
-## Responsive and Interaction Verification
-
-- `1280 x 720`: sidebar, content, and Agent render together; project split is `60 / 890 / 330` when the sidebar is collapsed.
-- `1199 x 720`: sidebar remains; Agent opens as a right-side `330px` dialog overlay.
-- `760 x 720`: sidebar becomes a `224px` drawer with backdrop; Agent becomes a full-screen dialog; title bar wraps without hiding primary controls.
-- Sidebar collapse/expand persists through `lumi.globalSidebarCollapsed`.
-- Home cards keep unavailable projects non-enterable and expose relocate/forget/reveal actions through the more menu.
-- Settings, Premise, Chapters, and Agent were opened in the browser; the checked legacy blue/orange computed colors were absent.
-- Browser console errors checked after navigation: none.
-
-## Implementation Checklist
-
-- [x] Central light-theme tokens and typography scale
-- [x] Persistent/collapsible desktop sidebar and mobile drawer
-- [x] `58px` top bar and responsive `330px` Agent behavior
-- [x] Coverless home project cards with preserved business flows
-- [x] User-workspace color, radius, density, and elevation migration
-- [x] Combined-state hover/focus rules
-- [x] `1280`, `1199`, and `760` responsive verification
-- [x] 276 frontend tests and production build
+- Frontend unit suite: passed, 276 tests.
+- Frontend production build: passed.
+- Go project, HTTP API, and server packages: passed.
+- Browser console after clean reload: no warnings or errors from the application.
 
 final result: passed

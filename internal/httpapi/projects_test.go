@@ -12,12 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/files"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -50,7 +53,114 @@ func projectAPIHarness(t *testing.T) (*echo.Echo, *project.Manager) {
 	e.GET("/api/v1/recent-projects", recent.Index)
 	e.PATCH("/api/v1/recent-projects/:project_uuid", recent.Update)
 	e.DELETE("/api/v1/recent-projects/:project_uuid", recent.Delete)
+	e.GET("/media/recent-projects/:project_uuid/cover", recent.Cover)
 	return e, manager
+}
+
+func TestRecentProjectsExposeFirstPictureBookImageAsCover(t *testing.T) {
+	e, manager := projectAPIHarness(t)
+	created := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "Cover Book", "parent_path": t.TempDir()})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	projectUUID := envelopeData(t, created)["uuid"].(string)
+	content := apiPNG(t)
+
+	if err := manager.WithStore(t.Context(), projectUUID, func(store *project.Store) error {
+		service := files.NewService(store, nil)
+		upload, err := service.CreateUpload(t.Context(), files.CreateUploadInput{
+			Purpose:          "comic_section_image",
+			OriginalFilename: "first-page.png",
+			DisplayName:      "First page",
+			Reader:           bytes.NewReader(content),
+		})
+		if err != nil {
+			return err
+		}
+		asset, err := service.FinalizeUpload(t.Context(), upload.UUID, "comic_section_image")
+		if err != nil {
+			return err
+		}
+
+		var projectID, actorID, fileID int64
+		if err := store.DB().Table("projects").Where("uuid = ?", projectUUID).Pluck("id", &projectID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("actors").Where("kind = ?", "local_user").Order("id").Limit(1).Pluck("id", &actorID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("files").Where("uuid = ?", asset.UUID).Pluck("id", &fileID).Error; err != nil {
+			return err
+		}
+
+		now := time.Now().UTC()
+		chapterUUID := projectAPITestUUIDv7(t)
+		stateUUID := projectAPITestUUIDv7(t)
+		sectionUUID := projectAPITestUUIDv7(t)
+		variantUUID := projectAPITestUUIDv7(t)
+		if err := store.DB().Exec(`INSERT INTO chapters(uuid,project_id,volume_no,chapter_no,chapter_code,sort_order,title,revision,created_at,updated_at) VALUES(?,?,1,1,'chapter-001',1,'Opening',1,?,?)`, chapterUUID, projectID, now, now).Error; err != nil {
+			return err
+		}
+		var chapterID int64
+		if err := store.DB().Table("chapters").Where("uuid = ?", chapterUUID).Pluck("id", &chapterID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(`INSERT INTO chapter_comic_states(uuid,chapter_id,status,revision,created_at,updated_at) VALUES(?,?,'ready',1,?,?)`, stateUUID, chapterID, now, now).Error; err != nil {
+			return err
+		}
+		var stateID int64
+		if err := store.DB().Table("chapter_comic_states").Where("uuid = ?", stateUUID).Pluck("id", &stateID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(`INSERT INTO comic_sections(uuid,chapter_comic_state_id,actor_id,section_no,title,description_md,revision,created_at,updated_at) VALUES(?,?,?,1,'First page','The first illustrated page.',1,?,?)`, sectionUUID, stateID, actorID, now, now).Error; err != nil {
+			return err
+		}
+		var sectionID int64
+		if err := store.DB().Table("comic_sections").Where("uuid = ?", sectionUUID).Pluck("id", &sectionID).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(`INSERT INTO comic_image_variants(uuid,comic_section_id,file_id,actor_id,version_no,source_type,input_snapshot,created_at) VALUES(?,?,?,?,1,'manual','{}',?)`, variantUUID, sectionID, fileID, actorID, now).Error; err != nil {
+			return err
+		}
+		var variantID int64
+		if err := store.DB().Table("comic_image_variants").Where("uuid = ?", variantUUID).Pluck("id", &variantID).Error; err != nil {
+			return err
+		}
+		return store.DB().Table("comic_sections").Where("id = ?", sectionID).Update("current_image_variant_id", variantID).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if response := requestJSON(t, e, http.MethodDelete, "/api/v1/open-projects/"+projectUUID, nil); response.Code != http.StatusOK {
+		t.Fatalf("close status=%d body=%s", response.Code, response.Body.String())
+	}
+	recent := requestJSON(t, e, http.MethodGet, "/api/v1/recent-projects", nil)
+	expectedURL := "/media/recent-projects/" + projectUUID + "/cover"
+	if recent.Code != http.StatusOK || !strings.Contains(recent.Body.String(), `"cover_image_url":"`+expectedURL+`"`) || strings.Contains(recent.Body.String(), `"id"`) {
+		t.Fatalf("recent status=%d body=%s", recent.Code, recent.Body.String())
+	}
+
+	cover := requestJSON(t, e, http.MethodGet, expectedURL, nil)
+	if cover.Code != http.StatusOK || !bytes.Equal(cover.Body.Bytes(), content) {
+		t.Fatalf("cover status=%d body_length=%d", cover.Code, cover.Body.Len())
+	}
+	for _, header := range []string{"Content-Type", "Content-Length", "ETag", "Last-Modified", "X-Content-Type-Options", "Cache-Control", "Content-Disposition"} {
+		if cover.Header().Get(header) == "" {
+			t.Fatalf("missing %s", header)
+		}
+	}
+	if cover.Header().Get("Content-Type") != "image/png" || cover.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("cover headers=%v", cover.Header())
+	}
+}
+
+func projectAPITestUUIDv7(t *testing.T) string {
+	t.Helper()
+	value, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value.String()
 }
 
 func TestOpenProjectsAreIndependentAndClosedProjectsReturnProjectNotOpen(t *testing.T) {

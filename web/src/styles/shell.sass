@@ -21,84 +21,109 @@
   grid-row: 1 / -1
   min-width: 0
   min-height: 0
-  padding: 9px 9px 10px
-  display: grid
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto
-  gap: 8px
-  overflow: hidden
-  border-right: 1px solid $color-border
+  padding: 14px 11px 12px 10px
+  display: flex
+  flex-direction: column
+  overflow: visible
   background: $color-sidebar
   transition: width 160ms ease, transform 160ms ease
 
 .global-sidebar__header
-  min-height: 40px
+  flex: 0 0 auto
+  min-height: 42px
   display: flex
   align-items: center
   justify-content: space-between
-  gap: 6px
+  gap: 8px
 
 .global-sidebar__brand
+  width: 100%
   min-width: 0
-  min-height: 38px
-  padding: 0 9px
+  min-height: 42px
+  padding: 0 8px
   display: flex
   align-items: center
   gap: 10px
   overflow: hidden
-  border-radius: $radius-sm
+  border-radius: 7px
   color: $color-text
-  font-size: 16px
-  font-weight: $font-weight-semibold
-  letter-spacing: -.02em
+  font-size: $font-size-body
+  font-weight: $font-weight-regular
 
-  img
-    flex: 0 0 auto
-    width: 22px
-    height: 22px
-    object-fit: contain
+  &:hover
+    color: $color-text
+    background: rgba($color-surface, .42)
 
-  span
-    overflow: hidden
-    text-overflow: ellipsis
-    white-space: nowrap
+.global-sidebar__logo-button
+  flex: 0 0 auto
+  width: 28px
+  height: 28px
+  padding: 0
+  display: grid
+  place-items: center
+  overflow: visible
+  border: 0
+  border-radius: 7px
+  color: inherit
+  background: transparent
 
   &:hover,
   &:focus-visible
-    color: $color-accent-strong
-    background: rgba($color-surface, .5)
+    background: transparent
+
+.global-sidebar__logo-button[aria-pressed="true"]:hover
+  background: transparent
+
+.global-sidebar__logo
+  width: 28px
+  height: 28px
+  display: block
+  object-fit: contain
+
+.global-sidebar__brand-name
+  min-width: 0
+  overflow: hidden
+  color: inherit
+  text-overflow: ellipsis
+  white-space: nowrap
 
 .global-sidebar__mobile-close
   display: none
 
+.global-sidebar__nav
+  flex: 0 0 auto
+  margin-top: 8px
+
 .global-sidebar__nav,
-.global-sidebar__recent nav
+.global-sidebar__recent nav,
+.global-sidebar__settings-menu
   min-width: 0
   display: grid
   align-content: start
-  gap: 3px
+  gap: 0
 
 .global-sidebar__link,
 .global-sidebar__collapse
   width: 100%
   min-width: 0
-  min-height: 36px
-  padding: 0 9px
-  display: grid
-  grid-template-columns: 20px minmax(0, 1fr)
+  min-height: 38px
+  padding: 0 10px
+  display: flex
   align-items: center
-  gap: 9px
+  gap: 10px
   overflow: hidden
-  border: 1px solid transparent
+  border: 0
   border-radius: $radius-sm
   color: $color-text
   background: transparent
-  font-size: 13px
-  font-weight: $font-weight-medium
+  font-size: $font-size-body
+  font-weight: $font-weight-regular
+  line-height: 21px
   text-align: left
 
   svg
     flex: 0 0 auto
-    color: $color-muted
+    color: currentColor
 
   > span
     min-width: 0
@@ -108,110 +133,195 @@
 
   &:hover,
   &:focus-visible
-    color: $color-accent-strong
-    background: rgba($color-surface, .56)
-
-    svg
-      color: $color-accent
+    color: $color-text
+    background: rgba($color-surface, .62)
 
   &.is-active
     color: $color-accent-strong
-    background: $color-accent-muted
-
-    svg
-      color: $color-accent
+    background: $color-surface
 
 .global-sidebar__link.is-active:hover
   color: $color-accent-strong
-  background: $color-accent-muted
+  background: $color-surface
+
+.global-sidebar__search[aria-disabled="true"]
+  cursor: default
 
 .global-sidebar__recent
+  flex: 1 1 auto
   min-width: 0
   min-height: 0
-  padding-top: 6px
-  overflow: hidden
+  margin-top: 12px
+  overflow: visible
+
+.global-sidebar__section-header
+  height: 34px
+  padding: 0 8px 0 10px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 8px
 
   h2
-    margin: 0 0 5px
-    padding: 0 10px
+    min-width: 0
+    margin: 0
     overflow: hidden
-    color: $color-muted
-    font-size: $font-size-micro
-    font-weight: $font-weight-semibold
-    line-height: 22px
-    letter-spacing: .04em
+    color: #747970
+    font-size: $font-size-small
+    font-weight: $font-weight-regular
+    line-height: 21px
     text-overflow: ellipsis
     white-space: nowrap
-    text-transform: uppercase
 
-  nav
-    max-height: 100%
-    overflow: auto
-    scrollbar-width: thin
+.global-sidebar__add-project
+  flex: 0 0 auto
+  width: 34px
+  height: 34px
+  display: grid
+  place-items: center
+  border-radius: $radius-sm
+  color: #747970
+  background: transparent
+
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: rgba($color-surface, .62)
+
+.global-sidebar__recent nav
+  max-height: calc(100% - 34px)
+  overflow: auto
+  scrollbar-width: thin
 
 .global-sidebar__project
-  min-height: 44px
-  padding-block: 5px
-  border: 1px solid transparent
+  min-height: 38px
+
+.global-sidebar__project-mark
+  --project-tone: #{$color-muted}
+  flex: 0 0 auto
+  width: 8px
+  height: 8px
+  overflow: hidden
+  border-radius: 2px
+  color: transparent
+  background: var(--project-tone)
+  font-size: $font-size-body
+  line-height: 1
+
+  &.is-warm
+    --project-tone: #{$color-warm}
+
+  &.is-accent
+    --project-tone: #{$color-accent}
+
+  &.is-muted
+    --project-tone: #747970
 
 .global-sidebar__project-copy
   min-width: 0
-  display: grid
-  gap: 1px
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
 
-  span,
-  small
+.global-sidebar__footer
+  position: relative
+  flex: 0 0 auto
+  padding-top: 10px
+  border-top: 1px solid rgba($color-border-strong, .72)
+
+.global-sidebar__collapse
+  color: $color-text
+
+  &[aria-pressed="true"]
+    color: $color-text
+
+.global-sidebar__collapse[aria-pressed="true"]:hover
+  color: $color-text
+  background: rgba($color-surface, .62)
+
+.global-sidebar__settings[aria-expanded="true"]:hover
+  color: $color-text
+  background: rgba($color-surface, .62)
+
+.global-sidebar__settings-menu
+  position: absolute
+  z-index: 2
+  left: 2px
+  bottom: 46px
+  width: 210px
+  padding: 6px
+  border: 1px solid $color-border
+  border-radius: 7px
+  background: $color-surface
+  box-shadow: $shadow-floating
+
+.global-sidebar__menu-item
+  width: 100%
+  min-width: 0
+  height: 34px
+  padding: 0 10px
+  display: flex
+  align-items: center
+  gap: 10px
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  font-size: $font-size-body
+  font-weight: $font-weight-regular
+  line-height: 21px
+
+  svg
+    flex: 0 0 auto
+
+  span
     min-width: 0
     overflow: hidden
     text-overflow: ellipsis
     white-space: nowrap
 
-  small
-    color: $color-muted
-    font-size: $font-size-micro
-    font-weight: $font-weight-regular
-
-.global-sidebar__nav--utility
-  padding-top: 7px
-  border-top: 1px solid rgba($color-border-strong, .72)
-
-.global-sidebar__collapse
-  grid-template-columns: 20px minmax(0, 1fr)
-  color: $color-muted
-
-  &[aria-pressed="true"]
-    color: $color-accent-strong
-
-.global-sidebar__collapse[aria-pressed="true"]:hover
-  color: $color-accent-strong
-  background: $color-accent-muted
+  &:hover,
+  &:focus-visible
+    color: $color-text
+    background: $color-surface-muted
 
 .global-sidebar.is-collapsed
-  padding-inline: 8px
-
   .global-sidebar__header
     justify-content: center
 
   .global-sidebar__brand
-    width: 42px
-    padding: 0
-    justify-content: center
+    width: 39px
+    padding: 0 0 0 8px
+    justify-content: flex-start
 
-  .global-sidebar__brand span,
-  .global-sidebar__recent h2,
-  .global-sidebar__link > span,
+  .global-sidebar__brand-name,
+  .global-sidebar__section-header h2,
+  .global-sidebar__link > span:not(.global-sidebar__project-mark),
   .global-sidebar__collapse > span
     display: none
 
   .global-sidebar__link,
   .global-sidebar__collapse
-    width: 42px
+    width: 39px
     padding: 0
-    grid-template-columns: 1fr
-    justify-items: center
+    justify-content: center
+
+  .global-sidebar__section-header
+    width: 39px
+    padding: 0
+
+  .global-sidebar__add-project
+    visibility: hidden
 
   .global-sidebar__project
     min-height: 38px
+
+  .global-sidebar__project-mark
+    width: auto
+    height: auto
+    overflow: visible
+    color: var(--project-tone)
+    background: transparent
+    font-weight: $font-weight-medium
 
 .global-sidebar__backdrop
   display: none
@@ -223,7 +333,7 @@
   grid-row: 1
   min-width: 0
   min-height: $topbar-height
-  padding: 7px 16px
+  padding: 7px 16px 7px 18px
   display: grid
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)
   align-items: center
@@ -231,6 +341,12 @@
   border-bottom: 1px solid $color-border
   background: rgba($color-page, .94)
   backdrop-filter: blur(10px)
+
+.app-route-shell--home
+  background: $color-surface
+
+  .project-topbar
+    background: $color-surface
 
 .project-topbar--index
   grid-template-columns: minmax(0, 1fr) auto
@@ -276,6 +392,28 @@
     letter-spacing: -.01em
     text-overflow: ellipsis
     white-space: nowrap
+
+.project-topbar__index-title
+  min-width: 0
+  display: flex
+  align-items: baseline
+  gap: 8px
+  line-height: 22px
+
+  strong,
+  span
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  strong
+    color: $color-text
+    font-size: 14px
+    font-weight: $font-weight-medium
+
+  span
+    color: $color-muted
+    font-size: 12px
 
 .project-switcher-button
   max-width: 100%
@@ -684,28 +822,43 @@
       transform: translateX(0)
 
     &.is-collapsed
-      padding-inline: 9px
-
       .global-sidebar__header
         justify-content: space-between
 
       .global-sidebar__brand
-        width: auto
-        padding: 0 9px
+        width: 100%
+        padding: 0 8px
         justify-content: flex-start
 
-      .global-sidebar__brand span,
-      .global-sidebar__recent h2,
-      .global-sidebar__link > span,
+      .global-sidebar__brand-name,
+      .global-sidebar__section-header h2,
+      .global-sidebar__link > span:not(.global-sidebar__project-mark),
       .global-sidebar__collapse > span
         display: initial
+
+      .global-sidebar__brand-name
+        display: block
 
       .global-sidebar__link,
       .global-sidebar__collapse
         width: 100%
-        padding: 0 9px
-        grid-template-columns: 20px minmax(0, 1fr)
-        justify-items: stretch
+        padding: 0 10px
+        justify-content: flex-start
+
+      .global-sidebar__section-header
+        width: 100%
+        padding: 0 8px 0 10px
+
+      .global-sidebar__add-project
+        visibility: visible
+
+      .global-sidebar__project-mark
+        width: 8px
+        height: 8px
+        overflow: hidden
+        color: transparent
+        background: var(--project-tone)
+        font-weight: $font-weight-regular
 
   .global-sidebar__backdrop
     position: fixed
@@ -751,6 +904,7 @@
   .project-topbar__context
     grid-column: 1
     grid-row: 1
+    gap: 12px
 
   .project-topbar__actions
     grid-column: 2
@@ -786,3 +940,6 @@
   .project-workbench__content,
   .app-page-content
     padding-inline: 14px
+
+  .app-route-shell--home .app-page-content
+    padding-inline: 20px

@@ -19,16 +19,18 @@ test('project rows use the available action that enters the workspace', () => {
 	assert.equal(projectRowPrimaryAction({ open: false, available: false }), null)
 })
 
-test('recent projects render as coverless cards with secondary details in the more menu', () => {
+test('recent projects render picture-book covers with secondary details in the more menu', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
   assert.match(source, /className="project-card-grid" role="list"/)
   assert.match(source, /className=\{`project-card \$\{onActivate/)
+  assert.match(source, /className=\{`project-card__cover \$\{project\.cover_image_url/)
+  assert.match(source, /src=\{project\.cover_image_url \|\| '\/favicon\.png'\}/)
   assert.match(source, /project-index-menu__path/)
   assert.doesNotMatch(source, /project-index-table/)
-  assert.doesNotMatch(source, /project-cover|placeholder-cover/)
   assert.match(styles, /\.project-card-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
-  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-card-grid[\s\S]*?grid-template-columns: 1fr/)
+  assert.match(styles, /\.project-card__cover[\s\S]*height: 94px[\s\S]*object-fit: cover/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-card-grid[\s\S]*?grid-template-columns: 1fr[\s\S]*?\.project-card__cover[\s\S]*?height: 70px/)
 })
 
 test('project page presents creation, open, relocation and forget dialogs', () => {
@@ -43,6 +45,8 @@ test('project page presents creation, open, relocation and forget dialogs', () =
   assert.doesNotMatch(source, /disabled=\{[^}]*projectDefaultsQuery\.isError/)
   assert.doesNotMatch(source, /~\/Documents\/Lumi|\/Users\/me\//)
   assert.match(source, /projects\.dialog\.open\.title/)
+  assert.match(source, /searchParams\.get\('create_project'\) !== '1'/)
+  assert.match(source, /nextSearchParams\.delete\('create_project'\)/)
   assert.match(source, /selectDirectoryMutation\.mutate\(existingPath\)/)
   assert.match(source, /projects\.open\.choose_folder/)
   assert.match(source, /revealDirectoryMutation\.mutate\(project\.root_path\)/)

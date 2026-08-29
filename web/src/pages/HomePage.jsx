@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, FolderOpen, ImagePlus, MoreHorizontal, Plus, Search, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowUp, FolderOpen, Link, MoreHorizontal, Paperclip, Plus, X } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
@@ -42,13 +42,6 @@ import {
   selectProjectChatClipboardImages,
   selectProjectChatImageFiles,
 } from './projectChatAttachments.js'
-
-const SORT_OPTIONS = [
-  { value: 'recent', labelKey: 'projects.index.sort.recent' },
-  { value: 'oldest', labelKey: 'projects.index.sort.oldest' },
-  { value: 'name_asc', labelKey: 'projects.index.sort.name_asc' },
-  { value: 'name_desc', labelKey: 'projects.index.sort.name_desc' },
-]
 
 const CREATION_CHECKPOINT_KEY = 'lumi.homeProjectCreation'
 
@@ -148,11 +141,10 @@ function useProjectMutation(queryClient, setActionError, mutationFn, afterSucces
 }
 
 export default function HomePage() {
-  const { formatDateTime, locale, t } = useI18n()
+  const { locale, t } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('recent')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [dialog, setDialog] = useState('')
   const [createMode, setCreateMode] = useState('yolo')
   const [name, setName] = useState('')
@@ -336,16 +328,7 @@ export default function HomePage() {
     if (creationSessionQuery.data) acceptCreationSession(creationSessionQuery.data, creationCheckpoint)
   }, [creationSessionQuery.data])
 
-  const projects = useMemo(() => {
-    const needle = search.trim().toLocaleLowerCase()
-    const items = [...(recentQuery.data?.items || [])].filter((project) => !needle || project.name.toLocaleLowerCase().includes(needle) || project.root_path.toLocaleLowerCase().includes(needle))
-    return items.sort((left, right) => {
-      if (sort === 'oldest') return dateValue(left.last_opened_at) - dateValue(right.last_opened_at)
-      if (sort === 'name_asc') return left.name.localeCompare(right.name, locale)
-      if (sort === 'name_desc') return right.name.localeCompare(left.name, locale)
-      return dateValue(right.last_opened_at) - dateValue(left.last_opened_at)
-    })
-  }, [locale, recentQuery.data, search, sort])
+  const projects = recentQuery.data?.items || []
 
 	const pageError = actionError || projectDefaultsQuery.error || recentQuery.error || openProjectsQuery.error
   const pending = createMutation.isPending || yoloMutation.isPending || openPathMutation.isPending || selectDirectoryMutation.isPending || relocateMutation.isPending || forgetMutation.isPending
@@ -370,7 +353,14 @@ export default function HomePage() {
     else createMutation.mutate({ name, parentPath, generationLanguage, pictureBook, overallStyle })
   }
   const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
-  const openExistingDialog = () => { setActionError(null); setDialog('open') }
+
+  useEffect(() => {
+    if (searchParams.get('create_project') !== '1') return
+    openCreateDialog()
+    const nextSearchParams = new URLSearchParams(searchParams)
+    nextSearchParams.delete('create_project')
+    setSearchParams(nextSearchParams, { replace: true })
+  }, [searchParams, setSearchParams]) // eslint-disable-line react-hooks/exhaustive-deps
   const creationPending = creationMutation.isPending
   const creationError = creationMutation.error || creationSessionQuery.error
   const unresolvedCreationReferences = creationReferences.filter((reference) => reference.status !== 'ready')
@@ -482,31 +472,33 @@ export default function HomePage() {
 
   return (
     <AppPageShell
-      title={t('projects.title')}
-      actions={<><button className="project-topbar__action" type="button" aria-label={t('projects.action.open_existing')} title={t('projects.action.open_existing')} onClick={openExistingDialog}><FolderOpen size={15} aria-hidden="true" /><span>{t('projects.action.open_existing')}</span></button><button className="project-topbar__action" type="button" aria-label={t('projects.action.new')} title={t('projects.action.new')} onClick={openCreateDialog}><Plus size={15} aria-hidden="true" /><span>{t('projects.action.new')}</span></button></>}
+      className="app-route-shell--home"
+      showAccount={false}
+      title="Lumi"
+      subtitle={t('projects.index.workspace')}
     >
       <div className="project-index-content">
         <section className="project-creation-composer" aria-labelledby="project-creation-composer-title">
           <div className="project-creation-composer__copy">
             <p className="story-eyebrow">{t('projects.conversation.eyebrow')}</p>
             <h2 id="project-creation-composer-title">{t('projects.conversation.title')}</h2>
-            <p>{t('projects.conversation.body')}</p>
           </div>
           <form onSubmit={submitCreationComposer}>
             <label htmlFor="project-creation-input">{t('projects.conversation.label')}</label>
             <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} onPaste={handleCreationReferencePaste} placeholder={t('projects.conversation.placeholder')} disabled={creationPending || Boolean(creationCheckpoint?.sessionUuid)} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
             {creationValidationAttempted && !creationInput.trim() ? <p className="project-field-error" role="alert">{t('projects.conversation.required')}</p> : null}
             <div className="project-creation-composer__attachments">
-              <button type="button" className="button-secondary" disabled={creationPending || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><ImagePlus size={16} aria-hidden="true" />{t('projects.conversation.reference.add')}</button>
+              <span className="project-creation-composer__context"><Link size={16} aria-hidden="true" />{t('projects.conversation.unlinked')}</span>
+              <button type="button" className="project-creation-composer__attachment-button" aria-label={t('projects.conversation.reference.add')} title={t('projects.conversation.reference.add')} disabled={creationPending || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><Paperclip size={16} aria-hidden="true" /></button>
               <input ref={creationReferenceInputRef} className="project-creation-composer__file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={creationPending} onChange={(event) => { addCreationReferenceFiles(event.target.files); event.target.value = '' }} />
-              <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span>
+              {creationReferences.length ? <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span> : null}
             </div>
             <ReferenceStrip projectUuid={creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file))} compact />
             <LocalizedErrorMessage error={creationReferenceError} className="project-creation-composer__reference-error" compact onDismiss={() => setCreationReferenceError(null)} />
             {creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0 ? <p className="project-creation-composer__reference-notice" role="status">{t('projects.conversation.reference.reselect', { count: missingCreationReferenceFiles })}</p> : null}
             <div className="project-creation-composer__footer">
               <p id="project-creation-hint">{t('projects.conversation.path_hint')}</p>
-              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}><Plus size={16} aria-hidden="true" />{t(creationPending ? 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.submit')}</button>
+              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}>{t(creationPending ? 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.send')}<ArrowUp size={16} aria-hidden="true" /></button>
             </div>
           </form>
           {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey="projects.conversation.failed" /><button type="button" className="button-secondary" disabled={creationPending || !creationCheckpoint} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
@@ -515,16 +507,14 @@ export default function HomePage() {
         <LocalizedErrorMessage error={pageError} className="project-alert project-index-alert" titleKey="projects.error.action_title" onDismiss={actionError ? () => setActionError(null) : undefined} />
         <section className="project-index-main">
           <div className="project-index-toolbar">
-            <div><p className="story-eyebrow">{t('projects.index.eyebrow')}</p><h2>{t('projects.index.local')}</h2></div>
+            <h2>{t('projects.recent')}</h2>
             <div className="project-index-toolbar__controls">
-              <label className="project-index-search"><Search size={16} aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('projects.index.search_placeholder')} aria-label={t('projects.index.search_label')} /></label>
-              <label className="project-index-sort"><ArrowUpDown size={16} aria-hidden="true" /><select value={sort} onChange={(event) => setSort(event.target.value)} aria-label={t('projects.index.sort_label')}>{SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}</select></label>
-              <button className="story-button" type="button" onClick={openCreateDialog}><Plus size={16} />{t('projects.action.new')}</button>
+              <button className="project-index-new-button" type="button" onClick={openCreateDialog}><Plus size={16} aria-hidden="true" />{t('projects.action.new_picture_book')}</button>
             </div>
           </div>
           <div className="project-card-grid" role="list" aria-label={t('projects.recent')}>
             {recentQuery.isLoading ? <p className="story-muted project-index-loading">{t('projects.loading.index')}</p> : null}
-            {!recentQuery.isLoading && projects.length === 0 ? <div className="story-empty project-index-empty">{t(search.trim() ? 'projects.index.empty_search' : 'projects.index.empty')}</div> : null}
+            {!recentQuery.isLoading && projects.length === 0 ? <div className="story-empty project-index-empty">{t('projects.index.empty')}</div> : null}
             {projects.map((project) => (
               <ProjectRow
                 key={project.uuid}
@@ -539,12 +529,11 @@ export default function HomePage() {
                 onReveal={() => { setOpenMenuUuid(''); revealDirectoryMutation.mutate(project.root_path) }}
                 onRelocate={() => { setTargetProject(project); setRelocatePath(project.root_path || ''); setDialog('relocate'); setOpenMenuUuid('') }}
                 onForget={() => { setTargetProject(project); setDialog('forget'); setOpenMenuUuid('') }}
-                formatDateTime={formatDateTime}
+                locale={locale}
                 t={t}
               />
             ))}
           </div>
-          <p className="project-index-count">{t('projects.index.count', { shown: projects.length, total: recentQuery.data?.items?.length || 0 })}</p>
         </section>
       </div>
 
@@ -594,7 +583,7 @@ export default function HomePage() {
   )
 }
 
-export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onReveal, onRelocate, onForget, formatDateTime, t }) {
+export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onReveal, onRelocate, onForget, locale, t }) {
   const actions = projectRowActions(project)
   const primaryAction = projectRowPrimaryAction(project)
   const onActivate = primaryAction === 'enter' ? onEnter : undefined
@@ -612,12 +601,15 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       onClick={onActivate}
       onKeyDown={activateOnKeyDown}
     >
-      <div className="project-card__heading">
-        <div className="project-index-name"><strong>{project.name}</strong></div>
-        <span className={`project-index-status project-index-status--${project.status}`}>{t(projectStatusCopy[project.status] || 'projects.status.unavailable')}</span>
+      <div className={`project-card__cover ${project.cover_image_url ? '' : 'is-empty'}`}>
+        <img src={project.cover_image_url || '/favicon.png'} alt={project.cover_image_url ? t('projects.row.cover_alt', { name: project.name }) : ''} />
       </div>
-      <div className="project-card__meta">
-        <time className="project-index-date" dateTime={project.last_opened_at}>{formatDateTime(project.last_opened_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+      <div className="project-card__body">
+        <div className="project-index-name"><strong>{project.name}</strong></div>
+        <div className="project-card__meta">
+          <time className="project-index-date" dateTime={project.last_opened_at}>{formatProjectEditTime(project.last_opened_at, locale, t)}</time>
+          {!project.available ? <span className={`project-index-status project-index-status--${project.status}`}>{t(projectStatusCopy[project.status] || 'projects.status.unavailable')}</span> : null}
+        </div>
       </div>
       <div className="project-index-more" ref={menuRef} onClick={(event) => event.stopPropagation()}>
         <button className="project-index-more-button" type="button" aria-label={t('projects.row.more_label', { name: project.name })} aria-expanded={menuOpen} onClick={onToggleMenu}><MoreHorizontal size={18} /></button>
@@ -638,7 +630,14 @@ function Modal({ title, description, className = '', dismissDisabled = false, on
   return <LumiDialog className={className} dismissDisabled={dismissDisabled} onClose={onClose}><header className="lumi-dialog__header"><div><h2>{title}</h2>{description ? <p>{description}</p> : null}</div><button className="button-quiet" type="button" disabled={dismissDisabled} aria-label={t('common.action.close')} onClick={onClose}><X size={17} /></button></header><div className="lumi-dialog__body">{children}</div></LumiDialog>
 }
 
-function dateValue(value) {
-  const number = Date.parse(value || '')
-  return Number.isFinite(number) ? number : 0
+export function formatProjectEditTime(value, locale, t, now = new Date()) {
+  const editedAt = new Date(value || '')
+  if (Number.isNaN(editedAt.getTime())) return ''
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfEditedDay = new Date(editedAt.getFullYear(), editedAt.getMonth(), editedAt.getDate())
+  const days = Math.max(0, Math.round((startOfToday - startOfEditedDay) / 86_400_000))
+  if (days === 0) return t('projects.index.edited_just_now')
+  if (days === 1) return t('projects.index.edited_yesterday')
+  if (days < 7) return t('projects.index.edited_days_ago', { count: new Intl.NumberFormat(locale).format(days) })
+  return t('projects.index.edited_on', { date: new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(editedAt) })
 }
