@@ -8,16 +8,17 @@
 html
   min-width: 320px
   min-height: 100%
-  background: $color-surface-muted
+  background: $color-page
 
 body
   margin: 0
   min-width: 320px
   min-height: 100vh
   color: $color-text
-  background: $color-surface-muted
+  background: $color-page
   font-family: $font-family-base
   font-size: $font-size-body
+  font-weight: $font-weight-regular
   line-height: $line-height-body
   -webkit-font-smoothing: antialiased
 
@@ -86,16 +87,16 @@ button:not([class]),
   color: $color-surface
   background: $color-accent
   font-size: 13px
-  font-weight: 750
+  font-weight: $font-weight-semibold
   line-height: 1
   text-decoration: none
   transition: border-color 120ms ease, background 120ms ease, color 120ms ease
 
   &:hover,
   &:focus-visible
-    border-color: #1d4ed8
+    border-color: $color-accent-strong
     color: $color-surface
-    background: #1d4ed8
+    background: $color-accent-strong
 
 .button-secondary,
 .story-button--secondary
@@ -110,7 +111,7 @@ button:not([class]),
   color: $color-text
   background: $color-surface
   font-size: 13px
-  font-weight: 750
+  font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible
@@ -131,7 +132,7 @@ button:not([class]),
   color: $color-muted
   background: transparent
   font-size: 13px
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible
@@ -177,7 +178,7 @@ button:not([class]),
   margin: 0 0 5px
   color: $color-muted
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
   line-height: 1.2
   letter-spacing: .08em
   text-transform: uppercase
@@ -196,7 +197,7 @@ button:not([class]),
     margin: 0
     color: $color-text
     font-family: $font-family-base
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
     letter-spacing: 0
 
@@ -220,7 +221,7 @@ button:not([class]),
     display: grid
     gap: 6px
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .story-alert,
 .workspace-notice,
@@ -293,7 +294,7 @@ button:not([class]),
     color: $color-muted
     background: transparent
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     white-space: nowrap
 
     &:hover,

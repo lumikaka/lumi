@@ -1,57 +1,85 @@
 @use './design-tokens' as *
 
 .project-index-content
-  width: min(100%, $layout-width)
+  width: min(100%, 880px)
   margin: 0 auto
+  padding-top: 46px
   display: grid
-  grid-template-columns: minmax(0, 1fr) 320px
   align-items: start
-  gap: 18px
+  gap: 34px
 
 .project-creation-composer
-  grid-column: 1 / -1
-  padding: clamp(18px, 3vw, 30px)
   display: grid
-  grid-template-columns: minmax(220px, .7fr) minmax(360px, 1.3fr)
-  gap: 20px 28px
-  border: 1px solid rgba($color-accent, .28)
-  border-radius: $radius-lg
-  background: linear-gradient(135deg, $color-surface 0%, $color-accent-muted 145%)
-  box-shadow: 0 16px 38px rgba($color-text, .07)
+  gap: 20px
 
   h2,
   p
     margin: 0
 
   h2
-    margin-top: 4px
-    font-size: clamp(23px, 3vw, 34px)
-    line-height: 1.12
+    margin-top: 3px
+    font-size: clamp(27px, 3vw, 34px)
+    font-weight: $font-weight-semibold
+    line-height: 1.16
+    letter-spacing: -.025em
 
   form
+    width: calc(100% - 96px)
     min-width: 0
+    margin: 0 auto
+    padding: 0
     display: grid
-    gap: 8px
+    grid-template-columns: auto minmax(0, 1fr) auto
+    gap: 0
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    box-shadow: 0 8px 24px rgba($color-text, .06)
 
     > label
-      font-size: 13px
-      font-weight: 800
+      position: absolute
+      width: 1px
+      height: 1px
+      overflow: hidden
+      clip: rect(0 0 0 0)
+      clip-path: inset(50%)
 
     textarea
+      grid-column: 1 / -1
       width: 100%
-      min-height: 108px
+      height: 92px
+      min-height: 92px
+      padding: 14px
+      border: 0
+      border-bottom: 1px solid $color-border-subtle
+      border-radius: 0
+      background: transparent
+      box-shadow: none
       resize: vertical
 
+      &:focus
+        box-shadow: none
+
 .project-creation-composer__copy
+  width: calc(100% - 96px)
+  margin: 0 auto
   display: grid
   align-content: center
-  gap: 8px
+  justify-items: start
+  gap: 7px
+  text-align: left
+
+  h2
+    max-width: 620px
 
   > p:last-child
+    max-width: 650px
     color: $color-muted
     line-height: 1.55
 
 .project-creation-composer__attachments
+  grid-column: 1
+  padding: 8px 0 8px 10px
   display: flex
   align-items: center
   gap: 10px
@@ -75,7 +103,14 @@
 
 .project-creation-composer__reference-error,
 .project-creation-composer__reference-notice
+  grid-column: 1 / -1
   margin: 0
+
+.project-creation-composer .project-field-error
+  grid-column: 1 / -1
+
+.project-creation-composer form > .chat-reference-strip
+  grid-column: 1 / -1
 
 .project-creation-composer__reference-notice
   color: $color-muted
@@ -83,15 +118,20 @@
   line-height: 1.45
 
 .project-creation-composer__footer
+  grid-column: 3
+  padding: 8px 10px 8px 0
   display: flex
   align-items: center
   justify-content: space-between
   gap: 12px
 
   p
-    color: $color-muted
-    font-size: $font-size-small
-    line-height: 1.45
+    position: absolute
+    width: 1px
+    height: 1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    clip-path: inset(50%)
 
   button
     flex: 0 0 auto
@@ -101,7 +141,8 @@
 
 .project-creation-composer__error,
 .project-creation-composer__failure
-  grid-column: 2
+  width: calc(100% - 96px)
+  margin-inline: auto
 
 .project-creation-composer__failure
   padding: 11px 12px
@@ -121,24 +162,12 @@
   code
     font-size: $font-size-small
 
-@media (max-width: 760px)
-  .project-creation-composer
-    grid-template-columns: minmax(0, 1fr)
-
-  .project-creation-composer__error,
-  .project-creation-composer__failure
-    grid-column: 1
-
-  .project-creation-composer__footer,
-  .project-creation-composer__failure
-    align-items: stretch
-    flex-direction: column
-
-.project-index-main,
-.project-index-side
+.project-index-main
+  width: calc(100% - 96px)
   min-width: 0
+  margin: 0 auto
   display: grid
-  gap: 18px
+  gap: 14px
 
 .draft-project-workspace
   min-height: min(62vh, 560px)
@@ -175,10 +204,6 @@
   small
     max-width: 560px
 
-.project-index-side
-  position: sticky
-  top: 18px
-
 .project-index-toolbar
   display: flex
   align-items: center
@@ -187,7 +212,8 @@
 
   h2
     margin: 0
-    font-size: 22px
+    font-size: 18px
+    font-weight: $font-weight-semibold
     line-height: 1.2
 
 .project-index-toolbar__controls
@@ -231,47 +257,61 @@
   select
     min-width: 110px
 
-.project-index-table
+.project-card-grid
+  min-width: 0
   display: grid
-  overflow: visible
-  border: 1px solid $color-border
-  border-radius: $radius-md
-  background: $color-surface
-  box-shadow: 0 10px 26px rgba($color-text, .05)
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  gap: 12px
 
-.project-index-row
+.project-card
   position: relative
   min-width: 0
-  min-height: 66px
-  padding: 12px 14px
+  min-height: 132px
+  padding: 15px
   display: grid
-  grid-template-columns: minmax(170px, 1.15fr) minmax(112px, .55fr) minmax(130px, .62fr) minmax(180px, 1fr) 44px
-  align-items: center
+  grid-template-rows: auto 1fr auto
+  align-content: start
   gap: 12px
-  border-bottom: 1px solid $color-border-subtle
+  border: 1px solid $color-border
+  border-top: 3px solid $color-warm
+  border-radius: $radius-md
+  background: $color-surface
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease
 
-  &:last-child
-    border-bottom: 0
+  &:hover,
+  &:focus-within
+    border-color: $color-border-strong
+    border-top-color: $color-warm
+    background: $color-surface-subtle
 
-.project-index-row--head
-  min-height: 42px
-  color: $color-muted
-  background: $color-surface-subtle
-  font-size: $font-size-small
-  font-weight: 800
-  text-transform: uppercase
+  &.is-menu-open
+    z-index: 8
+    border-color: $color-accent
+    border-top-color: $color-warm
+    background: $color-surface-subtle
 
-.project-index-row--item:hover,
-.project-index-row--item:focus-within,
-.project-index-row--item.is-menu-open
-  background: $color-surface-subtle
+  &.is-activatable
+    cursor: pointer
 
-.project-index-row--item.is-activatable
-  cursor: pointer
-
-  &:focus-visible
+  &.is-activatable:focus-visible
     outline: 2px solid $color-accent
-    outline-offset: -2px
+    outline-offset: 2px
+
+.project-card.is-menu-open:hover
+  border-color: $color-accent-strong
+  border-top-color: $color-warm
+  background: $color-accent-muted
+
+.project-card__heading
+  min-width: 0
+  padding-right: 30px
+  display: grid
+  gap: 8px
+
+.project-card__meta
+  min-width: 0
+  display: flex
+  align-items: flex-end
 
 .project-index-name
   min-width: 0
@@ -285,7 +325,8 @@
     white-space: nowrap
 
   strong
-    font-size: 14px
+    font-size: 15px
+    font-weight: $font-weight-semibold
 
   small
     color: $color-muted
@@ -298,7 +339,7 @@
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .project-index-status--open,
 .project-index-status--available,
@@ -329,8 +370,9 @@
   white-space: nowrap
 
 .project-index-more
-  position: relative
-  justify-self: end
+  position: absolute
+  top: 10px
+  right: 10px
 
 .project-index-more-button
   width: 32px
@@ -365,14 +407,14 @@
   z-index: 12
   top: calc(100% + 4px)
   right: 0
-  width: 180px
-  padding: 5px
+  width: min(264px, calc(100vw - 36px))
+  padding: 6px
   display: grid
   gap: 2px
   border: 1px solid $color-border
   border-radius: $radius-md
   background: $color-surface
-  box-shadow: 0 12px 28px rgba($color-text, .14)
+  box-shadow: $shadow-floating
 
   button.project-index-menu__item
     width: 100%
@@ -386,7 +428,7 @@
     color: $color-text
     background: transparent
     font-size: 13px
-    font-weight: 550
+    font-weight: $font-weight-medium
     line-height: 1.2
     text-align: left
 
@@ -408,61 +450,33 @@
   margin: 3px 5px 2px
   background: $color-border-subtle
 
+.project-index-menu__path
+  padding: 7px 9px 9px
+  display: grid
+  gap: 3px
+  border-bottom: 1px solid $color-border-subtle
+
+  span
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: $font-weight-semibold
+
+  code
+    overflow: hidden
+    color: $color-text
+    font-size: $font-size-micro
+    text-overflow: ellipsis
+    white-space: nowrap
+
 .project-index-count
   margin: 0
   color: $color-muted
   font-size: 12px
   text-align: right
 
-.project-index-current
-  display: grid
-  gap: 12px
-
-  h2,
-  p
-    margin: 0
-
-  h2
-    font-size: 17px
-
-  p,
-  code
-    color: $color-muted
-    font-size: 12px
-    overflow-wrap: anywhere
-
-.project-index-current__badge
-  width: fit-content
-  padding: 3px 7px
-  border-radius: 999px
-  color: $color-success
-  background: $color-success-muted
-  font-size: $font-size-small
-  font-weight: 800
-
-.project-index-current__actions
-  display: flex
-  flex-wrap: wrap
-  gap: 8px
-
-.project-index-local-note
-  display: grid
-  gap: 8px
-
-  h2,
-  p
-    margin: 0
-
-  h2
-    font-size: 16px
-
-  p
-    color: $color-muted
-    font-size: 12px
-    line-height: 1.6
-
 .project-index-alert
-  grid-column: 1 / -1
+  width: calc(100% - 96px)
+  margin-inline: auto
 
 .project-create-tabs
   display: flex
@@ -499,7 +513,7 @@
     display: grid
     gap: 6px
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .project-create-priority-fields
   padding: 12px
@@ -548,7 +562,7 @@
     cursor: pointer
     list-style: none
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &::-webkit-details-marker
       display: none
@@ -569,7 +583,7 @@
       color: $color-muted
       background: $color-surface
       font-size: $font-size-small
-      font-weight: 700
+      font-weight: $font-weight-semibold
 
   &[open] summary::before
     transform: rotate(90deg)
@@ -587,7 +601,7 @@
 
   > label
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   textarea
     min-height: 170px
@@ -694,7 +708,7 @@
   legend
     padding: 0 4px
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .picture-book-choice-row
   display: flex
@@ -734,7 +748,7 @@
 
   > span
     padding-bottom: 10px
-    font-weight: 900
+    font-weight: $font-weight-semibold
 
   p
     grid-column: 1 / -1
@@ -776,7 +790,7 @@
   > label
     display: block
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .project-path-picker
   display: grid
@@ -794,15 +808,31 @@
   color: $color-muted
   font-size: 12px
 
-@media (max-width: 1080px)
-  .project-index-content
-    grid-template-columns: 1fr
-
-  .project-index-side
-    position: static
+@media (max-width: 1199px)
+  .project-card-grid
     grid-template-columns: repeat(2, minmax(0, 1fr))
 
-@media (max-width: 780px)
+@media (max-width: 760px)
+  .project-index-content
+    padding-top: 24px
+    gap: 30px
+
+  .project-creation-composer h2
+    font-size: 26px
+
+  .project-creation-composer__copy,
+  .project-creation-composer form,
+  .project-creation-composer__error,
+  .project-creation-composer__failure,
+  .project-index-main,
+  .project-index-alert
+    width: 100%
+
+  .project-creation-composer__footer,
+  .project-creation-composer__failure
+    align-items: stretch
+    flex-direction: column
+
   .project-index-toolbar
     align-items: flex-start
     flex-direction: column
@@ -817,26 +847,7 @@
   .picture-book-format-cards
     grid-template-columns: 1fr
 
-  .project-index-row
-    grid-template-columns: minmax(0, 1fr) auto
-    gap: 8px 12px
-
-  .project-index-row--head
-    display: none
-
-  .project-index-status,
-  .project-index-more
-    justify-self: end
-
-  .project-index-date,
-  .project-index-path
-    grid-column: 1
-
-  .project-index-more
-    grid-column: 2
-    grid-row: 2 / span 2
-
-  .project-index-side
+  .project-card-grid
     grid-template-columns: 1fr
 
 @media (max-width: 560px)

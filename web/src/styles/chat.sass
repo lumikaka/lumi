@@ -12,7 +12,7 @@
   overflow: hidden
   border-left: 1px solid $color-border
   color: $color-text
-  background: $color-surface
+  background: $color-surface-muted
 
 .chat-area--collapsed
   display: grid
@@ -29,9 +29,9 @@
   border: 0
   border-radius: 0
   color: $color-muted
-  background: $color-surface
+  background: $color-surface-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   span
     writing-mode: vertical-rl
@@ -62,7 +62,7 @@
   justify-content: space-between
   gap: 10px
   border-bottom: 1px solid $color-border
-  background: $color-surface
+  background: $color-surface-muted
 
   p,
   h2
@@ -71,14 +71,14 @@
   p
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
     text-transform: uppercase
 
   h2
     margin-top: 2px
     font-size: 18px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
 
 .chat-panel__header-actions,
@@ -92,7 +92,7 @@
 .chat-panel__header-actions > span
   color: $color-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .chat-collapse-button,
 .chat-back
@@ -142,7 +142,7 @@
   color: $color-muted
   background: $color-surface-subtle
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
   white-space: nowrap
 
 .chat-status--busy,
@@ -261,7 +261,7 @@
   gap: 5px
   color: rgba($color-text, .78)
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   i
     flex: 0 0 auto
@@ -331,7 +331,7 @@
     color: $color-text
     background: transparent
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-align: left
 
     &:hover,
@@ -359,7 +359,7 @@
   padding: 9px 10px
   border-radius: $radius-sm
   font-size: 13px
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
 .chat-alert--error
   border: 1px solid rgba($color-danger, .34)
@@ -376,7 +376,7 @@
   min-height: 0
   padding: 14px 12px
   overflow: auto
-  background: $color-surface
+  background: $color-surface-muted
 
   > .chat-error
     margin-bottom: 12px
@@ -395,7 +395,7 @@
   gap: 10px
   border: 1px solid rgba($color-accent, .28)
   border-radius: $radius-md
-  background: linear-gradient(150deg, $color-accent-muted, $color-surface 72%)
+  background: $color-accent-muted
 
   > header
     display: flex
@@ -421,7 +421,7 @@
 
 .project-setup-card--finalized
   border-color: rgba($color-success, .28)
-  background: linear-gradient(150deg, rgba($color-success, .07), $color-surface 72%)
+  background: $color-success-muted
 
 .project-setup-card__title
   min-width: 0
@@ -441,7 +441,7 @@
   p
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-transform: uppercase
 
 .project-setup-card--finalized .project-setup-card__title > span
@@ -454,7 +454,7 @@
   color: $color-accent
   background: $color-surface
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .project-setup-card--finalized .project-setup-card__status
   color: $color-success
@@ -597,7 +597,7 @@
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-semibold
   white-space: nowrap
 
 .chat-turn__status--queued,
@@ -770,7 +770,7 @@
     margin-top: 4px
 
   strong
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   del
     color: $color-muted
@@ -881,7 +881,7 @@
 
   th
     background: $color-surface-subtle
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .chat-message__type
   margin-bottom: 5px
@@ -1100,7 +1100,7 @@
       color: $color-accent
       background: $color-accent-muted
       font-size: $font-size-small
-      font-weight: 700
+      font-weight: $font-weight-semibold
 
     > strong
       color: $color-text
@@ -1137,8 +1137,8 @@
     background: $color-accent-muted
 
   &:has(input:checked):hover
-    border-color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent-strong
+    background: $color-accent-muted
 
   input
     width: auto
@@ -1164,7 +1164,7 @@
   gap: 5px
   color: $color-muted
   font-size: 12px
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
 .chat-input-request__recommended
   margin-left: 6px
@@ -1175,7 +1175,7 @@
   background: $color-accent-muted
   font-size: $font-size-small
   font-style: normal
-  font-weight: 700
+  font-weight: $font-weight-semibold
   vertical-align: 1px
 
 .chat-input-history
@@ -1311,7 +1311,7 @@
       color: $color-accent
       font-size: $font-size-small
       font-style: normal
-      font-weight: 700
+      font-weight: $font-weight-semibold
 
     &.is-selected
       border-color: rgba($color-accent, .26)
@@ -1371,7 +1371,7 @@
     span
       color: $color-success
       font-size: $font-size-small
-      font-weight: 800
+      font-weight: $font-weight-semibold
       letter-spacing: .12em
 
   .workflow-progress__meter
@@ -1514,8 +1514,8 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent-strong
+      background: $color-accent-muted
 
     div
       min-width: 0
@@ -1554,7 +1554,7 @@
     color: $color-muted
     cursor: pointer
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .workflow-diagnostics__content
   padding-top: 9px
@@ -1615,8 +1615,8 @@
             background: $color-accent-muted
 
           &[aria-pressed="true"]:hover
-            border-color: #1d4ed8
-            background: #dce8ff
+            border-color: $color-accent-strong
+            background: $color-accent-muted
 
         > button > div
           min-width: 0
@@ -1685,7 +1685,7 @@
       color: $color-muted
       cursor: pointer
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
   pre
     max-height: 180px
@@ -1779,8 +1779,8 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent-strong
+      background: $color-accent-muted
 
     span
       min-width: 0
@@ -1838,7 +1838,7 @@
   color: $color-muted
   background: $color-surface-subtle
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-decoration: none
 
   &:hover
@@ -1856,7 +1856,7 @@
 .chat-composer-shell
   min-width: 0
   border-top: 1px solid $color-border
-  background: $color-surface
+  background: $color-surface-muted
 
 .chat-queue
   min-width: 0
@@ -1917,8 +1917,8 @@
     background: $color-accent-muted
 
   &[aria-grabbed="true"]:hover
-    color: #1d4ed8
-    background: #dce8ff
+    color: $color-accent-strong
+    background: $color-accent-muted
 
 .chat-queue__body
   min-width: 0
@@ -1993,7 +1993,7 @@
 
     &.is-steer:hover,
     &.is-steer:focus-visible
-      color: #1d4ed8
+      color: $color-accent-strong
       background: $color-accent-muted
 
 .chat-composer
@@ -2080,7 +2080,7 @@
     overflow: hidden
     color: $color-text
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -2154,7 +2154,7 @@
   color: $color-muted
   background: $color-surface
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
   > span
     max-width: 88px
@@ -2171,7 +2171,7 @@
 
   &[aria-expanded="true"]:hover
     border-color: $color-accent
-    background: #dce8ff
+    background: $color-accent-muted
 
 .chat-reference-picker__popover
   position: absolute
@@ -2221,7 +2221,7 @@
     color: $color-muted
     background: $color-surface
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
     &:hover,
     &:focus-visible
@@ -2235,9 +2235,9 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent-strong
+      color: $color-accent-strong
+      background: $color-accent-muted
 
 .chat-reference-picker__chapter
   display: grid
@@ -2246,7 +2246,7 @@
   > span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   select
     width: 100%
@@ -2307,9 +2307,9 @@
       background: $color-accent-muted
 
     &[aria-pressed="true"]:hover
-      border-color: #1d4ed8
-      color: #1d4ed8
-      background: #dce8ff
+      border-color: $color-accent-strong
+      color: $color-accent-strong
+      background: $color-accent-muted
 
     > span
       min-width: 0
@@ -2377,9 +2377,9 @@
 
   &:hover,
   &:focus-visible
-    border-color: #e9581e
+    border-color: $color-accent-strong
     color: #fff
-    background: #e9581e
+    background: $color-accent-strong
 
 .chat-composer__send--stop
   border-color: $color-danger

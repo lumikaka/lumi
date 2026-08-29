@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, FolderOpen, HardDrive, ImagePlus, MoreHorizontal, Plus, Search, X } from 'lucide-react'
+import { ArrowUpDown, FolderOpen, ImagePlus, MoreHorizontal, Plus, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
@@ -522,8 +522,7 @@ export default function HomePage() {
               <button className="story-button" type="button" onClick={openCreateDialog}><Plus size={16} />{t('projects.action.new')}</button>
             </div>
           </div>
-          <div className="project-index-table" role="table" aria-label={t('projects.recent')}>
-            <div className="project-index-row project-index-row--head" role="row"><span>{t('common.label.name')}</span><span>{t('common.label.status')}</span><span>{t('projects.recent_used')}</span><span>{t('projects.index.column.path')}</span><span>{t('common.action.more')}</span></div>
+          <div className="project-card-grid" role="list" aria-label={t('projects.recent')}>
             {recentQuery.isLoading ? <p className="story-muted project-index-loading">{t('projects.loading.index')}</p> : null}
             {!recentQuery.isLoading && projects.length === 0 ? <div className="story-empty project-index-empty">{t(search.trim() ? 'projects.index.empty_search' : 'projects.index.empty')}</div> : null}
             {projects.map((project) => (
@@ -547,15 +546,6 @@ export default function HomePage() {
           </div>
           <p className="project-index-count">{t('projects.index.count', { shown: projects.length, total: recentQuery.data?.items?.length || 0 })}</p>
         </section>
-		<aside className="project-index-side">
-		  <section className="story-panel project-index-current">
-			<span className="project-index-current__badge">{t('projects.open')}</span>
-			<div><p className="story-eyebrow">{t('projects.open.eyebrow')}</p><h2>{t('projects.open.count', { count: openProjectsQuery.data?.items?.length || 0 })}</h2></div>
-			<code>{t('projects.open.body')}</code>
-			{openProjectsQuery.data?.items?.length ? <div className="project-index-current__actions"><button type="button" onClick={() => enterProject(openProjectsQuery.data.items[0])}>{t('projects.action.enter_workspace')}</button></div> : <button type="button" onClick={openExistingDialog}>{t('projects.dialog.open.title')}</button>}
-          </section>
-          <section className="story-panel project-index-local-note"><HardDrive size={20} aria-hidden="true" /><h2>{t('projects.local_first.title')}</h2><p>{t('projects.local_first.body')}</p></section>
-        </aside>
       </div>
 
       {dialog === 'create' ? <Modal className="project-create-dialog" title={t('projects.dialog.create.title')} description={t('projects.dialog.create.description')} dismissDisabled={pending} onClose={closeDialog}>
@@ -615,20 +605,24 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
   }
   return (
     <article
-      className={`project-index-row project-index-row--item ${onActivate ? 'is-activatable' : ''} ${menuOpen ? 'is-menu-open' : ''}`}
-      role="row"
+      className={`project-card ${onActivate ? 'is-activatable' : ''} ${menuOpen ? 'is-menu-open' : ''}`}
+      role="listitem"
       tabIndex={onActivate ? 0 : undefined}
       aria-label={onActivate ? t('projects.row.enter_label', { name: project.name }) : undefined}
       onClick={onActivate}
       onKeyDown={activateOnKeyDown}
     >
-      <div className="project-index-name"><strong>{project.name}</strong><small>{project.uuid.slice(0, 13)}</small></div>
-      <span className={`project-index-status project-index-status--${project.status}`}>{t(projectStatusCopy[project.status] || 'projects.status.unavailable')}</span>
-      <time className="project-index-date" dateTime={project.last_opened_at}>{formatDateTime(project.last_opened_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
-      <span className="project-index-path" title={project.root_path}>{project.root_path}</span>
+      <div className="project-card__heading">
+        <div className="project-index-name"><strong>{project.name}</strong></div>
+        <span className={`project-index-status project-index-status--${project.status}`}>{t(projectStatusCopy[project.status] || 'projects.status.unavailable')}</span>
+      </div>
+      <div className="project-card__meta">
+        <time className="project-index-date" dateTime={project.last_opened_at}>{formatDateTime(project.last_opened_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+      </div>
       <div className="project-index-more" ref={menuRef} onClick={(event) => event.stopPropagation()}>
         <button className="project-index-more-button" type="button" aria-label={t('projects.row.more_label', { name: project.name })} aria-expanded={menuOpen} onClick={onToggleMenu}><MoreHorizontal size={18} /></button>
         {menuOpen ? <div className="project-index-menu" role="menu">
+          <div className="project-index-menu__path"><span>{t('projects.index.column.path')}</span><code data-no-i18n>{project.root_path}</code></div>
           {actions.includes('enter') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onEnter}>{t('projects.action.enter')}</button> : null}
           {actions.includes('reveal') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onReveal}>{t('projects.action.reveal')}</button> : null}
           {actions.includes('relocate') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onRelocate}>{t('projects.action.relocate')}</button> : null}

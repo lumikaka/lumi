@@ -2,23 +2,235 @@
 
 .app-route-shell,
 .project-shell
-  min-height: 100vh
+  width: 100%
+  height: 100dvh
+  min-height: 100dvh
   display: grid
-  grid-template-rows: auto minmax(0, 1fr)
-  background: $color-surface-muted
+  grid-template-columns: $global-sidebar-width minmax(0, 1fr)
+  grid-template-rows: $topbar-height minmax(0, 1fr)
+  overflow: hidden
+  background: $color-page
+
+  &.global-sidebar-collapsed
+    grid-template-columns: $global-sidebar-collapsed-width minmax(0, 1fr)
+
+.global-sidebar
+  position: relative
+  z-index: 40
+  grid-column: 1
+  grid-row: 1 / -1
+  min-width: 0
+  min-height: 0
+  padding: 9px 9px 10px
+  display: grid
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto
+  gap: 8px
+  overflow: hidden
+  border-right: 1px solid $color-border
+  background: $color-sidebar
+  transition: width 160ms ease, transform 160ms ease
+
+.global-sidebar__header
+  min-height: 40px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 6px
+
+.global-sidebar__brand
+  min-width: 0
+  min-height: 38px
+  padding: 0 9px
+  display: flex
+  align-items: center
+  gap: 10px
+  overflow: hidden
+  border-radius: $radius-sm
+  color: $color-text
+  font-size: 16px
+  font-weight: $font-weight-semibold
+  letter-spacing: -.02em
+
+  img
+    flex: 0 0 auto
+    width: 22px
+    height: 22px
+    object-fit: contain
+
+  span
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent-strong
+    background: rgba($color-surface, .5)
+
+.global-sidebar__mobile-close
+  display: none
+
+.global-sidebar__nav,
+.global-sidebar__recent nav
+  min-width: 0
+  display: grid
+  align-content: start
+  gap: 3px
+
+.global-sidebar__link,
+.global-sidebar__collapse
+  width: 100%
+  min-width: 0
+  min-height: 36px
+  padding: 0 9px
+  display: grid
+  grid-template-columns: 20px minmax(0, 1fr)
+  align-items: center
+  gap: 9px
+  overflow: hidden
+  border: 1px solid transparent
+  border-radius: $radius-sm
+  color: $color-text
+  background: transparent
+  font-size: 13px
+  font-weight: $font-weight-medium
+  text-align: left
+
+  svg
+    flex: 0 0 auto
+    color: $color-muted
+
+  > span
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  &:hover,
+  &:focus-visible
+    color: $color-accent-strong
+    background: rgba($color-surface, .56)
+
+    svg
+      color: $color-accent
+
+  &.is-active
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+    svg
+      color: $color-accent
+
+.global-sidebar__link.is-active:hover
+  color: $color-accent-strong
+  background: $color-accent-muted
+
+.global-sidebar__recent
+  min-width: 0
+  min-height: 0
+  padding-top: 6px
+  overflow: hidden
+
+  h2
+    margin: 0 0 5px
+    padding: 0 10px
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: $font-weight-semibold
+    line-height: 22px
+    letter-spacing: .04em
+    text-overflow: ellipsis
+    white-space: nowrap
+    text-transform: uppercase
+
+  nav
+    max-height: 100%
+    overflow: auto
+    scrollbar-width: thin
+
+.global-sidebar__project
+  min-height: 44px
+  padding-block: 5px
+  border: 1px solid transparent
+
+.global-sidebar__project-copy
+  min-width: 0
+  display: grid
+  gap: 1px
+
+  span,
+  small
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: $font-weight-regular
+
+.global-sidebar__nav--utility
+  padding-top: 7px
+  border-top: 1px solid rgba($color-border-strong, .72)
+
+.global-sidebar__collapse
+  grid-template-columns: 20px minmax(0, 1fr)
+  color: $color-muted
+
+  &[aria-pressed="true"]
+    color: $color-accent-strong
+
+.global-sidebar__collapse[aria-pressed="true"]:hover
+  color: $color-accent-strong
+  background: $color-accent-muted
+
+.global-sidebar.is-collapsed
+  padding-inline: 8px
+
+  .global-sidebar__header
+    justify-content: center
+
+  .global-sidebar__brand
+    width: 42px
+    padding: 0
+    justify-content: center
+
+  .global-sidebar__brand span,
+  .global-sidebar__recent h2,
+  .global-sidebar__link > span,
+  .global-sidebar__collapse > span
+    display: none
+
+  .global-sidebar__link,
+  .global-sidebar__collapse
+    width: 42px
+    padding: 0
+    grid-template-columns: 1fr
+    justify-items: center
+
+  .global-sidebar__project
+    min-height: 38px
+
+.global-sidebar__backdrop
+  display: none
 
 .project-topbar
-  position: sticky
-  top: 0
+  position: relative
   z-index: 30
+  grid-column: 2
+  grid-row: 1
+  min-width: 0
   min-height: $topbar-height
+  padding: 7px 16px
   display: grid
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)
   align-items: center
   gap: 14px
-  padding: 7px 16px
   border-bottom: 1px solid $color-border
-  background: $color-surface
+  background: rgba($color-page, .94)
+  backdrop-filter: blur(10px)
 
 .project-topbar--index
   grid-template-columns: minmax(0, 1fr) auto
@@ -34,25 +246,19 @@
   width: 34px
   height: 34px
   padding: 0
-  display: inline-flex
+  display: none
   align-items: center
   justify-content: center
   border: 1px solid transparent
   border-radius: $radius-sm
-  color: $color-surface
+  color: $color-muted
   background: transparent
 
-  img
-    width: 24px
-    height: 24px
-    display: block
-    object-fit: contain
-
   &:hover,
-  &:focus-visible,
-  &[aria-expanded="true"]
+  &:focus-visible
     border-color: $color-border
-    background: $color-surface-subtle
+    color: $color-text
+    background: $color-surface-muted
 
 .project-topbar__title
   position: relative
@@ -64,10 +270,10 @@
     min-width: 0
     overflow: hidden
     color: $color-text
-    font-size: 18px
-    font-weight: 800
+    font-size: 16px
+    font-weight: $font-weight-semibold
     line-height: 1.2
-    letter-spacing: 0
+    letter-spacing: -.01em
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -84,7 +290,7 @@
   color: $color-text
   background: transparent
   font-size: inherit
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   span
     min-width: 0
@@ -100,7 +306,12 @@
   &:focus-visible,
   &[aria-expanded="true"]
     border-color: $color-border
-    background: $color-surface-subtle
+    background: $color-surface-muted
+
+.project-switcher-button[aria-expanded="true"]:hover
+  border-color: $color-accent
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .project-switcher-popover
   position: absolute
@@ -109,22 +320,22 @@
   z-index: 45
   width: min(360px, calc(100vw - 24px))
   max-height: min(420px, 70vh)
-  padding: 10px
+  padding: 8px
   display: grid
-  gap: 5px
+  gap: 4px
   overflow: auto
   border: 1px solid $color-border
   border-radius: $radius-md
   background: $color-surface
-  box-shadow: 0 18px 44px rgba($color-text, .16)
+  box-shadow: $shadow-floating
 
 .project-switcher-option
   min-height: 48px
-  padding: 7px 10px
+  padding: 7px 9px
   display: grid
   grid-template-columns: 20px minmax(0, 1fr)
   align-items: center
-  gap: 10px
+  gap: 9px
   border: 1px solid transparent
   border-radius: $radius-sm
   color: $color-text
@@ -135,21 +346,23 @@
     color: $color-muted
 
   &:hover,
-  &:focus-visible,
+  &:focus-visible
+    color: $color-accent-strong
+    background: $color-surface-muted
+
   &.is-active
-    border-color: transparent
-    color: $color-accent
-    background: $color-surface-subtle
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+.project-switcher-option.is-active:hover
+  border-color: $color-accent
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .project-switcher-option__copy
   min-width: 0
   display: grid
   gap: 2px
-
-.project-switcher-option.is-active:hover
-  border-color: $color-accent
-  color: $color-accent
-  background: $color-accent-muted
 
 .project-switcher-option__title,
 .project-switcher-option__meta
@@ -158,23 +371,23 @@
   white-space: nowrap
 
 .project-switcher-option__title
-  font-size: 14px
-  font-weight: 800
+  font-size: 13px
+  font-weight: $font-weight-semibold
 
 .project-switcher-option__meta
   color: $color-muted
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-regular
 
 .project-topbar__nav
   justify-self: center
   display: flex
   align-items: center
-  gap: 4px
+  gap: 3px
   padding: 3px
   border: 1px solid $color-border
   border-radius: $radius-sm
-  background: $color-surface-subtle
+  background: $color-surface-muted
 
   a
     min-height: 30px
@@ -182,20 +395,25 @@
     display: inline-flex
     align-items: center
     justify-content: center
+    border: 1px solid transparent
     border-radius: $radius-sm
     color: $color-muted
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &:hover,
-    &:focus-visible,
-    &.is-active
+    &:focus-visible
       color: $color-text
       background: $color-surface
-      box-shadow: 0 0 0 1px $color-border
+
+    &.is-active
+      border-color: $color-border
+      color: $color-accent-strong
+      background: $color-surface
 
   a.is-active:hover
-    color: $color-accent
+    border-color: $color-accent
+    color: $color-accent-strong
     background: $color-accent-muted
 
 .project-topbar__actions
@@ -204,7 +422,42 @@
   display: flex
   align-items: center
   justify-content: flex-end
-  gap: 8px
+  gap: 7px
+
+.project-topbar__action,
+.project-topbar__icon-button
+  min-height: 32px
+  padding: 0 10px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 6px
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  color: $color-text
+  background: $color-surface
+  font-size: 12px
+  font-weight: $font-weight-semibold
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+  &.is-active
+    border-color: $color-accent
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+.project-topbar__icon-button
+  width: 34px
+  padding: 0
+
+.project-topbar__icon-button.is-active:hover
+  border-color: $color-accent-strong
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .account-menu
   position: relative
@@ -229,12 +482,12 @@
   &[aria-expanded="true"]
     border-color: $color-border
     color: $color-text
-    background: $color-surface-subtle
+    background: $color-surface-muted
 
-  &[aria-expanded="true"]:hover
-    border-color: $color-accent
-    color: $color-accent
-    background: $color-accent-muted
+.account-menu__trigger[aria-expanded="true"]:hover
+  border-color: $color-accent
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .account-menu__icon
   position: relative
@@ -272,7 +525,7 @@
   border: 1px solid $color-border
   border-radius: $radius-md
   background: $color-surface
-  box-shadow: 0 18px 42px rgba($color-text, .14)
+  box-shadow: $shadow-floating
 
 .account-menu__identity
   margin-bottom: 6px
@@ -294,11 +547,11 @@
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-medium
 
 .account-menu__item
   width: 100%
-  min-height: 38px
+  min-height: 36px
   padding: 0 10px
   display: flex
   align-items: center
@@ -308,7 +561,7 @@
   color: $color-text
   background: transparent
   font-size: 13px
-  font-weight: 700
+  font-weight: $font-weight-medium
   text-align: left
 
   svg
@@ -317,7 +570,7 @@
 
   &:hover,
   &:focus-visible
-    color: $color-accent
+    color: $color-accent-strong
     background: $color-accent-muted
 
     svg
@@ -328,220 +581,14 @@
   margin: 6px 0
   background: $color-border-subtle
 
-.project-topbar__action,
-.project-topbar__icon-button
-  min-height: 32px
-  padding: 0 10px
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  gap: 6px
-  border: 1px solid $color-border
-  border-radius: $radius-sm
-  color: $color-text
-  background: $color-surface
-  font-size: 12px
-  font-weight: 800
-
-  &:hover,
-  &:focus-visible,
-  &.is-active
-    border-color: $color-accent
-    color: $color-accent
-    background: $color-accent-muted
-
-.project-topbar__icon-button
-  width: 34px
-  padding: 0
-
-.project-topbar__icon-button.is-active:hover
-  border-color: #1d4ed8
-  color: #1d4ed8
-  background: #dce8ff
-
-.project-menu-drawer
-  position: fixed
-  z-index: 80
-  inset: 0
-  display: block
-
-.project-menu-drawer__backdrop
-  position: absolute
-  inset: 0
-  width: 100%
-  border: 0
-  border-radius: 0
-  background: rgba($color-text, .24)
-
-.project-menu-drawer__panel
-  position: relative
-  z-index: 1
-  width: min(86vw, 326px)
-  height: 100%
-  display: grid
-  align-content: start
-  overflow: auto
-  border-right: 1px solid $color-border
-  background: $color-surface
-  box-shadow: 18px 0 42px rgba($color-text, .18)
-  animation: project-drawer-slide-in 140ms ease-out
-
-.project-menu-drawer__header
-  min-height: 64px
-  padding: 12px 14px
-  display: flex
-  align-items: center
-  justify-content: space-between
-  gap: 12px
-  border-bottom: 1px solid $color-border
-
-.project-menu-drawer__brand
+.project-workbench,
+.app-page-content
+  grid-column: 2
+  grid-row: 2
   min-width: 0
-  display: flex
-  align-items: center
-  gap: 10px
-
-  > img
-    width: 28px
-    height: 28px
-    display: block
-    object-fit: contain
-
-  p,
-  h2
-    margin: 0
-    letter-spacing: 0
-
-  p
-    color: $color-muted
-    font-size: $font-size-small
-    font-weight: 800
-    line-height: 1.1
-    text-transform: uppercase
-
-  h2
-    margin-top: 2px
-    overflow: hidden
-    text-overflow: ellipsis
-    white-space: nowrap
-    color: $color-text
-    font-size: 16px
-    line-height: 1.15
-
-.project-menu-drawer__close
-  flex: 0 0 auto
-  width: 34px
-  height: 34px
-  padding: 0
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  border: 1px solid transparent
-  border-radius: $radius-sm
-  color: $color-muted
-  background: transparent
-  cursor: pointer
-
-  &:hover,
-  &:focus-visible
-    border-color: $color-border
-    color: $color-text
-    background: $color-surface-subtle
-
-.project-menu-drawer__nav
-  padding: 10px
-  display: grid
-  gap: 4px
-
-.project-menu-drawer__link
-  min-height: 42px
-  padding: 0 10px
-  display: grid
-  grid-template-columns: 20px minmax(0, 1fr)
-  align-items: center
-  gap: 10px
-  border-radius: $radius-sm
-  color: $color-text
-  font-size: 14px
-  font-weight: 750
-
-  svg
-    color: $color-muted
-
-  > span
-    min-width: 0
-    overflow: hidden
-    text-overflow: ellipsis
-    white-space: nowrap
-
-  &:hover,
-  &:focus-visible,
-  &.is-active
-    color: $color-accent
-    background: $color-surface-subtle
-
-    svg
-      color: $color-accent
-
-.project-menu-drawer__project-link
-  width: 100%
-  min-height: 52px
-  padding-block: 7px
-  border: 0
-  background: transparent
-  text-align: left
-
-.project-menu-drawer__project-copy
-  display: grid
-  gap: 2px
-
-.project-menu-drawer__project-title,
-.project-menu-drawer__project-meta
-  min-width: 0
-  overflow: hidden
-  text-overflow: ellipsis
-  white-space: nowrap
-
-.project-menu-drawer__project-title
-  color: inherit
-
-.project-menu-drawer__project-meta
-  color: $color-muted
-  font-size: $font-size-small
-  font-weight: 700
-  line-height: 1.25
-
-.project-menu-drawer__section
-  margin-top: 4px
-  padding-top: 10px
-  border-top: 1px solid $color-border-subtle
-
-  h3
-    margin: 0
-    padding: 0 20px
-    color: $color-muted
-    font-size: $font-size-small
-    font-weight: 800
-    line-height: 1.2
-    letter-spacing: 0
-    text-transform: uppercase
-
-.project-menu-drawer__link.is-active:hover
-  color: $color-accent
-  background: $color-accent-muted
-
-@keyframes project-drawer-slide-in
-  from
-    transform: translateX(-16px)
-    opacity: .88
-
-  to
-    transform: translateX(0)
-    opacity: 1
+  min-height: 0
 
 .project-workbench
-  min-height: 0
-  height: calc(100vh - $topbar-height)
   display: grid
   grid-template-columns: minmax(0, 1fr) $chat-width
 
@@ -554,13 +601,11 @@
 .project-workbench__content
   min-width: 0
   min-height: 0
-  padding: 18px 18px 28px
+  padding: 30px 34px 54px
   overflow: auto
 
 .app-page-content
-  min-width: 0
-  min-height: 0
-  padding: 18px 18px 32px
+  padding: 30px 34px 54px
   overflow: auto
 
 .workspace-group-nav
@@ -577,8 +622,9 @@
   position: fixed
   z-index: 70
   inset: 0
-  display: grid
-  place-items: stretch
+  padding-top: $topbar-height
+  display: flex
+  justify-content: flex-end
 
 .project-chat-overlay__backdrop
   position: absolute
@@ -587,7 +633,7 @@
   height: 100%
   border: 0
   border-radius: 0
-  background: rgba($color-text, .28)
+  background: rgba($color-text, .22)
   cursor: default
 
 .project-chat-overlay__panel
@@ -595,26 +641,112 @@
   z-index: 1
   min-width: 0
   min-height: 0
-  width: 100%
+  width: $chat-width
   height: 100%
-  margin: 0
   overflow: hidden
-  border: 1px solid $color-border
-  border-radius: 0
-  background: $color-surface
-  box-shadow: 0 18px 48px rgba($color-text, .2)
+  border-left: 1px solid $color-border
+  background: $color-surface-muted
+  box-shadow: $shadow-floating
   animation: chat-overlay-in 140ms ease-out
 
-@media (max-width: 1280px)
-  .project-workbench
-    grid-template-columns: minmax(0, 1fr) 320px
+@keyframes chat-overlay-in
+  from
+    transform: translateX(18px)
+    opacity: .88
 
+  to
+    transform: translateX(0)
+    opacity: 1
+
+@media (max-width: 1199px)
+  .project-workbench,
   .project-workbench--chat-collapsed
-    grid-template-columns: minmax(0, 1fr) $chat-collapsed-width
+    grid-template-columns: minmax(0, 1fr)
 
-@media (max-width: 980px)
+@media (max-width: 760px)
+  .app-route-shell,
+  .project-shell,
+  .app-route-shell.global-sidebar-collapsed,
+  .project-shell.global-sidebar-collapsed
+    height: 100dvh
+    grid-template-columns: minmax(0, 1fr)
+    grid-template-rows: auto minmax(0, 1fr)
+
+  .global-sidebar
+    position: fixed
+    inset: 0 auto 0 0
+    z-index: 81
+    width: $global-sidebar-width
+    transform: translateX(-100%)
+    box-shadow: $shadow-floating
+
+    &.is-mobile-open
+      transform: translateX(0)
+
+    &.is-collapsed
+      padding-inline: 9px
+
+      .global-sidebar__header
+        justify-content: space-between
+
+      .global-sidebar__brand
+        width: auto
+        padding: 0 9px
+        justify-content: flex-start
+
+      .global-sidebar__brand span,
+      .global-sidebar__recent h2,
+      .global-sidebar__link > span,
+      .global-sidebar__collapse > span
+        display: initial
+
+      .global-sidebar__link,
+      .global-sidebar__collapse
+        width: 100%
+        padding: 0 9px
+        grid-template-columns: 20px minmax(0, 1fr)
+        justify-items: stretch
+
+  .global-sidebar__backdrop
+    position: fixed
+    z-index: 80
+    inset: 0
+    width: 100%
+    height: 100%
+    display: block
+    border: 0
+    border-radius: 0
+    background: rgba($color-text, .24)
+
+  .global-sidebar__mobile-close
+    flex: 0 0 auto
+    width: 34px
+    height: 34px
+    padding: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid transparent
+    border-radius: $radius-sm
+    color: $color-muted
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface-muted
+
+  .global-sidebar__collapse
+    display: none
+
   .project-topbar
+    grid-column: 1
     grid-template-columns: minmax(0, 1fr) auto
+    padding-inline: 10px
+
+  .project-logo
+    display: inline-flex
 
   .project-topbar__context
     grid-column: 1
@@ -633,21 +765,24 @@
       flex: 1
 
   .project-workbench,
-  .project-workbench--chat-collapsed
-    height: auto
-    min-height: calc(100vh - $topbar-height)
-    grid-template-columns: minmax(0, 1fr)
+  .app-page-content
+    grid-column: 1
 
-  .project-workbench__content
-    overflow: visible
+  .project-workbench__content,
+  .app-page-content
+    padding: 24px 18px 40px
 
-@media (max-width: 640px)
-  .project-topbar
-    padding-inline: 10px
+  .project-chat-overlay
+    padding-top: 0
 
+  .project-chat-overlay__panel
+    width: 100%
+    border-left: 0
+
+@media (max-width: 480px)
   .project-topbar__action span
     display: none
 
   .project-workbench__content,
   .app-page-content
-    padding: 14px 10px 24px
+    padding-inline: 14px

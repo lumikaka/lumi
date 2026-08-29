@@ -12,16 +12,22 @@ test('project navigation exposes three primary sections and grouped tools', () =
   assert.deepEqual(WORKSPACE_GROUP_ITEMS.chapters.map((item) => item.key), ['chapters', 'comic', 'trash'])
 })
 
-test('topbar and group tabs use shared route builder with current search', () => {
+test('topbar, persistent sidebar and group tabs preserve the existing routes', () => {
   const topbarSource = readFileSync(new URL('./GlobalTopbar.jsx', import.meta.url), 'utf8')
+  const sidebarSource = readFileSync(new URL('./GlobalSidebar.jsx', import.meta.url), 'utf8')
   const shellStyles = readFileSync(new URL('../styles/shell.sass', import.meta.url), 'utf8')
   const tabsSource = readFileSync(new URL('./WorkspaceGroupTabs.jsx', import.meta.url), 'utf8')
   assert.match(topbarSource, /workspaceRoute\(projectUuid, section\.route, location\.search\)/)
   assert.match(topbarSource, /projects\.recent_used/)
-  assert.match(topbarSource, /project-menu-drawer__project-copy/)
-  assert.match(shellStyles, /\.project-menu-drawer__project-link[\s\S]*border: 0[\s\S]*background: transparent[\s\S]*text-align: left/)
+  assert.match(sidebarSource, /lumi\.globalSidebarCollapsed/)
+  assert.match(sidebarSource, /recentProjects\.slice\(0, 6\)/)
+  assert.match(sidebarSource, /to="\/"/)
+  assert.match(sidebarSource, /to: '\/settings\/providers'/)
+  assert.match(sidebarSource, /to: '\/about'/)
+  assert.match(sidebarSource, /to: '\/admin'/)
+  assert.match(shellStyles, /grid-template-columns: \$global-sidebar-width minmax\(0, 1fr\)/)
+  assert.match(shellStyles, /@media \(max-width: 760px\)[\s\S]*?\.global-sidebar[\s\S]*?transform: translateX\(-100%\)/)
   assert.match(tabsSource, /workspaceRoute\(projectUuid, item\.route, location\.search\)/)
-  assert.doesNotMatch(topbarSource, /workspace-sidebar/)
 })
 
 test('overview routes are canonical and legacy story links keep redirect compatibility', () => {

@@ -8,9 +8,12 @@ const tokenSource = readFileSync(new URL('./design-tokens.sass', import.meta.url
 const commonSource = readFileSync(new URL('./common.sass', import.meta.url), 'utf8')
 
 test('typography tokens keep the body and minimum text baselines', () => {
-  assert.match(tokenSource, /^\$font-size-body: 16px$/m)
+  assert.match(tokenSource, /^\$font-size-body: 14px$/m)
   assert.match(tokenSource, /^\$font-size-small: 12px$/m)
-  assert.match(tokenSource, /^\$font-size-micro: 10px$/m)
+  assert.match(tokenSource, /^\$font-size-micro: 11px$/m)
+  assert.match(tokenSource, /^\$font-weight-regular: 430$/m)
+  assert.match(tokenSource, /^\$font-weight-medium: 500$/m)
+  assert.match(tokenSource, /^\$font-weight-semibold: 600$/m)
 })
 
 test('Sass font literals do not bypass the 12px text baseline', () => {
@@ -30,6 +33,6 @@ test('Sass font literals do not bypass the 12px text baseline', () => {
   }
 })
 
-test('workspace group tabs use the 16px body size shared by the premise toolbar', () => {
+test('workspace group tabs use the shared body size', () => {
   assert.ok(commonSource.includes('.workspace-group-tabs\n  a,\n  button\n    font-size: $font-size-body'))
 })

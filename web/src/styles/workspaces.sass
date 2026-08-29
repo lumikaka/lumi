@@ -6,7 +6,7 @@ $muted: $color-muted
 $paper: $color-surface-muted
 $cream: $color-surface-subtle
 $orange: $color-action
-$coral: $color-accent-muted
+$coral: $color-warm-muted
 $sage: $color-success
 
 .workspace-main
@@ -21,7 +21,7 @@ $sage: $color-success
     letter-spacing: 0
 
 .project-action__number
-  color: $orange
+  color: $color-warm
   font-family: Georgia, serif
 
 .asset-control-grid
@@ -163,7 +163,7 @@ $sage: $color-success
   display: grid
   gap: 6px
   border-radius: 10px
-  background: rgba($orange, .08)
+  background: $color-warm-muted
   font-size: $font-size-small
 
   > div
@@ -229,7 +229,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: 16px
-    font-weight: 700
+    font-weight: $font-weight-semibold
     line-height: 1
 
     span
@@ -241,7 +241,7 @@ $sage: $color-success
       color: inherit
       background: transparent
       font-size: $font-size-small
-      font-weight: 800
+      font-weight: $font-weight-semibold
       opacity: .68
 
     &:hover,
@@ -274,25 +274,25 @@ $sage: $color-success
   align-items: center
   justify-content: center
   gap: 7px
-  border: 1px solid #e95519
+  border: 1px solid $color-accent
   border-radius: $radius-sm
   color: $color-surface
   background: $color-action
   box-shadow: 0 2px 7px rgba($color-action, .22)
   font-size: 13px
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible,
   &[aria-expanded="true"]
-    border-color: #c9410b
+    border-color: $color-accent-strong
     color: $color-surface
-    background: #e95318
+    background: $color-accent-strong
 
 .premise-add__trigger[aria-expanded="true"]:hover,
 .premise-add__trigger[aria-expanded="true"]:focus-visible
-  border-color: #a93408
-  background: #d44710
+  border-color: $color-accent-strong
+  background: $color-accent-strong
 
 .premise-add__menu
   position: absolute
@@ -306,7 +306,7 @@ $sage: $color-success
   border: 1px solid $color-border
   border-radius: $radius-md
   background: $color-surface
-  box-shadow: 0 16px 40px rgba($color-text, .16)
+  box-shadow: $shadow-floating
 
   > .premise-add__item
     width: 100%
@@ -347,8 +347,8 @@ $sage: $color-success
     &:hover,
     &:focus-visible
       border-color: transparent
-      color: #9d380d
-      background: #fff5ef
+      color: $color-text
+      background: $color-warm-muted
 
       > svg
         color: $color-action
@@ -365,7 +365,7 @@ $sage: $color-success
   color: $color-warning
   background: $color-warning-muted
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
 .premise-running-state > span
   width: 8px
@@ -385,7 +385,7 @@ $sage: $color-success
 .premise-decision-notice
   justify-content: space-between
   border-color: rgba($color-accent, .2)
-  color: #1e4f9b
+  color: $color-accent-strong
   background: $color-accent-muted
 
   .premise-decision-notice__close
@@ -429,7 +429,7 @@ $sage: $color-success
       margin: 0
       color: $color-text
       font-size: 18px
-      font-weight: 800
+      font-weight: $font-weight-semibold
       line-height: 1.25
 
     > span
@@ -443,7 +443,7 @@ $sage: $color-success
       color: $color-muted
       background: $color-surface-muted
       font-size: $font-size-small
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
   > p
     margin: 0
@@ -460,19 +460,19 @@ $sage: $color-success
       margin: 0
       color: $color-text
       font-size: 20px
-      font-weight: 700
+      font-weight: $font-weight-semibold
       line-height: 1.25
 
   > span
     color: $color-muted
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .premise-content-eyebrow
   margin: 0 0 5px
   color: $color-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-transform: uppercase
 
 .premise-content-heading--actions
@@ -510,18 +510,18 @@ $sage: $color-success
       color: $color-surface
       background: $color-action
       font-size: 12px
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
       &:hover,
       &:focus-visible
-        border-color: #c9410b
-        background: #e95318
+        border-color: $color-accent-strong
+        background: $color-accent-strong
 
 .premise-content-heading--batch > div:first-child > .premise-content-eyebrow
   margin: 0 0 1px
   color: $color-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-transform: uppercase
 
 .premise-asset-filter
@@ -532,7 +532,7 @@ $sage: $color-success
 .premise-asset-filter__label
   color: $color-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-transform: uppercase
 
 .premise-tag-filters
@@ -555,7 +555,7 @@ $sage: $color-success
     color: $color-muted
     background: $color-surface
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &:hover,
     &:focus-visible
@@ -570,9 +570,9 @@ $sage: $color-success
 
 .premise-tag-filters button[aria-pressed="true"]:hover,
 .premise-tag-filters button[aria-pressed="true"]:focus-visible
-  border-color: #1d4ed8
-  color: #1d4ed8
-  background: #dbeafe
+  border-color: $color-accent-strong
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .premise-card-grid
   display: grid
@@ -647,8 +647,8 @@ $sage: $color-success
     &:hover,
     &:focus-visible
       border-color: $color-action
-      color: #9d380d
-      background: #fff6f1
+      color: $color-text
+      background: $color-warm-muted
 
     &.is-danger:hover,
     &.is-danger:focus-visible
@@ -678,7 +678,7 @@ $sage: $color-success
     min-width: 0
     overflow: hidden
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -689,8 +689,8 @@ $sage: $color-success
 
   &:hover,
   &:focus-visible
-    color: #9d380d
-    background: #fffaf7
+    color: $color-text
+    background: $color-warm-muted
 
 .premise-asset-tile--trashed .premise-asset-tile__image
   filter: grayscale(.72)
@@ -756,7 +756,7 @@ $sage: $color-success
     display: grid
     gap: 6px
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
   > div
     display: flex
@@ -840,11 +840,11 @@ $sage: $color-success
   > span
     color: $color-text
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible
-    color: #9d380d
+    color: $color-text
 
     > svg
       color: $color-action
@@ -855,10 +855,10 @@ $sage: $color-success
 
 .premise-batch-card__toggle[aria-expanded="true"]:hover,
 .premise-batch-card__toggle[aria-expanded="true"]:focus-visible
-  color: #7f2b08
+  color: $color-text
 
   > svg
-    color: #c9410b
+    color: $color-accent-strong
 
 .premise-batch-card__summary
   width: 100%
@@ -877,14 +877,14 @@ $sage: $color-success
 
   &:hover,
   &:focus-visible
-    color: #8f350f
+    color: $color-text
 
 .premise-batch-card__summary[aria-expanded="true"]
   -webkit-line-clamp: 1
 
 .premise-batch-card__summary[aria-expanded="true"]:hover,
 .premise-batch-card__summary[aria-expanded="true"]:focus-visible
-  color: #71300f
+  color: $color-text
 
 .premise-batch-status
   padding: 3px 7px
@@ -892,15 +892,15 @@ $sage: $color-success
   color: $color-muted
   background: rgba($color-text, .07)
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .premise-batch-status--generating,
 .premise-batch-status--splitting
-  color: #9d380d
-  background: #fff0e8
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-batch-status--ready
-  color: #174f9d
+  color: $color-accent
   background: $color-accent-muted
 
 .premise-batch-status--completed
@@ -937,11 +937,11 @@ $sage: $color-success
     background: $color-surface-muted
 
 .premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled)
-  color: #174f9d
+  color: $color-accent
 
 .premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled):hover,
 .premise-batch-card.is-ignored .premise-batch-ignore:not(:disabled):focus-visible
-  color: #103e7d
+  color: $color-accent-strong
   background: $color-accent-muted
 
 .premise-batch-detail
@@ -970,7 +970,7 @@ $sage: $color-success
     dt
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
       text-transform: uppercase
 
     dd
@@ -994,7 +994,7 @@ $sage: $color-success
       color: $color-muted
       cursor: pointer
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
     pre
       max-height: 180px
@@ -1056,7 +1056,7 @@ $sage: $color-success
     > span
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
     > small
       display: -webkit-box
@@ -1082,15 +1082,15 @@ $sage: $color-success
   box-shadow: 0 0 0 3px rgba($color-action, .13)
 
 .premise-setting-card button[aria-pressed="true"]
-  border-color: #f3a17f
-  color: #9d380d
-  background: #fff1e9
+  border-color: $color-warm
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-setting-card button[aria-pressed="true"]:hover,
 .premise-setting-card button[aria-pressed="true"]:focus-visible
   border-color: $color-action
-  color: #7f2b08
-  background: #ffe5d7
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-setting-import
   margin-top: 14px
@@ -1123,10 +1123,10 @@ $sage: $color-success
   gap: 12px
   border: 2px dashed $color-action
   border-radius: $radius-lg
-  color: #9d380d
-  background: rgba(#fff7f2, .94)
+  color: $color-text
+  background: rgba($color-warm-muted, .94)
   font-size: 16px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   pointer-events: none
 
 .premise-dialog-backdrop
@@ -1168,13 +1168,13 @@ $sage: $color-success
     p
       color: $color-action
       font-size: $font-size-small
-      font-weight: 850
+      font-weight: $font-weight-semibold
       letter-spacing: .08em
 
     h2
       margin-top: 3px
       font-size: 18px
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
 .premise-dialog__intro
   margin: 0
@@ -1193,7 +1193,7 @@ $sage: $color-success
     gap: 6px
     color: $color-text
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
   details
     border: 1px solid $color-border
@@ -1204,7 +1204,7 @@ $sage: $color-success
       color: $color-text
       cursor: pointer
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
     textarea
       margin: 0 10px 10px
@@ -1264,7 +1264,7 @@ $sage: $color-success
   border: 1px dashed rgba($color-action, .46)
   border-radius: $radius-md
   color: $color-text
-  background: #fffaf7
+  background: $color-warm-muted
   text-align: left
 
   svg
@@ -1281,8 +1281,8 @@ $sage: $color-success
   &:hover,
   &:focus-visible
     border-color: $color-action
-    color: #9d380d
-    background: #fff3ec
+    color: $color-text
+    background: $color-warm-muted
 
 .premise-upload-list
   display: grid
@@ -1303,7 +1303,7 @@ $sage: $color-success
       padding: 0 5px
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
     > img
       width: 108px
@@ -1324,7 +1324,7 @@ $sage: $color-success
     gap: 4px
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   .is-wide
     grid-column: 1 / -1
@@ -1346,8 +1346,8 @@ $sage: $color-success
     &:hover,
     &:focus-visible
       border-color: $color-action
-      color: #9d380d
-      background: #fff7f2
+      color: $color-text
+      background: $color-warm-muted
 
 .premise-upload-remove
   position: absolute
@@ -1407,7 +1407,7 @@ $sage: $color-success
     gap: 5px
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
 .premise-variant-section
   padding: 0 18px 18px
@@ -1473,15 +1473,15 @@ $sage: $color-success
         color: $color-muted
 
 .premise-variant-section button[aria-pressed="true"]
-  border-color: #f3a17f
-  color: #9d380d
-  background: #fff1e9
+  border-color: $color-warm
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-variant-section button[aria-pressed="true"]:hover,
 .premise-variant-section button[aria-pressed="true"]:focus-visible
   border-color: $color-action
-  color: #7f2b08
-  background: #ffe5d7
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-panel-loading
   margin: 0
@@ -1512,7 +1512,7 @@ $sage: $color-success
   &:hover,
   &:focus-visible
     border-color: rgba($color-action, .48)
-    background: #fffaf7
+    background: $color-warm-muted
     box-shadow: 0 5px 16px rgba($color-text, .07)
 
   > span:nth-child(2)
@@ -1541,7 +1541,7 @@ $sage: $color-success
   justify-content: center
   border-radius: $radius-sm
   color: $color-action
-  background: #fff1e9
+  background: $color-warm-muted
 
 .premise-thread-status
   padding: 4px 7px
@@ -1550,12 +1550,12 @@ $sage: $color-success
   background: $color-surface-muted
   font-size: $font-size-micro
   font-style: normal
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .premise-thread-status--busy,
 .premise-thread-status--waiting_for_input
-  color: #9d380d
-  background: #fff0e8
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-thread-status--failed,
 .premise-thread-status--cancelled,
@@ -1606,14 +1606,14 @@ $sage: $color-success
 
 .premise-prompt-layout > nav button[aria-pressed="true"]
   border-color: rgba($color-action, .35)
-  color: #9d380d
-  background: #fff4ee
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-prompt-layout > nav button[aria-pressed="true"]:hover,
 .premise-prompt-layout > nav button[aria-pressed="true"]:focus-visible
   border-color: $color-action
-  color: #7f2b08
-  background: #ffe9dd
+  color: $color-text
+  background: $color-warm-muted
 
 .premise-prompt-editor
   min-width: 0
@@ -1650,7 +1650,7 @@ $sage: $color-success
       color: $color-muted
       background: $color-surface-muted
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
   > textarea
     min-height: 230px
@@ -1719,7 +1719,7 @@ $sage: $color-success
       align-self: center
       color: $color-success
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
 .premise-detail-header-actions
   display: flex
@@ -1973,7 +1973,7 @@ $sage: $color-success
 .comic-section-row > button[aria-pressed="true"]:hover
   border-color: $color-accent
   color: $color-accent
-  background: #dce8ff
+  background: $color-accent-muted
 
 .comic-editor
   min-width: 0
@@ -2159,7 +2159,7 @@ $sage: $color-success
     color: $color-text
     font-family: $font-family-base
     font-size: 18px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.3
 
 .overview-card__header
@@ -2175,7 +2175,7 @@ $sage: $color-success
   > span
     color: $color-muted
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .overview-card__action
   flex: 0 0 auto
@@ -2189,7 +2189,7 @@ $sage: $color-success
   color: $color-text
   background: $color-surface
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible
@@ -2245,7 +2245,7 @@ $sage: $color-success
     gap: 6px
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
   select
     max-width: 320px
@@ -2280,7 +2280,7 @@ $sage: $color-success
     > span
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 750
+      font-weight: $font-weight-semibold
 
   select
     min-width: 0
@@ -2300,13 +2300,13 @@ $sage: $color-success
     dt
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 700
+      font-weight: $font-weight-semibold
 
     dd
       margin: 0
       overflow: hidden
       font-size: 12px
-      font-weight: 800
+      font-weight: $font-weight-semibold
       text-overflow: ellipsis
       white-space: nowrap
 
@@ -2350,13 +2350,13 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   dd
     margin: 0
     overflow: hidden
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -2378,14 +2378,14 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   dd
     margin: 0
     overflow: hidden
     color: $color-text
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -2438,7 +2438,7 @@ $sage: $color-success
   border-top: 1px solid $color-border-subtle
   color: $color-muted
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
   a
     color: $color-text
@@ -2456,7 +2456,7 @@ $sage: $color-success
     gap: 6px
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
 .overview-form-actions
   display: flex
@@ -2489,7 +2489,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   strong
     margin-top: auto
@@ -2532,7 +2532,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .overview-profile-card
   .overview-card__header p,
@@ -2575,13 +2575,13 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   dd
     margin: 0
     overflow: hidden
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -2680,7 +2680,7 @@ $sage: $color-success
   > span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
   input,
   select
@@ -2714,7 +2714,7 @@ $sage: $color-success
     color: $color-muted
     background: $color-surface-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   tbody tr:last-child td
     border-bottom: 0
@@ -2756,7 +2756,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .overview-llm-status--pending
   color: #8b5f1e
@@ -2780,7 +2780,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 @media (max-width: 900px)
   .overview-llm-filters
@@ -2825,13 +2825,13 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
   dd
     margin: 0
     overflow: hidden
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -2952,7 +2952,7 @@ $sage: $color-success
     gap: 5px
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .overview-prompt-editor
   padding: 14px
@@ -2988,7 +2988,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .overview-prompt-status--saved
   color: $color-success
@@ -3010,7 +3010,7 @@ $sage: $color-success
     span
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
   > div
     display: grid
@@ -3052,7 +3052,7 @@ $sage: $color-success
     line-height: 1.55
 
   > footer > span
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .overview-prompt-version--current
   border-color: rgba($color-accent, .32)
@@ -3077,7 +3077,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   form
     display: flex
@@ -3090,7 +3090,7 @@ $sage: $color-success
       gap: 5px
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 700
+      font-weight: $font-weight-semibold
 
     select
       min-width: 220px
@@ -3117,7 +3117,7 @@ $sage: $color-success
   > span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .overview-export-table
   min-width: 0
@@ -3152,7 +3152,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .overview-export-file
   min-width: 0
@@ -3191,7 +3191,7 @@ $sage: $color-success
     margin: 0
     overflow: hidden
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -3210,7 +3210,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .overview-export-status--ready
   color: $color-success
@@ -3250,7 +3250,7 @@ $sage: $color-success
   legend
     padding: 0
     font-size: $font-size-small
-    font-weight: 850
+    font-weight: $font-weight-semibold
 
   > p
     margin: 0
@@ -3358,14 +3358,14 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-micro
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   dd
     min-width: 0
     margin: 0
     overflow: hidden
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -3530,7 +3530,7 @@ $sage: $color-success
     margin: 0
     font-family: $font-family-base
     font-size: 26px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
     letter-spacing: 0
 
@@ -3558,7 +3558,7 @@ $sage: $color-success
   strong
     font-family: $font-family-base
     font-size: 20px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   span
     color: $muted
@@ -3580,7 +3580,7 @@ $sage: $color-success
     gap: 6px
     color: $muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   > div
     display: flex
@@ -3612,13 +3612,13 @@ $sage: $color-success
     color: $color-muted
     font-family: $font-family-base
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   strong
     margin-top: auto
     font-family: $font-family-base
     font-size: 16px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   small
     margin-top: 5px
@@ -3636,7 +3636,7 @@ $sage: $color-success
     margin: 0
     font-family: $font-family-base
     font-size: 24px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
     letter-spacing: 0
 
@@ -3715,7 +3715,7 @@ $sage: $color-success
     gap: 6px
     color: $muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .field-error, .danger-text
   color: #a2443c !important
@@ -3748,7 +3748,7 @@ $sage: $color-success
     margin: 0
     color: $color-text
     font-size: 26px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.2
 
 .chapters-toolbar__actions
@@ -3770,7 +3770,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: 12px
-  font-weight: 750
+  font-weight: $font-weight-semibold
 
 .chapters-compact-button
   min-height: 30px
@@ -3790,9 +3790,9 @@ $sage: $color-success
 
 .chapter-create-menu__trigger[aria-expanded="true"]:hover,
 .chapter-create-menu__trigger[aria-expanded="true"]:focus-visible
-  border-color: #1d4ed8
-  color: #1d4ed8
-  background: #dce8ff
+  border-color: $color-accent-strong
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .chapter-create-menu__dropdown
   position: absolute
@@ -3819,7 +3819,7 @@ $sage: $color-success
     color: $color-text
     background: transparent
     font-size: 13px
-    font-weight: 750
+    font-weight: $font-weight-semibold
     text-align: left
 
     &:hover,
@@ -3881,7 +3881,7 @@ $sage: $color-success
     text-overflow: ellipsis
     white-space: nowrap
     font-size: 17px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.25
 
 .chapter-status
@@ -3895,7 +3895,7 @@ $sage: $color-success
   color: $color-muted
   background: $color-surface-muted
   font-size: 12px
-  font-weight: 750
+  font-weight: $font-weight-semibold
   white-space: nowrap
 
 .chapter-status--queued,
@@ -3977,7 +3977,7 @@ $sage: $color-success
     color: $color-danger
     background: transparent
     font-size: 12px
-    font-weight: 750
+    font-weight: $font-weight-semibold
     text-align: left
 
     &:hover,
@@ -4086,7 +4086,7 @@ $sage: $color-success
     p
       color: $color-action
       font-size: $font-size-small
-      font-weight: 800
+      font-weight: $font-weight-semibold
       letter-spacing: .08em
       text-transform: uppercase
 
@@ -4094,7 +4094,7 @@ $sage: $color-success
       margin-top: 3px
       color: $color-text
       font-size: 18px
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
 .chapter-dialog--compact
   width: min(100%, 480px)
@@ -4126,7 +4126,7 @@ $sage: $color-success
     gap: 6px
     color: $color-text
     font-size: 12px
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
     small
       color: $color-muted
@@ -4163,7 +4163,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: 13px
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
     &:hover,
     &:focus-visible
@@ -4243,7 +4243,7 @@ $sage: $color-success
     border-radius: $radius-lg 0 0 $radius-lg
     color: $color-text
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     svg
       flex: 0 0 auto
@@ -4351,7 +4351,7 @@ $sage: $color-success
   box-shadow: none !important
   font-family: $font-family-base
   font-size: clamp(32px, 5vw, 48px)
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .save-state
   padding: 6px 9px
@@ -4359,7 +4359,7 @@ $sage: $color-success
   color: $muted
   background: rgba($muted, .09)
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .save-state--saving
   color: #8b5f1e
@@ -4576,7 +4576,7 @@ $sage: $color-success
     gap: 5px
     color: $muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .prompt-history
   max-height: 650px
@@ -4698,7 +4698,7 @@ $sage: $color-success
     gap: 6px
     color: $muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
   select, textarea
     width: 100%
@@ -4738,7 +4738,7 @@ $sage: $color-success
   color: $muted
   background: rgba($muted, .1)
   font-size: $font-size-micro
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
 .task-status--queued, .task-status--running, .task-status--waiting_for_input
   color: #8b5f1e
@@ -5057,7 +5057,7 @@ $sage: $color-success
   border-radius: $radius-sm
   color: $color-muted
   font-size: 12px
-  font-weight: 800
+  font-weight: $font-weight-semibold
 
   &:hover,
   &:focus-visible
@@ -5111,7 +5111,7 @@ $sage: $color-success
   p
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 900
+    font-weight: $font-weight-semibold
     letter-spacing: .08em
     text-transform: uppercase
 
@@ -5139,7 +5139,7 @@ $sage: $color-success
     color: $color-muted
     background: $color-surface
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     white-space: nowrap
 
 .chapter-preview__strip
@@ -5208,7 +5208,7 @@ $sage: $color-success
     p
       color: $color-muted
       font-size: $font-size-small
-      font-weight: 900
+      font-weight: $font-weight-semibold
       letter-spacing: .06em
       text-transform: uppercase
 
@@ -5256,7 +5256,7 @@ $sage: $color-success
   gap: 10px
   color: $color-muted
   font-size: 13px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-align: center
 
   span
@@ -5300,7 +5300,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &::after
       content: ""
@@ -5333,7 +5333,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .chapter-workbench__tabs > button:not(.button-secondary):not(.button-quiet)
   border: 0
@@ -5465,7 +5465,7 @@ $sage: $color-success
   background: $color-success-muted
   box-shadow: 0 8px 26px rgba($color-text, .1)
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
   transform: translateX(-50%)
 
 .chapter-comic-workbench__stage
@@ -5505,7 +5505,7 @@ $sage: $color-success
   span
     color: $color-muted
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     letter-spacing: .04em
 
   strong
@@ -5674,7 +5674,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &::after
       content: ""
@@ -5924,7 +5924,7 @@ $sage: $color-success
     margin-right: auto
     color: $color-accent
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .section-timeline__track
   min-width: 0
@@ -5987,7 +5987,7 @@ $sage: $color-success
   span
     color: #9b3c13
     font-size: $font-size-small
-    font-weight: 900
+    font-weight: $font-weight-semibold
 
   strong
     width: 100%
@@ -6169,7 +6169,7 @@ $sage: $color-success
     overflow: hidden
     color: $color-text
     font-style: normal
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -6209,7 +6209,7 @@ $sage: $color-success
 
       dd
         margin: 0
-        font-weight: 800
+        font-weight: $font-weight-semibold
 
 .chapter-snapshot-detail__sections
   display: grid
@@ -6232,7 +6232,7 @@ $sage: $color-success
       color: $color-action
 
     span
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
   .markdown-preview
     max-height: 320px
@@ -6398,7 +6398,7 @@ $sage: $color-success
     background: $color-surface
     cursor: pointer
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     list-style: none
 
     &:hover,
@@ -6516,7 +6516,7 @@ $sage: $color-success
   code
     overflow-wrap: anywhere
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   span,
   small
@@ -6813,7 +6813,7 @@ $sage: $color-success
   color: $color-text
   background: $color-surface
   font-size: 14px
-  font-weight: 800
+  font-weight: $font-weight-semibold
   line-height: 1
   white-space: nowrap
   text-decoration: none
@@ -6851,7 +6851,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: 13px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     white-space: nowrap
 
     &::after
@@ -6877,7 +6877,7 @@ $sage: $color-success
   span
     color: inherit
     font-size: $font-size-micro
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .chapter-workbench__panel
   min-width: 0
@@ -7077,7 +7077,7 @@ $sage: $color-success
       background-image: none
       color: $color-text
       font: inherit
-      font-weight: 700
+      font-weight: $font-weight-semibold
       cursor: pointer
 
       &:hover,
@@ -7181,7 +7181,7 @@ $sage: $color-success
     color: $color-muted
     background: transparent
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     white-space: nowrap
 
     &::after
@@ -7305,7 +7305,7 @@ $sage: $color-success
   gap: 6px
   color: $color-muted
   font-size: $font-size-small
-  font-weight: 700
+  font-weight: $font-weight-semibold
 
   > span
     min-width: 0
@@ -7330,7 +7330,7 @@ $sage: $color-success
     color: $color-accent
     background: $color-accent-muted
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
 .comic-section-visual__reason
   margin: 0
@@ -7462,7 +7462,7 @@ $sage: $color-success
   overflow: hidden
   color: $color-muted
   font-size: $font-size-small
-  font-weight: 800
+  font-weight: $font-weight-semibold
   text-overflow: ellipsis
   white-space: nowrap
 
@@ -7486,14 +7486,14 @@ $sage: $color-success
   dt
     color: $color-muted
     font-size: $font-size-micro
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   dd
     min-width: 0
     margin: 0
     overflow-wrap: anywhere
     font-size: $font-size-small
-    font-weight: 750
+    font-weight: $font-weight-semibold
 
 @media (max-width: 860px)
   .lumi-dialog.section-image-variant-dialog
@@ -7533,7 +7533,7 @@ $sage: $color-success
   font-size: $font-size-small
 
   strong
-    font-weight: 850
+    font-weight: $font-weight-semibold
 
   span,
   small
@@ -7624,7 +7624,7 @@ $sage: $color-success
     min-width: 0
     overflow: hidden
     font-size: 14px
-    font-weight: 850
+    font-weight: $font-weight-semibold
     line-height: 1.35
     text-overflow: ellipsis
     white-space: nowrap
@@ -7645,7 +7645,7 @@ $sage: $color-success
     color: $color-muted
     background: $color-surface-subtle
     font-size: $font-size-small
-    font-weight: 800
+    font-weight: $font-weight-semibold
     text-overflow: ellipsis
     white-space: nowrap
 
@@ -7727,16 +7727,16 @@ $sage: $color-success
 
   button[aria-pressed="true"]:hover,
   button[aria-pressed="true"]:focus-visible
-    border-color: #1d4ed8
-    color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent-strong
+    color: $color-accent-strong
+    background: $color-accent-muted
 
   button.section-timeline__batch-action
     border: 1px solid $color-action
     border-radius: $radius-sm
     color: $color-surface
     background: $color-action
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
     &:hover:not(:disabled),
     &:focus-visible:not(:disabled)
@@ -7794,8 +7794,8 @@ $sage: $color-success
 
   &.is-active:has(.section-timeline-card__main:hover),
   &.is-active:focus-within
-    border-color: #1d4ed8
-    background: #dce8ff
+    border-color: $color-accent-strong
+    background: $color-accent-muted
 
   &.is-checked
     border-color: $color-action
@@ -7805,7 +7805,7 @@ $sage: $color-success
   &.is-checked:has(.section-timeline-card__main:hover),
   &.is-checked:focus-within
     border-color: #dc4d16
-    background: #fff0e8
+    background: $color-warm-muted
 
   &.is-active.is-checked
     box-shadow: 0 0 0 2px rgba($color-accent, .38)
@@ -7942,7 +7942,7 @@ $sage: $color-success
     -webkit-box-orient: vertical
     color: inherit
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     line-height: 1.15
 
   > span
@@ -7955,7 +7955,7 @@ $sage: $color-success
     -webkit-box-orient: vertical
     color: inherit
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
     line-height: 1.35
     opacity: .74
 
@@ -7967,7 +7967,7 @@ $sage: $color-success
 
 .section-timeline-card.is-active:has(.section-timeline-card__main:hover) .section-timeline-card__copy,
 .section-timeline-card.is-active:focus-within .section-timeline-card__copy
-  color: #1d4ed8
+  color: $color-accent-strong
 
 .section-timeline-card.is-checked .section-timeline-card__copy
   color: $color-action
@@ -8161,7 +8161,7 @@ $sage: $color-success
   p
     color: $color-muted
     font-size: 12px
-    font-weight: 900
+    font-weight: $font-weight-semibold
     letter-spacing: .06em
 
   h2
@@ -8326,7 +8326,7 @@ $sage: $color-success
     gap: 5px
     color: $color-muted
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .chapter-body-editor-dialog__toolbar,
 .chapter-body-editor-dialog__body > footer,
@@ -8352,7 +8352,7 @@ $sage: $color-success
   summary
     cursor: pointer
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
   &[open]
     display: grid
@@ -8611,7 +8611,7 @@ $sage: $color-success
     color: $color-accent
     text-align: center
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .prompt-catalog-editor__toc
   padding: 16px 18px
@@ -8622,7 +8622,7 @@ $sage: $color-success
     margin: 0
     color: $color-muted
     font-size: 12px
-    font-weight: 800
+    font-weight: $font-weight-semibold
     letter-spacing: .08em
 
   > div
@@ -8644,7 +8644,7 @@ $sage: $color-success
     color: $color-text
     text-decoration: none
     font-size: 13px
-    font-weight: 700
+    font-weight: $font-weight-semibold
     transition: border-color .16s ease, background-color .16s ease, color .16s ease
 
     &:hover
@@ -8671,7 +8671,7 @@ $sage: $color-success
       color: $color-muted
       text-align: center
       font-size: 12px
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
 .prompt-catalog-editor__loading
   padding: 42px
@@ -8717,7 +8717,7 @@ $sage: $color-success
       background: $color-surface-muted
       color: $color-muted
       font-size: 12px
-      font-weight: 800
+      font-weight: $font-weight-semibold
 
     p
       margin-top: 5px
@@ -8839,7 +8839,7 @@ $sage: $color-success
   color: $color-muted
   font-size: 12px
   font-style: normal
-  font-weight: 800
+  font-weight: $font-weight-semibold
   line-height: 1.2
 
 .prompt-status-pill--modified

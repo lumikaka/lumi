@@ -19,6 +19,18 @@ test('project rows use the available action that enters the workspace', () => {
 	assert.equal(projectRowPrimaryAction({ open: false, available: false }), null)
 })
 
+test('recent projects render as coverless cards with secondary details in the more menu', () => {
+  const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
+  assert.match(source, /className="project-card-grid" role="list"/)
+  assert.match(source, /className=\{`project-card \$\{onActivate/)
+  assert.match(source, /project-index-menu__path/)
+  assert.doesNotMatch(source, /project-index-table/)
+  assert.doesNotMatch(source, /project-cover|placeholder-cover/)
+  assert.match(styles, /\.project-card-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-card-grid[\s\S]*?grid-template-columns: 1fr/)
+})
+
 test('project page presents creation, open, relocation and forget dialogs', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   for (const dialog of ["dialog === 'create'", "dialog === 'open'", "dialog === 'relocate'", "dialog === 'forget'"]) {

@@ -10,11 +10,12 @@ import { projectChapterUuidFromPath } from '../pages/projectChatAttachments.js'
 import { projectChatControlKey } from '../pages/projectReferences.js'
 import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
+import GlobalSidebar, { useGlobalSidebarState } from './GlobalSidebar.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 
 const CHAT_COLLAPSED_KEY = 'lumi.projectChatAreaCollapsed'
-const COMPACT_CHAT_QUERY = '(max-width: 980px)'
+const COMPACT_CHAT_QUERY = '(max-width: 1199px)'
 
 export default function ProjectWorkspaceLayout({ project, projectUuid, activeSection, children, hideChat = false }) {
   const { t } = useI18n()
@@ -24,6 +25,8 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
   const [compact, setCompact] = useState(readCompact)
 	const [collapsed, setCollapsed] = useState(() => readCollapsed(projectUuid))
   const [overlayOpen, setOverlayOpen] = useState(false)
+	const [sidebarCollapsed, setSidebarCollapsed] = useGlobalSidebarState()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 	const chatControlKey = projectChatControlKey(location.search)
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const currentChapterUuid = projectChapterUuidFromPath(location.pathname, projectUuid)
@@ -82,13 +85,22 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
   }, [compact, overlayOpen])
 
   return (
-    <main className="project-shell">
+    <main className={`project-shell ${sidebarCollapsed ? 'global-sidebar-collapsed' : ''}`}>
+      <GlobalSidebar
+        collapsed={sidebarCollapsed}
+        mobileOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
+        recentProjects={recentQuery.data?.items || []}
+        onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
+      />
       <GlobalTopbar
         title={project?.name || t('projects.fallback_name')}
         projectUuid={projectUuid}
         activeSection={activeSection}
         recentProjects={recentQuery.data?.items || []}
         onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
+        onOpenNavigation={() => setSidebarOpen(true)}
         actions={compact && !hideChat ? <button className={`project-topbar__icon-button project-topbar__chat-button ${overlayOpen ? 'is-active' : ''}`} type="button" aria-label={t('chat.open')} aria-haspopup="dialog" aria-expanded={overlayOpen} aria-controls={overlayOpen ? chatOverlayId : undefined} title={t('chat.open')} onClick={() => setOverlayOpen(true)}><MessageCircle size={18} aria-hidden="true" /></button> : <Link className="project-topbar__action" to="/"><span>{t('projects.all')}</span></Link>}
       />
       <div className={`project-workbench ${hideChat ? 'project-workbench--solo' : !compact && collapsed ? 'project-workbench--chat-collapsed' : ''}`}>

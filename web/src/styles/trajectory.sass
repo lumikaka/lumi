@@ -63,7 +63,7 @@
   h1
     overflow: hidden
     font-size: 14px
-    font-weight: 700
+    font-weight: $font-weight-semibold
     line-height: 20px
     text-overflow: ellipsis
     white-space: nowrap
@@ -137,7 +137,7 @@
     margin: 0
     color: $color-text
     font-size: $font-size-micro
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .trajectory-search-controls
   grid-area: search
@@ -336,7 +336,7 @@
     box-shadow: 0 0 0 1px $color-surface, 0 0 0 2px $color-accent
 
 .trajectory-timeline__span--user
-  background: #5d8fdf
+  background: $color-accent
 
 .trajectory-timeline__span--context
   background: #62ad83
@@ -347,7 +347,7 @@
   opacity: 1
 
 .trajectory-timeline__span--tool
-  background: #df8a32
+  background: $color-warm
   opacity: 1
 
 .trajectory-timeline__span--compaction
@@ -549,7 +549,7 @@
 
   &[aria-selected="true"]:hover
     color: $color-accent
-    background: #dfeaff
+    background: $color-accent-muted
 
 .trajectory-row--turn-start::before
   position: absolute
@@ -730,7 +730,7 @@
     color: $color-muted
     font-size: $font-size-micro
     font-style: normal
-    font-weight: 800
+    font-weight: $font-weight-semibold
 
 .trajectory-row__trailing
   display: inline-flex
@@ -762,7 +762,7 @@
   &[aria-pressed="true"]:hover
     border-color: rgba($color-accent, .42)
     color: $color-accent
-    background: #dfeaff
+    background: $color-accent-muted
 
 .trajectory-row--summary
   min-height: 28px
@@ -795,8 +795,8 @@
   background: #f0f1f2
 
 .trajectory-row--kind-user .trajectory-row__kind-slot strong
-  color: #356bac
-  background: #e9f2ff
+  color: $color-accent-strong
+  background: $color-accent-muted
 
 .trajectory-row--kind-context .trajectory-row__kind-slot strong
   color: #278765
@@ -807,8 +807,8 @@
   background: #f0eafa
 
 .trajectory-row--kind-tool .trajectory-row__kind-slot strong
-  color: #a36316
-  background: #fff3df
+  color: $color-warning
+  background: $color-warm-muted
 
 .trajectory-row--kind-compaction .trajectory-row__kind-slot strong
   color: #27727c
@@ -966,7 +966,7 @@
     margin: 0
     overflow-wrap: anywhere
     font-size: $font-size-small
-    font-weight: 700
+    font-weight: $font-weight-semibold
 
 .trajectory-inspector__notice,
 .trajectory-inspector__note
@@ -1039,7 +1039,7 @@
   color: #dc2626
 
 .trajectory-json-token--number
-  color: #2563eb
+  color: $color-accent
 
 .trajectory-json-token--boolean
   color: #0f766e
