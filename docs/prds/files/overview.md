@@ -33,7 +33,7 @@ reconcile、扫描、修复、GC 与缩略图重建均生成可查询任务或�
 
 | 模块 | 关系 |
 |---|---|
-| 项目 | 所有 File/Object 属于单一项目，项目关闭时 Runtime 按项目停止。 |
+| 项目 | 所有 File/Object 属于单一项目；首页创建参考图以稳定 Upload/File UUIDv7 导入，并由 `project_creation_reference_files` 保护跨库恢复窗口。项目关闭时 Runtime 按项目停止。 |
 | 章节 | 导入源使用 `story_source_items.file_id` 关联 File。 |
 | Premise 资产 / 漫画 Section | 设定图、variant 和 Section 图片引用受控 File。 |
 | Chat Thread | `file` Reference 及其他资源 Reference 的 `image_file_id` 冻结关联 File；不允许跨项目引用或暴露磁盘路径。 |

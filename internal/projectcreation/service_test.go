@@ -75,6 +75,10 @@ func (fake *creationProjectsFake) OpenRecent(_ context.Context, projectUUID stri
 	return project.Summary{UUID: projectUUID, SetupStatus: project.SetupStatusDraft}, nil
 }
 
+func (fake *creationProjectsFake) WithStore(context.Context, string, func(*project.Store) error) error {
+	return errors.New("creationProjectsFake does not expose a project store")
+}
+
 type creationAgentsFake struct {
 	preflightErr  error
 	bootstrapErrs []error
@@ -86,12 +90,28 @@ type creationAgentsFake struct {
 	turnUUID      string
 }
 
+type creationEvent struct {
+	topic   string
+	event   string
+	payload any
+}
+
+type creationPublisherFake struct{ events []creationEvent }
+
+func (publisher *creationPublisherFake) Broadcast(topic, event string, payload any) {
+	publisher.events = append(publisher.events, creationEvent{topic: topic, event: event, payload: payload})
+}
+
+type panickingCreationPublisher struct{}
+
+func (panickingCreationPublisher) Broadcast(string, string, any) { panic("realtime unavailable") }
+
 func (fake *creationAgentsFake) ValidateBootstrapTextModel(context.Context) error {
 	fake.preflight++
 	return fake.preflightErr
 }
 
-func (fake *creationAgentsFake) BootstrapConversation(_ context.Context, projectUUID, sessionUUID, input string) (agent.BootstrapConversationResult, error) {
+func (fake *creationAgentsFake) BootstrapConversation(_ context.Context, projectUUID, sessionUUID, input string, _ []agent.ReferenceInput) (agent.BootstrapConversationResult, error) {
 	fake.bootstrap++
 	fake.sessions = append(fake.sessions, sessionUUID)
 	fake.inputs = append(fake.inputs, input)
@@ -141,6 +161,80 @@ func TestCreationSessionIsIdempotentAndPreservesOriginalInput(t *testing.T) {
 		if !errors.As(err, &creationErr) || creationErr.Code != CodeIdempotencyConflict {
 			t.Fatalf("conflict error=%v", err)
 		}
+	}
+}
+
+func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T) {
+	ctx := context.Background()
+	app := creationTestApp(t)
+	projects := &creationProjectsFake{app: app}
+	agents := &creationAgentsFake{threadUUID: creationTestUUID(t), turnUUID: creationTestUUID(t)}
+	service := NewService(app, projects, agents)
+	references := []ReferenceFileInput{
+		{OriginalFilename: "first.png", MIMEType: "image/png", ByteSize: 123},
+		{OriginalFilename: "second.webp", MIMEType: "IMAGE/WEBP", ByteSize: 456},
+	}
+	session, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
+	if err != nil || session.Status != StatusFailed || len(session.References) != 2 {
+		t.Fatalf("session=%+v err=%v", session, err)
+	}
+	if session.References[0].Position != 1 || session.References[0].MIMEType != "image/png" || session.References[0].FileUUID != "" || session.References[1].Position != 2 || session.References[1].MIMEType != "image/webp" {
+		t.Fatalf("references=%+v", session.References)
+	}
+	replayed, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
+	if err != nil || replayed.UUID != session.UUID || len(replayed.References) != 2 {
+		t.Fatalf("replayed=%+v err=%v", replayed, err)
+	}
+	changed := append([]ReferenceFileInput(nil), references...)
+	changed[1].ByteSize++
+	if _, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", changed); err == nil {
+		t.Fatal("idempotency key accepted another ordered reference manifest")
+	} else {
+		var creationErr *Error
+		if !errors.As(err, &creationErr) || creationErr.Code != CodeIdempotencyConflict {
+			t.Fatalf("manifest conflict error=%v", err)
+		}
+	}
+	tooMany := make([]ReferenceFileInput, MaxReferenceFiles+1)
+	for index := range tooMany {
+		tooMany[index] = ReferenceFileInput{OriginalFilename: "image.png", MIMEType: "image/png", ByteSize: 1}
+	}
+	if _, err := service.CreateWithReferences(ctx, "Too many", "home-reference-too-many", tooMany); err == nil {
+		t.Fatal("reference limit was not enforced")
+	} else {
+		var creationErr *Error
+		if !errors.As(err, &creationErr) || creationErr.Code != CodeInvalidInput {
+			t.Fatalf("reference limit error=%v", err)
+		}
+	}
+}
+
+func TestCreationSessionRealtimeIsPublicAndCannotUnwindDurableCompletion(t *testing.T) {
+	ctx := context.Background()
+	app := creationTestApp(t)
+	publisher := &creationPublisherFake{}
+	projects := &creationProjectsFake{app: app}
+	agents := &creationAgentsFake{threadUUID: creationTestUUID(t), turnUUID: creationTestUUID(t)}
+	session, err := NewService(app, projects, agents, publisher).Create(ctx, "Realtime project", "home-realtime-project")
+	if err != nil || session.Status != StatusActive || len(publisher.events) != 1 {
+		t.Fatalf("session=%+v events=%+v err=%v", session, publisher.events, err)
+	}
+	event := publisher.events[0]
+	payload, ok := event.payload.(map[string]any)
+	if !ok || event.topic != "system" || event.event != "project_creation_session:changed" || payload["session_uuid"] != session.UUID || payload["project_uuid"] != session.ProjectUUID || payload["thread_uuid"] != session.ThreadUUID {
+		t.Fatalf("event=%+v", event)
+	}
+	for _, forbidden := range []string{"id", "recent_project_id", "planned_root_path"} {
+		if _, exists := payload[forbidden]; exists {
+			t.Fatalf("realtime payload exposed %s: %+v", forbidden, payload)
+		}
+	}
+
+	panickingProjects := &creationProjectsFake{app: app}
+	panickingAgents := &creationAgentsFake{threadUUID: creationTestUUID(t), turnUUID: creationTestUUID(t)}
+	completed, err := NewService(app, panickingProjects, panickingAgents, panickingCreationPublisher{}).Create(ctx, "Publisher panic", "home-realtime-panic")
+	if err != nil || completed.Status != StatusActive {
+		t.Fatalf("publisher panic unwound completion=%+v err=%v", completed, err)
 	}
 }
 

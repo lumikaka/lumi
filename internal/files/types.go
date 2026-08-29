@@ -72,6 +72,13 @@ type CreateUploadInput struct {
 	Reader           io.Reader
 }
 
+// UploadIdentity is reserved for trusted domain workflows that must replay an
+// upload across process boundaries without creating another logical File.
+type UploadIdentity struct {
+	UploadUUID string
+	FileUUID   string
+}
+
 type CommitInput struct {
 	Purpose          string
 	OriginalFilename string

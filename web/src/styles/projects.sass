@@ -51,6 +51,37 @@
     color: $color-muted
     line-height: 1.55
 
+.project-creation-composer__attachments
+  display: flex
+  align-items: center
+  gap: 10px
+
+  button
+    display: inline-flex
+    align-items: center
+    gap: 7px
+
+  span
+    color: $color-muted
+    font-size: $font-size-small
+
+.project-creation-composer__file-input
+  position: absolute
+  width: 1px
+  height: 1px
+  overflow: hidden
+  clip: rect(0 0 0 0)
+  clip-path: inset(50%)
+
+.project-creation-composer__reference-error,
+.project-creation-composer__reference-notice
+  margin: 0
+
+.project-creation-composer__reference-notice
+  color: $color-muted
+  font-size: $font-size-small
+  line-height: 1.45
+
 .project-creation-composer__footer
   display: flex
   align-items: center

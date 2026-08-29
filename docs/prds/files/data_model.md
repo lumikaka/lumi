@@ -14,6 +14,8 @@ projects ──< file_objects ──< files
 
 Chat 的 `chat_context_references.file_id` 指向普通 File Reference，`image_file_id` 指向输入接受时冻结的图片。两者均使用内部 bigint FK；Reference 对外只返回资源 UUIDv7 和 `image_available`。
 
+项目创建的 `project_creation_reference_files.file_id` 在首页 File finalize 的同一事务中写入，保存创建 Session/Reference UUIDv7 与有序位置。它既是应用库 Reference 状态的跨库恢复事实，也是 File/Object 的结构化保留来源；正式首个 User Item 创建后，同一 File 还会由 `chat_context_references` 冻结引用。
+
 ## 表：file_objects
 
 按项目内容去重的底层对象。
@@ -38,7 +40,8 @@ Chat 的 `chat_context_references.file_id` 指向普通 File Reference，`image_
 
 ## 数据生命周期
 
-1. 上传先在 `upload_stashed` 接收和验证，完成后原子写入或复用 Object，再创建逻辑 File。
-2. Chat 图片先完成上传和 finalize，再以稳定 File UUID 创建 Reference；Chat 服务不消费临时 Upload UUID。
-3. 业务资源只关联 File；逻辑删除解除普通可见性但不立即删除 Object。冻结 Reference 继续保护 `image_file_id`，目标资源删除不重写其快照。
-4. 扫描和 reconcile 记录对象状态；GC 必须先创建可审计计划并复检包括 Chat Reference 在内的全部结构化引用，再应用未过期且未失效的计划。
+1. 上传先在 `upload_stashed` 接收和验证，完成后原子写入或复用 Object，再创建逻辑 File。可信业务流程可预分配稳定 Upload/File UUIDv7；失败、过期或进程重启后的重放复用同一逻辑身份。
+2. 首页项目创建参考图在 File finalize 的同一事务写入 `project_creation_reference_files`；应用库检查点丢失时以该项目库事实恢复，不创建第二个 File。
+3. Chat 图片先完成上传和 finalize，再以稳定 File UUID 创建 Reference；Chat 服务不消费临时 Upload UUID。首页首轮复用已 finalize File，并把 References 与 User Item 原子创建。
+4. 业务资源只关联 File；逻辑删除解除普通可见性但不立即删除 Object。冻结 Reference 和创建绑定继续保护 File/Object，目标资源删除不重写其快照。
+5. 扫描和 reconcile 记录对象状态；GC 必须先创建可审计计划并复检包括 Chat Reference 与项目创建绑定在内的全部结构化引用，再应用未过期且未失效的计划。

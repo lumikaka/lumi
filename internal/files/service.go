@@ -118,6 +118,17 @@ func (service *Service) emitObjectAssets(ctx context.Context, objectID int64, ev
 }
 
 func (service *Service) CreateUpload(ctx context.Context, input CreateUploadInput) (Upload, error) {
+	return service.createUpload(ctx, input, UploadIdentity{})
+}
+
+func (service *Service) CreateUploadWithIdentity(ctx context.Context, input CreateUploadInput, identity UploadIdentity) (Upload, error) {
+	if !isUUIDv7(identity.UploadUUID) || !isUUIDv7(identity.FileUUID) {
+		return Upload{}, fileError(CodeValidationFailed, "上传身份无效", "预分配的 upload_uuid 和 file_uuid 必须是 UUIDv7。", nil)
+	}
+	return service.createUpload(ctx, input, identity)
+}
+
+func (service *Service) createUpload(ctx context.Context, input CreateUploadInput, identity UploadIdentity) (Upload, error) {
 	if input.Reader == nil {
 		return Upload{}, fileError(CodeValidationFailed, "上传内容为空", "multipart 请求必须包含 file。", nil)
 	}
@@ -129,13 +140,16 @@ func (service *Service) CreateUpload(ctx context.Context, input CreateUploadInpu
 	if err != nil {
 		return Upload{}, err
 	}
-	uploadUUID, err := newUUIDv7()
-	if err != nil {
-		return Upload{}, err
-	}
-	fileUUID, err := newUUIDv7()
-	if err != nil {
-		return Upload{}, err
+	uploadUUID, fileUUID := identity.UploadUUID, identity.FileUUID
+	if uploadUUID == "" {
+		uploadUUID, err = newUUIDv7()
+		if err != nil {
+			return Upload{}, err
+		}
+		fileUUID, err = newUUIDv7()
+		if err != nil {
+			return Upload{}, err
+		}
 	}
 	now := service.now().UTC()
 	filtered, err := filteredMetadata(policy, input.Metadata)
@@ -147,7 +161,34 @@ func (service *Service) CreateUpload(ctx context.Context, input CreateUploadInpu
 		return Upload{}, fileError(CodeValidationFailed, "Asset metadata 无效", "metadata 必须可编码为 JSON。", err)
 	}
 	record := uploadRecord{UUID: uploadUUID, ProjectID: projectRecord.ID, ActorID: actor.ID, ReservedFileUUID: fileUUID, Purpose: strings.TrimSpace(input.Purpose), OriginalFilename: canonicalFilename(input.OriginalFilename), DisplayName: strings.TrimSpace(input.DisplayName), MetadataJSON: string(metadata), State: StateReceiving, ExpiresAt: now.Add(24 * time.Hour), CreatedAt: now, UpdatedAt: now}
-	if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+	if identity.UploadUUID != "" {
+		var existing uploadRecord
+		result := service.store.DB().WithContext(ctx).Where("project_id = ? AND uuid = ?", projectRecord.ID, uploadUUID).Limit(1).Find(&existing)
+		if result.Error != nil {
+			return Upload{}, result.Error
+		}
+		if result.RowsAffected == 1 {
+			if existing.ReservedFileUUID != fileUUID || existing.ActorID != actor.ID || existing.Purpose != record.Purpose || existing.OriginalFilename != record.OriginalFilename || existing.MetadataJSON != record.MetadataJSON {
+				return Upload{}, fileError(CodeValidationFailed, "上传身份冲突", "该稳定上传身份已经绑定到另一份文件清单。", nil)
+			}
+			if existing.State == StateReady || existing.State == StateConsuming || existing.State == StateConsumed {
+				return service.uploadDTO(ctx, existing)
+			}
+			record = existing
+			record.State, record.ErrorCode, record.ExpiresAt, record.UpdatedAt = StateReceiving, "", now.Add(24*time.Hour), now
+			if err := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ?", record.ID).Updates(map[string]any{
+				"mime_type": nil, "canonical_ext": nil, "byte_size": nil, "sha256": nil, "width": nil, "height": nil, "duration_ms": nil,
+				"state": StateReceiving, "error_code": "", "file_object_id": nil, "finalized_file_id": nil, "expires_at": record.ExpiresAt, "consumed_at": nil, "updated_at": now,
+			}).Error; err != nil {
+				return Upload{}, err
+			}
+			if path, pathErr := service.partPath(record.UUID); pathErr == nil {
+				_ = os.Remove(path)
+			}
+		} else if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+			return Upload{}, err
+		}
+	} else if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
 		return Upload{}, err
 	}
 	operationErr := service.store.WithFileCommit(func() error {

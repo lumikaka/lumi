@@ -42,7 +42,7 @@ function referenceImageUrl(projectUuid, reference) {
   return fileUuid ? `/media/projects/${encodeURIComponent(projectUuid)}/assets/${encodeURIComponent(fileUuid)}/content` : ''
 }
 
-export function ReferenceStrip({ projectUuid, references = [], onRemove, compact = false }) {
+export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemove, compact = false }) {
   const { t } = useI18n()
   if (!references.length) return null
   return (
@@ -54,7 +54,7 @@ export function ReferenceStrip({ projectUuid, references = [], onRemove, compact
           <span className={`chat-reference-chip chat-reference-chip--${reference.status || 'ready'}`} key={reference.localId || referenceKey(reference)} title={title}>
             {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <span className="chat-reference-chip__icon">{['chapter', 'comic_section'].includes(reference.resource_type) ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
             <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t)}</small></span>
-            {onRemove ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
+            {onRemove && (!canRemove || canRemove(reference)) ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
           </span>
         )
       })}

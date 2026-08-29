@@ -56,6 +56,7 @@ func (service *Service) CleanupUploads(ctx context.Context, limit int, retention
 	if err := service.store.DB().WithContext(ctx).Table("files AS files").
 		Where("files.project_id = (SELECT id FROM projects WHERE uuid = ?) AND files.purpose = 'project_chatbot_reference' AND files.deleted_at IS NULL AND files.created_at <= ?", service.store.ProjectUUID(), cutoff).
 		Where("NOT EXISTS (SELECT 1 FROM chat_context_references refs WHERE refs.file_id=files.id OR refs.image_file_id=files.id)").
+		Where("NOT EXISTS (SELECT 1 FROM project_creation_reference_files creation_refs WHERE creation_refs.file_id=files.id)").
 		Order("files.id ASC").Limit(limit).Pluck("files.id", &orphanFileIDs).Error; err != nil {
 		return UploadCleanupSummary{}, err
 	}
@@ -73,6 +74,7 @@ func (service *Service) CleanupUploads(ctx context.Context, limit int, retention
 			result := tx.Model(&fileRecord{}).
 				Where("id IN ? AND purpose='project_chatbot_reference' AND deleted_at IS NULL", orphanFileIDs).
 				Where("NOT EXISTS (SELECT 1 FROM chat_context_references refs WHERE refs.file_id=files.id OR refs.image_file_id=files.id)").
+				Where("NOT EXISTS (SELECT 1 FROM project_creation_reference_files creation_refs WHERE creation_refs.file_id=files.id)").
 				Update("deleted_at", now)
 			if result.Error != nil {
 				return result.Error

@@ -16,6 +16,7 @@ import (
 
 var ErrRecentProjectNotFound = errors.New("recent project not found")
 var ErrProjectCreationSessionNotFound = errors.New("project creation session not found")
+var ErrProjectCreationReferenceNotFound = errors.New("project creation reference not found")
 
 type RecentProject struct {
 	ID           int64 `gorm:"primaryKey;autoIncrement" json:"-"`
@@ -50,6 +51,24 @@ type ProjectCreationSession struct {
 }
 
 func (ProjectCreationSession) TableName() string { return "project_creation_sessions" }
+
+type ProjectCreationReference struct {
+	ID                       int64 `gorm:"primaryKey;autoIncrement" json:"-"`
+	UUID                     string
+	ProjectCreationSessionID int64
+	Position                 int
+	UploadUUID               string
+	FileUUID                 string
+	OriginalFilename         string
+	DeclaredMIMEType         string
+	DeclaredByteSize         int64
+	Status                   string
+	ErrorCode                string
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+}
+
+func (ProjectCreationReference) TableName() string { return "project_creation_session_references" }
 
 type Store struct {
 	db      *gorm.DB
@@ -176,7 +195,7 @@ func (store *Store) ForgetProject(ctx context.Context, projectUUID string) error
 	return nil
 }
 
-func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, session ProjectCreationSession) (ProjectCreationSession, bool, error) {
+func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, session ProjectCreationSession, references []ProjectCreationReference) (ProjectCreationSession, bool, error) {
 	var result ProjectCreationSession
 	created := false
 	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -194,6 +213,14 @@ func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, sessi
 			}
 			return err
 		}
+		for index := range references {
+			references[index].ProjectCreationSessionID = session.ID
+		}
+		if len(references) > 0 {
+			if err := tx.Create(&references).Error; err != nil {
+				return fmt.Errorf("create project creation references: %w", err)
+			}
+		}
 		result, created = session, true
 		return nil
 	})
@@ -201,6 +228,52 @@ func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, sessi
 		return ProjectCreationSession{}, false, fmt.Errorf("create project creation session: %w", err)
 	}
 	return result, created, nil
+}
+
+func (store *Store) ProjectCreationReferences(ctx context.Context, sessionID int64) ([]ProjectCreationReference, error) {
+	var references []ProjectCreationReference
+	if err := store.db.WithContext(ctx).Where("project_creation_session_id = ?", sessionID).Order("position,id").Find(&references).Error; err != nil {
+		return nil, fmt.Errorf("list project creation references: %w", err)
+	}
+	return references, nil
+}
+
+func (store *Store) ProjectCreationReference(ctx context.Context, sessionUUID, referenceUUID string) (ProjectCreationSession, ProjectCreationReference, error) {
+	var session ProjectCreationSession
+	var reference ProjectCreationReference
+	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Where("uuid = ?", sessionUUID).Limit(1).Find(&session)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrProjectCreationSessionNotFound
+		}
+		result = tx.Where("project_creation_session_id = ? AND uuid = ?", session.ID, referenceUUID).Limit(1).Find(&reference)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrProjectCreationReferenceNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return ProjectCreationSession{}, ProjectCreationReference{}, err
+	}
+	return session, reference, nil
+}
+
+func (store *Store) UpdateProjectCreationReference(ctx context.Context, referenceID int64, updates map[string]any) (ProjectCreationReference, error) {
+	result := store.db.WithContext(ctx).Model(&ProjectCreationReference{}).Where("id = ?", referenceID).Updates(updates)
+	if result.Error != nil {
+		return ProjectCreationReference{}, fmt.Errorf("update project creation reference: %w", result.Error)
+	}
+	var reference ProjectCreationReference
+	if err := store.db.WithContext(ctx).First(&reference, referenceID).Error; err != nil {
+		return ProjectCreationReference{}, fmt.Errorf("read updated project creation reference: %w", err)
+	}
+	return reference, nil
 }
 
 func (store *Store) ProjectCreationSession(ctx context.Context, sessionUUID string) (ProjectCreationSession, error) {
@@ -218,7 +291,7 @@ func (store *Store) ProjectCreationSession(ctx context.Context, sessionUUID stri
 func (store *Store) ResumableProjectCreationSessions(ctx context.Context) ([]ProjectCreationSession, error) {
 	var sessions []ProjectCreationSession
 	err := store.db.WithContext(ctx).
-		Where("status IN ?", []string{"pending", "creating_project", "creating_conversation", "failed"}).
+		Where("status IN ?", []string{"pending", "creating_project", "awaiting_references", "creating_conversation", "failed"}).
 		Order("updated_at, id").Find(&sessions).Error
 	if err != nil {
 		return nil, fmt.Errorf("list resumable project creation sessions: %w", err)

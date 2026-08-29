@@ -99,11 +99,22 @@ func TestUploadCleanupRetiresOnlyUnreferencedFinalizedChatFiles(t *testing.T) {
 	unreferenced := create("orphan.png", pngFixture(t))
 	referencedContent := append(pngFixture(t), byte(0))
 	referenced := create("referenced.png", referencedContent)
+	creationBoundContent := append(pngFixture(t), byte(1), byte(2))
+	creationBound := create("creation-bound.png", creationBoundContent)
 	var projectID, fileID int64
 	if err := store.DB().Table("projects").Where("uuid=?", store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := store.DB().Table("files").Where("uuid=?", referenced.UUID).Pluck("id", &fileID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var creationBoundFileID int64
+	if err := store.DB().Table("files").Where("uuid=?", creationBound.UUID).Pluck("id", &creationBoundFileID).Error; err != nil {
+		t.Fatal(err)
+	}
+	creationSessionUUID, _ := newUUIDv7()
+	creationReferenceUUID, _ := newUUIDv7()
+	if err := store.DB().Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,created_at) VALUES(?,?,?,?,1,?,?)`, creationReferenceUUID, projectID, creationSessionUUID, creationReferenceUUID, creationBoundFileID, clock).Error; err != nil {
 		t.Fatal(err)
 	}
 	threadUUID, _ := newUUIDv7()
@@ -145,6 +156,9 @@ func TestUploadCleanupRetiresOnlyUnreferencedFinalizedChatFiles(t *testing.T) {
 	}
 	if _, err := service.GetAsset(ctx, referenced.UUID, false); err != nil {
 		t.Fatalf("referenced finalized File was retired: %v", err)
+	}
+	if _, err := service.GetAsset(ctx, creationBound.UUID, false); err != nil {
+		t.Fatalf("project-creation-bound File was retired: %v", err)
 	}
 }
 
@@ -326,6 +340,66 @@ func TestUploadFinalizeIsIdempotentAndDeduplicatesObjects(t *testing.T) {
 		if event.Topic != "project:"+store.ProjectUUID() {
 			t.Fatalf("event topic = %s", event.Topic)
 		}
+	}
+}
+
+func TestStableUploadIdentityRecoversFailureWithoutCreatingAnotherFile(t *testing.T) {
+	service, store, _ := testService(t)
+	ctx := context.Background()
+	uploadUUID, err := newUUIDv7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileUUID, err := newUUIDv7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity := UploadIdentity{UploadUUID: uploadUUID, FileUUID: fileUUID}
+	input := CreateUploadInput{Purpose: "project_chatbot_reference", OriginalFilename: "reference.png", DisplayName: "reference.png"}
+
+	input.Reader = bytes.NewBufferString("not an image")
+	if _, err := service.CreateUploadWithIdentity(ctx, input, identity); errorCode(err) != CodeTypeNotAllowed {
+		t.Fatalf("initial invalid upload error=%v", err)
+	}
+	failed, err := service.GetUpload(ctx, uploadUUID)
+	if err != nil || failed.State != StateFailed {
+		t.Fatalf("failed upload=%+v err=%v", failed, err)
+	}
+
+	input.Reader = bytes.NewReader(pngFixture(t))
+	retried, err := service.CreateUploadWithIdentity(ctx, input, identity)
+	if err != nil || retried.UUID != uploadUUID || retried.State != StateReady {
+		t.Fatalf("retried upload=%+v err=%v", retried, err)
+	}
+	input.Reader = bytes.NewBufferString("a replay must not replace ready bytes")
+	replayed, err := service.CreateUploadWithIdentity(ctx, input, identity)
+	if err != nil || replayed.UUID != uploadUUID || replayed.State != StateReady || replayed.SHA256 != retried.SHA256 {
+		t.Fatalf("replayed upload=%+v err=%v", replayed, err)
+	}
+
+	asset, err := service.FinalizeUpload(ctx, uploadUUID, "project_chatbot_reference")
+	if err != nil || asset.UUID != fileUUID {
+		t.Fatalf("stable asset=%+v err=%v", asset, err)
+	}
+	again, err := service.FinalizeUpload(ctx, uploadUUID, "project_chatbot_reference")
+	if err != nil || again.UUID != fileUUID {
+		t.Fatalf("replayed finalize=%+v err=%v", again, err)
+	}
+	var uploads, files int64
+	if err := store.DB().Model(&uploadRecord{}).Where("uuid = ?", uploadUUID).Count(&uploads).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Model(&fileRecord{}).Where("uuid = ?", fileUUID).Count(&files).Error; err != nil {
+		t.Fatal(err)
+	}
+	if uploads != 1 || files != 1 {
+		t.Fatalf("uploads=%d files=%d", uploads, files)
+	}
+
+	input.OriginalFilename = "different.png"
+	input.Reader = bytes.NewReader(pngFixture(t))
+	if _, err := service.CreateUploadWithIdentity(ctx, input, identity); errorCode(err) != CodeValidationFailed {
+		t.Fatalf("stable identity accepted another manifest: %v", err)
 	}
 }
 
@@ -632,6 +706,29 @@ func TestIntegrityScanPersistsOrphansAndGCDryRunIsNonDestructive(t *testing.T) {
 	}
 	old := time.Now().UTC().Add(-8 * 24 * time.Hour)
 	if err := store.DB().Table("files").Where("uuid = ?", asset.UUID).Update("deleted_at", old).Error; err != nil {
+		t.Fatal(err)
+	}
+	protectedContent := append(pngFixture(t), byte(7))
+	protected, err := service.CommitReader(ctx, CommitInput{Purpose: "project_chatbot_reference", OriginalFilename: "creation-protected.png", SourceType: "imported", Reader: bytes.NewReader(protectedContent)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projectID, protectedFileID int64
+	if err := store.DB().Table("projects").Where("uuid=?", store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Table("files").Where("uuid=?", protected.UUID).Pluck("id", &protectedFileID).Error; err != nil {
+		t.Fatal(err)
+	}
+	creationSessionUUID, _ := newUUIDv7()
+	creationReferenceUUID, _ := newUUIDv7()
+	if err := store.DB().Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,created_at) VALUES(?,?,?,?,1,?,?)`, creationReferenceUUID, projectID, creationSessionUUID, creationReferenceUUID, protectedFileID, old).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.SoftDelete(ctx, protected.UUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Table("files").Where("uuid = ?", protected.UUID).Update("deleted_at", old).Error; err != nil {
 		t.Fatal(err)
 	}
 	plan, err := service.GCDryRun(ctx, 7*24*time.Hour)

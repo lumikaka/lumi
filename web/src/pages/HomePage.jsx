@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, FolderOpen, HardDrive, MoreHorizontal, Plus, Search, X } from 'lucide-react'
+import { ArrowUpDown, FolderOpen, HardDrive, ImagePlus, MoreHorizontal, Plus, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PictureBookProfileFields from '../components/PictureBookProfileFields.jsx'
+import { ReferenceStrip } from '../components/ChatReferences.jsx'
 import { projectStatusCopy } from '../components/RecentProjectsView.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -22,9 +23,9 @@ import {
   createProject,
   createProjectCreationSession,
   forgetRecentProject,
-	getProjectCreationSession,
-	getProjectDefaults,
-	listOpenProjects,
+  getProjectCreationSession,
+  getProjectDefaults,
+  listOpenProjects,
   listRecentProjects,
   openProjectPath,
   preflightImageGeneration,
@@ -32,8 +33,15 @@ import {
   relocateRecentProject,
   retryProjectCreationSession,
   selectProjectDirectory,
+  uploadProjectCreationReference,
 } from '../api/projects.js'
 import { defaultPictureBookDraft, pictureBookDraftIsValid, pictureBookPayload } from './pictureBookProfile.js'
+import {
+  MAX_PROJECT_CHAT_REFERENCES,
+  projectChatClipboardFiles,
+  selectProjectChatClipboardImages,
+  selectProjectChatImageFiles,
+} from './projectChatAttachments.js'
 
 const SORT_OPTIONS = [
   { value: 'recent', labelKey: 'projects.index.sort.recent' },
@@ -62,6 +70,68 @@ function saveCreationCheckpoint(value) {
 
 function newCreationIdempotencyKey() {
   return `home-project-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`
+}
+
+function releaseCreationReferencePreview(reference) {
+  if (reference?.previewUrl?.startsWith?.('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(reference.previewUrl)
+}
+
+function creationReferenceFileInput(reference) {
+  return {
+    original_filename: reference.filename,
+    mime_type: reference.mimeType,
+    byte_size: reference.byteSize,
+  }
+}
+
+function creationReferenceManifest(references) {
+  return references.map(creationReferenceFileInput)
+}
+
+function sameCreationReferenceManifest(left = [], right = []) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function creationReferencesFromCheckpoint(checkpoint) {
+  if (!Array.isArray(checkpoint?.referenceFiles)) return []
+  return checkpoint.referenceFiles.map((reference, index) => ({
+    localId: `checkpoint-reference-${index + 1}`,
+    position: index + 1,
+    resource_type: 'file', resource_uuid: '', image_file_uuid: '', image_available: false,
+    title: reference.original_filename,
+    filename: reference.original_filename,
+    mimeType: reference.mime_type,
+    byteSize: reference.byte_size,
+    status: 'missing', error: null, file: null, previewUrl: '',
+  }))
+}
+
+function mergeCreationSessionReferences(current, session) {
+  if (!session?.references?.length) return current
+  const byUuid = new Map(current.map((item) => [item.referenceUuid, item]))
+  const byPosition = new Map(current.map((item, index) => [item.position || index + 1, item]))
+  return session.references.map((reference) => {
+    const existing = byUuid.get(reference.uuid) || byPosition.get(reference.position)
+    const ready = reference.status === 'ready' && reference.file_uuid
+    if (ready && existing?.previewUrl) releaseCreationReferencePreview(existing)
+    return {
+      ...existing,
+      localId: reference.uuid,
+      referenceUuid: reference.uuid,
+      position: reference.position,
+      resource_type: 'file',
+      resource_uuid: ready ? reference.file_uuid : '',
+      image_file_uuid: ready ? reference.file_uuid : '',
+      image_available: Boolean(ready),
+      title: reference.original_filename,
+      filename: reference.original_filename,
+      mimeType: reference.mime_type,
+      byteSize: reference.byte_size,
+      status: ready ? 'ready' : reference.status === 'failed' ? 'error' : existing?.file ? existing.status === 'uploading' ? 'uploading' : 'selected' : 'missing',
+      previewUrl: ready ? '' : existing?.previewUrl || '',
+      error: reference.error_code ? { code: reference.error_code } : existing?.error || null,
+    }
+  })
 }
 
 function useProjectMutation(queryClient, setActionError, mutationFn, afterSuccess) {
@@ -102,6 +172,8 @@ export default function HomePage() {
   const [creationCheckpoint, setCreationCheckpoint] = useState(loadCreationCheckpoint)
   const [creationInput, setCreationInput] = useState(() => loadCreationCheckpoint()?.inputText || '')
   const [creationSession, setCreationSession] = useState(null)
+  const [creationReferences, setCreationReferences] = useState(() => creationReferencesFromCheckpoint(loadCreationCheckpoint()))
+  const [creationReferenceError, setCreationReferenceError] = useState(null)
   const [creationValidationAttempted, setCreationValidationAttempted] = useState(false)
   const nameInputRef = useRef(null)
   const storyPromptInputRef = useRef(null)
@@ -111,6 +183,8 @@ export default function HomePage() {
   const createFormRef = useRef(null)
   const openMenuRef = useRef(null)
   const openMenuTriggerRef = useRef(null)
+  const creationReferenceInputRef = useRef(null)
+  const creationReferencesRef = useRef([])
 
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const openProjectsQuery = useQuery({ queryKey: projectQueryKeys.openProjects(), queryFn: listOpenProjects })
@@ -127,6 +201,14 @@ export default function HomePage() {
   const usingDefaultOverallStyle = overallStyleUsesDefault(overallStyle, defaultOverallStyle)
   const pictureBook = useMemo(() => pictureBookPayload(pictureBookDraft), [pictureBookDraft])
   const pictureBookValid = pictureBookDraftIsValid(pictureBookDraft)
+
+  useEffect(() => {
+    creationReferencesRef.current = creationReferences
+  }, [creationReferences])
+
+  useEffect(() => () => {
+    creationReferencesRef.current.forEach(releaseCreationReferencePreview)
+  }, [])
 
   useEffect(() => {
     if (!parentPathDirty && defaultProjectParentPath) setParentPath(defaultProjectParentPath)
@@ -196,23 +278,58 @@ export default function HomePage() {
   })
 
   const acceptCreationSession = (session, checkpoint) => {
-    const nextCheckpoint = { ...checkpoint, sessionUuid: session.uuid }
+    const nextCheckpoint = { ...(checkpoint || creationCheckpoint || {}), sessionUuid: session.uuid }
     setCreationCheckpoint(nextCheckpoint)
     setCreationSession(session)
+    setCreationReferences((current) => mergeCreationSessionReferences(current, session))
     saveCreationCheckpoint(nextCheckpoint)
     if (session.status !== 'active' || !session.project_uuid || !session.thread_uuid) return
+    creationReferencesRef.current.forEach(releaseCreationReferencePreview)
     saveCreationCheckpoint(null)
     queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
     queryClient.invalidateQueries({ queryKey: projectQueryKeys.openProjects() })
     navigate(`/projects/${encodeURIComponent(session.project_uuid)}?chat_thread_uuid=${encodeURIComponent(session.thread_uuid)}`)
   }
+  const updateCreationReference = (position, patch) => {
+    setCreationReferences((current) => current.map((item, index) => (item.position || index + 1) === position ? { ...item, ...patch } : item))
+  }
   const creationMutation = useMutation({
-    mutationFn: createProjectCreationSession,
-    onSuccess: (session, variables) => acceptCreationSession(session, { inputText: variables.inputText, idempotencyKey: variables.idempotencyKey }),
-  })
-  const creationRetryMutation = useMutation({
-    mutationFn: retryProjectCreationSession,
-    onSuccess: (session) => acceptCreationSession(session, creationCheckpoint),
+    mutationFn: async (variables) => {
+      let session = variables.sessionUuid
+        ? await retryProjectCreationSession(variables.sessionUuid)
+        : await createProjectCreationSession({ inputText: variables.inputText, idempotencyKey: variables.idempotencyKey, referenceFiles: variables.referenceFiles })
+      if (session.status !== 'active') acceptCreationSession(session, variables.checkpoint)
+      if (session.status === 'active' || session.status === 'failed') return session
+      const localByPosition = new Map(variables.references.map((item, index) => [item.position || index + 1, item]))
+      let firstUploadError = null
+      for (const reference of session.references || []) {
+        if (reference.status === 'ready') continue
+        const local = localByPosition.get(reference.position)
+        if (!local?.file) continue
+        updateCreationReference(reference.position, { status: 'uploading', error: null, referenceUuid: reference.uuid })
+        try {
+          session = await uploadProjectCreationReference(session.uuid, reference.uuid, local.file)
+          if (session.status !== 'active') acceptCreationSession(session, variables.checkpoint)
+        } catch (uploadError) {
+          firstUploadError ||= uploadError
+          updateCreationReference(reference.position, { status: 'error', error: uploadError, referenceUuid: reference.uuid })
+        }
+      }
+      if (session.status === 'active') return session
+      if (firstUploadError) {
+        try {
+          session = await getProjectCreationSession(session.uuid)
+          if (session.status === 'active' || session.status === 'failed') return session
+          acceptCreationSession(session, variables.checkpoint)
+        } catch { /* preserve the original upload failure */ }
+        throw firstUploadError
+      }
+      if (session.status !== 'active' && (session.references || []).every((reference) => reference.status === 'ready')) {
+        session = await retryProjectCreationSession(session.uuid)
+      }
+      return session
+    },
+    onSuccess: (session, variables) => acceptCreationSession(session, variables.checkpoint),
   })
 
   useEffect(() => {
@@ -254,25 +371,34 @@ export default function HomePage() {
   }
   const openCreateDialog = () => { setActionError(null); resetCreationFields(); setCreateMode('yolo'); setDialog('create') }
   const openExistingDialog = () => { setActionError(null); setDialog('open') }
-  const creationPending = creationMutation.isPending || creationRetryMutation.isPending
-  const creationError = creationMutation.error || creationRetryMutation.error || creationSessionQuery.error
+  const creationPending = creationMutation.isPending
+  const creationError = creationMutation.error || creationSessionQuery.error
+  const unresolvedCreationReferences = creationReferences.filter((reference) => reference.status !== 'ready')
+  const missingCreationReferenceFiles = unresolvedCreationReferences.filter((reference) => !reference.file).length
   const submitCreationComposer = (event) => {
     event.preventDefault()
     if (creationPending) return
     setCreationValidationAttempted(true)
     if (!creationInput.trim()) return
-    const checkpoint = creationCheckpoint?.inputText === creationInput
+    const referenceFiles = creationReferenceManifest(creationReferences)
+    const checkpoint = creationCheckpoint?.inputText === creationInput && sameCreationReferenceManifest(creationCheckpoint.referenceFiles, referenceFiles)
       ? creationCheckpoint
-      : { inputText: creationInput, idempotencyKey: newCreationIdempotencyKey() }
+      : { inputText: creationInput, idempotencyKey: newCreationIdempotencyKey(), referenceFiles }
     setCreationCheckpoint(checkpoint)
-    setCreationSession(null)
+    if (!checkpoint.sessionUuid) setCreationSession(null)
     saveCreationCheckpoint(checkpoint)
-    creationMutation.mutate({ inputText: creationInput, idempotencyKey: checkpoint.idempotencyKey })
+    creationMutation.mutate({ inputText: creationInput, idempotencyKey: checkpoint.idempotencyKey, referenceFiles: checkpoint.referenceFiles || referenceFiles, references: creationReferences, sessionUuid: checkpoint.sessionUuid, checkpoint })
   }
   const retryCreation = () => {
     if (creationPending || !creationCheckpoint) return
-    if (creationCheckpoint.sessionUuid) creationRetryMutation.mutate(creationCheckpoint.sessionUuid)
-    else creationMutation.mutate({ inputText: creationCheckpoint.inputText, idempotencyKey: creationCheckpoint.idempotencyKey })
+    creationMutation.mutate({
+      inputText: creationCheckpoint.inputText,
+      idempotencyKey: creationCheckpoint.idempotencyKey,
+      referenceFiles: creationCheckpoint.referenceFiles || creationReferenceManifest(creationReferences),
+      references: creationReferences,
+      sessionUuid: creationCheckpoint.sessionUuid,
+      checkpoint: creationCheckpoint,
+    })
   }
   const changeCreationInput = (value) => {
     setCreationInput(value)
@@ -280,8 +406,60 @@ export default function HomePage() {
     if (value !== creationCheckpoint?.inputText) {
       setCreationSession(null)
       setCreationCheckpoint(null)
+      setCreationReferences((current) => current.filter((reference) => reference.file).map((reference, index) => ({ ...reference, position: index + 1 })))
       saveCreationCheckpoint(null)
     }
+  }
+  const addCreationReferenceFiles = (files) => {
+    setCreationReferenceError(null)
+    const missingSlots = creationReferences.filter((reference) => reference.status !== 'ready' && !reference.file).length
+    const refillLockedManifest = Array.isArray(creationCheckpoint?.referenceFiles) && missingSlots > 0
+    const availableSlots = refillLockedManifest ? missingSlots : MAX_PROJECT_CHAT_REFERENCES - creationReferences.length
+    const selection = selectProjectChatImageFiles(files, MAX_PROJECT_CHAT_REFERENCES - availableSlots)
+    if (selection.rejectedNonImages) setCreationReferenceError({ code: 'chat_reference_invalid_mime' })
+    else if (selection.exceededLimit) setCreationReferenceError({ code: 'chat_reference_limit_exceeded' })
+    if (!selection.acceptedFiles.length) return
+    if (refillLockedManifest) {
+      const selected = [...selection.acceptedFiles]
+      setCreationReferences((current) => current.map((reference) => {
+        if (reference.status === 'ready' || reference.file || !selected.length) return reference
+        const file = selected.shift()
+        return { ...reference, file, status: 'selected', error: null, previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '' }
+      }))
+      return
+    }
+    const additions = selection.acceptedFiles.map((file, index) => {
+      const filename = file.name?.trim() || t('chat.attachment.image')
+      return {
+        localId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${index}-${filename}`,
+        position: creationReferences.length + index + 1,
+        resource_type: 'file', resource_uuid: '', image_file_uuid: '', image_available: false,
+        title: filename, filename, mimeType: file.type.toLowerCase(), byteSize: file.size,
+        status: 'selected', error: null, file,
+        previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
+      }
+    })
+    setCreationReferences((current) => [...current, ...additions])
+  }
+  const removeCreationReference = (localId) => {
+    const serverManifestLocked = Boolean(creationCheckpoint?.sessionUuid)
+    if (!serverManifestLocked && Array.isArray(creationCheckpoint?.referenceFiles)) {
+      setCreationCheckpoint(null)
+      saveCreationCheckpoint(null)
+    }
+    setCreationReferences((current) => {
+      const target = current.find((reference) => reference.localId === localId)
+      if (!target || target.status === 'ready') return current
+      releaseCreationReferencePreview(target)
+      if (serverManifestLocked) return current.map((reference) => reference.localId === localId ? { ...reference, file: null, previewUrl: '', status: 'missing', error: null } : reference)
+      return current.filter((reference) => reference.localId !== localId).map((reference, index) => ({ ...reference, position: index + 1 }))
+    })
+  }
+  const handleCreationReferencePaste = (event) => {
+    const selected = selectProjectChatClipboardImages(event.clipboardData, creationReferences.filter((reference) => reference.status === 'ready' || reference.file).length)
+    if (!selected.hasImages) return
+    event.preventDefault()
+    addCreationReferenceFiles(projectChatClipboardFiles(event.clipboardData))
   }
 
   useEffect(() => {
@@ -316,11 +494,19 @@ export default function HomePage() {
           </div>
           <form onSubmit={submitCreationComposer}>
             <label htmlFor="project-creation-input">{t('projects.conversation.label')}</label>
-            <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} placeholder={t('projects.conversation.placeholder')} disabled={creationPending} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
+            <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} onPaste={handleCreationReferencePaste} placeholder={t('projects.conversation.placeholder')} disabled={creationPending || Boolean(creationCheckpoint?.sessionUuid)} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
             {creationValidationAttempted && !creationInput.trim() ? <p className="project-field-error" role="alert">{t('projects.conversation.required')}</p> : null}
+            <div className="project-creation-composer__attachments">
+              <button type="button" className="button-secondary" disabled={creationPending || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><ImagePlus size={16} aria-hidden="true" />{t('projects.conversation.reference.add')}</button>
+              <input ref={creationReferenceInputRef} className="project-creation-composer__file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={creationPending} onChange={(event) => { addCreationReferenceFiles(event.target.files); event.target.value = '' }} />
+              <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span>
+            </div>
+            <ReferenceStrip projectUuid={creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file))} compact />
+            <LocalizedErrorMessage error={creationReferenceError} className="project-creation-composer__reference-error" compact onDismiss={() => setCreationReferenceError(null)} />
+            {creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0 ? <p className="project-creation-composer__reference-notice" role="status">{t('projects.conversation.reference.reselect', { count: missingCreationReferenceFiles })}</p> : null}
             <div className="project-creation-composer__footer">
               <p id="project-creation-hint">{t('projects.conversation.path_hint')}</p>
-              <button type="submit" disabled={creationPending || !creationInput.trim()}><Plus size={16} aria-hidden="true" />{t(creationPending ? 'projects.conversation.creating' : 'projects.conversation.submit')}</button>
+              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}><Plus size={16} aria-hidden="true" />{t(creationPending ? 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.submit')}</button>
             </div>
           </form>
           {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey="projects.conversation.failed" /><button type="button" className="button-secondary" disabled={creationPending || !creationCheckpoint} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}

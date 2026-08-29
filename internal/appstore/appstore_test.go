@@ -10,7 +10,18 @@ import (
 	"time"
 
 	"lumi/internal/config"
+
+	"github.com/google/uuid"
 )
+
+func appStoreTestUUID(t *testing.T) string {
+	t.Helper()
+	value, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value.String()
+}
 
 func TestOpenRepairsLegacyRecentProjectTimestampTypes(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "app-data")
@@ -129,5 +140,54 @@ func TestOpenMigratesAppStoreAndPersistsRecentProjects(t *testing.T) {
 	}
 	if err := store.ForgetProject(context.Background(), projects[0].UUID); !errors.Is(err, ErrRecentProjectNotFound) {
 		t.Fatalf("second forget error = %v", err)
+	}
+}
+
+func TestProjectCreationSessionPersistsOrderedReferenceManifestAtomically(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "app-data")
+	store, err := Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	ctx := context.Background()
+	now := time.Date(2026, 8, 28, 10, 0, 0, 0, time.UTC)
+	session := ProjectCreationSession{
+		UUID: appStoreTestUUID(t), IdempotencyKey: "home-reference-manifest-0001", InputText: "Create from two images",
+		Status: "pending", PlannedProjectUUID: appStoreTestUUID(t), CreatedAt: now, UpdatedAt: now,
+	}
+	references := []ProjectCreationReference{
+		{UUID: appStoreTestUUID(t), Position: 1, UploadUUID: appStoreTestUUID(t), FileUUID: appStoreTestUUID(t), OriginalFilename: "first.png", DeclaredMIMEType: "image/png", DeclaredByteSize: 123, Status: "pending", CreatedAt: now, UpdatedAt: now},
+		{UUID: appStoreTestUUID(t), Position: 2, UploadUUID: appStoreTestUUID(t), FileUUID: appStoreTestUUID(t), OriginalFilename: "second.webp", DeclaredMIMEType: "image/webp", DeclaredByteSize: 456, Status: "pending", CreatedAt: now, UpdatedAt: now},
+	}
+
+	created, wasCreated, err := store.CreateOrGetProjectCreationSession(ctx, session, references)
+	if err != nil || !wasCreated || created.ID == 0 {
+		t.Fatalf("created=%+v was_created=%v err=%v", created, wasCreated, err)
+	}
+	stored, err := store.ProjectCreationReferences(ctx, created.ID)
+	if err != nil || len(stored) != 2 || stored[0].UUID != references[0].UUID || stored[1].UUID != references[1].UUID || stored[0].Position != 1 || stored[1].Position != 2 {
+		t.Fatalf("stored references=%+v err=%v", stored, err)
+	}
+	replayed, wasCreated, err := store.CreateOrGetProjectCreationSession(ctx, ProjectCreationSession{IdempotencyKey: session.IdempotencyKey}, nil)
+	if err != nil || wasCreated || replayed.UUID != session.UUID {
+		t.Fatalf("replayed=%+v was_created=%v err=%v", replayed, wasCreated, err)
+	}
+
+	foundSession, found, err := store.ProjectCreationReference(ctx, session.UUID, references[1].UUID)
+	if err != nil || foundSession.ID != created.ID || found.Position != 2 {
+		t.Fatalf("found session=%+v reference=%+v err=%v", foundSession, found, err)
+	}
+	updated, err := store.UpdateProjectCreationReference(ctx, found.ID, map[string]any{"status": "ready", "updated_at": now.Add(time.Minute)})
+	if err != nil || updated.Status != "ready" || updated.FileUUID != references[1].FileUUID {
+		t.Fatalf("updated reference=%+v err=%v", updated, err)
+	}
+
+	if err := store.DB().WithContext(ctx).Delete(&created).Error; err != nil {
+		t.Fatal(err)
+	}
+	var remaining int64
+	if err := store.DB().WithContext(ctx).Model(&ProjectCreationReference{}).Where("project_creation_session_id = ?", created.ID).Count(&remaining).Error; err != nil || remaining != 0 {
+		t.Fatalf("remaining references=%d err=%v", remaining, err)
 	}
 }

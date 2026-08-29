@@ -43,7 +43,7 @@ func bootstrapThreadTitle(input string) string {
 	return input
 }
 
-func (service *Service) BootstrapConversation(ctx context.Context, projectUUID, creationSessionUUID, inputText string) (BootstrapConversationResult, error) {
+func (service *Service) BootstrapConversation(ctx context.Context, projectUUID, creationSessionUUID, inputText string, referenceInputs []ReferenceInput) (BootstrapConversationResult, error) {
 	_, err := validateText(inputText, 256<<10, "用户消息")
 	if err != nil {
 		return BootstrapConversationResult{}, err
@@ -72,6 +72,10 @@ func (service *Service) BootstrapConversation(ctx context.Context, projectUUID, 
 			return err
 		}
 		promptSnapshot, err := service.loadContextPrompts(ctx, store, threadRecord{ThreadType: ThreadTypeConversation})
+		if err != nil {
+			return err
+		}
+		references, err := service.resolveContextReferences(ctx, store, pid, referenceInputs)
 		if err != nil {
 			return err
 		}
@@ -114,7 +118,7 @@ func (service *Service) BootstrapConversation(ctx context.Context, projectUUID, 
 			return err
 		}
 		thread.ID, thread.ThreadType = threadID, ThreadTypeConversation
-		turn, _, err := service.createTurnTx(ctx, tx, projectUUID, &thread, text, "prompt", 0, promptSnapshot, nil)
+		turn, _, err := service.createTurnTx(ctx, tx, projectUUID, &thread, text, "prompt", 0, promptSnapshot, references)
 		if err != nil {
 			return err
 		}

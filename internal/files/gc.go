@@ -102,9 +102,10 @@ func (service *Service) gcReferenceSummary(ctx context.Context, objectID int64) 
 		(SELECT COUNT(*) FROM files WHERE file_object_id=? AND deleted_at IS NOT NULL) AS eligible_deleted_files,
 		(SELECT COUNT(*) FROM files WHERE file_object_id=? AND deleted_at IS NULL) AS active_files,
 		((SELECT COUNT(*) FROM story_source_items WHERE file_id IN (SELECT id FROM files WHERE file_object_id=?)) +
-		 (SELECT COUNT(*) FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=?)) AS business_refs,
+		 (SELECT COUNT(*) FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=?) +
+		 (SELECT COUNT(*) FROM project_creation_reference_files refs JOIN files f ON f.id=refs.file_id WHERE f.file_object_id=?)) AS business_refs,
 		(SELECT COUNT(*) FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=?) AS derived_refs,
-		(SELECT COUNT(*) FROM upload_stashed WHERE file_object_id=? AND state <> 'consumed') AS pending_uploads`, objectID, objectID, objectID, objectID, objectID, objectID).Scan(&counts).Error
+		(SELECT COUNT(*) FROM upload_stashed WHERE file_object_id=? AND state <> 'consumed') AS pending_uploads`, objectID, objectID, objectID, objectID, objectID, objectID, objectID).Scan(&counts).Error
 	if err != nil {
 		return "", err
 	}
@@ -164,14 +165,14 @@ func (service *Service) gcApply(ctx context.Context, planUUID string, grace time
 		}
 		err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			var eligible int64
-			if err := tx.Raw(`SELECT COUNT(*) FROM file_objects o WHERE o.id=? AND o.project_id=? AND o.state IN ('ready','missing','corrupt','quarantined') AND EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id AND (f.deleted_at IS NULL OR f.deleted_at > ?)) AND NOT EXISTS (SELECT 1 FROM story_source_items ssi JOIN files f ON f.id=ssi.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM upload_stashed u WHERE u.file_object_id=o.id AND u.state <> 'consumed')`, object.ID, record.ProjectID, cutoff).Scan(&eligible).Error; err != nil {
+			if err := tx.Raw(`SELECT COUNT(*) FROM file_objects o WHERE o.id=? AND o.project_id=? AND o.state IN ('ready','missing','corrupt','quarantined') AND EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id AND (f.deleted_at IS NULL OR f.deleted_at > ?)) AND NOT EXISTS (SELECT 1 FROM story_source_items ssi JOIN files f ON f.id=ssi.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM project_creation_reference_files refs JOIN files f ON f.id=refs.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM upload_stashed u WHERE u.file_object_id=o.id AND u.state <> 'consumed')`, object.ID, record.ProjectID, cutoff).Scan(&eligible).Error; err != nil {
 				return err
 			}
 			if eligible != 1 {
 				return fileError(CodeGCPlanStale, "GC 对象引用已变化", "apply 前的事务内引用复检未通过。", nil)
 			}
 			var refs int64
-			if err := tx.Raw(`SELECT (SELECT COUNT(*) FROM story_source_items WHERE file_id IN (SELECT id FROM files WHERE file_object_id=?)) + (SELECT COUNT(*) FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=?)`, object.ID, object.ID).Scan(&refs).Error; err != nil {
+			if err := tx.Raw(`SELECT (SELECT COUNT(*) FROM story_source_items WHERE file_id IN (SELECT id FROM files WHERE file_object_id=?)) + (SELECT COUNT(*) FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=?) + (SELECT COUNT(*) FROM project_creation_reference_files refs JOIN files f ON f.id=refs.file_id WHERE f.file_object_id=?)`, object.ID, object.ID, object.ID).Scan(&refs).Error; err != nil {
 				return err
 			}
 			if refs > 0 {
@@ -210,7 +211,7 @@ func (service *Service) gcApply(ctx context.Context, planUUID string, grace time
 
 func (service *Service) gcCandidates(ctx context.Context, projectID int64, cutoff time.Time) ([]objectRecord, error) {
 	var objects []objectRecord
-	err := service.store.DB().WithContext(ctx).Raw(`SELECT o.* FROM file_objects o WHERE o.project_id = ? AND o.state IN ('ready','missing','corrupt','quarantined') AND EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id AND (f.deleted_at IS NULL OR f.deleted_at > ?)) AND NOT EXISTS (SELECT 1 FROM story_source_items ssi JOIN files f ON f.id=ssi.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM upload_stashed u WHERE u.file_object_id=o.id AND u.state <> 'consumed') ORDER BY o.uuid ASC`, projectID, cutoff).Scan(&objects).Error
+	err := service.store.DB().WithContext(ctx).Raw(`SELECT o.* FROM file_objects o WHERE o.project_id = ? AND o.state IN ('ready','missing','corrupt','quarantined') AND EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id AND (f.deleted_at IS NULL OR f.deleted_at > ?)) AND NOT EXISTS (SELECT 1 FROM story_source_items ssi JOIN files f ON f.id=ssi.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM project_creation_reference_files refs JOIN files f ON f.id=refs.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM upload_stashed u WHERE u.file_object_id=o.id AND u.state <> 'consumed') ORDER BY o.uuid ASC`, projectID, cutoff).Scan(&objects).Error
 	return objects, err
 }
 func gcSnapshot(objects []objectRecord) string {

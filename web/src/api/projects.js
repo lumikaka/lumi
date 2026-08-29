@@ -24,8 +24,8 @@ export async function createProject({ name, parentPath, generationLanguage = 'zh
   return apiRequest('/api/v1/projects', jsonRequest('POST', { name, parent_path: parentPath, generation_language: generationLanguage, picture_book: pictureBook, overall_style: overallStyle }))
 }
 
-export async function createProjectCreationSession({ inputText, idempotencyKey }) {
-  return apiRequest('/api/v1/project-creation-sessions', jsonRequest('POST', { input_text: inputText, idempotency_key: idempotencyKey }))
+export async function createProjectCreationSession({ inputText, idempotencyKey, referenceFiles = [] }) {
+  return apiRequest('/api/v1/project-creation-sessions', jsonRequest('POST', { input_text: inputText, idempotency_key: idempotencyKey, reference_files: referenceFiles }))
 }
 
 export async function getProjectCreationSession(sessionUuid) {
@@ -34,6 +34,12 @@ export async function getProjectCreationSession(sessionUuid) {
 
 export async function retryProjectCreationSession(sessionUuid) {
   return apiRequest(`/api/v1/project-creation-sessions/${encodeURIComponent(sessionUuid)}/retries`, jsonRequest('POST', {}))
+}
+
+export async function uploadProjectCreationReference(sessionUuid, referenceUuid, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return apiRequest(`/api/v1/project-creation-sessions/${encodeURIComponent(sessionUuid)}/references/${encodeURIComponent(referenceUuid)}/uploads`, { method: 'POST', body: form })
 }
 
 export async function getProjectSetup(projectUuid) {

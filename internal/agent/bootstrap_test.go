@@ -169,11 +169,11 @@ func TestBootstrapConversationIsExactlyOnceAndRunsInDraftContext(t *testing.T) {
 	originalInput := "  我要一本水彩风格、讲小狐狸给月亮送信的儿童绘本。\n"
 	makeHarnessProjectDraft(t, harness, creationSessionUUID, originalInput)
 
-	first, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, originalInput)
+	first, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, originalInput, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, originalInput)
+	second, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, originalInput, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,6 +226,40 @@ func TestBootstrapConversationIsExactlyOnceAndRunsInDraftContext(t *testing.T) {
 	}
 }
 
+func TestBootstrapConversationAttachesReferencesToTheFirstUserItemExactlyOnce(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	referenceFile := createChatReferenceFile(t, harness.store, "bootstrap-reference.png", agentTestPNG(t))
+	creationSessionUUID := mustAgentUUID(t)
+	input := "请参考这张图创建一本月亮邮差绘本。"
+	makeHarnessProjectDraft(t, harness, creationSessionUUID, input)
+	references := []ReferenceInput{{ResourceType: ReferenceTypeFile, ResourceUUID: referenceFile.UUID}}
+
+	first, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, input, references)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, input, references)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Thread.UUID != second.Thread.UUID || first.Turn.UUID != second.Turn.UUID {
+		t.Fatalf("first=%+v second=%+v", first, second)
+	}
+	page, err := harness.service.ListItems(ctx, harness.project.UUID, first.Thread.UUID, "", "", 20)
+	if err != nil || len(page.Items) != 1 || page.Items[0].ItemType != "user_message" || len(page.Items[0].References) != 1 {
+		t.Fatalf("bootstrap items=%+v err=%v", page.Items, err)
+	}
+	reference := page.Items[0].References[0]
+	if reference.ResourceType != ReferenceTypeFile || reference.ResourceUUID != referenceFile.UUID || !reference.ImageAvailable || reference.Position != 1 {
+		t.Fatalf("bootstrap reference=%+v", reference)
+	}
+	var count int64
+	if err := harness.store.DB().Table("chat_context_references").Where("resource_type=? AND resource_uuid=?", ReferenceTypeFile, referenceFile.UUID).Count(&count).Error; err != nil || count != 1 {
+		t.Fatalf("stored bootstrap references=%d err=%v", count, err)
+	}
+}
+
 func TestBootstrapConversationRollsBackAndRecoversEveryAtomicBoundary(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -250,7 +284,7 @@ func TestBootstrapConversationRollsBackAndRecoversEveryAtomicBoundary(t *testing
 					t.Fatal(err)
 				}
 			}
-			if _, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, sessionUUID, "failure-injected first turn"); err == nil {
+			if _, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, sessionUUID, "failure-injected first turn", nil); err == nil {
 				t.Fatal("injected bootstrap failure was ignored")
 			}
 			for _, table := range []string{"project_creation_bootstraps", "chat_threads", "chat_turns", "chat_runs"} {
@@ -264,7 +298,7 @@ func TestBootstrapConversationRollsBackAndRecoversEveryAtomicBoundary(t *testing
 			} else if err := harness.store.DB().Exec("DROP TRIGGER fail_bootstrap").Error; err != nil {
 				t.Fatal(err)
 			}
-			result, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, sessionUUID, "failure-injected first turn")
+			result, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, sessionUUID, "failure-injected first turn", nil)
 			if err != nil || result.Thread.UUID == "" || result.Turn.UUID == "" {
 				t.Fatalf("recovered=%+v err=%v", result, err)
 			}
@@ -481,7 +515,7 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	setupUUID := mustAgentUUID(t)
 	creationSessionUUID := mustAgentUUID(t)
 	makeHarnessProjectDraft(t, harness, setupUUID, "我要一本水彩风格、讲小狐狸给月亮送信的儿童绘本。")
-	bootstrap, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, "我要一本水彩风格、讲小狐狸给月亮送信的儿童绘本。")
+	bootstrap, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, "我要一本水彩风格、讲小狐狸给月亮送信的儿童绘本。", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

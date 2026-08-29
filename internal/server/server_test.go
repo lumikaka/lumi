@@ -149,7 +149,7 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 			projectSetupRoutes++
 		}
 	}
-	if !websocketRouteFound || !workflowConflictRouteFound || creationSessionRoutes != 3 || projectSetupRoutes != 3 || application.RealtimeHub() == nil {
+	if !websocketRouteFound || !workflowConflictRouteFound || creationSessionRoutes != 4 || projectSetupRoutes != 3 || application.RealtimeHub() == nil {
 		t.Fatal("application realtime or workflow conflict endpoint was not initialized")
 	}
 	serverProjectRoutes := projectAPIRouteSpecs(application.Echo)

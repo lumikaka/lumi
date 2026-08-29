@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	PhoenixHeartbeatTopic = "phoenix"
-	SystemTopic           = "system"
-	SystemStatusChanged   = "system:status_changed"
-	OpenProjectChanged    = "open_project:changed"
+	PhoenixHeartbeatTopic         = "phoenix"
+	SystemTopic                   = "system"
+	SystemStatusChanged           = "system:status_changed"
+	OpenProjectChanged            = "open_project:changed"
+	ProjectCreationSessionChanged = "project_creation_session:changed"
 )
 
 type JoinError struct {

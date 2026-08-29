@@ -6,12 +6,14 @@
 应用库
 recent_projects ──(uuid / root_path)──> 本机发现索引
       └──< project_creation_sessions
+                    └──< project_creation_session_references
 
 项目库
 projects ──< actors
    ├──0..1 project_picture_book_profiles
    ├──1 project_setup_drafts（仅对话式草稿项目）
    ├──0..1 project_creation_bootstraps ──> chat_threads / chat_turns
+   ├──< project_creation_reference_files ──> files
    ├──< project_story_profiles
    └──< project_prompt_versions
 ```
@@ -54,7 +56,7 @@ projects ──< actors
 - `uuid` — TEXT NOT NULL UNIQUE，公开创建会话 UUIDv7
 - `idempotency_key` — TEXT NOT NULL UNIQUE，客户端稳定重试键
 - `input_text` — TEXT NOT NULL，逐字保存的首页原始输入，1–256 KiB
-- `status` — `pending|creating_project|creating_conversation|active|failed|cancelled`
+- `status` — `pending|creating_project|awaiting_references|creating_conversation|active|failed|cancelled`
 - `planned_project_uuid` / `planned_root_path` — 首次规划后冻结的项目 UUIDv7 与安全占位目录
 - `recent_project_id` — INTEGER FK → `recent_projects.id`，项目创建完成检查点
 - `thread_uuid` / `turn_uuid` — 对话 bootstrap 完成后的公开 UUIDv7
@@ -64,6 +66,31 @@ projects ──< actors
 **索引：**
 
 - `(status, updated_at, id)` — 启动恢复顺序
+
+**主要相关 Feature：**
+
+- [`对话式项目创建与设置定稿`](features/对话式项目创建与设置定稿.md)
+
+## 表：project_creation_session_references
+
+应用库中属于创建 Session 的有序参考图清单和上传恢复检查点；清单与 Session 在同一个应用库事务中创建。
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键、外键和 JOIN
+- `uuid` — TEXT NOT NULL UNIQUE，公开 Reference UUIDv7
+- `project_creation_session_id` — INTEGER NOT NULL FK → `project_creation_sessions.id`，删除 Session 时级联删除
+- `position` — INTEGER NOT NULL，1–16；`(project_creation_session_id, position)` 唯一
+- `upload_uuid` / `file_uuid` — TEXT NOT NULL UNIQUE，预分配且稳定的项目 Upload/File UUIDv7
+- `original_filename` — TEXT NOT NULL，首次提交清单中的文件名
+- `declared_mime_type` — `image/png|image/jpeg|image/webp`
+- `declared_byte_size` — INTEGER NOT NULL，1–33,554,432 字节
+- `status` — `pending|uploading|ready|failed`
+- `error_code` / 生命周期时间 — 单图上传错误和恢复排序事实
+
+**索引：**
+
+- `(project_creation_session_id, status, position)` — 恢复未完成图片并保持用户顺序
+
+只有 `ready` Reference 的公开投影包含 `file_uuid`；Upload UUID 和两个数据库的内部 ID 均不对外返回。
 
 **主要相关 Feature：**
 
@@ -111,6 +138,27 @@ projects ──< actors
 
 - [`对话式项目创建与设置定稿`](features/对话式项目创建与设置定稿.md)
 
+## 表：project_creation_reference_files
+
+项目库中创建 Session、参考图清单项和正式 File 之间的恢复事实。File finalize 与该绑定在同一个项目库事务中提交，应用库即使在随后写检查点前崩溃也可据此校准。
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键和 JOIN
+- `uuid` — TEXT NOT NULL UNIQUE，UUIDv7；当前与公开 Reference UUID 相同
+- `project_id` — INTEGER NOT NULL FK → `projects.id`
+- `creation_session_uuid` — TEXT NOT NULL，关联应用库公开 Session UUIDv7，不保存跨库内部 ID
+- `reference_uuid` — TEXT NOT NULL UNIQUE，关联应用库公开 Reference UUIDv7
+- `position` — INTEGER NOT NULL，1–16；`(creation_session_uuid, position)` 唯一
+- `file_id` — INTEGER NOT NULL UNIQUE FK → `files.id`，`ON DELETE RESTRICT`
+- `created_at` — DATETIME NOT NULL
+
+**索引：**
+
+- `(project_id, creation_session_uuid, position)` — 按项目和 Session 恢复有序绑定
+
+**主要相关 Feature：**
+
+- [`对话式项目创建与设置定稿`](features/对话式项目创建与设置定稿.md)
+
 ## 表：project_story_profiles
 
 项目级 Story 总纲的追加式版本历史；每个项目恰有一个 current 记录。
@@ -139,8 +187,10 @@ projects ──< actors
 ## 数据生命周期
 
 1. 手动创建项目直接写入 `ready` 项目和唯一正式绘本规格；迁移前旧项目通过默认值保持 `ready`。
-2. 对话式创建先持久化应用库 Session，再按检查点建立 `draft` 项目、Setup Draft 和普通 Chat bootstrap；启动 reconciliation 可从失败或中间态幂等续跑。
-3. 用户明确选择“定稿并启动 YOLO”后，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
-4. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 existing YOLO Workflow 后立即完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
-5. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
-6. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。
+2. 对话式创建在应用库单事务持久化 Session 和有序参考图清单，再按检查点建立 `draft` 项目与 Setup Draft。
+3. 每张参考图使用预分配 Upload/File UUIDv7 重试；项目库单事务完成 File finalize 与创建绑定，应用库随后标记 `ready`。启动 reconciliation 以项目绑定为事实校准跨库崩溃窗口。
+4. 全部参考图 ready 后，普通 Chat bootstrap 在项目库单事务创建首个 Thread/Turn/Run/User Item/Job，并把 File References 按清单顺序挂到首个 User Item；无参考图时直接进入该步骤。
+5. 用户明确选择“定稿并启动 YOLO”后，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
+6. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 existing YOLO Workflow 后立即完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
+7. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
+8. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。

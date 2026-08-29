@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   createProject,
+	createProjectCreationSession,
 	getProjectDefaults,
 	ensureProjectOpen,
 	openProjectPath,
@@ -11,6 +12,7 @@ import {
   preflightImageGeneration,
   preflightProjectImageGeneration,
   selectProjectDirectory,
+	uploadProjectCreationReference,
 } from './projects.js'
 
 function success(data = {}) {
@@ -78,4 +80,18 @@ test('project API opens a local project location', async (t) => {
   assert.equal(path, '/api/v1/directory-openings')
   assert.equal(options.method, 'POST')
   assert.deepEqual(JSON.parse(options.body), { root_path: '/books/moon' })
+})
+
+test('project creation sessions declare and upload ordered reference files', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => success({ uuid: '019-session', references: [] }))
+  const referenceFiles = [{ original_filename: 'moon.png', mime_type: 'image/png', byte_size: 12 }]
+  await createProjectCreationSession({ inputText: 'Moon story', idempotencyKey: 'home-project-reference', referenceFiles })
+  const file = new File(['image'], 'moon.png', { type: 'image/png' })
+  await uploadProjectCreationReference('019-session', '019-reference', file)
+  const calls = globalThis.fetch.mock.calls.map((call) => call.arguments)
+  assert.deepEqual(JSON.parse(calls[0][1].body), { input_text: 'Moon story', idempotency_key: 'home-project-reference', reference_files: referenceFiles })
+  assert.equal(calls[1][0], '/api/v1/project-creation-sessions/019-session/references/019-reference/uploads')
+  assert.equal(calls[1][1].method, 'POST')
+  assert.equal(calls[1][1].headers['Content-Type'], undefined)
+  assert.equal(calls[1][1].body.get('file'), file)
 })
