@@ -15,6 +15,7 @@ import {
 import { Link, useLocation } from 'react-router-dom'
 
 import { useI18n } from '../i18n/useI18n.js'
+import ProjectSearchDialog from './ProjectSearchDialog.jsx'
 import { mergeSidebarProjectOrder, orderSidebarProjects } from './sidebarProjectOrder.js'
 
 export const GLOBAL_SIDEBAR_COLLAPSED_KEY = 'lumi.globalSidebarCollapsed'
@@ -50,20 +51,25 @@ export default function GlobalSidebar({
   onClose,
   onToggleCollapsed,
   recentProjects = [],
+  recentProjectsLoading = false,
   onSwitchProject,
 }) {
   const { t } = useI18n()
   const location = useLocation()
   const titleId = useId()
+  const searchDialogId = useId()
   const settingsMenuId = useId()
   const closeRef = useRef(null)
+  const searchTriggerRef = useRef(null)
   const settingsRef = useRef(null)
   const settingsTriggerRef = useRef(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const stableRecentProjects = useStableRecentProjects(recentProjects)
 
   useEffect(() => {
     setSettingsOpen(false)
+    setSearchOpen(false)
     onClose?.()
   }, [location.hash, location.pathname, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -101,6 +107,18 @@ export default function GlobalSidebar({
   }, [mobileOpen, onClose])
 
   const settingsActive = location.pathname.startsWith('/settings/') || location.pathname === '/about'
+  const currentProjectUuid = stableRecentProjects.find((project) => isProjectActive(location.pathname, project.uuid))?.uuid || ''
+
+  const closeSearch = () => {
+    setSearchOpen(false)
+    window.requestAnimationFrame(() => searchTriggerRef.current?.focus())
+  }
+
+  const openSearch = () => {
+    setSettingsOpen(false)
+    setSearchOpen(true)
+    onClose?.()
+  }
 
   return (
     <>
@@ -149,10 +167,14 @@ export default function GlobalSidebar({
             active={location.pathname === '/'}
           />
           <button
-            className="global-sidebar__link global-sidebar__search"
+            ref={searchTriggerRef}
+            className={`global-sidebar__link global-sidebar__search ${searchOpen ? 'is-active' : ''}`}
             type="button"
-            aria-disabled="true"
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            aria-controls={searchOpen ? searchDialogId : undefined}
             title={t('common.action.search')}
+            onClick={openSearch}
           >
             <Search size={16} aria-hidden="true" />
             <span>{t('common.action.search')}</span>
@@ -221,6 +243,16 @@ export default function GlobalSidebar({
           </button>
         </footer>
       </aside>
+      {searchOpen ? (
+        <ProjectSearchDialog
+          id={searchDialogId}
+          currentProjectUuid={currentProjectUuid}
+          loading={recentProjectsLoading}
+          projects={stableRecentProjects}
+          onClose={closeSearch}
+          onSwitchProject={onSwitchProject}
+        />
+      ) : null}
     </>
   )
 }

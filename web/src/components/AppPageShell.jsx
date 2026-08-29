@@ -22,6 +22,7 @@ export default function AppPageShell({ title, subtitle, actions, children, class
         onClose={() => setSidebarOpen(false)}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         recentProjects={recentQuery.data?.items || []}
+        recentProjectsLoading={recentQuery.isLoading}
         onSwitchProject={switchProject}
       />
       <GlobalTopbar title={title} subtitle={subtitle} actions={actions} showAccount={showAccount} onOpenNavigation={() => setSidebarOpen(true)} />

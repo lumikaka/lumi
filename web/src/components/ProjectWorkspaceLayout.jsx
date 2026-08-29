@@ -92,6 +92,7 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
         onClose={() => setSidebarOpen(false)}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         recentProjects={recentQuery.data?.items || []}
+        recentProjectsLoading={recentQuery.isLoading}
         onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
       />
       <GlobalTopbar
