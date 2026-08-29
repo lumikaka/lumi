@@ -110,7 +110,7 @@ function LoadingCards() {
   return <div className="premise-card-grid" aria-label={t('premise.loading_cards')}>{Array.from({ length: 8 }, (_, index) => <div className="premise-card-skeleton" key={index} />)}</div>
 }
 
-export default function PremiseWorkspace({ projectUuid }) {
+export default function PremiseWorkspace({ projectUuid, pictureBook }) {
   const { formatDateTime, locale, t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -781,7 +781,7 @@ export default function PremiseWorkspace({ projectUuid }) {
         </section>
       ) : null}
 
-      {activeTab === 'threads' ? <PremiseThreadsPanel projectUuid={projectUuid} onOpenThread={(thread) => updateChatQuery({ threadUuid: thread.uuid })} onNewThread={() => updateChatQuery()} /> : null}
+      {activeTab === 'threads' ? <PremiseThreadsPanel projectUuid={projectUuid} pictureBook={pictureBook} onOpenThread={(thread) => updateChatQuery({ threadUuid: thread.uuid })} onNewThread={() => updateChatQuery()} /> : null}
       {activeTab === 'prompts' ? <PremisePromptsPanel projectUuid={projectUuid} /> : null}
       {activeTab === 'llm_logs' ? <ProjectLLMLogsPanel projectUuid={projectUuid} scope="premise" title={t('premise.llm_logs.title')} description={t('premise.llm_logs.description')} /> : null}
 

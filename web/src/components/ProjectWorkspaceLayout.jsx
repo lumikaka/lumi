@@ -97,6 +97,7 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
       <GlobalTopbar
         title={project?.name || t('projects.fallback_name')}
         projectUuid={projectUuid}
+        pictureBook={project?.picture_book}
         activeSection={activeSection}
         recentProjects={recentQuery.data?.items || []}
         onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
@@ -107,12 +108,12 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
         <section className="project-workbench__content" aria-label={t('projects.workspace')}>
           {children}
         </section>
-        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} /> : null}
+        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} /> : null}
       </div>
       {compact && !hideChat && overlayOpen ? (
         <div className="project-chat-overlay" id={chatOverlayId} role="dialog" aria-modal="true" aria-label={t('chat.project')}>
           <button className="project-chat-overlay__backdrop" type="button" aria-label={t('chat.close')} onClick={() => setOverlayOpen(false)} />
-          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} expanded onToggle={() => setOverlayOpen(false)} overlay newThreadReference={newThreadReference} /></div>
+          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded onToggle={() => setOverlayOpen(false)} overlay newThreadReference={newThreadReference} /></div>
         </div>
       ) : null}
     </main>

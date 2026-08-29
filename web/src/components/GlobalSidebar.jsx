@@ -15,8 +15,10 @@ import {
 import { Link, useLocation } from 'react-router-dom'
 
 import { useI18n } from '../i18n/useI18n.js'
+import { mergeSidebarProjectOrder, orderSidebarProjects } from './sidebarProjectOrder.js'
 
 export const GLOBAL_SIDEBAR_COLLAPSED_KEY = 'lumi.globalSidebarCollapsed'
+export const GLOBAL_SIDEBAR_PROJECT_ORDER_KEY = 'lumi.globalSidebarProjectOrder'
 
 const SETTINGS_ITEMS = [
   { labelKey: 'settings.user_account', to: '/settings/account', icon: User },
@@ -58,6 +60,7 @@ export default function GlobalSidebar({
   const settingsRef = useRef(null)
   const settingsTriggerRef = useRef(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const stableRecentProjects = useStableRecentProjects(recentProjects)
 
   useEffect(() => {
     setSettingsOpen(false)
@@ -164,7 +167,7 @@ export default function GlobalSidebar({
             </Link>
           </header>
           <nav aria-label={t('projects.title')}>
-            {recentProjects.slice(0, 6).map((project, index) => (
+            {stableRecentProjects.slice(0, 6).map((project, index) => (
               <RecentProjectLink
                 key={project.uuid}
                 active={isProjectActive(location.pathname, project.uuid)}
@@ -257,6 +260,34 @@ function RecentProjectLink({ active, project, onSwitchProject, tone }) {
 
 function isProjectActive(pathname, projectUuid) {
   return pathname === `/projects/${encodeURIComponent(projectUuid)}` || pathname.startsWith(`/projects/${encodeURIComponent(projectUuid)}/`)
+}
+
+function useStableRecentProjects(recentProjects) {
+  const [projectOrder, setProjectOrder] = useState(readProjectOrder)
+  const nextProjectOrder = mergeSidebarProjectOrder(projectOrder, recentProjects)
+
+  useEffect(() => {
+    if (nextProjectOrder === projectOrder) return
+    setProjectOrder(nextProjectOrder)
+    try {
+      window.sessionStorage.setItem(GLOBAL_SIDEBAR_PROJECT_ORDER_KEY, JSON.stringify(nextProjectOrder))
+    } catch {
+      // Storage may be unavailable; the order still remains stable until unmount.
+    }
+  }, [nextProjectOrder, projectOrder])
+
+  return orderSidebarProjects(recentProjects, nextProjectOrder)
+}
+
+function readProjectOrder() {
+  if (typeof window === 'undefined') return []
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(GLOBAL_SIDEBAR_PROJECT_ORDER_KEY) || '[]')
+    if (!Array.isArray(value)) return []
+    return [...new Set(value.filter((uuid) => typeof uuid === 'string' && uuid))]
+  } catch {
+    return []
+  }
 }
 
 function readCollapsed() {

@@ -146,7 +146,7 @@ test('inline workflows render inside their origin turn without replacing convers
 	assert.match(source, /workflows: inlineWorkflowsByTurn\.get\(group\.uuid\) \|\| \[\]/)
 	assert.match(source, /function TurnGroup[\s\S]*?chat-turn__workflows[\s\S]*?<WorkflowProgress[\s\S]*?inline/)
 	assert.match(source, /workflow-progress--inline/)
-	assert.match(source, /selectedDedicatedWorkflow[\s\S]*?threadDisplayTitle\(selectedThread, selectedDedicatedWorkflow, t\)/)
+	assert.match(source, /selectedDedicatedWorkflow[\s\S]*?threadDisplayTitle\(selectedThread, selectedDedicatedWorkflow, term\)/)
 	assert.match(source, /\['queued', 'in_progress', 'waiting_for_input', 'waiting_for_workflow'\]/)
 	assert.match(source, /chat\.composer\.waiting_for_workflow/)
 	assert.match(messagesSource, /'chat\.activity\.waiting_for_workflow': \['工作流正在后台执行/)

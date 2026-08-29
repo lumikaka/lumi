@@ -5,11 +5,13 @@ import { Link, useLocation } from 'react-router-dom'
 import { WORKSPACE_SECTIONS, workspaceRoute } from './workspaceNavigation.js'
 import AccountMenu from './AccountMenu.jsx'
 import { useI18n } from '../i18n/useI18n.js'
+import { formatTerminologyKey } from '../pages/pictureBookProfile.js'
 
 export default function GlobalTopbar({
   title,
   subtitle,
   projectUuid,
+  pictureBook,
   activeSection,
   actions,
   recentProjects = [],
@@ -98,7 +100,9 @@ export default function GlobalTopbar({
               key={section.key}
               to={workspaceRoute(projectUuid, section.route, location.search)}
             >
-              {t(section.labelKey)}
+              {t(section.key === 'chapters'
+                ? formatTerminologyKey(pictureBook, 'projects.section.picture_books', section.labelKey)
+                : section.labelKey)}
             </Link>
           ))}
         </nav>

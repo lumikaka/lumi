@@ -36,6 +36,7 @@ import {
   nextChapterCode,
   sortChaptersByDirection,
 } from './storyWorkspaceState.js'
+import { formatTerminologyMessageKey } from './pictureBookProfile.js'
 
 const TASK_STATUS = {
   queued: 'story.task.status.queued',
@@ -63,8 +64,9 @@ const DIALOG_TITLE = {
   upload: 'story.chapters.create.upload',
 }
 
-export default function ChaptersWorkspace({ projectUuid }) {
-  const { formatCount, t } = useI18n()
+export default function ChaptersWorkspace({ projectUuid, pictureBook }) {
+  const { t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -121,7 +123,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
     return byChapter
   }, [storyTasks])
   const processing = storyTasks.some((task) => ACTIVE_TASK_STATUSES.has(task.status))
-  const singleFileError = singleFile && !isSupportedStoryFile(singleFile) ? t('story.chapters.invalid_file', { name: singleFile.name }) : ''
+  const singleFileError = singleFile && !isSupportedStoryFile(singleFile) ? term('story.chapters.invalid_file', { name: singleFile.name }) : ''
   const unsupportedBatchFile = batchFiles.find((file) => !isSupportedStoryFile(file))
   const queryError = chaptersQuery.error || tasksQuery.error
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
@@ -249,9 +251,9 @@ export default function ChaptersWorkspace({ projectUuid }) {
         }
       } catch (cause) {
         const details = created.length
-          ? t('story.chapters.partial_generation', { created: created.length, queued: tasks.length })
+          ? term('story.chapters.partial_generation', { created: created.length, queued: tasks.length })
           : cause?.details
-        const wrapped = new Error(t('story.chapters.generation_failed'))
+        const wrapped = new Error(term('story.chapters.generation_failed'))
         wrapped.code = cause?.code
         wrapped.details = details
         throw wrapped
@@ -324,9 +326,9 @@ export default function ChaptersWorkspace({ projectUuid }) {
     <div className={`chapters-page${showNextStep ? ' chapters-page--with-next-step' : ''}`}>
       <section className="chapters-panel" aria-labelledby="chapters-title">
         <header className="chapters-toolbar">
-          <h1 id="chapters-title">{t('story.chapters')}</h1>
+          <h1 id="chapters-title">{term('story.chapters')}</h1>
           <div className="chapters-toolbar__actions">
-            <span className="chapters-count" aria-label={formatCount('common.count.chapters', items.length)}>{items.length}</span>
+            <span className="chapters-count" aria-label={term('story.chapters.count_label', { count: items.length })}>{items.length}</span>
             <button
               type="button"
               className="button-secondary chapters-compact-button"
@@ -349,18 +351,18 @@ export default function ChaptersWorkspace({ projectUuid }) {
                 aria-haspopup="menu"
                 aria-expanded={createMenuOpen}
                 disabled={busy || processing}
-                title={t(processing ? 'story.chapters.add_wait' : 'story.chapters.add')}
+                title={term(processing ? 'story.chapters.add_wait' : 'story.chapters.add')}
                 onClick={() => setCreateMenuOpen((current) => !current)}
               >
                 <Plus size={14} aria-hidden="true" />
-                {t('story.chapters.add')}
+                {term('story.chapters.add')}
                 <ChevronDown size={14} aria-hidden="true" />
               </button>
               {createMenuOpen ? (
                 <div className="chapter-create-menu__dropdown" role="menu">
                   {CHAPTER_CREATION_ACTIONS.map((action) => {
                     const Icon = CREATION_ICON[action.key]
-                    return <button className="chapter-menu-item" key={action.key} type="button" role="menuitem" onClick={() => openDialog(action.key)}><Icon size={16} aria-hidden="true" /><span>{t(action.labelKey)}</span></button>
+                    return <button className="chapter-menu-item" key={action.key} type="button" role="menuitem" onClick={() => openDialog(action.key)}><Icon size={16} aria-hidden="true" /><span>{term(action.labelKey)}</span></button>
                   })}
                 </div>
               ) : null}
@@ -368,11 +370,11 @@ export default function ChaptersWorkspace({ projectUuid }) {
           </div>
         </header>
 
-        {summary ? <OperationSummary summary={summary} onDismiss={() => setSummary(null)} /> : null}
+        {summary ? <OperationSummary summary={summary} onDismiss={() => setSummary(null)} term={term} /> : null}
         {(error || queryError) && !activeDialog && !deleteTarget ? <ErrorNotice error={error || queryError} onDismiss={error ? () => setError(null) : undefined} /> : null}
-        {chaptersQuery.isLoading ? <p className="chapters-loading">{t('story.chapter.loading')}</p> : null}
-        {!chaptersQuery.isLoading && !chaptersQuery.isError && items.length === 0 ? <p className="chapters-empty">{t('story.chapters.empty')}</p> : null}
-        <div className="chapters-list" aria-label={t('story.chapters.list')}>
+        {chaptersQuery.isLoading ? <p className="chapters-loading">{term('story.chapter.loading')}</p> : null}
+        {!chaptersQuery.isLoading && !chaptersQuery.isError && items.length === 0 ? <p className="chapters-empty">{term('story.chapters.empty')}</p> : null}
+        <div className="chapters-list" aria-label={term('story.chapters.list')}>
           {sortedItems.map((chapter) => {
             const task = taskByChapter.get(chapter.uuid)
             const active = task && ACTIVE_TASK_STATUSES.has(task.status)
@@ -391,7 +393,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
                     aria-haspopup="menu"
                     aria-expanded={openRowMenuUuid === chapter.uuid}
                     disabled={active || deleteMutation.isPending}
-                    title={t(active ? 'story.chapters.delete_disabled' : 'common.label.actions')}
+                    title={term(active ? 'story.chapters.delete_disabled' : 'common.label.actions')}
                     onClick={(event) => {
                       rowMenuTriggerRef.current = event.currentTarget
                       setOpenRowMenuUuid((current) => current === chapter.uuid ? '' : chapter.uuid)
@@ -419,7 +421,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
       ) : null}
 
       {activeDialog ? (
-        <AccessibleDialog title={t(DIALOG_TITLE[activeDialog])} onClose={closeDialog} busy={busy} returnFocusRef={createTriggerRef}>
+        <AccessibleDialog title={term(DIALOG_TITLE[activeDialog])} eyebrow={term('story.chapter')} onClose={closeDialog} busy={busy} returnFocusRef={createTriggerRef}>
           {activeDialog === 'batch' ? (
             <>
               <div className="chapter-dialog-tabs" role="tablist" aria-label={t('story.chapters.batch_method')}>
@@ -429,17 +431,17 @@ export default function ChaptersWorkspace({ projectUuid }) {
               {batchTab === 'ai' ? (
                 <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); generationMutation.mutate({ mode: 'batch', requestedCount: Number(chapterCount) }) }}>
                   <label>{t('projects.tab.prompts')}<textarea data-autofocus value={prompt} maxLength={30000} rows="8" required disabled={busy} onChange={(event) => { setPrompt(event.target.value); setError(null) }} /></label>
-                  <label>{t('story.chapters.count')}<input type="number" min="1" max="10" value={chapterCount} required disabled={busy} onChange={(event) => setChapterCount(event.target.value)} /><small>{t('story.chapters.count_hint')}</small></label>
+                  <label>{term('story.chapters.count')}<input type="number" min="1" max="10" value={chapterCount} required disabled={busy} onChange={(event) => setChapterCount(event.target.value)} /><small>{term('story.chapters.count_hint')}</small></label>
                   <ErrorNotice error={error} />
                   <DialogActions busy={busy} submitDisabled={!prompt.trim() || Number(chapterCount) < 1 || Number(chapterCount) > 10} pendingLabel={t('story.chapters.creating_queue')} submitLabel={t('story.chapters.start_generation')} onCancel={closeDialog} />
                 </form>
               ) : (
                 <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); importMutation.mutate({ mode: 'batch', files: batchFiles }) }}>
-                  <label>{t('story.chapters.files')}<input data-autofocus type="file" accept=".txt,.md,text/plain,text/markdown" multiple required disabled={busy} onChange={(event) => { setBatchFiles(Array.from(event.target.files || [])); setError(null) }} /><small>{t('story.chapters.files_hint')}</small></label>
+                  <label>{t('story.chapters.files')}<input data-autofocus type="file" accept=".txt,.md,text/plain,text/markdown" multiple required disabled={busy} onChange={(event) => { setBatchFiles(Array.from(event.target.files || [])); setError(null) }} /><small>{term('story.chapters.files_hint')}</small></label>
                   <FileList files={batchFiles} />
                   {unsupportedBatchFile ? <p className="chapter-field-error">{t('story.chapters.invalid_file', { name: unsupportedBatchFile.name })}</p> : null}
                   <ErrorNotice error={error} />
-                  <DialogActions busy={busy} submitDisabled={!batchFiles.length || Boolean(unsupportedBatchFile)} pendingLabel={t('story.chapters.uploading')} submitLabel={t('story.chapters.import')} onCancel={closeDialog} />
+                  <DialogActions busy={busy} submitDisabled={!batchFiles.length || Boolean(unsupportedBatchFile)} pendingLabel={t('story.chapters.uploading')} submitLabel={term('story.chapters.import')} onCancel={closeDialog} />
                 </form>
               )}
             </>
@@ -447,7 +449,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
 
           {activeDialog === 'next' ? (
             <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); generationMutation.mutate({ mode: 'next', requestedCount: 1 }) }}>
-              <p className="chapter-dialog-hint">{t('story.chapters.next_hint', { code: suggestedCode })}</p>
+              <p className="chapter-dialog-hint">{term('story.chapters.next_hint', { code: suggestedCode })}</p>
               <label>{t('projects.tab.prompts')}<textarea data-autofocus value={prompt} maxLength={30000} rows="8" required disabled={busy} onChange={(event) => { setPrompt(event.target.value); setError(null) }} /></label>
               <ErrorNotice error={error} />
               <DialogActions busy={busy} submitDisabled={!prompt.trim()} pendingLabel={t('story.chapters.creating_queue')} submitLabel={t('story.chapters.start_generation')} onCancel={closeDialog} />
@@ -456,10 +458,10 @@ export default function ChaptersWorkspace({ projectUuid }) {
 
           {activeDialog === 'continue' ? (
             <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); generationMutation.mutate({ mode: 'continue', requestedCount: 1 }) }}>
-              <label>{t('story.chapters.source_chapter')}<input value={continuation.sourceChapter ? `${continuation.sourceChapter.chapter_code}${continuation.sourceChapter.title ? ` · ${continuation.sourceChapter.title}` : ''}` : t('story.chapters.none')} readOnly /></label>
-              <label>{t('story.chapters.target_chapter')}<input value={continuation.targetChapterCode} readOnly /></label>
-              <label>{t('story.chapters.continue_requirements')}<textarea data-autofocus value={prompt} maxLength={30000} rows="8" disabled={busy} onChange={(event) => { setPrompt(event.target.value); setError(null) }} /><small>{t('story.chapters.continue_hint')}</small></label>
-              {!continuation.hasCurrentStory ? <p className="chapter-field-error">{t('story.chapters.continue_missing')}</p> : null}
+              <label>{term('story.chapters.source_chapter')}<input value={continuation.sourceChapter ? `${continuation.sourceChapter.chapter_code}${continuation.sourceChapter.title ? ` · ${continuation.sourceChapter.title}` : ''}` : term('story.chapters.none')} readOnly /></label>
+              <label>{term('story.chapters.target_chapter')}<input value={continuation.targetChapterCode} readOnly /></label>
+              <label>{t('story.chapters.continue_requirements')}<textarea data-autofocus value={prompt} maxLength={30000} rows="8" disabled={busy} onChange={(event) => { setPrompt(event.target.value); setError(null) }} /><small>{term('story.chapters.continue_hint')}</small></label>
+              {!continuation.hasCurrentStory ? <p className="chapter-field-error">{term('story.chapters.continue_missing')}</p> : null}
               <ErrorNotice error={error} />
               <DialogActions busy={busy} submitDisabled={!continuation.hasCurrentStory} pendingLabel={t('story.chapters.creating_queue')} submitLabel={t('story.chapters.start_continue')} onCancel={closeDialog} />
             </form>
@@ -467,7 +469,7 @@ export default function ChaptersWorkspace({ projectUuid }) {
 
           {activeDialog === 'manual' ? (
             <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); manualMutation.mutate() }}>
-              <ChapterIdentityFields chapterCode={chapterCode} setChapterCode={setChapterCode} title={title} setTitle={setTitle} busy={busy} autoFocus />
+              <ChapterIdentityFields chapterCode={chapterCode} setChapterCode={setChapterCode} title={title} setTitle={setTitle} busy={busy} codeLabel={term('story.chapters.code')} autoFocus />
               <label>{t('story.chapters.format')}<select value={contentFormat} disabled={busy} onChange={(event) => setContentFormat(event.target.value)}><option value="txt">txt</option><option value="md">md</option></select></label>
               <label>{t('story.chapters.content')}<textarea value={content} rows="12" required disabled={busy} onChange={(event) => { setContent(event.target.value); setError(null) }} /></label>
               <ErrorNotice error={error} />
@@ -477,20 +479,20 @@ export default function ChaptersWorkspace({ projectUuid }) {
 
           {activeDialog === 'upload' ? (
             <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); importMutation.mutate({ mode: 'single', files: singleFile ? [singleFile] : [] }) }}>
-              <ChapterIdentityFields chapterCode={chapterCode} setChapterCode={setChapterCode} title={title} setTitle={setTitle} busy={busy} autoFocus />
+              <ChapterIdentityFields chapterCode={chapterCode} setChapterCode={setChapterCode} title={title} setTitle={setTitle} busy={busy} codeLabel={term('story.chapters.code')} autoFocus />
               <label>{t('story.chapters.files')}<input type="file" accept=".txt,.md,text/plain,text/markdown" required disabled={busy} onChange={(event) => { setSingleFile(event.target.files?.[0] || null); setError(null) }} /></label>
               {singleFileError ? <p className="chapter-field-error">{singleFileError}</p> : null}
               <ErrorNotice error={error} />
-              <DialogActions busy={busy} submitDisabled={!chapterCodePattern.test(chapterCode.trim()) || !singleFile || Boolean(singleFileError)} pendingLabel={t('story.chapters.uploading')} submitLabel={t('story.chapters.import')} onCancel={closeDialog} />
+              <DialogActions busy={busy} submitDisabled={!chapterCodePattern.test(chapterCode.trim()) || !singleFile || Boolean(singleFileError)} pendingLabel={t('story.chapters.uploading')} submitLabel={term('story.chapters.import')} onCancel={closeDialog} />
             </form>
           ) : null}
         </AccessibleDialog>
       ) : null}
 
       {deleteTarget ? (
-        <AccessibleDialog title={t('story.chapters.delete_title')} onClose={() => { if (!deleteMutation.isPending) setDeleteTarget(null) }} busy={deleteMutation.isPending} returnFocusRef={deleteReturnFocusRef} compact>
+        <AccessibleDialog title={term('story.chapters.delete_title')} eyebrow={term('story.chapter')} onClose={() => { if (!deleteMutation.isPending) setDeleteTarget(null) }} busy={deleteMutation.isPending} returnFocusRef={deleteReturnFocusRef} compact>
           <form className="chapter-dialog-form" onSubmit={(event) => { event.preventDefault(); if (deleteConfirmation === t('story.chapters.delete_word')) deleteMutation.mutate(deleteTarget) }}>
-            <p className="chapter-dialog-hint">{t('story.chapters.delete_hint', { code: deleteTarget.chapter_code })}</p>
+            <p className="chapter-dialog-hint">{term('story.chapters.delete_hint', { code: deleteTarget.chapter_code })}</p>
             <label>{t('story.chapters.delete_confirm', { word: t('story.chapters.delete_word') })}<input data-autofocus value={deleteConfirmation} autoComplete="off" disabled={deleteMutation.isPending} onChange={(event) => { setDeleteConfirmation(event.target.value); setError(null) }} /></label>
             <ErrorNotice error={error} />
             <DialogActions danger busy={deleteMutation.isPending} submitDisabled={deleteConfirmation !== t('story.chapters.delete_word')} pendingLabel={t('story.chapters.deleting')} submitLabel={t('common.action.delete')} onCancel={() => setDeleteTarget(null)} />
@@ -501,11 +503,11 @@ export default function ChaptersWorkspace({ projectUuid }) {
   )
 }
 
-function ChapterIdentityFields({ chapterCode, setChapterCode, title, setTitle, busy, autoFocus = false }) {
+function ChapterIdentityFields({ chapterCode, setChapterCode, title, setTitle, busy, codeLabel, autoFocus = false }) {
   const { t } = useI18n()
   return (
     <>
-      <label>{t('story.chapters.code')}<input data-autofocus={autoFocus || undefined} value={chapterCode} pattern="vol[0-9]{2,}\.ch[0-9]{2,}" required disabled={busy} onChange={(event) => setChapterCode(event.target.value.toLowerCase())} /></label>
+      <label>{codeLabel}<input data-autofocus={autoFocus || undefined} value={chapterCode} pattern="vol[0-9]{2,}\.ch[0-9]{2,}" required disabled={busy} onChange={(event) => setChapterCode(event.target.value.toLowerCase())} /></label>
       <label>{t('common.label.title')}<input value={title} maxLength="255" placeholder={t('common.label.optional')} disabled={busy} onChange={(event) => setTitle(event.target.value)} /></label>
     </>
   )
@@ -521,7 +523,7 @@ function DialogActions({ busy, submitDisabled, pendingLabel, submitLabel, onCanc
   )
 }
 
-function AccessibleDialog({ title, onClose, busy, returnFocusRef, children, compact = false }) {
+function AccessibleDialog({ title, eyebrow, onClose, busy, returnFocusRef, children, compact = false }) {
   const { t } = useI18n()
   const dialogRef = useRef(null)
   const closeRef = useRef(onClose)
@@ -570,7 +572,7 @@ function AccessibleDialog({ title, onClose, busy, returnFocusRef, children, comp
   return (
     <div className="chapter-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
       <section ref={dialogRef} className={`chapter-dialog${compact ? ' chapter-dialog--compact' : ''}`} role="dialog" aria-modal="true" aria-labelledby="chapter-dialog-title">
-        <header><div><p>{t('story.chapter')}</p><h2 id="chapter-dialog-title">{title}</h2></div><button type="button" className="chapter-dialog__close" aria-label={t('common.action.close')} disabled={busy} onClick={onClose}><X size={18} aria-hidden="true" /></button></header>
+        <header><div><p>{eyebrow}</p><h2 id="chapter-dialog-title">{title}</h2></div><button type="button" className="chapter-dialog__close" aria-label={t('common.action.close')} disabled={busy} onClick={onClose}><X size={18} aria-hidden="true" /></button></header>
         <div className="chapter-dialog__body">{children}</div>
       </section>
     </div>
@@ -592,7 +594,7 @@ function ErrorNotice({ error, onDismiss }) {
   return <LocalizedErrorMessage error={error} className="chapter-error" onDismiss={onDismiss} />
 }
 
-function OperationSummary({ summary, onDismiss }) {
+function OperationSummary({ summary, onDismiss, term }) {
   const { t } = useI18n()
   const result = summary.result
   const created = result?.items?.length || 0
@@ -600,7 +602,7 @@ function OperationSummary({ summary, onDismiss }) {
   return (
     <div className="chapter-operation-summary" role="status">
       <div>
-        <strong>{summary.type === 'generation' ? t('story.chapters.operation_generation', { count: summary.count }) : t('story.chapters.operation_import', { created, skipped })}</strong>
+        <strong>{summary.type === 'generation' ? term('story.chapters.operation_generation', { count: summary.count }) : term('story.chapters.operation_import', { created, skipped })}</strong>
         {summary.type === 'import' && skipped ? <ul>{result.skipped.map((item, index) => <li key={`${item.filename}-${index}`}><span>{item.chapter_code || item.filename}</span><small>{t(item.reason === 'duplicate_code' ? 'story.chapters.skip_duplicate' : 'story.chapters.skip_exists')}</small></li>)}</ul> : null}
       </div>
       <button className="chapter-notice-dismiss" type="button" aria-label={t('story.chapters.close_result')} onClick={onDismiss}><X size={15} aria-hidden="true" /></button>

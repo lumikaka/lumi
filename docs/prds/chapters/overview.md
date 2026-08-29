@@ -1,8 +1,8 @@
-# 章节 — 章节正文、生命周期与生成
+# 绘本 / 章节 — Chapter 正文、生命周期与生成
 
 ## 模块职责
 
-章节模块负责项目内 Chapter 的排序、正文版本、源文件导入、回收站和 Story 生成。Chapter 是故事正文的聚合根，也是漫画状态与章节级导出的归属资源；漫画 Section 本身由 `comic_sections` 管理。
+本模块负责项目内 Chapter 的排序、正文版本、源文件导入、回收站和 Story 生成。Chapter 是故事正文的聚合根，也是漫画状态与 Chapter 级导出的归属资源；普通绘本形式面向用户称“绘本”，条漫 `vertical_strip` 称“章节”。Section 本身由 `comic_sections` 管理。
 
 ## 职责边界
 
@@ -12,6 +12,10 @@
 | 不负责 | 项目总纲与 Prompt 配置、漫画 Section/图片/快照、文件物理存储、通用任务调度和导出产物。 |
 
 ## 核心概念
+
+### 绘本与章节称呼
+
+技术实体始终为 `chapter`。产品层必须读取项目 `picture_book.format`：非 `vertical_strip` 使用“绘本”，`vertical_strip` 使用“章节”。这项差异只影响用户称呼，不改变 REST 路径、JSON 字段、数据库表或内部关联。
 
 ### 当前正文
 

@@ -84,6 +84,7 @@ import {
 import { ACTIVE_CHAT_STATUSES, ACTIVE_WORKFLOW_STATUSES, agentQueryKeysForEvent, comicStoryboardOverwriteRequest, workflowControls } from '../pages/chatWorkspaceState.js'
 import { flattenProjectThreads, useProjectThreads } from '../pages/projectThreads.js'
 import { isPlainProjectReferenceClick, resolveProjectReference } from '../pages/projectReferences.js'
+import { formatTerminologyMessageKey } from '../pages/pictureBookProfile.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { ReferencePicker, ReferenceStrip } from './ChatReferences.jsx'
@@ -325,14 +326,14 @@ function ProjectReferenceLink({ children, projectUuid, reference, onNavigate }) 
 	)
 }
 
-function ChatItem({ item, projectUuid, onProjectReferenceNavigate }) {
+function ChatItem({ item, projectUuid, pictureBook, onProjectReferenceNavigate }) {
   const { t } = useI18n()
   if (item.item_type === 'error') {
     return <article className="chat-message chat-message--error"><div>{t('chat.item.error')}</div></article>
   }
 
   if (item.role === 'user') {
-    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact /></div></article>
+    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact pictureBook={pictureBook} /></div></article>
   }
 
   return (
@@ -432,7 +433,7 @@ function toolStatusLabel(status, t) {
   }[status] || t('common.status.unknown_with_code', { code: status })
 }
 
-function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict, onProjectReferenceNavigate }) {
+function TurnGroup({ group, projectUuid, pictureBook, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict, onProjectReferenceNavigate }) {
   const { formatDateTime, t } = useI18n()
   const turn = group.turn
   const activity = projectChatTurnActivity(turn, group.items, { historyMayBePartial })
@@ -444,6 +445,7 @@ function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid,
 				<WorkflowProgress
 					key={workflow.uuid}
 					projectUuid={projectUuid}
+					pictureBook={pictureBook}
 					workflow={workflow}
 					inline
 					selected={workflow.uuid === selectedWorkflowUuid}
@@ -470,7 +472,7 @@ function TurnGroup({ group, projectUuid, historyMayBePartial, requestByItemUuid,
 			{index === activity.summaryIndex ? <>{workflowCards}{summary}</> : null}
             {item.item_type === 'user_input_request' && requestByItemUuid.get(item.uuid)
               ? <UserInputCard request={requestByItemUuid.get(item.uuid)} pending={inputPending} onRespond={onRespond} onCancel={onCancel} />
-			  : <ChatItem item={item} projectUuid={projectUuid} onProjectReferenceNavigate={onProjectReferenceNavigate} />}
+			  : <ChatItem item={item} projectUuid={projectUuid} pictureBook={pictureBook} onProjectReferenceNavigate={onProjectReferenceNavigate} />}
           </Fragment>
         ))}
 		{activity.summaryIndex === activity.conversationItems.length ? <>{workflowCards}{summary}</> : null}
@@ -501,8 +503,9 @@ function TurnActivity({ turn, items, activity }) {
   return <div className="chat-turn__activity" role="status" aria-live="polite"><i aria-hidden="true" /><span>{copy}{longRunning ? <small>{t('chat.activity.long_running')}</small> : null}</span></div>
 }
 
-function WorkflowProgress({ projectUuid, workflow, inline = false, selected = false, pending, onCancel, onRetry, onResolveConflict }) {
+function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, selected = false, pending, onCancel, onRetry, onResolveConflict }) {
   const { t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [diagnosticStepUuid, setDiagnosticStepUuid] = useState('')
   useEffect(() => {
@@ -519,10 +522,10 @@ function WorkflowProgress({ projectUuid, workflow, inline = false, selected = fa
   }
   return (
 	<section className={`workflow-progress ${inline ? 'workflow-progress--inline' : 'workflow-progress--dedicated'} ${selected ? 'is-selected' : ''}`} data-workflow-uuid={workflow.uuid}>
-      <header><div><span>{t('chat.workflow.title')}</span><strong>{workflowDisplayTitle(workflow, t)}</strong></div><b className={`workflow-status workflow-status--${workflow.status}`}>{workflowStatusCopy[workflow.status] ? t(workflowStatusCopy[workflow.status]) : t('common.status.unknown_with_code', { code: workflow.status })}</b></header>
+      <header><div><span>{t('chat.workflow.title')}</span><strong>{workflowDisplayTitle(workflow, term)}</strong></div><b className={`workflow-status workflow-status--${workflow.status}`}>{workflowStatusCopy[workflow.status] ? t(workflowStatusCopy[workflow.status]) : t('common.status.unknown_with_code', { code: workflow.status })}</b></header>
       <div className="workflow-progress__meter"><progress max="100" value={progress} aria-label={t('chat.workflow.progress', { progress })} /><small>{progress}%</small></div>
       <ol>{workflow.steps?.map((step) => {
-        const title = stepCopy[step.step_key] ? t(stepCopy[step.step_key]) : t('common.status.unknown_with_code', { code: step.step_key })
+        const title = stepCopy[step.step_key] ? term(stepCopy[step.step_key]) : t('common.status.unknown_with_code', { code: step.step_key })
         return (
           <li key={step.uuid} className={`workflow-step workflow-step--${step.status}`}>
             <button type="button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
@@ -536,25 +539,26 @@ function WorkflowProgress({ projectUuid, workflow, inline = false, selected = fa
       {overwriteRequest ? (
         <section className="workflow-conflict-confirmation" role="alert">
           <div>
-            <strong>{t('chat.workflow.conflict.title')}</strong>
-            <p>{t('chat.workflow.conflict.body', { existing: overwriteRequest.existingSectionCount, generated: overwriteRequest.generatedSectionCount })}</p>
-            <small>{t('chat.workflow.conflict.snapshot_notice')}</small>
+            <strong>{term('chat.workflow.conflict.title')}</strong>
+            <p>{term('chat.workflow.conflict.body', { existing: overwriteRequest.existingSectionCount, generated: overwriteRequest.generatedSectionCount })}</p>
+            <small>{term('chat.workflow.conflict.snapshot_notice')}</small>
           </div>
           <footer>
-            <button type="button" className="button-secondary" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'keep_existing', overwriteRequest.expectedComicStateRevision)}>{t(pending ? 'chat.workflow.conflict.processing' : 'chat.workflow.conflict.keep_existing')}</button>
-            <button type="button" className="button-danger" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'overwrite', overwriteRequest.expectedComicStateRevision)}>{t(pending ? 'chat.workflow.conflict.processing' : 'chat.workflow.conflict.overwrite')}</button>
+            <button type="button" className="button-secondary" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'keep_existing', overwriteRequest.expectedComicStateRevision)}>{pending ? t('chat.workflow.conflict.processing') : term('chat.workflow.conflict.keep_existing')}</button>
+            <button type="button" className="button-danger" disabled={pending} onClick={() => onResolveConflict(workflow.uuid, 'overwrite', overwriteRequest.expectedComicStateRevision)}>{pending ? t('chat.workflow.conflict.processing') : term('chat.workflow.conflict.overwrite')}</button>
           </footer>
         </section>
       ) : null}
       {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code }} compact /> : null}
       <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{t('chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
-      <WorkflowDiagnostics projectUuid={projectUuid} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
+      <WorkflowDiagnostics projectUuid={projectUuid} pictureBook={pictureBook} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
     </section>
   )
 }
 
-function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusStepUuid, onFocusStep }) {
+function WorkflowDiagnostics({ projectUuid, pictureBook, workflow, open, onOpenChange, focusStepUuid, onFocusStep }) {
   const { formatDateTime, formatNumber, t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const [selectedLog, setSelectedLog] = useState(null)
   useEffect(() => setSelectedLog(null), [workflow.uuid, focusStepUuid])
   const runsQuery = useInfiniteQuery({
@@ -605,10 +609,10 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
           <h4>{t('chat.workflow.runs')}</h4>
           {runsQuery.isLoading ? <p>{t('chat.loading')}</p> : null}
           {!runsQuery.isLoading && !runsQuery.error && runs.length === 0 ? <p>{t('chat.workflow.no_runs')}</p> : null}
-          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{stepCopy[run.step_key] ? t(stepCopy[run.step_key]) : t('common.status.unknown_with_code', { code: run.step_key })}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {Math.min(100, Math.max(0, Number(run.progress) || 0))}% · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
+          <ol>{runs.map((run) => <li key={run.uuid}><button type="button" aria-pressed={focusStepUuid === run.step_uuid} onClick={() => onFocusStep(run.step_uuid)}><div><strong>{stepCopy[run.step_key] ? term(stepCopy[run.step_key]) : t('common.status.unknown_with_code', { code: run.step_key })}</strong><small>{t('chat.workflow.attempt', { number: run.attempt })} · {Math.min(100, Math.max(0, Number(run.progress) || 0))}% · {formatDateTime(run.updated_at)}</small></div><span className={`workflow-status workflow-status--${run.status}`}>{workflowStatusCopy[run.status] ? t(workflowStatusCopy[run.status]) : t('common.status.unknown_with_code', { code: run.status })}</span>{run.error_code ? <code>{run.error_code}</code> : null}</button></li>)}</ol>
           {focusedStep ? (
             <article className="workflow-diagnostics__step-detail">
-              <header><strong>{stepCopy[focusedStep.step_key] ? t(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key })}</strong><button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button></header>
+              <header><strong>{stepCopy[focusedStep.step_key] ? term(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key })}</strong><button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button></header>
               <dl>
                 <div><dt>{t('chat.workflow.step_uuid')}</dt><dd><code>{focusedStep.uuid}</code></dd></div>
                 <div><dt>{t('chat.workflow.workflow_uuid')}</dt><dd><code>{workflow.uuid}</code></dd></div>
@@ -637,7 +641,7 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
         </section>
         <section>
           <div className="workflow-diagnostics__section-heading"><h4>{t('chat.workflow.llm_logs')}</h4>{focusStepUuid ? <button type="button" className="button-quiet" onClick={() => onFocusStep('')}>{t('chat.workflow.show_all_logs')}</button> : null}</div>
-          {focusedStep ? <p>{t('chat.workflow.filtered_step', { title: stepCopy[focusedStep.step_key] ? t(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key }) })}</p> : null}
+          {focusedStep ? <p>{t('chat.workflow.filtered_step', { title: stepCopy[focusedStep.step_key] ? term(stepCopy[focusedStep.step_key]) : t('common.status.unknown_with_code', { code: focusedStep.step_key }) })}</p> : null}
           {logsQuery.isLoading ? <p>{t('chat.loading')}</p> : null}
           {!logsQuery.isLoading && !logsQuery.error && logs.length === 0 ? <p>{t(focusStepUuid ? 'chat.workflow.no_llm_logs_for_step' : 'chat.workflow.no_llm_logs')}</p> : null}
           <div className="workflow-diagnostics__logs">{logs.map((log) => <button type="button" aria-pressed={selectedLog?.uuid === log.uuid} key={log.uuid} onClick={() => setSelectedLog((current) => !focusStepUuid && current?.uuid === log.uuid ? null : log)}><span><strong>{log.scenario}</strong><small>{log.model} · {formatDateTime(log.created_at)}</small></span><em>{log.status}</em></button>)}</div>
@@ -649,7 +653,7 @@ function WorkflowDiagnostics({ projectUuid, workflow, open, onOpenChange, focusS
   )
 }
 
-function FollowUpQueue({ projectUuid, items, pending, canSteer, notice, onMove, onDelete, onEdit, onSteer }) {
+function FollowUpQueue({ projectUuid, pictureBook, items, pending, canSteer, notice, onMove, onDelete, onEdit, onSteer }) {
   const { formatDateTime, t } = useI18n()
   const [editingUuid, setEditingUuid] = useState('')
   const [editingText, setEditingText] = useState('')
@@ -682,7 +686,7 @@ function FollowUpQueue({ projectUuid, items, pending, canSteer, notice, onMove, 
             <div className="chat-queue__body">
               {editingUuid === item.uuid ? <form className="chat-queue__edit" onSubmit={(event) => { event.preventDefault(); saveEditing() }}><input autoFocus value={editingText} onChange={(event) => setEditingText(event.target.value)} maxLength="262144" aria-label={t('chat.queue.edit_label')} /><button type="submit" disabled={pending || !editingText.trim()} aria-label={t('common.action.save')}><Check size={14} /></button><button type="button" onClick={() => setEditingUuid('')} aria-label={t('common.action.cancel')}><X size={14} /></button></form> : <p title={item.input_text}>{item.input_text}</p>}
               <small>{t('chat.queue.item', { time: formatDateTime(item.created_at, { hour: '2-digit', minute: '2-digit' }) })}{item.references?.length ? ` · ${t('chat.reference.count_short', { count: item.references.length })}` : ''}</small>
-              <ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact />
+              <ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact pictureBook={pictureBook} />
             </div>
             <div className="chat-queue__actions">
               <button type="button" disabled={pending || editingUuid === item.uuid} onClick={() => startEditing(item)} aria-label={t('chat.queue.edit')}><Pencil size={14} /></button>
@@ -698,7 +702,7 @@ function FollowUpQueue({ projectUuid, items, pending, canSteer, notice, onMove, 
   )
 }
 
-function ChatComposer({ projectUuid, activeTurn, draft, pending, abortPending, autoFocus = false, references = [], referenceBlocked = false, onDraftChange, onSend, onAbort, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
+function ChatComposer({ projectUuid, pictureBook, activeTurn, draft, pending, abortPending, autoFocus = false, references = [], referenceBlocked = false, onDraftChange, onSend, onAbort, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
   const { t } = useI18n()
   const mode = chatComposerMode({ activeTurn, draft })
   const canSteer = activeTurn?.status === 'in_progress' && draft.trim() && !pending && !referenceBlocked
@@ -733,7 +737,7 @@ function ChatComposer({ projectUuid, activeTurn, draft, pending, abortPending, a
 		: activeTurn.status === 'waiting_for_workflow'
 			? t('chat.composer.waiting_for_workflow', { number: activeTurn.queue_sequence || '—' })
 			: t('chat.composer.turn_running', { number: activeTurn.queue_sequence || '—' })}</p> : null}
-      <ReferenceStrip projectUuid={projectUuid} references={references} onRemove={onRemoveReference} />
+      <ReferenceStrip projectUuid={projectUuid} references={references} onRemove={onRemoveReference} pictureBook={pictureBook} />
       <textarea
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
@@ -747,7 +751,7 @@ function ChatComposer({ projectUuid, activeTurn, draft, pending, abortPending, a
         disabled={pending}
       />
       <footer>
-        <div className="chat-composer__left"><ReferencePicker projectUuid={projectUuid} references={references} disabled={pending} onToggle={onToggleReference} /><AttachmentPicker disabled={pending || references.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_REFERENCES} onFiles={onAddFiles} /><small className="chat-composer__hint">{t('chat.composer.hint')}</small></div>
+        <div className="chat-composer__left"><ReferencePicker projectUuid={projectUuid} references={references} disabled={pending} onToggle={onToggleReference} pictureBook={pictureBook} /><AttachmentPicker disabled={pending || references.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_REFERENCES} onFiles={onAddFiles} /><small className="chat-composer__hint">{t('chat.composer.hint')}</small></div>
         <button
           className={`chat-composer__send chat-composer__send--${mode}`}
           type="submit"
@@ -762,8 +766,9 @@ function ChatComposer({ projectUuid, activeTurn, draft, pending, abortPending, a
   )
 }
 
-function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
+function ThreadList({ projectUuid, pictureBook, threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
   const { t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const [openMenuUuid, setOpenMenuUuid] = useState('')
   const listRef = useRef(null)
   const sentinelRef = useRef(null)
@@ -817,7 +822,7 @@ function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMo
         {threads.map((thread) => (
           <div className={`chat-thread-row ${openMenuUuid === thread.uuid ? 'is-menu-open' : ''}`} key={thread.uuid}>
             <button className="chat-thread" type="button" onClick={() => onOpenThread(thread.uuid)}>
-              <span className="chat-thread__title">{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t)}</span>
+              <span className="chat-thread__title">{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term)}</span>
               <span className="chat-thread__meta">{ACTIVE_CHAT_STATUSES.has(thread.status) ? <i aria-hidden="true" /> : null}<span>{threadStatusCopy[thread.status] ? t(threadStatusCopy[thread.status]) : t('common.status.unknown_with_code', { code: thread.status })}</span></span>
             </button>
             <a
@@ -825,11 +830,11 @@ function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMo
               href={threadTrajectoryHref(projectUuid, thread.uuid)}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })}
-              title={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })}
+              aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })}
+              title={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })}
               onClick={(event) => event.stopPropagation()}
             ><RouteIcon size={15} aria-hidden="true" /></a>
-            <button className="chat-thread__menu-button" type="button" aria-label={t('chat.thread.actions', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t) })} aria-expanded={openMenuUuid === thread.uuid} onClick={(event) => { event.stopPropagation(); setOpenMenuUuid((current) => current === thread.uuid ? '' : thread.uuid) }}><MoreHorizontal size={16} /></button>
+            <button className="chat-thread__menu-button" type="button" aria-label={t('chat.thread.actions', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })} aria-expanded={openMenuUuid === thread.uuid} onClick={(event) => { event.stopPropagation(); setOpenMenuUuid((current) => current === thread.uuid ? '' : thread.uuid) }}><MoreHorizontal size={16} /></button>
             {openMenuUuid === thread.uuid ? <div className="chat-thread__menu" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); onOpenThread(thread.uuid) }}>{t('chat.thread.open')}</button><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); copyText(thread.uuid) }}>{t('chat.thread.copy_uuid')}</button></div> : null}
           </div>
         ))}
@@ -839,7 +844,7 @@ function ThreadList({ projectUuid, threads, workflows, total, loading, loadingMo
   )
 }
 
-function NewThreadDraft({ projectUuid, draft, pending, error, overlay, references, referenceBlocked, onDraftChange, onSubmit, onBack, onToggle, onDismissError, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
+function NewThreadDraft({ projectUuid, pictureBook, draft, pending, error, overlay, references, referenceBlocked, onDraftChange, onSubmit, onBack, onToggle, onDismissError, onAddFiles, onRemoveReference, onToggleReference, onPaste }) {
   const { t } = useI18n()
   return (
     <div className="chat-panel chat-panel--detail">
@@ -854,15 +859,16 @@ function NewThreadDraft({ projectUuid, draft, pending, error, overlay, reference
           <div className="chat-empty-state"><strong>{t('chat.thread.new_title')}</strong><span>{t('chat.thread.new_body')}</span></div>
         </div>
         <div className="chat-composer-shell">
-          <ChatComposer projectUuid={projectUuid} activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus references={references} referenceBlocked={referenceBlocked} onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} onAddFiles={onAddFiles} onRemoveReference={onRemoveReference} onToggleReference={onToggleReference} onPaste={onPaste} />
+          <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={null} draft={draft} pending={pending} abortPending={false} autoFocus references={references} referenceBlocked={referenceBlocked} onDraftChange={onDraftChange} onSend={onSubmit} onAbort={() => {}} onAddFiles={onAddFiles} onRemoveReference={onRemoveReference} onToggleReference={onToggleReference} onPaste={onPaste} />
         </div>
       </div>
     </div>
   )
 }
 
-export default function ChatArea({ projectUuid, expanded: controlledExpanded, onToggle, overlay = false, newThreadReference = null }) {
+export default function ChatArea({ projectUuid, pictureBook, expanded: controlledExpanded, onToggle, overlay = false, newThreadReference = null }) {
   const { t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedReferenceType = searchParams.get('chat_reference_type') || ''
@@ -1246,11 +1252,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
   }
 
   if (showCreate) {
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft projectUuid={projectUuid} draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft projectUuid={projectUuid} pictureBook={pictureBook} draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} /></aside>
   }
 
   if (!selectedThreadUuid) {
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList projectUuid={projectUuid} threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList projectUuid={projectUuid} pictureBook={pictureBook} threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
   }
 
   return (
@@ -1258,7 +1264,7 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       <div className="chat-panel chat-panel--detail">
         <header className="chat-detail-header">
           <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
-		  <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, t) : t('chat.threads')}</h2></div>
+		  <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) : t('chat.threads')}</h2></div>
           <div className="chat-detail-actions">
             <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>
             {selectedThread ? (
@@ -1267,8 +1273,8 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
                 href={threadTrajectoryHref(projectUuid, selectedThread.uuid)}
                 target="_blank"
                 rel="noopener noreferrer"
-				aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, t) })}
-				title={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, t) })}
+				aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) })}
+				title={t('trajectory.thread.open', { title: threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) })}
               ><RouteIcon size={15} aria-hidden="true" /></a>
             ) : null}
             <CollapseButton overlay={overlay} onToggle={toggleExpanded} />
@@ -1279,15 +1285,15 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
             {itemsQuery.isFetchingNextPage ? <div className="chat-history-loader" role="status"><span>{t('chat.messages.loading_earlier')}</span></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
 			<ProjectSetupCard projectUuid={projectUuid} enabled={expanded && Boolean(selectedThreadUuid)} />
-			<WorkflowProgress projectUuid={projectUuid} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
+			<WorkflowProgress projectUuid={projectUuid} pictureBook={pictureBook} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
+			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
             {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
           </div>
           <div className="chat-composer-shell">
-            <FollowUpQueue projectUuid={projectUuid} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
-            <ChatComposer projectUuid={projectUuid} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />
+            <FollowUpQueue projectUuid={projectUuid} pictureBook={pictureBook} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
+            <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-# 漫画段落 — 数据模型
+# 页面 / 画面段落 — 数据模型
 
 ## 实体关系
 
@@ -13,6 +13,8 @@ chapter_comic_states ──< comic_chapter_snapshots
 ```
 
 所有资源以内部 bigint `id` 关联；Chapter、state、Section、Variant、生成和 snapshot 对外使用 UUIDv7。
+
+数据库与 API 保留 Chapter、Section、Storyboard 和 Variant 技术名。面向用户时，非 `vertical_strip` 显示“绘本 / 页面 / 页面脚本”，`vertical_strip` 显示“章节 / 画面段落 / 分镜脚本”；`comic_image_variants` 在两种形式下都显示为“页面图片版本”。
 
 ## 表：chapter_comic_states 与 comic_sections
 

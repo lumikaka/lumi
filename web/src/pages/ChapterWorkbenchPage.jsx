@@ -63,7 +63,7 @@ import {
 } from './comicImagePresentation.js'
 import { activeTaskFor, moveSection } from './productionWorkspaceState.js'
 import { comicExportDialogRequest } from './comicExportState.js'
-import { readImageFileDimensions } from './pictureBookProfile.js'
+import { formatTerminologyMessageKey, readImageFileDimensions } from './pictureBookProfile.js'
 import {
   enterTimelineMultiSelect,
   filterTimelineSelection,
@@ -185,6 +185,7 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
   const chapter = chapterQuery.data
   const sections = sectionsQuery.data?.items || []
   const pictureBook = projectQuery.data?.picture_book
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const unit = pictureBook?.format && pictureBook.format !== 'vertical_strip' ? 'page' : 'section'
   const bodyVersions = chapterHistoryQuery.data?.items || []
   const chapterListSearch = useMemo(() => {
@@ -195,19 +196,19 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
     return next.toString()
   }, [searchParams])
 
-  if (chapterQuery.isLoading) return <p className="workspace-loading">{t('story.chapter.loading')}</p>
+  if (chapterQuery.isLoading) return <p className="workspace-loading">{term('story.chapter.loading')}</p>
   if (chapterQuery.isError && !chapter) return <LocalizedErrorMessage error={chapterQuery.error} />
 
   return (
     <div className="chapter-workbench">
       <header className="chapter-workbench__header">
-        <Link className="chapter-workbench__back" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters`, search: chapterListSearch ? `?${chapterListSearch}` : '' }} aria-label={t('story.chapters.list')}><ArrowLeft size={14} aria-hidden="true" />{t('story.chapters.list')}</Link>
+        <Link className="chapter-workbench__back" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters`, search: chapterListSearch ? `?${chapterListSearch}` : '' }} aria-label={term('story.chapters.list')}><ArrowLeft size={14} aria-hidden="true" />{term('story.chapters.list')}</Link>
         <div className="chapter-workbench__header-controls">
           <button type="button" className="button-secondary chapter-workbench__history" onClick={() => setHistoryOpen(true)}><History size={16} aria-hidden="true" />{t('comic.workbench.history')}</button>
           <Link className="button-secondary chapter-workbench__preview-link" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters/${encodeURIComponent(chapterUuid)}/preview`, search: searchParams.toString() ? `?${searchParams.toString()}` : '' }}><Eye size={16} aria-hidden="true" />{t(unit === 'page' ? 'comic.workbench.preview_page.open_pages' : 'comic.workbench.preview_page.open')}</Link>
-          <div className="chapter-workbench__tabs" role="tablist" aria-label={t('projects.group_navigation', { section: t('story.chapter') })}>
+          <div className="chapter-workbench__tabs" role="tablist" aria-label={t('projects.group_navigation', { section: term('story.chapter') })}>
             <button id="chapter-tab-storyboard" type="button" role="tab" aria-selected={activeTab === 'storyboard'} aria-controls="chapter-panel-storyboard" onClick={() => setTab('storyboard')}>{t(unit === 'page' ? 'comic.workbench.tabs.pages' : 'comic.workbench.tabs.storyboard')}<span>{sections.length}</span></button>
-            <button id="chapter-tab-body" type="button" role="tab" aria-selected={activeTab === 'body'} aria-controls="chapter-panel-body" onClick={() => setTab('body')}>{t('comic.workbench.tabs.body')}<span>{bodyVersions.length}</span></button>
+            <button id="chapter-tab-body" type="button" role="tab" aria-selected={activeTab === 'body'} aria-controls="chapter-panel-body" onClick={() => setTab('body')}>{t(unit === 'page' ? 'comic.workbench.tabs.picture_book_body' : 'comic.workbench.tabs.body')}<span>{bodyVersions.length}</span></button>
             <button id="chapter-tab-prompts" type="button" role="tab" aria-selected={activeTab === 'prompts'} aria-controls="chapter-panel-prompts" onClick={() => setTab('prompts')}>{t('comic.workbench.tabs.prompts')}</button>
           </div>
         </div>
@@ -216,20 +217,20 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
       <LocalizedErrorMessage error={error || sectionsQuery.error || snapshotsQuery.error} onDismiss={error ? () => setError(null) : undefined} />
       {activeTab === 'storyboard' ? <section className="chapter-workbench__panel" id="chapter-panel-storyboard" role="tabpanel" aria-labelledby="chapter-tab-storyboard">
         {sectionsQuery.isLoading ? <ChapterComicSkeleton t={t} /> : null}
-		{!sectionsQuery.isLoading && !(sectionsQuery.isError && !sectionsQuery.data) ? <ChapterComicWorkbench projectUuid={projectUuid} chapterUuid={chapterUuid} chapterLabel={chapter ? `${chapter.chapter_code} · ${chapter.title || t('projects.unnamed_chapter')}` : ''} sections={sections} searchParams={searchParams} setSearchParams={setSearchParams} refreshComic={refreshComic} pictureBook={pictureBook} unit={unit} /> : null}
+			{!sectionsQuery.isLoading && !(sectionsQuery.isError && !sectionsQuery.data) ? <ChapterComicWorkbench projectUuid={projectUuid} chapterUuid={chapterUuid} chapterLabel={chapter ? `${chapter.chapter_code} · ${chapter.title || term('projects.unnamed_chapter')}` : ''} sections={sections} searchParams={searchParams} setSearchParams={setSearchParams} refreshComic={refreshComic} pictureBook={pictureBook} unit={unit} /> : null}
         {sectionsQuery.isError && !sectionsQuery.data ? <div className="chapter-workbench__empty"><Layers3 size={30} aria-hidden="true" /><h2>{t('common.status.unavailable')}</h2></div> : null}
       </section> : null}
       {activeTab === 'body' ? <section className="chapter-workbench__panel" id="chapter-panel-body" role="tabpanel" aria-labelledby="chapter-tab-body">{renderBody?.()}</section> : null}
-      {activeTab === 'prompts' ? <section className="chapter-workbench__panel" id="chapter-panel-prompts" role="tabpanel" aria-labelledby="chapter-tab-prompts"><ChapterPromptWorkbench projectUuid={projectUuid} /></section> : null}
+      {activeTab === 'prompts' ? <section className="chapter-workbench__panel" id="chapter-panel-prompts" role="tabpanel" aria-labelledby="chapter-tab-prompts"><ChapterPromptWorkbench projectUuid={projectUuid} pictureBook={pictureBook} /></section> : null}
 
       {historyOpen ? (
         <WorkbenchDialog className="chapter-history-dialog" dismissDisabled={restoreMutation.isPending} onClose={closeHistory}>
           <header className="lumi-dialog__header">
-            <div><h2>{t('comic.workbench.snapshot.title')}</h2><p>{t(unit === 'page' ? 'comic.workbench.snapshot.body_pages' : 'comic.workbench.snapshot.body')}</p></div>
+            <div><h2>{t(unit === 'page' ? 'comic.workbench.snapshot.title_pages' : 'comic.workbench.snapshot.title')}</h2><p>{t(unit === 'page' ? 'comic.workbench.snapshot.body_pages' : 'comic.workbench.snapshot.body')}</p></div>
             <button type="button" className="button-quiet" disabled={restoreMutation.isPending} aria-label={t('common.action.close')} onClick={closeHistory}><X size={18} aria-hidden="true" /></button>
           </header>
           <div className="lumi-dialog__body chapter-history-dialog__body">
-            <aside className="chapter-history-dialog__list" aria-label={t('comic.workbench.snapshot.list')}>
+            <aside className="chapter-history-dialog__list" aria-label={t(unit === 'page' ? 'comic.workbench.snapshot.list_pages' : 'comic.workbench.snapshot.list')}>
               {snapshotsQuery.isLoading ? <p className="workspace-loading">{t('common.loading')}</p> : null}
               {snapshots.map((snapshot) => (
                 <button type="button" className={`chapter-history-row${snapshot.uuid === selectedSnapshot?.uuid ? ' is-selected' : ''}`} aria-pressed={snapshot.uuid === selectedSnapshot?.uuid} disabled={restoreMutation.isPending} key={snapshot.uuid} onClick={() => setSelectedSnapshotUuid(snapshot.uuid)}>
@@ -238,7 +239,7 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
                   <small>{t(unit === 'page' ? 'comic.workbench.snapshot.pages' : 'comic.workbench.snapshot.sections', { count: snapshot.section_count || 0 })}</small>
                 </button>
               ))}
-              {!snapshotsQuery.isLoading && snapshots.length === 0 ? <div className="workspace-empty"><History size={24} aria-hidden="true" /><h2>{t('comic.workbench.snapshot.empty')}</h2></div> : null}
+              {!snapshotsQuery.isLoading && snapshots.length === 0 ? <div className="workspace-empty"><History size={24} aria-hidden="true" /><h2>{t(unit === 'page' ? 'comic.workbench.snapshot.empty_pages' : 'comic.workbench.snapshot.empty')}</h2></div> : null}
             </aside>
             <section className="chapter-history-dialog__preview" aria-live="polite">
               {snapshotDetailQuery.isLoading && selectedSnapshot ? <p className="workspace-loading">{t('comic.workbench.snapshot.loading')}</p> : null}
@@ -379,7 +380,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
   const mutationOptions = { onSuccess: () => { refreshComic(); setError(null) }, onError: setError }
   const saveStoryboard = useMutation({
     mutationFn: () => createStoryboard(projectUuid, chapterUuid, selected.uuid, { content_md: storyboard, source_type: 'manual', expected_revision: selected.revision }),
-    onSuccess: () => { mutationOptions.onSuccess(); setNotice(t('comic.workbench.storyboard_saved')) },
+    onSuccess: () => { mutationOptions.onSuccess(); setNotice(t(pageMode ? 'comic.workbench.page_script_saved' : 'comic.workbench.storyboard_saved')) },
     onError: setError,
   })
   const storyboardSelect = useMutation({
@@ -631,7 +632,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
             </div>
           </header>
           <div className="storyboard-workbench__editor">
-            <button type="button" className="storyboard-workbench__ai" onClick={openStoryboardReference} disabled={!storyboard.trim() || saveStoryboard.isPending} aria-label={t('comic.workbench.ai.open')} title={t('comic.workbench.ai.open')}><Sparkles size={14} aria-hidden="true" /></button>
+            <button type="button" className="storyboard-workbench__ai" onClick={openStoryboardReference} disabled={!storyboard.trim() || saveStoryboard.isPending} aria-label={t(pageMode ? 'comic.workbench.ai.open_page_script' : 'comic.workbench.ai.open')} title={t(pageMode ? 'comic.workbench.ai.open_page_script' : 'comic.workbench.ai.open')}><Sparkles size={14} aria-hidden="true" /></button>
             <MarkdownEditor ref={storyboardRef} className="storyboard-code-editor" value={storyboard} onChange={(value) => { setStoryboard(value); setNotice('') }} disabled={saveStoryboard.isPending} enableSearch placeholderText={t('comic.storyboard.placeholder')} ariaLabel={t(pageMode ? 'comic.workbench.page_storyboard_title' : 'comic.workbench.storyboard_title')} />
           </div>
         </section>
@@ -652,7 +653,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
             </div>
             <div className="section-preview__header-actions">
               <button type="button" className="button-secondary" disabled={!selected.current_storyboard || Boolean(imageTask) || imageGenerate.isPending} onClick={() => imageGenerate.mutate(selected)}><RefreshCw size={14} aria-hidden="true" />{t(selected.current_image ? 'comic.workbench.preview.generate' : 'comic.workbench.preview.generate_first')}</button>
-              <button type="button" className="button-secondary" onClick={() => setExportRequest(comicExportDialogRequest('chapter', chapterUuid, chapterLabel))}><Download size={14} aria-hidden="true" />{t('comic.workbench.export.download')}</button>
+              <button type="button" className="button-secondary" onClick={() => setExportRequest(comicExportDialogRequest('chapter', chapterUuid, chapterLabel))}><Download size={14} aria-hidden="true" />{t(pageMode ? 'comic.workbench.export.download_pages' : 'comic.workbench.export.download')}</button>
             </div>
           </header>
           <div className="section-preview__canvas" role="tabpanel">
@@ -746,7 +747,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
 				  <span>{section.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</span>
                 </span>
               </button>
-              <i className={`section-timeline-card__status ${imageState}`} role="img" aria-label={t(isProcessing ? 'comic.task.syncing' : section.current_image ? 'comic.section.has_image' : 'comic.section.has_storyboard')} />
+              <i className={`section-timeline-card__status ${imageState}`} role="img" aria-label={t(isProcessing ? 'comic.task.syncing' : section.current_image ? 'comic.section.has_image' : pageMode ? 'comic.page.has_script' : 'comic.section.has_storyboard')} />
               {manageMode ? <>
                 <button
                   type="button"
@@ -805,7 +806,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
 
       {storyboardDialogOpen ? (
         <WorkbenchDialog className="storyboard-candidates-dialog" dismissDisabled={storyboardSelect.isPending} onClose={() => setStoryboardDialogOpen(false)}>
-		  <header className="lumi-dialog__header"><div><h2>{t('comic.workbench.storyboard_candidates')}</h2><p>{selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</p></div><button type="button" className="button-quiet" disabled={storyboardSelect.isPending} aria-label={t('common.action.close')} onClick={() => setStoryboardDialogOpen(false)}><X size={18} aria-hidden="true" /></button></header>
+			  <header className="lumi-dialog__header"><div><h2>{t(pageMode ? 'comic.workbench.page_script_candidates' : 'comic.workbench.storyboard_candidates')}</h2><p>{selected.title || t(pageMode ? 'comic.page.untitled' : 'comic.section.untitled')}</p></div><button type="button" className="button-quiet" disabled={storyboardSelect.isPending} aria-label={t('common.action.close')} onClick={() => setStoryboardDialogOpen(false)}><X size={18} aria-hidden="true" /></button></header>
           <div className="lumi-dialog__body storyboard-candidates-dialog__body">
             {storyboards.map((variant) => <article key={variant.uuid} className={variant.uuid === selected.current_storyboard?.uuid ? 'is-current' : ''}><header><strong>v{variant.version_no}</strong><span>{sourceTypeLabel(t, variant.source_type)}</span></header><pre data-user-content>{variant.content_md}</pre><button type="button" className="button-secondary" disabled={variant.uuid === selected.current_storyboard?.uuid || storyboardSelect.isPending} onClick={() => storyboardSelect.mutate(variant)}>{t(variant.uuid === selected.current_storyboard?.uuid ? 'comic.workbench.preview.selected' : 'common.action.restore')}</button></article>)}
             {!storyboardsQuery.isLoading && storyboards.length === 0 ? <div className="workspace-empty"><h2>{t(pageMode ? 'comic.workbench.page_storyboard_empty' : 'comic.workbench.storyboard_empty')}</h2></div> : null}
@@ -969,6 +970,6 @@ function imageVariantSourceLabel(t, sourceType) {
   return sourceTypeLabel(t, sourceType)
 }
 
-function ChapterPromptWorkbench({ projectUuid }) {
-	return <PromptCatalogEditor projectUuid={projectUuid} groups={['chapter']} />
+function ChapterPromptWorkbench({ projectUuid, pictureBook }) {
+	return <PromptCatalogEditor projectUuid={projectUuid} groups={['chapter']} pictureBook={pictureBook} />
 }

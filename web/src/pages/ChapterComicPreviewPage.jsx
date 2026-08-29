@@ -9,6 +9,7 @@ import ImageRatioNotice from '../components/ImageRatioNotice.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { ProductionImage } from './ProductionWorkspaces.jsx'
+import { formatTerminologyMessageKey } from './pictureBookProfile.js'
 
 export default function ChapterComicPreviewPage({ projectUuid }) {
   const { chapterUuid } = useParams()
@@ -29,6 +30,7 @@ export default function ChapterComicPreviewPage({ projectUuid }) {
   const preservedSearch = searchParams.toString()
   const verticalStrip = !projectQuery.data?.picture_book || projectQuery.data.picture_book.format === 'vertical_strip'
   const pictureBook = projectQuery.data?.picture_book
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const targetRatio = pictureBook?.aspect_ratio
   const currentPage = sections[pageIndex]
 
@@ -69,10 +71,10 @@ export default function ChapterComicPreviewPage({ projectUuid }) {
       <header className="chapter-preview__header">
         <Link className="button-secondary chapter-preview__back" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters/${encodeURIComponent(chapterUuid)}`, search: preservedSearch ? `?${preservedSearch}` : '' }}>
           <ArrowLeft size={14} aria-hidden="true" />
-          {t('comic.workbench.preview_page.back')}
+          {t(verticalStrip ? 'comic.workbench.preview_page.back' : 'comic.workbench.preview_page.back_pages')}
         </Link>
         <div className="chapter-preview__title">
-          <p>{chapter?.chapter_code || t('story.chapter')}</p>
+          <p>{chapter?.chapter_code || term('story.chapter')}</p>
           <h1>{chapter?.title || t(verticalStrip ? 'comic.workbench.preview_page.title' : 'comic.workbench.preview_page.title_pages')}</h1>
         </div>
         <div className="chapter-preview__stats" aria-label={t('comic.workbench.preview_page.stats')}>

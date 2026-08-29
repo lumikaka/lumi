@@ -1,4 +1,4 @@
-# 项目 — 数据模型
+# 项目 / 绘本项目 — 数据模型
 
 ## 实体关系
 
@@ -19,6 +19,8 @@ projects ──< actors
 ```
 
 应用库与项目库是两个 SQLite 范围。所有项目库关联使用内部 `INTEGER PRIMARY KEY AUTOINCREMENT` 的 64-bit `id`；API、URL、前端与 WebSocket 只使用 UUIDv7 `uuid`。
+
+`projects` 的产品称呼为“项目”或“绘本项目”。`project_picture_book_profiles.format` 同时决定下级资源的用户称呼：普通绘本形式使用“绘本 / 页面 / 页面脚本”，`vertical_strip` 使用“章节 / 画面段落 / 分镜脚本”。
 
 ## 表：recent_projects
 

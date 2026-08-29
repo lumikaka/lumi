@@ -10,6 +10,103 @@ export const ASPECT_RATIO_MODES = Object.freeze(['landscape', 'square', 'portrai
 export const INTERACTION_MODES = Object.freeze(['find_it', 'make_a_choice', 'guess', 'follow_along'])
 export const COMIC_LAYOUTS = Object.freeze(['four_panel', 'page_comic'])
 
+export function isVerticalStripPictureBook(profile) {
+  return profile?.format === 'vertical_strip'
+}
+
+export function formatTerminologyKey(profile, pictureBookKey, verticalStripKey) {
+  return isVerticalStripPictureBook(profile) ? verticalStripKey : pictureBookKey
+}
+
+const PICTURE_BOOK_TERMINOLOGY_KEYS = Object.freeze({
+  'projects.section.chapters': 'projects.section.picture_books',
+  'projects.overview.work.chapters.title': 'projects.overview.work.picture_books.title',
+  'projects.overview.work.chapters.body': 'projects.overview.work.picture_books.body',
+  'projects.overview.active_chapters': 'projects.overview.active_picture_books',
+  'projects.exports.chapter_records': 'projects.exports.picture_book_records',
+  'projects.exports.description': 'projects.exports.description_pages',
+  'projects.exports.pagination': 'projects.exports.pagination_pages',
+  'projects.exports.new_chapter': 'projects.exports.new_picture_book',
+  'projects.exports.empty_chapter': 'projects.exports.empty_picture_book',
+  'projects.exports.chapter_select': 'projects.exports.picture_book_select',
+  'projects.exports.chapter_label': 'projects.exports.chapter_label_pages',
+  'projects.exports.project_label': 'projects.exports.project_label_pages',
+  'projects.unnamed_chapter': 'projects.unnamed_picture_book',
+  'story.chapter': 'story.picture_book',
+  'story.chapters': 'story.picture_books',
+  'story.generation.default_prompt': 'story.generation.default_prompt_picture_book',
+  'story.generation.title': 'story.generation.title_picture_book',
+  'story.chapter.loading': 'story.picture_book.loading',
+  'story.chapter.back': 'story.picture_book.back',
+  'story.chapter.title': 'story.picture_book.title',
+  'story.chapter.placeholder': 'story.picture_book.placeholder',
+  'story.profile.context_body': 'story.profile.context_body_picture_book',
+  'story.profile.reconstruct': 'story.profile.reconstruct_picture_books',
+  'story.prompts.description': 'story.prompts.description_picture_book',
+  'story.trash.title': 'story.trash.title_picture_books',
+  'story.trash.description': 'story.trash.description_picture_books',
+  'story.trash.empty_confirm_title': 'story.trash.empty_confirm_title_picture_books',
+  'story.trash.empty_confirm_body': 'story.trash.empty_confirm_body_picture_books',
+  'story.trash.empty_done': 'story.trash.empty_done_picture_books',
+  'story.trash.empty_partial': 'story.trash.empty_partial_picture_books',
+  'story.chapters.create.batch': 'story.picture_books.create.batch',
+  'story.chapters.create.next': 'story.picture_books.create.next',
+  'story.chapters.create.continue': 'story.picture_books.create.continue',
+  'story.chapters.create.manual': 'story.picture_books.create.manual',
+  'story.chapters.create.upload': 'story.picture_books.create.upload',
+  'story.chapters.partial_generation': 'story.picture_books.partial_generation',
+  'story.chapters.generation_failed': 'story.picture_books.generation_failed',
+  'story.chapters.count_label': 'story.picture_books.count_label',
+  'story.chapters.add': 'story.picture_books.add',
+  'story.chapters.add_wait': 'story.picture_books.add_wait',
+  'story.chapters.empty': 'story.picture_books.empty',
+  'story.chapters.list': 'story.picture_books.list',
+  'story.chapters.delete_disabled': 'story.picture_books.delete_disabled',
+  'story.chapters.count': 'story.picture_books.count',
+  'story.chapters.count_hint': 'story.picture_books.count_hint',
+  'story.chapters.files_hint': 'story.picture_books.files_hint',
+  'story.chapters.import': 'story.picture_books.import',
+  'story.chapters.next_hint': 'story.picture_books.next_hint',
+  'story.chapters.source_chapter': 'story.picture_books.source_chapter',
+  'story.chapters.target_chapter': 'story.picture_books.target_chapter',
+  'story.chapters.none': 'story.picture_books.none',
+  'story.chapters.continue_hint': 'story.picture_books.continue_hint',
+  'story.chapters.continue_missing': 'story.picture_books.continue_missing',
+  'story.chapters.delete_title': 'story.picture_books.delete_title',
+  'story.chapters.delete_hint': 'story.picture_books.delete_hint',
+  'story.chapters.code': 'story.picture_books.code',
+  'story.chapters.operation_generation': 'story.picture_books.operation_generation',
+  'story.chapters.operation_import': 'story.picture_books.operation_import',
+  'chat.workflow.step.comic_sections': 'chat.workflow.step.pages',
+  'chat.workflow.step.save_section_premise': 'chat.workflow.step.save_page_premise',
+  'chat.workflow.step.generate_section_image': 'chat.workflow.step.generate_page_image',
+  'chat.workflow.step.save_section_image': 'chat.workflow.step.save_page_image',
+  'chat.workflow.step.comic_storyboard': 'chat.workflow.step.page_scripts',
+  'chat.workflow.step.story_chapter': 'chat.workflow.step.picture_book',
+  'chat.workflow.step.chapter_batch_plan': 'chat.workflow.step.picture_book_batch_plan',
+  'chat.workflow.kind.comic_section_image_generation': 'chat.workflow.kind.page_image_generation',
+  'chat.workflow.kind.comic_storyboard_generation': 'chat.workflow.kind.page_script_generation',
+  'chat.workflow.kind.story_chapter_generation': 'chat.workflow.kind.picture_book_generation',
+  'chat.workflow.kind.story_chapter_batch_plan': 'chat.workflow.kind.picture_book_batch_plan',
+  'chat.workflow.kind.story_chapter': 'chat.workflow.kind.picture_book',
+  'chat.workflow.kind.story_chapter_with_code': 'chat.workflow.kind.picture_book_with_code',
+  'chat.workflow.kind.next_story_chapter': 'chat.workflow.kind.next_picture_book',
+  'chat.workflow.kind.next_story_chapter_with_code': 'chat.workflow.kind.next_picture_book_with_code',
+  'chat.workflow.kind.chapter_batch_plan': 'chat.workflow.kind.picture_book_batch_plan',
+  'chat.workflow.kind.chapter_batch_plan_with_count': 'chat.workflow.kind.picture_book_batch_plan_with_count',
+  'chat.workflow.conflict.title': 'chat.workflow.conflict.title_pages',
+  'chat.workflow.conflict.body': 'chat.workflow.conflict.body_pages',
+  'chat.workflow.conflict.snapshot_notice': 'chat.workflow.conflict.snapshot_notice_pages',
+  'chat.workflow.conflict.keep_existing': 'chat.workflow.conflict.keep_existing_pages',
+  'chat.workflow.conflict.overwrite': 'chat.workflow.conflict.overwrite_pages',
+  'premise.threads.empty_body': 'premise.threads.empty_body_picture_book',
+})
+
+export function formatTerminologyMessageKey(profile, key) {
+  if (isVerticalStripPictureBook(profile)) return key
+  return PICTURE_BOOK_TERMINOLOGY_KEYS[key] || key
+}
+
 export function defaultPictureBookDraft() {
   return {
     format: 'classic_picture_book',

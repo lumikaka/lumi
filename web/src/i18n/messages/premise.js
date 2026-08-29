@@ -45,6 +45,7 @@ export const premise = defineMessages({
   'premise.threads.load_failed_body': ['请稍后重试。', 'Please try again in a moment.'],
   'premise.threads.empty_title': ['还没有项目会话', 'No project threads yet'],
   'premise.threads.empty_body': ['新建项目会话，或从设定、章节与分镜工作流开始。', 'Start a project thread, or begin from a Premise, chapter, or storyboard workflow.'],
+  'premise.threads.empty_body_picture_book': ['新建项目会话，或从设定、绘本与页面脚本工作流开始。', 'Start a project thread, or begin from a Premise, picture-book, or page-script workflow.'],
   'premise.threads.scene.generate': ['AI 生成单个设定项', 'Generate one premise item with AI'],
   'premise.threads.scene.reference': ['设定项引用', 'Premise-item reference'],
   'premise.threads.scene.chat': ['设定会话', 'Premise conversation'],

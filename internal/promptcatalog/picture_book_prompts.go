@@ -87,9 +87,9 @@ func interactiveDirectiveEN(mode string) string {
 
 const pictureBookStoryboardZH = `{{picture_book_directive}}
 
-根据当前章节文本规划绘本页面。
+根据当前绘本正文规划页面。
 
-当前 chapter：
+当前绘本（技术对象 chapter）：
 {{chapter_context_json}}
 
 当前 STORY.md：
@@ -97,7 +97,7 @@ const pictureBookStoryboardZH = `{{picture_book_directive}}
 {{story_md}}
 </story-md>
 
-原始剧情 / storyboard 文本：
+原始剧情 / 页面脚本文本：
 {{input_text}}
 
 每页计划的视觉单位数量：
@@ -106,7 +106,7 @@ const pictureBookStoryboardZH = `{{picture_book_directive}}
 输出 JSON 字段：
 {
   "chapter_code": "{{chapter_code}}",
-  "title": "chapter 标题",
+  "title": "绘本标题",
   "sections": [
     {
       "section_no": 1,
@@ -126,9 +126,9 @@ const pictureBookStoryboardZH = `{{picture_book_directive}}
 
 const pictureBookStoryboardEN = `{{picture_book_directive}}
 
-Plan picture-book pages from the current chapter text.
+Plan pages from the current picture-book prose.
 
-Current chapter:
+Current picture book (technical chapter object):
 {{chapter_context_json}}
 
 Current STORY.md:
@@ -136,7 +136,7 @@ Current STORY.md:
 {{story_md}}
 </story-md>
 
-Original plot / storyboard text:
+Original plot / page-script text:
 {{input_text}}
 
 Planned visual-unit count for each page:
@@ -145,7 +145,7 @@ Planned visual-unit count for each page:
 Output JSON fields:
 {
   "chapter_code": "{{chapter_code}}",
-  "title": "chapter title",
+  "title": "picture-book title",
   "sections": [
     {
       "section_no": 1,
@@ -203,7 +203,7 @@ func DefinitionsForPictureBook(language string, options PictureBookOptions) []De
 		case definition.Group == GroupChapter && definition.Key == "comic_storyboard":
 			definition.DefaultValue = strings.ReplaceAll(choosePictureBook(english, pictureBookStoryboardZH, pictureBookStoryboardEN), "{{picture_book_directive}}", directive)
 			definition.Title = choosePictureBook(english, "绘本页面规划", "Picture-book page planning")
-			definition.Description = choosePictureBook(english, "从章节正文规划完整绘本页面。", "Plan complete picture-book pages from chapter prose.")
+			definition.Description = choosePictureBook(english, "从绘本正文规划完整页面。", "Plan complete pages from picture-book prose.")
 		case definition.Group == GroupChapter && definition.Key == "before_image":
 			definition.DefaultValue = strings.ReplaceAll(choosePictureBook(english, pictureBookBeforeImageZH, pictureBookBeforeImageEN), "{{picture_book_directive}}", directive)
 			definition.Title = choosePictureBook(english, "页面图片基础规则", "Page image base rules")

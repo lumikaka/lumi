@@ -2,6 +2,8 @@
 
 ## overview
 
+本 Feature 的技术聚合根为 Chapter。产品称呼由项目形式决定：普通绘本形式称“绘本”，条漫 `vertical_strip` 称“章节”；生成任务和批量规划的 UI 文案必须使用对应称呼。
+
 该 Feature 使用冻结的项目总纲、Chapter 正文、Prompt 和模型创建可恢复的 Story 任务。支持单 Chapter 生成、批量 Chapter 规划和由规划结果创建 Chapter；任务完成只通过 Story 服务追加正文版本，绝不覆盖用户在任务期间产生的新正文。
 
 ## data_model

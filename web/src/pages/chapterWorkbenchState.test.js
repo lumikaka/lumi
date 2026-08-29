@@ -262,8 +262,9 @@ test('manual Section image workflows appear in ChatArea without changing the sel
   }
   assert.match(chatArea, /pending: 'chat\.workflow\.status\.queued'/)
   assert.match(presentation, /comic_section_image_generation: 'chat\.workflow\.kind\.comic_section_image_generation'/)
-  assert.match(chatArea, /threadDisplayTitle\(thread, workflowByThread\.get\(thread\.uuid\), t\)/)
-  assert.match(messages, /'chat\.workflow\.kind\.comic_section_image_generation': \['漫画片段图片生成', 'Comic section image generation'\]/)
+  assert.match(chatArea, /threadDisplayTitle\(thread, workflowByThread\.get\(thread\.uuid\), term\)/)
+  assert.match(messages, /'chat\.workflow\.kind\.comic_section_image_generation': \['画面段落图片生成', 'Visual-section image generation'\]/)
+  assert.match(messages, /'chat\.workflow\.kind\.page_image_generation': \['页面图片生成', 'Page-image generation'\]/)
   assert.match(realtime, /event\.startsWith\('production_task:'\)/)
   assert.doesNotMatch(chatArea, /production_task:queued[\s\S]*setSelectedThreadUuid/)
 })

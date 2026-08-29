@@ -8,6 +8,7 @@ import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { statusLabel as fallbackStatusLabel } from '../i18n/labels.js'
 import { dedicatedWorkflowForThread, threadContextCopyKey, threadDisplayTitle } from './chatAreaPresentation.js'
+import { formatTerminologyMessageKey } from './pictureBookProfile.js'
 import { flattenProjectThreads, useProjectThreads } from './projectThreads.js'
 
 const statusCopy = {
@@ -20,8 +21,9 @@ const statusCopy = {
   interrupted: 'common.status.interrupted',
 }
 
-export function PremiseThreadsPanel({ projectUuid, onOpenThread, onNewThread }) {
+export function PremiseThreadsPanel({ projectUuid, pictureBook, onOpenThread, onNewThread }) {
   const { formatDateTime, t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const threadsQuery = useProjectThreads(projectUuid)
   const workflowsQuery = useQuery({ queryKey: ['workflows', projectUuid], queryFn: () => listWorkflows(projectUuid) })
   const threads = useMemo(() => flattenProjectThreads(threadsQuery.data?.pages), [threadsQuery.data])
@@ -42,12 +44,12 @@ export function PremiseThreadsPanel({ projectUuid, onOpenThread, onNewThread }) 
           <div><button type="button" onClick={() => { threadsQuery.refetch(); workflowsQuery.refetch() }}>{t('common.action.retry')}</button></div>
         </div>
       ) : null}
-      {!threadsQuery.isLoading && !threadsQuery.isError && !workflowsQuery.isError && threads.length === 0 ? <div className="premise-empty-state"><MessageSquare size={30} aria-hidden="true" /><h2>{t('premise.threads.empty_title')}</h2><p>{t('premise.threads.empty_body')}</p><div><button type="button" onClick={onNewThread}>{t('premise.threads.new')}</button></div></div> : null}
+      {!threadsQuery.isLoading && !threadsQuery.isError && !workflowsQuery.isError && threads.length === 0 ? <div className="premise-empty-state"><MessageSquare size={30} aria-hidden="true" /><h2>{t('premise.threads.empty_title')}</h2><p>{term('premise.threads.empty_body')}</p><div><button type="button" onClick={onNewThread}>{t('premise.threads.new')}</button></div></div> : null}
       <div className="premise-thread-list">
         {threads.map((thread) => (
           <button type="button" className="premise-thread-item" key={thread.uuid} onClick={() => onOpenThread(thread)}>
             <span className="premise-thread-item__icon"><MessageSquare size={17} aria-hidden="true" /></span>
-            <span><strong>{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), t)}</strong><small>{t(threadContextCopyKey(thread, workflowByThread.get(thread.uuid)))} · {formatDateTime(thread.updated_at)}</small></span>
+            <span><strong>{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term)}</strong><small>{term(threadContextCopyKey(thread, workflowByThread.get(thread.uuid)))} · {formatDateTime(thread.updated_at)}</small></span>
             <em className={`premise-thread-status premise-thread-status--${thread.status}`}>{statusCopy[thread.status] ? t(statusCopy[thread.status]) : fallbackStatusLabel(t, thread.status)}</em>
           </button>
         ))}

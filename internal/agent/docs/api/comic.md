@@ -25,7 +25,7 @@
 
 单个 Section 的完整读取见 `/api/v1/agent-docs/api/comic-section.md`。
 
-## 图片版本
+## 页面图片版本
 
 - `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-sections/{section_uuid}/images`
   - 导入当前项目尚未消费的 ready upload。

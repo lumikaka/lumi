@@ -1,8 +1,8 @@
-# 漫画段落 — 分镜、图片与可恢复快照
+# 页面 / 画面段落 — 脚本、页面图片版本与可恢复快照
 
 ## 模块职责
 
-漫画段落模块负责 Chapter 的漫画状态、有序 Section、分镜与图片 Variant、Section Premise 参考、生成冲突和快照恢复。它以 Chapter 为父资源，但拥有当前漫画产物的可编辑状态和历史。
+本模块负责 Chapter 的漫画状态、有序 Section、Storyboard 与 Image Variant、Section Premise 参考、生成冲突和快照恢复。它以 Chapter 为父资源，但拥有当前漫画产物的可编辑状态和历史。普通绘本形式使用“页面 / 页面脚本”，条漫 `vertical_strip` 使用“画面段落 / 分镜脚本”；Image Variant 统一称“页面图片版本”。
 
 ## 职责边界
 
@@ -12,6 +12,10 @@
 | 不负责 | Chapter 正文、Premise 资产本身、File/Object 存储、模型选择和最终 ZIP/PDF 导出保留。 |
 
 ## 核心概念
+
+### 形式化称呼
+
+技术实体始终为 `comic_section`、`storyboard` 与 `image_variant`。产品层按项目形式选择“页面 / 页面脚本”或“画面段落 / 分镜脚本”；两种形式都把 `image_variant` 称为“页面图片版本”。Section 是承载脚本和图片版本的画面单元，不能与 Storyboard 混称。
 
 ### 当前漫画状态
 

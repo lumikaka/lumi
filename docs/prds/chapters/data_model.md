@@ -1,4 +1,4 @@
-# 章节 — 数据模型
+# 绘本 / 章节 — 数据模型
 
 ## 实体关系
 
@@ -10,6 +10,8 @@ projects ──< chapters ──< chapter_stories
 ```
 
 所有表以内部 bigint `id` 关联；`chapters`、正文和来源对外都使用 UUIDv7。
+
+`chapters` 是稳定技术名。普通绘本形式下每条 active Chapter 面向用户称一本“绘本”，条漫 `vertical_strip` 下称一个“章节”。编号字段与 API contract 不随称呼变化。
 
 ## 表：chapters
 

@@ -6,10 +6,27 @@ import {
   aspectRatioMismatch,
   defaultPictureBookDraft,
   draftForPictureBookFormat,
+  formatTerminologyKey,
+  formatTerminologyMessageKey,
+  isVerticalStripPictureBook,
   pictureBookDraftIsValid,
   pictureBookPayload,
   reducedRatioValue,
 } from './pictureBookProfile.js'
+
+test('format terminology switches only for vertical strips', () => {
+  assert.equal(isVerticalStripPictureBook({ format: 'vertical_strip' }), true)
+  assert.equal(isVerticalStripPictureBook({ format: 'classic_picture_book' }), false)
+  assert.equal(formatTerminologyKey({ format: 'classic_picture_book' }, 'story.picture_book', 'story.chapter'), 'story.picture_book')
+  assert.equal(formatTerminologyKey({ format: 'vertical_strip' }, 'story.picture_book', 'story.chapter'), 'story.chapter')
+  assert.equal(formatTerminologyMessageKey({ format: 'classic_picture_book' }, 'story.chapters.add'), 'story.picture_books.add')
+  assert.equal(formatTerminologyMessageKey({ format: 'classic_picture_book' }, 'projects.overview.active_chapters'), 'projects.overview.active_picture_books')
+  assert.equal(formatTerminologyMessageKey({ format: 'classic_picture_book' }, 'chat.workflow.step.comic_storyboard'), 'chat.workflow.step.page_scripts')
+  assert.equal(formatTerminologyMessageKey({ format: 'classic_picture_book' }, 'chat.workflow.conflict.title'), 'chat.workflow.conflict.title_pages')
+  assert.equal(formatTerminologyMessageKey({ format: 'vertical_strip' }, 'story.chapters.add'), 'story.chapters.add')
+  assert.equal(formatTerminologyMessageKey({ format: 'vertical_strip' }, 'chat.workflow.step.comic_storyboard'), 'chat.workflow.step.comic_storyboard')
+  assert.equal(formatTerminologyMessageKey({ format: 'classic_picture_book' }, 'common.action.save'), 'common.action.save')
+})
 
 test('picture-book creation defaults to classic landscape with minimal text disabled', () => {
   const draft = defaultPictureBookDraft()

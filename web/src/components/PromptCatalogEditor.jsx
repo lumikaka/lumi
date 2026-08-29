@@ -7,6 +7,7 @@ import LumiDialog from './LumiDialog.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import { useI18n } from '../i18n/useI18n.js'
+import { formatTerminologyKey } from '../pages/pictureBookProfile.js'
 import {
   applyOverallStylePresetDraft,
   normalizedPrompt,
@@ -133,9 +134,17 @@ function PromptCard({ projectUuid, definition, draft, setDraft, applyPreset, ope
   )
 }
 
-function PromptGroupSection({ projectUuid, group, sectionId, definitions, drafts, collapsed, setCollapsed, setDraft, resetGroup, applyPreset, openCandidates }) {
+function promptGroupMessageKey(pictureBook, group, suffix = '') {
+  const technicalKey = `story.prompts.group.${group}${suffix}`
+  if (!pictureBook) return technicalKey
+  if (group === 'chapter') return formatTerminologyKey(pictureBook, `story.prompts.group.picture_book${suffix}`, technicalKey)
+  if (group === 'story' && suffix === '.description') return formatTerminologyKey(pictureBook, 'story.prompts.group.story.description_picture_book', technicalKey)
+  return technicalKey
+}
+
+function PromptGroupSection({ projectUuid, group, sectionId, definitions, drafts, collapsed, setCollapsed, setDraft, resetGroup, applyPreset, openCandidates, pictureBook }) {
   const { t } = useI18n()
-  const groupLabel = t(`story.prompts.group.${group}`)
+  const groupLabel = t(promptGroupMessageKey(pictureBook, group))
   const contentId = `${sectionId}-content`
   const toggleLabel = t(collapsed ? 'story.prompts.expand_group' : 'story.prompts.collapse_group', { group: groupLabel })
 
@@ -152,7 +161,7 @@ function PromptGroupSection({ projectUuid, group, sectionId, definitions, drafts
             </h2>
             <span className="prompt-group__count">{definitions.length}</span>
           </div>
-          <p>{t(`story.prompts.group.${group}.description`)}</p>
+          <p>{t(promptGroupMessageKey(pictureBook, group, '.description'))}</p>
         </div>
         <div className="prompt-group__actions">
           <button type="button" className="button-secondary" onClick={() => resetGroup(definitions)}><RotateCcw size={14} aria-hidden="true" />{t('story.prompts.restore_group_default')}</button>
@@ -171,7 +180,7 @@ function PromptGroupSection({ projectUuid, group, sectionId, definitions, drafts
   )
 }
 
-export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, showHeader = true, className = '' }) {
+export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, showHeader = true, className = '', pictureBook }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const anchorPrefix = `prompt-catalog-${useId().replace(/:/g, '')}`
@@ -218,7 +227,7 @@ export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, 
 
   return (
     <div className={`prompt-catalog-editor ${className}`.trim()}>
-      {showHeader ? <header className="prompt-catalog-editor__intro"><div><h1>{t('projects.tab.prompts')}</h1><p>{t('story.prompts.description')}</p></div><span>{visibleCatalog.length}</span></header> : null}
+      {showHeader ? <header className="prompt-catalog-editor__intro"><div><h1>{t('projects.tab.prompts')}</h1><p>{t(pictureBook ? formatTerminologyKey(pictureBook, 'story.prompts.description_picture_book', 'story.prompts.description') : 'story.prompts.description')}</p></div><span>{visibleCatalog.length}</span></header> : null}
       <LocalizedErrorMessage error={catalogQuery.error} />
       {catalogQuery.isLoading ? <div className="prompt-catalog-editor__loading" aria-busy="true">{t('story.prompts.loading_catalog')}</div> : null}
       {!catalogQuery.isLoading && visibleSections.length ? (
@@ -227,14 +236,14 @@ export default function PromptCatalogEditor({ projectUuid, groups = groupOrder, 
           <div>
             {visibleSections.map((group) => (
               <a key={group} href={`#${anchorPrefix}-${group}`} onClick={() => setGroupCollapsed(group, false)}>
-                <span>{t(`story.prompts.group.${group}`)}</span>
+                <span>{t(promptGroupMessageKey(pictureBook, group))}</span>
                 <strong>{grouped[group].length}</strong>
               </a>
             ))}
           </div>
         </nav>
       ) : null}
-      {!catalogQuery.isLoading && visibleSections.map((group) => <PromptGroupSection key={group} projectUuid={projectUuid} group={group} sectionId={`${anchorPrefix}-${group}`} definitions={grouped[group]} drafts={drafts} collapsed={collapsedGroups.has(group)} setCollapsed={(collapsed) => setGroupCollapsed(group, collapsed)} setDraft={setDraft} resetGroup={resetGroup} applyPreset={applyPreset} openCandidates={setCandidate} />)}
+      {!catalogQuery.isLoading && visibleSections.map((group) => <PromptGroupSection key={group} projectUuid={projectUuid} group={group} sectionId={`${anchorPrefix}-${group}`} definitions={grouped[group]} drafts={drafts} collapsed={collapsedGroups.has(group)} setCollapsed={(collapsed) => setGroupCollapsed(group, collapsed)} setDraft={setDraft} resetGroup={resetGroup} applyPreset={applyPreset} openCandidates={setCandidate} pictureBook={pictureBook} />)}
       {candidate ? <PromptCandidatesDialog projectUuid={projectUuid} definition={catalog.find((item) => promptIdentity(item) === promptIdentity(candidate)) || candidate} draft={drafts[promptIdentity(candidate)]} onClose={() => setCandidate(null)} onRestored={restored} /> : null}
     </div>
   )

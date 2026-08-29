@@ -5,6 +5,7 @@ import { BookOpen, Check, ChevronDown, Image, Layers3, Paperclip, X } from 'luci
 import { listPremiseAssets, listComicSections } from '../api/production.js'
 import { listChapters } from '../api/story.js'
 import { MAX_PROJECT_CHAT_REFERENCES, referenceKey } from '../pages/projectChatAttachments.js'
+import { formatTerminologyKey } from '../pages/pictureBookProfile.js'
 import { useI18n } from '../i18n/useI18n.js'
 
 function snapshotOf(reference) {
@@ -17,12 +18,12 @@ export function referenceTitle(reference, fallback = '') {
   return reference?.title || snapshot.title || snapshot.chapter_code || snapshot.name || snapshot.original_filename || fallback || reference?.resource_uuid || ''
 }
 
-function referenceTypeLabel(reference, t) {
+function referenceTypeLabel(reference, t, pictureBook) {
   const key = {
     file: 'chat.reference.type.file',
     premise_asset: 'chat.reference.type.premise_asset',
-    chapter: 'chat.reference.type.chapter',
-    comic_section: 'chat.reference.type.comic_section',
+    chapter: formatTerminologyKey(pictureBook, 'chat.reference.type.picture_book', 'chat.reference.type.chapter'),
+    comic_section: formatTerminologyKey(pictureBook, 'chat.reference.type.page', 'chat.reference.type.comic_section'),
   }[reference?.resource_type]
   return key ? t(key) : reference?.resource_type || t('chat.reference.type.unknown')
 }
@@ -42,7 +43,7 @@ function referenceImageUrl(projectUuid, reference) {
   return fileUuid ? `/media/projects/${encodeURIComponent(projectUuid)}/assets/${encodeURIComponent(fileUuid)}/content` : ''
 }
 
-export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemove, compact = false }) {
+export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemove, compact = false, pictureBook }) {
   const { t } = useI18n()
   if (!references.length) return null
   return (
@@ -53,7 +54,7 @@ export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemo
         return (
           <span className={`chat-reference-chip chat-reference-chip--${reference.status || 'ready'}`} key={reference.localId || referenceKey(reference)} title={title}>
             {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <span className="chat-reference-chip__icon">{['chapter', 'comic_section'].includes(reference.resource_type) ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
-            <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t)}</small></span>
+            <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t, pictureBook)}</small></span>
             {onRemove && (!canRemove || canRemove(reference)) ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
           </span>
         )
@@ -70,7 +71,7 @@ function sectionImageUuid(section) {
   return section?.current_image?.asset?.uuid || section?.current_image?.file_uuid || section?.current_image_file_uuid || ''
 }
 
-export function ReferencePicker({ projectUuid, references = [], disabled = false, onToggle }) {
+export function ReferencePicker({ projectUuid, references = [], disabled = false, onToggle, pictureBook }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('premise_asset')
@@ -135,10 +136,10 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
           <header><strong>{t('chat.reference.picker')}</strong><small>{t('chat.reference.count', { count: references.filter((item) => item.status !== 'error').length, max: MAX_PROJECT_CHAT_REFERENCES })}</small></header>
           <div className="chat-reference-picker__tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tab === 'premise_asset'} aria-pressed={tab === 'premise_asset'} onClick={() => setTab('premise_asset')}><Layers3 size={14} />{t('chat.reference.premise_assets')}</button>
-            <button type="button" role="tab" aria-selected={tab === 'chapter'} aria-pressed={tab === 'chapter'} onClick={() => setTab('chapter')}><BookOpen size={14} />{t('chat.reference.chapters')}</button>
-            <button type="button" role="tab" aria-selected={tab === 'comic_section'} aria-pressed={tab === 'comic_section'} onClick={() => setTab('comic_section')}><BookOpen size={14} />{t('chat.reference.comic_sections')}</button>
+            <button type="button" role="tab" aria-selected={tab === 'chapter'} aria-pressed={tab === 'chapter'} onClick={() => setTab('chapter')}><BookOpen size={14} />{t(formatTerminologyKey(pictureBook, 'chat.reference.picture_books', 'chat.reference.chapters'))}</button>
+            <button type="button" role="tab" aria-selected={tab === 'comic_section'} aria-pressed={tab === 'comic_section'} onClick={() => setTab('comic_section')}><BookOpen size={14} />{t(formatTerminologyKey(pictureBook, 'chat.reference.pages', 'chat.reference.comic_sections'))}</button>
           </div>
-          {tab === 'comic_section' ? <label className="chat-reference-picker__chapter"><span>{t('chat.reference.chapter')}</span><select value={chapterUuid} onChange={(event) => setChapterUuid(event.target.value)}>{chapters.map((chapter) => <option value={chapter.uuid} key={chapter.uuid}>{chapter.chapter_code ? `${chapter.chapter_code} · ` : ''}{chapter.title || chapter.uuid}</option>)}</select></label> : null}
+          {tab === 'comic_section' ? <label className="chat-reference-picker__chapter"><span>{t(formatTerminologyKey(pictureBook, 'chat.reference.picture_book', 'chat.reference.chapter'))}</span><select value={chapterUuid} onChange={(event) => setChapterUuid(event.target.value)}>{chapters.map((chapter) => <option value={chapter.uuid} key={chapter.uuid}>{chapter.chapter_code ? `${chapter.chapter_code} · ` : ''}{chapter.title || chapter.uuid}</option>)}</select></label> : null}
           {atLimit ? <p className="chat-reference-picker__notice" role="status">{t('chat.reference.limit')}</p> : null}
           {error ? <p className="chat-reference-picker__notice" role="alert">{error.message}</p> : null}
           <div className="chat-reference-picker__list">

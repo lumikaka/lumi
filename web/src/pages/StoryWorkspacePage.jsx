@@ -42,6 +42,7 @@ import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { assetKindLabel, projectionStateLabel, sourceTypeLabel, statusLabel as localizedStatusLabel, taskKindLabel } from '../i18n/labels.js'
+import { formatTerminologyMessageKey } from './pictureBookProfile.js'
 
 const DEFAULT_COMIC_SECTION_COUNT = 6
 const MAX_COMIC_SECTION_COUNT = 24
@@ -77,10 +78,13 @@ function ViewToggle({ preview, setPreview }) {
   )
 }
 
-function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onCompleted, compact = false }) {
+function GenerationPanel({ projectUuid, chapterUuid, pictureBook, disabled = false, onCompleted, compact = false }) {
   const { formatNumber, t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const queryClient = useQueryClient()
-  const [prompt, setPrompt] = useState(() => t('story.generation.default_prompt'))
+  const defaultPrompt = term('story.generation.default_prompt')
+  const [prompt, setPrompt] = useState(defaultPrompt)
+  const previousDefaultPromptRef = useRef(defaultPrompt)
   const [error, setError] = useState(null)
   const completedRef = useRef('')
   const tasksQuery = useQuery({
@@ -88,6 +92,11 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
     queryFn: () => listTasks(projectUuid, { limit: 100 }),
   })
   const latest = latestTaskForResource(tasksQuery.data?.items, chapterUuid)
+
+  useEffect(() => {
+    setPrompt((current) => current === previousDefaultPromptRef.current ? defaultPrompt : current)
+    previousDefaultPromptRef.current = defaultPrompt
+  }, [defaultPrompt])
 
   const refreshTasks = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['story-tasks', projectUuid] })
@@ -119,7 +128,7 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
   if (compact) {
     return (
       <section className="chapter-body-generation">
-        <div><strong>{t('story.generation.title')}</strong><small>{t('story.generation.provider_note')}</small></div>
+        <div><strong>{term('story.generation.title')}</strong><small>{t('story.generation.provider_note')}</small></div>
         {latest ? <span className={`task-status task-status--${latest.status}`}>{statusKeys[latest.status] ? t(statusKeys[latest.status]) : t('common.status.unknown_with_code', { code: latest.status })}</span> : null}
         <details><summary>{t('story.generation.requirements')}</summary><textarea name="chapter_generation_requirements" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows="4" /></details>
         <button type="button" disabled={disabled || active || !prompt.trim() || createMutation.isPending} onClick={() => createMutation.mutate()}>{t(createMutation.isPending ? 'story.generation.enqueuing' : active ? 'story.generation.running' : 'story.generation.new_version')}</button>
@@ -131,7 +140,7 @@ function GenerationPanel({ projectUuid, chapterUuid, disabled = false, onComplet
 
   return (
     <section className="generation-panel">
-      <header><div><p className="eyebrow">{t('story.generation.eyebrow')}</p><h2>{t('story.generation.title')}</h2></div>{latest ? <span className={`task-status task-status--${latest.status}`}>{statusKeys[latest.status] ? t(statusKeys[latest.status]) : t('common.status.unknown_with_code', { code: latest.status })}</span> : null}</header>
+      <header><div><p className="eyebrow">{t('story.generation.eyebrow')}</p><h2>{term('story.generation.title')}</h2></div>{latest ? <span className={`task-status task-status--${latest.status}`}>{statusKeys[latest.status] ? t(statusKeys[latest.status]) : t('common.status.unknown_with_code', { code: latest.status })}</span> : null}</header>
       <ErrorNotice error={error || tasksQuery.error} onDismiss={() => setError(null)} />
         <div className="generation-form">
           <p>{t('story.generation.provider_note')}</p>
@@ -161,6 +170,8 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
   const [comicGenerationOpen, setComicGenerationOpen] = useState(false)
   const [comicGenerationPrompt, setComicGenerationPrompt] = useState('')
   const [comicMaxSectionCount, setComicMaxSectionCount] = useState(DEFAULT_COMIC_SECTION_COUNT)
+  const pictureBook = projectQuery.data?.picture_book
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const pageMode = Boolean(projectQuery.data?.picture_book?.format && projectQuery.data.picture_book.format !== 'vertical_strip')
   const initializedUuid = useRef('')
   const revisionRef = useRef(0)
@@ -271,7 +282,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterUuid, projectUuid, queryClient])
 
-  if (chapterQuery.isLoading) return <p className="workspace-loading">{t('story.chapter.loading')}</p>
+  if (chapterQuery.isLoading) return <p className="workspace-loading">{term('story.chapter.loading')}</p>
   if (chapterQuery.isError && !chapterQuery.data) return <ErrorNotice error={chapterQuery.error} />
   const chapter = chapterQuery.data
 
@@ -279,7 +290,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
     return (
       <section className="chapter-workbench__body">
         <header className="chapter-workbench__reader-header">
-          <div><p className="eyebrow">{chapter.chapter_code}</p><h2>{chapter.title || t('story.chapter.title')}</h2></div>
+          <div><p className="eyebrow">{chapter.chapter_code}</p><h2>{chapter.title || term('story.chapter.title')}</h2></div>
           <div className="chapter-workbench__reader-actions">
             <button type="button" className="button-secondary" onClick={() => setEditorOpen(true)}><Pencil size={14} aria-hidden="true" />{t('common.action.edit')}</button>
             {chapter.current_story ? <span className="story-status-pill">{sourceTypeLabel(t, chapter.current_story.source_type)}</span> : null}
@@ -306,8 +317,10 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
           onSave={saveEmbeddedEditor}
           onClose={closeEmbeddedEditor}
           onReload={reload}
+          chapterTitleLabel={term('story.chapter.title')}
+          editTitle={t(pageMode ? 'comic.workbench.body.edit_pages' : 'comic.workbench.body.edit')}
         >
-          <GenerationPanel projectUuid={projectUuid} chapterUuid={chapterUuid} disabled={saveMutation.isPending || saveState === 'conflict'} onCompleted={applyGenerated} compact />
+          <GenerationPanel projectUuid={projectUuid} chapterUuid={chapterUuid} pictureBook={pictureBook} disabled={saveMutation.isPending || saveState === 'conflict'} onCompleted={applyGenerated} compact />
         </ChapterBodyEditorDialog> : null}
 
         {comicGenerationOpen ? <ComicStoryboardGenerationDialog
@@ -327,14 +340,14 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
 
   return (
     <div className="workspace-stack">
-      <header className="editor-header"><div><Link to="../chapters">← {t('story.chapter.back')}</Link><p className="eyebrow">{chapter.chapter_code}</p><input name="chapter_title" className="chapter-title-input" value={title} onChange={(event) => setTitle(event.target.value)} aria-label={t('story.chapter.title')} /></div><div><SaveState state={saveState} /><button type="button" className="button-secondary" disabled={titleMutation.isPending || saveMutation.isPending} onClick={() => titleMutation.mutate()}>{t('story.chapter.save_title')}</button><button type="button" className="button-quiet danger-text" onClick={() => trashMutation.mutate()}>{t('story.chapter.trash')}</button></div></header>
+      <header className="editor-header"><div><Link to="../chapters">← {term('story.chapter.back')}</Link><p className="eyebrow">{chapter.chapter_code}</p><input name="chapter_title" className="chapter-title-input" value={title} onChange={(event) => setTitle(event.target.value)} aria-label={term('story.chapter.title')} /></div><div><SaveState state={saveState} /><button type="button" className="button-secondary" disabled={titleMutation.isPending || saveMutation.isPending} onClick={() => titleMutation.mutate()}>{t('story.chapter.save_title')}</button><button type="button" className="button-quiet danger-text" onClick={() => trashMutation.mutate()}>{t('story.chapter.trash')}</button></div></header>
       <ErrorNotice error={error} onDismiss={() => setError(null)} />
       {saveState === 'conflict' ? <div className="workspace-notice"><div><strong>{t('story.chapter.conflict_title')}</strong><span>{t('story.chapter.conflict_body')}</span></div><button type="button" onClick={reload}>{t('story.chapter.reload')}</button></div> : null}
-      <GenerationPanel projectUuid={projectUuid} chapterUuid={chapterUuid} disabled={saveMutation.isPending || saveState === 'conflict'} onCompleted={applyGenerated} />
+      <GenerationPanel projectUuid={projectUuid} chapterUuid={chapterUuid} pictureBook={pictureBook} disabled={saveMutation.isPending || saveState === 'conflict'} onCompleted={applyGenerated} />
       <section className="chapter-editor-layout">
         <div className="editor-card">
           <div className="editor-toolbar"><ViewToggle preview={preview} setPreview={setPreview} /><div className="format-toggle"><button type="button" className="format-toggle__button" aria-pressed={format === 'md'} onClick={() => setFormat('md')}>Markdown</button><button type="button" className="format-toggle__button" aria-pressed={format === 'txt'} onClick={() => setFormat('txt')}>{t('story.chapter.plain_text')}</button></div></div>
-          {preview ? <MarkdownPreview value={content} /> : <textarea name="chapter_content" className="story-editor" value={content} onChange={(event) => { setContent(event.target.value); if (saveState === 'saved') setSaveState('idle') }} placeholder={t('story.chapter.placeholder')} autoFocus />}
+          {preview ? <MarkdownPreview value={content} /> : <textarea name="chapter_content" className="story-editor" value={content} onChange={(event) => { setContent(event.target.value); if (saveState === 'saved') setSaveState('idle') }} placeholder={term('story.chapter.placeholder')} autoFocus />}
         </div>
         <aside className="version-history"><div><h2>{t('story.chapter.versions')}</h2><span>{historyQuery.data?.items?.length || 0}</span></div>{historyQuery.data?.items?.map((version) => <article key={version.uuid}><strong>v{version.version_no}</strong><span>{sourceTypeLabel(t, version.source_type)}</span><small>{formatDateTime(version.created_at)}</small></article>)}</aside>
       </section>
@@ -342,16 +355,16 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
   )
 }
 
-function ChapterBodyEditorDialog({ chapter, title, setTitle, content, onContentChange, format, setFormat, preview, setPreview, saveState, error, history, pending, onSave, onClose, onReload, children }) {
+function ChapterBodyEditorDialog({ chapter, title, setTitle, content, onContentChange, format, setFormat, preview, setPreview, saveState, error, history, pending, onSave, onClose, onReload, chapterTitleLabel, editTitle, children }) {
   const { formatDateTime, t } = useI18n()
 
   return (
     <LumiDialog className="chapter-body-editor-dialog" dismissDisabled={pending} onClose={onClose}>
-      <header className="lumi-dialog__header"><div><p className="eyebrow">{chapter.chapter_code}</p><h2>{t('comic.workbench.body.edit')}</h2></div><button type="button" className="button-quiet" disabled={pending} aria-label={t('common.action.close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></header>
+      <header className="lumi-dialog__header"><div><p className="eyebrow">{chapter.chapter_code}</p><h2>{editTitle}</h2></div><button type="button" className="button-quiet" disabled={pending} aria-label={t('common.action.close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></header>
       <form className="lumi-dialog__body chapter-body-editor-dialog__body" onSubmit={(event) => { event.preventDefault(); onSave() }}>
         <ErrorNotice error={error} />
         {saveState === 'conflict' ? <div className="workspace-notice"><div><strong>{t('story.chapter.conflict_title')}</strong><span>{t('story.chapter.conflict_body')}</span></div><button type="button" onClick={onReload}>{t('story.chapter.reload')}</button></div> : null}
-        <label>{t('story.chapter.title')}<input name="chapter_title" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+        <label>{chapterTitleLabel}<input name="chapter_title" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
         <label>{t('comic.workbench.body.format')}<select name="chapter_format" value={format} onChange={(event) => setFormat(event.target.value)}><option value="txt">txt</option><option value="md">md</option></select></label>
         <div className="chapter-body-editor-dialog__toolbar"><ViewToggle preview={preview} setPreview={setPreview} /><SaveState state={saveState} /></div>
         {preview ? <MarkdownPreview value={content} /> : <label className="chapter-body-editor-dialog__content">{t('comic.workbench.body.content')}<textarea name="chapter_content" value={content} onChange={(event) => onContentChange(event.target.value)} /></label>}
@@ -428,8 +441,9 @@ function StoryProfileEditorDialog({ profile, value, setValue, preview, setPrevie
   )
 }
 
-function StoryProfilePanel({ projectUuid }) {
+function StoryProfilePanel({ projectUuid, pictureBook }) {
   const { formatCount, formatDateTime, t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const queryClient = useQueryClient()
   const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid], queryFn: () => getStoryProfile(projectUuid), refetchOnWindowFocus: true })
   const historyQuery = useQuery({ queryKey: ['story-profile-history', projectUuid], queryFn: () => listStoryProfileVersions(projectUuid) })
@@ -524,14 +538,14 @@ function StoryProfilePanel({ projectUuid }) {
       <StoryConflictNotice profile={profile} pending={importMutation.isPending || regenerateMutation.isPending} onImport={() => importMutation.mutate()} onRegenerate={() => regenerateMutation.mutate()} />
       <section className="overview-card overview-profile-card">
         <header className="overview-card__header">
-          <div><h1>{t('story.profile')}</h1><p>{t('story.profile.context_body')}</p></div>
+          <div><h1>{t('story.profile')}</h1><p>{term('story.profile.context_body')}</p></div>
           <button type="button" className="button-secondary" onClick={openEditor} disabled={profile.projection_state !== 'synced'}>{t('common.action.edit')}</button>
         </header>
         <pre className="overview-profile-source" data-user-content>{profile.story_md || t('story.profile.empty')}</pre>
         <div className="image-action-row">
           <input value={generationPrompt} onChange={(event) => setGenerationPrompt(event.target.value)} placeholder={t('story.profile.generate_placeholder')} />
           <button type="button" disabled={!generationPrompt.trim() || profileTaskActive || aiGenerateMutation.isPending} onClick={() => aiGenerateMutation.mutate()}>{t('story.profile.generate')}</button>
-          <button type="button" className="button-secondary" disabled={profileTaskActive || aiReconstructMutation.isPending} onClick={() => aiReconstructMutation.mutate()}>{t('story.profile.reconstruct')}</button>
+          <button type="button" className="button-secondary" disabled={profileTaskActive || aiReconstructMutation.isPending} onClick={() => aiReconstructMutation.mutate()}>{term('story.profile.reconstruct')}</button>
         </div>
         {profileTask ? <p className={`task-status task-status--${profileTask.status}`}>{t('story.profile.task', { status: localizedStatusLabel(t, profileTask.status), progress: profileTask.progress })}</p> : null}
         <dl className="overview-profile-facts">
@@ -550,16 +564,17 @@ function StoryProfilePanel({ projectUuid }) {
   )
 }
 
-function PromptPanel({ projectUuid }) {
+function PromptPanel({ projectUuid, pictureBook }) {
   return (
 	<div className="workspace-stack project-overview" role="tabpanel" id="overview-panel-prompts" aria-labelledby="overview-tab-prompts">
-		<PromptCatalogEditor projectUuid={projectUuid} />
+		<PromptCatalogEditor projectUuid={projectUuid} pictureBook={pictureBook} />
     </div>
   )
 }
 
-function TrashPanel({ projectUuid }) {
+function TrashPanel({ projectUuid, pictureBook }) {
   const { formatCount, formatDateTime, t } = useI18n()
+  const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const queryClient = useQueryClient()
   const [error, setError] = useState(null)
   const [emptyDialogOpen, setEmptyDialogOpen] = useState(false)
@@ -588,11 +603,11 @@ function TrashPanel({ projectUuid }) {
   }
   return (
     <div className="workspace-stack">
-      <header className="workspace-section-heading"><div><p className="eyebrow">{t('story.trash.eyebrow')}</p><h1>{t('story.trash.title')}</h1><p>{t('story.trash.description')}</p></div><div><span>{formatCount('common.count.items', items.length)}</span><button type="button" className="button-secondary story-trash-empty-button" disabled={!items.length || emptyMutation.isPending || deleteMutation.isPending} onClick={() => setEmptyDialogOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('story.trash.empty_action')}</button></div></header>
+      <header className="workspace-section-heading"><div><p className="eyebrow">{t('story.trash.eyebrow')}</p><h1>{term('story.trash.title')}</h1><p>{term('story.trash.description')}</p></div><div><span>{formatCount('common.count.items', items.length)}</span><button type="button" className="button-secondary story-trash-empty-button" disabled={!items.length || emptyMutation.isPending || deleteMutation.isPending} onClick={() => setEmptyDialogOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('story.trash.empty_action')}</button></div></header>
       <ErrorNotice error={error || trashQuery.error} onDismiss={error ? () => setError(null) : undefined} />
-      {emptyResult ? <div className="chapter-operation-summary" role="status"><div><strong>{t(emptyResult.blocked_items?.length ? 'story.trash.empty_partial' : 'story.trash.empty_done', { count: emptyResult.deleted_count })}</strong>{emptyResult.blocked_items?.length ? <ul>{emptyResult.blocked_items.map((item) => <li key={item.uuid}><span>{item.chapter_code}</span><small>{localizedErrorPresentation(t, { code: item.error_code }).message} · {item.error_code}</small></li>)}</ul> : null}</div><button type="button" onClick={() => setEmptyResult(null)} aria-label={t('common.action.close')}><X size={14} aria-hidden="true" /></button></div> : null}
-      <section className="trash-list">{items.map((chapter) => <article key={chapter.uuid}><div><code>{chapter.chapter_code}</code><strong>{chapter.title || t('projects.unnamed_chapter')}</strong><small>{t('story.trash.trashed_at', { date: formatDateTime(chapter.trashed_at) })}</small></div><button type="button" disabled={emptyMutation.isPending} onClick={() => restoreMutation.mutate(chapter)}>{t('common.action.restore')}</button><button type="button" className="button-danger" disabled={emptyMutation.isPending} onClick={() => confirmDelete(chapter)}>{t('story.trash.permanent_delete')}</button></article>)}{!trashQuery.isLoading && items.length === 0 ? <div className="workspace-empty"><span>✓</span><h2>{t('story.trash.empty')}</h2></div> : null}</section>
-      {emptyDialogOpen ? <LumiDialog className="story-trash-empty-dialog" dismissDisabled={emptyMutation.isPending} onClose={() => setEmptyDialogOpen(false)} aria-labelledby="story-trash-empty-title"><header className="lumi-dialog__header"><div><h2 id="story-trash-empty-title">{t('story.trash.empty_confirm_title')}</h2><p>{t('story.trash.empty_confirm_body', { count: items.length })}</p></div><button type="button" className="button-quiet" disabled={emptyMutation.isPending} onClick={() => setEmptyDialogOpen(false)} aria-label={t('common.action.close')}><X size={18} aria-hidden="true" /></button></header><div className="lumi-dialog__body"><p className="story-trash-empty-warning">{t('story.trash.empty_warning')}</p></div><footer className="lumi-dialog__actions"><button type="button" className="button-secondary" disabled={emptyMutation.isPending} onClick={() => setEmptyDialogOpen(false)}>{t('common.action.cancel')}</button><button type="button" className="button-danger" disabled={emptyMutation.isPending} onClick={() => emptyMutation.mutate()}>{t(emptyMutation.isPending ? 'common.status.processing' : 'story.trash.empty_action')}</button></footer></LumiDialog> : null}
+      {emptyResult ? <div className="chapter-operation-summary" role="status"><div><strong>{term(emptyResult.blocked_items?.length ? 'story.trash.empty_partial' : 'story.trash.empty_done', { count: emptyResult.deleted_count })}</strong>{emptyResult.blocked_items?.length ? <ul>{emptyResult.blocked_items.map((item) => <li key={item.uuid}><span>{item.chapter_code}</span><small>{localizedErrorPresentation(t, { code: item.error_code }).message} · {item.error_code}</small></li>)}</ul> : null}</div><button type="button" onClick={() => setEmptyResult(null)} aria-label={t('common.action.close')}><X size={14} aria-hidden="true" /></button></div> : null}
+      <section className="trash-list">{items.map((chapter) => <article key={chapter.uuid}><div><code>{chapter.chapter_code}</code><strong>{chapter.title || term('projects.unnamed_chapter')}</strong><small>{t('story.trash.trashed_at', { date: formatDateTime(chapter.trashed_at) })}</small></div><button type="button" disabled={emptyMutation.isPending} onClick={() => restoreMutation.mutate(chapter)}>{t('common.action.restore')}</button><button type="button" className="button-danger" disabled={emptyMutation.isPending} onClick={() => confirmDelete(chapter)}>{t('story.trash.permanent_delete')}</button></article>)}{!trashQuery.isLoading && items.length === 0 ? <div className="workspace-empty"><span>✓</span><h2>{t('story.trash.empty')}</h2></div> : null}</section>
+      {emptyDialogOpen ? <LumiDialog className="story-trash-empty-dialog" dismissDisabled={emptyMutation.isPending} onClose={() => setEmptyDialogOpen(false)} aria-labelledby="story-trash-empty-title"><header className="lumi-dialog__header"><div><h2 id="story-trash-empty-title">{term('story.trash.empty_confirm_title')}</h2><p>{term('story.trash.empty_confirm_body', { count: items.length })}</p></div><button type="button" className="button-quiet" disabled={emptyMutation.isPending} onClick={() => setEmptyDialogOpen(false)} aria-label={t('common.action.close')}><X size={18} aria-hidden="true" /></button></header><div className="lumi-dialog__body"><p className="story-trash-empty-warning">{t('story.trash.empty_warning')}</p></div><footer className="lumi-dialog__actions"><button type="button" className="button-secondary" disabled={emptyMutation.isPending} onClick={() => setEmptyDialogOpen(false)}>{t('common.action.cancel')}</button><button type="button" className="button-danger" disabled={emptyMutation.isPending} onClick={() => emptyMutation.mutate()}>{t(emptyMutation.isPending ? 'common.status.processing' : 'story.trash.empty_action')}</button></footer></LumiDialog> : null}
     </div>
   )
 }
@@ -663,26 +678,26 @@ export default function StoryWorkspacePage() {
   const draftProject = projectQuery.data?.setup_status === 'draft'
   return (
     <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview || trajectoryView}>
-      {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} hidden={draftProject} /> : null}
+      {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} pictureBook={projectQuery.data?.picture_book} hidden={draftProject} /> : null}
       <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
         {draftProject ? <section className="draft-project-workspace"><span>✦</span><p className="eyebrow">{t('projects.draft.eyebrow')}</p><h1>{t('projects.draft.title')}</h1><p>{t('projects.draft.body')}</p><small>{t('projects.draft.directory_hint')}</small></section> : <Routes>
           <Route index element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview" element={<RouteRedirect to={`${base}/overview/summary`} />} />
           <Route path="overview/summary" element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
-          <Route path="overview/profile" element={<StoryProfilePanel projectUuid={projectUuid} />} />
-          <Route path="overview/prompts" element={<PromptPanel projectUuid={projectUuid} />} />
+          <Route path="overview/profile" element={<StoryProfilePanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
+          <Route path="overview/prompts" element={<PromptPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="overview/llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />
           <Route path="overview/exports" element={<OverviewExportsPanel projectUuid={projectUuid} />} />
-          <Route path="chapters" element={<ChaptersWorkspace projectUuid={projectUuid} />} />
+          <Route path="chapters" element={<ChaptersWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="chapters/:chapterUuid/preview" element={<ChapterComicPreviewPage projectUuid={projectUuid} />} />
           <Route path="chapters/:chapterUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
-          <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} />} />
+          <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="comic" element={<ComicWorkspace projectUuid={projectUuid} />} />
           <Route path="comic/:chapterUuid" element={<ComicWorkspace projectUuid={projectUuid} />} />
           <Route path="assets" element={<AssetsPanel projectUuid={projectUuid} />} />
           <Route path="story" element={<RouteRedirect to={`${base}/overview/profile`} />} />
           <Route path="prompts" element={<RouteRedirect to={`${base}/overview/prompts`} />} />
-          <Route path="trash" element={<TrashPanel projectUuid={projectUuid} />} />
+          <Route path="trash" element={<TrashPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
           <Route path="*" element={<RouteRedirect to={`${base}/overview/summary`} />} />
         </Routes>}

@@ -2,8 +2,9 @@ import { NavLink, useLocation } from 'react-router-dom'
 
 import { WORKSPACE_GROUP_ITEMS, workspaceRoute } from './workspaceNavigation.js'
 import { useI18n } from '../i18n/useI18n.js'
+import { formatTerminologyKey } from '../pages/pictureBookProfile.js'
 
-export default function WorkspaceGroupTabs({ projectUuid, activeSection, hidden = false }) {
+export default function WorkspaceGroupTabs({ projectUuid, activeSection, pictureBook, hidden = false }) {
   const { t } = useI18n()
   const location = useLocation()
   if (hidden) return null
@@ -26,7 +27,9 @@ export default function WorkspaceGroupTabs({ projectUuid, activeSection, hidden 
             aria-selected={overviewTabs ? location.pathname.endsWith(`/${item.route}`) : undefined}
             to={workspaceRoute(projectUuid, item.route, location.search)}
           >
-            {t(item.labelKey)}
+            {t(item.key === 'chapters'
+              ? formatTerminologyKey(pictureBook, 'projects.section.picture_books', item.labelKey)
+              : item.labelKey)}
           </NavLink>
         ))}
       </div>

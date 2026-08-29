@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { workspaceRoute } from '../components/workspaceNavigation.js'
 import { getPremise, listComicExports, updatePremise } from '../api/production.js'
 import { preflightProjectImageGeneration } from '../api/projects.js'
-import { getStoryProfile, listChapters, updateStoryProject } from '../api/story.js'
+import { getStoryProfile, getStoryProject, listChapters, updateStoryProject } from '../api/story.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
@@ -13,7 +13,7 @@ import { projectionStateLabel } from '../i18n/labels.js'
 import ComicExportDialog from '../components/ComicExportDialog.jsx'
 import ProjectModelSettingsCard from '../components/ProjectModelSettingsCard.jsx'
 import { comicExportDialogRequest } from './comicExportState.js'
-import { pictureBookProfileDetails, pictureBookRatio } from './pictureBookProfile.js'
+import { formatTerminologyMessageKey, pictureBookProfileDetails, pictureBookRatio } from './pictureBookProfile.js'
 
 const pendingExportStatuses = new Set(['queued', 'running'])
 const exportPageSize = 10
@@ -128,6 +128,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
   if (projectQuery.isError) return <LocalizedErrorMessage error={projectQuery.error} />
 
   const project = projectQuery.data
+  const term = (key, values) => t(formatTerminologyMessageKey(project.picture_book, key), values)
   const profile = profileQuery.data
   const premise = premiseQuery.data
   const excerpt = storyExcerpt(profile?.story_md)
@@ -163,7 +164,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
               <>
                 {project.description ? <p className="overview-project-description">{project.description}</p> : null}
                 <dl className="overview-project-facts">
-                  <div><dt>{t('projects.overview.active_chapters')}</dt><dd>{project.chapter_count}</dd></div>
+                  <div><dt>{term('projects.overview.active_chapters')}</dt><dd>{project.chapter_count}</dd></div>
                   <div><dt>{t('projects.tab.trash')}</dt><dd>{project.trash_count}</dd></div>
                   <div><dt>{t('projects.overview.revision')}</dt><dd>r{project.revision}</dd></div>
                   <div><dt>{t('projects.overview.generation_language')}</dt><dd>{generationLanguageLabel(t, project.generation_language)}</dd></div>
@@ -212,7 +213,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
             <div className="overview-work-links">
               <Link to={route('overview/profile')}><span>01</span><strong>{t('projects.overview.work.profile.title')}</strong><small>{t('projects.overview.work.profile.body')}</small></Link>
               <Link to={route('premise')}><span>02</span><strong>{t('projects.overview.work.premise.title')}</strong><small>{t('projects.overview.work.premise.body')}</small></Link>
-              <Link to={route('chapters')}><span>03</span><strong>{t('projects.overview.work.chapters.title')}</strong><small>{t('projects.overview.work.chapters.body')}</small></Link>
+              <Link to={route('chapters')}><span>03</span><strong>{term('projects.overview.work.chapters.title')}</strong><small>{term('projects.overview.work.chapters.body')}</small></Link>
             </div>
           </section>
         </div>
@@ -220,7 +221,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
         <aside className="overview-progress-card" aria-label={t('projects.overview.progress')}>
           <header><h2>{t('projects.overview.progress')}</h2></header>
           <div className="overview-progress-grid">
-            <article><strong>{project.chapter_count}</strong><span>{t('projects.overview.active_chapters')}</span></article>
+            <article><strong>{project.chapter_count}</strong><span>{term('projects.overview.active_chapters')}</span></article>
             <article><strong>{project.trash_count}</strong><span>{t('projects.tab.trash')}</span></article>
             <article><strong>{profile ? `v${profile.version_no}` : '—'}</strong><span>STORY.md</span></article>
             <article><strong>r{project.revision}</strong><span>{t('projects.overview.revision')}</span></article>
@@ -259,7 +260,7 @@ function exportStatusLabel(t, status) {
   return key ? t(key) : t('common.status.unknown_with_code', { code: status || '—' })
 }
 
-function OverviewExportTable({ items, loading, emptyTitle, chapterTitles }) {
+function OverviewExportTable({ items, loading, emptyTitle, chapterTitles, chapterFallbackLabel, projectFallbackLabel }) {
   const { formatDateTime, t } = useI18n()
   if (loading) return <p className="overview-export-empty">{t('projects.exports.loading')}</p>
   if (!items.length) return <p className="overview-export-empty">{emptyTitle}</p>
@@ -268,7 +269,7 @@ function OverviewExportTable({ items, loading, emptyTitle, chapterTitles }) {
       <div className="overview-export-table__head" aria-hidden="true"><span>{t('common.label.file')}</span><span>{t('common.label.status')}</span><span>{t('common.label.details')}</span><span>{t('common.label.actions')}</span></div>
       <ul>
         {items.map((item) => {
-          const label = item.scope === 'chapter' ? chapterTitles.get(item.chapter_uuid) || t('projects.exports.chapter_label') : t('projects.exports.project_label')
+          const label = item.scope === 'chapter' ? chapterTitles.get(item.chapter_uuid) || chapterFallbackLabel : projectFallbackLabel
           // i18n-exempt: export formats and fallback filenames are machine identifiers, not interface copy.
           const extension = item.format === 'pdf' ? 'pdf' : 'zip'
           // i18n-exempt: fallback export filenames are machine identifiers, not interface copy.
@@ -294,10 +295,10 @@ function OverviewExportTable({ items, loading, emptyTitle, chapterTitles }) {
   )
 }
 
-function OverviewExportPagination({ page, pagination, fetching, onPageChange }) {
+function OverviewExportPagination({ page, pagination, fetching, onPageChange, label }) {
   const { t } = useI18n()
   if ((pagination?.last_page || 1) <= 1) return null
-  return <nav className="overview-export-pagination" aria-label={t('projects.exports.pagination')}><button type="button" className="button-secondary" disabled={page <= 1 || fetching} onClick={() => onPageChange(Math.max(1, page - 1))}>{t('common.action.previous_page')}</button><span>{pagination.current_page} / {pagination.last_page}</span><button type="button" className="button-secondary" disabled={page >= pagination.last_page || fetching} onClick={() => onPageChange(page + 1)}>{t('common.action.next_page')}</button></nav>
+  return <nav className="overview-export-pagination" aria-label={label}><button type="button" className="button-secondary" disabled={page <= 1 || fetching} onClick={() => onPageChange(Math.max(1, page - 1))}>{t('common.action.previous_page')}</button><span>{pagination.current_page} / {pagination.last_page}</span><button type="button" className="button-secondary" disabled={page >= pagination.last_page || fetching} onClick={() => onPageChange(page + 1)}>{t('common.action.next_page')}</button></nav>
 }
 
 export function OverviewExportsPanel({ projectUuid }) {
@@ -306,6 +307,7 @@ export function OverviewExportsPanel({ projectUuid }) {
   const [projectPage, setProjectPage] = useState(1)
   const [chapterPage, setChapterPage] = useState(1)
   const [exportRequest, setExportRequest] = useState(null)
+  const projectQuery = useQuery({ queryKey: ['story-project', projectUuid], queryFn: () => getStoryProject(projectUuid) })
   const chaptersQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
   const projectExportsQuery = useQuery({
     queryKey: ['comic-exports', projectUuid, 'project', projectPage],
@@ -316,7 +318,8 @@ export function OverviewExportsPanel({ projectUuid }) {
     queryFn: () => listComicExports(projectUuid, { page: chapterPage, perPage: exportPageSize, scope: 'chapter' }),
   })
   const chapters = chaptersQuery.data?.items || []
-  const chapterTitles = useMemo(() => new Map(chapters.map((chapter) => [chapter.uuid, `${chapter.chapter_code} · ${chapter.title || t('projects.unnamed_chapter')}`])), [chapters, t])
+  const term = (key, values) => t(formatTerminologyMessageKey(projectQuery.data?.picture_book, key), values)
+  const chapterTitles = new Map(chapters.map((chapter) => [chapter.uuid, `${chapter.chapter_code} · ${chapter.title || term('projects.unnamed_chapter')}`]))
 
   useEffect(() => {
     if (!chapterUuid && chapters[0]) setChapterUuid(chapters[0].uuid)
@@ -330,21 +333,21 @@ export function OverviewExportsPanel({ projectUuid }) {
 
   return (
     <div className="project-overview project-overview--exports" role="tabpanel" id="overview-panel-exports" aria-labelledby="overview-tab-exports">
-      <LocalizedErrorMessage error={projectExportsQuery.error || chapterExportsQuery.error || chaptersQuery.error} />
+      <LocalizedErrorMessage error={projectQuery.error || projectExportsQuery.error || chapterExportsQuery.error || chaptersQuery.error} />
       <section className="overview-card overview-exports-panel">
-        <header className="overview-card__header"><div><h1>{t('projects.tab.exports')}</h1><p>{t('projects.exports.description')}</p></div><span>{formatCount('common.count.items', total)}</span></header>
+        <header className="overview-card__header"><div><h1>{t('projects.tab.exports')}</h1><p>{term('projects.exports.description')}</p></div><span>{formatCount('common.count.items', total)}</span></header>
         <div className="overview-export-toolbar">
           <div><h2>{t('projects.exports.project_records')}</h2><span>{projectPagination.total}</span></div>
           <button type="button" className="button-secondary" onClick={() => setExportRequest(comicExportDialogRequest('project'))}>{t('projects.exports.new_project')}</button>
         </div>
-        <OverviewExportTable items={projectItems} loading={projectExportsQuery.isLoading} emptyTitle={t('projects.exports.empty_project')} chapterTitles={chapterTitles} />
-        <OverviewExportPagination page={projectPage} pagination={projectPagination} fetching={projectExportsQuery.isFetching} onPageChange={setProjectPage} />
+        <OverviewExportTable items={projectItems} loading={projectExportsQuery.isLoading} emptyTitle={t('projects.exports.empty_project')} chapterTitles={chapterTitles} chapterFallbackLabel={term('projects.exports.chapter_label')} projectFallbackLabel={term('projects.exports.project_label')} />
+        <OverviewExportPagination page={projectPage} pagination={projectPagination} fetching={projectExportsQuery.isFetching} onPageChange={setProjectPage} label={term('projects.exports.pagination')} />
         <div className="overview-export-toolbar overview-export-toolbar--chapter">
-          <div><h2>{t('projects.exports.chapter_records')}</h2><span>{chapterPagination.total}</span></div>
-          <form onSubmit={(event) => { event.preventDefault(); setExportRequest(comicExportDialogRequest('chapter', chapterUuid, chapterTitles.get(chapterUuid) || '')) }}><label>{t('story.chapter')}<select aria-label={t('projects.exports.chapter_select')} value={chapterUuid} onChange={(event) => setChapterUuid(event.target.value)} disabled={!chapters.length}>{chapters.map((chapter) => <option value={chapter.uuid} key={chapter.uuid}>{chapter.chapter_code} · {chapter.title || t('projects.unnamed_chapter')}</option>)}</select></label><button type="submit" className="button-secondary" disabled={!chapterUuid}>{t('projects.exports.new_chapter')}</button></form>
+          <div><h2>{term('projects.exports.chapter_records')}</h2><span>{chapterPagination.total}</span></div>
+          <form onSubmit={(event) => { event.preventDefault(); setExportRequest(comicExportDialogRequest('chapter', chapterUuid, chapterTitles.get(chapterUuid) || '')) }}><label>{term('story.chapter')}<select aria-label={term('projects.exports.chapter_select')} value={chapterUuid} onChange={(event) => setChapterUuid(event.target.value)} disabled={!chapters.length}>{chapters.map((chapter) => <option value={chapter.uuid} key={chapter.uuid}>{chapter.chapter_code} · {chapter.title || term('projects.unnamed_chapter')}</option>)}</select></label><button type="submit" className="button-secondary" disabled={!chapterUuid}>{term('projects.exports.new_chapter')}</button></form>
         </div>
-        <OverviewExportTable items={chapterItems} loading={chapterExportsQuery.isLoading} emptyTitle={t('projects.exports.empty_chapter')} chapterTitles={chapterTitles} />
-        <OverviewExportPagination page={chapterPage} pagination={chapterPagination} fetching={chapterExportsQuery.isFetching} onPageChange={setChapterPage} />
+        <OverviewExportTable items={chapterItems} loading={chapterExportsQuery.isLoading} emptyTitle={term('projects.exports.empty_chapter')} chapterTitles={chapterTitles} chapterFallbackLabel={term('projects.exports.chapter_label')} projectFallbackLabel={term('projects.exports.project_label')} />
+        <OverviewExportPagination page={chapterPage} pagination={chapterPagination} fetching={chapterExportsQuery.isFetching} onPageChange={setChapterPage} label={term('projects.exports.pagination')} />
       </section>
       {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={() => setExportRequest(null)} /> : null}
     </div>
