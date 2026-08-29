@@ -41,6 +41,17 @@ type Error struct {
 	Retryable  bool
 	HTTPStatus int
 	Cause      error
+	violation  *toolValidationViolation
+}
+
+// toolValidationViolation is internal repair context for model-authored tool
+// arguments. It intentionally describes only the failed schema rule and never
+// carries the rejected value.
+type toolValidationViolation struct {
+	Path          string   `json:"path"`
+	Rule          string   `json:"rule"`
+	ExpectedType  string   `json:"expected_type,omitempty"`
+	AllowedValues []string `json:"allowed_values,omitempty"`
 }
 
 func (err *Error) Error() string {
@@ -54,6 +65,22 @@ func (err *Error) Unwrap() error { return err.Cause }
 
 func domainError(code, message, details string, cause error) error {
 	return &Error{Code: code, Message: message, Details: details, Cause: cause}
+}
+
+func toolValidationError(message, details string, violation toolValidationViolation) error {
+	copy := violation
+	copy.AllowedValues = append([]string(nil), violation.AllowedValues...)
+	return &Error{Code: CodeToolValidation, Message: message, Details: details, violation: &copy}
+}
+
+func toolValidationViolationFromError(err error) (toolValidationViolation, bool) {
+	var agentErr *Error
+	if !errors.As(err, &agentErr) || agentErr.violation == nil {
+		return toolValidationViolation{}, false
+	}
+	result := *agentErr.violation
+	result.AllowedValues = append([]string(nil), agentErr.violation.AllowedValues...)
+	return result, true
 }
 
 var (

@@ -258,9 +258,9 @@ func applyResponseProjection(value any, projection responseProjection) (any, err
 }
 
 func invalidResponseFilter(expression string) error {
-	expression = strings.TrimSpace(expression)
-	if len(expression) > 160 {
-		expression = expression[:160] + "…"
-	}
-	return domainError(CodeToolValidation, "response_filter 无效", "只允许从 .data 开始的有限路径、数组和对象投影；收到："+expression, nil)
+	return toolValidationError(
+		"response_filter 无效",
+		"response_filter 只允许从 .data 开始的有限路径、数组和对象投影。",
+		toolValidationViolation{Path: "response_filter", Rule: "format", ExpectedType: "safe .data projection"},
+	)
 }

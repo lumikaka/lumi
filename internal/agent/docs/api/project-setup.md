@@ -10,6 +10,7 @@
 - `PATCH /api/v1/projects/{project_uuid}/project-setup`
   - `request_body.expected_revision` 必须来自刚读取的设置。
   - 至少提交一个草稿字段：`project_name`、`generation_language`、`overall_style`、`picture_book`。
+  - `generation_language` 只支持 `zh-Hans` 或 `en`。
   - `picture_book.format` 支持 `classic_picture_book`、`wordless_picture_book`、`interactive_picture_book`、`comic_story`、`vertical_strip`。
   - 不确定的信息应向用户询问，不要臆造具体人物、剧情或风格偏好。
 - `POST /api/v1/projects/{project_uuid}/project-setup-finalizations`

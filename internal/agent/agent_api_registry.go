@@ -323,7 +323,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 
 func validateReviewedAgentAPIRequestShape(route agentAPIRoute, query map[string]any, hasQuery bool, body map[string]any, hasBody bool) error {
 	if route.QuerySchema == nil && hasQuery {
-		return domainError(CodeToolValidation, "query 不适用于当前路由", "当前 Route 没有注册 query schema。", nil)
+		return toolValidationError("query 不适用于当前路由", "当前 Route 没有注册 query schema。", toolValidationViolation{Path: "query", Rule: "not_allowed"})
 	}
 	if route.QuerySchema != nil && hasQuery {
 		if err := validateArgumentShape("query", query, route.QuerySchema); err != nil {
@@ -331,10 +331,10 @@ func validateReviewedAgentAPIRequestShape(route agentAPIRoute, query map[string]
 		}
 	}
 	if route.BodySchema == nil && hasBody {
-		return domainError(CodeToolValidation, "request_body 不适用于当前路由", "只读路由不得携带 request_body。", nil)
+		return toolValidationError("request_body 不适用于当前路由", "只读路由不得携带 request_body。", toolValidationViolation{Path: "request_body", Rule: "not_allowed"})
 	}
 	if route.BodySchema != nil && !hasBody {
-		return domainError(CodeToolValidation, "request_body 缺失", "当前写路由要求 JSON Object request_body。", nil)
+		return toolValidationError("request_body 缺失", "当前写路由要求 JSON Object request_body。", toolValidationViolation{Path: "request_body", Rule: "required", ExpectedType: "object"})
 	}
 	if hasBody && route.BodySchema != nil {
 		if err := validateArgumentShape("request_body", body, route.BodySchema); err != nil {

@@ -150,7 +150,7 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	for key, value := range args {
 		rawSchema, ok := properties[key]
 		if !ok {
-			return nil, domainError(CodeToolValidation, "工具参数包含未知字段", key+" 不在该工具的参数 schema 中。", nil)
+			return nil, toolValidationError("工具参数包含未知字段", key+" 不在该工具的参数 schema 中。", toolValidationViolation{Path: key, Rule: "unknown_field"})
 		}
 		schema, _ := rawSchema.(map[string]any)
 		if err := validateArgumentShape(key, value, schema); err != nil {
@@ -160,7 +160,7 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	if required, ok := parameters["required"].([]string); ok {
 		for _, key := range required {
 			if _, exists := args[key]; !exists {
-				return nil, domainError(CodeToolValidation, "工具参数缺少必填字段", key+" 是必填字段。", nil)
+				return nil, toolValidationError("工具参数缺少必填字段", key+" 是必填字段。", toolValidationViolation{Path: key, Rule: "required"})
 			}
 		}
 	}
@@ -266,7 +266,7 @@ func rejectDuplicateJSONFields(raw string) error {
 	return nil
 }
 
-func validateArgumentShape(key string, value any, schema map[string]any) error {
+func validateArgumentShape(path string, value any, schema map[string]any) error {
 	want, _ := schema["type"].(string)
 	valid := false
 	switch want {
@@ -309,8 +309,8 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 				valid = false
 			}
 			itemSchema, _ := schema["items"].(map[string]any)
-			for _, item := range values {
-				if err := validateArgumentShape(key, item, itemSchema); err != nil {
+			for index, item := range values {
+				if err := validateArgumentShape(fmt.Sprintf("%s[%d]", path, index), item, itemSchema); err != nil {
 					return err
 				}
 			}
@@ -323,21 +323,23 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 			allowAdditional, _ := schema["additionalProperties"].(bool)
 			for childKey, childValue := range object {
 				rawChildSchema, exists := properties[childKey]
+				childPath := argumentChildPath(path, childKey)
 				if !exists {
 					if allowAdditional {
 						continue
 					}
-					return domainError(CodeToolValidation, "工具参数包含未知字段", childKey+" 不在该工具的参数 schema 中。", nil)
+					return toolValidationError("工具参数包含未知字段", childPath+" 不在该工具的参数 schema 中。", toolValidationViolation{Path: childPath, Rule: "unknown_field"})
 				}
 				childSchema, _ := rawChildSchema.(map[string]any)
-				if err := validateArgumentShape(childKey, childValue, childSchema); err != nil {
+				if err := validateArgumentShape(childPath, childValue, childSchema); err != nil {
 					return err
 				}
 			}
 			if required, exists := schema["required"].([]string); exists {
 				for _, childKey := range required {
 					if _, present := object[childKey]; !present {
-						return domainError(CodeToolValidation, "工具参数缺少必填字段", childKey+" 是必填字段。", nil)
+						childPath := argumentChildPath(path, childKey)
+						return toolValidationError("工具参数缺少必填字段", childPath+" 是必填字段。", toolValidationViolation{Path: childPath, Rule: "required"})
 					}
 				}
 			}
@@ -346,7 +348,7 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 		valid = true
 	}
 	if !valid {
-		return domainError(CodeToolValidation, "工具参数类型无效", key+" 不符合工具参数 schema。", nil)
+		return toolValidationError("工具参数类型无效", path+" 不符合工具参数 schema。", toolValidationViolation{Path: path, Rule: "type", ExpectedType: want})
 	}
 	if enum, ok := schema["enum"].([]string); ok {
 		text, _ := value.(string)
@@ -355,10 +357,22 @@ func validateArgumentShape(key string, value any, schema map[string]any) error {
 			matched = matched || text == candidate
 		}
 		if !matched {
-			return domainError(CodeToolValidation, "工具参数枚举值无效", key+" 不在允许值中。", nil)
+			encodedAllowed, _ := json.Marshal(enum)
+			return toolValidationError(
+				"工具参数枚举值无效",
+				path+" 不在允许值中；允许值："+string(encodedAllowed)+"。",
+				toolValidationViolation{Path: path, Rule: "enum", ExpectedType: "string", AllowedValues: enum},
+			)
 		}
 	}
 	return nil
+}
+
+func argumentChildPath(parent, child string) string {
+	if parent == "" {
+		return child
+	}
+	return parent + "." + child
 }
 
 func validatePublicArguments(value any, key string) error {
@@ -653,36 +667,53 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 // persistRejectedToolCall records a model-produced tool call that was safe to
 // inspect but failed argument validation. The paired tool result gives the
 // model a bounded opportunity to repair its own call without executing it.
-func (service *Service) persistRejectedToolCall(ctx context.Context, store *project.Store, tc toolContext, providerCallID, name, raw string, cause error) (bool, error) {
+func (service *Service) persistRejectedToolCall(ctx context.Context, store *project.Store, tc toolContext, providerCallID, name, raw string, cause error) (bool, json.RawMessage, error) {
 	sqlDB, err := store.DB().DB()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	tx, err := sqlDB.BeginTx(ctx, nil)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	defer tx.Rollback()
 	thread, err := lockThreadSQL(ctx, tx, tc.Thread.ProjectID, tc.Thread.UUID)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	var repairs int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_items WHERE run_id=? AND item_type='tool_result' AND json_extract(metadata_json,'$.validation_repair')=1`, tc.Run.ID).Scan(&repairs); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if repairs >= maxToolValidationRepairs {
-		return false, nil
+		return false, nil, nil
 	}
 	publicCallUUID, err := newUUIDv7()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	now := service.now().UTC()
 	code := errorCode(cause)
+	recovery, _ := service.buildRejectedAgentAPICallRecovery(tc, name, raw, cause)
+	result, recoveryIncluded := toolErrorResultWithRecovery(cause, recovery)
+	routeID, action, method, path, targetUUID, docPath := "", name, "", "", "", ""
+	if recovery != nil {
+		routeID, action, method, path = recovery.Route.ID, recovery.Route.Action, recovery.Route.Method, recovery.Path
+		targetUUID, docPath = recovery.TargetUUID, recovery.Route.DocPath
+	}
+	violation, hasViolation := toolValidationViolationFromError(cause)
 	metadata := map[string]any{
-		"purpose": name, "action": name, "provider_call_id": providerCallID,
+		"purpose": name, "action": action, "target_uuid": targetUUID, "provider_call_id": providerCallID,
 		"validation_repair": true, "error_code": code,
+	}
+	if routeID != "" {
+		metadata["route_id"], metadata["method"], metadata["path"], metadata["doc_path"] = routeID, method, path, docPath
+	}
+	if hasViolation && violation.Path != "" {
+		metadata["validation_path"] = violation.Path
+	}
+	if recoveryIncluded {
+		metadata["recovery_contract_included"] = true
 	}
 	if isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
@@ -692,26 +723,34 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	if json.Valid([]byte(raw)) {
 		format = "json"
 	}
-	if _, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", raw, format, "failed", publicCallUUID, name, "", metadata, now); err != nil {
-		return false, err
+	if _, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", raw, format, "failed", publicCallUUID, name, targetUUID, metadata, now); err != nil {
+		return false, nil, err
 	}
-	result := toolErrorResult(cause)
-	resultItem, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_result", "tool", string(result), "json", "completed", publicCallUUID, name, "", metadata, now)
+	resultItem, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_result", "tool", string(result), "json", "completed", publicCallUUID, name, targetUUID, metadata, now)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	eventBase := map[string]any{
 		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
 		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "",
-		"target_uuid": "", "status": "failed", "error_code": code,
+		"route_id": routeID, "action": action, "method": method, "path": path,
+		"target_uuid": targetUUID, "status": "failed", "error_code": code,
+	}
+	if docPath != "" {
+		eventBase["doc_path"] = docPath
+	}
+	if hasViolation && violation.Path != "" {
+		eventBase["validation_path"] = violation.Path
+	}
+	if recoveryIncluded {
+		eventBase["recovery_contract_included"] = true
 	}
 	if isUUIDv7(tc.RequestUUID) {
 		eventBase["request_uuid"] = tc.RequestUUID
 		eventBase["request_ordinal"] = tc.RequestOrdinal
 	}
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "tool_intent", eventBase, now); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	resultEvent := make(map[string]any, len(eventBase)+1)
 	for key, value := range eventBase {
@@ -719,27 +758,17 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	}
 	resultEvent["item_uuid"] = resultItem.UUID
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "tool_result", resultEvent, now); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return false, err
+		return false, nil, err
 	}
-	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{
-		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
-		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "",
-		"target_uuid": "", "status": "failed", "error_code": code,
-	})
-	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", map[string]any{
-		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
-		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name,
-		"route_id": "", "action": name, "method": "", "path": "",
-		"target_uuid": "", "status": "failed", "error_code": code, "item_uuid": resultItem.UUID,
-	})
-	return true, nil
+	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", eventBase)
+	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", resultEvent)
+	return true, result, nil
 }
 
 func (service *Service) executeTool(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord) (json.RawMessage, error) {

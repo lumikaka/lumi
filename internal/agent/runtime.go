@@ -153,11 +153,12 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 					toolResult := toolErrorResult(err)
 					if execution.ID == 0 {
 						if errorCode(err) == CodeToolValidation {
-							repaired, persistErr := service.persistRejectedToolCall(ctx, store, tc, call.ID, call.Name, call.Arguments, err)
+							repaired, repairResult, persistErr := service.persistRejectedToolCall(ctx, store, tc, call.ID, call.Name, call.Arguments, err)
 							if persistErr != nil {
 								return persistErr
 							}
 							if repaired {
+								toolResult = repairResult
 								cycle = append(cycle, cycleEntry(call.Name, call.Arguments, "", toolResult))
 								continue
 							}
