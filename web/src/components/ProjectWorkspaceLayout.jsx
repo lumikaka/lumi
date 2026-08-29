@@ -4,7 +4,9 @@ import { MessageCircle } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { listRecentProjects } from '../api/projects.js'
+import { getChapter } from '../api/story.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
+import { projectChapterUuidFromPath } from '../pages/projectChatAttachments.js'
 import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
@@ -22,6 +24,22 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
 	const [collapsed, setCollapsed] = useState(() => readCollapsed(projectUuid))
   const [overlayOpen, setOverlayOpen] = useState(false)
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
+  const currentChapterUuid = projectChapterUuidFromPath(location.pathname, projectUuid)
+  const currentChapterQuery = useQuery({
+    queryKey: ['story-chapter', projectUuid, currentChapterUuid],
+    queryFn: () => getChapter(projectUuid, currentChapterUuid),
+    enabled: !hideChat && Boolean(currentChapterUuid),
+  })
+  const currentChapter = currentChapterQuery.data
+  const newThreadReference = currentChapterUuid ? {
+    localId: `chapter:${currentChapterUuid}`,
+    resource_type: 'chapter',
+    resource_uuid: currentChapterUuid,
+    title: currentChapter?.uuid === currentChapterUuid
+      ? [currentChapter.chapter_code, currentChapter.title].filter(Boolean).join(' · ')
+      : '',
+    status: 'ready',
+  } : null
   useProjectRealtimeSync(projectUuid)
 
   useEffect(() => {
@@ -75,12 +93,12 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
         <section className="project-workbench__content" aria-label={t('projects.workspace')}>
           {children}
         </section>
-        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} /> : null}
+        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} /> : null}
       </div>
       {compact && !hideChat && overlayOpen ? (
         <div className="project-chat-overlay" id={chatOverlayId} role="dialog" aria-modal="true" aria-label={t('chat.project')}>
           <button className="project-chat-overlay__backdrop" type="button" aria-label={t('chat.close')} onClick={() => setOverlayOpen(false)} />
-          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} expanded onToggle={() => setOverlayOpen(false)} overlay /></div>
+          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} expanded onToggle={() => setOverlayOpen(false)} overlay newThreadReference={newThreadReference} /></div>
         </div>
       ) : null}
     </main>

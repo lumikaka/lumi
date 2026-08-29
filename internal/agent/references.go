@@ -44,9 +44,9 @@ func normalizeReferenceInputs(values []ReferenceInput) ([]ReferenceInput, error)
 		value.ResourceType = strings.ToLower(strings.TrimSpace(value.ResourceType))
 		value.ResourceUUID = strings.TrimSpace(value.ResourceUUID)
 		switch value.ResourceType {
-		case ReferenceTypeFile, ReferenceTypePremiseAsset, ReferenceTypeComicSection:
+		case ReferenceTypeFile, ReferenceTypePremiseAsset, ReferenceTypeChapter, ReferenceTypeComicSection:
 		default:
-			return nil, domainError(CodeReferenceInvalidType, "Reference 类型无效", "resource_type 只支持 file、premise_asset 或 comic_section。", nil)
+			return nil, domainError(CodeReferenceInvalidType, "Reference 类型无效", "resource_type 只支持 file、premise_asset、chapter 或 comic_section。", nil)
 		}
 		if !isUUIDv7(value.ResourceUUID) {
 			return nil, domainError(CodeReferenceInvalidUUID, "Reference UUID 无效", "resource_uuid 必须是 UUIDv7。", nil)
@@ -74,6 +74,8 @@ func (service *Service) resolveContextReferences(ctx context.Context, store *pro
 			resolved, err = resolveFileReference(ctx, store, projectID, input.ResourceUUID)
 		case ReferenceTypePremiseAsset:
 			resolved, err = resolvePremiseAssetReference(ctx, store, projectID, input.ResourceUUID)
+		case ReferenceTypeChapter:
+			resolved, err = resolveChapterReference(ctx, store, projectID, input.ResourceUUID)
 		case ReferenceTypeComicSection:
 			resolved, err = resolveComicSectionReference(ctx, store, projectID, input.ResourceUUID)
 		}
@@ -83,6 +85,52 @@ func (service *Service) resolveContextReferences(ctx context.Context, store *pro
 		result = append(result, resolved)
 	}
 	return result, nil
+}
+
+func resolveChapterReference(ctx context.Context, store *project.Store, projectID int64, resourceUUID string) (storedContextReference, error) {
+	var row struct {
+		ProjectID           int64
+		UUID                string
+		ChapterCode         string
+		VolumeNo            int
+		ChapterNo           int
+		SortOrder           int
+		Title               string
+		Revision            int64
+		DeletedAt           *time.Time
+		CurrentStoryUUID    string
+		CurrentStoryVersion int
+		CurrentStoryContent string
+		CurrentStoryFormat  string
+	}
+	err := store.DB().WithContext(ctx).Table("chapters AS chapters").
+		Select("chapters.project_id,chapters.uuid,chapters.chapter_code,chapters.volume_no,chapters.chapter_no,chapters.sort_order,chapters.title,chapters.revision,chapters.deleted_at,COALESCE(stories.uuid,'') AS current_story_uuid,COALESCE(stories.version_no,0) AS current_story_version,COALESCE(stories.content,'') AS current_story_content,COALESCE(stories.content_format,'') AS current_story_format").
+		Joins("LEFT JOIN chapter_stories AS stories ON stories.id=chapters.current_story_id").
+		Where("chapters.uuid=?", resourceUUID).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return storedContextReference{}, referenceNotFound(resourceUUID)
+	}
+	if err != nil {
+		return storedContextReference{}, err
+	}
+	if row.ProjectID != projectID {
+		return storedContextReference{}, domainError(CodeReferenceProject, "Reference 不属于当前项目", "不能跨项目引用章节。", nil)
+	}
+	if row.DeletedAt != nil {
+		return storedContextReference{}, referenceNotFound(resourceUUID)
+	}
+	snapshot := map[string]any{
+		"resource_type": ReferenceTypeChapter, "resource_uuid": row.UUID, "status": "available",
+		"chapter_code": row.ChapterCode, "volume_no": row.VolumeNo, "chapter_no": row.ChapterNo,
+		"sort_order": row.SortOrder, "title": row.Title, "revision": row.Revision,
+		"current_story_uuid": row.CurrentStoryUUID, "current_story_version": row.CurrentStoryVersion,
+		"current_story_content": row.CurrentStoryContent, "current_story_format": row.CurrentStoryFormat,
+	}
+	encoded, err := encodeReferenceSnapshot(snapshot, nil)
+	if err != nil {
+		return storedContextReference{}, err
+	}
+	return storedContextReference{ResourceType: ReferenceTypeChapter, ResourceUUID: row.UUID, SnapshotJSON: encoded}, nil
 }
 
 func resolveFileReference(ctx context.Context, store *project.Store, projectID int64, resourceUUID string) (storedContextReference, error) {
@@ -243,7 +291,7 @@ func encodeReferenceSnapshot(snapshot map[string]any, truncated []string) (strin
 	for _, field := range truncated {
 		truncatedSet[field] = true
 	}
-	for _, field := range []string{"summary", "description", "name", "original_filename", "title"} {
+	for _, field := range []string{"summary", "description", "current_story_content", "name", "original_filename", "title"} {
 		value, ok := snapshot[field].(string)
 		if !ok {
 			continue
@@ -256,7 +304,7 @@ func encodeReferenceSnapshot(snapshot map[string]any, truncated []string) (strin
 	}
 	for {
 		truncated = truncated[:0]
-		for _, field := range []string{"summary", "description", "tags", "name", "original_filename", "title"} {
+		for _, field := range []string{"summary", "description", "current_story_content", "tags", "name", "original_filename", "title"} {
 			if truncatedSet[field] {
 				truncated = append(truncated, field)
 			}
@@ -270,7 +318,7 @@ func encodeReferenceSnapshot(snapshot map[string]any, truncated []string) (strin
 			return string(encoded), nil
 		}
 		shrunk := false
-		for _, field := range []string{"summary", "description", "name", "original_filename", "title"} {
+		for _, field := range []string{"summary", "description", "current_story_content", "name", "original_filename", "title"} {
 			value, ok := snapshot[field].(string)
 			if !ok || value == "" {
 				continue

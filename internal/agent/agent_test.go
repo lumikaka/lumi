@@ -32,13 +32,14 @@ import (
 )
 
 type agentQueueFake struct {
-	mu       sync.Mutex
-	nextID   int64
-	jobs     []JobSpec
-	cancels  []string
-	tasks    map[string]DomainTask
-	retries  []string
-	requests []DomainTaskRequest
+	mu            sync.Mutex
+	nextID        int64
+	jobs          []JobSpec
+	cancels       []string
+	tasks         map[string]DomainTask
+	retries       []string
+	requests      []DomainTaskRequest
+	batchRequests []DomainTaskBatchRequest
 }
 
 func (queue *agentQueueFake) EnqueueAgentTx(_ context.Context, _ string, _ *sql.Tx, spec JobSpec) (int64, error) {
@@ -71,6 +72,29 @@ func (queue *agentQueueFake) StartDomainTask(_ context.Context, _ string, reques
 	}
 	queue.tasks[uuid] = task
 	return task, nil
+}
+
+func (queue *agentQueueFake) StartDomainTaskBatch(_ context.Context, _ string, request DomainTaskBatchRequest) (DomainTaskBatch, error) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	queue.batchRequests = append(queue.batchRequests, request)
+	result := DomainTaskBatch{
+		ChapterUUID: request.ChapterUUID, RequestedCount: len(request.ResourceUUIDs),
+		AcceptedCount: len(request.ResourceUUIDs), Tasks: make([]DomainTask, 0, len(request.ResourceUUIDs)),
+	}
+	if queue.tasks == nil {
+		queue.tasks = make(map[string]DomainTask)
+	}
+	for _, resourceUUID := range request.ResourceUUIDs {
+		uuid, err := newUUIDv7()
+		if err != nil {
+			return DomainTaskBatch{}, err
+		}
+		task := DomainTask{UUID: uuid, Kind: request.Kind, ResourceUUID: resourceUUID, Status: "queued"}
+		queue.tasks[uuid] = task
+		result.Tasks = append(result.Tasks, task)
+	}
+	return result, nil
 }
 
 func (queue *agentQueueFake) GetDomainTask(_ context.Context, _ string, _ string, taskUUID string) (DomainTask, error) {
@@ -507,6 +531,50 @@ func TestStoryboardReferenceThreadStaysBoundToOneComicSection(t *testing.T) {
 	missingThread := harness.createThread(t)
 	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, missingThread.UUID, CreateTurnInput{InputText: "越界引用", References: []ReferenceInput{{ResourceType: ReferenceTypeComicSection, ResourceUUID: missingUUID}}}); errorCode(err) != CodeReferenceNotFound {
 		t.Fatalf("missing storyboard section error=%v", err)
+	}
+}
+
+func TestChapterReferenceFreezesCurrentPublicStorySnapshot(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	content := strings.Repeat("月光邮差沿着章节正文前进。", 800)
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "月光来信", Content: content, ContentFormat: "md",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread := harness.createThread(t)
+	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{
+		InputText:  "请基于当前章节继续创作",
+		References: []ReferenceInput{{ResourceType: ReferenceTypeChapter, ResourceUUID: chapter.UUID}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := harness.service.ListItems(ctx, harness.project.UUID, thread.UUID, "", "", 20)
+	if err != nil || len(items.Items) != 1 || len(items.Items[0].References) != 1 {
+		t.Fatalf("chapter reference item=%+v err=%v", items.Items, err)
+	}
+	reference := items.Items[0].References[0]
+	if reference.ResourceType != ReferenceTypeChapter || reference.ResourceUUID != chapter.UUID || reference.ImageAvailable || len(reference.Snapshot) > MaxReferenceSnapshotBytes {
+		t.Fatalf("chapter reference=%+v snapshot_bytes=%d", reference, len(reference.Snapshot))
+	}
+	var snapshot struct {
+		ChapterCode         string   `json:"chapter_code"`
+		Title               string   `json:"title"`
+		CurrentStoryUUID    string   `json:"current_story_uuid"`
+		CurrentStoryContent string   `json:"current_story_content"`
+		TruncatedFields     []string `json:"truncated_fields"`
+	}
+	if err := json.Unmarshal(reference.Snapshot, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.ChapterCode != chapter.ChapterCode || snapshot.Title != chapter.Title || snapshot.CurrentStoryUUID != chapter.CurrentStory.UUID || len(snapshot.CurrentStoryContent) >= len(content) || !containsString(snapshot.TruncatedFields, "current_story_content") {
+		t.Fatalf("chapter snapshot=%+v", snapshot)
+	}
+	var chapterReferenceCount int64
+	if err := harness.store.DB().Table("chat_context_references").Where("resource_type=? AND resource_uuid=?", ReferenceTypeChapter, chapter.UUID).Count(&chapterReferenceCount).Error; err != nil || chapterReferenceCount != 1 {
+		t.Fatalf("stored chapter references=%d err=%v", chapterReferenceCount, err)
 	}
 }
 

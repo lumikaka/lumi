@@ -44,6 +44,7 @@ export const importSectionImage = (projectUuid, chapterUuid, sectionUuid, payloa
 export const listImageVariants = (projectUuid, chapterUuid, sectionUuid) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, '/image-variants'))
 export const selectImageVariant = (projectUuid, chapterUuid, sectionUuid, variantUuid, revision) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, `/image-variants/${encodeURIComponent(variantUuid)}/selections`), json('POST', { expected_revision: revision }))
 export const generateSectionImage = (projectUuid, chapterUuid, sectionUuid, payload) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, '/image-generations'), json('POST', payload))
+export const generateChapterImagesBatch = (projectUuid, chapterUuid, payload) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic-image-generation-batches'), json('POST', payload))
 export const listComicSnapshots = (projectUuid, chapterUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic-snapshots'))
 export const getComicSnapshot = (projectUuid, chapterUuid, snapshotUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, `/comic-snapshots/${encodeURIComponent(snapshotUuid)}`))
 export const restoreComicSnapshot = (projectUuid, chapterUuid, snapshotUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, `/comic-snapshots/${encodeURIComponent(snapshotUuid)}/restorations`), json('POST'))

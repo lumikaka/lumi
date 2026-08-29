@@ -81,6 +81,51 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 	}
 }
 
+func TestReviewedProjectAPIRouteNormalizesEmptyQueryBeforeDispatch(t *testing.T) {
+	projectUUID := mustAgentUUID(t)
+	chapterUUID := mustAgentUUID(t)
+	sectionUUID := mustAgentUUID(t)
+	queue := &agentQueueFake{}
+	dispatched := false
+	service := (&Service{queue: queue}).WithProjectAPIGateway([]ProjectAPIRouteSpec{
+		{Method: http.MethodPost, Path: "/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/image-generations"},
+	}, func(_ context.Context, _ ProjectAPIDispatchRequest) (ProjectAPIDispatchResponse, error) {
+		dispatched = true
+		return ProjectAPIDispatchResponse{}, nil
+	})
+	tc := toolContext{
+		ProjectUUID: projectUUID,
+		ToolMode:    ToolModeProjectAPI,
+		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
+		Turn:        turnRecord{UUID: mustAgentUUID(t)},
+		Run:         runRecord{UUID: mustAgentUUID(t)},
+	}
+	idempotencyKey := "agent-tool-v1:" + strings.Repeat("a", 64)
+	value, err := executeRequestAPITool(context.Background(), service, nil, tc, toolExecutionRecord{
+		UUID: mustAgentUUID(t), IdempotencyKey: idempotencyKey,
+	}, map[string]any{
+		"method": http.MethodPost,
+		"url": "/api/v1/projects/" + projectUUID + "/chapters/" + chapterUUID +
+			"/comic-sections/" + sectionUUID + "/image-generations",
+		"query":           map[string]any{},
+		"request_body":    map[string]any{"prompt": "重新生成第一页图片"},
+		"response_filter": ".data | {uuid,kind,resource_uuid,status,error_code,error_message}",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dispatched {
+		t.Fatal("reviewed route with an empty query was incorrectly sent to the HTTP dispatcher")
+	}
+	if len(queue.requests) != 1 || queue.requests[0].IdempotencyKey != idempotencyKey {
+		t.Fatalf("domain task request=%+v", queue.requests)
+	}
+	result, _ := value.(map[string]any)
+	if result["status"] != "queued" || result["resource_uuid"] != sectionUUID {
+		t.Fatalf("generation result=%+v", result)
+	}
+}
+
 func TestDiscoveredProjectAPIRoutesAreGroupedIntoDomainContracts(t *testing.T) {
 	tests := []struct {
 		path string

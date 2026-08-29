@@ -477,6 +477,24 @@ func TestPremiseAssetGuidesRouteBatchCreationThroughSettingWorkflow(t *testing.T
 	}
 }
 
+func TestComicImageGuideRequiresOneBatchRequestForMultipleSections(t *testing.T) {
+	guide, err := renderAgentDoc(agentDocBasePath + "/guides/生成导入与选择漫画图片.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"只允许调用一次 Section 列表接口",
+		"comic-image-generation-batches",
+		"禁止循环调用单图接口",
+		"禁止使用通用 `image_gen`",
+		"只表示图片任务已创建",
+	} {
+		if !strings.Contains(guide, required) {
+			t.Fatalf("comic image Guide missing batch rule %q: %s", required, guide)
+		}
+	}
+}
+
 func TestAgentAPIProjectorsAreComplete(t *testing.T) {
 	for _, route := range agentAPIRoutes() {
 		projector, ok := agentAPIProjectorByKey(route.Projector)

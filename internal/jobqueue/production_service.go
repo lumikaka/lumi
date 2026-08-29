@@ -2,6 +2,7 @@ package jobqueue
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -284,6 +285,117 @@ func normalizeProductionTags(values []string) []string {
 
 func (manager *Manager) CreateComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput) (ProductionTask, error) {
 	return manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, input, true)
+}
+
+func (manager *Manager) CreateComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput) (ComicImageGenerationBatch, error) {
+	return manager.createComicImageGenerationBatch(ctx, projectUUID, chapterUUID, input, true)
+}
+
+func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput, createVisibleWorkflow bool) (ComicImageGenerationBatch, error) {
+	result := ComicImageGenerationBatch{
+		ChapterUUID:    chapterUUID,
+		RequestedCount: len(input.SectionUUIDs),
+		Tasks:          make([]ComicImageGenerationBatchTask, 0, len(input.SectionUUIDs)),
+	}
+	batchKey := strings.TrimSpace(input.IdempotencyKey)
+	if batchKey == "" || len(batchKey) > 255 {
+		return result, taskError(CodeInvalidTask, "idempotency_key 无效", "必须提供 1-255 字符的幂等键。", nil)
+	}
+	if len(input.SectionUUIDs) == 0 || len(input.SectionUUIDs) > 48 {
+		return result, taskError(CodeInvalidTask, "批量图片目标无效", "section_uuids 必须包含 1-48 个 Section UUIDv7。", nil)
+	}
+
+	runtime, err := manager.runtimeFor(projectUUID)
+	if err != nil {
+		return result, err
+	}
+	service := production.NewService(runtime.store, manager.hub)
+	sections, err := service.ListSections(ctx, chapterUUID)
+	if err != nil {
+		return result, err
+	}
+	sectionsByUUID := make(map[string]production.ComicSection, len(sections))
+	for _, section := range sections {
+		sectionsByUUID[section.UUID] = section
+	}
+
+	seen := make(map[string]struct{}, len(input.SectionUUIDs))
+	keys := make([]string, 0, len(input.SectionUUIDs))
+	for _, sectionUUID := range input.SectionUUIDs {
+		if !isUUIDv7(sectionUUID) {
+			return result, taskError(CodeInvalidTask, "Section UUID 无效", "section_uuids 只能包含公开 UUIDv7。", nil)
+		}
+		if _, exists := seen[sectionUUID]; exists {
+			return result, taskError(CodeInvalidTask, "Section UUID 重复", "section_uuids 不得包含重复值。", nil)
+		}
+		seen[sectionUUID] = struct{}{}
+		section, exists := sectionsByUUID[sectionUUID]
+		if !exists {
+			return result, taskError(CodeInvalidTask, "Section 不属于目标章节", "所有 section_uuids 都必须引用目标章节中的 active Section。", nil)
+		}
+		if section.CurrentStoryboard == nil {
+			return result, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "所有目标 Section 都必须先创建或选择 storyboard 版本。", nil)
+		}
+		keys = append(keys, comicImageBatchTaskKey(batchKey, sectionUUID))
+	}
+
+	var existingRows []productionTaskRecord
+	if err := runtime.store.DB().WithContext(ctx).
+		Where("project_id=? AND kind=? AND idempotency_key IN ?", runtime.projectID, KindComicImageGeneration, keys).
+		Find(&existingRows).Error; err != nil {
+		return result, taskError(CodeTaskPersistenceFailed, "无法预检批量图片任务", "任务尚未创建。", err)
+	}
+	existingByKey := make(map[string]productionTaskRecord, len(existingRows))
+	for _, row := range existingRows {
+		existingByKey[row.IdempotencyKey] = row
+	}
+
+	var activeRows []productionTaskRecord
+	if err := runtime.store.DB().WithContext(ctx).
+		Where("project_id=? AND kind=? AND resource_uuid IN ? AND status IN ?", runtime.projectID, KindComicImageGeneration, input.SectionUUIDs, []string{StatusQueued, StatusRunning}).
+		Find(&activeRows).Error; err != nil {
+		return result, taskError(CodeTaskPersistenceFailed, "无法预检活动图片任务", "任务尚未创建。", err)
+	}
+	existingUUIDs := make(map[string]struct{}, len(existingRows))
+	for _, row := range existingRows {
+		existingUUIDs[row.UUID] = struct{}{}
+	}
+	for _, row := range activeRows {
+		if _, reusable := existingUUIDs[row.UUID]; !reusable {
+			return result, taskError(CodeTaskConflict, "Section 已有图片任务", "请等待任务 "+row.UUID+" 完成或取消后再创建批量任务。", nil)
+		}
+	}
+
+	for index, sectionUUID := range input.SectionUUIDs {
+		key := keys[index]
+		if existing, found := existingByKey[key]; found {
+			if existing.ResourceUUID != sectionUUID {
+				return result, taskError(CodeTaskPersistenceFailed, "批量图片幂等记录无效", "已有任务与目标 Section 不一致。", nil)
+			}
+			result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(existing.DTO()))
+			continue
+		}
+		task, createErr := manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{IdempotencyKey: key}, createVisibleWorkflow)
+		if createErr != nil {
+			result.AcceptedCount = len(result.Tasks)
+			return result, createErr
+		}
+		result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(task))
+	}
+	result.AcceptedCount = len(result.Tasks)
+	return result, nil
+}
+
+func comicImageBatchTaskKey(batchKey, sectionUUID string) string {
+	digest := sha256.Sum256([]byte(strings.TrimSpace(batchKey) + "\x00" + sectionUUID))
+	return fmt.Sprintf("comic-image-batch:%x", digest[:])
+}
+
+func comicImageGenerationBatchTask(task ProductionTask) ComicImageGenerationBatchTask {
+	return ComicImageGenerationBatchTask{
+		UUID: task.UUID, Kind: task.Kind, ResourceUUID: task.ResourceUUID, Status: task.Status,
+		ErrorCode: task.ErrorCode, ErrorMessage: task.ErrorMessage,
+	}
 }
 
 func (manager *Manager) createComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput, createVisibleWorkflow bool) (ProductionTask, error) {

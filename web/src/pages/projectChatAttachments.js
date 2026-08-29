@@ -56,3 +56,14 @@ export function appendProjectChatReference(references, reference) {
   if (references.filter((item) => item.status !== 'error').length >= MAX_PROJECT_CHAT_REFERENCES) return references
   return [...references, reference]
 }
+
+export function projectChapterUuidFromPath(pathname, projectUuid) {
+  const segments = String(pathname || '').split('/').filter(Boolean)
+  if (segments.length < 4 || segments[0] !== 'projects' || segments[2] !== 'chapters') return ''
+  try {
+    if (decodeURIComponent(segments[1]) !== projectUuid) return ''
+    return decodeURIComponent(segments[3])
+  } catch {
+    return ''
+  }
+}

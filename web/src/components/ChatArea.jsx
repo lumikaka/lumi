@@ -839,14 +839,14 @@ function NewThreadDraft({ projectUuid, draft, pending, error, overlay, reference
   )
 }
 
-export default function ChatArea({ projectUuid, expanded: controlledExpanded, onToggle, overlay = false }) {
+export default function ChatArea({ projectUuid, expanded: controlledExpanded, onToggle, overlay = false, newThreadReference = null }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedReferenceType = searchParams.get('chat_reference_type') || ''
   const requestedReferenceUuid = searchParams.get('chat_reference_uuid') || ''
   const requestedReferenceTitle = searchParams.get('chat_reference_title') || ''
-  const requestedReference = ['premise_asset', 'comic_section', 'file'].includes(requestedReferenceType) && requestedReferenceUuid
+  const requestedReference = ['premise_asset', 'chapter', 'comic_section', 'file'].includes(requestedReferenceType) && requestedReferenceUuid
     ? { localId: `${requestedReferenceType}:${requestedReferenceUuid}`, resource_type: requestedReferenceType, resource_uuid: requestedReferenceUuid, title: requestedReferenceTitle, status: 'ready' }
     : null
   const requestedNewThread = searchParams.get('chat_new') === '1' || Boolean(requestedReference)
@@ -891,6 +891,11 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
       setReferences((current) => appendProjectChatReference(current, requestedReference))
     }
   }, [requestedReferenceType, requestedReferenceUuid, requestedReferenceTitle, selectedThreadUuid])
+
+  useEffect(() => {
+    if (!newThreadReference?.resource_uuid || selectedThreadUuid || !showCreate || searchParams.get('chat_new') !== '1') return
+    setReferences((current) => appendProjectChatReference(current, newThreadReference))
+  }, [newThreadReference?.resource_type, newThreadReference?.resource_uuid, newThreadReference?.title, selectedThreadUuid, showCreate])
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
@@ -1173,7 +1178,10 @@ export default function ChatArea({ projectUuid, expanded: controlledExpanded, on
     setSelectedThreadUuid('')
     setShowCreate(true)
     setInputText('')
-    clearReferences()
+    setReferences((current) => {
+      releaseAttachmentPreviews(current)
+      return newThreadReference ? [newThreadReference] : []
+    })
     setError(null)
     const next = new URLSearchParams(searchParams)
     next.delete('chat_thread_uuid')

@@ -1,0 +1,4 @@
+interface:
+  display_name: "排查 Lumi 对话错误"
+  short_description: "通过 Chat Thread UUID 定位项目数据库并汇总日志"
+  default_prompt: "Use $diagnose-chat-thread to locate and diagnose the Lumi error for chat_thread_uuid={chat_thread_uuid}."

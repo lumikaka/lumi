@@ -381,6 +381,9 @@ func requestQueryArg(args map[string]any) (map[string]any, bool, error) {
 	if !ok || query == nil {
 		return nil, true, domainError(CodeToolValidation, "query 不是 JSON Object", "query 必须是注册 Route 接受的 JSON Object。", nil)
 	}
+	if len(query) == 0 {
+		return nil, false, nil
+	}
 	encoded, _ := json.Marshal(query)
 	if len(encoded) > 16<<10 {
 		return nil, true, domainError(CodeToolValidation, "query 过大", "query 必须保持在 16 KiB 以内。", nil)

@@ -156,6 +156,26 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 	}
 }
 
+func (manager *Manager) StartDomainTaskBatch(ctx context.Context, projectUUID string, request agent.DomainTaskBatchRequest) (agent.DomainTaskBatch, error) {
+	if request.Kind != KindComicImageGeneration {
+		return agent.DomainTaskBatch{}, taskError(CodeInvalidTask, "Domain task batch 不在 allowlist", "Agent 只能批量启动已注册的图片生成任务。", nil)
+	}
+	batch, err := manager.createComicImageGenerationBatch(ctx, projectUUID, request.ChapterUUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: request.ResourceUUIDs, IdempotencyKey: request.IdempotencyKey,
+	}, false)
+	result := agent.DomainTaskBatch{
+		ChapterUUID: batch.ChapterUUID, RequestedCount: batch.RequestedCount,
+		AcceptedCount: batch.AcceptedCount, Tasks: make([]agent.DomainTask, 0, len(batch.Tasks)),
+	}
+	for _, task := range batch.Tasks {
+		result.Tasks = append(result.Tasks, agent.DomainTask{
+			UUID: task.UUID, Kind: task.Kind, ResourceUUID: task.ResourceUUID, Status: task.Status,
+			ErrorCode: task.ErrorCode, ErrorMessage: task.ErrorMessage,
+		})
+	}
+	return result, err
+}
+
 func (manager *Manager) ListDomainTasks(ctx context.Context, projectUUID, domain, status string, limit int) ([]agent.DomainTask, error) {
 	result := []agent.DomainTask{}
 	switch domain {

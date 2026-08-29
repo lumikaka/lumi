@@ -652,6 +652,17 @@ func (handler *ProductionHandler) GenerateSectionImage(c echo.Context) error {
 	}
 	return Success(c, http.StatusCreated, task)
 }
+func (handler *ProductionHandler) GenerateChapterImagesBatch(c echo.Context) error {
+	var request jobqueue.CreateComicImageGenerationBatchInput
+	if err := decodeJSONLimit(c, &request, 64<<10); err != nil {
+		return err
+	}
+	batch, err := handler.tasks.CreateComicImageGenerationBatch(c.Request().Context(), c.Param("project_uuid"), c.Param("chapter_uuid"), request)
+	if err != nil {
+		return productionAPIError(err)
+	}
+	return Success(c, http.StatusCreated, batch)
+}
 func (handler *ProductionHandler) ListSnapshots(c echo.Context) error {
 	var items []production.ChapterSnapshot
 	if err := handler.withService(c, func(service *production.Service) error {

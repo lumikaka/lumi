@@ -35,6 +35,9 @@ func (*httpAgentQueue) CancelAgentWork(string, string)                      {}
 func (*httpAgentQueue) StartDomainTask(context.Context, string, agent.DomainTaskRequest) (agent.DomainTask, error) {
 	return agent.DomainTask{}, nil
 }
+func (*httpAgentQueue) StartDomainTaskBatch(context.Context, string, agent.DomainTaskBatchRequest) (agent.DomainTaskBatch, error) {
+	return agent.DomainTaskBatch{}, nil
+}
 func (*httpAgentQueue) GetDomainTask(context.Context, string, string, string) (agent.DomainTask, error) {
 	return agent.DomainTask{}, nil
 }

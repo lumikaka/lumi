@@ -21,7 +21,7 @@ Thread 以 `thread_type=conversation|workflow` 区分普通对话与公开 UI �
 
 ### Reference
 
-Reference 是用户对当前输入所需项目资源的显式引用，首版支持 `file`、`premise_asset` 和 `comic_section`。服务在接受输入时校验项目边界并冻结紧凑快照；后续 Turn 不自动继承，历史资源发生删除或修改也不重写已有快照。
+Reference 是用户对当前输入所需项目资源的显式引用，支持 `file`、`premise_asset`、`chapter` 和 `comic_section`。服务在接受输入时校验项目边界并冻结紧凑快照；后续 Turn 不自动继承，历史资源发生删除或修改也不重写已有快照。Chapter 工作台中的新会话会预选当前 Chapter，但用户可在发送前移除。
 
 ### 受控交互
 
@@ -42,4 +42,4 @@ Agent 的工具调用、用户选择题和图片引用均先写入持久记录�
 | AI 运行时 | 创建 Thread/Run 时冻结模型；调用明细统一进入 `llm_logs`。 |
 | 工作流 | `direct_ui` Workflow 使用独立 `workflow` Thread；`chat_tool` Workflow 复用当前 `conversation` Thread，并以持久 await 暂停/恢复父 Run。 |
 | 文件 | 普通上传图片作为 `file` Reference；实际上传、内容服务和冻结图片引用保护由 `files` 管理。 |
-| Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |
+| Chapter / Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |

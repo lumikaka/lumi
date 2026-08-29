@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createComicExport, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, getComicExportReadiness, getComicSnapshot, getProductionTask, listComicExports, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, selectImageVariant, updatePremiseSource } from './production.js'
+import { createComicExport, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, getComicExportReadiness, getComicSnapshot, getProductionTask, listComicExports, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, selectImageVariant, updatePremiseSource } from './production.js'
 
 test('production API uses UUID resources, single-resource mutations, and snake_case bodies', async () => {
   const originalFetch = global.fetch
@@ -16,6 +16,7 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
     await reorderComicSections('project', 'chapter', ['section-b', 'section-a'])
     await createStoryboard('project', 'chapter', 'section-a', { content_md: 'frame', source_type: 'manual', expected_revision: 2 })
     await selectImageVariant('project', 'chapter', 'section-a', 'variant-a', 3)
+    await generateChapterImagesBatch('project', 'chapter', { section_uuids: ['section-a', 'section-b'], idempotency_key: 'batch-1' })
     await getComicExportReadiness('project', { scope: 'chapter', chapterUuid: 'chapter' })
     await getComicSnapshot('project', 'chapter', 'snapshot / one')
     await createComicExport('project', { scope: 'chapter', chapter_uuid: 'chapter', format: 'pdf', allow_missing_images: true, idempotency_key: 'export-1' })
@@ -33,6 +34,7 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
       '/api/v1/projects/project/chapters/chapter/comic-section-order',
       '/api/v1/projects/project/chapters/chapter/comic-sections/section-a/storyboard-variants',
       '/api/v1/projects/project/chapters/chapter/comic-sections/section-a/image-variants/variant-a/selections',
+      '/api/v1/projects/project/chapters/chapter/comic-image-generation-batches',
       '/api/v1/projects/project/comic-exports/readiness?scope=chapter&chapter_uuid=chapter',
       '/api/v1/projects/project/chapters/chapter/comic-snapshots/snapshot%20%2F%20one',
       '/api/v1/projects/project/comic-exports',
@@ -49,7 +51,9 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
     assert.equal(calls[1].options.method, 'PATCH')
     assert.deepEqual(JSON.parse(calls[2].options.body), { section_uuids: ['section-b', 'section-a'] })
     assert.equal(JSON.parse(calls[4].options.body).expected_revision, 3)
-    assert.equal(JSON.parse(calls[7].options.body).allow_missing_images, true)
-    assert.equal(JSON.parse(calls[7].options.body).format, 'pdf')
+    assert.deepEqual(JSON.parse(calls[5].options.body), { section_uuids: ['section-a', 'section-b'], idempotency_key: 'batch-1' })
+    assert.equal(calls[5].options.method, 'POST')
+    assert.equal(JSON.parse(calls[8].options.body).allow_missing_images, true)
+    assert.equal(JSON.parse(calls[8].options.body).format, 'pdf')
   } finally { global.fetch = originalFetch }
 })

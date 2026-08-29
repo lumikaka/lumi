@@ -14,7 +14,8 @@ projects ──< chat_threads
                  └──< agent_context_summaries
 
 chat_context_references ──> files / premise_assets / comic_sections
-                        └──> files（冻结 image_file_id）
+                        ├──> files（冻结 image_file_id）
+                        └── chapter（仅 resource_uuid + snapshot_json）
 ```
 
 所有内部关联使用 bigint `id`；Thread、Turn、Run、Item、Event、Follow-up、用户输入和 File 引用对外只使用 UUIDv7。
@@ -48,10 +49,10 @@ chat_context_references ──> files / premise_assets / comic_sections
 - `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键和 JOIN
 - `chat_item_id` / `follow_up_id` — 可空 INTEGER FK，必须且只能设置一个 owner；owner 删除时级联
 - `position` — INTEGER NOT NULL，owner 内 `1–16`，保持用户输入顺序
-- `resource_type` — TEXT NOT NULL，`file|premise_asset|comic_section`
+- `resource_type` — TEXT NOT NULL，`file|premise_asset|chapter|comic_section`
 - `resource_uuid` — TEXT NOT NULL，冻结的公开资源 UUIDv7
 - `snapshot_json` — TEXT NOT NULL，不超过 8 KiB 的合法紧凑 JSON；包含 `truncated_fields`
-- `file_id` / `premise_asset_id` / `comic_section_id` — 与类型匹配的可空内部 FK；目标永久删除后可置空
+- `file_id` / `premise_asset_id` / `comic_section_id` — 与对应类型匹配的可空内部 FK；Chapter Reference 不保存内部 FK，仅以 `resource_uuid` 和冻结快照表达
 - `image_file_id` — 可空 INTEGER FK → `files.id`，Reference 接受时冻结的图片 File；删除受限
 - `created_at` — DATETIME NOT NULL
 
@@ -59,7 +60,7 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 - `(chat_item_id, position)` / `(follow_up_id, position)` — owner 内唯一顺序
 - `(chat_item_id, resource_type, resource_uuid)` / `(follow_up_id, resource_type, resource_uuid)` — owner 内资源去重
-- 四个目标 FK 字段均有反向查询索引，用于生命周期检查和 GC
+- 四个目标 FK 字段（含 `image_file_id`）均有反向查询索引，用于生命周期检查和 GC
 
 ## 数据生命周期
 

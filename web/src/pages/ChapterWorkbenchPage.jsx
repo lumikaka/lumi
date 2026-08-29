@@ -28,6 +28,7 @@ import {
   createComicSection,
   createStoryboard,
   deleteComicSection,
+  generateChapterImagesBatch,
   generateSectionImage,
   getComicSnapshot,
   getComicState,
@@ -392,13 +393,11 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     onError: setError,
   })
   const batchGenerate = useMutation({
-    mutationFn: async () => {
-      const targets = sections.filter((section) => checkedSections.has(section.uuid) && section.current_storyboard)
-      for (const section of targets) {
-        await generateSectionImage(projectUuid, chapterUuid, section.uuid, { prompt: section.current_storyboard.content_md || section.description_md || '', parameters: {}, idempotency_key: newKey('comic-image-batch') })
-      }
-    },
-    onSuccess: () => { refreshTasks(); setMultiSelect(false); setCheckedSections(new Set()); setError(null) },
+    mutationFn: () => generateChapterImagesBatch(projectUuid, chapterUuid, {
+      section_uuids: sections.filter((section) => checkedSections.has(section.uuid) && section.current_storyboard).map((section) => section.uuid),
+      idempotency_key: newKey('comic-image-batch'),
+    }),
+    onSuccess: () => { refreshTasks(); refreshComic(); setMultiSelect(false); setCheckedSections(new Set()); setError(null) },
     onError: setError,
   })
   const imageSelect = useMutation({

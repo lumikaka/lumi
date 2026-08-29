@@ -136,6 +136,7 @@ type Queue interface {
 	CancelAgentJob(context.Context, string, int64) error
 	CancelAgentWork(string, string)
 	StartDomainTask(context.Context, string, DomainTaskRequest) (DomainTask, error)
+	StartDomainTaskBatch(context.Context, string, DomainTaskBatchRequest) (DomainTaskBatch, error)
 	GetDomainTask(context.Context, string, string, string) (DomainTask, error)
 	ListDomainTasks(context.Context, string, string, string, int) ([]DomainTask, error)
 	ListDomainTaskEvents(context.Context, string, string, string, int64, int64, int) ([]DomainTaskEvent, CursorPagination, error)
@@ -179,6 +180,14 @@ type DomainTaskRequest struct {
 	Invocation            DomainInvocationContext
 }
 
+type DomainTaskBatchRequest struct {
+	Kind           string
+	ResourceUUIDs  []string
+	ChapterUUID    string
+	IdempotencyKey string
+	Invocation     DomainInvocationContext
+}
+
 type DomainTask struct {
 	UUID         string `json:"uuid"`
 	Kind         string `json:"kind"`
@@ -186,6 +195,13 @@ type DomainTask struct {
 	Status       string `json:"status"`
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+type DomainTaskBatch struct {
+	ChapterUUID    string       `json:"chapter_uuid"`
+	RequestedCount int          `json:"requested_count"`
+	AcceptedCount  int          `json:"accepted_count"`
+	Tasks          []DomainTask `json:"tasks"`
 }
 
 type DomainTaskEvent struct {
@@ -269,6 +285,7 @@ type Item struct {
 const (
 	ReferenceTypeFile         = "file"
 	ReferenceTypePremiseAsset = "premise_asset"
+	ReferenceTypeChapter      = "chapter"
 	ReferenceTypeComicSection = "comic_section"
 	MaxContextReferences      = 16
 	MaxReferenceSnapshotBytes = 8 << 10

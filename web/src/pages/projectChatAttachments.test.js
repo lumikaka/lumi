@@ -5,6 +5,7 @@ import {
   MAX_PROJECT_CHAT_REFERENCES,
   appendProjectChatReference,
   consumeProjectChatReferenceQuery,
+  projectChapterUuidFromPath,
   readyProjectChatReferences,
   referenceKey,
   removeProjectChatAttachment,
@@ -56,4 +57,13 @@ test('domain References deduplicate by type and UUID while preserving order', ()
   const references = appendProjectChatReference(appendProjectChatReference([], asset), section)
   assert.deepEqual(references.map(referenceKey), ['premise_asset:asset-one', 'comic_section:section-one'])
   assert.equal(appendProjectChatReference(references, asset), references)
+})
+
+test('chapter workbench paths expose the current public Chapter UUID to ChatArea', () => {
+  const projectUuid = '01a03689-98c6-714c-a753-993ac660a929'
+  const chapterUuid = '01a0414e-e3c2-7301-8007-e7f124c57a47'
+  assert.equal(projectChapterUuidFromPath(`/projects/${projectUuid}/chapters/${chapterUuid}`, projectUuid), chapterUuid)
+  assert.equal(projectChapterUuidFromPath(`/projects/${projectUuid}/chapters/${chapterUuid}/preview`, projectUuid), chapterUuid)
+  assert.equal(projectChapterUuidFromPath(`/projects/${projectUuid}/premise`, projectUuid), '')
+  assert.equal(projectChapterUuidFromPath(`/projects/another/chapters/${chapterUuid}`, projectUuid), '')
 })

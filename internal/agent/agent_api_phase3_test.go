@@ -24,8 +24,8 @@ func TestPhase3RouteContractsAreCompleteAndSecure(t *testing.T) {
 		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
 	}
 	routes := phase3AgentAPIRoutes()
-	if len(routes) != 55 || len(agentAPIRoutes()) != 74 {
-		t.Fatalf("phase3 routes=%d total=%d want=55/74", len(routes), len(agentAPIRoutes()))
+	if len(routes) != 56 || len(agentAPIRoutes()) != 75 {
+		t.Fatalf("phase3 routes=%d total=%d want=56/75", len(routes), len(agentAPIRoutes()))
 	}
 	seenIDs := map[string]bool{}
 	seenMethodPaths := map[string]bool{}
@@ -334,6 +334,10 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	sectionUpload := createUpload("comic_section_image", "section.png")
 	call(RouteComicSectionImageImport, sectionParams, nil, map[string]any{"upload_uuid": sectionUpload.UUID, "expected_revision": revision(section.Revision)})
 	section, _ = productionService.GetSection(ctx, chapter.UUID, section.UUID)
+	call(RouteComicImageGenerationBatchCreate, chapterParams, nil, map[string]any{"section_uuids": []any{section.UUID}})
+	if len(harness.queue.batchRequests) != 1 || harness.queue.batchRequests[0].IdempotencyKey != "phase3-success:"+RouteComicImageGenerationBatchCreate || len(harness.queue.batchRequests[0].ResourceUUIDs) != 1 || harness.queue.batchRequests[0].ResourceUUIDs[0] != section.UUID {
+		t.Fatalf("batch request did not use Tool Execution idempotency or safe targets: %+v", harness.queue.batchRequests)
+	}
 	call(RouteComicImageVariantList, sectionParams, nil, nil)
 	imageVariants, err := productionService.ListImageVariants(ctx, chapter.UUID, section.UUID)
 	if err != nil || len(imageVariants) == 0 {

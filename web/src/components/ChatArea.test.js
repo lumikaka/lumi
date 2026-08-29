@@ -16,6 +16,16 @@ test('new thread opens a composer draft and persists the first message without a
   assert.doesNotMatch(source, /requestedScope|subject_uuid|chat_scene|chat_scope/)
 })
 
+test('new threads opened from a chapter route start with that Chapter Reference', () => {
+  const layoutSource = readFileSync(new URL('./ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
+  assert.match(layoutSource, /projectChapterUuidFromPath\(location\.pathname, projectUuid\)/)
+  assert.match(layoutSource, /resource_type: 'chapter'/)
+  assert.match(layoutSource, /<ChatArea[\s\S]*?newThreadReference=\{newThreadReference\}/)
+  assert.match(source, /const startNewThread[\s\S]*?return newThreadReference \? \[newThreadReference\] : \[\]/)
+  assert.match(source, /appendProjectChatReference\(current, newThreadReference\)/)
+  assert.match(source, /\['premise_asset', 'chapter', 'comic_section', 'file'\]/)
+})
+
 test('entry Reference parameters are consumed once so cancellation survives remounts and explicit re-entry works', () => {
   assert.match(source, /setSearchParams\(consumeProjectChatReferenceQuery\(searchParams\), \{ replace: true \}\)/)
   assert.doesNotMatch(source, /seededReferenceKeyRef/)

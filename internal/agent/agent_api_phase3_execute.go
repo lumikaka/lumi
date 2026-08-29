@@ -151,6 +151,16 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 	case RouteComicSectionImageImport:
 		value, err := productionService.ImportSectionImage(ctx, chapterUUID, sectionUUID, stringArg(args, "upload_uuid"), intArg(args, "expected_revision"))
 		return value, true, err
+	case RouteComicImageGenerationBatchCreate:
+		key := strings.TrimSpace(execution.IdempotencyKey)
+		if key == "" {
+			key = execution.UUID
+		}
+		value, err := service.queue.StartDomainTaskBatch(ctx, tc.ProjectUUID, DomainTaskBatchRequest{
+			Kind: "comic_image_generation", ResourceUUIDs: stringSliceArg(args, "section_uuids"),
+			ChapterUUID: chapterUUID, IdempotencyKey: key, Invocation: chatToolInvocationContext(tc, execution),
+		})
+		return value, true, err
 	case RouteComicImageVariantList:
 		items, err := productionService.ListImageVariants(ctx, chapterUUID, sectionUUID)
 		return map[string]any{"items": items}, true, err

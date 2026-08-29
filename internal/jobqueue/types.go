@@ -305,6 +305,27 @@ type CreateProductionGenerationInput struct {
 	IdempotencyKey        string               `json:"idempotency_key"`
 }
 
+type CreateComicImageGenerationBatchInput struct {
+	SectionUUIDs   []string `json:"section_uuids"`
+	IdempotencyKey string   `json:"idempotency_key"`
+}
+
+type ComicImageGenerationBatchTask struct {
+	UUID         string `json:"uuid"`
+	Kind         string `json:"kind"`
+	ResourceUUID string `json:"resource_uuid"`
+	Status       string `json:"status"`
+	ErrorCode    string `json:"error_code,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+type ComicImageGenerationBatch struct {
+	ChapterUUID    string                          `json:"chapter_uuid"`
+	RequestedCount int                             `json:"requested_count"`
+	AcceptedCount  int                             `json:"accepted_count"`
+	Tasks          []ComicImageGenerationBatchTask `json:"tasks"`
+}
+
 type CreateExportInput struct {
 	Scope              string `json:"scope"`
 	ChapterUUID        string `json:"chapter_uuid,omitempty"`

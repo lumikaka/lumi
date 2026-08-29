@@ -600,19 +600,48 @@ func TestComicImageBatchCreatesIndependentVisibleWorkflows(t *testing.T) {
 		{Title: "Batch one", StoryboardMD: "## Section Core Plot Goal\nCreate batch image one.\n\n## Key Visual Moments\n**Moment 1: One**"},
 		{Title: "Batch two", StoryboardMD: "## Section Core Plot Goal\nCreate batch image two.\n\n## Key Visual Moments\n**Moment 1: Two**"},
 	}
-	taskUUIDs := make([]string, 0, len(sectionInputs))
-	for index, sectionInput := range sectionInputs {
+	sections := make([]production.ComicSection, 0, len(sectionInputs))
+	for _, sectionInput := range sectionInputs {
 		section, err := service.CreateSection(ctx, chapter.UUID, sectionInput)
 		if err != nil {
 			t.Fatal(err)
 		}
-		task, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, section.UUID, CreateProductionGenerationInput{
-			ProviderUUID: harness.provider.UUID, IdempotencyKey: fmt.Sprintf("comic-visible-batch-%d", index+1),
-		})
-		if err != nil {
+		sections = append(sections, section)
+	}
+	requested := []string{sections[1].UUID, sections[0].UUID}
+	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: requested, IdempotencyKey: "comic-visible-batch",
+	})
+	if err != nil || batch.ChapterUUID != chapter.UUID || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
+		t.Fatalf("batch=%+v err=%v", batch, err)
+	}
+	taskUUIDs := make([]string, 0, len(batch.Tasks))
+	expectedStoryboards := map[string]string{
+		sections[0].UUID: sections[0].CurrentStoryboard.ContentMD,
+		sections[1].UUID: sections[1].CurrentStoryboard.ContentMD,
+	}
+	for index, item := range batch.Tasks {
+		if item.ResourceUUID != requested[index] || item.Kind != KindComicImageGeneration || item.UUID == "" {
+			t.Fatalf("batch task order[%d]=%+v requested=%v", index, item, requested)
+		}
+		task, getErr := harness.queue.GetProductionTask(ctx, harness.project.UUID, item.UUID)
+		if getErr != nil {
+			t.Fatal(getErr)
+		}
+		var snapshot production.GenerationSnapshot
+		if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
 			t.Fatal(err)
 		}
-		taskUUIDs = append(taskUUIDs, task.UUID)
+		if snapshot.Prompt != expectedStoryboards[item.ResourceUUID] || snapshot.StoryboardMD != expectedStoryboards[item.ResourceUUID] || task.IdempotencyKey != comicImageBatchTaskKey("comic-visible-batch", item.ResourceUUID) {
+			t.Fatalf("task=%+v snapshot=%+v", task, snapshot)
+		}
+		taskUUIDs = append(taskUUIDs, item.UUID)
+	}
+	replayed, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: requested, IdempotencyKey: "comic-visible-batch",
+	})
+	if err != nil || len(replayed.Tasks) != 2 || replayed.Tasks[0].UUID != taskUUIDs[0] || replayed.Tasks[1].UUID != taskUUIDs[1] {
+		t.Fatalf("replayed=%+v err=%v", replayed, err)
 	}
 	for _, taskUUID := range taskUUIDs {
 		waitProductionStatus(t, harness.queue, harness.project.UUID, taskUUID, StatusCompleted)
@@ -628,6 +657,142 @@ func TestComicImageBatchCreatesIndependentVisibleWorkflows(t *testing.T) {
 	if counts.Workflows != 2 || counts.Threads != 2 || counts.Tasks != 2 || taskUUIDs[0] == taskUUIDs[1] {
 		t.Fatalf("batch task UUIDs=%v counts=%+v", taskUUIDs, counts)
 	}
+}
+
+func TestAgentComicImageBatchKeepsTasksInlineWithoutVisibleWorkflows(t *testing.T) {
+	harness := newQueueHarness(t)
+	harness.queue.WithImageClient(successfulImageProvider{content: productionPNG(t)})
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch35")
+	sectionUUIDs := make([]string, 0, 2)
+	for _, title := range []string{"Inline one", "Inline two"} {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + " storyboard"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+	}
+	batch, err := harness.queue.StartDomainTaskBatch(ctx, harness.project.UUID, agent.DomainTaskBatchRequest{
+		Kind: KindComicImageGeneration, ResourceUUIDs: sectionUUIDs, ChapterUUID: chapter.UUID, IdempotencyKey: "agent-inline-comic-batch",
+	})
+	if err != nil || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
+		t.Fatalf("batch=%+v err=%v", batch, err)
+	}
+	var workflows, threads int64
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		if err := store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicSectionImage).Count(&workflows).Error; err != nil {
+			return err
+		}
+		return store.DB().Table("chat_threads").Where("thread_type=?", agent.ThreadTypeWorkflow).Count(&threads).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if workflows != 0 || threads != 0 {
+		t.Fatalf("workflows=%d threads=%d", workflows, threads)
+	}
+	for index, task := range batch.Tasks {
+		if task.ResourceUUID != sectionUUIDs[index] || task.Kind != KindComicImageGeneration {
+			t.Fatalf("task[%d]=%+v", index, task)
+		}
+		waitProductionStatus(t, harness.queue, harness.project.UUID, task.UUID, StatusCompleted)
+	}
+}
+
+func TestComicImageBatchPreflightRejectsEveryTargetBeforeCreatingTasks(t *testing.T) {
+	harness := newQueueHarness(t)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch33")
+	otherChapter := harness.createChapter(t, "vol01.ch34")
+	valid, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Valid", StoryboardMD: "Valid storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingStoryboard, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Missing storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := service.CreateSection(ctx, otherChapter.UUID, production.CreateSectionInput{Title: "Foreign", StoryboardMD: "Foreign storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overLimit := make([]string, 49)
+	for index := range overLimit {
+		overLimit[index] = valid.UUID
+	}
+	tests := []struct {
+		name         string
+		sectionUUIDs []string
+		key          string
+	}{
+		{name: "empty", sectionUUIDs: nil, key: "batch-empty"},
+		{name: "over limit", sectionUUIDs: overLimit, key: "batch-over-limit"},
+		{name: "duplicate", sectionUUIDs: []string{valid.UUID, valid.UUID}, key: "batch-duplicate"},
+		{name: "invalid uuid", sectionUUIDs: []string{valid.UUID, "not-a-uuid"}, key: "batch-invalid-uuid"},
+		{name: "foreign section", sectionUUIDs: []string{valid.UUID, foreign.UUID}, key: "batch-foreign"},
+		{name: "missing storyboard", sectionUUIDs: []string{valid.UUID, missingStoryboard.UUID}, key: "batch-missing-storyboard"},
+		{name: "missing idempotency key", sectionUUIDs: []string{valid.UUID}, key: ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{SectionUUIDs: test.sectionUUIDs, IdempotencyKey: test.key})
+			var taskErr *Error
+			if !errors.As(err, &taskErr) || taskErr.Code != CodeInvalidTask {
+				t.Fatalf("error=%v", err)
+			}
+			var count int64
+			if err := harness.runtime(t).store.DB().Table("production_task_runs").Where("kind=?", KindComicImageGeneration).Count(&count).Error; err != nil || count != 0 {
+				t.Fatalf("tasks=%d err=%v", count, err)
+			}
+		})
+	}
+
+	active, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Active", StoryboardMD: "Active storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := blockingImageProvider{started: make(chan struct{})}
+	harness.queue.WithImageClient(provider)
+	activeTask, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, active.UUID, CreateProductionGenerationInput{IdempotencyKey: "active-single-image"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-provider.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("active image task did not start")
+	}
+	_, err = harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: []string{valid.UUID, active.UUID}, IdempotencyKey: "batch-active-conflict",
+	})
+	var taskErr *Error
+	if !errors.As(err, &taskErr) || taskErr.Code != CodeTaskConflict {
+		t.Fatalf("error=%v", err)
+	}
+	var total, validDerived int64
+	if err := harness.runtime(t).store.DB().Table("production_task_runs").Where("kind=?", KindComicImageGeneration).Count(&total).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.runtime(t).store.DB().Table("production_task_runs").Where("idempotency_key=?", comicImageBatchTaskKey("batch-active-conflict", valid.UUID)).Count(&validDerived).Error; err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 || validDerived != 0 || activeTask.UUID == "" {
+		t.Fatalf("total=%d valid_derived=%d active=%+v", total, validDerived, activeTask)
+	}
+	_, _ = harness.queue.CancelProductionTask(ctx, harness.project.UUID, activeTask.UUID)
 }
 
 func TestComicImageWorkflowRetryUsesProductionTaskInsteadOfAgentJob(t *testing.T) {

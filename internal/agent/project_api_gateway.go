@@ -169,6 +169,7 @@ func projectAPIDocPath(path string) string {
 	case strings.Contains(suffix, "/storyboard-variants"):
 		return storyboardDocPath
 	case strings.Contains(suffix, "/image-generations"),
+		strings.Contains(suffix, "/comic-image-generation-batches"),
 		strings.Contains(suffix, "/setting-generations"),
 		strings.Contains(suffix, "/breakdowns"),
 		strings.HasSuffix(suffix, "/generations"),

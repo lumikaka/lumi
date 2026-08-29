@@ -14,13 +14,14 @@ function snapshotOf(reference) {
 
 export function referenceTitle(reference, fallback = '') {
   const snapshot = snapshotOf(reference)
-  return reference?.title || snapshot.title || snapshot.name || snapshot.original_filename || fallback || reference?.resource_uuid || ''
+  return reference?.title || snapshot.title || snapshot.chapter_code || snapshot.name || snapshot.original_filename || fallback || reference?.resource_uuid || ''
 }
 
 function referenceTypeLabel(reference, t) {
   const key = {
     file: 'chat.reference.type.file',
     premise_asset: 'chat.reference.type.premise_asset',
+    chapter: 'chat.reference.type.chapter',
     comic_section: 'chat.reference.type.comic_section',
   }[reference?.resource_type]
   return key ? t(key) : reference?.resource_type || t('chat.reference.type.unknown')
@@ -51,7 +52,7 @@ export function ReferenceStrip({ projectUuid, references = [], onRemove, compact
         const title = referenceTitle(reference, t('chat.reference.untitled'))
         return (
           <span className={`chat-reference-chip chat-reference-chip--${reference.status || 'ready'}`} key={reference.localId || referenceKey(reference)} title={title}>
-            {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <span className="chat-reference-chip__icon">{reference.resource_type === 'comic_section' ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
+            {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <span className="chat-reference-chip__icon">{['chapter', 'comic_section'].includes(reference.resource_type) ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
             <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t)}</small></span>
             {onRemove ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
           </span>
@@ -85,7 +86,7 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
   const chaptersQuery = useQuery({
     queryKey: ['story-chapters', projectUuid, 'active'],
     queryFn: () => listChapters(projectUuid, 'active'),
-    enabled: open && tab === 'comic_section',
+    enabled: open && ['chapter', 'comic_section'].includes(tab),
   })
   const chapters = chaptersQuery.data?.items || []
   useEffect(() => {
@@ -109,17 +110,17 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
     }
   }, [open])
 
-  const candidates = tab === 'premise_asset' ? premiseQuery.data?.items || [] : sectionsQuery.data?.items || []
-  const loading = tab === 'premise_asset' ? premiseQuery.isLoading : chaptersQuery.isLoading || sectionsQuery.isLoading
-  const error = tab === 'premise_asset' ? premiseQuery.error : chaptersQuery.error || sectionsQuery.error
+  const candidates = tab === 'premise_asset' ? premiseQuery.data?.items || [] : tab === 'chapter' ? chapters : sectionsQuery.data?.items || []
+  const loading = tab === 'premise_asset' ? premiseQuery.isLoading : tab === 'chapter' ? chaptersQuery.isLoading : chaptersQuery.isLoading || sectionsQuery.isLoading
+  const error = tab === 'premise_asset' ? premiseQuery.error : tab === 'chapter' ? chaptersQuery.error : chaptersQuery.error || sectionsQuery.error
   const choose = (candidate) => {
     const resourceType = tab
-    const imageUuid = resourceType === 'premise_asset' ? premiseImageUuid(candidate) : sectionImageUuid(candidate)
+    const imageUuid = resourceType === 'premise_asset' ? premiseImageUuid(candidate) : resourceType === 'comic_section' ? sectionImageUuid(candidate) : ''
     onToggle({
       localId: `${resourceType}:${candidate.uuid}`,
       resource_type: resourceType,
       resource_uuid: candidate.uuid,
-      title: candidate.title || candidate.chapter_code || candidate.uuid,
+      title: resourceType === 'chapter' ? [candidate.chapter_code, candidate.title].filter(Boolean).join(' · ') : candidate.title || candidate.chapter_code || candidate.uuid,
       image_file_uuid: imageUuid,
       image_available: Boolean(imageUuid),
       status: 'ready',
@@ -134,6 +135,7 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
           <header><strong>{t('chat.reference.picker')}</strong><small>{t('chat.reference.count', { count: references.filter((item) => item.status !== 'error').length, max: MAX_PROJECT_CHAT_REFERENCES })}</small></header>
           <div className="chat-reference-picker__tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tab === 'premise_asset'} aria-pressed={tab === 'premise_asset'} onClick={() => setTab('premise_asset')}><Layers3 size={14} />{t('chat.reference.premise_assets')}</button>
+            <button type="button" role="tab" aria-selected={tab === 'chapter'} aria-pressed={tab === 'chapter'} onClick={() => setTab('chapter')}><BookOpen size={14} />{t('chat.reference.chapters')}</button>
             <button type="button" role="tab" aria-selected={tab === 'comic_section'} aria-pressed={tab === 'comic_section'} onClick={() => setTab('comic_section')}><BookOpen size={14} />{t('chat.reference.comic_sections')}</button>
           </div>
           {tab === 'comic_section' ? <label className="chat-reference-picker__chapter"><span>{t('chat.reference.chapter')}</span><select value={chapterUuid} onChange={(event) => setChapterUuid(event.target.value)}>{chapters.map((chapter) => <option value={chapter.uuid} key={chapter.uuid}>{chapter.chapter_code ? `${chapter.chapter_code} · ` : ''}{chapter.title || chapter.uuid}</option>)}</select></label> : null}
@@ -145,7 +147,7 @@ export function ReferencePicker({ projectUuid, references = [], disabled = false
             {candidates.map((candidate) => {
               const key = `${tab}:${candidate.uuid}`
               const pressed = selected.has(key)
-              return <button type="button" aria-pressed={pressed} disabled={!pressed && atLimit} onClick={() => choose(candidate)} key={candidate.uuid}><span>{tab === 'comic_section' && candidate.section_no ? `${candidate.section_no}. ` : ''}{candidate.title || t('chat.reference.untitled')}</span>{pressed ? <Check size={14} /> : null}</button>
+              return <button type="button" aria-pressed={pressed} disabled={!pressed && atLimit} onClick={() => choose(candidate)} key={candidate.uuid}><span>{tab === 'comic_section' && candidate.section_no ? `${candidate.section_no}. ` : ''}{tab === 'chapter' && candidate.chapter_code ? `${candidate.chapter_code} · ` : ''}{candidate.title || t('chat.reference.untitled')}</span>{pressed ? <Check size={14} /> : null}</button>
             })}
           </div>
         </section>

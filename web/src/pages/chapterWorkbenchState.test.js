@@ -176,6 +176,12 @@ test('timeline multi-select starts from the current selectable Section and keeps
   assert.equal(timelineSelectionControls(initial, selectable).selectAllDisabled, true)
 })
 
+test('chapter workbench submits selected images through one batch request', () => {
+  const source = readFileSync(new URL('./ChapterWorkbenchPage.jsx', import.meta.url), 'utf8')
+  assert.match(source, /generateChapterImagesBatch\(projectUuid, chapterUuid, \{[\s\S]*section_uuids:/)
+  assert.doesNotMatch(source, /for \(const section of targets\)/)
+})
+
 test('timeline management disables destructive controls during generation and every mutation', () => {
   assert.deepEqual(timelineManageDisabledState({ index: 0, total: 3 }), {
     pending: false,
