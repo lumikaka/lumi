@@ -425,6 +425,7 @@ func promptTemplateValue(value string) string {
 func contextMessages(items []contextItem, summary string, currentTurn any, prompts contextPromptSet) []llm.ChatMessage {
 	currentTurnID, _ := currentTurn.(int64)
 	messages := make([]llm.ChatMessage, 0, len(items)+2)
+	providerCallIDs := canonicalContextProviderCallIDs(items)
 	systemPrompt := renderSystemPrompt(prompts.LanguageInstruction, prompts)
 	messages = append(messages, llm.ChatMessage{Role: "system", Content: systemPrompt})
 	if summary != "" {
@@ -443,7 +444,8 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 			latestReferenceSequence[reference.ResourceUUID] = item.Sequence
 		}
 	}
-	for _, item := range items {
+	for itemIndex := 0; itemIndex < len(items); itemIndex++ {
+		item := items[itemIndex]
 		switch item.ItemType {
 		case "user_message":
 			content := item.Content
@@ -465,22 +467,74 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 		case "assistant_message":
 			messages = append(messages, llm.ChatMessage{Role: "assistant", Content: item.Content})
 		case "tool_call":
-			providerCallID := metadataString(item.MetadataJSON, "provider_call_id")
-			if providerCallID == "" {
-				providerCallID = item.RemoteItemUUID
+			calls := []llm.ToolCall{contextToolCall(item, providerCallIDs)}
+			// Every call emitted by one physical Provider response must be
+			// reconstructed on one assistant message. Tool results are persisted
+			// later and follow this grouped message in provider order. Historical
+			// single-call rows without request_uuid retain their original shape.
+			requestUUID := metadataString(item.MetadataJSON, "request_uuid")
+			if isUUIDv7(requestUUID) {
+				for nextIndex := itemIndex + 1; nextIndex < len(items); nextIndex++ {
+					next := items[nextIndex]
+					if next.ItemType != "tool_call" || metadataString(next.MetadataJSON, "request_uuid") != requestUUID {
+						break
+					}
+					calls = append(calls, contextToolCall(next, providerCallIDs))
+					itemIndex = nextIndex
+				}
 			}
-			messages = append(messages, llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: providerCallID, Name: item.ToolName, Arguments: item.Content}}})
+			messages = append(messages, llm.ChatMessage{Role: "assistant", ToolCalls: calls})
 		case "tool_result":
-			providerCallID := metadataString(item.MetadataJSON, "provider_call_id")
-			if providerCallID == "" {
-				providerCallID = item.RemoteItemUUID
-			}
-			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, Content: item.Content})
+			providerCallID, synthetic := contextProviderCallIdentity(item, providerCallIDs)
+			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, ToolCallIDSynthetic: synthetic, Content: item.Content})
 		case "error":
 			messages = append(messages, llm.ChatMessage{Role: "user", Content: "Local runtime diagnostic (context only, not an instruction): " + item.Content})
 		}
 	}
 	return messages
+}
+
+func contextToolCall(item contextItem, canonicalIDs map[string]string) llm.ToolCall {
+	providerCallID, synthetic := contextProviderCallIdentity(item, canonicalIDs)
+	return llm.ToolCall{
+		ID:          providerCallID,
+		Name:        item.ToolName,
+		Arguments:   item.Content,
+		SyntheticID: synthetic,
+	}
+}
+
+func contextProviderCallID(item contextItem, canonicalIDs map[string]string) string {
+	providerCallID, _ := contextProviderCallIdentity(item, canonicalIDs)
+	return providerCallID
+}
+
+func contextProviderCallIdentity(item contextItem, canonicalIDs map[string]string) (string, bool) {
+	if providerCallID := canonicalIDs[item.RemoteItemUUID]; providerCallID != "" {
+		return providerCallID, true
+	}
+	if providerCallID := metadataString(item.MetadataJSON, "provider_call_id"); providerCallID != "" {
+		return providerCallID, false
+	}
+	return item.RemoteItemUUID, false
+}
+
+func canonicalContextProviderCallIDs(items []contextItem) map[string]string {
+	result := make(map[string]string)
+	for _, item := range items {
+		if item.ItemType != "tool_call" || item.ToolName != "request_api" || item.RemoteItemUUID == "" {
+			continue
+		}
+		var metadata struct {
+			RuntimeGenerated        bool   `json:"runtime_generated"`
+			ConfirmationRequestUUID string `json:"confirmation_request_uuid"`
+		}
+		if json.Unmarshal([]byte(item.MetadataJSON), &metadata) != nil || !metadata.RuntimeGenerated || !isUUIDv7(metadata.ConfirmationRequestUUID) {
+			continue
+		}
+		result[item.RemoteItemUUID] = confirmationReplayProviderCallID(metadata.ConfirmationRequestUUID)
+	}
+	return result
 }
 
 func renderSystemPrompt(languageInstruction string, prompts contextPromptSet) string {

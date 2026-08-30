@@ -24,7 +24,7 @@ Workflow、Step 与 Event 的内部关联使用 bigint `id`；外部 API 和实�
 
 `(project_id, kind, idempotency_key)` 唯一。
 
-`thread_id` 的含义由调用上下文决定：公开 UI 与对话式 bootstrap YOLO 关联独立 `workflow` Thread；普通 Chat Tool 生成关联当前 `conversation` Thread；内部 Workflow Step 投影可以为空。bootstrap YOLO 不创建 `workflow_awaits`，其原 conversation Turn 在拿到 Workflow 引用后完成。
+`thread_id` 的含义由调用上下文决定：公开 Direct UI 关联独立 `workflow` Thread；Chat Tool（含对话式 bootstrap YOLO）关联当前 `conversation` Thread；内部 Workflow Step 投影可以为空。bootstrap YOLO 创建唯一 `workflow_awaits`，原 conversation Turn 等待终态后恢复同一 Run。
 
 ## 表：workflow_steps 与 workflow_events
 
@@ -49,8 +49,8 @@ Chat Tool 异步调用的持久恢复边界。
 
 ## 数据生命周期
 
-1. 创建 Workflow 时写入冻结快照及初始 Steps。
+1. 创建 Workflow 时写入冻结快照及初始 Steps；Direct UI 同时建立独立 Thread，Chat Tool 则复用来源 conversation Thread。
 2. Worker 按 position 推进 Step，并持久化状态、输出和 Event；YOLO 页面步骤会持久封面脚本 checkpoint 和按 Section UUID 绑定的图片任务 UUID，使重试不重复生产已完成页面。
-3. Chat Tool Workflow 创建时在同一业务事务写入 Workflow、Step、await 与任务；父 Run 保持可恢复等待且不占 worker。
+3. Chat Tool Workflow 创建时在同一业务事务写入 Workflow、全部 Steps、await 与首个任务；父 Run 保持可恢复等待且不占 worker。新式 bootstrap YOLO 也使用此边界，既有 dedicated YOLO 不迁移。
 4. Workflow 终态事务把有效 await 标为 `ready`、父 Turn/Run 重新排为 `queued`，并唯一插入 `JobChatResume`；恢复先幂等写入结构化 Tool Result，再把 await 标为 `resumed`。
 5. 父 Run 取消会把 await 标为 `cancelled` 并请求取消其独占 Workflow；单独取消 Workflow 则以 cancelled Tool Result 唤醒仍有效的父 Run。失败、中断和取消都保留可诊断快照。

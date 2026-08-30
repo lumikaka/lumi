@@ -91,3 +91,47 @@ No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the
 - Frontend production build: passed.
 
 final result: passed
+
+---
+
+## Simple project topbar — current QA
+
+### Comparison target
+
+- Source visual truth: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`.
+- Desktop source capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05146-0d34-79a0-b7b6-b9836883f940/simple-topbar-reference-capture.png`.
+- Desktop implementation capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05146-0d34-79a0-b7b6-b9836883f940/simple-topbar-implementation-capture.png`.
+- Desktop full-view comparison: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05146-0d34-79a0-b7b6-b9836883f940/simple-topbar-full-comparison.png` (source left, implementation right).
+- Desktop focused comparison: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05146-0d34-79a0-b7b6-b9836883f940/simple-topbar-focused-comparison.png` (source left, implementation right).
+- Viewport and density: both source and implementation are 1440 × 900 CSS px and 1440 × 900 output px. The source surface reports DPR 2 but the Browser capture is normalized to one output pixel per CSS pixel; the implementation reports DPR 1. No further density normalization was required.
+- State: simple project home, global sidebar collapsed to 60px, project Agent expanded, topbar idle. The source fixture and implementation intentionally show different project facts and artwork.
+
+### Required fidelity surfaces
+
+- Fonts and typography: passed. Both topbars use the existing Inter/Noto Sans SC/PingFang SC stack. Project title is 14px/500 with a 21px line height; the page label is 12px/430 with a 21px line height and the same baseline treatment.
+- Spacing and layout rhythm: passed. Both topbars are 58px high with 18px horizontal padding, a 12px main gap, an 8px title-label gap, and two 34 × 34px right actions separated by 12px. Title and action positions align at x=78/y=17.5 and x=1342,1388/y=11.5 in the matched state.
+- Colors and visual tokens: passed. The white surface, `#dedfd8` bottom border, `#20231f` primary text, `#747970` secondary text, and `#f7f7f3` hover surface match the source.
+- Image quality and asset fidelity: passed for this scope. The topbar contains no raster imagery. Menu, message-circle, and ellipsis controls use the matching Lucide family at 16px with a 1.6 stroke; no placeholder or handcrafted asset was introduced.
+- Copy and content: passed. The implementation preserves the source hierarchy of dynamic project name plus current page label. Different names are expected because the implementation reads local SQLite facts rather than prototype fixtures.
+- Responsive behavior: passed for the supplied desktop target. The implementation keeps the existing mobile menu breakpoint and removes the desktop-only centered simple-mode page tabs, so the topbar remains a single compact row at narrow widths. No separate mobile source state was available from the supplied prototype surface.
+- Interaction and accessibility: passed. The Agent action toggles expanded and collapsed ChatArea states and updates its accessible name; the more-project-actions control opens the existing project configuration dialog; the mobile navigation control retains its accessible name. The expert route still renders `.project-topbar` and `.project-topbar__nav` and does not render the simple topbar.
+
+### Comparison history
+
+1. The initial comparison found a P1 structural mismatch: simple mode reused the expert-style centered page tabs and account action. These were removed from the simple topbar, which now uses the source's left context block and right message/ellipsis action group. The expert topbar was left unchanged.
+2. The first post-fix measurement found a P2 height mismatch: global button minimum height made the intended 34px actions render at 38px. The simple topbar actions now explicitly set `min-height: 34px`.
+3. The final full-view and focused comparisons confirm the 58px frame, borders, padding, baselines, title rhythm, icon sizing, and right-edge action positions. No actionable P0, P1, or P2 mismatch remains.
+
+### Findings
+
+No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the requested topbar scope.
+
+### Verification
+
+- Primary interactions tested: collapse Agent, expand Agent, open project configuration from the ellipsis action, dismiss the dialog, and load an expert-mode route.
+- Browser console after clean reload and interaction checks: no warnings or errors.
+- Frontend unit suite: passed, 315 tests.
+- Focused source/implementation comparison: passed.
+- Frontend production build: passed.
+
+final result: passed

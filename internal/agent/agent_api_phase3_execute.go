@@ -37,6 +37,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		workflow, err := service.CreateYoloWorkflow(ctx, tc.ProjectUUID, CreateYoloInput{
 			Title: projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
 			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + tc.BootstrapCreationSessionUUID,
+			Invocation: chatToolInvocationContext(tc, execution),
 		})
 		if err != nil {
 			return nil, true, err
@@ -307,10 +308,25 @@ func mapArg(values map[string]any, key string) map[string]any {
 }
 
 func eventCursors(query map[string]any) (int64, int64, error) {
+	_, hasBefore := query["before"]
+	_, hasAfter := query["after"]
+	if hasBefore && hasAfter {
+		return 0, 0, domainError(CodeToolValidation, "事件 cursor 冲突", "before 与 after 不能同时使用。", nil)
+	}
 	parse := func(key string) (int64, error) {
-		value := stringArg(query, key)
-		if value == "" {
+		raw, present := query[key]
+		if !present {
 			return 0, nil
+		}
+		value, _ := raw.(string)
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return 0, domainError(CodeToolValidation, "事件 cursor 无效", key+" 必须是非负事件 sequence cursor。", nil)
+		}
+		for _, digit := range value {
+			if digit < '0' || digit > '9' {
+				return 0, domainError(CodeToolValidation, "事件 cursor 无效", key+" 必须是非负事件 sequence cursor。", nil)
+			}
 		}
 		result, err := strconv.ParseInt(value, 10, 64)
 		if err != nil || result < 0 {
@@ -325,9 +341,6 @@ func eventCursors(query map[string]any) (int64, int64, error) {
 	after, err := parse("after")
 	if err != nil {
 		return 0, 0, err
-	}
-	if before > 0 && after > 0 {
-		return 0, 0, domainError(CodeToolValidation, "事件 cursor 冲突", "before 与 after 不能同时使用。", nil)
 	}
 	return before, after, nil
 }

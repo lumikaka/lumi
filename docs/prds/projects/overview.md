@@ -47,7 +47,7 @@
 |---|---|
 | 绘本 / 章节 | `chapters.project_id` 归属项目；Chapter 正文生成可读取项目总纲和 Prompt，最近项目卡片按 Chapter 边界选择封面或正文候选。 |
 | 对话线程 | 创建 Saga 在草稿项目中恰好一次建立普通 `conversation` Thread、首个 Turn/Run 和原始用户 Item，并把已就绪参考图按清单顺序冻结为 Item Reference；Agent 通过受控 Setup API 推进唯一的 Setup Draft。 |
-| 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可启动服务端绑定幂等键的 existing YOLO，后续 ready Turn 才开放普通业务编排。 |
+| 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可在原 Turn 内启动并等待服务端绑定幂等键的 inline existing YOLO，后续 ready Turn 才开放普通业务编排。 |
 | AI 运行时 | `project_model_settings` 以项目为边界保存模型覆盖。 |
 | 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；绘本或章节导入源文件也通过项目 File 资产保存。 |
 | 所有项目域 | URL、JSON、前端状态和实时 payload 都使用项目 UUIDv7。 |

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, selectImageVariant, updateComicSection, updatePremiseSource } from './production.js'
+import { createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, generatePremiseAssetVariant, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, selectImageVariant, setComicSectionPremiseAssets, updateComicSection, updatePremiseSource } from './production.js'
 
 test('production API uses UUID resources, single-resource mutations, and snake_case bodies', async () => {
   const originalFetch = global.fetch
@@ -65,4 +65,25 @@ test('production API uses UUID resources, single-resource mutations, and snake_c
 	assert.equal(JSON.parse(calls[11].options.body).allow_missing_images, true)
 	assert.equal(JSON.parse(calls[11].options.body).format, 'pdf')
   } finally { global.fetch = originalFetch }
+})
+
+test('simple premise generation and page reference selection use public resource actions', async () => {
+  const originalFetch = global.fetch
+  const calls = []
+  global.fetch = async (path, options = {}) => {
+    calls.push({ path, options })
+    return { ok: true, status: 200, json: async () => ({ success: true, data: { uuid: 'result' } }) }
+  }
+  try {
+    await generatePremiseAssetVariant('project uuid', 'asset / one', { prompt: 'new pose', idempotency_key: 'variant-1' })
+    await setComicSectionPremiseAssets('project uuid', 'chapter / one', 'section / one', ['asset-a', 'asset-b'], 7)
+    assert.equal(calls[0].path, '/api/v1/projects/project%20uuid/premise-assets/asset%20%2F%20one/generations')
+    assert.equal(calls[0].options.method, 'POST')
+    assert.deepEqual(JSON.parse(calls[0].options.body), { prompt: 'new pose', idempotency_key: 'variant-1' })
+    assert.equal(calls[1].path, '/api/v1/projects/project%20uuid/chapters/chapter%20%2F%20one/comic-sections/section%20%2F%20one/premise-assets')
+    assert.equal(calls[1].options.method, 'PUT')
+    assert.deepEqual(JSON.parse(calls[1].options.body), { premise_asset_uuids: ['asset-a', 'asset-b'], expected_revision: 7 })
+  } finally {
+    global.fetch = originalFetch
+  }
 })

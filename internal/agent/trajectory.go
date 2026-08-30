@@ -604,6 +604,7 @@ func trajectoryPublicMetadata(raw string) json.RawMessage {
 		return json.RawMessage("{}")
 	}
 	delete(value, "prompt_snapshot")
+	delete(value, "provider_call_id")
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return json.RawMessage("{}")
@@ -727,7 +728,9 @@ func projectTrajectoryTools(rows []trajectoryToolRow, threadUUID string, turnSta
 	for _, row := range rows {
 		arguments, requestUUID, requestOrdinal := trajectoryToolArguments(row.ArgumentsJSON, row.CallMetadata)
 		var rawResult json.RawMessage
-		if row.ResultJSON.Valid {
+		// executing result_json may contain a private side-effect checkpoint;
+		// only completed Tool Results are part of the public trajectory.
+		if row.State == "completed" && row.ResultJSON.Valid {
 			rawResult = sanitizeDiagnosticJSON(row.ResultJSON.String)
 		}
 		status := "pending"

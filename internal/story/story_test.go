@@ -14,6 +14,18 @@ import (
 	"lumi/internal/promptcatalog"
 )
 
+type storyEventRecorder struct {
+	events   []string
+	payloads []map[string]any
+}
+
+func (recorder *storyEventRecorder) Broadcast(_ string, event string, payload any) {
+	recorder.events = append(recorder.events, event)
+	if value, ok := payload.(map[string]any); ok {
+		recorder.payloads = append(recorder.payloads, value)
+	}
+}
+
 func storyHarness(t *testing.T) (*project.Manager, project.Summary, *Service) {
 	t.Helper()
 	dataDirectory := filepath.Join(t.TempDir(), "app")
@@ -74,6 +86,73 @@ func TestChapterStoriesAreAppendOnlyAndRevisionChecked(t *testing.T) {
 	}
 	if err := service.store.DB().Model(&chapterStoryRecord{}).Where("uuid = ?", versions[1].UUID).Update("content", "mutated").Error; err == nil {
 		t.Fatal("append-only trigger allowed chapter story mutation")
+	}
+}
+
+func TestChapterOrderAndStoryProfileRestoreUsePublicResourcesAndEmitHints(t *testing.T) {
+	_, _, service := storyHarness(t)
+	recorder := &storyEventRecorder{}
+	service.WithEvents(recorder)
+	ctx := context.Background()
+	first, err := service.CreateChapter(ctx, CreateChapterInput{ChapterCode: "vol01.ch11", Title: "First"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.CreateChapter(ctx, CreateChapterInput{ChapterCode: "vol01.ch12", Title: "Second"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	third, err := service.CreateChapter(ctx, CreateChapterInput{ChapterCode: "vol01.ch13", Title: "Third"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordered, err := service.ReorderChapters(ctx, []string{third.UUID, first.UUID, second.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ordered) != 3 || ordered[0].UUID != third.UUID || ordered[1].UUID != first.UUID || ordered[2].UUID != second.UUID || ordered[0].SortOrder != 1 {
+		t.Fatalf("ordered chapters=%+v", ordered)
+	}
+	if _, err := service.ReorderChapters(ctx, []string{first.UUID, first.UUID, second.UUID}); storyErrorCode(err) != CodeValidationFailed {
+		t.Fatalf("duplicate order error=%v", err)
+	}
+	profile, err := service.GetStoryProfile(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versionTwo, err := service.UpdateStoryProfile(ctx, "# Version two\n\nA complete story.\n", profile.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versionThree, err := service.UpdateStoryProfile(ctx, "# Version three\n\nA different story.\n", versionTwo.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := service.RestoreStoryProfile(ctx, versionTwo.UUID, versionThree.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.VersionNo != versionThree.VersionNo+1 || restored.StoryMD != versionTwo.StoryMD || restored.UUID == versionTwo.UUID {
+		t.Fatalf("restored profile=%+v", restored)
+	}
+	if _, err := service.RestoreStoryProfile(ctx, first.UUID, restored.Revision); storyErrorCode(err) != CodeStoryProfileNotFound {
+		t.Fatalf("cross-resource restore error=%v", err)
+	}
+	wanted := map[string]bool{"story:chapter_changed": false, "story:chapters_reordered": false, "story:profile_changed": false}
+	for _, event := range recorder.events {
+		if _, exists := wanted[event]; exists {
+			wanted[event] = true
+		}
+	}
+	for event, found := range wanted {
+		if !found {
+			t.Fatalf("missing realtime hint %s in %v", event, recorder.events)
+		}
+	}
+	for _, payload := range recorder.payloads {
+		if _, leaked := payload["id"]; leaked {
+			t.Fatalf("realtime payload leaked internal id: %#v", payload)
+		}
 	}
 }
 

@@ -35,7 +35,7 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 
 ### Project Chat Prompt 协议
 
-新 Chat Run 使用 `project_api_v4`。System Prompt 含静态 Agent 规则、API Overview、当前 `project_uuid` 和每次模型循环重新读取的公开 `setup_status`；生成语言等其他可变事实由 Agent 按需通过 Project API 读取。`draft` 时只有必要只读能力、`request_user_input`、文档与 Project Setup routes 可执行，其他写操作、Workflow、生产和 image 工具在执行层返回 `project_setup_incomplete`；同一 Run 定稿后下一次工具执行会看到 `ready`。若当前 Turn 是首页 bootstrap 首轮，ready 后只有 GET、finalization 恢复和当前 Run 已明确确认的 YOLO reviewed route 可执行，其他生产写入返回 `bootstrap_production_requires_yolo`，缺少授权事实的 YOLO 返回 `bootstrap_yolo_not_authorized`。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。v4 将 `request_user_input` 冻结为 1–3 个互斥单选问题和按 question id 返回的回答；v3/v2 与 legacy typed Run 只按各自历史 schema 恢复。
+新 Chat Run 使用 `project_api_v4`。System Prompt 含静态 Agent 规则、API Overview、当前 `project_uuid` 和每次模型循环重新读取的公开 `setup_status`；生成语言等其他可变事实由 Agent 按需通过 Project API 读取。`draft` 时只有必要只读能力、`request_user_input`、文档与 Project Setup routes 可执行，其他写操作、Workflow、生产和 image 工具在执行层返回 `project_setup_incomplete`；同一 Run 定稿后下一次工具执行会看到 `ready`。若当前 Turn 是首页 bootstrap 首轮，ready 后只有 GET、finalization 恢复和当前 Run 已明确确认的 YOLO reviewed route 可执行，其他生产写入返回 `bootstrap_production_requires_yolo`，缺少授权事实的 YOLO 返回 `bootstrap_yolo_not_authorized`。该 route 以内联 await 释放 worker，Workflow 终态再恢复同一 Run；模型不得轮询、模拟步骤或失败后创建第二个 Workflow。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。v4 将 `request_user_input` 冻结为 1–3 个互斥单选问题和按 question id 返回的回答；v3/v2 与 legacy typed Run 只按各自历史 schema 恢复。
 
 ## Feature 列表
 

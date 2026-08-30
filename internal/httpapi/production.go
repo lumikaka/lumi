@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"lumi/internal/agentcheckpoint"
 	"lumi/internal/files"
 	"lumi/internal/jobqueue"
 	"lumi/internal/production"
@@ -324,7 +325,11 @@ func (handler *ProductionHandler) PermanentlyDeletePremiseAsset(c echo.Context) 
 	var result production.PremiseTrashDeleteResult
 	if err := handler.withService(c, func(service *production.Service) error {
 		var operationErr error
-		result, operationErr = service.PermanentlyDeletePremiseAsset(c.Request().Context(), c.Param("premise_asset_uuid"), revision)
+		if executionUUID := agentToolExecutionForRoute(c, agentcheckpoint.RoutePremiseAssetPermanentDelete); executionUUID != "" {
+			result, operationErr = service.PermanentlyDeletePremiseAssetFromTool(c.Request().Context(), c.Param("premise_asset_uuid"), revision, executionUUID)
+		} else {
+			result, operationErr = service.PermanentlyDeletePremiseAsset(c.Request().Context(), c.Param("premise_asset_uuid"), revision)
+		}
 		return operationErr
 	}); err != nil {
 		return err
@@ -335,7 +340,11 @@ func (handler *ProductionHandler) EmptyPremiseAssetTrash(c echo.Context) error {
 	var result production.PremiseTrashDeleteResult
 	if err := handler.withService(c, func(service *production.Service) error {
 		var operationErr error
-		result, operationErr = service.EmptyPremiseAssetTrash(c.Request().Context())
+		if executionUUID := agentToolExecutionForRoute(c, agentcheckpoint.RoutePremiseAssetTrashEmpty); executionUUID != "" {
+			result, operationErr = service.EmptyPremiseAssetTrashFromTool(c.Request().Context(), executionUUID)
+		} else {
+			result, operationErr = service.EmptyPremiseAssetTrash(c.Request().Context())
+		}
 		return operationErr
 	}); err != nil {
 		return err
@@ -426,6 +435,19 @@ func (handler *ProductionHandler) SelectAssetVariant(c echo.Context) error {
 		return err
 	}
 	return Success(c, http.StatusCreated, value)
+}
+
+func (handler *ProductionHandler) GeneratePremiseAssetVariant(c echo.Context) error {
+	var request jobqueue.CreateProductionGenerationInput
+	if err := decodeJSONLimit(c, &request, 512<<10); err != nil {
+		return err
+	}
+	request.AssetOperation = "variant"
+	task, err := handler.tasks.CreatePremiseAssetGeneration(c.Request().Context(), c.Param("project_uuid"), c.Param("premise_asset_uuid"), request)
+	if err != nil {
+		return productionAPIError(err)
+	}
+	return Success(c, http.StatusCreated, task)
 }
 
 func (handler *ProductionHandler) ShowComicState(c echo.Context) error {
@@ -533,6 +555,29 @@ func (handler *ProductionHandler) ReorderSections(c echo.Context) error {
 		return err
 	}
 	return Success(c, http.StatusOK, map[string]any{"items": items})
+}
+
+func (handler *ProductionHandler) SetSectionPremiseAssets(c echo.Context) error {
+	var request struct {
+		PremiseAssetUUIDs []string `json:"premise_asset_uuids"`
+		ExpectedRevision  *int64   `json:"expected_revision"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		return err
+	}
+	revision, err := requiredRevision(request.ExpectedRevision)
+	if err != nil {
+		return err
+	}
+	var value production.ComicSection
+	if err := handler.withService(c, func(service *production.Service) error {
+		var operationErr error
+		value, operationErr = service.SetSectionPremiseAssets(c.Request().Context(), c.Param("chapter_uuid"), c.Param("section_uuid"), request.PremiseAssetUUIDs, revision)
+		return operationErr
+	}); err != nil {
+		return err
+	}
+	return Success(c, http.StatusOK, value)
 }
 func (handler *ProductionHandler) ListStoryboards(c echo.Context) error {
 	var items []production.StoryboardVariant

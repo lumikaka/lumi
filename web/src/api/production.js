@@ -31,6 +31,7 @@ export const emptyPremiseAssetTrash = (projectUuid) => apiRequest(root(projectUu
 export const listPremiseAssetVariants = (projectUuid, assetUuid) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}/variants`))
 export const createPremiseAssetVariant = (projectUuid, assetUuid, payload) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}/variants`), json('POST', payload))
 export const selectPremiseAssetVariant = (projectUuid, assetUuid, variantUuid, revision) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}/variants/${encodeURIComponent(variantUuid)}/selections`), json('POST', { expected_revision: revision }))
+export const generatePremiseAssetVariant = (projectUuid, assetUuid, payload) => apiRequest(root(projectUuid, `/premise-assets/${encodeURIComponent(assetUuid)}/generations`), json('POST', payload))
 
 export const getComicState = (projectUuid, chapterUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic'))
 export const listComicSections = (projectUuid, chapterUuid) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic-sections'))
@@ -38,6 +39,7 @@ export const createComicSection = (projectUuid, chapterUuid, payload) => apiRequ
 export const updateComicSection = (projectUuid, chapterUuid, sectionUuid, payload) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid), json('PATCH', payload))
 export const deleteComicSection = (projectUuid, chapterUuid, sectionUuid, revision) => apiRequest(`${sectionRoot(projectUuid, chapterUuid, sectionUuid)}?expected_revision=${encodeURIComponent(revision)}`, { method: 'DELETE' })
 export const reorderComicSections = (projectUuid, chapterUuid, sectionUuids) => apiRequest(chapterRoot(projectUuid, chapterUuid, '/comic-section-order'), json('PUT', { section_uuids: sectionUuids }))
+export const setComicSectionPremiseAssets = (projectUuid, chapterUuid, sectionUuid, premiseAssetUuids, revision) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, '/premise-assets'), json('PUT', { premise_asset_uuids: premiseAssetUuids, expected_revision: revision }))
 export const listStoryboards = (projectUuid, chapterUuid, sectionUuid) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, '/storyboard-variants'))
 export const createStoryboard = (projectUuid, chapterUuid, sectionUuid, payload) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, '/storyboard-variants'), json('POST', payload))
 export const selectStoryboard = (projectUuid, chapterUuid, sectionUuid, variantUuid, revision) => apiRequest(sectionRoot(projectUuid, chapterUuid, sectionUuid, `/storyboard-variants/${encodeURIComponent(variantUuid)}/selections`), json('POST', { expected_revision: revision }))

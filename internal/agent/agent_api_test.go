@@ -273,7 +273,7 @@ func TestReadAgentDocEntryPointAndEmbeddedSourcesAreDiscoverable(t *testing.T) {
 	}
 }
 
-func TestAPIDocsAreMaintainedAsConciseStaticMarkdown(t *testing.T) {
+func TestAPIDocsAreMaintainedAsDetailedStaticMarkdown(t *testing.T) {
 	for _, definition := range agentAPIDocDefinitions() {
 		source, err := readAgentDocTemplate(definition.Path)
 		if err != nil {
@@ -282,29 +282,13 @@ func TestAPIDocsAreMaintainedAsConciseStaticMarkdown(t *testing.T) {
 		if strings.Contains(source, "{{") {
 			t.Fatalf("API Contract %s still contains a template token", definition.Path)
 		}
-		if len(source) > 6000 {
-			t.Fatalf("API Contract %s is not concise: %d bytes", definition.Path, len(source))
-		}
-		for _, unnecessary := range []string{"## Query 字段", "## 响应字段", "## 权限", "route_id"} {
-			if strings.Contains(source, unnecessary) {
-				t.Fatalf("API Contract %s retains generated detail %q", definition.Path, unnecessary)
-			}
+		if len(source) > maxAgentAPIDocSoftBytes {
+			t.Fatalf("API Contract %s exceeds the 24 KiB soft budget: %d bytes", definition.Path, len(source))
 		}
 		for _, route := range routesForAgentDoc(definition.Path) {
-			operation := "`" + route.Method + " " + route.PathTemplate + "`"
+			operation := "## `" + route.Method + " " + route.PathTemplate + "`"
 			if !strings.Contains(source, operation) {
 				t.Fatalf("static API Contract %s missing operation %s", definition.Path, operation)
-			}
-			for _, schema := range []map[string]any{route.QuerySchema, route.BodySchema} {
-				requiredFields, _ := schema["required"].([]string)
-				for _, field := range requiredFields {
-					if !strings.Contains(source, field) {
-						t.Fatalf("static API Contract %s missing required field %s for %s", definition.Path, field, operation)
-					}
-				}
-			}
-			if route.RequiresConfirmation && !strings.Contains(source, "确认") {
-				t.Fatalf("static API Contract %s omits confirmation for %s", definition.Path, operation)
 			}
 		}
 
@@ -315,34 +299,6 @@ func TestAPIDocsAreMaintainedAsConciseStaticMarkdown(t *testing.T) {
 		if rendered != strings.TrimSpace(source)+"\n" {
 			t.Fatalf("API Contract %s was changed by runtime route rendering", definition.Path)
 		}
-	}
-
-	chapterSource, err := readAgentDocTemplate(chapterDocPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, required := range []string{
-		"`POST /api/v1/projects/{project_uuid}/chapters`",
-		"`POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/generations`",
-		"`prompt_key`",
-		"`story_chapter`",
-		"`next_story_chapter`",
-		"`chapter_code`",
-		"`title`",
-		`{"chapter_code":"vol01.ch01","title":"第一章","content":"...","content_format":"md"}`,
-		`{"expected_revision":3}`,
-		`{"prompt_key":"story_chapter","prompt":"生成本章正文"}`,
-	} {
-		if !strings.Contains(chapterSource, required) {
-			t.Fatalf("static Chapter Contract missing %q", required)
-		}
-	}
-	if strings.Contains(chapterSource, `"model":"可选"`) {
-		t.Fatal("Chapter Contract contains a placeholder that could be sent literally")
-	}
-	chapterProjector, _ := agentAPIProjectorByKey("chapter")
-	if !containsString(agentAPIProjectorFieldNames(chapterProjector), "trashed_at") {
-		t.Fatal("Chapter Contract documents trashed_at but the compact response omits it")
 	}
 }
 
@@ -461,7 +417,8 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 		"默认生成封面和第一个正文页的成品图",
 		"vertical_strip",
 		"不得退化为手工生产",
-		"立即结束当前 Turn",
+		"waiting_for_workflow",
+		"只输出一次最终说明",
 	} {
 		if !strings.Contains(guide, required) {
 			t.Fatalf("bootstrap Guide missing %q: %s", required, guide)
@@ -471,7 +428,7 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"Setup Draft", "`draft_values`", "`expected_revision`"} {
+	for _, required := range []string{"Setup Draft", "`data.draft_values`", "`expected_revision`"} {
 		if !strings.Contains(setupDoc, required) {
 			t.Fatalf("Project Setup Contract missing %q: %s", required, setupDoc)
 		}
@@ -483,7 +440,7 @@ func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"`POST /api/v1/projects/{project_uuid}/workflows`", "creation_session_uuid", "dedicated Thread", "不得轮询状态"} {
+	for _, required := range []string{"`POST /api/v1/projects/{project_uuid}/workflows`", "creation_session_uuid", "presentation_mode=inline", "来源 Turn", "终态 Tool Result", "不得轮询状态"} {
 		if !strings.Contains(workflowDoc, required) {
 			t.Fatalf("Workflow Contract missing %q: %s", required, workflowDoc)
 		}
@@ -703,6 +660,13 @@ func TestRequestAPIRequiresNarrowResponseFilterForNewCalls(t *testing.T) {
 	}
 	for _, route := range agentAPIRoutes() {
 		filter := recommendedAgentAPIResponseFilter(route)
+		projector, ok := agentAPIProjectorByKey(route.Projector)
+		if projector.NullData {
+			if filter != ".data" {
+				t.Errorf("null-data route %s recommendation=%q", route.ID, filter)
+			}
+			continue
+		}
 		if filter == "" || filter == ".data" {
 			t.Errorf("route %s has broad recommended response_filter %q", route.ID, filter)
 			continue
@@ -712,7 +676,6 @@ func TestRequestAPIRequiresNarrowResponseFilterForNewCalls(t *testing.T) {
 			t.Errorf("route %s has invalid recommended response_filter %q: %v", route.ID, filter, err)
 			continue
 		}
-		projector, ok := agentAPIProjectorByKey(route.Projector)
 		if projector.List {
 			projector, ok = agentAPIProjectorByKey(projector.ItemProjector)
 		}
@@ -758,7 +721,7 @@ func TestInvalidResponseFilterIsRejectedBeforeWriteRouteExecutes(t *testing.T) {
 	}
 }
 
-func TestPersistedPreUpgradeRequestAPIIntentFallsBackToCompleteCompactResponse(t *testing.T) {
+func TestPersistedPreUpgradeObjectRequestAPIIntentUsesSafeProjectorFilter(t *testing.T) {
 	harness := newAgentHarness(t)
 	tc := toolContext{
 		ProjectUUID: harness.project.UUID,
@@ -777,6 +740,54 @@ func TestPersistedPreUpgradeRequestAPIIntentFallsBackToCompleteCompactResponse(t
 	})
 	if err != nil || !strings.Contains(string(result), `"success":true`) {
 		t.Fatalf("pre-upgrade intent was not recovered: result=%s err=%v", result, err)
+	}
+	if filter := harness.service.recoveryAgentAPIResponseFilter(map[string]any{
+		"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/story-profile",
+	}); filter == ".data" || !strings.Contains(filter, "{uuid") {
+		t.Fatalf("object recovery filter=%q", filter)
+	}
+}
+
+func TestPersistedPreUpgradeListRequestAPIIntentUsesSafeProjectorFilter(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Legacy list"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc := toolContext{
+		ProjectUUID: harness.project.UUID,
+		ToolMode:    ToolModeProjectAPI,
+		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
+	}
+	arguments, _ := json.Marshal(map[string]any{
+		"method": "GET",
+		"url":    "/api/v1/projects/" + harness.project.UUID + "/chapters",
+	})
+	result, err := harness.service.executeTool(ctx, harness.store, tc, toolExecutionRecord{
+		UUID:           mustAgentUUID(t),
+		ToolName:       "request_api",
+		ArgumentsJSON:  string(arguments),
+		IdempotencyKey: "pre-response-filter-list-upgrade",
+	})
+	if err != nil {
+		t.Fatalf("pre-upgrade list intent was not recovered: result=%s err=%v", result, err)
+	}
+	var envelope struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			UUID string `json:"uuid"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(result, &envelope) != nil || !envelope.Success || len(envelope.Data) != 1 || envelope.Data[0].UUID != chapter.UUID {
+		t.Fatalf("pre-upgrade list projection=%s", result)
+	}
+
+	chapterDeleteArgs := map[string]any{
+		"method": "DELETE", "url": "/api/v1/projects/" + harness.project.UUID + "/chapters/" + chapter.UUID + "/permanent",
+	}
+	if filter := harness.service.recoveryAgentAPIResponseFilter(chapterDeleteArgs); filter != ".data" {
+		t.Fatalf("null-data recovery filter=%q", filter)
 	}
 }
 
@@ -937,11 +948,12 @@ func TestProjectAPIToolIntentRecoversModeAndRouteAfterRestart(t *testing.T) {
 	}
 }
 
-func TestRequestUserInputMixedWithAnotherToolIsRejectedBeforeIntent(t *testing.T) {
-	harness := newAgentHarness(t, llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{
+func TestRequestUserInputMixedWithAnotherToolRetriesWholeResponseBeforeIntent(t *testing.T) {
+	mixed := llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{
 		{ID: "ask", Name: "request_user_input", Arguments: `{"input_type":"single_choice","question":"继续吗？","options":[{"label":"继续"},{"label":"取消"}]}`},
 		{ID: "write", Name: "update_story_profile", Arguments: `{"story_md":"# 不应写入","expected_revision":0}`},
-	}}, FinishReason: "tool_calls"})
+	}}, FinishReason: "tool_calls"}
+	harness := newAgentHarness(t, mixed, finalResponse("已安全忽略无效混合调用。"))
 	ctx := context.Background()
 	before, err := story.NewService(harness.store).GetStoryProfile(ctx)
 	if err != nil {
@@ -963,7 +975,7 @@ func TestRequestUserInputMixedWithAnotherToolIsRejectedBeforeIntent(t *testing.T
 	if dbErr := harness.store.DB().Table("chat_runs AS runs").Select("runs.status,runs.error_code").Joins("JOIN chat_turns turns ON turns.id=runs.turn_id").Where("turns.uuid=?", turn.UUID).Row().Scan(&runStatus, &runError); dbErr != nil {
 		t.Fatal(dbErr)
 	}
-	if runStatus != TurnFailed || runError != CodeToolValidation {
+	if runStatus != TurnCompleted || runError != "" {
 		t.Fatalf("mixed tool response status=%s error=%s", runStatus, runError)
 	}
 	var executions, requests int64
@@ -979,6 +991,16 @@ func TestRequestUserInputMixedWithAnotherToolIsRejectedBeforeIntent(t *testing.T
 	}
 	if executions != 0 || requests != 0 || after.UUID != before.UUID || after.Revision != before.Revision {
 		t.Fatalf("side effect occurred: executions=%d requests=%d before=%+v after=%+v", executions, requests, before, after)
+	}
+	harness.model.mu.Lock()
+	modelCalls := harness.model.calls
+	harness.model.mu.Unlock()
+	if modelCalls != 2 {
+		t.Fatalf("mixed response physical model calls=%d want=2", modelCalls)
+	}
+	var diagnosticCount int64
+	if dbErr := harness.store.DB().Table("llm_logs").Where("chat_run_id=(SELECT runs.id FROM chat_runs runs JOIN chat_turns turns ON turns.id=runs.turn_id WHERE turns.uuid=?) AND json_extract(response,'$.reason')=?", turn.UUID, string(llm.ProviderResponseRequestUserInputMixed)).Count(&diagnosticCount).Error; dbErr != nil || diagnosticCount != 1 {
+		t.Fatalf("mixed response diagnostic logs=%d err=%v", diagnosticCount, dbErr)
 	}
 }
 

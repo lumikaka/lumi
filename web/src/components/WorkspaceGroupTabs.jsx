@@ -18,13 +18,13 @@ export default function WorkspaceGroupTabs({ projectUuid, activeSection, picture
       <div className="workspace-group-tabs" role={overviewTabs ? 'tablist' : undefined}>
         {items.map((item) => (
           <NavLink
-            className={({ isActive }) => isActive ? 'is-active' : ''}
+            className={workspaceItemActive(location, workspaceRoute(projectUuid, item.route, location.search), item) ? 'is-active' : ''}
             end={item.end}
             key={item.key}
             role={overviewTabs ? 'tab' : undefined}
             id={overviewTabs ? `overview-tab-${item.key}` : undefined}
             aria-controls={overviewTabs ? `overview-panel-${item.key}` : undefined}
-            aria-selected={overviewTabs ? location.pathname.endsWith(`/${item.route}`) : undefined}
+            aria-selected={overviewTabs ? workspaceItemActive(location, workspaceRoute(projectUuid, item.route, location.search), item) : undefined}
             to={workspaceRoute(projectUuid, item.route, location.search)}
           >
             {t(item.key === 'chapters'
@@ -35,4 +35,16 @@ export default function WorkspaceGroupTabs({ projectUuid, activeSection, picture
       </div>
     </nav>
   )
+}
+
+function workspaceItemActive(location, target, item) {
+  if (location.pathname !== target.pathname) return false
+  const current = new URLSearchParams(location.search)
+  const expected = new URLSearchParams(target.search)
+  if (item.key === 'trash') return current.get('state') === 'trashed'
+  if (item.key === 'chapters') return current.get('state') !== 'trashed'
+  for (const [key, value] of expected) {
+    if (current.get(key) !== value) return false
+  }
+  return true
 }

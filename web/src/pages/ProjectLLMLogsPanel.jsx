@@ -6,7 +6,13 @@ import LumiDialog from '../components/LumiDialog.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
-import { extractReadablePrompt, extractReadableResponse } from './llmLogPrompt.js'
+import {
+  extractReadablePrompt,
+  extractReadableResponse,
+  isProviderResponseDiagnostic,
+  providerDiagnosticPreview,
+  providerDiagnosticReasonMessageKey,
+} from './llmLogPrompt.js'
 
 const pageSize = 12
 const emptyFilters = Object.freeze({
@@ -64,6 +70,11 @@ function formatPayload(value) {
   return value == null ? '' : JSON.stringify(value, null, 2)
 }
 
+function providerDiagnosticReasonLabel(t, reason) {
+  const key = providerDiagnosticReasonMessageKey(reason)
+  return key ? t(key) : (reason || '—')
+}
+
 function LLMLogReaderDialog({ content, descriptionKey, onClose, titleKey }) {
   const { t } = useI18n()
 
@@ -95,6 +106,8 @@ function LLMLogDetailDialog({ projectUuid, log, onClose }) {
   const displayLog = detail || log
   const readablePrompt = extractReadablePrompt(detail?.request_payload)
   const readableResponse = extractReadableResponse(detail?.response)
+  const responseDiagnostic = isProviderResponseDiagnostic(detail?.response) ? detail.response : null
+  const responseDiagnosticPreview = providerDiagnosticPreview(detail?.response)
   const legacyFallback = Boolean(detail && detail.request_payload == null)
   const loadFallback = detailsQuery.isError
   const useSummaryFallback = legacyFallback || loadFallback
@@ -167,13 +180,38 @@ function LLMLogDetailDialog({ projectUuid, log, onClose }) {
               </header>
               <pre data-user-content={requestText ? '' : undefined}>{requestText}</pre>
             </article>
-            <article>
-              <header className="overview-llm-payload-heading">
-                <h3>{t('settings.llm_logs.response')}</h3>
-                {readableResponse ? <button type="button" className="button-secondary" onClick={() => setOpenReader('response')}>{t('settings.llm_logs.read_log')}</button> : null}
-              </header>
-              <pre data-user-content={responseText ? '' : undefined}>{responseText}</pre>
-            </article>
+            {responseDiagnostic ? (
+              <article className="overview-llm-provider-diagnostic">
+                <header className="overview-llm-payload-heading"><h3>{t('settings.llm_logs.diagnostic.title')}</h3></header>
+                <p>{t('settings.llm_logs.diagnostic.description')}</p>
+                <dl className="overview-llm-detail-facts">
+                  <div><dt>{t('settings.llm_logs.diagnostic.reason')}</dt><dd>{providerDiagnosticReasonLabel(t, responseDiagnostic.reason)}</dd></div>
+                  {responseDiagnostic.choice_index != null ? <div><dt>{t('settings.llm_logs.diagnostic.choice_index')}</dt><dd>{formatNumber(responseDiagnostic.choice_index)}</dd></div> : null}
+                  {responseDiagnostic.tool_index != null ? <div><dt>{t('settings.llm_logs.diagnostic.tool_index')}</dt><dd>{formatNumber(responseDiagnostic.tool_index)}</dd></div> : null}
+                  {responseDiagnostic.http_status ? <div><dt>{t('settings.llm_logs.http_status')}</dt><dd>{responseDiagnostic.http_status}</dd></div> : null}
+                  {responseDiagnostic.provider_request_id ? <div><dt>{t('settings.llm_logs.provider_request_id')}</dt><dd>{responseDiagnostic.provider_request_id}</dd></div> : null}
+                  {responseDiagnostic.content_type ? <div><dt>{t('settings.llm_logs.diagnostic.content_type')}</dt><dd>{responseDiagnostic.content_type}</dd></div> : null}
+                  {responseDiagnostic.finish_reason ? <div><dt>{t('settings.llm_logs.finish_reason')}</dt><dd>{responseDiagnostic.finish_reason}</dd></div> : null}
+                  <div><dt>{t('settings.llm_logs.diagnostic.body_length')}</dt><dd>{formatNumber(responseDiagnostic.body_length || 0)}</dd></div>
+                  <div><dt>{t('settings.llm_logs.diagnostic.body_truncated')}</dt><dd>{t(responseDiagnostic.body_truncated ? 'common.answer.yes' : 'common.answer.no')}</dd></div>
+                  {responseDiagnostic.usage ? <div><dt>{t('settings.llm_logs.diagnostic.usage')}</dt><dd><code>{formatPayload(responseDiagnostic.usage)}</code></dd></div> : null}
+                </dl>
+                {responseDiagnosticPreview ? (
+                  <details>
+                    <summary>{t('settings.llm_logs.diagnostic.preview')}</summary>
+                    <pre data-user-content>{responseDiagnosticPreview}</pre>
+                  </details>
+                ) : null}
+              </article>
+            ) : (
+              <article>
+                <header className="overview-llm-payload-heading">
+                  <h3>{t('settings.llm_logs.response')}</h3>
+                  {readableResponse ? <button type="button" className="button-secondary" onClick={() => setOpenReader('response')}>{t('settings.llm_logs.read_log')}</button> : null}
+                </header>
+                <pre data-user-content={responseText ? '' : undefined}>{responseText}</pre>
+              </article>
+            )}
           </div>
           <p className="overview-llm-cost-note">{t('settings.llm_logs.cost_note')}</p>
         </div>

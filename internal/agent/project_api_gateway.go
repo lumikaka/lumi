@@ -27,6 +27,11 @@ type ProjectAPIDispatchRequest struct {
 	Query   map[string]any
 	Body    map[string]any
 	HasBody bool
+	// ToolExecutionUUID and RouteID are trusted in-process metadata used by
+	// selected destructive handlers. Dispatchers must not serialize them into
+	// HTTP headers, public responses, or WebSocket payloads.
+	ToolExecutionUUID string
+	RouteID           string
 }
 
 // ProjectAPIDispatchResponse contains the standard Lumi API envelope emitted
@@ -136,14 +141,15 @@ func agentAPIRouteKey(method, path string) string {
 
 func discoveredProjectAPIRoute(method, path string) agentAPIRoute {
 	route := agentAPIRoute{
-		ID:           discoveredProjectAPIRouteID(method, path),
-		Action:       "调用项目 API：" + method + " " + path,
-		Method:       method,
-		PathTemplate: path,
-		Handler:      routeProjectAPIDispatch,
-		DocPath:      projectAPIDocPath(path),
-		Passthrough:  true,
-		ServerRoute:  true,
+		ID:             discoveredProjectAPIRouteID(method, path),
+		Action:         "调用项目 API：" + method + " " + path,
+		Method:         method,
+		PathTemplate:   path,
+		Handler:        routeProjectAPIDispatch,
+		DocPath:        projectAPIDocPath(path),
+		Passthrough:    true,
+		ServerRoute:    true,
+		RevisionSource: agentAPIRevisionNone,
 	}
 	if method == http.MethodGet {
 		route.ReadOnly = true
@@ -226,12 +232,13 @@ func discoveredProjectAPIRouteID(method, path string) string {
 	return "project_api." + strings.ToLower(method) + "." + replacer.Replace(suffix)
 }
 
-func (service *Service) executeDiscoveredProjectAPIRoute(ctx context.Context, request agentAPIRequest) (any, error) {
+func (service *Service) executeDiscoveredProjectAPIRoute(ctx context.Context, request agentAPIRequest, execution toolExecutionRecord) (any, error) {
 	if service == nil || service.projectAPIDispatcher == nil {
 		return nil, domainError(CodeStateConflict, "项目 API 分发器不可用", "应用尚未装配进程内 Project API dispatcher。", nil)
 	}
 	response, err := service.projectAPIDispatcher(ctx, ProjectAPIDispatchRequest{
 		Method: request.Method, Path: request.Path, Query: request.Query, Body: request.Body, HasBody: request.HasBody,
+		ToolExecutionUUID: execution.UUID, RouteID: request.Route.ID,
 	})
 	if err != nil {
 		return nil, err

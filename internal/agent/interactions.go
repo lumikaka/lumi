@@ -629,6 +629,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		return UserInputRequest{}, domainError(CodeValidation, "Request UUID 无效", "request_uuid 必须是 UUIDv7。", nil)
 	}
 	var result UserInputRequest
+	broadcastAnswered := false
 	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		sqlDB, err := store.DB().DB()
 		if err != nil {
@@ -653,7 +654,15 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 			return notFound(err, "用户输入请求不存在")
 		}
 		row.ProjectUUID, row.ThreadUUID = projectUUID, threadUUID
-		if row.Status == "resumed" {
+		if row.Status == "resuming" || row.Status == "resumed" {
+			response, _, validationErr := validateUserInputResponse(row, input)
+			if validationErr != nil {
+				return validationErr
+			}
+			encoded, _ := json.Marshal(response)
+			if row.ResponseJSON == nil || canonicalJSON(*row.ResponseJSON) != canonicalJSON(string(encoded)) {
+				return domainError(CodeStateConflict, "用户输入请求已使用其他回答", "request 已进入恢复阶段，只允许幂等重放完全相同的回答。", nil)
+			}
 			result = row.DTO()
 			return tx.Commit()
 		}
@@ -715,6 +724,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		responseText := string(encoded)
 		row.ResponseJSON, row.Status, row.AnsweredAt, row.UpdatedAt = &responseText, "resuming", &now, now
 		result = row.DTO()
+		broadcastAnswered = true
 		if replayCreated {
 			service.broadcastThread(projectUUID, threadUUID, "chat:tool_call", map[string]any{
 				"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": row.TurnUUID, "run_uuid": row.RunUUID,
@@ -725,7 +735,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		}
 		return nil
 	})
-	if err == nil {
+	if err == nil && broadcastAnswered {
 		service.broadcastThread(projectUUID, threadUUID, "chat:user_input_answered", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "request_uuid": requestUUID, "status": result.Status})
 	}
 	return result, err

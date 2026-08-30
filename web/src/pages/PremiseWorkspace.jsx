@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ChevronDown,
   ChevronRight,
@@ -49,6 +49,7 @@ import { PremisePromptsPanel, PremiseThreadsPanel } from './PremiseSupportPanels
 import { useProjectThreads } from './projectThreads.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
+import { projectPremiseAssetRoute, projectRoute } from '../projectRoutes.js'
 import {
   activeTaskFor,
   collectPremiseTags,
@@ -112,9 +113,12 @@ function LoadingCards() {
 
 export default function PremiseWorkspace({ projectUuid, pictureBook }) {
   const { formatDateTime, locale, t } = useI18n()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { assetUuid: routeAssetUuid = '' } = useParams()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-	const linkedAssetUuid = searchParams.get('premise_asset_uuid') || ''
+	const linkedAssetUuid = routeAssetUuid || searchParams.get('premise_asset_uuid') || ''
   const addMenuRef = useRef(null)
   const fileInputRef = useRef(null)
   const uploadTitleRefs = useRef(new Map())
@@ -460,6 +464,9 @@ export default function PremiseWorkspace({ projectUuid, pictureBook }) {
   const openAssetDetail = (asset) => {
     setHistoryAsset(asset)
     setDetailDraft({ assetType: asset.asset_type, title: asset.title, summary: asset.summary || '', tags: (asset.tags || []).join(', ') })
+    const next = new URLSearchParams(searchParams)
+    next.delete('premise_asset_uuid')
+    navigate(projectPremiseAssetRoute(projectUuid, asset.uuid, next))
   }
 
 	useEffect(() => {
@@ -497,7 +504,8 @@ export default function PremiseWorkspace({ projectUuid, pictureBook }) {
       next.delete('chat_reference_uuid')
       next.delete('chat_reference_title')
     }
-    setSearchParams(next)
+    if (routeAssetUuid) navigate(projectRoute(projectUuid, 'premise', next))
+    else setSearchParams(next)
     setAddMenuOpen(false)
   }
 
@@ -528,7 +536,9 @@ export default function PremiseWorkspace({ projectUuid, pictureBook }) {
 			const next = new URLSearchParams(searchParams)
 			next.delete('premise_asset_uuid')
 			setSearchParams(next, { replace: true })
-		}
+		} else if (routeAssetUuid) {
+      navigate(projectRoute(projectUuid, 'premise', location.search), { replace: true })
+    }
   }
 
   useEffect(() => {

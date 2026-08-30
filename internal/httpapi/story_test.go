@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +45,7 @@ func storyAPIHarness(t *testing.T) (*echo.Echo, project.Summary) {
 	e.PATCH("/api/v1/projects/:project_uuid", handler.UpdateProject)
 	e.GET("/api/v1/projects/:project_uuid/chapters", handler.ListChapters)
 	e.POST("/api/v1/projects/:project_uuid/chapters", handler.CreateChapter)
+	e.PUT("/api/v1/projects/:project_uuid/chapter-order", handler.ReorderChapters)
 	e.DELETE("/api/v1/projects/:project_uuid/chapters/trash", handler.EmptyChapterTrash)
 	e.DELETE("/api/v1/projects/:project_uuid/chapters/:chapter_uuid", handler.TrashChapter)
 	e.DELETE("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/permanent", handler.PermanentlyDeleteChapter)
@@ -51,6 +53,9 @@ func storyAPIHarness(t *testing.T) (*echo.Echo, project.Summary) {
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid", handler.ShowChapter)
 	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/current-story", handler.UpdateCurrentStory)
 	e.GET("/api/v1/projects/:project_uuid/story-profile", handler.ShowStoryProfile)
+	e.PUT("/api/v1/projects/:project_uuid/story-profile", handler.UpdateStoryProfile)
+	e.GET("/api/v1/projects/:project_uuid/story-profile/versions", handler.ListStoryProfiles)
+	e.POST("/api/v1/projects/:project_uuid/story-profile/versions/:version_uuid/restorations", handler.RestoreStoryProfile)
 	e.POST("/api/v1/projects/:project_uuid/story-profile/imports", handler.ImportExternalStoryMD)
 	e.GET("/api/v1/projects/:project_uuid/prompts", handler.ListPromptCatalog)
 	e.PATCH("/api/v1/projects/:project_uuid/prompt-groups/:prompt_group", handler.UpdatePromptGroup)
@@ -67,6 +72,49 @@ func TestProjectUpdateRejectsImmutablePictureBookProfile(t *testing.T) {
 	})
 	if response.Code != http.StatusUnprocessableEntity || !strings.Contains(response.Body.String(), `"code":"picture_book_profile_immutable"`) {
 		t.Fatalf("immutable update=%d %s", response.Code, response.Body.String())
+	}
+}
+
+func TestChapterOrderAndStoryProfileRestoreAPIContracts(t *testing.T) {
+	e, projectSummary := storyAPIHarness(t)
+	base := "/api/v1/projects/" + projectSummary.UUID
+	chapters := make([]map[string]any, 0, 3)
+	for index := 1; index <= 3; index++ {
+		response := requestJSON(t, e, http.MethodPost, base+"/chapters", map[string]any{"chapter_code": fmt.Sprintf("vol01.ch%02d", index), "title": fmt.Sprintf("Chapter %d", index)})
+		if response.Code != http.StatusCreated {
+			t.Fatalf("create chapter %d=%d %s", index, response.Code, response.Body.String())
+		}
+		chapters = append(chapters, envelopeData(t, response))
+	}
+	orderedUUIDs := []string{chapters[2]["uuid"].(string), chapters[0]["uuid"].(string), chapters[1]["uuid"].(string)}
+	ordered := requestJSON(t, e, http.MethodPut, base+"/chapter-order", map[string]any{"chapter_uuids": orderedUUIDs})
+	if ordered.Code != http.StatusOK || !strings.Contains(ordered.Body.String(), `"sort_order":1`) || strings.Contains(ordered.Body.String(), `"id":`) {
+		t.Fatalf("order response=%d %s", ordered.Code, ordered.Body.String())
+	}
+	items := envelopeData(t, ordered)["items"].([]any)
+	if items[0].(map[string]any)["uuid"] != orderedUUIDs[0] {
+		t.Fatalf("ordered items=%#v", items)
+	}
+	invalid := requestJSON(t, e, http.MethodPut, base+"/chapter-order", map[string]any{"chapter_uuids": []string{orderedUUIDs[0], orderedUUIDs[0], orderedUUIDs[1]}})
+	if invalid.Code != http.StatusUnprocessableEntity || !strings.Contains(invalid.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("invalid order=%d %s", invalid.Code, invalid.Body.String())
+	}
+	currentResponse := requestJSON(t, e, http.MethodGet, base+"/story-profile", nil)
+	current := envelopeData(t, currentResponse)
+	versionTwoResponse := requestJSON(t, e, http.MethodPut, base+"/story-profile", map[string]any{"story_md": "# API version two\n", "expected_revision": current["revision"]})
+	if versionTwoResponse.Code != http.StatusOK {
+		t.Fatalf("version two=%d %s", versionTwoResponse.Code, versionTwoResponse.Body.String())
+	}
+	versionTwo := envelopeData(t, versionTwoResponse)
+	versionThreeResponse := requestJSON(t, e, http.MethodPut, base+"/story-profile", map[string]any{"story_md": "# API version three\n", "expected_revision": versionTwo["revision"]})
+	versionThree := envelopeData(t, versionThreeResponse)
+	restored := requestJSON(t, e, http.MethodPost, base+"/story-profile/versions/"+versionTwo["uuid"].(string)+"/restorations", map[string]any{"expected_revision": versionThree["revision"]})
+	if restored.Code != http.StatusCreated || !strings.Contains(restored.Body.String(), "API version two") || strings.Contains(restored.Body.String(), `"id":`) {
+		t.Fatalf("restore response=%d %s", restored.Code, restored.Body.String())
+	}
+	conflict := requestJSON(t, e, http.MethodPost, base+"/story-profile/versions/"+versionThree["uuid"].(string)+"/restorations", map[string]any{"expected_revision": versionThree["revision"]})
+	if conflict.Code != http.StatusConflict || !strings.Contains(conflict.Body.String(), `"code":"story_profile_revision_conflict"`) {
+		t.Fatalf("stale restore=%d %s", conflict.Code, conflict.Body.String())
 	}
 }
 

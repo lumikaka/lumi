@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { useI18n } from '../i18n/useI18n.js'
 import ProjectSearchDialog from './ProjectSearchDialog.jsx'
+import SidebarProjectCreator from './SidebarProjectCreator.jsx'
 import { mergeSidebarProjectOrder, orderSidebarProjects } from './sidebarProjectOrder.js'
 
 export const GLOBAL_SIDEBAR_COLLAPSED_KEY = 'lumi.globalSidebarCollapsed'
@@ -58,20 +59,28 @@ export default function GlobalSidebar({
   const location = useLocation()
   const titleId = useId()
   const searchDialogId = useId()
+  const projectCreatorId = useId()
   const settingsMenuId = useId()
   const closeRef = useRef(null)
+  const projectCreatorTriggerRef = useRef(null)
   const searchTriggerRef = useRef(null)
   const settingsRef = useRef(null)
   const settingsTriggerRef = useRef(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [projectCreatorOpen, setProjectCreatorOpen] = useState(false)
   const stableRecentProjects = useStableRecentProjects(recentProjects)
 
   useEffect(() => {
     setSettingsOpen(false)
     setSearchOpen(false)
+    setProjectCreatorOpen(false)
     onClose?.()
   }, [location.hash, location.pathname, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (collapsed) setProjectCreatorOpen(false)
+  }, [collapsed])
 
   useEffect(() => {
     if (!settingsOpen) return undefined
@@ -116,8 +125,20 @@ export default function GlobalSidebar({
 
   const openSearch = () => {
     setSettingsOpen(false)
+    setProjectCreatorOpen(false)
     setSearchOpen(true)
     onClose?.()
+  }
+
+  const closeProjectCreator = () => {
+    setProjectCreatorOpen(false)
+    window.requestAnimationFrame(() => projectCreatorTriggerRef.current?.focus())
+  }
+
+  const toggleProjectCreator = () => {
+    setSettingsOpen(false)
+    setSearchOpen(false)
+    setProjectCreatorOpen((current) => !current)
   }
 
   return (
@@ -182,9 +203,27 @@ export default function GlobalSidebar({
         <section className="global-sidebar__recent" aria-labelledby={`${titleId}-projects`}>
           <header className="global-sidebar__section-header">
             <h2 id={`${titleId}-projects`}>{t('projects.title')}</h2>
-            <Link className="global-sidebar__add-project" to="/?create_project=1" aria-label={t('projects.action.new')}>
-              <Plus size={16} aria-hidden="true" />
-            </Link>
+            <div className="global-sidebar__project-creator-anchor">
+              <button
+                ref={projectCreatorTriggerRef}
+                className="global-sidebar__add-project"
+                type="button"
+                aria-label={t('projects.action.new')}
+                aria-haspopup="dialog"
+                aria-expanded={projectCreatorOpen}
+                aria-controls={projectCreatorOpen ? projectCreatorId : undefined}
+                onClick={toggleProjectCreator}
+              >
+                <Plus size={16} aria-hidden="true" />
+              </button>
+              {projectCreatorOpen ? (
+                <SidebarProjectCreator
+                  id={projectCreatorId}
+                  onClose={closeProjectCreator}
+                  onComplete={() => { setProjectCreatorOpen(false); onClose?.() }}
+                />
+              ) : null}
+            </div>
           </header>
           <nav aria-label={t('projects.title')}>
             {stableRecentProjects.slice(0, 6).map((project, index) => (
@@ -208,7 +247,7 @@ export default function GlobalSidebar({
             aria-expanded={settingsOpen}
             aria-controls={settingsOpen ? settingsMenuId : undefined}
             title={t('settings.title')}
-            onClick={() => setSettingsOpen((current) => !current)}
+            onClick={() => { setProjectCreatorOpen(false); setSettingsOpen((current) => !current) }}
           >
             <Settings size={16} aria-hidden="true" />
             <span>{t('settings.title')}</span>

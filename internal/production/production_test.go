@@ -126,6 +126,52 @@ func TestOverallStylePromptAndLegacyPremiseStayInSync(t *testing.T) {
 	}
 }
 
+func TestComicSectionPremiseAssetSelectionsRoundTripAndTrackCurrentVariants(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch88", Title: "References"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	section, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Opening", StoryboardMD: "Fox enters", PageRole: PageRoleBody})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := h.service.ImportPremiseAsset(ctx, CreateAssetInput{UploadUUID: upload(t, h.service, "premise_asset", imageBytes(t, 71)), AssetType: AssetCharacter, Title: "Fox"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.service.ImportPremiseAsset(ctx, CreateAssetInput{UploadUUID: upload(t, h.service, "premise_asset", imageBytes(t, 72)), AssetType: AssetScene, Title: "Forest"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := h.service.SetSectionPremiseAssets(ctx, chapter.UUID, section.UUID, []string{second.UUID, first.UUID}, section.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.Revision != section.Revision+1 || len(selected.PremiseAssets) != 2 || selected.PremiseAssets[0].AssetUUID != second.UUID || selected.PremiseAssets[1].AssetUUID != first.UUID || selected.PremiseAssets[0].VariantUUID != second.CurrentVariant.UUID {
+		t.Fatalf("selected section=%+v", selected)
+	}
+	if _, err := h.service.SetSectionPremiseAssets(ctx, chapter.UUID, section.UUID, []string{first.UUID, first.UUID}, selected.Revision); !productionErrorIs(err, CodeValidation) {
+		t.Fatalf("duplicate selection error=%v", err)
+	}
+	replacement, err := h.service.ImportPremiseAssetVariant(ctx, first.UUID, upload(t, h.service, "premise_asset", imageBytes(t, 73)), map[string]any{}, first.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := h.service.GetSection(ctx, chapter.UUID, section.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reloaded.PremiseAssets) != 2 || reloaded.PremiseAssets[1].VariantUUID != replacement.CurrentVariant.UUID {
+		t.Fatalf("selection did not follow current variant: %+v", reloaded.PremiseAssets)
+	}
+	cleared, err := h.service.SetSectionPremiseAssets(ctx, chapter.UUID, section.UUID, nil, reloaded.Revision)
+	if err != nil || len(cleared.PremiseAssets) != 0 {
+		t.Fatalf("cleared section=%+v err=%v", cleared, err)
+	}
+}
+
 func TestCreateGeneratedSectionsSupportsContractMaximum(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

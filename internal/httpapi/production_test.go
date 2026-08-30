@@ -1,9 +1,13 @@
 package httpapi
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +18,7 @@ import (
 
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/files"
 	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/story"
@@ -52,6 +57,7 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, s
 	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections", handler.CreateSection)
 	e.PATCH("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", handler.UpdateSection)
 	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-section-order", handler.ReorderSections)
+	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/premise-assets", handler.SetSectionPremiseAssets)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic", handler.ShowComicState)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots", handler.ListSnapshots)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots/:snapshot_uuid", handler.ShowSnapshot)
@@ -64,6 +70,87 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, s
 	e.DELETE("/api/v1/projects/:project_uuid/premise-assets/:premise_asset_uuid/permanent", handler.PermanentlyDeletePremiseAsset)
 	t.Cleanup(func() { _ = manager.Close(); _ = app.Close() })
 	return e, manager, created.UUID, chapter
+}
+
+func TestProductionAPIComicSectionPremiseAssetSelectionContract(t *testing.T) {
+	e, manager, projectUUID, chapter := productionAPIHarness(t)
+	base := "/api/v1/projects/" + projectUUID + "/chapters/" + chapter.UUID
+	sectionResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{
+		"title": "Reference page", "storyboard_md": "Fox enters the forest", "page_role": production.PageRoleBody,
+	})
+	if sectionResponse.Code != http.StatusCreated {
+		t.Fatalf("section=%d %s", sectionResponse.Code, sectionResponse.Body.String())
+	}
+	section := envelopeData(t, sectionResponse)
+	assets := make([]production.PremiseAsset, 0, 2)
+	if err := manager.WithCurrentStore(t.Context(), projectUUID, func(store *project.Store) error {
+		service := production.NewService(store, nil)
+		for index, assetType := range []string{production.AssetCharacter, production.AssetScene} {
+			upload, err := service.Files().CreateUpload(t.Context(), files.CreateUploadInput{
+				Purpose: "premise_asset", OriginalFilename: fmt.Sprintf("reference-%d.png", index+1), Reader: bytes.NewReader(productionAPIImage(t, uint8(80+index))),
+			})
+			if err != nil {
+				return err
+			}
+			asset, err := service.ImportPremiseAsset(t.Context(), production.CreateAssetInput{UploadUUID: upload.UUID, AssetType: assetType, Title: fmt.Sprintf("Reference %d", index+1)})
+			if err != nil {
+				return err
+			}
+			assets = append(assets, asset)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	path := base + "/comic-sections/" + section["uuid"].(string) + "/premise-assets"
+	selectedResponse := requestJSON(t, e, http.MethodPut, path, map[string]any{
+		"premise_asset_uuids": []string{assets[1].UUID, assets[0].UUID}, "expected_revision": section["revision"],
+	})
+	if selectedResponse.Code != http.StatusOK || strings.Contains(selectedResponse.Body.String(), `"id":`) {
+		t.Fatalf("selection=%d %s", selectedResponse.Code, selectedResponse.Body.String())
+	}
+	selected := envelopeData(t, selectedResponse)
+	references := selected["premise_assets"].([]any)
+	if len(references) != 2 || references[0].(map[string]any)["asset_uuid"] != assets[1].UUID || references[1].(map[string]any)["asset_uuid"] != assets[0].UUID {
+		t.Fatalf("ordered references=%#v", references)
+	}
+	for _, reference := range references {
+		item := reference.(map[string]any)
+		if !productionUUIDv7(item["asset_uuid"]) || !productionUUIDv7(item["variant_uuid"]) || !productionUUIDv7(item["file_uuid"]) {
+			t.Fatalf("non-public reference=%#v", item)
+		}
+	}
+	stale := requestJSON(t, e, http.MethodPut, path, map[string]any{
+		"premise_asset_uuids": []string{assets[0].UUID}, "expected_revision": section["revision"],
+	})
+	if stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), `"code":"production_conflict"`) {
+		t.Fatalf("stale selection=%d %s", stale.Code, stale.Body.String())
+	}
+	duplicate := requestJSON(t, e, http.MethodPut, path, map[string]any{
+		"premise_asset_uuids": []string{assets[0].UUID, assets[0].UUID}, "expected_revision": selected["revision"],
+	})
+	if duplicate.Code != http.StatusUnprocessableEntity || !strings.Contains(duplicate.Body.String(), `"code":"production_validation_failed"`) {
+		t.Fatalf("duplicate selection=%d %s", duplicate.Code, duplicate.Body.String())
+	}
+	listResponse := requestJSON(t, e, http.MethodGet, base+"/comic-sections", nil)
+	if listResponse.Code != http.StatusOK || !strings.Contains(listResponse.Body.String(), `"asset_uuid":"`+assets[1].UUID+`"`) || strings.Contains(listResponse.Body.String(), `"id":`) {
+		t.Fatalf("persisted selection=%d %s", listResponse.Code, listResponse.Body.String())
+	}
+}
+
+func productionAPIImage(t *testing.T, seed uint8) []byte {
+	t.Helper()
+	value := image.NewRGBA(image.Rect(0, 0, 8, 6))
+	for y := 0; y < 6; y++ {
+		for x := 0; x < 8; x++ {
+			value.Set(x, y, color.RGBA{R: seed + uint8(x), G: uint8(y * 12), B: 130, A: 255})
+		}
+	}
+	var content bytes.Buffer
+	if err := png.Encode(&content, value); err != nil {
+		t.Fatal(err)
+	}
+	return content.Bytes()
 }
 
 func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {

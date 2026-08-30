@@ -6,15 +6,32 @@ import { workspaceRoute, workspaceSectionForPath } from './workspaceNavigation.j
 
 test('workspace routes collapse into the three top-level sections', () => {
   const project = '/projects/019fdb00-0000-7000-8000-000000000001'
-  for (const suffix of ['', '/overview', '/overview/summary', '/overview/profile', '/overview/prompts', '/overview/llm-logs', '/overview/exports', '/story', '/prompts']) {
+  for (const suffix of ['', '/story', '/prompts', '/llm-logs', '/exports']) {
     assert.equal(workspaceSectionForPath(`${project}${suffix}`), 'overview')
   }
   for (const suffix of ['/premise', '/assets']) {
     assert.equal(workspaceSectionForPath(`${project}${suffix}`), 'premise')
   }
-  for (const suffix of ['/chapters', '/chapters/019-chapter', '/comic', '/comic/019-chapter', '/trash']) {
+  for (const suffix of ['/chapters', '/chapters/019-chapter', '/chapters/019-chapter/sections/019-section']) {
     assert.equal(workspaceSectionForPath(`${project}${suffix}`), 'chapters')
   }
+})
+
+test('workspace route definitions merge collection filters with active chat context', () => {
+  assert.deepEqual(
+    workspaceRoute('019-project', 'chapters?state=trashed', '?chat_thread_uuid=019-thread'),
+    {
+      pathname: '/projects/019-project/chapters',
+      search: '?chat_thread_uuid=019-thread&state=trashed',
+    },
+  )
+  assert.deepEqual(
+    workspaceRoute('019-project', 'chapters', '?chat_thread_uuid=019-thread&state=trashed'),
+    {
+      pathname: '/projects/019-project/chapters',
+      search: '?chat_thread_uuid=019-thread',
+    },
+  )
 })
 
 test('workspace destinations keep public UUID paths and active ChatArea query', () => {

@@ -2,7 +2,7 @@
 
 ## 模块职责
 
-工作流模块负责跨步骤业务任务的冻结输入、进度、步骤状态、事件、取消与重试。Workflow 可以可选关联 Chat Thread，但不是 Chat 的子资源：它还用于 Story、漫画分镜、漫画图片和 YOLO 项目初始化。普通 Chat Tool 发起的异步 Workflow 复用当前会话并以持久 await 暂停父 Run；公开 UI 与受控 bootstrap YOLO 使用独立 Workflow Thread，后者创建成功后立即结束发起 Turn。
+工作流模块负责跨步骤业务任务的冻结输入、进度、步骤状态、事件、取消与重试。Workflow 可以可选关联 Chat Thread，但不是 Chat 的子资源：它还用于 Story、漫画分镜、漫画图片和 YOLO 项目初始化。Chat Tool 发起的异步 Workflow（包括受控 bootstrap YOLO）复用当前会话并以持久 await 暂停父 Run；公开 Direct UI 使用独立 Workflow Thread。
 
 ## 职责边界
 
@@ -23,7 +23,7 @@ Step 和 Event 分别按 position / sequence 持久化。客户端读取 Workflo
 
 ### Chat 依赖恢复
 
-普通 `chat_tool` 调用不创建影子 Thread。Workflow 与当前 Thread、Turn、Run、Tool Execution 的内部关联写入 `workflow_awaits`；父 Run 释放 worker，Workflow 终态再以唯一 `JobChatResume` 恢复。应用重启可从 Workflow、await 和 Run 的持久状态修复未完成投递。对话式 bootstrap YOLO 是专用例外：它创建 dedicated Thread、不写 await，原 Turn 在拿到 Workflow 引用后完成。
+`chat_tool` 调用不创建影子 Thread。Workflow 与当前 Thread、Turn、Run、Tool Execution 的内部关联写入 `workflow_awaits`；父 Run 释放 worker，Workflow 终态再以唯一 `JobChatResume` 恢复。应用重启可从 Workflow、await 和 Run 的持久状态修复未完成投递。对话式 bootstrap YOLO 使用同一规则；只有 Direct UI YOLO 创建 dedicated Thread 且不等待 Chat。
 
 ### 项目就绪门禁
 
@@ -40,7 +40,7 @@ Workflow 创建和 Worker 执行都重新读取项目事实。`setup_status=draf
 
 | 模块 | 关系 |
 |---|---|
-| Chat Thread | `direct_ui` 与 bootstrap YOLO 使用独立 `workflow` Thread；普通 `chat_tool` 复用 `conversation` Thread 并内联展示；父对话不拥有 Workflow 状态。 |
+| Chat Thread | `direct_ui` 使用独立 `workflow` Thread；`chat_tool`（含 bootstrap YOLO）复用 `conversation` Thread 并内联展示；父对话只通过 await 等待，不拥有 Workflow 状态。 |
 | 项目 | `draft` 项目禁止创建或执行业务 Workflow；Project Setup 原子定稿为 `ready` 后才开放。 |
 | AI 运行时 | 解析并冻结模型，统一记录 LLM 调用。 |
 | 章节、Premise、漫画 Section | Workflow step 调用其领域服务并生成业务结果。 |

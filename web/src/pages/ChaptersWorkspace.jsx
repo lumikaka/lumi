@@ -37,6 +37,7 @@ import {
   sortChaptersByDirection,
 } from './storyWorkspaceState.js'
 import { formatTerminologyMessageKey } from './pictureBookProfile.js'
+import { workspaceRoute } from '../components/workspaceNavigation.js'
 
 const TASK_STATUS = {
   queued: 'story.task.status.queued',
@@ -339,7 +340,7 @@ export default function ChaptersWorkspace({ projectUuid, pictureBook }) {
               {sortDirection === 'asc' ? <ArrowUp size={14} aria-hidden="true" /> : <ArrowDown size={14} aria-hidden="true" />}
               {t(sortDirection === 'asc' ? 'story.chapters.order_asc' : 'story.chapters.order_desc')}
             </button>
-            <Link className="button-secondary chapters-compact-button" to={{ pathname: `${base}/trash`, search: location.search }}>
+            <Link className="button-secondary chapters-compact-button" to={workspaceRoute(projectUuid, 'chapters?state=trashed', location.search)}>
               <Trash2 size={14} aria-hidden="true" />
               {t('projects.tab.trash')}
             </Link>

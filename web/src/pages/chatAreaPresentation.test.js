@@ -69,7 +69,7 @@ test('dedicated and inline workflows are separated and inline cards sort stably 
 		{ uuid: 'workflow-b', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:02Z' },
 		{ uuid: 'dedicated', thread_uuid: 'thread-1', presentation_mode: 'dedicated_thread', created_at: '2026-08-26T00:00:00Z' },
 		{ uuid: 'workflow-c', thread_uuid: 'thread-2', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:00Z' },
-		{ uuid: 'workflow-a', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:01Z' },
+		{ uuid: 'workflow-a', kind: 'yolo_project_initialization', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', origin_run_uuid: 'run-1', presentation_mode: 'inline', await_status: 'waiting', created_at: '2026-08-26T00:00:01Z' },
 		{ uuid: 'workflow-d', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-2', presentation_mode: 'inline', created_at: '2026-08-26T00:00:03Z' },
 	]
 
@@ -77,6 +77,8 @@ test('dedicated and inline workflows are separated and inline cards sort stably 
 	const groups = groupInlineWorkflowsByTurn(workflows, 'thread-1')
 	assert.deepEqual([...groups.keys()], ['turn-1', 'turn-2'])
 	assert.deepEqual(groups.get('turn-1').map((workflow) => workflow.uuid), ['workflow-a', 'workflow-b'])
+	assert.equal(groups.get('turn-1')[0].thread_uuid, 'thread-1')
+	assert.equal(groups.get('turn-1')[0].kind, 'yolo_project_initialization')
 })
 
 test('workflow progress aggregates persisted step percentages', () => {

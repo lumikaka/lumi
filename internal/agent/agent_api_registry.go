@@ -36,6 +36,10 @@ const (
 	RiskLow       = "low"
 	RiskWrite     = "write"
 	RiskDangerous = "dangerous"
+
+	agentAPIRevisionNone  = "none"
+	agentAPIRevisionBody  = "body"
+	agentAPIRevisionQuery = "query"
 )
 
 type agentAPIRoute struct {
@@ -49,6 +53,7 @@ type agentAPIRoute struct {
 	ServerRoute                                                   bool
 	StrictSchema                                                  bool
 	Risk                                                          string
+	RevisionSource                                                string
 }
 
 type agentAPIRequest struct {
@@ -74,6 +79,7 @@ type agentAPIProjector struct {
 	Fields            []agentAPIResponseField
 	RecommendedFields []string
 	List              bool
+	NullData          bool
 	ItemProjector     string
 }
 
@@ -151,6 +157,9 @@ func recommendedAgentAPIResponseFilter(route agentAPIRoute) string {
 	if !ok {
 		return ".data"
 	}
+	if projector.NullData {
+		return ".data"
+	}
 	path := ".data"
 	if projector.List {
 		path = ".data.items[]"
@@ -202,8 +211,12 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "设定项标签。"},
 	}, "expected_revision")
 	deleteBody := apiObject(map[string]any{"expected_revision": apiInteger("刚读取到的最新 Premise Asset revision。")}, "expected_revision")
+	permanentDeleteQuery := apiObject(map[string]any{"expected_revision": apiBoundedInteger("回收站资源的最新 revision。", 0, 1<<31-1)}, "expected_revision")
 	storyboardBody := apiObject(map[string]any{"content_md": apiString("完整替换 Storyboard Markdown。"), "expected_revision": apiInteger("刚读取到的最新 Comic Section revision。")}, "content_md", "expected_revision")
 	generationBody := apiObject(map[string]any{
+		"prompt": apiString("生成指令。"), "model": apiString("可选模型覆盖值。"),
+	}, "prompt")
+	comicImageGenerationBody := apiObject(map[string]any{
 		"prompt": apiString("生成指令。"), "model": apiString("可选模型覆盖值。"),
 		"premise_asset_uuids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "可选 Premise Asset 参考 UUIDv7 列表。"},
 	}, "prompt")
@@ -217,29 +230,89 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteProjectSetupFinalize, Action: "定稿项目初始化设置", Method: "POST", PathTemplate: project + "/project-setup-finalizations", Handler: routeProjectAPIDispatch, Projector: "project_setup", DocPath: projectSetupDocPath, BodySchema: apiObject(map[string]any{"expected_revision": apiBoundedInteger("刚读取到且已经完整的设置 revision。", 1, 1<<31-1)}, "expected_revision"), ExpectedRevision: true, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
 		{ID: RouteStoryProfileGet, Action: "读取故事档案", Method: "GET", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileGet, Projector: "story_profile", DocPath: storyDocPath, RecommendedResponseFilter: ".data | {uuid,revision,story_md,projection_state}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryProfileUpdate, Action: "更新故事档案", Method: "PUT", PathTemplate: project + "/story-profile", Handler: RouteStoryProfileUpdate, Projector: "story_profile", DocPath: storyDocPath, BodySchema: storyUpdate, ExpectedRevision: true, Risk: RiskWrite},
-		{ID: RouteChapterList, Action: "列出章节", Method: "GET", PathTemplate: project + "/chapters", Handler: RouteChapterList, Projector: "chapter_list", DocPath: chapterDocPath, ReadOnly: true, Risk: RiskLow},
+		{ID: RouteChapterList, Action: "列出章节", Method: "GET", PathTemplate: project + "/chapters", Handler: RouteChapterList, Projector: "chapter_list", DocPath: chapterDocPath, QuerySchema: apiObject(map[string]any{"state": apiEnum("章节状态；默认 active。", "active", "trashed")}), ReadOnly: true, StrictSchema: true, Risk: RiskLow},
 		{ID: RouteChapterGet, Action: "读取章节", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}", Handler: RouteChapterGet, Projector: "chapter", DocPath: chapterDocPath, RecommendedResponseFilter: ".data | {uuid,chapter_code,title,revision,current_story}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteChapterStoryUpdate, Action: "更新章节正文", Method: "PUT", PathTemplate: project + "/chapters/{chapter_uuid}/current-story", Handler: RouteChapterStoryUpdate, Projector: "chapter", DocPath: chapterDocPath, BodySchema: chapterUpdate, ExpectedRevision: true, Risk: RiskWrite},
+		{ID: RouteChapterPermanentDelete, Action: "永久删除回收站章节", Method: "DELETE", PathTemplate: project + "/chapters/{chapter_uuid}/permanent", Handler: routeProjectAPIDispatch, Projector: "null_data", DocPath: chapterDocPath, QuerySchema: permanentDeleteQuery, RevisionSource: agentAPIRevisionQuery, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
+		{ID: RouteChapterTrashEmpty, Action: "清空章节回收站", Method: "DELETE", PathTemplate: project + "/chapters/trash", Handler: routeProjectAPIDispatch, Projector: "chapter_trash_result", DocPath: chapterDocPath, RevisionSource: agentAPIRevisionNone, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
 		{ID: RoutePremiseGet, Action: "读取当前 Premise", Method: "GET", PathTemplate: project + "/premise", Handler: RoutePremiseGet, Projector: "premise", DocPath: premiseDocPath, ReadOnly: true, Risk: RiskLow},
-		{ID: RoutePremiseAssetList, Action: "列出设定项", Method: "GET", PathTemplate: project + "/premise-assets", Handler: RoutePremiseAssetList, Projector: "premise_asset_list", DocPath: premiseAssetDocPath, ReadOnly: true, Risk: RiskLow},
+		{ID: RoutePremiseAssetList, Action: "列出设定项", Method: "GET", PathTemplate: project + "/premise-assets", Handler: RoutePremiseAssetList, Projector: "premise_asset_list", DocPath: premiseAssetDocPath, QuerySchema: apiObject(map[string]any{"tag": apiLimitedString("标签过滤。", 64), "state": apiEnum("设定项状态；默认 active。", "active", "trashed")}), ReadOnly: true, StrictSchema: true, Risk: RiskLow},
 		{ID: RoutePremiseAssetGet, Action: "读取设定项", Method: "GET", PathTemplate: project + "/premise-assets/{premise_asset_uuid}", Handler: RoutePremiseAssetGet, Projector: "premise_asset", DocPath: premiseAssetDocPath, RecommendedResponseFilter: ".data | {uuid,asset_type,title,summary,tags,current_variant,revision}", ReadOnly: true, Risk: RiskLow},
 		{ID: RoutePremiseAssetCreate, Action: "创建设定项", Method: "POST", PathTemplate: project + "/premise-assets", Handler: RoutePremiseAssetCreate, Projector: "premise_asset", DocPath: premiseAssetDocPath, BodySchema: assetCreate, Risk: RiskWrite},
 		{ID: RoutePremiseAssetUpdate, Action: "更新设定项", Method: "PATCH", PathTemplate: project + "/premise-assets/{premise_asset_uuid}", Handler: RoutePremiseAssetUpdate, Projector: "premise_asset", DocPath: premiseAssetDocPath, BodySchema: assetUpdate, ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RoutePremiseAssetDelete, Action: "将设定项移入回收站", Method: "DELETE", PathTemplate: project + "/premise-assets/{premise_asset_uuid}", Handler: RoutePremiseAssetDelete, Projector: "premise_asset", DocPath: premiseAssetDocPath, BodySchema: deleteBody, ExpectedRevision: true, Risk: RiskDangerous, RequiresConfirmation: true},
+		{ID: RoutePremiseAssetPermanentDelete, Action: "永久删除回收站设定项", Method: "DELETE", PathTemplate: project + "/premise-assets/{premise_asset_uuid}/permanent", Handler: routeProjectAPIDispatch, Projector: "premise_trash_result", DocPath: premiseAssetDocPath, QuerySchema: permanentDeleteQuery, RevisionSource: agentAPIRevisionQuery, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
+		{ID: RoutePremiseAssetTrashEmpty, Action: "清空设定项回收站", Method: "DELETE", PathTemplate: project + "/premise-assets/trash", Handler: routeProjectAPIDispatch, Projector: "premise_trash_result", DocPath: premiseAssetDocPath, RevisionSource: agentAPIRevisionNone, RequiresConfirmation: true, StrictSchema: true, Risk: RiskDangerous},
 		{ID: RouteComicSectionGet, Action: "读取漫画 Section", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionGet, Projector: "comic_section", DocPath: comicSectionDocPath, RecommendedResponseFilter: ".data | {uuid,chapter_uuid,section_no,page_role,title,description_md,current_storyboard,revision}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryboardUpdate, Action: "更新 Storyboard", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/storyboard-variants", Handler: RouteStoryboardUpdate, Projector: "comic_section", DocPath: storyboardDocPath, BodySchema: storyboardBody, ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteChapterGenerationCreate, Action: "创建章节生成任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/generations", Handler: RouteChapterGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: chapterGenerationBody, Async: true, Risk: RiskWrite},
 		{ID: RoutePremiseSettingGenerationCreate, Action: "创建 Premise 设定图任务", Method: "POST", PathTemplate: project + "/premise-sources/{source_uuid}/setting-generations", Handler: RoutePremiseSettingGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
 		{ID: RoutePremiseBreakdownCreate, Action: "创建 Premise 拆解任务", Method: "POST", PathTemplate: project + "/premise-setting-images/{setting_image_uuid}/breakdowns", Handler: RoutePremiseBreakdownCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
-		{ID: RouteComicImageGenerationCreate, Action: "创建漫画图片任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations", Handler: RouteComicImageGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
+		{ID: RouteComicImageGenerationCreate, Action: "创建漫画图片任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations", Handler: RouteComicImageGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: comicImageGenerationBody, Async: true, Risk: RiskWrite},
 		{ID: RouteStoryTaskGet, Action: "读取故事任务状态", Method: "GET", PathTemplate: project + "/tasks/{task_uuid}", Handler: RouteStoryTaskGet, Projector: "task", DocPath: taskDocPath, ReadOnly: true, Async: true, Risk: RiskLow},
 		{ID: RouteProductionTaskGet, Action: "读取生产任务状态", Method: "GET", PathTemplate: project + "/production-tasks/{task_uuid}", Handler: RouteProductionTaskGet, Projector: "task", DocPath: taskDocPath, ReadOnly: true, Async: true, Risk: RiskLow},
 	}
-	return append(base, phase3AgentAPIRoutes()...)
+	return normalizeAgentAPIRoutes(append(base, phase3AgentAPIRoutes()...))
+}
+
+func normalizeAgentAPIRoutes(routes []agentAPIRoute) []agentAPIRoute {
+	for index := range routes {
+		route := &routes[index]
+		if route.RevisionSource == "" {
+			switch {
+			case agentAPISchemaRequires(route.BodySchema, "expected_revision"):
+				route.RevisionSource = agentAPIRevisionBody
+			case agentAPISchemaRequires(route.QuerySchema, "expected_revision"):
+				route.RevisionSource = agentAPIRevisionQuery
+			default:
+				route.RevisionSource = agentAPIRevisionNone
+			}
+		}
+		route.ExpectedRevision = route.RevisionSource != agentAPIRevisionNone
+	}
+	return routes
+}
+
+func agentAPISchemaRequires(schema map[string]any, field string) bool {
+	if schema == nil {
+		return false
+	}
+	required, _ := schema["required"].([]string)
+	for _, name := range required {
+		if name == field {
+			return true
+		}
+	}
+	if values, ok := schema["required"].([]any); ok {
+		for _, value := range values {
+			if name, _ := value.(string); name == field {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func agentAPIRequestExpectedRevision(request agentAPIRequest) int64 {
+	switch request.Route.RevisionSource {
+	case agentAPIRevisionBody:
+		return intArg(request.Body, "expected_revision")
+	case agentAPIRevisionQuery:
+		return intArg(request.Query, "expected_revision")
+	default:
+		return 0
+	}
+}
+
+func storedAgentAPIExpectedRevision(route agentAPIRoute, arguments map[string]any) int64 {
+	request := agentAPIRequest{Route: route}
+	request.Query, _ = arguments["query"].(map[string]any)
+	request.Body, _ = arguments["request_body"].(map[string]any)
+	return agentAPIRequestExpectedRevision(request)
 }
 
 func agentAPIRoutes() []agentAPIRoute {
-	return rawAgentAPIRoutes()
+	return normalizeAgentAPIRoutes(rawAgentAPIRoutes())
 }
 
 func parseAgentAPIRequest(tc toolContext, args map[string]any) (agentAPIRequest, error) {
@@ -248,6 +321,21 @@ func parseAgentAPIRequest(tc toolContext, args map[string]any) (agentAPIRequest,
 
 func (service *Service) parseAgentAPIRequest(tc toolContext, args map[string]any) (agentAPIRequest, error) {
 	return parseAgentAPIRequestWithRoutes(tc, args, service.requestAPIRoutes())
+}
+
+func (service *Service) recoveryAgentAPIResponseFilter(args map[string]any) string {
+	method, path := stringArg(args, "method"), stringArg(args, "url")
+	for _, route := range service.requestAPIRoutes() {
+		if route.Method != method {
+			continue
+		}
+		if _, matched := matchAgentAPIPath(route.PathTemplate, path); matched {
+			return recommendedAgentAPIResponseFilter(route)
+		}
+	}
+	// Unknown historical passthrough routes retain the former compact-response
+	// fallback and will still be rejected later if no effective route exists.
+	return ".data"
 }
 
 func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes []agentAPIRoute) (agentAPIRequest, error) {
@@ -286,7 +374,8 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	if filter == "" || len(filter) > 2048 {
 		return agentAPIRequest{}, invalidResponseFilter(filter)
 	}
-	if _, err := parseResponseFilter(filter); err != nil {
+	parsedFilter, err := parseResponseFilter(filter)
+	if err != nil {
 		return agentAPIRequest{}, invalidResponseFilter(filter)
 	}
 	var matched *agentAPIRoute
@@ -311,10 +400,13 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	useDispatcher := matched.Passthrough
 	if !matched.Passthrough {
 		if shapeErr := validateReviewedAgentAPIRequestShape(*matched, query, hasQuery, body, hasBody); shapeErr != nil {
-			if !matched.ServerRoute || matched.StrictSchema {
-				return agentAPIRequest{}, shapeErr
-			}
-			useDispatcher = true
+			return agentAPIRequest{}, shapeErr
+		}
+		if err := validateReviewedAgentAPICrossFields(*matched, query, body); err != nil {
+			return agentAPIRequest{}, err
+		}
+		if err := validateAgentAPIResponseFilter(*matched, parsedFilter); err != nil {
+			return agentAPIRequest{}, err
 		}
 	}
 	request := agentAPIRequest{Route: *matched, Method: method, Path: path, Query: query, Body: body, HasBody: hasBody, UseDispatcher: useDispatcher, ResponseFilter: filter, Params: params}
@@ -325,6 +417,11 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 func validateReviewedAgentAPIRequestShape(route agentAPIRoute, query map[string]any, hasQuery bool, body map[string]any, hasBody bool) error {
 	if route.QuerySchema == nil && hasQuery {
 		return toolValidationError("query 不适用于当前路由", "当前 Route 没有注册 query schema。", toolValidationViolation{Path: "query", Rule: "not_allowed"})
+	}
+	if route.QuerySchema != nil && !hasQuery {
+		if required, _ := route.QuerySchema["required"].([]string); len(required) > 0 {
+			return toolValidationError("query 缺失", "当前路由要求 JSON Object query。", toolValidationViolation{Path: "query", Rule: "required", ExpectedType: "object"})
+		}
 	}
 	if route.QuerySchema != nil && hasQuery {
 		if err := validateArgumentShape("query", query, route.QuerySchema); err != nil {
@@ -340,6 +437,88 @@ func validateReviewedAgentAPIRequestShape(route agentAPIRoute, query map[string]
 	if hasBody && route.BodySchema != nil {
 		if err := validateArgumentShape("request_body", body, route.BodySchema); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// validateReviewedAgentAPICrossFields contains only deterministic checks over
+// the already schema-validated request. It deliberately runs while preparing a
+// tool-call batch, before any intent is persisted or any route handler runs.
+func validateReviewedAgentAPICrossFields(route agentAPIRoute, query, body map[string]any) error {
+	switch route.ID {
+	case RoutePremiseAssetCreate:
+		fileUUID, hasFile := body["file_uuid"]
+		uploadUUID, hasUpload := body["upload_uuid"]
+		if hasFile == hasUpload {
+			return toolValidationError(
+				"设定项图片来源冲突",
+				"request_body.file_uuid 与 request_body.upload_uuid 必须且只能提供一个。",
+				toolValidationViolation{Path: "request_body", Rule: "exactly_one_of"},
+			)
+		}
+		selected, path := fileUUID, "request_body.file_uuid"
+		if hasUpload {
+			selected, path = uploadUUID, "request_body.upload_uuid"
+		}
+		if value, _ := selected.(string); !isUUIDv7(value) {
+			return toolValidationError(
+				"设定项图片来源无效",
+				path+" 必须是 UUIDv7。",
+				toolValidationViolation{Path: path, Rule: "format", ExpectedType: "UUIDv7"},
+			)
+		}
+	case RouteStoryTaskEventList, RouteProductionTaskEventList:
+		if _, _, err := eventCursors(query); err != nil {
+			return err
+		}
+	case RouteComicExportReadiness:
+		return validateComicExportScope("query", query)
+	case RouteComicExportCreate:
+		return validateComicExportScope("request_body", body)
+	case RouteComicExportList:
+		if stringArg(query, "scope") == "project" {
+			if _, present := query["chapter_uuid"]; present {
+				return toolValidationError(
+					"导出筛选冲突",
+					"query.chapter_uuid 不适用于 project scope。",
+					toolValidationViolation{Path: "query.chapter_uuid", Rule: "not_allowed_with", ExpectedType: "scope=chapter or omitted scope"},
+				)
+			}
+		}
+	}
+	return nil
+}
+
+func validateComicExportScope(location string, values map[string]any) error {
+	scope := stringArg(values, "scope")
+	chapterValue, hasChapter := values["chapter_uuid"]
+	chapterUUID, _ := chapterValue.(string)
+	path := location + ".chapter_uuid"
+	if scope == "project" {
+		if hasChapter {
+			return toolValidationError(
+				"导出范围冲突",
+				path+" 不适用于 project scope。",
+				toolValidationViolation{Path: path, Rule: "not_allowed_with", ExpectedType: "scope=chapter"},
+			)
+		}
+		return nil
+	}
+	if scope == "chapter" {
+		if !hasChapter {
+			return toolValidationError(
+				"导出章节缺失",
+				path+" 在 chapter scope 下为必填字段。",
+				toolValidationViolation{Path: path, Rule: "required_with", ExpectedType: "UUIDv7"},
+			)
+		}
+		if !isUUIDv7(chapterUUID) {
+			return toolValidationError(
+				"导出章节无效",
+				path+" 必须是 UUIDv7。",
+				toolValidationViolation{Path: path, Rule: "format", ExpectedType: "UUIDv7"},
+			)
 		}
 	}
 	return nil
@@ -457,7 +636,7 @@ func routeTargetUUID(request agentAPIRequest, thread threadRecord) string {
 
 func executeAgentAPIRoute(ctx context.Context, service *Service, store *project.Store, tc toolContext, execution toolExecutionRecord, request agentAPIRequest) (any, error) {
 	if request.UseDispatcher {
-		return service.executeDiscoveredProjectAPIRoute(ctx, request)
+		return service.executeDiscoveredProjectAPIRoute(ctx, request, execution)
 	}
 	storyService := story.NewService(store)
 	productionService := production.NewService(store, service.hub)
@@ -467,13 +646,17 @@ func executeAgentAPIRoute(ctx context.Context, service *Service, store *project.
 	}
 	switch request.Route.Handler {
 	case routeProjectAPIDispatch:
-		return service.executeDiscoveredProjectAPIRoute(ctx, request)
+		return service.executeDiscoveredProjectAPIRoute(ctx, request, execution)
 	case RouteStoryProfileGet:
 		return storyService.GetStoryProfile(ctx)
 	case RouteStoryProfileUpdate:
 		return updateStoryProfileTool(ctx, storyService, args)
 	case RouteChapterList:
-		items, err := storyService.ListChapters(ctx, "active")
+		state := stringArg(request.Query, "state")
+		if state == "" {
+			state = "active"
+		}
+		items, err := storyService.ListChapters(ctx, state)
 		return map[string]any{"items": items}, err
 	case RouteChapterGet:
 		return storyService.GetChapter(ctx, request.Params["chapter_uuid"])
@@ -483,7 +666,11 @@ func executeAgentAPIRoute(ctx context.Context, service *Service, store *project.
 	case RoutePremiseGet:
 		return productionService.GetPremise(ctx)
 	case RoutePremiseAssetList:
-		items, err := productionService.ListPremiseAssets(ctx, "", "active")
+		state := stringArg(request.Query, "state")
+		if state == "" {
+			state = "active"
+		}
+		items, err := productionService.ListPremiseAssets(ctx, stringArg(request.Query, "tag"), state)
 		return map[string]any{"items": items}, err
 	case RoutePremiseAssetGet:
 		asset, err := productionService.GetPremiseAsset(ctx, request.Params["premise_asset_uuid"])
@@ -570,13 +757,36 @@ func compactAgentRouteValue(route agentAPIRoute, value any) (any, error) {
 	if !ok {
 		return decoded, nil
 	}
+	if projector.NullData {
+		if decoded != nil {
+			return nil, domainError(CodeStateConflict, "项目 API 响应形状无效", "该 Route 的 data 必须为 null。", nil)
+		}
+		return nil, nil
+	}
 	if projector.List {
-		root, _ := decoded.(map[string]any)
-		items, _ := root["items"].([]any)
-		itemProjector, _ := agentAPIProjectorByKey(projector.ItemProjector)
+		root, ok := decoded.(map[string]any)
+		if !ok {
+			return nil, invalidAgentAPIResponseShape("列表 Route 的 data 必须为 object。")
+		}
+		rawItems, exists := root["items"]
+		if !exists {
+			return nil, invalidAgentAPIResponseShape("列表 Route 的 data 必须包含 items。")
+		}
+		items, ok := rawItems.([]any)
+		if !ok {
+			return nil, invalidAgentAPIResponseShape("列表 Route 的 data.items 必须为 array。")
+		}
+		itemProjector, ok := agentAPIProjectorByKey(projector.ItemProjector)
+		if !ok || itemProjector.List || itemProjector.NullData || len(itemProjector.Fields) == 0 {
+			return nil, invalidAgentAPIResponseShape("列表 Route 的 item projector 配置无效。")
+		}
 		projected := make([]any, 0, len(items))
-		for _, item := range items {
-			projected = append(projected, pickPublicFields(item, agentAPIProjectorFieldNames(itemProjector)))
+		for index, item := range items {
+			itemObject, ok := item.(map[string]any)
+			if !ok {
+				return nil, invalidAgentAPIResponseShape(fmt.Sprintf("列表 Route 的 data.items[%d] 必须为 object。", index))
+			}
+			projected = append(projected, pickPublicFields(itemObject, agentAPIProjectorFieldNames(itemProjector)))
 		}
 		result := map[string]any{"items": projected}
 		for _, key := range []string{"pagination", "cursor_pagination", "filter_groups"} {
@@ -587,9 +797,17 @@ func compactAgentRouteValue(route agentAPIRoute, value any) (any, error) {
 		return result, nil
 	}
 	if len(projector.Fields) > 0 {
-		return pickPublicFields(decoded, agentAPIProjectorFieldNames(projector)), nil
+		root, ok := decoded.(map[string]any)
+		if !ok {
+			return nil, invalidAgentAPIResponseShape("对象 Route 的 data 必须为 object。")
+		}
+		return pickPublicFields(root, agentAPIProjectorFieldNames(projector)), nil
 	}
 	return decoded, nil
+}
+
+func invalidAgentAPIResponseShape(details string) error {
+	return domainError(CodeStateConflict, "项目 API 响应形状无效", details, nil)
 }
 
 func agentAPIProjectorFieldNames(projector agentAPIProjector) []string {
@@ -600,8 +818,7 @@ func agentAPIProjectorFieldNames(projector agentAPIProjector) []string {
 	return result
 }
 
-func pickPublicFields(value any, fields []string) map[string]any {
-	input, _ := value.(map[string]any)
+func pickPublicFields(input map[string]any, fields []string) map[string]any {
 	result := make(map[string]any, len(fields))
 	for _, field := range fields {
 		if item, ok := input[field]; ok {

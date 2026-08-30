@@ -2,6 +2,7 @@ package agent
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -190,7 +191,15 @@ func readAgentDocWithRoutes(tc toolContext, args map[string]any, routes []agentA
 	if len(content) > maxAgentDocBytes {
 		return nil, domainError(CodeResultTooLarge, "Agent Doc 过大", "单次文档结果超过限制。", nil)
 	}
-	return map[string]any{"path": path, "doc_ref": path, "content": content}, nil
+	result := map[string]any{"path": path, "doc_ref": path, "content": content}
+	// read_agent_doc must either return the complete reviewed Contract or fail.
+	// A compacted preview is not a usable API contract, so validate the exact
+	// JSON envelope that executeTool will hand to compactToolResult.
+	encoded, err := json.Marshal(map[string]any{"success": true, "data": result})
+	if err != nil || len(encoded) > MaxToolResult {
+		return nil, domainError(CodeResultTooLarge, "Agent Doc 过大", "完整 Agent Doc 的 JSON 工具结果超过 64 KiB 限制。", err)
+	}
+	return result, nil
 }
 
 func validAgentDocPath(path string) bool {

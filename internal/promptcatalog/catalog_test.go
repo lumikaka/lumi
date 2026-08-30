@@ -91,12 +91,13 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 4 ||
+				if len(definition.PreviousDefaultValues) != 5 ||
 					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
-					strings.Contains(definition.PreviousDefaultValues[0], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[0], "bootstrap 首个 Turn") ||
-					!strings.Contains(definition.PreviousDefaultValues[0], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[1], "ui_ref") ||
-					!strings.Contains(definition.PreviousDefaultValues[2], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[2], "确认选项索引") ||
-					!strings.Contains(definition.PreviousDefaultValues[3], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[3], "流程或来源约束不确定") {
+					(!strings.Contains(definition.PreviousDefaultValues[0], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[0], "立即结束当前 Turn")) ||
+					strings.Contains(definition.PreviousDefaultValues[1], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[1], "bootstrap 首个 Turn") ||
+					!strings.Contains(definition.PreviousDefaultValues[1], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[2], "ui_ref") ||
+					(!strings.Contains(definition.PreviousDefaultValues[3], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[3], "确认选项索引")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[4], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[4], "流程或来源约束不确定")) {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -207,8 +208,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "90d6fc97e4681821e3115afa80f40b41bc41e8122201aafb29c4dd9a856cf9d6",
-		LanguageEnglish: "c71c05cfa0319cad242cae682cd4e62114bdcaa9b819b987a28377706d1d0013",
+		LanguageChinese: "e1d7f077d0e53fdb49eeb0dffc03af1f80b8354aee4b23c4d8dc0d4925882d5b",
+		LanguageEnglish: "bfdc16979bd8d89bdd1cdd2e4605624a4fc56cfcaf77c5815e73103e16a0faad",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

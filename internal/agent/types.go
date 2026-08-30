@@ -544,11 +544,12 @@ type UserInputAnswer struct {
 }
 
 type CreateYoloInput struct {
-	Title          string `json:"title"`
-	StoryPrompt    string `json:"story_prompt"`
-	ProviderUUID   string `json:"-"`
-	Model          string `json:"model"`
-	IdempotencyKey string `json:"idempotency_key"`
+	Title          string                  `json:"title"`
+	StoryPrompt    string                  `json:"story_prompt"`
+	ProviderUUID   string                  `json:"-"`
+	Model          string                  `json:"model"`
+	IdempotencyKey string                  `json:"idempotency_key"`
+	Invocation     DomainInvocationContext `json:"-"`
 }
 
 type threadRecord struct {

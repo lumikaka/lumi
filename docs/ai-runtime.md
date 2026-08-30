@@ -34,9 +34,9 @@ River client 和类型只出现在 `internal/jobqueue`。domain、HTTP 和 React
 5. Worker 只在短事务中读写状态；Provider 网络调用期间没有数据库事务或长期写锁。
 6. 切换标签页 URL 不操作 Runtime。仅目标项目显式关闭、独立空闲回收或应用退出时，River 才停止领取并最多 soft-stop 5 秒，再取消剩余 worker context；Runtime 未成功停止时对应 Store 和项目锁保持打开。安全幂等任务保持可恢复状态，旧 URL 重开项目后由 River 重试。
 
-异步 Generation 的调用来源由进程内可信 `DomainInvocationContext` 指定，不能从 User-Agent、请求头或公开 JSON 推断。`direct_ui` 使用 `dedicated_thread` 且不等待 Chat；`chat_tool` 使用 `inline`、携带当前 Thread/Turn/Run/Tool Execution 的公开 UUIDv7 并等待完成；`workflow_step` 使用 `none`，避免嵌套业务步骤再创建展示 Thread。公开章节 Generation HTTP 端点始终显式传入 `direct_ui`，请求体保持兼容。
+异步 Generation 的调用来源由进程内可信 `DomainInvocationContext` 指定，不能从 User-Agent、请求头或公开 JSON 推断。`direct_ui` 使用 `dedicated_thread` 且不等待 Chat；`chat_tool` 使用 `inline`、携带当前 Thread/Turn/Run/Tool Execution 的公开 UUIDv7 并等待完成；`workflow_step` 使用 `none`，避免嵌套业务步骤再创建展示 Thread。bootstrap YOLO route 显式注入 `chat_tool + inline + await_completion=true`，公开 YOLO 与章节 Generation HTTP 端点仍显式使用 `direct_ui`，请求体保持兼容。
 
-Chat Tool 创建任务、Workflow/Step 与 `workflow_awaits` 使用同一 SQLite 事务。等待期间 `chat_turns` / `chat_runs` 因现有 CHECK 约束保持 `in_progress`，await 的 `waiting` 状态提供语义等价的可恢复边界，Turn REST DTO 投影为 `waiting_for_workflow`；Agent worker 返回并释放 queue slot，不轮询领域任务。Workflow 完成、失败、中断或取消时，领域终态、await `ready`、父 Turn/Run `queued` 和唯一 `JobChatResume` 在同一 SQLite/River 事务提交。Resume 只读取持久化终态，幂等保存脱敏 Tool Result，再继续原模型 Run。
+Chat Tool 创建任务、Workflow/Step 与 `workflow_awaits` 使用同一 SQLite 事务；多步骤 bootstrap YOLO 还把全部 Steps 与首个 Workflow Job 纳入该事务。等待期间 `chat_turns` / `chat_runs` 因现有 CHECK 约束保持 `in_progress`，await 的 `waiting` 状态提供语义等价的可恢复边界，Turn REST DTO 投影为 `waiting_for_workflow`；Agent worker 返回并释放 queue slot，不轮询领域任务。Workflow 完成、失败、中断或取消时，领域终态、await `ready`、父 Turn/Run `queued` 和唯一 `JobChatResume` 在同一 SQLite/River 事务提交。Resume 只读取持久化终态，幂等保存脱敏 Tool Result，再继续原模型 Run；YOLO 终态结果使用按 position 排序的步骤摘要，不任意选取单个 Step。
 
 `ReconcileOnOpen` 不会把活动 `waiting` await 当普通 `in_progress` Run 重跑。它会取消父 Run 已终止的 await，修复已终态 Workflow 仍处于 `waiting` 的投影，为 `ready|resuming` 依赖补投唯一 Resume，并重新计算全部 Thread 聚合状态。父 Run 停止会取消其独占 Workflow；晚到终态不能复活已取消 Run。单独取消或失败的 Workflow 则以结构化 Tool Result 唤醒仍有效的父 Run，不伪装成 Provider failure。
 

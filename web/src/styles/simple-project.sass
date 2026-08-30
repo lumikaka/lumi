@@ -1,0 +1,1934 @@
+@use './design-tokens' as *
+
+.simple-project-shell
+  --simple-page-ratio: 4 / 3
+  width: 100%
+  height: 100dvh
+  display: grid
+  grid-template-columns: $global-sidebar-width minmax(0, 1fr)
+  grid-template-rows: $topbar-height minmax(0, 1fr)
+  overflow: hidden
+  color: $color-text
+  background: #f7f7f3
+
+  &.global-sidebar-collapsed
+    grid-template-columns: $global-sidebar-collapsed-width minmax(0, 1fr)
+
+  .simple-project-topbar
+    grid-column: 2
+    grid-row: 1
+    z-index: 4
+    min-width: 0
+    height: $topbar-height
+    padding: 0 18px
+    display: flex
+    align-items: center
+    gap: 12px
+    border-bottom: 1px solid $color-border
+    background: $color-surface
+
+  .simple-project-topbar__context
+    flex: 0 1 auto
+    min-width: 0
+    margin-right: auto
+    display: flex
+    align-items: baseline
+    gap: 8px
+
+    strong,
+    span
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      max-width: min(36vw, 420px)
+      font-size: 14px
+      font-weight: $font-weight-medium
+      line-height: 21px
+
+    span
+      color: #747970
+      font-size: $font-size-small
+      line-height: 21px
+
+  .simple-project-topbar__menu
+    display: none
+
+  .simple-project-topbar__actions
+    flex: 0 0 auto
+    display: flex
+    align-items: center
+    gap: 12px
+
+    > button
+      width: 34px
+      height: 34px
+      min-height: 34px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 0
+      border-radius: $radius-sm
+      color: $color-text
+      background: transparent
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: $color-surface-muted
+
+  .simple-project-workbench
+    grid-column: 2
+    grid-row: 2
+    min-width: 0
+    min-height: 0
+    display: grid
+    grid-template-columns: minmax(0, 1fr) $chat-width
+
+    &.is-chat-collapsed
+      grid-template-columns: minmax(0, 1fr) $chat-collapsed-width
+
+  .simple-project-content
+    min-width: 0
+    min-height: 0
+    overflow: auto
+    background: #fbfbf8
+
+  .simple-project-page
+    width: min(100%, 1160px)
+    min-height: 100%
+    margin: 0 auto
+    padding: 32px 34px 64px
+
+  .simple-button
+    min-height: 36px
+    padding: 0 13px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 7px
+    border: 1px solid $color-accent
+    border-radius: $radius-sm
+    color: #fff
+    background: $color-accent
+    font-size: 12px
+    font-weight: $font-weight-semibold
+    line-height: 1
+    text-decoration: none
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent-strong
+      color: #fff
+      background: $color-accent-strong
+
+  .simple-button--secondary
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-home-hero
+    min-width: 0
+    padding-bottom: 28px
+    display: grid
+    grid-template-columns: 108px minmax(0, 1fr)
+    align-items: start
+    gap: 24px
+    border-bottom: 1px solid $color-border
+
+  .simple-home-cover
+    width: 108px
+    aspect-ratio: var(--simple-page-ratio)
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      object-fit: cover
+
+  .simple-home-hero__copy
+    min-width: 0
+
+    header
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 18px
+
+      > div
+        display: flex
+        flex-wrap: wrap
+        justify-content: flex-end
+        gap: 8px
+
+    h1
+      margin: 0
+      font-size: 28px
+      font-weight: $font-weight-semibold
+      letter-spacing: -.02em
+
+    > p
+      max-width: 850px
+      margin: 12px 0 16px
+      color: $color-muted
+      font-size: 14px
+      line-height: 1.8
+
+    dl
+      margin: 0
+      display: flex
+      flex-wrap: wrap
+      gap: 18px 30px
+
+      div
+        display: grid
+        gap: 2px
+
+      dt
+        color: $color-muted
+        font-size: $font-size-small
+
+      dd
+        margin: 0
+        font-size: 13px
+        font-weight: $font-weight-semibold
+
+  .simple-home-section
+    padding: 27px 0
+    border-bottom: 1px solid $color-border
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 16px
+
+      h2,
+      p
+        margin: 0
+
+      h2
+        font-size: 18px
+        font-weight: $font-weight-semibold
+
+      p
+        margin-top: 3px
+        color: $color-muted
+        font-size: $font-size-small
+
+  .simple-setting-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 14px
+
+  .simple-setting-card
+    min-width: 0
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    color: $color-text
+    background: $color-surface
+    text-decoration: none
+    transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      height: 154px
+
+    > img
+      display: block
+      object-fit: cover
+
+    > span
+      min-width: 0
+      padding: 11px 12px 12px
+      display: grid
+      gap: 2px
+
+    strong,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      font-size: 14px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      transform: translateY(-1px)
+      box-shadow: 0 9px 22px rgba(34, 45, 38, .08)
+
+  .simple-page-preview-strip
+    min-width: 0
+    display: grid
+    grid-template-columns: repeat(6, minmax(96px, 1fr))
+    gap: 9px
+    overflow-x: auto
+
+    a
+      position: relative
+      min-width: 96px
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        display: block
+        object-fit: cover
+
+      > span
+        position: absolute
+        left: 6px
+        bottom: 6px
+        min-width: 22px
+        min-height: 22px
+        padding: 2px 5px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        background: rgba($color-surface, .9)
+        font-size: $font-size-micro
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+
+  .simple-empty-copy
+    margin: 12px 0
+    color: $color-muted
+    font-size: 13px
+
+  .simple-page-heading
+    min-width: 0
+    margin-bottom: 26px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 18px
+
+    > div:first-child
+      min-width: 0
+
+      > a
+        margin-bottom: 8px
+        display: inline-flex
+        align-items: center
+        gap: 5px
+        color: $color-muted
+        font-size: 12px
+        font-weight: $font-weight-medium
+
+        &:hover,
+        &:focus-visible
+          color: $color-accent-strong
+
+      > span
+        display: block
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    h1
+      margin: 0
+      font-size: 25px
+      font-weight: $font-weight-semibold
+      letter-spacing: -.02em
+
+    p
+      max-width: 720px
+      margin: 7px 0 0
+      color: $color-muted
+      font-size: 13px
+      line-height: 1.65
+
+  .simple-page-heading__actions
+    display: flex
+    flex-wrap: wrap
+    justify-content: flex-end
+    gap: 8px
+
+  .simple-story-layout
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 210px
+    align-items: start
+    gap: 24px
+
+  .simple-story-document
+    min-height: 490px
+    padding: 28px 32px 40px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: #fdfdf9
+
+    h2
+      margin: 0 0 22px
+      font-family: Georgia, "Songti SC", serif
+      font-size: 26px
+      font-weight: $font-weight-medium
+
+    p
+      margin: 0 0 18px
+      font-family: Georgia, "Songti SC", serif
+      font-size: 15px
+      line-height: 2
+      white-space: pre-wrap
+
+  .simple-story-meta
+    padding-left: 22px
+    display: grid
+    gap: 7px
+    border-left: 1px solid $color-border
+
+    > span,
+    > small
+      color: $color-muted
+      font-size: $font-size-small
+
+    > strong
+      margin-bottom: 12px
+      font-size: 16px
+
+    > p
+      margin: 10px 0 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.6
+
+    .simple-button
+      margin-top: 12px
+
+  .simple-setting-detail__layout
+    display: grid
+    grid-template-columns: minmax(0, 1.35fr) minmax(270px, .65fr)
+    align-items: start
+    gap: 24px
+
+  .simple-setting-detail__image
+    min-height: 440px
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: min(62vh, 650px)
+
+    img
+      display: block
+      object-fit: contain
+
+  .simple-setting-detail__copy
+    display: grid
+    gap: 20px
+
+    section
+      padding-bottom: 18px
+      border-bottom: 1px solid $color-border
+
+      > span
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+      p
+        margin: 8px 0 0
+        font-size: 14px
+        line-height: 1.75
+
+    dl
+      margin: 0
+      display: grid
+      gap: 10px
+
+      div
+        display: flex
+        justify-content: space-between
+        gap: 14px
+
+      dt
+        color: $color-muted
+        font-size: $font-size-small
+
+      dd
+        margin: 0
+        font-size: 12px
+        font-weight: $font-weight-semibold
+
+  .simple-tag-list
+    margin-top: 10px
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+    i
+      padding: 4px 8px
+      border-radius: 999px
+      color: $color-accent-strong
+      background: $color-accent-muted
+      font-size: $font-size-small
+      font-style: normal
+      font-weight: $font-weight-medium
+
+  .simple-read-only-notice
+    margin: 0
+    padding: 11px 12px
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface-muted
+    font-size: $font-size-small
+    line-height: 1.6
+
+  .simple-book-list
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+    > a
+      min-width: 0
+      overflow: hidden
+      display: grid
+      grid-template-rows: 178px auto
+      border: 1px solid $color-border
+      border-radius: $radius-md
+      color: $color-text
+      background: $color-surface
+
+      > img,
+      > .simple-image-placeholder
+        width: 100%
+        height: 178px
+
+      > img
+        display: block
+        object-fit: cover
+
+      > span
+        padding: 13px
+        display: grid
+        gap: 4px
+
+      small,
+      em
+        color: $color-muted
+        font-size: $font-size-small
+        font-style: normal
+
+      strong
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+        font-size: 15px
+
+      b
+        margin-top: 8px
+        display: flex
+        align-items: center
+        gap: 5px
+        color: $color-accent-strong
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        box-shadow: 0 9px 22px rgba(34, 45, 38, .08)
+
+  .simple-page-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+  .simple-page-card
+    min-width: 0
+    padding-bottom: 12px
+    overflow: hidden
+    display: grid
+    gap: 3px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    color: $color-text
+    background: $color-surface
+
+    > div
+      position: relative
+      width: 100%
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      background: $color-surface-muted
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        display: block
+        object-fit: cover
+
+      > span
+        position: absolute
+        left: 8px
+        bottom: 8px
+        min-width: 26px
+        min-height: 24px
+        padding: 3px 6px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        color: $color-text
+        background: rgba($color-surface, .92)
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    > strong,
+    > small
+      margin-inline: 12px
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    > strong
+      margin-top: 8px
+      font-size: 14px
+
+    > small
+      color: $color-muted
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      transform: translateY(-1px)
+
+  .simple-page-view
+    width: 100%
+    max-width: none
+    padding: 0
+
+  .simple-page-view__toolbar
+    min-height: 54px
+    padding: 9px 22px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    border-bottom: 1px solid $color-border
+    background: $color-surface
+
+    > a
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      color: $color-muted
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+    > div
+      display: flex
+      gap: 8px
+
+  .simple-page-editor-layout
+    min-height: calc(100dvh - #{$topbar-height} - 55px)
+    display: grid
+    grid-template-columns: 142px minmax(0, 1fr)
+
+  .simple-page-rail
+    min-height: 0
+    padding: 14px 10px
+    display: grid
+    align-content: start
+    gap: 9px
+    overflow: auto
+    border-right: 1px solid $color-border
+    background: #f2f2ed
+
+    a
+      position: relative
+      min-width: 0
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        object-fit: cover
+
+      > span
+        position: absolute
+        left: 5px
+        bottom: 5px
+        min-width: 23px
+        min-height: 21px
+        padding: 2px 5px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        background: rgba($color-surface, .92)
+        font-size: $font-size-micro
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+
+      &.is-active
+        border-color: $color-accent-strong
+        box-shadow: 0 0 0 2px rgba($color-accent, .16)
+
+    a.is-active:hover,
+    a.is-active:focus-visible
+      border-color: $color-accent-strong
+      box-shadow: 0 0 0 3px rgba($color-accent, .22)
+
+  .simple-page-editor
+    width: min(100%, 860px)
+    margin: 0 auto
+    padding: 26px 30px 52px
+
+    > header
+      margin-bottom: 18px
+      display: flex
+      align-items: flex-start
+      justify-content: space-between
+      gap: 16px
+
+      span,
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+      h1
+        margin: 2px 0 0
+        font-size: 24px
+        font-weight: $font-weight-semibold
+
+  .simple-page-current-image
+    position: relative
+    width: 100%
+    aspect-ratio: 4 / 3
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      display: block
+      object-fit: contain
+
+    > span
+      position: absolute
+      left: 12px
+      bottom: 12px
+      padding: 5px 8px
+      border-radius: 4px
+      color: #fff
+      background: rgba($color-text, .78)
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+  .simple-page-content-card
+    margin-top: 20px
+    padding: 20px
+    display: grid
+    gap: 17px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    h2
+      margin: 0
+      font-size: 17px
+      font-weight: $font-weight-semibold
+
+    > div
+      display: grid
+      gap: 6px
+
+      > span
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    pre
+      margin: 0
+      padding: 12px
+      overflow: auto
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      font-family: $font-family-base
+      font-size: 13px
+      line-height: 1.75
+      white-space: pre-wrap
+      word-break: break-word
+      background: $color-surface-subtle
+
+  .simple-page-stepper
+    margin-top: 18px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    a
+      min-height: 34px
+      padding: 0 10px
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+  .simple-book-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+    a
+      position: relative
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        display: block
+        object-fit: cover
+
+      > span
+        position: absolute
+        left: 8px
+        bottom: 8px
+        min-width: 26px
+        min-height: 24px
+        padding: 3px 6px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        background: rgba($color-surface, .92)
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        transform: translateY(-1px)
+
+  .simple-image-placeholder
+    min-height: 80px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 7px
+    color: $color-muted
+    background: repeating-linear-gradient(135deg, #fbfbf8, #fbfbf8 10px, #f5f5f0 10px, #f5f5f0 20px)
+    font-size: $font-size-small
+    text-align: center
+
+  .simple-error
+    margin-bottom: 18px
+    padding: 12px 14px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 14px
+    border: 1px solid rgba($color-danger, .24)
+    border-radius: $radius-sm
+    color: $color-danger
+    background: $color-danger-muted
+
+    strong,
+    p
+      margin: 0
+
+    p
+      margin-top: 3px
+      font-size: $font-size-small
+
+    code
+      display: block
+      margin-top: 4px
+      font-size: $font-size-micro
+
+  .simple-loading
+    min-height: 320px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 10px
+    color: $color-muted
+
+    span
+      width: 24px
+      height: 24px
+      border: 2px solid $color-border
+      border-top-color: $color-accent
+      border-radius: 50%
+      animation: simple-project-spin 700ms linear infinite
+
+    p
+      margin: 0
+      font-size: 13px
+
+  .simple-empty-state
+    min-height: 280px
+    padding: 34px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 10px
+    border: 1px dashed $color-border-strong
+    border-radius: $radius-md
+    color: $color-muted
+    background: $color-surface-subtle
+    text-align: center
+
+    h2
+      max-width: 520px
+      margin: 0
+      color: $color-text
+      font-size: 17px
+      font-weight: $font-weight-semibold
+
+    > div
+      margin-top: 4px
+
+  .simple-button:disabled,
+  button:disabled
+    cursor: not-allowed
+    opacity: .5
+
+  .simple-button--danger
+    border-color: $color-danger
+    color: #fff
+    background: $color-danger
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-danger
+      color: #fff
+      background: #8f1d14
+
+  .simple-danger-action
+    color: $color-danger
+
+    &:hover,
+    &:focus-visible
+      color: #8f1d14
+      background: $color-danger-muted
+
+  .simple-feedback
+    min-height: 44px
+    margin: 0 0 18px
+    padding: 10px 12px
+    display: flex
+    align-items: center
+    gap: 9px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    font-size: 12px
+
+    &.is-success
+      border-color: rgba($color-accent, .28)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &.is-error
+      align-items: flex-start
+      border-color: rgba($color-danger, .28)
+      color: $color-danger
+      background: $color-danger-muted
+
+    > div
+      min-width: 0
+      flex: 1
+
+    strong,
+    p
+      margin: 0
+
+    p,
+    code
+      display: block
+      margin-top: 3px
+      font-size: $font-size-small
+
+    > button
+      width: 28px
+      height: 28px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 0
+      color: inherit
+      background: transparent
+
+  .simple-conflict
+    margin-bottom: 18px
+    padding: 14px
+    display: flex
+    align-items: center
+    gap: 10px
+    border: 1px solid rgba($color-warning, .36)
+    border-radius: $radius-md
+    background: $color-warning-muted
+
+    > div
+      min-width: 0
+      flex: 1
+
+    strong,
+    p
+      margin: 0
+
+    p
+      margin-top: 3px
+      color: $color-muted
+      font-size: 12px
+
+    > button
+      min-height: 34px
+      padding: 0 11px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font-size: 12px
+
+  .simple-segmented
+    width: max-content
+    margin-bottom: 18px
+    padding: 3px
+    display: flex
+    gap: 2px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-muted
+
+    button
+      min-height: 32px
+      padding: 0 12px
+      border: 0
+      border-radius: 5px
+      color: $color-muted
+      background: transparent
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: rgba($color-surface, .7)
+
+      &[aria-pressed="true"]
+        color: $color-accent-strong
+        background: $color-surface
+        box-shadow: 0 1px 2px rgba(26, 31, 27, .1)
+
+    button[aria-pressed="true"]:hover,
+    button[aria-pressed="true"]:focus-visible
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-story-meta dl
+    margin: 14px 0
+    display: grid
+    gap: 8px
+
+    div
+      display: flex
+      justify-content: space-between
+      gap: 12px
+      font-size: $font-size-small
+
+    dt
+      color: $color-muted
+
+    dd
+      margin: 0
+      font-weight: $font-weight-semibold
+
+  .simple-story-generation,
+  .simple-generation-card,
+  .simple-version-list,
+  .simple-version-gallery,
+  .simple-page-references,
+  .simple-page-candidates
+    margin-top: 22px
+    padding: 18px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: flex-start
+      justify-content: space-between
+      gap: 14px
+
+      h2,
+      p
+        margin: 0
+
+      h2
+        font-size: 17px
+
+      p
+        margin-top: 3px
+        color: $color-muted
+        font-size: 12px
+
+  .simple-story-generation > div,
+  .simple-generation-card > div
+    display: flex
+    align-items: center
+    gap: 8px
+
+    input
+      min-width: 0
+      flex: 1
+      min-height: 38px
+      padding: 0 11px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+
+    button
+      min-height: 38px
+      padding: 0 12px
+      display: inline-flex
+      align-items: center
+      gap: 6px
+      border: 1px solid $color-accent
+      border-radius: $radius-sm
+      color: #fff
+      background: $color-accent
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+    button.simple-button--secondary
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface
+
+  .simple-task-status
+    flex: 0 0 auto
+    padding: 5px 8px
+    border-radius: 999px
+    color: $color-muted
+    background: $color-surface-muted
+    font-size: $font-size-small
+
+    &.is-running,
+    &.is-queued
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &.is-failed,
+    &.is-interrupted
+      color: $color-danger
+      background: $color-danger-muted
+
+  .simple-version-list
+    > header > span
+      color: $color-muted
+      font-size: 12px
+
+    > div
+      display: grid
+      gap: 7px
+
+    article
+      padding: 10px 11px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      &.is-current
+        border-color: rgba($color-accent, .34)
+        background: $color-accent-muted
+
+      > div
+        min-width: 0
+        display: flex
+        align-items: center
+        gap: 9px
+
+      strong
+        flex: 0 0 auto
+
+      span,
+      time
+        min-width: 0
+        overflow: hidden
+        color: $color-muted
+        font-size: $font-size-small
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      button
+        min-height: 30px
+        padding: 0 9px
+        border: 1px solid $color-border
+        border-radius: $radius-sm
+        color: $color-text
+        background: $color-surface
+        font-size: $font-size-small
+
+  .simple-setting-card-wrap,
+  .simple-page-card-wrap,
+  .simple-book-list > article
+    min-width: 0
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+  .simple-setting-card-wrap .simple-setting-card,
+  .simple-page-card-wrap .simple-page-card
+    border: 0
+    border-radius: 0
+
+  .simple-setting-card-wrap > footer,
+  .simple-page-card-wrap > footer,
+  .simple-book-list > article > footer
+    min-height: 42px
+    padding: 6px 9px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: 5px
+    border-top: 1px solid $color-border-subtle
+
+    a,
+    button
+      min-height: 29px
+      padding: 0 8px
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+      font-size: $font-size-small
+      text-decoration: none
+
+      &:hover,
+      &:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+    span
+      margin-left: auto
+      color: $color-muted
+      font-size: $font-size-micro
+
+  .simple-book-list > article
+    display: grid
+    grid-template-rows: minmax(0, 1fr) auto
+
+  .simple-book-list__main
+    min-width: 0
+    overflow: hidden
+    display: grid
+    grid-template-rows: 178px auto
+    color: $color-text
+    text-decoration: none
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      height: 178px
+
+    > img
+      object-fit: cover
+
+    > span
+      padding: 13px
+      display: grid
+      gap: 4px
+
+    small,
+    em
+      color: $color-muted
+      font-size: $font-size-small
+      font-style: normal
+
+    strong
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    b
+      margin-top: 8px
+      display: flex
+      align-items: center
+      gap: 5px
+      color: $color-accent-strong
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      background: $color-surface-subtle
+
+  .simple-page-card-wrap > footer
+    justify-content: flex-start
+
+  .simple-inline-status
+    margin: 0 0 14px
+    padding: 9px 11px
+    border-radius: $radius-sm
+    color: $color-accent-strong
+    background: $color-accent-muted
+    font-size: 12px
+
+  .simple-dialog
+    position: fixed
+    z-index: 110
+    inset: 0
+    padding: 24px
+    display: grid
+    place-items: center
+
+    .simple-dialog__backdrop
+      position: absolute
+      inset: 0
+      width: 100%
+      height: 100%
+      border: 0
+      border-radius: 0
+      background: rgba($color-text, .38)
+
+    > section
+      position: relative
+      z-index: 1
+      width: min(100%, 560px)
+      max-height: min(88dvh, 820px)
+      overflow: auto
+      border: 1px solid $color-border
+      border-radius: $radius-lg
+      background: $color-surface
+      box-shadow: $shadow-floating
+
+      &.is-wide
+        width: min(100%, 900px)
+
+      > header
+        position: sticky
+        z-index: 2
+        top: 0
+        min-height: 54px
+        padding: 0 18px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        border-bottom: 1px solid $color-border
+        background: $color-surface
+
+        h2
+          margin: 0
+          font-size: 17px
+
+        button
+          width: 32px
+          height: 32px
+          padding: 0
+          display: grid
+          place-items: center
+          border: 0
+          border-radius: $radius-sm
+          color: $color-muted
+          background: transparent
+
+          &:hover,
+          &:focus-visible
+            color: $color-text
+            background: $color-surface-muted
+
+  .simple-form
+    padding: 18px
+    display: grid
+    gap: 14px
+
+    label
+      display: grid
+      gap: 6px
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+    input,
+    select,
+    textarea
+      width: 100%
+      min-height: 38px
+      padding: 8px 10px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font: inherit
+
+      &:focus
+        border-color: $color-accent
+        outline: 2px solid rgba($color-accent, .14)
+
+      &:disabled
+        color: $color-muted
+        background: $color-surface-muted
+
+    textarea
+      min-height: 110px
+      resize: vertical
+
+    .simple-story-editor
+      min-height: 58dvh
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+      line-height: 1.65
+
+  .simple-form__hint
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+
+  .simple-form__actions,
+  .simple-confirm > div
+    padding-top: 12px
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+    border-top: 1px solid $color-border-subtle
+
+  .simple-confirm
+    padding: 20px
+
+    p
+      margin: 0 0 18px
+      line-height: 1.65
+
+  .simple-upload-confirm
+    margin-bottom: 12px
+    padding: 9px 10px
+    display: flex
+    align-items: center
+    gap: 7px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-muted
+
+    span
+      min-width: 0
+      flex: 1
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    button
+      min-height: 31px
+      padding: 0 9px
+      border: 1px solid $color-accent
+      border-radius: $radius-sm
+      color: #fff
+      background: $color-accent
+      font-size: $font-size-small
+
+    button.simple-button--secondary
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface
+
+  .simple-version-gallery > header label,
+  .simple-page-candidates > header label
+    position: relative
+
+    input
+      position: absolute
+      width: 1px
+      height: 1px
+      overflow: hidden
+      opacity: 0
+
+  .simple-version-gallery > div:last-child,
+  .simple-candidate-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 12px
+
+    article
+      min-width: 0
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      &.is-current
+        border-color: $color-accent
+        box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
+      > img,
+      > .simple-image-placeholder
+        width: 100%
+        aspect-ratio: 1
+        object-fit: cover
+
+      footer
+        padding: 9px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 8px
+
+        > div
+          min-width: 0
+          display: grid
+
+        span,
+        time
+          overflow: hidden
+          color: $color-muted
+          font-size: $font-size-micro
+          text-overflow: ellipsis
+          white-space: nowrap
+
+        button
+          min-height: 29px
+          padding: 0 8px
+          border: 1px solid $color-border
+          border-radius: $radius-sm
+          background: $color-surface
+          font-size: $font-size-small
+
+  .simple-page-meta-form
+    margin-bottom: 14px
+    display: grid
+    grid-template-columns: minmax(130px, .34fr) minmax(0, 1fr)
+    gap: 10px
+
+    label
+      display: grid
+      gap: 5px
+      color: $color-muted
+      font-size: $font-size-small
+
+    input,
+    select
+      min-height: 36px
+      padding: 0 9px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+
+  .simple-page-content-card label
+    display: grid
+    gap: 6px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+    textarea
+      width: 100%
+      min-height: 110px
+      padding: 11px
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+      font: inherit
+      line-height: 1.65
+      resize: vertical
+
+  .simple-page-references > div
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 8px
+
+    label
+      min-width: 0
+      min-height: 58px
+      padding: 7px
+      display: grid
+      grid-template-columns: auto 42px minmax(0, 1fr)
+      align-items: center
+      gap: 7px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+      cursor: pointer
+
+      &:hover,
+      &:focus-within
+        border-color: $color-accent
+        background: $color-surface-subtle
+
+      &.is-selected
+        border-color: $color-accent
+        background: $color-accent-muted
+
+      &.is-selected:hover,
+      &.is-selected:focus-within
+        border-color: $color-accent-strong
+        background: rgba($color-accent, .16)
+
+      > img,
+      > .simple-image-placeholder
+        width: 42px
+        height: 42px
+        border-radius: 5px
+        object-fit: cover
+
+      > span
+        min-width: 0
+        display: grid
+
+      strong,
+      small
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      small
+        color: $color-muted
+        font-size: $font-size-micro
+
+  .simple-page-references > header > button
+    min-height: 32px
+    padding: 0 10px
+    border: 1px solid $color-accent
+    border-radius: $radius-sm
+    color: #fff
+    background: $color-accent
+    font-size: $font-size-small
+
+  .simple-book-reader
+    min-height: 300px
+
+    > header
+      display: none
+
+    &:fullscreen,
+    &.is-fullscreen
+      padding: 24px
+      overflow: auto
+      color: $color-text
+      background: #111713
+
+      > header
+        margin-bottom: 18px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        color: #fff
+
+        button
+          min-height: 34px
+          padding: 0 10px
+          display: flex
+          align-items: center
+          gap: 6px
+          border: 1px solid rgba(255,255,255,.28)
+          border-radius: $radius-sm
+          color: #fff
+          background: rgba(255,255,255,.08)
+
+      .simple-book-grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        max-width: 1200px
+        margin: 0 auto
+
+    &.is-fullscreen
+      position: fixed
+      z-index: 120
+      inset: 0
+
+  .simple-book-grid > article
+    position: relative
+    min-width: 0
+
+    > a:first-child
+      display: block
+
+    .simple-book-grid__agent
+      position: absolute
+      z-index: 2
+      top: 8px
+      right: 8px
+      width: auto
+      height: 28px
+      padding: 0 8px
+      display: flex
+      align-items: center
+      gap: 4px
+      border-radius: $radius-sm
+      color: $color-text
+      background: rgba($color-surface, .92)
+      font-size: $font-size-micro
+      text-decoration: none
+
+  @media (max-width: 900px)
+    .simple-version-gallery > div:last-child,
+    .simple-candidate-grid,
+    .simple-page-references > div
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  @media (max-width: 760px)
+    .simple-dialog
+      padding: 10px
+
+    .simple-conflict,
+    .simple-story-generation > div,
+    .simple-generation-card > div,
+    .simple-upload-confirm
+      align-items: stretch
+      flex-direction: column
+
+    .simple-version-gallery > div:last-child,
+    .simple-candidate-grid,
+    .simple-page-references > div,
+    .simple-page-meta-form
+      grid-template-columns: 1fr
+
+    .simple-version-list article,
+    .simple-version-list article > div
+      align-items: flex-start
+      flex-direction: column
+
+    .simple-book-reader:fullscreen,
+    .simple-book-reader.is-fullscreen
+      padding: 14px
+
+      .simple-book-grid
+        grid-template-columns: 1fr
+
+  .simple-project-overlay
+    position: fixed
+    z-index: 80
+    inset: 0
+    padding-top: $topbar-height
+    display: flex
+    justify-content: flex-end
+
+  .simple-project-overlay__backdrop
+    position: absolute
+    inset: 0
+    width: 100%
+    height: 100%
+    border: 0
+    border-radius: 0
+    background: rgba($color-text, .22)
+
+  .simple-project-overlay__panel
+    position: relative
+    z-index: 1
+    width: $chat-width
+    height: 100%
+    min-width: 0
+    min-height: 0
+    overflow: hidden
+    background: $color-surface-muted
+    box-shadow: $shadow-floating
+    animation: simple-project-chat-in 140ms ease-out
+
+  @media (max-width: 1199px)
+    .simple-project-workbench,
+    .simple-project-workbench.is-chat-collapsed
+      grid-template-columns: minmax(0, 1fr)
+
+  @media (max-width: 900px)
+    .simple-setting-grid,
+    .simple-book-list,
+    .simple-page-grid,
+    .simple-book-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .simple-setting-detail__layout
+      grid-template-columns: 1fr
+
+    .simple-setting-detail__image
+      min-height: 320px
+
+  @media (max-width: 760px)
+    &,
+    &.global-sidebar-collapsed
+      grid-template-columns: minmax(0, 1fr)
+      grid-template-rows: auto minmax(0, 1fr)
+
+    .simple-project-topbar,
+    .simple-project-workbench
+      grid-column: 1
+
+    .simple-project-topbar
+      padding: 0 10px
+
+    .simple-project-topbar__menu
+      width: 34px
+      height: 34px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: $color-surface-muted
+
+    .simple-project-topbar__context strong
+      max-width: 36vw
+
+    .simple-project-overlay
+      padding-top: 0
+
+    .simple-project-overlay__panel
+      width: 100%
+
+    .simple-project-page
+      padding: 24px 18px 48px
+
+    .simple-home-hero
+      grid-template-columns: 86px minmax(0, 1fr)
+      gap: 16px
+
+    .simple-home-cover
+      width: 86px
+
+    .simple-home-hero__copy header
+      align-items: flex-start
+      display: grid
+
+      > div
+        justify-content: flex-start
+
+    .simple-home-hero__copy h1
+      font-size: 23px
+
+    .simple-setting-grid,
+    .simple-book-list,
+    .simple-page-grid,
+    .simple-book-grid
+      grid-template-columns: 1fr
+
+    .simple-page-heading,
+    .simple-page-view__toolbar
+      display: grid
+
+    .simple-page-heading__actions,
+    .simple-page-view__toolbar > div
+      justify-content: flex-start
+
+    .simple-story-layout
+      grid-template-columns: 1fr
+
+    .simple-story-document
+      padding: 22px 20px 32px
+
+    .simple-story-meta
+      padding: 18px 0 0
+      border-top: 1px solid $color-border
+      border-left: 0
+
+    .simple-page-editor-layout
+      display: block
+
+    .simple-page-rail
+      padding: 10px
+      display: flex
+      overflow-x: auto
+      border-right: 0
+      border-bottom: 1px solid $color-border
+
+      a
+        flex: 0 0 104px
+
+    .simple-page-editor
+      padding: 22px 18px 44px
+
+    .simple-project-overlay__panel
+      width: min(100%, 430px)
+
+  @media (prefers-reduced-motion: reduce)
+    .simple-loading span,
+    .simple-project-overlay__panel
+      animation: none
+
+@keyframes simple-project-spin
+  to
+    transform: rotate(360deg)
+
+@keyframes simple-project-chat-in
+  from
+    opacity: .86
+    transform: translateX(18px)
+
+  to
+    opacity: 1
+    transform: translateX(0)

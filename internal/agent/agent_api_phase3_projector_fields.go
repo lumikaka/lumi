@@ -1,0 +1,108 @@
+package agent
+
+// phase3AgentAPIResponseField is the reviewed public response-field catalog
+// shared by the static Agent docs and the runtime projector. Unknown fields
+// fail fast during startup/tests instead of silently degrading to an opaque
+// "public" placeholder.
+func phase3AgentAPIResponseField(name string) agentAPIResponseField {
+	field, ok := phase3AgentAPIResponseFields[name]
+	if !ok {
+		panic("missing reviewed Agent API response field metadata: " + name)
+	}
+	return field
+}
+
+func phase3ResponseField(name, fieldType, description string) agentAPIResponseField {
+	return agentAPIResponseField{Name: name, Type: fieldType, Description: description}
+}
+
+var phase3AgentAPIResponseFields = map[string]agentAPIResponseField{
+	"uuid":                      phase3ResponseField("uuid", "string", "资源公开 UUIDv7。"),
+	"project_uuid":              phase3ResponseField("project_uuid", "string", "所属项目公开 UUIDv7。"),
+	"thread_uuid":               phase3ResponseField("thread_uuid", "string", "关联 Chat Thread 公开 UUIDv7。"),
+	"chapter_uuid":              phase3ResponseField("chapter_uuid", "string", "关联 Chapter 公开 UUIDv7；项目范围数据省略该字段。"),
+	"task_uuid":                 phase3ResponseField("task_uuid", "string", "关联任务公开 UUIDv7。"),
+	"source_uuid":               phase3ResponseField("source_uuid", "string", "来源资源公开 UUIDv7；不适用时省略该字段。"),
+	"source_item_uuid":          phase3ResponseField("source_item_uuid", "string", "Chapter Story 的来源 Chat Item 公开 UUIDv7；无关联时为兼容空字符串。"),
+	"source_setting_image_uuid": phase3ResponseField("source_setting_image_uuid", "string", "来源设定图公开 UUIDv7；非拆解版本省略该字段。"),
+	"generation_uuid":           phase3ResponseField("generation_uuid", "string", "生成任务公开 UUIDv7；非生成版本省略该字段。"),
+	"source_asset_uuid":         phase3ResponseField("source_asset_uuid", "string", "派生来源 Asset 公开 UUIDv7；无来源时省略该字段。"),
+	"name":                      phase3ResponseField("name", "string", "项目名称。"),
+	"description":               phase3ResponseField("description", "string", "项目简介。"),
+	"generation_language":       phase3ResponseField("generation_language", "string", "项目生成语言。"),
+	"revision":                  phase3ResponseField("revision", "integer", "当前乐观并发版本。"),
+	"chapter_count":             phase3ResponseField("chapter_count", "integer", "当前有效章节数量。"),
+	"trash_count":               phase3ResponseField("trash_count", "integer", "章节回收站数量。"),
+	"setup_status":              phase3ResponseField("setup_status", "string", "项目初始化总体状态。"),
+	"status":                    phase3ResponseField("status", "string", "资源或任务当前状态。"),
+	"original_input":            phase3ResponseField("original_input", "string", "创建项目时保留的原始输入；无 Setup Draft 时省略该字段。"),
+	"draft_values":              phase3ResponseField("draft_values", "object", "初始化草稿公开字段。"),
+	"field_sources":             phase3ResponseField("field_sources", "object<string,string>", "初始化字段到来源的公开映射。"),
+	"missing_information":       phase3ResponseField("missing_information", "array<string>", "仍需补充的信息项。"),
+	"final_picture_book":        phase3ResponseField("final_picture_book", "object", "定稿后的绘本配置；未定稿时省略该字段。"),
+	"error_code":                phase3ResponseField("error_code", "string", "公开错误码；无错误时省略该字段。"),
+	"error_message":             phase3ResponseField("error_message", "string", "公开错误信息；无错误时省略该字段。"),
+	"presentation_mode":         phase3ResponseField("presentation_mode", "string", "Workflow 的展示模式。"),
+	"kind":                      phase3ResponseField("kind", "string", "Workflow、任务或 Asset 类型。"),
+	"title":                     phase3ResponseField("title", "string", "资源标题。"),
+	"current_step_key":          phase3ResponseField("current_step_key", "string", "Workflow 当前步骤键；尚无当前步骤时省略该字段。"),
+	"steps":                     phase3ResponseField("steps", "array<object>", "Workflow 步骤及公开执行状态。"),
+	"version_no":                phase3ResponseField("version_no", "integer", "资源内单调递增的版本号。"),
+	"source_type":               phase3ResponseField("source_type", "string", "资源的公开来源类型。"),
+	"content":                   phase3ResponseField("content", "string", "章节版本的完整正文。"),
+	"content_format":            phase3ResponseField("content_format", "string", "正文格式。"),
+	"char_count":                phase3ResponseField("char_count", "integer", "正文字符数量。"),
+	"source_text":               phase3ResponseField("source_text", "string", "Premise 来源文本。"),
+	"style_snapshot":            phase3ResponseField("style_snapshot", "string", "来源创建时的画风快照。"),
+	"ignored_at":                phase3ResponseField("ignored_at", "string", "来源被忽略的时间；未忽略时省略该字段。"),
+	"origin":                    phase3ResponseField("origin", "string", "设定图的公开来源类别。"),
+	"prompt":                    phase3ResponseField("prompt", "string", "生成该图片时使用的提示词。"),
+	"asset":                     phase3ResponseField("asset", "object", "图片或文件 Asset 的公开描述。"),
+	"crop":                      phase3ResponseField("crop", "JSON value | null", "图片裁剪参数的原始 JSON 值；未裁剪时为空。"),
+	"has_premise_assets":        phase3ResponseField("has_premise_assets", "boolean", "章节是否已有关联设定项。"),
+	"premise_asset_count":       phase3ResponseField("premise_asset_count", "integer", "章节关联设定项数量。"),
+	"content_md":                phase3ResponseField("content_md", "string", "Storyboard 的完整 Markdown。"),
+	"requested_count":           phase3ResponseField("requested_count", "integer", "批量请求的任务数量。"),
+	"accepted_count":            phase3ResponseField("accepted_count", "integer", "成功接收的任务数量。"),
+	"tasks":                     phase3ResponseField("tasks", "array<object>", "批量创建的任务公开摘要。"),
+	"reason":                    phase3ResponseField("reason", "string", "快照或阻塞项的公开原因。"),
+	"source":                    phase3ResponseField("source", "string", "快照来源。"),
+	"section_count":             phase3ResponseField("section_count", "integer", "快照包含的 Section 数量。"),
+	"schema_version":            phase3ResponseField("schema_version", "integer", "快照内容 Schema 版本。"),
+	"chapter":                   phase3ResponseField("chapter", "object", "快照中的 Chapter 公开摘要。"),
+	"sections":                  phase3ResponseField("sections", "array<object>", "快照中的 Section 公开内容。"),
+	"scope":                     phase3ResponseField("scope", "string", "导出范围。"),
+	"active_chapter_count":      phase3ResponseField("active_chapter_count", "integer", "范围内有效 Chapter 数量。"),
+	"active_section_count":      phase3ResponseField("active_section_count", "integer", "范围内有效 Section 数量。"),
+	"image_section_count":       phase3ResponseField("image_section_count", "integer", "已有图片的 Section 数量。"),
+	"missing_section_count":     phase3ResponseField("missing_section_count", "integer", "仍缺图片的 Section 数量。"),
+	"can_export":                phase3ResponseField("can_export", "boolean", "当前状态是否允许发起导出。"),
+	"complete":                  phase3ResponseField("complete", "boolean", "导出素材是否完整。"),
+	"missing_sections":          phase3ResponseField("missing_sections", "array<object>", "缺图 Section 的公开摘要。"),
+	"format":                    phase3ResponseField("format", "string", "导出或内容格式。"),
+	"filename":                  phase3ResponseField("filename", "string", "导出文件名。"),
+	"snapshot_hash":             phase3ResponseField("snapshot_hash", "string", "导出所绑定内容快照的哈希。"),
+	"expires_at":                phase3ResponseField("expires_at", "string | null", "导出产物过期时间；未生成时可为空。"),
+	"retention_days":            phase3ResponseField("retention_days", "integer", "导出产物保留天数。"),
+	"byte_size":                 phase3ResponseField("byte_size", "integer", "文件字节数。"),
+	"content_sha256":            phase3ResponseField("content_sha256", "string", "文件内容 SHA-256。"),
+	"completed_at":              phase3ResponseField("completed_at", "string", "完成时间；尚未完成时省略该字段。"),
+	"sequence":                  phase3ResponseField("sequence", "integer", "事件在任务内的递增序号。"),
+	"event_type":                phase3ResponseField("event_type", "string", "任务事件类型。"),
+	"purpose":                   phase3ResponseField("purpose", "string", "Project Asset 的业务用途。"),
+	"original_filename":         phase3ResponseField("original_filename", "string", "上传时的原始文件名；无原始文件名时省略该字段。"),
+	"display_name":              phase3ResponseField("display_name", "string", "面向用户的文件显示名；未设置时省略该字段。"),
+	"mime_type":                 phase3ResponseField("mime_type", "string", "文件 MIME 类型。"),
+	"width":                     phase3ResponseField("width", "integer", "媒体宽度像素；不适用或未知时省略该字段。"),
+	"height":                    phase3ResponseField("height", "integer", "媒体高度像素；不适用或未知时省略该字段。"),
+	"duration_ms":               phase3ResponseField("duration_ms", "integer", "媒体时长毫秒；不适用或未知时省略该字段。"),
+	"deleted_at":                phase3ResponseField("deleted_at", "string", "移入回收站时间；有效资源省略该字段。"),
+	"created_at":                phase3ResponseField("created_at", "string", "创建时间。"),
+	"updated_at":                phase3ResponseField("updated_at", "string", "最近更新时间。"),
+	"finalized_at":              phase3ResponseField("finalized_at", "string", "初始化定稿时间；未定稿时省略该字段。"),
+	"deleted_count":             phase3ResponseField("deleted_count", "integer", "本次永久删除的资源数量。"),
+	"deleted":                   phase3ResponseField("deleted", "boolean", "目标资源是否已成功删除。"),
+	"file_soft_deleted_count":   phase3ResponseField("file_soft_deleted_count", "integer", "随设定项一起软删除的文件数量。"),
+	"retained_file_count":       phase3ResponseField("retained_file_count", "integer", "因仍被引用而保留的文件数量。"),
+	"blocked_items":             phase3ResponseField("blocked_items", "array<object>", "未删除资源及公开阻塞原因。"),
+}

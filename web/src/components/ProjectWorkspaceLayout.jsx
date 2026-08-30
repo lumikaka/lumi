@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MessageCircle } from 'lucide-react'
+import { LayoutDashboard, MessageCircle } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { listRecentProjects } from '../api/projects.js'
@@ -13,12 +13,16 @@ import ChatArea from './ChatArea.jsx'
 import GlobalSidebar, { useGlobalSidebarState } from './GlobalSidebar.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import { useI18n } from '../i18n/useI18n.js'
+import { PROJECT_DASHBOARD_MODE_EXPERT, PROJECT_DASHBOARD_MODE_SIMPLE } from '../projectDashboardMode.js'
+import { projectRoute, projectRouteRequiresExpert } from '../projectRoutes.js'
+import { useProjectDashboardMode } from './ProjectDashboardModeContext.jsx'
 
 const CHAT_COLLAPSED_KEY = 'lumi.projectChatAreaCollapsed'
 const COMPACT_CHAT_QUERY = '(max-width: 1199px)'
 
-export default function ProjectWorkspaceLayout({ project, projectUuid, activeSection, children, hideChat = false }) {
+export default function ProjectWorkspaceLayout({ project, projectUuid, activeSection, children, forcedExpert = false, hideChat = false }) {
   const { t } = useI18n()
+  const { selectMode } = useProjectDashboardMode()
   const location = useLocation()
   const navigate = useNavigate()
   const chatOverlayId = useId()
@@ -84,6 +88,12 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
     if (!compact && overlayOpen) setOverlayOpen(false)
   }, [compact, overlayOpen])
 
+  const handleSwitchToSimple = () => {
+    const leaveExpertOnlyPage = projectRouteRequiresExpert(location.pathname, projectUuid)
+    selectMode(PROJECT_DASHBOARD_MODE_SIMPLE)
+    if (leaveExpertOnlyPage) navigate(projectRoute(projectUuid))
+  }
+
   return (
     <main className={`project-shell ${sidebarCollapsed ? 'global-sidebar-collapsed' : ''}`}>
       <GlobalSidebar
@@ -93,7 +103,7 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         recentProjects={recentQuery.data?.items || []}
         recentProjectsLoading={recentQuery.isLoading}
-        onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
+        onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}`)}
       />
       <GlobalTopbar
         title={project?.name || t('projects.fallback_name')}
@@ -101,12 +111,29 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
         pictureBook={project?.picture_book}
         activeSection={activeSection}
         recentProjects={recentQuery.data?.items || []}
-        onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)}
+        onSwitchProject={(uuid) => navigate(`/projects/${encodeURIComponent(uuid)}`)}
         onOpenNavigation={() => setSidebarOpen(true)}
-        actions={compact && !hideChat ? <button className={`project-topbar__icon-button project-topbar__chat-button ${overlayOpen ? 'is-active' : ''}`} type="button" aria-label={t('chat.open')} aria-haspopup="dialog" aria-expanded={overlayOpen} aria-controls={overlayOpen ? chatOverlayId : undefined} title={t('chat.open')} onClick={() => setOverlayOpen(true)}><MessageCircle size={18} aria-hidden="true" /></button> : <Link className="project-topbar__action" to="/"><span>{t('projects.all')}</span></Link>}
+        actions={(
+          <>
+            <button
+              className="project-topbar__action project-topbar__mode-switch"
+              type="button"
+              aria-label={t('simple.mode.switch_to_simple')}
+              title={t('simple.mode.switch_to_simple')}
+              onClick={handleSwitchToSimple}
+            >
+              <LayoutDashboard size={16} aria-hidden="true" />
+              <span>{t('simple.mode.simple')}</span>
+            </button>
+            {compact && !hideChat
+              ? <button className={`project-topbar__icon-button project-topbar__chat-button ${overlayOpen ? 'is-active' : ''}`} type="button" aria-label={t('chat.open')} aria-haspopup="dialog" aria-expanded={overlayOpen} aria-controls={overlayOpen ? chatOverlayId : undefined} title={t('chat.open')} onClick={() => setOverlayOpen(true)}><MessageCircle size={18} aria-hidden="true" /></button>
+              : <Link className="project-topbar__action" to="/"><span>{t('projects.all')}</span></Link>}
+          </>
+        )}
       />
       <div className={`project-workbench ${hideChat ? 'project-workbench--solo' : !compact && collapsed ? 'project-workbench--chat-collapsed' : ''}`}>
         <section className="project-workbench__content" aria-label={t('projects.workspace')}>
+          {forcedExpert ? <div className="workspace-notice project-mode-notice" role="status"><span>{t('projects.dashboard_mode.expert_page_notice')}</span><button type="button" className="button-secondary" onClick={() => selectMode(PROJECT_DASHBOARD_MODE_EXPERT)}>{t('projects.dashboard_mode.make_expert_default')}</button></div> : null}
           {children}
         </section>
         {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} /> : null}

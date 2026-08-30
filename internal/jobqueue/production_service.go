@@ -390,7 +390,8 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 		task, createErr := manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
 			ProviderUUID: input.ProviderUUID, Model: input.Model,
 			SelectionProviderUUID: input.SelectionProviderUUID, SelectionModel: input.SelectionModel,
-			IdempotencyKey: key,
+			PremiseAssetUUIDs: premiseReferenceUUIDs(sectionsByUUID[sectionUUID].PremiseAssets),
+			IdempotencyKey:    key,
 		}, createVisibleWorkflow)
 		if createErr != nil {
 			result.AcceptedCount = len(result.Tasks)
@@ -400,6 +401,14 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	}
 	result.AcceptedCount = len(result.Tasks)
 	return result, nil
+}
+
+func premiseReferenceUUIDs(references []production.PremiseAssetReference) []string {
+	items := make([]string, 0, len(references))
+	for _, reference := range references {
+		items = append(items, reference.AssetUUID)
+	}
+	return items
 }
 
 func comicImageBatchTaskKey(batchKey, sectionUUID string) string {

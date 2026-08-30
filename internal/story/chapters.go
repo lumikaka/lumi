@@ -2,8 +2,11 @@ package story
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"lumi/internal/agentcheckpoint"
 
 	"gorm.io/gorm"
 )
@@ -75,7 +78,11 @@ func (service *Service) CreateChapter(ctx context.Context, input CreateChapterIn
 		}
 		return Chapter{}, err
 	}
-	return service.GetChapter(ctx, chapterUUID)
+	chapter, err := service.GetChapter(ctx, chapterUUID)
+	if err == nil {
+		service.emit("story:chapter_changed", map[string]any{"chapter_uuid": chapter.UUID, "revision": chapter.Revision})
+	}
+	return chapter, err
 }
 
 func (service *Service) findChapter(ctx context.Context, uuid string, includeTrashed bool) (chapterRecord, error) {
@@ -186,7 +193,11 @@ func (service *Service) UpdateChapter(ctx context.Context, uuid string, input Up
 	if result.RowsAffected != 1 {
 		return Chapter{}, storyError(CodeChapterRevisionConflict, "章节版本冲突", "章节已被其他操作更新，请刷新后重试。", nil)
 	}
-	return service.GetChapter(ctx, uuid)
+	chapter, err := service.GetChapter(ctx, uuid)
+	if err == nil {
+		service.emit("story:chapter_changed", map[string]any{"chapter_uuid": chapter.UUID, "revision": chapter.Revision})
+	}
+	return chapter, err
 }
 
 type UpdateStoryInput struct {
@@ -264,7 +275,11 @@ func (service *Service) UpdateStory(ctx context.Context, chapterUUID string, inp
 	if err != nil {
 		return Chapter{}, err
 	}
-	return service.GetChapter(ctx, chapterUUID)
+	chapter, err := service.GetChapter(ctx, chapterUUID)
+	if err == nil {
+		service.emit("story:chapter_changed", map[string]any{"chapter_uuid": chapter.UUID, "revision": chapter.Revision, "story_changed": true})
+	}
+	return chapter, err
 }
 
 func (service *Service) ListChapterStories(ctx context.Context, chapterUUID string) ([]ChapterStory, error) {
@@ -303,7 +318,11 @@ func (service *Service) TrashChapter(ctx context.Context, uuid string, expectedR
 	if result.RowsAffected != 1 {
 		return Chapter{}, storyError(CodeChapterRevisionConflict, "回收操作版本冲突", "章节已被其他操作更新，请刷新后重试。", nil)
 	}
-	return service.GetChapter(ctx, uuid)
+	chapter, err := service.GetChapter(ctx, uuid)
+	if err == nil {
+		service.emit("story:chapter_changed", map[string]any{"chapter_uuid": chapter.UUID, "revision": chapter.Revision, "trashed": true})
+	}
+	return chapter, err
 }
 
 func (service *Service) RestoreChapter(ctx context.Context, uuid string, expectedRevision int64) (Chapter, error) {
@@ -325,18 +344,123 @@ func (service *Service) RestoreChapter(ctx context.Context, uuid string, expecte
 	if result.RowsAffected != 1 {
 		return Chapter{}, storyError(CodeChapterRevisionConflict, "恢复操作版本冲突", "章节已被其他操作更新，请刷新后重试。", nil)
 	}
-	return service.GetChapter(ctx, uuid)
+	chapter, err := service.GetChapter(ctx, uuid)
+	if err == nil {
+		service.emit("story:chapter_changed", map[string]any{"chapter_uuid": chapter.UUID, "revision": chapter.Revision, "restored": true})
+	}
+	return chapter, err
+}
+
+func (service *Service) ReorderChapters(ctx context.Context, orderedUUIDs []string) ([]Chapter, error) {
+	if len(orderedUUIDs) == 0 {
+		return nil, storyError(CodeValidationFailed, "章节顺序不能为空", "chapter_uuids 必须包含全部 active 章节。", nil)
+	}
+	seen := make(map[string]struct{}, len(orderedUUIDs))
+	for _, chapterUUID := range orderedUUIDs {
+		if !isUUIDv7(chapterUUID) {
+			return nil, storyError(CodeValidationFailed, "章节 UUID 无效", "chapter_uuids 只能包含 UUIDv7。", nil)
+		}
+		if _, exists := seen[chapterUUID]; exists {
+			return nil, storyError(CodeValidationFailed, "章节顺序包含重复 UUID", "每个 active 章节必须且只能出现一次。", nil)
+		}
+		seen[chapterUUID] = struct{}{}
+	}
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		projectRecord, _, err := service.projectAndActor(ctx, tx)
+		if err != nil {
+			return err
+		}
+		var rows []chapterRecord
+		if err := tx.Where("project_id = ? AND deleted_at IS NULL", projectRecord.ID).Order("sort_order ASC").Find(&rows).Error; err != nil {
+			return err
+		}
+		if len(rows) != len(orderedUUIDs) {
+			return storyError(CodeValidationFailed, "章节顺序不完整", "chapter_uuids 必须包含全部 active 章节。", nil)
+		}
+		byUUID := make(map[string]chapterRecord, len(rows))
+		maxOrder := len(rows)
+		for _, row := range rows {
+			byUUID[row.UUID] = row
+			if row.SortOrder > maxOrder {
+				maxOrder = row.SortOrder
+			}
+		}
+		for _, chapterUUID := range orderedUUIDs {
+			if _, exists := byUUID[chapterUUID]; !exists {
+				return storyError(CodeValidationFailed, "章节顺序包含未知 UUID", "chapter_uuids 只能包含当前项目的 active 章节。", nil)
+			}
+		}
+		now := service.now().UTC()
+		temporaryBase := maxOrder + len(rows) + 1000
+		for index, chapterUUID := range orderedUUIDs {
+			row := byUUID[chapterUUID]
+			if err := tx.Model(&chapterRecord{}).Where("id = ?", row.ID).Update("sort_order", temporaryBase+index).Error; err != nil {
+				return err
+			}
+		}
+		for index, chapterUUID := range orderedUUIDs {
+			row := byUUID[chapterUUID]
+			updates := map[string]any{"sort_order": index + 1, "updated_at": now}
+			if row.SortOrder != index+1 {
+				updates["revision"] = gorm.Expr("revision + 1")
+			}
+			if err := tx.Model(&chapterRecord{}).Where("id = ?", row.ID).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	items, err := service.ListChapters(ctx, "active")
+	if err == nil {
+		service.emit("story:chapters_reordered", map[string]any{"chapter_uuids": orderedUUIDs})
+	}
+	return items, err
 }
 
 func (service *Service) PermanentlyDeleteChapter(ctx context.Context, uuid string, expectedRevision int64) error {
-	record, err := service.findChapter(ctx, uuid, true)
-	if err != nil {
-		return err
+	return service.permanentlyDeleteChapter(ctx, uuid, expectedRevision, "")
+}
+
+// PermanentlyDeleteChapterFromTool atomically checkpoints a successful
+// destructive request_api call with the Chapter deletion.
+func (service *Service) PermanentlyDeleteChapterFromTool(ctx context.Context, uuid string, expectedRevision int64, toolExecutionUUID string) error {
+	if !isUUIDv7(toolExecutionUUID) {
+		return storyError(CodeValidationFailed, "工具执行 UUID 无效", "tool_execution_uuid 必须是 UUIDv7。", nil)
 	}
-	if record.DeletedAt == nil {
-		return storyError(CodeChapterStateConflict, "章节尚未进入回收站", "永久删除前必须先把章节移入回收站。", nil)
+	return service.permanentlyDeleteChapter(ctx, uuid, expectedRevision, toolExecutionUUID)
+}
+
+func (service *Service) permanentlyDeleteChapter(ctx context.Context, uuid string, expectedRevision int64, toolExecutionUUID string) error {
+	if !isUUIDv7(uuid) {
+		return storyError(CodeValidationFailed, "章节 UUID 无效", "章节资源标识必须是 UUIDv7。", nil)
 	}
-	return service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if toolExecutionUUID != "" {
+			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterPermanentDelete)
+			if err != nil {
+				return err
+			}
+			if found {
+				if string(data) != "null" {
+					return storyError(CodeChapterStateConflict, "永久删除恢复数据无效", "已提交的工具 checkpoint 与接口返回形状不匹配。", nil)
+				}
+				return nil
+			}
+		}
+		projectRecord, _, err := service.projectAndActor(ctx, tx)
+		if err != nil {
+			return err
+		}
+		var record chapterRecord
+		if err := tx.Where("project_id = ? AND uuid = ?", projectRecord.ID, uuid).First(&record).Error; err != nil {
+			return recordNotFound(err, CodeChapterNotFound, "章节不存在", "该章节不存在或已经进入回收站。")
+		}
+		if record.DeletedAt == nil {
+			return storyError(CodeChapterStateConflict, "章节尚未进入回收站", "永久删除前必须先把章节移入回收站。", nil)
+		}
 		blocked, err := chapterDeleteBlocked(ctx, tx, record)
 		if err != nil {
 			return err
@@ -344,17 +468,53 @@ func (service *Service) PermanentlyDeleteChapter(ctx context.Context, uuid strin
 		if blocked {
 			return storyError(CodeChapterDeleteBlocked, "章节仍被活动任务使用", "等待相关生成或会话结束后重试。", nil)
 		}
-		return deleteChapterTx(tx, record, &expectedRevision)
+		if err := deleteChapterTx(tx, record, &expectedRevision); err != nil {
+			return err
+		}
+		if toolExecutionUUID != "" {
+			return agentcheckpoint.Write(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterPermanentDelete, nil, service.now().UTC())
+		}
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+	// Emit after the domain transaction commits. A checkpoint replay emits the
+	// same idempotent invalidation hint so a crash between commit and broadcast
+	// cannot leave another window displaying stale chapter facts.
+	service.emit("story:chapter_permanently_deleted", map[string]any{"chapter_uuid": uuid})
+	return nil
 }
 
 func (service *Service) EmptyChapterTrash(ctx context.Context) (EmptyChapterTrashResult, error) {
-	projectRecord, _, err := service.projectAndActor(ctx, service.store.DB())
-	if err != nil {
-		return EmptyChapterTrashResult{}, err
+	return service.emptyChapterTrash(ctx, "")
+}
+
+// EmptyChapterTrashFromTool atomically checkpoints the exact deletion and
+// blocker counts produced by a destructive request_api call.
+func (service *Service) EmptyChapterTrashFromTool(ctx context.Context, toolExecutionUUID string) (EmptyChapterTrashResult, error) {
+	if !isUUIDv7(toolExecutionUUID) {
+		return EmptyChapterTrashResult{}, storyError(CodeValidationFailed, "工具执行 UUID 无效", "tool_execution_uuid 必须是 UUIDv7。", nil)
 	}
+	return service.emptyChapterTrash(ctx, toolExecutionUUID)
+}
+
+func (service *Service) emptyChapterTrash(ctx context.Context, toolExecutionUUID string) (EmptyChapterTrashResult, error) {
 	result := EmptyChapterTrashResult{BlockedItems: []ChapterTrashBlockedItem{}}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if toolExecutionUUID != "" {
+			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterTrashEmpty)
+			if err != nil {
+				return err
+			}
+			if found {
+				return json.Unmarshal(data, &result)
+			}
+		}
+		projectRecord, _, err := service.projectAndActor(ctx, tx)
+		if err != nil {
+			return err
+		}
 		var rows []chapterRecord
 		if err := tx.Where("project_id = ? AND deleted_at IS NOT NULL", projectRecord.ID).Order("deleted_at ASC,id ASC").Find(&rows).Error; err != nil {
 			return err
@@ -373,9 +533,23 @@ func (service *Service) EmptyChapterTrash(ctx context.Context) (EmptyChapterTras
 			}
 			result.DeletedCount++
 		}
+		if toolExecutionUUID != "" {
+			return agentcheckpoint.Write(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterTrashEmpty, result, service.now().UTC())
+		}
 		return nil
 	})
-	return result, err
+	if err != nil {
+		return result, err
+	}
+	// This is intentionally an aggregate public hint: consumers invalidate the
+	// chapter collection and re-read SQLite instead of treating the event as the
+	// source of truth. Replays publish it again to close the post-commit crash
+	// window without repeating the deletion itself.
+	service.emit("story:chapter_trash_emptied", map[string]any{
+		"deleted_count": result.DeletedCount,
+		"blocked_count": len(result.BlockedItems),
+	})
+	return result, nil
 }
 
 func deleteChapterTx(tx *gorm.DB, record chapterRecord, expectedRevision *int64) error {

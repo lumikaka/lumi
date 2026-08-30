@@ -5,6 +5,24 @@ function normalizeReadableText(value) {
   return text.trim() ? text : ''
 }
 
+const providerDiagnosticReasons = new Set([
+  'empty_body',
+  'body_read_error',
+  'body_too_large',
+  'malformed_json',
+  'trailing_json',
+  'empty_choices',
+  'empty_message',
+  'missing_tool_call_id',
+  'duplicate_tool_call_id',
+  'missing_tool_name',
+  'tool_arguments_wrong_type',
+  'tool_arguments_too_large',
+  'finish_reason_length',
+  'negative_usage',
+  'request_user_input_not_exclusive',
+])
+
 function extractMessageContent(content) {
   if (typeof content === 'string') return normalizeReadableText(content)
   if (!Array.isArray(content)) return ''
@@ -58,7 +76,24 @@ export function extractReadablePrompt(requestPayload) {
 }
 
 export function extractReadableResponse(response) {
+  if (isProviderResponseDiagnostic(response)) return ''
+
   return normalizeReadableText(
     typeof response?.content === 'string' ? response.content : response?.message?.content,
   )
+}
+
+export function isProviderResponseDiagnostic(response) {
+  return response?.snapshot_type === 'provider_response_diagnostic' && response?.schema_version === 1
+}
+
+export function providerDiagnosticReasonMessageKey(reason) {
+  return providerDiagnosticReasons.has(reason)
+    ? `settings.llm_logs.diagnostic.reason.${reason}`
+    : ''
+}
+
+export function providerDiagnosticPreview(response) {
+  if (!isProviderResponseDiagnostic(response) || typeof response.preview !== 'string') return ''
+  return response.preview
 }

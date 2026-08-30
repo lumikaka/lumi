@@ -22,6 +22,13 @@ type dangerousConfirmationBinding struct {
 	ConfirmOption      int    `json:"confirm_option"`
 }
 
+const confirmationReplayProviderCallDomain = "lumi/provider-call/v1\x00confirmation-replay\x00"
+
+func confirmationReplayProviderCallID(confirmationRequestUUID string) string {
+	digest := sha256.Sum256([]byte(confirmationReplayProviderCallDomain + confirmationRequestUUID))
+	return "call_" + hex.EncodeToString(digest[:12])
+}
+
 func validateDangerousConfirmationBinding(tc toolContext, binding dangerousConfirmationBinding, inputType string, optionCount int) (agentAPIRoute, error) {
 	return validateDangerousConfirmationBindingWithRoutes(tc, binding, inputType, optionCount, agentAPIRoutes())
 }
@@ -35,7 +42,7 @@ func validateDangerousConfirmationBindingWithRoutes(tc toolContext, binding dang
 	if !ok || route.Risk != RiskDangerous || !route.RequiresConfirmation {
 		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认 Route 无效", "confirmation.route 必须是要求全局确认的已注册危险 Route。", nil)
 	}
-	if inputType != "single_choice" || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || binding.ExpectedRevision < 0 || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption < 0 || binding.ConfirmOption >= optionCount {
+	if inputType != "single_choice" || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || !validDangerousConfirmationRevision(route, binding.ExpectedRevision) || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption < 0 || binding.ConfirmOption >= optionCount {
 		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认绑定无效", "confirmation 必须绑定当前 Project、具体目标 UUID、稳定 request_fingerprint、非负 revision 和有效的单选确认项。", nil)
 	}
 	return route, nil
@@ -46,10 +53,20 @@ func (service *Service) validateCodexDangerousConfirmationBinding(tc toolContext
 	if !ok || route.Risk != RiskDangerous || !route.RequiresConfirmation {
 		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认 Route 无效", "confirmation.route 必须是要求全局确认的已注册危险 Route。", nil)
 	}
-	if len(questions) != 1 || binding.QuestionID != questions[0].ID || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || binding.ExpectedRevision < 0 || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption <= 0 || binding.ConfirmOption >= len(questions[0].Options) {
+	if len(questions) != 1 || binding.QuestionID != questions[0].ID || binding.ProjectUUID != tc.ProjectUUID || !isUUIDv7(binding.ProjectUUID) || !isUUIDv7(binding.TargetUUID) || !validDangerousConfirmationRevision(route, binding.ExpectedRevision) || !validAgentRequestFingerprint(binding.RequestFingerprint) || binding.ConfirmOption <= 0 || binding.ConfirmOption >= len(questions[0].Options) {
 		return agentAPIRoute{}, domainError(CodeToolValidation, "危险操作确认绑定无效", "confirmation 必须绑定当前 Project、唯一 question_id、具体目标 UUID、稳定 request_fingerprint、非负 revision 和非推荐的有效确认项；第一项保留为安全选项。", nil)
 	}
 	return route, nil
+}
+
+func validDangerousConfirmationRevision(route agentAPIRoute, revision int64) bool {
+	if revision < 0 {
+		return false
+	}
+	if route.RevisionSource == agentAPIRevisionNone {
+		return revision == 0
+	}
+	return route.RevisionSource == agentAPIRevisionBody || route.RevisionSource == agentAPIRevisionQuery
 }
 
 func agentAPIRouteByID(routeID string) (agentAPIRoute, bool) {
@@ -91,7 +108,7 @@ func authorizeDangerousAgentAPIRequest(ctx context.Context, store *project.Store
 	}
 	details, _ := json.Marshal(map[string]any{
 		"route": request.Route.ID, "project_uuid": tc.ProjectUUID, "target_uuid": request.TargetUUID,
-		"expected_revision": intArg(request.Body, "expected_revision"), "request_fingerprint": agentRequestFingerprint(request),
+		"expected_revision": agentAPIRequestExpectedRevision(request), "request_fingerprint": agentRequestFingerprint(request),
 		"confirmation_tool": "request_user_input", "execution": "runtime_replays_original_request",
 	})
 	return domainError(CodeToolConfirmation, "危险操作需要用户确认", string(details), nil)
@@ -169,8 +186,8 @@ func (service *Service) findDangerousConfirmationSourceTx(ctx context.Context, t
 		if json.Unmarshal([]byte(source.ArgumentsJSON), &arguments) != nil || !confirmationRequiredToolResult(source.ResultJSON) {
 			continue
 		}
-		body, _ := arguments["request_body"].(map[string]any)
-		if binding.ProjectUUID != projectUUID || stringArg(arguments, "__route_id") != binding.Route || source.TargetUUID != binding.TargetUUID || intArg(body, "expected_revision") != binding.ExpectedRevision || storedAgentRequestFingerprint(arguments) != binding.RequestFingerprint {
+		route, ok := agentAPIRouteByIDFromRoutes(binding.Route, service.requestAPIRoutes())
+		if !ok || binding.ProjectUUID != projectUUID || stringArg(arguments, "__route_id") != binding.Route || source.TargetUUID != binding.TargetUUID || storedAgentAPIExpectedRevision(route, arguments) != binding.ExpectedRevision || storedAgentRequestFingerprint(arguments) != binding.RequestFingerprint {
 			continue
 		}
 		return source, nil
@@ -206,6 +223,9 @@ func (service *Service) enqueueConfirmedRequestReplayTx(ctx context.Context, tx 
 	var existingID int64
 	err := tx.QueryRowContext(ctx, `SELECT id FROM agent_tool_executions WHERE idempotency_key=?`, idempotencyKey).Scan(&existingID)
 	if err == nil {
+		if err := repairPendingConfirmationReplayProviderIDTx(ctx, tx, existingID, row.UUID); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
 		return toolExecutionRecord{}, false, nil
 	}
 	if err != nil && err != sql.ErrNoRows {
@@ -229,7 +249,8 @@ func (service *Service) enqueueConfirmedRequestReplayTx(ctx context.Context, tx 
 	if err != nil {
 		return toolExecutionRecord{}, false, err
 	}
-	storedArguments["__provider_call_id"] = publicCallUUID
+	providerCallID := confirmationReplayProviderCallID(row.UUID)
+	storedArguments["__provider_call_id"] = providerCallID
 	delete(storedArguments, "__request_uuid")
 	delete(storedArguments, "__request_ordinal")
 	storedArguments["__confirmation_auto_replay"] = true
@@ -245,7 +266,7 @@ func (service *Service) enqueueConfirmedRequestReplayTx(ctx context.Context, tx 
 	path := stringArg(storedArguments, "__path")
 	metadata := map[string]any{
 		"purpose": "request_api", "action": action, "target_uuid": source.TargetUUID,
-		"provider_call_id": publicCallUUID, "route_id": routeID, "method": method, "path": path,
+		"provider_call_id": providerCallID, "route_id": routeID, "method": method, "path": path,
 		"runtime_generated": true, "confirmation_request_uuid": row.UUID,
 		"confirmation_source_execution_uuid": source.UUID,
 	}
@@ -278,6 +299,82 @@ func (service *Service) enqueueConfirmedRequestReplayTx(ctx context.Context, tx 
 		ArgumentsJSON: string(storedArgumentsJSON), IdempotencyKey: idempotencyKey, State: "intent",
 		RouteID: routeID, Action: action, Method: method, Path: path, CreatedAt: now, UpdatedAt: now,
 	}, true, nil
+}
+
+func repairPendingConfirmationReplayProviderIDTx(ctx context.Context, tx *sql.Tx, executionID int64, confirmationRequestUUID string) error {
+	if !isUUIDv7(confirmationRequestUUID) {
+		return domainError(CodeStateConflict, "危险操作重放关联损坏", "未完成 confirmation replay 缺少有效的 confirmation request UUID。", nil)
+	}
+	var state string
+	var itemID int64
+	var argumentsJSON string
+	if err := tx.QueryRowContext(ctx, `SELECT state,item_id,arguments_json FROM agent_tool_executions WHERE id=?`, executionID).Scan(&state, &itemID, &argumentsJSON); err != nil {
+		return err
+	}
+	if state != "intent" && state != "executing" {
+		return nil
+	}
+	var arguments map[string]any
+	if err := json.Unmarshal([]byte(argumentsJSON), &arguments); err != nil {
+		return domainError(CodeStateConflict, "危险操作重放参数损坏", "无法修复未完成 confirmation replay 的 Provider call ID。", err)
+	}
+	if !boolArg(arguments, "__confirmation_auto_replay") || stringArg(arguments, "__confirmation_request_uuid") != confirmationRequestUUID {
+		return domainError(CodeStateConflict, "危险操作重放关联损坏", "未完成 execution 与 confirmation request UUID 不匹配，拒绝改写 Provider call ID。", nil)
+	}
+	providerCallID := confirmationReplayProviderCallID(confirmationRequestUUID)
+	arguments["__provider_call_id"] = providerCallID
+	encoded, err := json.Marshal(arguments)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET arguments_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND state IN ('intent','executing')`, string(encoded), executionID); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE chat_items SET metadata_json=json_set(COALESCE(metadata_json,'{}'),'$.provider_call_id',?,'$.runtime_generated',json('true'),'$.confirmation_request_uuid',?) WHERE id=?`, providerCallID, confirmationRequestUUID, itemID)
+	return err
+}
+
+// repairPendingConfirmationReplayProviderID is the recovery boundary for
+// replay intents created before Provider-compatible synthetic call IDs were
+// introduced. It repairs both durable copies before execution and returns the
+// refreshed record so the eventual tool result uses the same Provider ID. The
+// public tool_call_uuid is read back but never modified.
+func (service *Service) repairPendingConfirmationReplayProviderID(ctx context.Context, store *project.Store, execution toolExecutionRecord) (toolExecutionRecord, error) {
+	if execution.ToolName != "request_api" || (execution.State != "intent" && execution.State != "executing") {
+		return execution, nil
+	}
+	var arguments map[string]any
+	if err := json.Unmarshal([]byte(execution.ArgumentsJSON), &arguments); err != nil {
+		return execution, domainError(CodeStateConflict, "危险操作重放参数损坏", "无法读取待恢复 request_api 的持久化参数。", err)
+	}
+	if !boolArg(arguments, "__confirmation_auto_replay") {
+		return execution, nil
+	}
+	confirmationRequestUUID := stringArg(arguments, "__confirmation_request_uuid")
+	if !isUUIDv7(confirmationRequestUUID) {
+		return execution, domainError(CodeStateConflict, "危险操作重放关联损坏", "未完成 confirmation replay 缺少有效的 confirmation request UUID。", nil)
+	}
+
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return execution, err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return execution, err
+	}
+	defer tx.Rollback()
+	if err := repairPendingConfirmationReplayProviderIDTx(ctx, tx, execution.ID, confirmationRequestUUID); err != nil {
+		return execution, err
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT state,arguments_json,tool_call_uuid,item_id FROM agent_tool_executions WHERE id=?`, execution.ID).
+		Scan(&execution.State, &execution.ArgumentsJSON, &execution.ToolCallUUID, &execution.ItemID); err != nil {
+		return execution, err
+	}
+	if err := tx.Commit(); err != nil {
+		return execution, err
+	}
+	return execution, nil
 }
 
 func (service *Service) prepareConfirmedRequestReplayTx(ctx context.Context, tx *sql.Tx, thread *threadRecord, row userInputRow, responseJSON string, now time.Time) (toolExecutionRecord, bool, error) {
@@ -329,7 +426,7 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 	if err != nil {
 		return false, err
 	}
-	expectedRevision := intArg(request.Body, "expected_revision")
+	expectedRevision := agentAPIRequestExpectedRevision(request)
 	expectedFingerprint := agentRequestFingerprint(request)
 	for _, row := range rows {
 		var arguments struct {
@@ -344,7 +441,7 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 		}
 		confirmed, err := dangerousConfirmationSelected(row.SchemaVersion, row.RequestJSON, row.ResponseJSON, *binding)
 		if err == nil && confirmed {
-			consumed, err := dangerousConfirmationAlreadyConsumed(ctx, store, tc.Run.ID, row.ExecutionID, expectedFingerprint)
+			consumed, err := dangerousConfirmationAlreadyConsumed(ctx, store, tc.Run.ID, row.ExecutionID, request.Route, binding.ExpectedRevision, expectedFingerprint)
 			if err != nil {
 				return false, err
 			}
@@ -356,7 +453,7 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 	return false, nil
 }
 
-func dangerousConfirmationAlreadyConsumed(ctx context.Context, store *project.Store, runID, confirmationExecutionID int64, fingerprint string) (bool, error) {
+func dangerousConfirmationAlreadyConsumed(ctx context.Context, store *project.Store, runID, confirmationExecutionID int64, route agentAPIRoute, expectedRevision int64, fingerprint string) (bool, error) {
 	var executions []struct {
 		ArgumentsJSON string
 	}
@@ -371,7 +468,7 @@ func dangerousConfirmationAlreadyConsumed(ctx context.Context, store *project.St
 		if json.Unmarshal([]byte(execution.ArgumentsJSON), &arguments) != nil {
 			continue
 		}
-		if storedAgentRequestFingerprint(arguments) == fingerprint {
+		if stringArg(arguments, "__route_id") == route.ID && storedAgentAPIExpectedRevision(route, arguments) == expectedRevision && storedAgentRequestFingerprint(arguments) == fingerprint {
 			return true, nil
 		}
 	}

@@ -72,8 +72,8 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 		"method": http.MethodGet, "url": "/api/v1/projects/" + projectUUID + "/premise-assets",
 		"query": map[string]any{"state": "trashed"}, "response_filter": ".data.items[] | {uuid,title}",
 	})
-	if err != nil || !assetList.UseDispatcher {
-		t.Fatalf("real API query did not fall back to dispatcher: request=%+v err=%v", assetList, err)
+	if err != nil || assetList.UseDispatcher || !assetList.Route.StrictSchema {
+		t.Fatalf("reviewed premise asset query lost its strict in-process contract: request=%+v err=%v", assetList, err)
 	}
 	storyProfile, err := service.parseAgentAPIRequest(tc, map[string]any{
 		"method": http.MethodGet, "url": "/api/v1/projects/" + projectUUID + "/story-profile", "response_filter": ".data | {uuid,revision}",
@@ -286,7 +286,8 @@ func TestDiscoveredProjectAPIWriteUsesDynamicConfirmationRoute(t *testing.T) {
 	}, nil)
 	tc := toolContext{ProjectUUID: projectUUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
 	request, err := service.parseAgentAPIRequest(tc, map[string]any{
-		"method": http.MethodDelete, "url": "/api/v1/projects/" + projectUUID + "/premise-assets/trash", "response_filter": ".data",
+		"method": http.MethodDelete, "url": "/api/v1/projects/" + projectUUID + "/premise-assets/trash",
+		"response_filter": ".data | {deleted_count,file_soft_deleted_count,retained_file_count,blocked_items}",
 	})
 	if err != nil {
 		t.Fatal(err)

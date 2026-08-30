@@ -53,6 +53,10 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 	if len(key) < 8 || len(key) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) {
 		return Workflow{}, domainError(CodeValidation, "Yolo 参数无效", "idempotency_key 需要 8 到 160 字符。", nil)
 	}
+	invocation, err := normalizeYoloInvocation(input.Invocation)
+	if err != nil {
+		return Workflow{}, err
+	}
 	var createdUUID string
 	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		if err := store.RequireReady(); err != nil {
@@ -118,25 +122,39 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		} else if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		threadUUID, err := newUUIDv7()
-		if err != nil {
-			return err
+		now := service.now().UTC()
+		var threadID int64
+		var threadUUID string
+		var inlineOwner yoloInlineOwner
+		switch invocation.PresentationMode {
+		case PresentationDedicatedThread:
+			threadUUID, err = newUUIDv7()
+			if err != nil {
+				return err
+			}
+			threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, pid, "Yolo · "+title, resolved.UUID, model, modelSource, now, now)
+			if err != nil {
+				return err
+			}
+			threadID, err = threadResult.LastInsertId()
+			if err != nil {
+				return err
+			}
+		case PresentationInline:
+			inlineOwner, err = loadYoloInlineOwnerTx(ctx, tx, pid, invocation)
+			if err != nil {
+				return err
+			}
+			threadID, threadUUID = inlineOwner.ThreadID, inlineOwner.ThreadUUID
+		default:
+			return domainError(CodeValidation, "YOLO 展示模式无效", "YOLO 只能创建独立或内联 Workflow。", nil)
 		}
 		workflowUUID, err := newUUIDv7()
 		if err != nil {
 			return err
 		}
-		now := service.now().UTC()
-		result, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, pid, "Yolo · "+title, resolved.UUID, model, modelSource, now, now)
-		if err != nil {
-			return err
-		}
-		threadID, err := result.LastInsertId()
-		if err != nil {
-			return err
-		}
 		snapshot, _ := json.Marshal(yoloSnapshot{Version: 5, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String()})
-		result, err = tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
+		result, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
 		}
@@ -160,14 +178,30 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 				return err
 			}
 		}
-		thread := threadRecord{ID: threadID, UUID: threadUUID, ProjectID: pid, NextItemSequence: 1, NextEventSequence: 1}
-		if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已启动。进度会持久保存，关闭应用后仍可恢复。", "text", "completed", "", "", workflowUUID, map[string]any{"workflow_uuid": workflowUUID}, now); err != nil {
-			return err
+		eventPayload := map[string]any{"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID, "status": WorkflowQueued}
+		if invocation.PresentationMode == PresentationInline {
+			awaitUUID, err := newUUIDv7()
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_awaits(uuid,workflow_id,chat_thread_id,chat_turn_id,chat_run_id,tool_execution_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'waiting',?,?)`, awaitUUID, workflowID, inlineOwner.ThreadID, inlineOwner.TurnID, inlineOwner.RunID, inlineOwner.ToolExecutionID, now, now); err != nil {
+				return err
+			}
+			eventPayload["turn_uuid"], eventPayload["run_uuid"] = inlineOwner.TurnUUID, inlineOwner.RunUUID
+			eventPayload["tool_call_uuid"], eventPayload["origin_item_uuid"] = inlineOwner.ToolCallUUID, inlineOwner.ToolItemUUID
+			if _, err := RecomputeThreadStatusTx(ctx, tx, threadID, now); err != nil {
+				return err
+			}
+		} else {
+			thread := threadRecord{ID: threadID, UUID: threadUUID, ProjectID: pid, NextItemSequence: 1, NextEventSequence: 1}
+			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已启动。进度会持久保存，关闭应用后仍可恢复。", "text", "completed", "", "", workflowUUID, map[string]any{"workflow_uuid": workflowUUID}, now); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=? WHERE id=?`, thread.NextItemSequence, threadID); err != nil {
+				return err
+			}
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=? WHERE id=?`, thread.NextItemSequence, threadID); err != nil {
-			return err
-		}
-		if err := appendWorkflowEventTx(ctx, tx, workflowID, nil, "workflow_queued", map[string]any{"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID, "status": WorkflowQueued}, now); err != nil {
+		if err := appendWorkflowEventTx(ctx, tx, workflowID, nil, "workflow_queued", eventPayload, now); err != nil {
 			return err
 		}
 		jobID, err := service.queue.EnqueueAgentTx(ctx, projectUUID, tx, JobSpec{Version: 1, ProjectUUID: projectUUID, JobKind: JobWorkflowStep, ResourceUUID: firstStepUUID, ThreadUUID: threadUUID})
@@ -189,6 +223,9 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 	workflow, err := service.GetWorkflow(ctx, projectUUID, createdUUID)
 	if err == nil {
 		service.broadcastWorkflow(projectUUID, workflow, "workflow:queued", "")
+	}
+	if err == nil && workflow.AwaitStatus == "waiting" {
+		return workflow, ErrWaitingWorkflow
 	}
 	return workflow, err
 }
@@ -1476,25 +1513,34 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			return domainError(CodeStateConflict, "Yolo 完成状态冲突", "workflow 已不再 running，未提交步骤结果。", nil)
 		}
 		if workflow.ThreadID != nil {
-			completionMessage, err := yoloCompletionMessage(output)
-			if err != nil {
+			var threadType string
+			if err := tx.QueryRowContext(ctx, `SELECT thread_type FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&threadType); err != nil {
 				return err
 			}
-			var thread threadRecord
-			if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&thread.ID, &thread.UUID, &thread.ProjectID, &thread.Title, &thread.Status, &thread.ProviderUUID, &thread.Model, &thread.ModelSource, &thread.NextTurnSequence, &thread.NextItemSequence, &thread.NextEventSequence, &thread.ArchivedAt, &thread.CreatedAt, &thread.UpdatedAt); err != nil {
-				return err
+			if threadType == ThreadTypeWorkflow {
+				completionMessage, err := yoloCompletionMessage(output)
+				if err != nil {
+					return err
+				}
+				var thread threadRecord
+				if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE id=?`, *workflow.ThreadID).Scan(&thread.ID, &thread.UUID, &thread.ProjectID, &thread.Title, &thread.Status, &thread.ProviderUUID, &thread.Model, &thread.ModelSource, &thread.NextTurnSequence, &thread.NextItemSequence, &thread.NextEventSequence, &thread.ArchivedAt, &thread.CreatedAt, &thread.UpdatedAt); err != nil {
+					return err
+				}
+				if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", completionMessage, "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {
+					return err
+				}
+				if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
+					return err
+				}
 			}
-			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", completionMessage, "text", "completed", "", "", workflow.UUID, map[string]any{"workflow_uuid": workflow.UUID}, now); err != nil {
-				return err
-			}
-			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
-				return err
-			}
-			if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
+			if _, err := RecomputeThreadStatusTx(ctx, tx, *workflow.ThreadID, now); err != nil {
 				return err
 			}
 		}
 		if err := appendWorkflowEventTx(ctx, tx, workflow.ID, nil, "workflow_completed", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "thread_uuid": threadUUID, "status": WorkflowCompleted}, now); err != nil {
+			return err
+		}
+		if err := service.readyWorkflowAwaitTx(ctx, tx, store.ProjectUUID(), workflow.ID, now); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -1607,6 +1653,9 @@ func (service *Service) failWorkflowStep(ctx context.Context, store *project.Sto
 		}
 		if result.RowsAffected != 1 {
 			return errWorkflowTransitionInactive
+		}
+		if err := service.readyWorkflowAwaitGormTx(ctx, tx, store.ProjectUUID(), workflow.ID, now); err != nil {
+			return err
 		}
 		if workflow.ThreadID != nil {
 			if _, err := recomputeThreadStatusGormTx(ctx, tx, *workflow.ThreadID, now); err != nil {
@@ -1752,6 +1801,9 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 				}
 			}
 			if err := tx.Model(&workflowStepRecord{}).Where("workflow_id=? AND status IN ('pending','queued','running','waiting','failed','interrupted')", row.ID).Updates(map[string]any{"status": "cancelled", "error_code": CodeCancelled, "error_message": "用户已取消。", "completed_at": now, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			if err := service.readyWorkflowAwaitGormTx(ctx, tx, projectUUID, row.ID, now); err != nil {
 				return err
 			}
 			if row.ThreadID != nil {

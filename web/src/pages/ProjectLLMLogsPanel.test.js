@@ -70,3 +70,17 @@ test('response payload exposes the same reader for text and chat response conten
     assert.match(messages, new RegExp(`settings\\.llm_logs\\.${key}`))
   }
 })
+
+test('provider response diagnostics render structured metadata and a folded redacted preview', () => {
+  assert.match(source, /isProviderResponseDiagnostic\(detail\?\.response\)/)
+  assert.match(source, /responseDiagnostic\.reason/)
+  assert.match(source, /responseDiagnostic\.choice_index != null/)
+  assert.match(source, /responseDiagnostic\.tool_index != null/)
+  assert.match(source, /<details>/)
+  assert.match(source, /providerDiagnosticPreview\(detail\?\.response\)/)
+  assert.match(source, /\{responseDiagnosticPreview\}/)
+  assert.doesNotMatch(source, /extractReadableResponse\(responseDiagnostic\)/)
+  for (const key of ['diagnostic.title', 'diagnostic.reason', 'diagnostic.preview', 'diagnostic.reason.malformed_json', 'diagnostic.reason.finish_reason_length']) {
+    assert.match(messages, new RegExp(`settings\\.llm_logs\\.${key.replaceAll('.', '\\.')}`))
+  }
+})

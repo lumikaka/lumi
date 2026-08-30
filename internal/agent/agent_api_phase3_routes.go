@@ -1,5 +1,7 @@
 package agent
 
+import "lumi/internal/agentcheckpoint"
+
 const (
 	RouteProjectGet                      = "project.get"
 	RouteProjectUpdate                   = "project.update"
@@ -61,6 +63,10 @@ const (
 	RouteProjectAssetUpdate              = "project_asset.update"
 	RouteProjectAssetTrash               = "project_asset.soft_delete"
 	RouteProjectAssetRestore             = "project_asset.restore"
+	RouteChapterPermanentDelete          = agentcheckpoint.RouteChapterPermanentDelete
+	RouteChapterTrashEmpty               = agentcheckpoint.RouteChapterTrashEmpty
+	RoutePremiseAssetPermanentDelete     = agentcheckpoint.RoutePremiseAssetPermanentDelete
+	RoutePremiseAssetTrashEmpty          = agentcheckpoint.RoutePremiseAssetTrashEmpty
 )
 
 func apiBoolean(description string) map[string]any {
@@ -100,7 +106,7 @@ func phase3AgentAPIProjectors() []agentAPIProjector {
 	fields := func(names ...string) []agentAPIResponseField {
 		result := make([]agentAPIResponseField, 0, len(names))
 		for _, name := range names {
-			result = append(result, agentAPIResponseField{Name: name, Type: "public", Description: "经审查的公开字段。"})
+			result = append(result, phase3AgentAPIResponseField(name))
 		}
 		return result
 	}
@@ -119,6 +125,7 @@ func phase3AgentAPIProjectors() []agentAPIProjector {
 		{Key: "premise_asset_variant_list", List: true, ItemProjector: "premise_asset_variant"},
 		{Key: "comic_state", Fields: fields("uuid", "chapter_uuid", "status", "has_premise_assets", "premise_asset_count", "revision", "updated_at"), RecommendedFields: []string{"uuid", "chapter_uuid", "status", "has_premise_assets", "premise_asset_count", "revision", "updated_at"}},
 		{Key: "comic_section_list", List: true, ItemProjector: "comic_section"},
+		{Key: "comic_section_delete", Fields: fields("uuid", "deleted"), RecommendedFields: []string{"uuid", "deleted"}},
 		{Key: "storyboard", Fields: fields("uuid", "version_no", "content_md", "source_type", "created_at"), RecommendedFields: []string{"uuid", "version_no", "source_type", "created_at"}},
 		{Key: "storyboard_list", List: true, ItemProjector: "storyboard"},
 		{Key: "comic_image_variant", Fields: fields("uuid", "version_no", "source_type", "generation_uuid", "asset", "created_at"), RecommendedFields: []string{"uuid", "version_no", "source_type", "generation_uuid", "created_at"}},
@@ -135,6 +142,9 @@ func phase3AgentAPIProjectors() []agentAPIProjector {
 		{Key: "task_event_list", List: true, ItemProjector: "task_event"},
 		{Key: "project_asset", Fields: fields("uuid", "kind", "purpose", "original_filename", "display_name", "source_type", "source_asset_uuid", "mime_type", "byte_size", "width", "height", "duration_ms", "status", "deleted_at", "created_at"), RecommendedFields: []string{"uuid", "kind", "purpose", "original_filename", "display_name", "mime_type", "byte_size", "width", "height", "duration_ms", "status", "deleted_at", "created_at"}},
 		{Key: "project_asset_list", List: true, ItemProjector: "project_asset"},
+		{Key: "null_data", NullData: true},
+		{Key: "chapter_trash_result", Fields: fields("deleted_count", "blocked_items"), RecommendedFields: []string{"deleted_count", "blocked_items"}},
+		{Key: "premise_trash_result", Fields: fields("deleted_count", "file_soft_deleted_count", "retained_file_count", "blocked_items"), RecommendedFields: []string{"deleted_count", "file_soft_deleted_count", "retained_file_count", "blocked_items"}},
 	}
 }
 
@@ -144,11 +154,15 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 	pageQuery := apiObject(map[string]any{"page": apiBoundedInteger("页码。", 1, 1000000), "per_page": apiBoundedInteger("每页数量。", 1, 100)})
 	listQuery := apiObject(map[string]any{"status": apiEnum("可选公开状态过滤。", "queued", "running", "waiting_for_input", "completed", "failed", "cancelled", "interrupted"), "limit": apiBoundedInteger("返回数量。", 1, 100)})
 	eventQuery := apiObject(map[string]any{"before": apiLimitedString("上一页 cursor。", 32), "after": apiLimitedString("下一页 cursor。", 32), "limit": apiBoundedInteger("返回数量。", 1, 100)})
-	generationBody := apiObject(map[string]any{
+	storyGenerationBody := apiObject(map[string]any{
 		"prompt": apiLimitedString("生成指令。", 262144), "model": apiLimitedString("可选模型覆盖。", 512),
-		"chapter_count": apiBoundedInteger("计划章节数。", 1, 20), "max_section_count": apiBoundedInteger("最大 Section 数。", 1, 48),
+		"chapter_count": apiBoundedInteger("计划章节数。", 1, 20),
 	}, "prompt")
-	return []agentAPIRoute{
+	comicStoryboardGenerationBody := apiObject(map[string]any{
+		"prompt": apiLimitedString("生成指令。", 262144), "model": apiLimitedString("可选模型覆盖。", 512),
+		"max_section_count": apiBoundedInteger("最大 Section 数。", 1, 48),
+	}, "prompt")
+	return normalizeAgentAPIRoutes([]agentAPIRoute{
 		{ID: RouteYoloWorkflowCreate, Action: "启动受控 YOLO 项目初始化", Method: "POST", PathTemplate: project + "/workflows", Handler: RouteYoloWorkflowCreate, Projector: "workflow", DocPath: workflowDocPath, BodySchema: apiObject(map[string]any{"story_prompt": apiLimitedString("基于原始需求、用户补充和已展示建议整理的 YOLO 故事 Brief。", 4000), "model": apiLimitedString("可选文本模型覆盖。", 512)}, "story_prompt"), RecommendedResponseFilter: ".data | {uuid,thread_uuid,presentation_mode,kind,title,status,current_step_key,steps}", Async: true, StrictSchema: true, Risk: RiskWrite},
 		{ID: RouteProjectGet, Action: "读取项目公开信息", Method: "GET", PathTemplate: project, Handler: RouteProjectGet, Projector: "project", DocPath: projectDocPath, ReadOnly: true, Risk: RiskLow},
 		{ID: RouteProjectUpdate, Action: "更新项目元数据", Method: "PATCH", PathTemplate: project, Handler: RouteProjectUpdate, Projector: "project", DocPath: projectDocPath, BodySchema: apiObject(map[string]any{"name": apiLimitedString("项目名称。", 120), "description": apiLimitedString("项目简介。", 2000), "generation_language": apiEnum("生成语言。", "zh-Hans", "en"), "expected_revision": apiBoundedInteger("最新 revision。", 0, 1<<31-1)}, "name", "description", "expected_revision"), ExpectedRevision: true, Risk: RiskWrite},
@@ -160,10 +174,10 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteStoryProfileList, Action: "读取 Story Profile 历史", Method: "GET", PathTemplate: project + "/story-profile/versions", Handler: RouteStoryProfileList, Projector: "story_profile_list", DocPath: storyDocPath, ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryProfileImport, Action: "从项目 STORY.md 导入", Method: "POST", PathTemplate: project + "/story-profile/imports", Handler: RouteStoryProfileImport, Projector: "story_profile", DocPath: storyDocPath, BodySchema: revisionBody, ExpectedRevision: true, RequiresConfirmation: true, Risk: RiskDangerous},
 		{ID: RouteStoryProfileRegenerate, Action: "重新生成项目 STORY.md", Method: "POST", PathTemplate: project + "/story-profile/projection", Handler: RouteStoryProfileRegenerate, Projector: "story_profile", DocPath: storyDocPath, BodySchema: revisionBody, ExpectedRevision: true, RequiresConfirmation: true, Risk: RiskDangerous},
-		{ID: RouteStoryProfileGenerationCreate, Action: "创建 Story Profile 生成任务", Method: "POST", PathTemplate: project + "/story-profile/generations", Handler: RouteStoryProfileGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
+		{ID: RouteStoryProfileGenerationCreate, Action: "创建 Story Profile 生成任务", Method: "POST", PathTemplate: project + "/story-profile/generations", Handler: RouteStoryProfileGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: storyGenerationBody, Async: true, Risk: RiskWrite},
 		{ID: RouteStoryProfileRebuildCreate, Action: "从章节重建 Story Profile", Method: "POST", PathTemplate: project + "/story-profile/reconstructions", Handler: RouteStoryProfileRebuildCreate, Projector: "task", DocPath: generationDocPath, BodySchema: apiObject(map[string]any{"model": apiLimitedString("可选模型覆盖。", 512)}), Async: true, RequiresConfirmation: true, Risk: RiskDangerous},
-		{ID: RouteChapterBatchPlanCreate, Action: "创建章节批量规划任务", Method: "POST", PathTemplate: project + "/chapter-batches", Handler: RouteChapterBatchPlanCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, RequiresConfirmation: true, Risk: RiskDangerous},
-		{ID: RouteComicStoryboardGenerationCreate, Action: "创建漫画分镜规划任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-storyboard-generations", Handler: RouteComicStoryboardGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, RequiresConfirmation: true, Risk: RiskDangerous},
+		{ID: RouteChapterBatchPlanCreate, Action: "创建章节批量规划任务", Method: "POST", PathTemplate: project + "/chapter-batches", Handler: RouteChapterBatchPlanCreate, Projector: "task", DocPath: generationDocPath, BodySchema: storyGenerationBody, Async: true, RequiresConfirmation: true, Risk: RiskDangerous},
+		{ID: RouteComicStoryboardGenerationCreate, Action: "创建漫画分镜规划任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-storyboard-generations", Handler: RouteComicStoryboardGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: comicStoryboardGenerationBody, Async: true, RequiresConfirmation: true, Risk: RiskDangerous},
 		{ID: RoutePremiseUpdate, Action: "更新 Premise", Method: "PATCH", PathTemplate: project + "/premise", Handler: RoutePremiseUpdate, Projector: "premise", DocPath: premiseDocPath, BodySchema: apiObject(map[string]any{"default_style": apiLimitedString("项目整体画风。", 8192), "expected_revision": apiBoundedInteger("最新 revision。", 0, 1<<31-1)}, "default_style", "expected_revision"), ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RoutePremiseSourceList, Action: "列出 Premise Source", Method: "GET", PathTemplate: project + "/premise-sources", Handler: RoutePremiseSourceList, Projector: "premise_source_list", DocPath: premiseDocPath, QuerySchema: pageQuery, ReadOnly: true, Risk: RiskLow},
 		{ID: RoutePremiseSourceCreate, Action: "创建 Premise Source", Method: "POST", PathTemplate: project + "/premise-sources", Handler: RoutePremiseSourceCreate, Projector: "premise_source", DocPath: premiseDocPath, BodySchema: apiObject(map[string]any{"source_text": apiLimitedString("Premise 来源文本。", 262144), "style_snapshot": apiLimitedString("画风快照。", 8192), "source_type": apiEnum("来源类型。", "manual", "generated"), "model": apiLimitedString("可选模型记录。", 512), "parameters": map[string]any{"type": "object", "additionalProperties": true}}, "source_text", "style_snapshot", "source_type"), Risk: RiskWrite},
@@ -180,7 +194,7 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteComicSectionCreate, Action: "创建 Comic Section", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections", Handler: RouteComicSectionCreate, Projector: "comic_section", DocPath: comicDocPath, BodySchema: apiObject(map[string]any{"title": apiLimitedString("Section 标题。", 160), "description_md": apiLimitedString("Section 描述。", 262144), "storyboard_md": apiLimitedString("可选 Storyboard。", 262144), "page_role": apiEnum("页面角色；省略时为 body。普通绘本的空页面序列首项必须为 body，已有 body 后才可创建 front_cover 或 back_cover；vertical_strip 仅允许 body。", "front_cover", "body", "back_cover")}, "title"), Risk: RiskWrite},
 		{ID: RouteComicSectionUpdate, Action: "更新 Comic Section", Method: "PATCH", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionUpdate, Projector: "comic_section", DocPath: comicDocPath, BodySchema: apiObject(map[string]any{"title": apiLimitedString("Section 标题。", 160), "description_md": apiLimitedString("Section 描述。", 262144), "page_role": apiEnum("页面角色。", "front_cover", "body", "back_cover"), "expected_revision": apiBoundedInteger("最新 revision。", 0, 1<<31-1)}, "expected_revision"), ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteComicSectionReorder, Action: "重排 Comic Section", Method: "PUT", PathTemplate: project + "/chapters/{chapter_uuid}/comic-section-order", Handler: RouteComicSectionReorder, Projector: "comic_section_list", DocPath: comicDocPath, BodySchema: apiObject(map[string]any{"section_uuids": map[string]any{"type": "array", "minItems": 1, "maxItems": 200, "items": apiString("Section UUIDv7。")}}, "section_uuids"), RequiresConfirmation: true, Risk: RiskDangerous},
-		{ID: RouteComicSectionDelete, Action: "删除 Comic Section", Method: "DELETE", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionDelete, Projector: "comic_section", DocPath: comicDocPath, BodySchema: revisionBody, ExpectedRevision: true, RequiresConfirmation: true, Risk: RiskDangerous},
+		{ID: RouteComicSectionDelete, Action: "删除 Comic Section", Method: "DELETE", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionDelete, Projector: "comic_section_delete", DocPath: comicDocPath, BodySchema: revisionBody, ExpectedRevision: true, RequiresConfirmation: true, Risk: RiskDangerous},
 		{ID: RouteStoryboardList, Action: "列出 Storyboard variants", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/storyboard-variants", Handler: RouteStoryboardList, Projector: "storyboard_list", DocPath: storyboardDocPath, ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryboardSelect, Action: "选择 Storyboard variant", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/storyboard-variants/{variant_uuid}/selections", Handler: RouteStoryboardSelect, Projector: "comic_section", DocPath: storyboardDocPath, BodySchema: revisionBody, ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteComicSectionImageImport, Action: "导入 Section Image", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/images", Handler: RouteComicSectionImageImport, Projector: "comic_section", DocPath: comicDocPath, BodySchema: apiObject(map[string]any{"upload_uuid": apiString("当前项目 ready upload UUIDv7。"), "expected_revision": apiBoundedInteger("最新 revision。", 0, 1<<31-1)}, "upload_uuid", "expected_revision"), ExpectedRevision: true, Risk: RiskWrite},
@@ -191,7 +205,7 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteComicSnapshotGet, Action: "读取 Comic Snapshot", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}/comic-snapshots/{snapshot_uuid}", Handler: RouteComicSnapshotGet, Projector: "comic_snapshot_detail", DocPath: comicSnapshotDocPath, ReadOnly: true, Risk: RiskLow},
 		{ID: RouteComicSnapshotRestore, Action: "恢复 Comic Snapshot", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-snapshots/{snapshot_uuid}/restorations", Handler: RouteComicSnapshotRestore, Projector: "comic_section_list", DocPath: comicSnapshotDocPath, BodySchema: apiObject(map[string]any{}), RequiresConfirmation: true, Risk: RiskDangerous},
 		{ID: RouteComicExportReadiness, Action: "查询 Comic Export readiness", Method: "GET", PathTemplate: project + "/comic-exports/readiness", Handler: RouteComicExportReadiness, Projector: "comic_export_readiness", DocPath: comicExportDocPath, QuerySchema: apiObject(map[string]any{"scope": apiEnum("导出范围。", "project", "chapter"), "chapter_uuid": apiString("chapter scope 时的 Chapter UUIDv7。")}, "scope"), RecommendedResponseFilter: ".data | {scope,chapter_uuid,active_chapter_count,active_section_count,image_section_count,missing_section_count,can_export,complete,missing_sections:{uuid,chapter_uuid,section_no,page_role,body_page_no,title}}", ReadOnly: true, Risk: RiskLow},
-		{ID: RouteComicExportList, Action: "列出 Comic Export", Method: "GET", PathTemplate: project + "/comic-exports", Handler: RouteComicExportList, Projector: "comic_export_list", DocPath: comicExportDocPath, QuerySchema: apiObject(map[string]any{"page": apiBoundedInteger("页码。", 1, 1000000), "per_page": apiBoundedInteger("每页数量。", 1, 100), "scope": apiEnum("导出范围。", "project", "chapter"), "chapter_uuid": apiString("Chapter UUIDv7。"), "task_uuid": apiString("Task UUIDv7。"), "snapshot_hash": apiLimitedString("Snapshot hash。", 128), "format": apiEnum("导出格式。", "zip", "pdf"), "status": apiLimitedString("导出状态。", 64)}), ReadOnly: true, Risk: RiskLow},
+		{ID: RouteComicExportList, Action: "列出 Comic Export", Method: "GET", PathTemplate: project + "/comic-exports", Handler: RouteComicExportList, Projector: "comic_export_list", DocPath: comicExportDocPath, QuerySchema: apiObject(map[string]any{"page": apiBoundedInteger("页码。", 1, 1000000), "per_page": apiBoundedInteger("每页数量。", 1, 100), "scope": apiEnum("导出范围。", "project", "chapter"), "chapter_uuid": apiString("Chapter UUIDv7。"), "task_uuid": apiString("Task UUIDv7。"), "snapshot_hash": apiLimitedString("Snapshot hash。", 64), "format": apiEnum("导出格式。", "zip", "pdf"), "status": apiLimitedString("导出状态。", 64)}), ReadOnly: true, Risk: RiskLow},
 		{ID: RouteComicExportCreate, Action: "创建 Comic Export", Method: "POST", PathTemplate: project + "/comic-exports", Handler: RouteComicExportCreate, Projector: "task", DocPath: comicExportDocPath, BodySchema: apiObject(map[string]any{"scope": apiEnum("导出范围。", "project", "chapter"), "chapter_uuid": apiString("chapter scope 时的 Chapter UUIDv7。"), "format": apiEnum("导出格式。", "zip", "pdf"), "allow_missing_images": apiBoolean("是否允许缺图导出。")}, "scope", "format"), Async: true, Risk: RiskWrite},
 		{ID: RouteStoryTaskList, Action: "列出 Story Task", Method: "GET", PathTemplate: project + "/tasks", Handler: RouteStoryTaskList, Projector: "task_list", DocPath: taskDocPath, QuerySchema: listQuery, ReadOnly: true, Async: true, Risk: RiskLow},
 		{ID: RouteStoryTaskEventList, Action: "读取 Story Task 事件", Method: "GET", PathTemplate: project + "/tasks/{task_uuid}/events", Handler: RouteStoryTaskEventList, Projector: "task_event_list", DocPath: taskDocPath, QuerySchema: eventQuery, ReadOnly: true, Async: true, Risk: RiskLow},
@@ -206,5 +220,5 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteProjectAssetUpdate, Action: "更新 Project Asset 公开元数据", Method: "PATCH", PathTemplate: project + "/assets/{asset_uuid}", Handler: RouteProjectAssetUpdate, Projector: "project_asset", DocPath: projectAssetDocPath, BodySchema: apiObject(map[string]any{"display_name": apiLimitedString("显示名称。", 255), "metadata": map[string]any{"type": "object", "additionalProperties": true}}), Risk: RiskWrite},
 		{ID: RouteProjectAssetTrash, Action: "将 Project Asset 移入回收站", Method: "DELETE", PathTemplate: project + "/assets/{asset_uuid}", Handler: RouteProjectAssetTrash, Projector: "project_asset", DocPath: projectAssetDocPath, BodySchema: apiObject(map[string]any{}), RequiresConfirmation: true, Risk: RiskDangerous},
 		{ID: RouteProjectAssetRestore, Action: "从回收站恢复 Project Asset", Method: "POST", PathTemplate: project + "/assets/{asset_uuid}/restorations", Handler: RouteProjectAssetRestore, Projector: "project_asset", DocPath: projectAssetDocPath, BodySchema: apiObject(map[string]any{}), Risk: RiskWrite},
-	}
+	})
 }

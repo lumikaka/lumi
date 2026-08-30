@@ -30,12 +30,30 @@ type Service struct {
 	store           *project.Store
 	now             func() time.Time
 	writeProjection func(string) error
+	events          EventPublisher
+}
+
+type EventPublisher interface {
+	Broadcast(topic, event string, payload any)
 }
 
 func NewService(store *project.Store) *Service {
 	service := &Service{store: store, now: time.Now}
 	service.writeProjection = service.atomicWriteStoryMD
 	return service
+}
+
+func (service *Service) WithEvents(events EventPublisher) *Service {
+	service.events = events
+	return service
+}
+
+func (service *Service) emit(event string, payload map[string]any) {
+	if service.events == nil {
+		return
+	}
+	payload["project_uuid"] = service.store.ProjectUUID()
+	service.events.Broadcast("project:"+service.store.ProjectUUID(), event, payload)
 }
 
 func (service *Service) PictureBookProfile() (project.PictureBookProfile, error) {
@@ -187,7 +205,11 @@ func (service *Service) UpdateProject(ctx context.Context, input UpdateProjectIn
 	if err := service.store.RefreshProject(ctx); err != nil {
 		return ProjectDetail{}, err
 	}
-	return service.GetProject(ctx)
+	detail, err := service.GetProject(ctx)
+	if err == nil {
+		service.emit("story:project_changed", map[string]any{"revision": detail.Revision})
+	}
+	return detail, err
 }
 
 func (service *Service) migratePromptLanguage(ctx context.Context, tx *gorm.DB, projectRecord project.Project, actor project.Actor, newLanguage string, now time.Time) error {

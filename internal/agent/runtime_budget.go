@@ -3,9 +3,11 @@ package agent
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"lumi/internal/llmlog"
 	"lumi/internal/project"
 	"lumi/internal/provider"
+	"lumi/internal/providerdiag"
 
 	"gorm.io/gorm"
 )
@@ -92,65 +95,143 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 		return llm.ChatResponse{}, err
 	}
 	providerStartedAt := time.Now()
-	response, requestErr := service.model.Complete(ctx, request)
+	response, providerErr := service.model.Complete(ctx, request)
+	if providerErr == nil {
+		providerErr = requestUserInputMixedProviderError(response)
+	}
 	durationMS := time.Since(providerStartedAt).Milliseconds()
 	var responsePayload []byte
-	if requestErr == nil {
-		responsePayload, requestErr = llmlog.EncodeChatResponse(response, request.APIKey)
-		if requestErr == nil {
+	var diagnosticBodyLength int64
+	var responseEncodingErr error
+	var modelErr *llm.Error
+	if providerErr != nil && errors.As(providerErr, &modelErr) {
+		if partial := modelErr.PartialChatResponse(); partial != nil {
+			response = *partial
+		}
+		if diagnostic := modelErr.InvalidProviderResponse(); diagnostic != nil {
+			diagnosticBodyLength = diagnostic.BodyLength
+			responsePayload, responseEncodingErr = llmlog.EncodeProviderResponseDiagnostic(*diagnostic, request.APIKey)
+		}
+	}
+	if providerErr == nil {
+		responsePayload, responseEncodingErr = llmlog.EncodeChatResponse(response, request.APIKey)
+		if responseEncodingErr == nil {
 			responsePayload = attachAgentToolLogMetadata(responsePayload, service.agentToolLogMetadata(*tc, response.Message.ToolCalls))
 		}
 	}
-	if len(responsePayload) == 0 {
-		responsePayload, _ = json.Marshal(response)
+	outputSummary := response.Message.Content
+	if providerErr != nil || responseEncodingErr != nil {
+		outputSummary = ""
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
-		OutputSummary: response.Message.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
-		FinishReason: response.FinishReason, Response: responsePayload, Err: requestErr,
-	})
+	loggedErr := providerErr
+	if loggedErr == nil {
+		loggedErr = responseEncodingErr
+	}
 	requestBytes := len(requestPayload)
 	if contextBytes > requestBytes {
 		requestBytes = contextBytes
 	}
-	usageErr := service.recordModelUsage(context.WithoutCancel(ctx), store, tc, durationMS, response.Usage, requestBytes+len(responsePayload))
+	responseBytes := int64(len(responsePayload))
+	if diagnosticBodyLength > responseBytes {
+		responseBytes = diagnosticBodyLength
+	}
+	usageFallbackBytes := saturatingAddInt64(int64(requestBytes), responseBytes)
+	tokenUnits := modelUsageTokenUnits(response.Usage, usageFallbackBytes)
+	finishErr := llmlog.FinishAtomic(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
+		OutputSummary: outputSummary, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
+		FinishReason: providerdiag.RedactPreview(response.FinishReason, request.APIKey, 255), Response: responsePayload, Err: loggedErr,
+	}, func(finishCtx context.Context, tx *sql.Tx) error {
+		return recordModelUsageTx(finishCtx, tx, tc.Run.ID, durationMS, tokenUnits, service.now().UTC())
+	})
 	if finishErr != nil {
-		requestErr = errors.Join(requestErr, finishErr)
+		return response, domainError(CodeProvider, "模型调用记录持久化失败", "Provider 响应诊断与 Run 预算未能原子落库；本轮不会继续发送模型请求。", finishErr)
 	}
-	if usageErr != nil {
-		requestErr = errors.Join(requestErr, usageErr)
-	}
+	tc.Run.ActiveDurationMS = saturatingAddInt64(tc.Run.ActiveDurationMS, nonnegativeInt64(durationMS))
+	tc.Run.TokenUnits = saturatingAddInt64(tc.Run.TokenUnits, tokenUnits)
 	requestStatus := "completed"
-	if requestErr != nil {
+	if loggedErr != nil {
 		requestStatus = "failed"
-		if errors.Is(requestErr, context.Canceled) {
+		if errors.Is(loggedErr, context.Canceled) {
 			requestStatus = "cancelled"
 		}
 	}
-	_ = store.DB().WithContext(context.WithoutCancel(ctx)).Table("llm_logs").Select("status").Where("uuid=? AND chat_run_id=?", tc.RequestUUID, tc.Run.ID).Scan(&requestStatus).Error
 	if eventErr := service.recordModelRequestEvent(context.WithoutCancel(ctx), store, *tc, "model_request_completed", requestStatus); eventErr != nil {
-		requestErr = errors.Join(requestErr, eventErr)
+		return response, domainError(CodeProvider, "模型调用事件持久化失败", "Provider 请求已记账，但完成事件未能落库；本轮不会继续发送模型请求。", errors.Join(responseEncodingErr, eventErr))
 	}
-	return response, requestErr
+	if responseEncodingErr != nil {
+		return response, domainError(CodeProvider, "模型响应日志编码失败", "Provider 响应无法安全写入调用日志；本轮不会继续发送模型请求。", responseEncodingErr)
+	}
+	return response, providerErr
 }
 
-func (service *Service) recordModelUsage(ctx context.Context, store *project.Store, tc *toolContext, durationMS int64, usage llm.Usage, fallbackBytes int) error {
-	if durationMS < 0 {
-		durationMS = 0
-	}
-	tokenUnits := int64(usage.InputTokens) + int64(usage.OutputTokens)
-	if (usage.InputTokens <= 0 || usage.OutputTokens <= 0) && fallbackBytes > 0 {
-		tokenUnits = int64((fallbackBytes + 3) / 4)
-	}
+func (service *Service) recordModelUsage(ctx context.Context, store *project.Store, tc *toolContext, durationMS int64, usage llm.Usage, fallbackBytes int64) error {
+	durationMS = nonnegativeInt64(durationMS)
+	tokenUnits := modelUsageTokenUnits(usage, fallbackBytes)
 	err := store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=?", tc.Run.ID).Updates(map[string]any{
-		"active_duration_ms": gorm.Expr("active_duration_ms + ?", durationMS),
-		"token_units":        gorm.Expr("token_units + ?", tokenUnits),
+		"active_duration_ms": gorm.Expr("CASE WHEN active_duration_ms >= ? THEN ? ELSE active_duration_ms + ? END", math.MaxInt64-durationMS, math.MaxInt64, durationMS),
+		"token_units":        gorm.Expr("CASE WHEN token_units >= ? THEN ? ELSE token_units + ? END", math.MaxInt64-tokenUnits, math.MaxInt64, tokenUnits),
 		"updated_at":         service.now().UTC(),
 	}).Error
 	if err == nil {
-		tc.Run.ActiveDurationMS += durationMS
-		tc.Run.TokenUnits += tokenUnits
+		tc.Run.ActiveDurationMS = saturatingAddInt64(tc.Run.ActiveDurationMS, durationMS)
+		tc.Run.TokenUnits = saturatingAddInt64(tc.Run.TokenUnits, tokenUnits)
 	}
 	return err
+}
+
+func recordModelUsageTx(ctx context.Context, tx *sql.Tx, runID, durationMS, tokenUnits int64, now time.Time) error {
+	durationMS = nonnegativeInt64(durationMS)
+	tokenUnits = nonnegativeInt64(tokenUnits)
+	result, err := tx.ExecContext(ctx, `UPDATE chat_runs SET
+		active_duration_ms=CASE WHEN active_duration_ms>=? THEN ? ELSE active_duration_ms+? END,
+		token_units=CASE WHEN token_units>=? THEN ? ELSE token_units+? END,
+		updated_at=? WHERE id=?`,
+		math.MaxInt64-durationMS, int64(math.MaxInt64), durationMS,
+		math.MaxInt64-tokenUnits, int64(math.MaxInt64), tokenUnits,
+		now, runID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return domainError(CodeStateConflict, "Model Request 无法记账", "Run 不存在，拒绝提交 LLM Log。", nil)
+	}
+	return nil
+}
+
+func modelUsageTokenUnits(usage llm.Usage, fallbackBytes int64) int64 {
+	inputTokens := nonnegativeInt64(int64(usage.InputTokens))
+	outputTokens := nonnegativeInt64(int64(usage.OutputTokens))
+	if inputTokens == 0 && outputTokens == 0 {
+		fallbackBytes = nonnegativeInt64(fallbackBytes)
+		return fallbackBytes/4 + boolInt64(fallbackBytes%4 != 0)
+	}
+	return saturatingAddInt64(inputTokens, outputTokens)
+}
+
+func nonnegativeInt64(value int64) int64 {
+	if value < 0 {
+		return 0
+	}
+	return value
+}
+
+func saturatingAddInt64(left, right int64) int64 {
+	left, right = nonnegativeInt64(left), nonnegativeInt64(right)
+	if left > math.MaxInt64-right {
+		return math.MaxInt64
+	}
+	return left + right
+}
+
+func boolInt64(value bool) int64 {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func cycleEntry(name, rawArguments, targetUUID string, result json.RawMessage) toolCycleEntry {
@@ -212,16 +293,11 @@ func (service *Service) recordRecoveredToolBatchProgress(ctx context.Context, st
 	_ = json.Unmarshal([]byte(recovered.ArgumentsJSON), &arguments)
 	requestUUID, _ := arguments["__request_uuid"].(string)
 	if !isUUIDv7(requestUUID) {
-		result := json.RawMessage("null")
-		if recovered.ResultJSON != nil {
-			result = json.RawMessage(*recovered.ResultJSON)
-		} else {
-			var stored string
-			if err := store.DB().WithContext(ctx).Table("agent_tool_executions").Select("result_json").Where("id=?", recovered.ID).Scan(&stored).Error; err != nil {
-				return err
-			}
-			result = json.RawMessage(stored)
+		var stored string
+		if err := store.DB().WithContext(ctx).Table("agent_tool_executions").Select("result_json").Where("id=? AND state='completed'", recovered.ID).Scan(&stored).Error; err != nil {
+			return err
 		}
+		result := json.RawMessage(stored)
 		return service.recordToolCycleProgress(ctx, store, tc, []toolCycleEntry{cycleEntry(recovered.ToolName, recovered.ArgumentsJSON, recovered.TargetUUID, result)})
 	}
 	var remaining int64

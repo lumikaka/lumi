@@ -15,6 +15,7 @@ import './styles/settings.sass'
 import './styles/chat.sass'
 import './styles/trajectory.sass'
 import './styles/desktop-session.sass'
+import './styles/simple-project.sass'
 
 const queryClient = new QueryClient({
   defaultOptions: {

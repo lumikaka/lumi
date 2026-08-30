@@ -54,18 +54,18 @@ test('project reference parser rejects traversal, encoding, noncanonical UUIDs, 
 	assert.equal(isCanonicalUUIDv7(letteredUuid.toUpperCase()), false)
 })
 
-test('project references resolve inside the current project and keep only chat context', () => {
-  const sourceSearch = `?chat_thread_uuid=${chapterUuid}&workflow_uuid=${sectionUuid}&workspace_tab=comic&section_uuid=old&premise_asset_uuid=old&chat_new=1&chat_reference_uuid=old&unrelated=drop`
-  const preserved = `?chat_thread_uuid=${chapterUuid}&workflow_uuid=${sectionUuid}`
+test('project references keep cross-route chat context and an explicit workspace-mode override', () => {
+  const sourceSearch = `?chat_thread_uuid=${chapterUuid}&workflow_uuid=${sectionUuid}&workspace_mode=expert&workspace_tab=comic&section_uuid=old&premise_asset_uuid=old&chat_new=1&chat_reference_uuid=old&unrelated=drop`
+  const preserved = `?chat_thread_uuid=${chapterUuid}&workflow_uuid=${sectionUuid}&workspace_mode=expert`
   const cases = [
-    ['@project/story-profile', `/projects/${projectUuid}/overview/profile${preserved}`],
+    ['@project/story-profile', `/projects/${projectUuid}/story${preserved}`],
     ['@project/premise', `/projects/${projectUuid}/premise${preserved}`],
-    [`@project/premise/assets/${assetUuid}`, `/projects/${projectUuid}/premise${preserved}&premise_asset_uuid=${assetUuid}`],
-    [`@project/workflows/${workflowUuid}`, `/projects/${projectUuid}?chat_thread_uuid=${chapterUuid}&workflow_uuid=${workflowUuid}`],
+    [`@project/premise/assets/${assetUuid}`, `/projects/${projectUuid}/premise/assets/${assetUuid}${preserved}`],
+    [`@project/workflows/${workflowUuid}`, `/projects/${projectUuid}?chat_thread_uuid=${chapterUuid}&workflow_uuid=${workflowUuid}&workspace_mode=expert`],
     [`@project/chapters/${chapterUuid}`, `/projects/${projectUuid}/chapters/${chapterUuid}${preserved}`],
     [`@project/chapters/${chapterUuid}/body`, `/projects/${projectUuid}/chapters/${chapterUuid}${preserved}&workspace_tab=body`],
-    [`@project/chapters/${chapterUuid}/sections/${sectionUuid}`, `/projects/${projectUuid}/chapters/${chapterUuid}${preserved}&section_uuid=${sectionUuid}`],
-    ['@project/exports', `/projects/${projectUuid}/overview/exports${preserved}`],
+    [`@project/chapters/${chapterUuid}/sections/${sectionUuid}`, `/projects/${projectUuid}/chapters/${chapterUuid}/sections/${sectionUuid}${preserved}`],
+    ['@project/exports', `/projects/${projectUuid}/exports${preserved}`],
   ]
   cases.forEach(([reference, expected]) => {
     const target = resolveProjectReference(reference, { projectUuid, search: sourceSearch })

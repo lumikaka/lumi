@@ -228,7 +228,27 @@ func (service *Service) updateStoryProfile(ctx context.Context, storyMD string, 
 	next.ExportedRevision = next.Revision
 	next.ExportedHash = next.ContentHash
 	next.ObservedFileHash = next.ContentHash
-	return profileDTO(next), nil
+	profile := profileDTO(next)
+	service.emit("story:profile_changed", map[string]any{"story_profile_uuid": profile.UUID, "revision": profile.Revision})
+	return profile, nil
+}
+
+func (service *Service) RestoreStoryProfile(ctx context.Context, versionUUID string, expectedRevision int64) (StoryProfile, error) {
+	if !isUUIDv7(versionUUID) {
+		return StoryProfile{}, storyError(CodeValidationFailed, "Story Profile 版本 UUID 无效", "version_uuid 必须是 UUIDv7。", nil)
+	}
+	projectRecord, _, err := service.projectAndActor(ctx, service.store.DB())
+	if err != nil {
+		return StoryProfile{}, err
+	}
+	var target storyProfileRecord
+	if err := service.store.DB().WithContext(ctx).Where("project_id = ? AND uuid = ?", projectRecord.ID, versionUUID).First(&target).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return StoryProfile{}, storyError(CodeStoryProfileNotFound, "Story Profile 版本不存在", "目标版本不存在或不属于当前项目。", err)
+		}
+		return StoryProfile{}, err
+	}
+	return service.updateStoryProfile(ctx, target.StoryMD, expectedRevision, "manual_edit")
 }
 
 func (service *Service) ImportExternalStoryMD(ctx context.Context, expectedRevision int64) (StoryProfile, error) {
@@ -250,7 +270,9 @@ func (service *Service) ImportExternalStoryMD(ctx context.Context, expectedRevis
 	if err != nil {
 		return StoryProfile{}, err
 	}
-	return profileDTO(next), nil
+	profile := profileDTO(next)
+	service.emit("story:profile_changed", map[string]any{"story_profile_uuid": profile.UUID, "revision": profile.Revision, "external_import": true})
+	return profile, nil
 }
 
 func (service *Service) RegenerateStoryMD(ctx context.Context, expectedRevision int64) (StoryProfile, error) {
@@ -272,7 +294,9 @@ func (service *Service) RegenerateStoryMD(ctx context.Context, expectedRevision 
 	current.ExportedRevision = current.Revision
 	current.ExportedHash = current.ContentHash
 	current.ObservedFileHash = current.ContentHash
-	return profileDTO(current), nil
+	profile := profileDTO(current)
+	service.emit("story:profile_changed", map[string]any{"story_profile_uuid": profile.UUID, "revision": profile.Revision, "projection_regenerated": true})
+	return profile, nil
 }
 
 func (service *Service) ListStoryProfiles(ctx context.Context) ([]StoryProfile, error) {

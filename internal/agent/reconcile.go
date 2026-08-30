@@ -26,14 +26,17 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 	}
 	defer tx.Rollback()
 	now := service.now().UTC()
-	// A cancelled parent must never be revived by a later Workflow terminal
-	// projection.
+	// A cancelled or otherwise terminal parent must never be revived by a later
+	// Workflow terminal projection.
 	if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits
 		SET status='cancelled',cancelled_at=COALESCE(cancelled_at,?),updated_at=?
-		WHERE status IN ('waiting','ready','resuming') AND EXISTS(
+		WHERE status IN ('waiting','ready','resuming') AND (EXISTS(
 			SELECT 1 FROM chat_runs r WHERE r.id=workflow_awaits.chat_run_id
-			AND (r.status='cancelled' OR r.cancel_requested_at IS NOT NULL)
-		)`, now, now); err != nil {
+			AND (r.status NOT IN ('in_progress','queued') OR r.cancel_requested_at IS NOT NULL)
+		) OR EXISTS(
+			SELECT 1 FROM chat_turns t WHERE t.id=workflow_awaits.chat_turn_id
+			AND (t.status NOT IN ('in_progress','queued') OR t.cancel_requested_at IS NOT NULL)
+		))`, now, now); err != nil {
 		return err
 	}
 	// Repair a Workflow terminal commit whose await projection or River insert
@@ -46,6 +49,9 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 		) AND EXISTS(
 			SELECT 1 FROM chat_runs r WHERE r.id=workflow_awaits.chat_run_id
 			AND r.status IN ('in_progress','queued') AND r.cancel_requested_at IS NULL
+		) AND EXISTS(
+			SELECT 1 FROM chat_turns t WHERE t.id=workflow_awaits.chat_turn_id
+			AND t.status IN ('in_progress','queued') AND t.cancel_requested_at IS NULL
 		)`, now, now); err != nil {
 		return err
 	}

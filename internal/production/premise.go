@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/agentcheckpoint"
 	"lumi/internal/files"
 	"lumi/internal/promptcatalog"
 
@@ -1446,8 +1447,30 @@ func (service *Service) setPremiseAssetTrashed(ctx context.Context, assetUUID st
 }
 
 func (service *Service) PermanentlyDeletePremiseAsset(ctx context.Context, assetUUID string, expectedRevision int64) (PremiseTrashDeleteResult, error) {
+	return service.permanentlyDeletePremiseAssetWithCheckpoint(ctx, assetUUID, expectedRevision, "")
+}
+
+// PermanentlyDeletePremiseAssetFromTool atomically checkpoints the deletion
+// counts produced by a destructive request_api call.
+func (service *Service) PermanentlyDeletePremiseAssetFromTool(ctx context.Context, assetUUID string, expectedRevision int64, toolExecutionUUID string) (PremiseTrashDeleteResult, error) {
+	if !isUUIDv7(toolExecutionUUID) {
+		return PremiseTrashDeleteResult{}, domainError(CodeValidation, "工具执行 UUID 无效", "tool_execution_uuid 必须是 UUIDv7。", nil)
+	}
+	return service.permanentlyDeletePremiseAssetWithCheckpoint(ctx, assetUUID, expectedRevision, toolExecutionUUID)
+}
+
+func (service *Service) permanentlyDeletePremiseAssetWithCheckpoint(ctx context.Context, assetUUID string, expectedRevision int64, toolExecutionUUID string) (PremiseTrashDeleteResult, error) {
 	result := PremiseTrashDeleteResult{BlockedItems: []PremiseAssetDeleteBlocker{}}
 	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if toolExecutionUUID != "" {
+			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetPermanentDelete)
+			if err != nil {
+				return err
+			}
+			if found {
+				return json.Unmarshal(data, &result)
+			}
+		}
 		var row premiseAssetRecord
 		if err := tx.Where("uuid = ? AND project_id=(SELECT id FROM projects WHERE uuid=?)", assetUUID, service.store.ProjectUUID()).First(&row).Error; err != nil {
 			return notFound(err, "设定资产不存在")
@@ -1474,7 +1497,13 @@ func (service *Service) PermanentlyDeletePremiseAsset(ctx context.Context, asset
 		if blocked {
 			return domainError(CodeDeleteBlocked, "设定资产仍被活动任务使用", "请等待相关生成或会话结束后重试。", nil)
 		}
-		return permanentlyDeletePremiseAsset(tx, row, service.now().UTC(), &result)
+		if err := permanentlyDeletePremiseAsset(tx, row, service.now().UTC(), &result); err != nil {
+			return err
+		}
+		if toolExecutionUUID != "" {
+			return agentcheckpoint.Write(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetPermanentDelete, result, service.now().UTC())
+		}
+		return nil
 	})
 	if err != nil {
 		return PremiseTrashDeleteResult{}, err
@@ -1484,9 +1513,33 @@ func (service *Service) PermanentlyDeletePremiseAsset(ctx context.Context, asset
 }
 
 func (service *Service) EmptyPremiseAssetTrash(ctx context.Context) (PremiseTrashDeleteResult, error) {
+	return service.emptyPremiseAssetTrashWithCheckpoint(ctx, "")
+}
+
+// EmptyPremiseAssetTrashFromTool atomically checkpoints the exact deletion,
+// file-retention, and blocker statistics produced by request_api.
+func (service *Service) EmptyPremiseAssetTrashFromTool(ctx context.Context, toolExecutionUUID string) (PremiseTrashDeleteResult, error) {
+	if !isUUIDv7(toolExecutionUUID) {
+		return PremiseTrashDeleteResult{}, domainError(CodeValidation, "工具执行 UUID 无效", "tool_execution_uuid 必须是 UUIDv7。", nil)
+	}
+	return service.emptyPremiseAssetTrashWithCheckpoint(ctx, toolExecutionUUID)
+}
+
+func (service *Service) emptyPremiseAssetTrashWithCheckpoint(ctx context.Context, toolExecutionUUID string) (PremiseTrashDeleteResult, error) {
 	result := PremiseTrashDeleteResult{BlockedItems: []PremiseAssetDeleteBlocker{}}
 	deletedUUIDs := make([]string, 0)
+	recovered := false
 	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if toolExecutionUUID != "" {
+			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetTrashEmpty)
+			if err != nil {
+				return err
+			}
+			if found {
+				recovered = true
+				return json.Unmarshal(data, &result)
+			}
+		}
 		project, _, err := service.projectActor(ctx, tx)
 		if err != nil {
 			return err
@@ -1516,6 +1569,9 @@ func (service *Service) EmptyPremiseAssetTrash(ctx context.Context) (PremiseTras
 			}
 			deletedUUIDs = append(deletedUUIDs, row.UUID)
 		}
+		if toolExecutionUUID != "" {
+			return agentcheckpoint.Write(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetTrashEmpty, result, service.now().UTC())
+		}
 		return nil
 	})
 	if err != nil {
@@ -1524,7 +1580,7 @@ func (service *Service) EmptyPremiseAssetTrash(ctx context.Context) (PremiseTras
 	for _, assetUUID := range deletedUUIDs {
 		service.emit("premise:asset_permanently_deleted", map[string]any{"premise_asset_uuid": assetUUID})
 	}
-	if len(deletedUUIDs) > 0 || len(result.BlockedItems) > 0 {
+	if recovered || len(deletedUUIDs) > 0 || len(result.BlockedItems) > 0 {
 		service.emit("premise:trash_emptied", map[string]any{"deleted_count": result.DeletedCount, "blocked_count": len(result.BlockedItems)})
 	}
 	return result, nil

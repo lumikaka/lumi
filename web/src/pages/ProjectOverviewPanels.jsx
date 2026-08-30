@@ -11,6 +11,7 @@ import { useI18n } from '../i18n/useI18n.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import { projectionStateLabel } from '../i18n/labels.js'
 import ComicExportDialog from '../components/ComicExportDialog.jsx'
+import ProjectDashboardModeSetting from '../components/ProjectDashboardModeSetting.jsx'
 import ProjectModelSettingsCard from '../components/ProjectModelSettingsCard.jsx'
 import { comicExportDialogRequest } from './comicExportState.js'
 import { formatTerminologyMessageKey, pictureBookProfileDetails, pictureBookRatio } from './pictureBookProfile.js'
@@ -143,6 +144,10 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
     setStyle(premise?.default_style || '')
     setEditingStyle(false)
   }
+  const configurationDirty = Boolean(project) && (
+    name !== (project.name || '')
+    || description !== (project.description || '')
+  )
 
   return (
     <div className="project-overview project-overview--summary" role="tabpanel" id="overview-panel-summary" aria-labelledby="overview-tab-summary">
@@ -152,12 +157,13 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
           <section className="overview-card overview-card--project">
             <header className="overview-card__header">
               <div><h1>{t('projects.overview.summary')}</h1></div>
-              {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('common.action.edit')}</button> : null}
+              {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('projects.configuration')}</button> : null}
             </header>
             {editingProject ? (
               <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateProject.mutate() }}>
                 <label>{t('projects.field.name')}<input value={name} onChange={(event) => setName(event.target.value)} required maxLength="120" /></label>
                 <label>{t('projects.overview.description')}<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows="4" maxLength="2000" /></label>
+                <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={updateProject.isPending} />
                 <div className="overview-form-actions"><button type="submit" disabled={!name.trim() || updateProject.isPending}>{t(updateProject.isPending ? 'common.status.saving' : 'common.action.save')}</button><button type="button" className="button-secondary" disabled={updateProject.isPending} onClick={cancelProjectEdit}>{t('common.action.cancel')}</button></div>
               </form>
             ) : (
@@ -179,7 +185,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
           <section className="overview-card">
             <header className="overview-card__header">
               <div><h2>{t('story.profile')}</h2></div>
-              <Link className="overview-card__action" to={route('overview/profile')}>{t(excerpt ? 'projects.overview.view_edit' : 'projects.overview.start_writing')}</Link>
+              <Link className="overview-card__action" to={route('story')}>{t(excerpt ? 'projects.overview.view_edit' : 'projects.overview.start_writing')}</Link>
             </header>
             {profileQuery.isLoading ? <p className="overview-card__loading">{t('story.story_file_loading')}</p> : <p className={`overview-story-copy ${excerpt ? '' : 'is-empty'}`}>{excerpt || t('story.story_file_empty')}</p>}
             {profile ? <footer className="overview-card__meta"><span>v{profile.version_no}</span><span>{profile.projection_state === 'synced' ? t('story.file_synced') : t('story.file_state', { state: projectionStateLabel(t, profile.projection_state) })}</span></footer> : null}
@@ -211,7 +217,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
           <section className="overview-card">
             <header className="overview-card__header"><div><h2>{t('projects.overview.continue')}</h2></div></header>
             <div className="overview-work-links">
-              <Link to={route('overview/profile')}><span>01</span><strong>{t('projects.overview.work.profile.title')}</strong><small>{t('projects.overview.work.profile.body')}</small></Link>
+              <Link to={route('story')}><span>01</span><strong>{t('projects.overview.work.profile.title')}</strong><small>{t('projects.overview.work.profile.body')}</small></Link>
               <Link to={route('premise')}><span>02</span><strong>{t('projects.overview.work.premise.title')}</strong><small>{t('projects.overview.work.premise.body')}</small></Link>
               <Link to={route('chapters')}><span>03</span><strong>{term('projects.overview.work.chapters.title')}</strong><small>{term('projects.overview.work.chapters.body')}</small></Link>
             </div>

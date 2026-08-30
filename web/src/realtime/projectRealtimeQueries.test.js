@@ -78,6 +78,31 @@ test('comic resource changes reread recent project covers through REST', () => {
   assert.ok(result.queryKeys.some((key) => key.length === 1 && key[0] === 'recent-projects'))
 })
 
+test('premise events invalidate both setting lists and an open setting detail', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'premise:asset_changed', {
+    asset_uuid: 'asset-uuid',
+    title: 'payload state is only a change hint',
+  })
+  assert.equal(result.invalidateAll, false)
+  for (const expected of ['premise', 'premise-assets', 'premise-asset']) assert.ok(keyNames(result).includes(expected), expected)
+})
+
+test('story mutations reread dashboard facts, exact resources, and recent project summaries', () => {
+  const chapter = projectRealtimeInvalidation(projectUuid, 'story:chapter_changed', { chapter_uuid: 'chapter-uuid' })
+  for (const expected of ['story-project', 'story-chapters', 'story-chapter', 'story-chapter-history']) assert.ok(keyNames(chapter).includes(expected), expected)
+  assert.ok(chapter.queryKeys.some((key) => key.length === 1 && key[0] === 'recent-projects'))
+
+  const permanentlyDeleted = projectRealtimeInvalidation(projectUuid, 'story:chapter_permanently_deleted', { chapter_uuid: 'chapter-uuid' })
+  for (const expected of ['story-project', 'story-chapters', 'story-chapter', 'story-chapter-history']) assert.ok(keyNames(permanentlyDeleted).includes(expected), expected)
+
+  const emptiedTrash = projectRealtimeInvalidation(projectUuid, 'story:chapter_trash_emptied', { deleted_count: 2, blocked_count: 1 })
+  for (const expected of ['story-project', 'story-chapters']) assert.ok(keyNames(emptiedTrash).includes(expected), expected)
+
+  const profile = projectRealtimeInvalidation(projectUuid, 'story:profile_changed', {})
+  assert.ok(keyNames(profile).includes('story-profile'))
+  assert.ok(keyNames(profile).includes('story-profile-history'))
+})
+
 test('project setup changes reread setup and project facts without trusting payload state', () => {
   const result = projectRealtimeInvalidation(projectUuid, 'project:setup_changed', {
     setup_uuid: 'setup-uuid',

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"lumi/internal/agent"
+	"lumi/internal/httpapi"
 
 	"github.com/labstack/echo/v4"
 )
@@ -76,6 +77,7 @@ func echoProjectAPIDispatcher(e *echo.Echo) agent.ProjectAPIDispatcher {
 
 		recorder := httptest.NewRecorder()
 		echoContext := e.NewContext(request, recorder)
+		httpapi.SetAgentToolDispatchContext(echoContext, input.ToolExecutionUUID, input.RouteID)
 		e.Router().Find(input.Method, request.URL.Path, echoContext)
 		if handlerErr := echoContext.Handler()(echoContext); handlerErr != nil {
 			e.HTTPErrorHandler(handlerErr, echoContext)

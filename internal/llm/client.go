@@ -29,11 +29,13 @@ const (
 )
 
 type Error struct {
-	Code        string
-	SafeMessage string
-	Retryable   bool
-	Cause       error
-	Diagnostic  providerdiag.Details
+	Code               string
+	SafeMessage        string
+	Retryable          bool
+	Cause              error
+	Diagnostic         providerdiag.Details
+	ResponseDiagnostic *ProviderResponseDiagnostic
+	PartialResponse    *ChatResponse
 }
 
 func (err *Error) Error() string {
@@ -46,6 +48,12 @@ func (err *Error) Error() string {
 func (err *Error) Unwrap() error { return err.Cause }
 
 func (err *Error) ProviderDiagnostic() providerdiag.Details { return err.Diagnostic }
+
+func (err *Error) InvalidProviderResponse() *ProviderResponseDiagnostic {
+	return err.ResponseDiagnostic
+}
+
+func (err *Error) PartialChatResponse() *ChatResponse { return err.PartialResponse }
 
 type Request struct {
 	BaseURL      string
@@ -80,16 +88,18 @@ type Response struct {
 // subset used by Lumi's project agent runtime. They live in the provider
 // package so the agent package does not need to know about HTTP wire details.
 type ChatMessage struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content,omitempty"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	Role                string     `json:"role"`
+	Content             string     `json:"content,omitempty"`
+	ToolCallID          string     `json:"tool_call_id,omitempty"`
+	ToolCallIDSynthetic bool       `json:"-"`
+	ToolCalls           []ToolCall `json:"tool_calls,omitempty"`
 }
 
 type ToolCall struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Arguments string `json:"arguments"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Arguments   string `json:"arguments"`
+	SyntheticID bool   `json:"-"`
 }
 
 type ToolDefinition struct {
@@ -258,48 +268,247 @@ func (client *OpenAICompatibleClient) Complete(ctx context.Context, input ChatRe
 		diagnostic := providerdiag.ReadHTTPError(response, input.APIKey)
 		return ChatResponse{}, classify(fmt.Errorf("provider returned HTTP %d", response.StatusCode), response.StatusCode, diagnostic)
 	}
-	var envelope struct {
-		Choices []struct {
-			Message struct {
-				Role      string `json:"role"`
-				Content   string `json:"content"`
-				ToolCalls []struct {
-					ID       string `json:"id"`
-					Function struct {
-						Name      string `json:"name"`
-						Arguments string `json:"arguments"`
-					} `json:"function"`
-				} `json:"tool_calls"`
-			} `json:"message"`
-			FinishReason string `json:"finish_reason"`
-		} `json:"choices"`
-		Usage struct {
-			PromptTokens        int `json:"prompt_tokens"`
-			CompletionTokens    int `json:"completion_tokens"`
-			PromptTokensDetails *struct {
-				CachedTokens int `json:"cached_tokens"`
-			} `json:"prompt_tokens_details"`
-		} `json:"usage"`
+	body, bodyLength, bodyTruncated, err := readBoundedChatResponse(response.Body, response.ContentLength)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return ChatResponse{}, classify(err, 0)
+		}
+		if errors.Is(err, io.ErrUnexpectedEOF) || len(body) > 0 {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, true, ProviderResponseBodyReadError, nil, nil, ChatResponse{}, err)
+		}
+		return ChatResponse{}, classify(err, 0)
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&envelope); err != nil {
-		return ChatResponse{}, &Error{Code: CodeProviderResponse, SafeMessage: "Provider 返回了无法解析的响应。", Retryable: true, Cause: err}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, bodyTruncated, ProviderResponseEmptyBody, nil, nil, ChatResponse{}, nil)
+	}
+	if bodyTruncated {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, true, ProviderResponseBodyTooLarge, nil, nil, ChatResponse{}, nil)
+	}
+
+	envelope, trailing, err := decodeStrictChatCompletion(body)
+	if err != nil {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseMalformedJSON, nil, nil, ChatResponse{}, err)
+	}
+	partial := partialChatResponse(envelope)
+	if trailing {
+		var choiceIndex *int
+		if len(envelope.Choices) > 0 {
+			choiceIndex = intPointer(0)
+		}
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseTrailingJSON, choiceIndex, nil, partial, errors.New("provider response contains trailing JSON data"))
+	}
+	if hasNegativeUsage(partial.Usage) {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseNegativeUsage, nil, nil, partial, errors.New("provider response contains negative usage"))
 	}
 	if len(envelope.Choices) == 0 {
-		return ChatResponse{}, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用消息。"}
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseEmptyChoices, nil, nil, partial, nil)
 	}
+
+	choiceIndex := intPointer(0)
 	choice := envelope.Choices[0]
-	message := ChatMessage{Role: "assistant", Content: strings.TrimSpace(choice.Message.Content)}
-	for _, call := range choice.Message.ToolCalls {
-		if strings.TrimSpace(call.ID) == "" || strings.TrimSpace(call.Function.Name) == "" || !json.Valid([]byte(call.Function.Arguments)) {
-			return ChatResponse{}, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 返回了无效工具调用。"}
+	content, contentOK := optionalJSONString(choice.Message.Content)
+	partial.Message = ChatMessage{Role: "assistant", Content: strings.TrimSpace(content)}
+	if !contentOK {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseMalformedJSON, choiceIndex, nil, partial, errors.New("provider message content is not a string or null"))
+	}
+	if strings.EqualFold(strings.TrimSpace(choice.FinishReason), "length") {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseFinishReasonLength, choiceIndex, nil, partial, nil)
+	}
+
+	seenCallIDs := make(map[string]struct{}, len(choice.Message.ToolCalls))
+	for toolIndex, call := range choice.Message.ToolCalls {
+		callID, ok := requiredJSONString(call.ID)
+		if !ok {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseMissingToolCallID, choiceIndex, intPointer(toolIndex), partial, nil)
 		}
-		message.ToolCalls = append(message.ToolCalls, ToolCall{ID: call.ID, Name: call.Function.Name, Arguments: call.Function.Arguments})
+		if _, duplicate := seenCallIDs[callID]; duplicate {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseDuplicateToolCallID, choiceIndex, intPointer(toolIndex), partial, nil)
+		}
+		seenCallIDs[callID] = struct{}{}
+
+		name, ok := requiredJSONString(call.Function.Name)
+		if !ok {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseMissingToolName, choiceIndex, intPointer(toolIndex), partial, nil)
+		}
+		arguments, ok := jsonString(call.Function.Arguments)
+		if !ok {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseToolArgumentsWrongType, choiceIndex, intPointer(toolIndex), partial, nil)
+		}
+		if len(arguments) > maxToolArgumentsBytes {
+			return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseToolArgumentsTooLarge, choiceIndex, intPointer(toolIndex), partial, nil)
+		}
+		// Invalid argument JSON is intentionally retained verbatim. The Agent
+		// layer owns schema-aware validation repair and its bounded retry policy.
+		partial.Message.ToolCalls = append(partial.Message.ToolCalls, ToolCall{ID: callID, Name: name, Arguments: arguments})
 	}
-	if message.Content == "" && len(message.ToolCalls) == 0 {
-		return ChatResponse{}, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用正文或工具调用。"}
+	if len(partial.Message.ToolCalls) > 1 {
+		for toolIndex, call := range partial.Message.ToolCalls {
+			if call.Name == "request_user_input" {
+				return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseRequestUserInputMixed, choiceIndex, intPointer(toolIndex), partial, nil)
+			}
+		}
 	}
-	return ChatResponse{Message: message, Usage: Usage{InputTokens: envelope.Usage.PromptTokens, CachedInputTokens: cachedTokens(envelope.Usage.PromptTokensDetails), OutputTokens: envelope.Usage.CompletionTokens}, FinishReason: choice.FinishReason}, nil
+	if partial.Message.Content == "" && len(partial.Message.ToolCalls) == 0 {
+		return invalidChatResponse(response, input.APIKey, body, bodyLength, false, ProviderResponseEmptyMessage, choiceIndex, nil, partial, nil)
+	}
+	return partial, nil
 }
+
+const (
+	maxChatResponseBodyBytes = 4 << 20
+	maxToolArgumentsBytes    = 64 << 10
+	maxDiagnosticPreview     = 8 << 10
+)
+
+type chatCompletionResponseEnvelope struct {
+	Choices []chatCompletionResponseChoice `json:"choices"`
+	Usage   struct {
+		PromptTokens        int `json:"prompt_tokens"`
+		CompletionTokens    int `json:"completion_tokens"`
+		PromptTokensDetails *struct {
+			CachedTokens int `json:"cached_tokens"`
+		} `json:"prompt_tokens_details"`
+	} `json:"usage"`
+}
+
+type chatCompletionResponseChoice struct {
+	Message struct {
+		Content   json.RawMessage                  `json:"content"`
+		ToolCalls []chatCompletionResponseToolCall `json:"tool_calls"`
+	} `json:"message"`
+	FinishReason string `json:"finish_reason"`
+}
+
+type chatCompletionResponseToolCall struct {
+	ID       json.RawMessage `json:"id"`
+	Function struct {
+		Name      json.RawMessage `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
+}
+
+func readBoundedChatResponse(reader io.Reader, contentLength int64) ([]byte, int64, bool, error) {
+	body, err := io.ReadAll(io.LimitReader(reader, maxChatResponseBodyBytes+1))
+	bodyLength := int64(len(body))
+	if len(body) > maxChatResponseBodyBytes {
+		if contentLength > bodyLength {
+			bodyLength = contentLength
+		}
+		return body[:maxChatResponseBodyBytes], bodyLength, true, err
+	}
+	return body, bodyLength, false, err
+}
+
+func decodeStrictChatCompletion(body []byte) (chatCompletionResponseEnvelope, bool, error) {
+	var envelope chatCompletionResponseEnvelope
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	if err := decoder.Decode(&envelope); err != nil {
+		return envelope, false, err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return envelope, true, nil
+	}
+	return envelope, false, nil
+}
+
+func partialChatResponse(envelope chatCompletionResponseEnvelope) ChatResponse {
+	partial := ChatResponse{Usage: Usage{
+		InputTokens:       envelope.Usage.PromptTokens,
+		CachedInputTokens: cachedTokens(envelope.Usage.PromptTokensDetails),
+		OutputTokens:      envelope.Usage.CompletionTokens,
+	}}
+	if len(envelope.Choices) > 0 {
+		partial.FinishReason = envelope.Choices[0].FinishReason
+		if content, ok := optionalJSONString(envelope.Choices[0].Message.Content); ok {
+			partial.Message = ChatMessage{Role: "assistant", Content: strings.TrimSpace(content)}
+		}
+	}
+	return partial
+}
+
+func optionalJSONString(raw json.RawMessage) (string, bool) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return "", true
+	}
+	return jsonString(trimmed)
+}
+
+func requiredJSONString(raw json.RawMessage) (string, bool) {
+	value, ok := jsonString(raw)
+	return value, ok && strings.TrimSpace(value) != ""
+}
+
+func jsonString(raw json.RawMessage) (string, bool) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return "", false
+	}
+	var value string
+	if err := json.Unmarshal(trimmed, &value); err != nil {
+		return "", false
+	}
+	return value, true
+}
+
+func invalidChatResponse(
+	response *http.Response,
+	apiKey string,
+	body []byte,
+	bodyLength int64,
+	bodyTruncated bool,
+	reason ProviderResponseFailureReason,
+	choiceIndex *int,
+	toolIndex *int,
+	partial ChatResponse,
+	cause error,
+) (ChatResponse, error) {
+	diagnostic := &ProviderResponseDiagnostic{
+		Reason:            reason,
+		ChoiceIndex:       choiceIndex,
+		ToolIndex:         toolIndex,
+		HTTPStatus:        response.StatusCode,
+		ProviderRequestID: providerdiag.RedactPreview(providerdiag.RequestID(response.Header), apiKey, 255),
+		ContentType:       providerdiag.RedactPreview(strings.TrimSpace(response.Header.Get("Content-Type")), apiKey, 255),
+		FinishReason:      partial.FinishReason,
+		Usage:             partial.Usage,
+		BodyLength:        bodyLength,
+		BodyTruncated:     bodyTruncated,
+		Preview:           providerdiag.RedactPreview(string(body), apiKey, maxDiagnosticPreview),
+	}
+	partialForAccounting := partial
+	if reason == ProviderResponseNegativeUsage {
+		// Persist the Provider's invalid values in the diagnostic, but never let
+		// them decrease Run token accounting through the partial response path.
+		partialForAccounting.Usage = Usage{}
+	}
+	var partialPointer *ChatResponse
+	if hasPartialChatResponse(partialForAccounting) {
+		copy := partialForAccounting
+		partialPointer = &copy
+	}
+	return partialForAccounting, &Error{
+		Code:               CodeInvalidContent,
+		SafeMessage:        "Provider 返回了结构无效的响应。",
+		Cause:              cause,
+		Diagnostic:         providerdiag.Details{HTTPStatus: diagnostic.HTTPStatus, RequestID: diagnostic.ProviderRequestID},
+		ResponseDiagnostic: diagnostic,
+		PartialResponse:    partialPointer,
+	}
+}
+
+func hasNegativeUsage(usage Usage) bool {
+	return usage.InputTokens < 0 || usage.OutputTokens < 0 ||
+		(usage.CachedInputTokens != nil && *usage.CachedInputTokens < 0)
+}
+
+func hasPartialChatResponse(response ChatResponse) bool {
+	return response.FinishReason != "" || response.Usage.InputTokens != 0 || response.Usage.OutputTokens != 0 ||
+		response.Usage.CachedInputTokens != nil || response.Message.Content != "" || len(response.Message.ToolCalls) > 0
+}
+
+func intPointer(value int) *int { return &value }
 
 func tokenLimitKey(model string) string {
 	if openAIGPT5Model(model) {

@@ -11,6 +11,16 @@ import (
 	"lumi/internal/production"
 )
 
+func TestPremiseReferenceUUIDsPreservesPersistedSelectionOrder(t *testing.T) {
+	references := []production.PremiseAssetReference{{AssetUUID: "asset-b"}, {AssetUUID: "asset-a"}}
+	if got := premiseReferenceUUIDs(references); len(got) != 2 || got[0] != "asset-b" || got[1] != "asset-a" {
+		t.Fatalf("premise reference UUIDs=%v", got)
+	}
+	if got := premiseReferenceUUIDs(nil); len(got) != 0 {
+		t.Fatalf("empty premise reference UUIDs=%v", got)
+	}
+}
+
 func TestComposeSectionPremiseFiveAssetsUsesSelectionGridAndCJKLabels(t *testing.T) {
 	sources := make([]sectionPremiseSource, 5)
 	colors := []color.RGBA{{R: 210, A: 255}, {G: 210, A: 255}, {B: 210, A: 255}, {R: 210, G: 160, A: 255}, {G: 180, B: 210, A: 255}}

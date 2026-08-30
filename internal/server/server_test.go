@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -171,6 +173,37 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 		key := route.Method + " " + strings.Join(segments, "/")
 		if !agentRouteKeys[key] {
 			t.Fatalf("server project route missing from Agent gateway: %s", key)
+		}
+	}
+	documentedRoutes := make(map[string]string)
+	docDirectory := filepath.Join("..", "agent", "docs", "api")
+	docEntries, err := os.ReadDir(docDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operationHeading := regexp.MustCompile("(?m)^## \\x60(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^\\x60]+)\\x60\\s*$")
+	for _, entry := range docEntries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+		source, readErr := os.ReadFile(filepath.Join(docDirectory, entry.Name()))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		for _, match := range operationHeading.FindAllSubmatch(source, -1) {
+			key := string(match[1]) + " " + string(match[2])
+			if previous, duplicate := documentedRoutes[key]; duplicate {
+				t.Fatalf("documented project route %s is duplicated in %s and %s", key, previous, entry.Name())
+			}
+			documentedRoutes[key] = entry.Name()
+		}
+	}
+	if len(documentedRoutes) != 83 {
+		t.Fatalf("documented unique Agent project routes=%d want=83", len(documentedRoutes))
+	}
+	for key, doc := range documentedRoutes {
+		if !agentRouteKeys[key] {
+			t.Fatalf("documented Agent route is absent from the real server gateway: %s (%s)", key, doc)
 		}
 	}
 

@@ -27,6 +27,8 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	if spec.JobKind != JobChatTurn && spec.JobKind != JobChatResume {
 		return domainError(CodeValidation, "Agent job kind 无效", "不支持的 Agent job。", nil)
 	}
+	unlockExecution := service.lockExecution(spec.ResourceUUID)
+	defer unlockExecution()
 	tc, err := service.loadToolContext(ctx, store, spec.ThreadUUID, spec.ResourceUUID)
 	if err != nil {
 		return err
@@ -65,6 +67,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	}
 	tools := llmToolDefinitionsForContext(tc)
 	var lastContextThrough int64
+runLoop:
 	for {
 		if err := ctx.Err(); err != nil {
 			return service.cancelRun(context.WithoutCancel(ctx), store, tc)
@@ -79,6 +82,13 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if pending, ok, err := service.pendingTool(ctx, store, tc.Run.ID); err != nil {
 			return err
 		} else if ok {
+			pending, err = service.repairPendingConfirmationReplayProviderID(ctx, store, pending)
+			if err != nil {
+				return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+			}
+			if pending.State != "intent" && pending.State != "executing" {
+				continue
+			}
 			if pending.ToolName == "request_user_input" {
 				request, requestErr := service.createUserInputRequest(ctx, store, tc, pending)
 				if requestErr != nil {
@@ -130,9 +140,77 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
 		}
 		lastContextThrough = contextThrough
-		response, err := service.performChatModelRequest(ctx, store, &tc, resolved, messages, tools, contextBytes, "project_chat")
+		invalidResponses, err := service.consecutiveInvalidProviderResponses(ctx, store, tc.Run.ID)
 		if err != nil {
 			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+		}
+		if invalidResponses >= maxConsecutiveInvalidProviderResponses {
+			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, invalidProviderResponseExhaustedError())
+		}
+		requestMessages := messages
+		requestContextBytes := contextBytes
+		if invalidResponses > 0 {
+			requestMessages = providerResponseRetryMessages(messages)
+			requestContextBytes = contextRequestBytes(requestMessages, tools)
+			if requestContextBytes > MaxContextBytes {
+				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeContextTooLarge, "Provider 重试提示加入后上下文超过本机配置限制。")
+			}
+		}
+		var response llm.ChatResponse
+		var requestErr error
+		physicalInvalidAttempt := invalidResponses
+		invalidResponseExhausted := false
+		for {
+			response, requestErr = service.performChatModelRequest(ctx, store, &tc, resolved, requestMessages, tools, requestContextBytes, "project_chat")
+			if requestErr == nil || invalidProviderResponse(requestErr) == nil {
+				break
+			}
+			physicalInvalidAttempt++
+			invalidResponses, err = service.consecutiveInvalidProviderResponses(ctx, store, tc.Run.ID)
+			if err != nil {
+				return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+			}
+			if invalidResponses >= maxConsecutiveInvalidProviderResponses || physicalInvalidAttempt >= maxConsecutiveInvalidProviderResponses {
+				invalidResponseExhausted = true
+				break
+			}
+			if ctx.Err() != nil {
+				return service.cancelRun(context.WithoutCancel(ctx), store, tc)
+			}
+			cancelled, cancelErr := service.cancelRequested(ctx, store, tc.Run.ID)
+			if cancelErr != nil {
+				return cancelErr
+			}
+			if cancelled {
+				return service.cancelRun(context.WithoutCancel(ctx), store, tc)
+			}
+			currentRun, refreshErr := service.refreshRun(ctx, store, tc.Run.ID)
+			if refreshErr != nil {
+				return refreshErr
+			}
+			tc.Run = currentRun
+			if tc.Run.LimitReason != "" && tc.Run.FinalizationAttemptedAt != nil {
+				return service.failBudgetRun(context.WithoutCancel(ctx), store, tc)
+			}
+			if reason := budgetReason(tc.Run); reason != "" {
+				return service.finalizeBudget(ctx, store, &tc, resolved, reason)
+			}
+			if steered, steeringErr := service.hasSteeringAfter(ctx, store, tc.Run.ID, contextThrough); steeringErr != nil {
+				return steeringErr
+			} else if steered {
+				continue runLoop
+			}
+			requestMessages = providerResponseRetryMessages(messages)
+			requestContextBytes = contextRequestBytes(requestMessages, tools)
+			if requestContextBytes > MaxContextBytes {
+				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeContextTooLarge, "Provider 重试提示加入后上下文超过本机配置限制。")
+			}
+		}
+		if requestErr != nil {
+			if invalidResponseExhausted {
+				requestErr = invalidProviderResponseExhaustedError()
+			}
+			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, requestErr)
 		}
 		if steered, err := service.hasSteeringAfter(ctx, store, tc.Run.ID, contextThrough); err != nil {
 			return err
@@ -146,56 +224,43 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 			if mixedRequestUserInputCalls(response.Message.ToolCalls) {
 				return service.failRun(context.WithoutCancel(ctx), store, tc, CodeToolValidation, "request_user_input 必须是本次模型响应中唯一的 Tool Call。")
 			}
-			cycle := make([]toolCycleEntry, 0, len(response.Message.ToolCalls))
-			for _, call := range response.Message.ToolCalls {
-				execution, persistedResult, completed, err := service.persistToolIntent(ctx, store, tc, call.ID, call.Name, call.Arguments)
-				if err != nil {
-					toolResult := toolErrorResult(err)
-					if execution.ID == 0 {
-						if errorCode(err) == CodeToolValidation {
-							repaired, repairResult, persistErr := service.persistRejectedToolCall(ctx, store, tc, call.ID, call.Name, call.Arguments, err)
-							if persistErr != nil {
-								return persistErr
-							}
-							if repaired {
-								toolResult = repairResult
-								cycle = append(cycle, cycleEntry(call.Name, call.Arguments, "", toolResult))
-								continue
-							}
-						}
-						return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
-					}
-					if persistErr := service.persistToolResult(ctx, store, tc, execution, toolResult); persistErr != nil {
+			prepared, failedCall, prepareErr := service.prepareToolIntentBatch(ctx, store, tc, response.Message.ToolCalls)
+			if prepareErr != nil {
+				if errorCode(prepareErr) == CodeToolValidation {
+					repaired, repairResult, persistErr := service.persistRejectedToolCall(ctx, store, tc, failedCall.ID, failedCall.Name, failedCall.Arguments, prepareErr)
+					if persistErr != nil {
 						return persistErr
 					}
-					cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, toolResult))
+					if repaired {
+						if err := service.recordToolCycleProgress(ctx, store, tc, []toolCycleEntry{cycleEntry(failedCall.Name, failedCall.Arguments, "", repairResult)}); err != nil {
+							return err
+						}
+						continue
+					}
+				}
+				return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(prepareErr), safeMessage(prepareErr))
+			}
+			prepared, err = service.persistPreparedToolIntentBatch(ctx, store, tc, prepared)
+			if err != nil {
+				return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+			}
+			allCompleted := len(prepared) > 0
+			cycle := make([]toolCycleEntry, 0, len(prepared))
+			for _, intent := range prepared {
+				if !intent.Completed {
+					allCompleted = false
 					continue
 				}
-				if completed {
-					cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, persistedResult))
-					continue
-				}
-				if execution.ToolName == "request_user_input" {
-					if _, err := service.createUserInputRequest(ctx, store, tc, execution); err != nil {
-						return service.failRun(context.WithoutCancel(ctx), store, tc, errorCode(err), safeMessage(err))
-					}
-					return ErrWaitingInput
-				}
-				result, err := service.executeToolTracked(ctx, store, tc, execution)
-				if err != nil {
-					if errors.Is(err, ErrWaitingWorkflow) {
-						return err
-					}
-					return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
-				}
-				if err := service.persistToolResult(ctx, store, tc, execution, result); err != nil {
-					return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
-				}
-				cycle = append(cycle, cycleEntry(call.Name, call.Arguments, execution.TargetUUID, result))
+				cycle = append(cycle, cycleEntry(intent.Call.Name, intent.Call.Arguments, intent.Existing.TargetUUID, intent.PersistedResult))
 			}
-			if err := service.recordToolCycleProgress(ctx, store, tc, cycle); err != nil {
-				return err
+			if allCompleted {
+				if err := service.recordToolCycleProgress(ctx, store, tc, cycle); err != nil {
+					return err
+				}
 			}
+			// New intents are now durable as one batch. The pending-tool recovery
+			// path executes them in insertion order and remains idempotent across
+			// worker or process restarts.
 			continue
 		}
 		content := strings.TrimSpace(response.Message.Content)

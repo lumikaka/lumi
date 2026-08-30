@@ -1,6 +1,6 @@
 const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
 const PROJECT_REFERENCE_PREFIX = '@project/'
-const PRESERVED_CHAT_PARAMS = ['chat_thread_uuid', 'workflow_uuid']
+const PRESERVED_PROJECT_PARAMS = ['chat_thread_uuid', 'workflow_uuid', 'workspace_mode']
 const CHAT_CONTROL_PARAMS = ['chat_thread_uuid', 'workflow_uuid', 'chat_new', 'chat_reference_type', 'chat_reference_uuid', 'chat_reference_title']
 
 export function isCanonicalUUIDv7(value = '') {
@@ -38,20 +38,19 @@ export function resolveProjectReference(value, { projectUuid, search = '' } = {}
   if (!reference || !isCanonicalUUIDv7(projectUuid)) return null
 
   const projectRoot = `/projects/${encodeURIComponent(projectUuid)}`
-  const params = preservedChatSearch(search)
+  const params = preservedProjectSearch(search)
   let pathname = projectRoot
 
   switch (reference.kind) {
     case 'story-profile':
-      pathname += '/overview/profile'
+      pathname += '/story'
       break
     case 'premise':
       pathname += '/premise'
       break
     case 'premise-asset':
       if (!isCanonicalUUIDv7(reference.assetUuid)) return null
-      pathname += '/premise'
-      params.set('premise_asset_uuid', reference.assetUuid)
+      pathname += `/premise/assets/${encodeURIComponent(reference.assetUuid)}`
       break
     case 'workflow':
       if (!isCanonicalUUIDv7(reference.workflowUuid)) return null
@@ -68,11 +67,10 @@ export function resolveProjectReference(value, { projectUuid, search = '' } = {}
       break
     case 'section':
       if (!isCanonicalUUIDv7(reference.chapterUuid) || !isCanonicalUUIDv7(reference.sectionUuid)) return null
-      pathname += `/chapters/${encodeURIComponent(reference.chapterUuid)}`
-      params.set('section_uuid', reference.sectionUuid)
+      pathname += `/chapters/${encodeURIComponent(reference.chapterUuid)}/sections/${encodeURIComponent(reference.sectionUuid)}`
       break
     case 'exports':
-      pathname += '/overview/exports'
+      pathname += '/exports'
       break
     default:
       return null
@@ -95,10 +93,10 @@ export function isPlainProjectReferenceClick(event = {}) {
   return (event.button ?? 0) === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
 }
 
-function preservedChatSearch(search) {
+function preservedProjectSearch(search) {
   const source = new URLSearchParams(search)
   const result = new URLSearchParams()
-  PRESERVED_CHAT_PARAMS.forEach((key) => {
+  PRESERVED_PROJECT_PARAMS.forEach((key) => {
     const value = source.get(key)
     if (value) result.set(key, value)
   })

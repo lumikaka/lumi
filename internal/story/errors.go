@@ -11,6 +11,7 @@ const (
 	CodeChapterStateConflict    = "chapter_state_conflict"
 	CodeChapterDeleteBlocked    = "chapter_delete_blocked"
 	CodeStoryProfileConflict    = "story_profile_revision_conflict"
+	CodeStoryProfileNotFound    = "story_profile_version_not_found"
 	CodeStoryMDConflict         = "story_md_conflict"
 	CodeStoryProjectionFailed   = "story_projection_failed"
 	CodePromptVersionNotFound   = "prompt_version_not_found"

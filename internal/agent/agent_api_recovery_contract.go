@@ -35,6 +35,7 @@ type agentAPIRecoveryPolicy struct {
 	ReadOnly             bool   `json:"read_only"`
 	Async                bool   `json:"async"`
 	ExpectedRevision     bool   `json:"expected_revision"`
+	RevisionSource       string `json:"revision_source"`
 	RequiresConfirmation bool   `json:"requires_confirmation"`
 }
 
@@ -83,7 +84,7 @@ func (service *Service) buildRejectedAgentAPICallRecovery(tc toolContext, name, 
 				Output: recoveryOutputContract(candidate),
 				Policy: agentAPIRecoveryPolicy{
 					Risk: candidate.Risk, ReadOnly: candidate.ReadOnly, Async: candidate.Async,
-					ExpectedRevision: candidate.ExpectedRevision, RequiresConfirmation: candidate.RequiresConfirmation,
+					ExpectedRevision: candidate.ExpectedRevision, RevisionSource: candidate.RevisionSource, RequiresConfirmation: candidate.RequiresConfirmation,
 				},
 				Violation: violation,
 			},
@@ -103,6 +104,10 @@ func recoveryOutputContract(route agentAPIRoute) agentAPIRecoveryOutput {
 		return result
 	}
 	if !projector.List {
+		if projector.NullData {
+			result.DataShape = "null"
+			return result
+		}
 		result.DataShape = "object"
 		result.AllowedFields = agentAPIProjectorFieldNames(projector)
 		return result

@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, RefreshCw, Save, Trash2, X } from 'lucide-react'
 
 import MarkdownPreview from '../components/MarkdownPreview.jsx'
+import DraftProjectWorkspace from '../components/DraftProjectWorkspace.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PromptCatalogEditor from '../components/PromptCatalogEditor.jsx'
 import ProjectWorkspaceLayout from '../components/ProjectWorkspaceLayout.jsx'
+import { ProjectDashboardModeProvider, useProjectDashboardMode } from '../components/ProjectDashboardModeContext.jsx'
 import WorkspaceGroupTabs from '../components/WorkspaceGroupTabs.jsx'
 import { workspaceSectionForPath } from '../components/workspaceNavigation.js'
 import { cancelTask, createChapterGeneration, createComicStoryboardGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, listTasks, retryTask } from '../api/ai.js'
@@ -31,29 +33,25 @@ import {
 import { saveStateForError } from './storyWorkspaceState.js'
 import { ACTIVE_TASK_STATUSES, latestTaskForResource, taskControls } from './aiRuntimeState.js'
 import PremiseWorkspace from './PremiseWorkspace.jsx'
-import { ComicWorkspace } from './ProductionWorkspaces.jsx'
 import { OverviewExportsPanel, OverviewSummaryPanel } from './ProjectOverviewPanels.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import ChaptersWorkspace from './ChaptersWorkspace.jsx'
 import ChapterComicPreviewPage from './ChapterComicPreviewPage.jsx'
 import ChapterWorkbenchPage from './ChapterWorkbenchPage.jsx'
 import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
+import SimpleProjectWorkspace from './SimpleProjectWorkspace.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { assetKindLabel, projectionStateLabel, sourceTypeLabel, statusLabel as localizedStatusLabel, taskKindLabel } from '../i18n/labels.js'
 import { formatTerminologyMessageKey } from './pictureBookProfile.js'
+import { canonicalProjectLocation, projectRoute } from '../projectRoutes.js'
 
 const DEFAULT_COMIC_SECTION_COUNT = 6
 const MAX_COMIC_SECTION_COUNT = 24
 
 function ErrorNotice({ error, onDismiss }) {
   return <LocalizedErrorMessage error={error} onDismiss={onDismiss} />
-}
-
-function RouteRedirect({ to }) {
-  const location = useLocation()
-  return <Navigate replace to={{ pathname: to, search: location.search, hash: location.hash }} />
 }
 
 function SaveState({ state }) {
@@ -246,7 +244,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
   })
   const trashMutation = useMutation({
     mutationFn: () => trashChapter(projectUuid, chapterUuid, revisionRef.current),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] }); queryClient.invalidateQueries({ queryKey: ['story-project', projectUuid] }); navigate('../../trash') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] }); queryClient.invalidateQueries({ queryKey: ['story-project', projectUuid] }); navigate(projectRoute(projectUuid, 'chapters', '?state=trashed')) },
     onError: setError,
   })
 
@@ -340,7 +338,7 @@ function ChapterEditorPanel({ projectUuid, embedded = false }) {
 
   return (
     <div className="workspace-stack">
-      <header className="editor-header"><div><Link to="../chapters">← {term('story.chapter.back')}</Link><p className="eyebrow">{chapter.chapter_code}</p><input name="chapter_title" className="chapter-title-input" value={title} onChange={(event) => setTitle(event.target.value)} aria-label={term('story.chapter.title')} /></div><div><SaveState state={saveState} /><button type="button" className="button-secondary" disabled={titleMutation.isPending || saveMutation.isPending} onClick={() => titleMutation.mutate()}>{t('story.chapter.save_title')}</button><button type="button" className="button-quiet danger-text" onClick={() => trashMutation.mutate()}>{t('story.chapter.trash')}</button></div></header>
+      <header className="editor-header"><div><Link to={projectRoute(projectUuid, 'chapters')}>← {term('story.chapter.back')}</Link><p className="eyebrow">{chapter.chapter_code}</p><input name="chapter_title" className="chapter-title-input" value={title} onChange={(event) => setTitle(event.target.value)} aria-label={term('story.chapter.title')} /></div><div><SaveState state={saveState} /><button type="button" className="button-secondary" disabled={titleMutation.isPending || saveMutation.isPending} onClick={() => titleMutation.mutate()}>{t('story.chapter.save_title')}</button><button type="button" className="button-quiet danger-text" onClick={() => trashMutation.mutate()}>{t('story.chapter.trash')}</button></div></header>
       <ErrorNotice error={error} onDismiss={() => setError(null)} />
       {saveState === 'conflict' ? <div className="workspace-notice"><div><strong>{t('story.chapter.conflict_title')}</strong><span>{t('story.chapter.conflict_body')}</span></div><button type="button" onClick={reload}>{t('story.chapter.reload')}</button></div> : null}
       <GenerationPanel projectUuid={projectUuid} chapterUuid={chapterUuid} pictureBook={pictureBook} disabled={saveMutation.isPending || saveState === 'conflict'} onCompleted={applyGenerated} />
@@ -667,41 +665,73 @@ function AssetsPanel({ projectUuid }) {
 }
 
 export default function StoryWorkspacePage() {
-  const { t } = useI18n()
   const { projectUuid } = useParams()
+  return (
+    <ProjectDashboardModeProvider key={projectUuid} projectUuid={projectUuid}>
+      <StoryWorkspaceContent projectUuid={projectUuid} />
+    </ProjectDashboardModeProvider>
+  )
+}
+
+function StoryWorkspaceContent({ projectUuid }) {
   const location = useLocation()
+  const { forcedExpert, simple } = useProjectDashboardMode()
   const projectQuery = useQuery({ queryKey: ['story-project', projectUuid], queryFn: () => getStoryProject(projectUuid) })
-  const base = `/projects/${encodeURIComponent(projectUuid || '')}`
+  const canonical = canonicalProjectLocation({
+    projectUuid,
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+  })
+  if (canonical) return <Navigate replace to={canonical} />
+
+  if (simple) {
+    return <SimpleProjectWorkspace project={projectQuery.data} projectQuery={projectQuery} projectUuid={projectUuid} />
+  }
+
   const activeSection = workspaceSectionForPath(location.pathname)
   const chapterPreview = /\/chapters\/[^/]+\/preview$/.test(location.pathname)
   const trajectoryView = /\/threads\/[^/]+\/trajectory$/.test(location.pathname)
   const draftProject = projectQuery.data?.setup_status === 'draft'
   return (
-    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} hideChat={chapterPreview || trajectoryView}>
+    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} forcedExpert={forcedExpert} hideChat={chapterPreview || trajectoryView}>
       {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} pictureBook={projectQuery.data?.picture_book} hidden={draftProject} /> : null}
       <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
-        {draftProject ? <section className="draft-project-workspace"><span>✦</span><p className="eyebrow">{t('projects.draft.eyebrow')}</p><h1>{t('projects.draft.title')}</h1><p>{t('projects.draft.body')}</p><small>{t('projects.draft.directory_hint')}</small></section> : <Routes>
-          <Route index element={<RouteRedirect to={`${base}/overview/summary`} />} />
-          <Route path="overview" element={<RouteRedirect to={`${base}/overview/summary`} />} />
-          <Route path="overview/summary" element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
-          <Route path="overview/profile" element={<StoryProfilePanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
-          <Route path="overview/prompts" element={<PromptPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
-          <Route path="overview/llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />
-          <Route path="overview/exports" element={<OverviewExportsPanel projectUuid={projectUuid} />} />
-          <Route path="chapters" element={<ChaptersWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
+        {draftProject ? <DraftProjectWorkspace /> : <Routes>
+          <Route index element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
+          <Route path="story" element={<StoryProfilePanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
+          <Route path="prompts" element={<PromptPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
+          <Route path="llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />
+          <Route path="exports" element={<OverviewExportsPanel projectUuid={projectUuid} />} />
+          <Route path="chapters" element={<ChapterCollectionRoute projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="chapters/:chapterUuid/preview" element={<ChapterComicPreviewPage projectUuid={projectUuid} />} />
+          <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
           <Route path="chapters/:chapterUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
           <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
-          <Route path="comic" element={<ComicWorkspace projectUuid={projectUuid} />} />
-          <Route path="comic/:chapterUuid" element={<ComicWorkspace projectUuid={projectUuid} />} />
+          <Route path="premise/assets/:assetUuid" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="assets" element={<AssetsPanel projectUuid={projectUuid} />} />
-          <Route path="story" element={<RouteRedirect to={`${base}/overview/profile`} />} />
-          <Route path="prompts" element={<RouteRedirect to={`${base}/overview/prompts`} />} />
-          <Route path="trash" element={<TrashPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
-          <Route path="*" element={<RouteRedirect to={`${base}/overview/summary`} />} />
+          <Route path="*" element={<ProjectWorkspaceNotFound projectUuid={projectUuid} />} />
         </Routes>}
       </main>
     </ProjectWorkspaceLayout>
+  )
+}
+
+function ChapterCollectionRoute({ pictureBook, projectUuid }) {
+  const location = useLocation()
+  return new URLSearchParams(location.search).get('state') === 'trashed'
+    ? <TrashPanel projectUuid={projectUuid} pictureBook={pictureBook} />
+    : <ChaptersWorkspace projectUuid={projectUuid} pictureBook={pictureBook} />
+}
+
+function ProjectWorkspaceNotFound({ projectUuid }) {
+  const { t } = useI18n()
+  return (
+    <div className="workspace-empty">
+      <h1>{t('common.not_found.page_title')}</h1>
+      <p>{t('errors.not_found')}</p>
+      <Link className="button-link" to={projectRoute(projectUuid)}>{t('simple.not_found.body')}</Link>
+    </div>
   )
 }

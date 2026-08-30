@@ -75,6 +75,70 @@ func TestReadHTTPErrorSanitizesAndBoundsMessage(t *testing.T) {
 	}
 }
 
+func TestRedactPreviewCoversCredentialsURLsAndLocalPaths(t *testing.T) {
+	preview := RedactPreview(`api_key=configured-key authorization: Bearer bearer-value token=token-value password=password-value cookie=cookie-value secret=secret-value credential=credential-value {"refresh_token":"refresh-value","client_secret":"client-secret-value","credentials":"credentials-value"} https://cdn.example/file?signature=signed-value /Users/qingyang/private/file.txt C:\Users\private\file.txt `+strings.Repeat("月", 5000), "configured-key", 8192)
+	if len(preview) > 8192 {
+		t.Fatalf("preview length = %d", len(preview))
+	}
+	for _, forbidden := range []string{"configured-key", "bearer-value", "token-value", "password-value", "cookie-value", "secret-value", "credential-value", "refresh-value", "client-secret-value", "credentials-value", "signed-value", "/Users/qingyang", `C:\Users\private`} {
+		if strings.Contains(preview, forbidden) {
+			t.Fatalf("preview leaked %q: %s", forbidden, preview)
+		}
+	}
+	for _, expected := range []string{"[REDACTED]", "[REDACTED_URL]", "[REDACTED_PATH]"} {
+		if !strings.Contains(preview, expected) {
+			t.Fatalf("preview missing %q: %s", expected, preview)
+		}
+	}
+}
+
+func TestRedactPreviewCoversEscapedURLsGenericPOSIXPathsAndUNCPaths(t *testing.T) {
+	input := `{"escaped_url":"https:\/\/cdn.example\/private\/asset.png?signature=signed-value","escaped_path":"\/Applications\/Lumi\/private.db","generic_path":"/custom-mount/team/private.db","space_path":"/custom mount/team secret/private.db","unc":"\\\\fileserver\\secret-share\\private.db","relative":"docs/api/overview.md"}`
+	preview := RedactPreview(input, "", 8192)
+
+	for _, forbidden := range []string{
+		"cdn.example", "signed-value", "Applications", "custom-mount", "team secret", "fileserver", "secret-share",
+	} {
+		if strings.Contains(preview, forbidden) {
+			t.Fatalf("preview leaked %q: %s", forbidden, preview)
+		}
+	}
+	if strings.Count(preview, "[REDACTED_URL]") != 1 || strings.Count(preview, "[REDACTED_PATH]") != 4 {
+		t.Fatalf("unexpected redaction result: %s", preview)
+	}
+	if !strings.Contains(preview, "docs/api/overview.md") {
+		t.Fatalf("relative path should remain readable: %s", preview)
+	}
+}
+
+func TestRedactPreviewNormalizesSecurityRelevantUnicodeEscapes(t *testing.T) {
+	input := `{"t\u006fken":"unicode-token-secret","url":"https:\u002f\u002fcdn.example\u002fasset?signature=unicode-signature","path":"\u002fUsers\u002fq\u002fprivate.db"}`
+	preview := RedactPreview(input, "", 8192)
+	for _, forbidden := range []string{"unicode-token-secret", "cdn.example", "unicode-signature", "Users", "private.db"} {
+		if strings.Contains(preview, forbidden) {
+			t.Fatalf("preview leaked %q: %s", forbidden, preview)
+		}
+	}
+	for _, expected := range []string{"[REDACTED]", "[REDACTED_URL]", "[REDACTED_PATH]"} {
+		if !strings.Contains(preview, expected) {
+			t.Fatalf("preview missing %q: %s", expected, preview)
+		}
+	}
+}
+
+func TestRedactPreviewAlwaysHonorsByteLimit(t *testing.T) {
+	input := strings.Repeat("诊", 5000)
+	for _, limit := range []int{0, 1, 2, 7, 8191, 8192} {
+		preview := RedactPreview(input, "", limit)
+		if len(preview) > limit {
+			t.Fatalf("limit=%d preview bytes=%d", limit, len(preview))
+		}
+		if strings.ToValidUTF8(preview, "?") != preview {
+			t.Fatalf("limit=%d produced invalid UTF-8", limit)
+		}
+	}
+}
+
 type diagnosticError struct{ details Details }
 
 func (err diagnosticError) Error() string               { return "diagnostic error" }

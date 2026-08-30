@@ -6,10 +6,10 @@ import { WORKSPACE_GROUP_ITEMS, WORKSPACE_SECTIONS } from './workspaceNavigation
 
 test('project navigation exposes three primary sections and grouped tools', () => {
   assert.deepEqual(WORKSPACE_SECTIONS.map((item) => item.key), ['overview', 'premise', 'chapters'])
-  assert.equal(WORKSPACE_SECTIONS[0].route, 'overview/summary')
+  assert.equal(WORKSPACE_SECTIONS[0].route, '')
   assert.deepEqual(WORKSPACE_GROUP_ITEMS.overview.map((item) => item.key), ['summary', 'profile', 'prompts', 'llm-logs', 'exports'])
   assert.deepEqual(WORKSPACE_GROUP_ITEMS.premise.map((item) => item.key), ['premise', 'assets'])
-  assert.deepEqual(WORKSPACE_GROUP_ITEMS.chapters.map((item) => item.key), ['chapters', 'comic', 'trash'])
+  assert.deepEqual(WORKSPACE_GROUP_ITEMS.chapters.map((item) => item.key), ['chapters', 'trash'])
 })
 
 test('topbar, persistent sidebar and group tabs preserve the existing routes', () => {
@@ -25,6 +25,10 @@ test('topbar, persistent sidebar and group tabs preserve the existing routes', (
   assert.match(sidebarSource, /lumi\.globalSidebarProjectOrder/)
   assert.match(sidebarSource, /icon=\{House\}/)
   assert.match(sidebarSource, /global-sidebar__search[\s\S]*aria-haspopup="dialog"/)
+  assert.match(sidebarSource, /<button[\s\S]*global-sidebar__add-project[\s\S]*aria-expanded=\{projectCreatorOpen\}/)
+  assert.match(sidebarSource, /<SidebarProjectCreator[\s\S]*onComplete=/)
+  assert.doesNotMatch(sidebarSource, /to="\/\?create_project=1"/)
+  assert.match(readFileSync(new URL('./SidebarProjectCreator.jsx', import.meta.url), 'utf8'), /<LumiDialog className="sidebar-project-creator-dialog"/)
   assert.match(sidebarSource, /<ProjectSearchDialog[\s\S]*onSwitchProject=\{onSwitchProject\}/)
   assert.match(sidebarSource, /to: '\/settings\/account'/)
   assert.match(sidebarSource, /to: '\/settings\/account#language'/)
@@ -37,13 +41,14 @@ test('topbar, persistent sidebar and group tabs preserve the existing routes', (
   assert.match(tabsSource, /workspaceRoute\(projectUuid, item\.route, location\.search\)/)
 })
 
-test('overview routes are canonical and legacy story links keep redirect compatibility', () => {
+test('resource routes are canonical and legacy overview links normalize before rendering', () => {
   const workspaceSource = readFileSync(new URL('../pages/StoryWorkspacePage.jsx', import.meta.url), 'utf8')
-  for (const route of ['overview/summary', 'overview/profile', 'overview/prompts', 'overview/llm-logs', 'overview/exports']) {
-    assert.match(workspaceSource, new RegExp(`path="${route.replace('/', '\\/')}"`))
+  const routesSource = readFileSync(new URL('../projectRoutes.js', import.meta.url), 'utf8')
+  for (const route of ['story', 'prompts', 'llm-logs', 'exports']) {
+    assert.match(workspaceSource, new RegExp(`path="${route}"`))
   }
-  assert.match(workspaceSource, /path="story" element={<RouteRedirect to={`\$\{base\}\/overview\/profile`} \/>}/)
-  assert.match(workspaceSource, /path="prompts" element={<RouteRedirect to={`\$\{base\}\/overview\/prompts`} \/>}/)
-  assert.match(workspaceSource, /to={{ pathname: to, search: location\.search, hash: location\.hash }}/)
-  assert.match(workspaceSource, /path="overview\/llm-logs"/)
+  assert.match(workspaceSource, /<Route index element=\{<OverviewSummaryPanel/)
+  assert.match(workspaceSource, /canonicalProjectLocation/)
+  assert.match(routesSource, /route === 'overview\/summary'/)
+  assert.match(routesSource, /route === 'simple\/story' \|\| route === 'overview\/profile'/)
 })

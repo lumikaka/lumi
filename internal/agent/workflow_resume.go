@@ -11,22 +11,37 @@ import (
 )
 
 type workflowResumeState struct {
-	AwaitID, ToolExecutionID                  int64
-	AwaitStatus, WorkflowUUID, WorkflowStatus string
-	TaskUUID, ResourceUUID, OutputJSON        string
-	ErrorCode                                 string
+	AwaitID, ToolExecutionID, WorkflowID                                int64
+	AwaitStatus, WorkflowUUID, WorkflowKind, WorkflowStatus, ThreadUUID string
+	CurrentStepKey, TaskUUID, ResourceUUID, OutputJSON, ErrorCode       string
+	Steps                                                               []workflowResumeStep
+}
+
+type workflowResumeStep struct {
+	UUID, StepKey, Status, TaskUUID, ResourceUUID, OutputJSON, ErrorCode string
+	Position                                                             int
+}
+
+type workflowTerminalStepSummary struct {
+	UUID         string `json:"uuid"`
+	StepKey      string `json:"step_key"`
+	Position     int    `json:"position"`
+	Status       string `json:"status"`
+	TaskUUID     string `json:"task_uuid,omitempty"`
+	ResourceUUID string `json:"resource_uuid,omitempty"`
+	ErrorCode    string `json:"error_code,omitempty"`
 }
 
 func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.Store, tc toolContext) (bool, error) {
 	var state workflowResumeState
-	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.uuid,w.status,s.task_uuid,s.resource_uuid,s.output_json,w.error_code
+	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.id,w.uuid,w.kind,w.status,th.uuid,w.current_step_key,w.error_code
 		FROM workflow_awaits a
 		JOIN workflows w ON w.id=a.workflow_id
-		JOIN workflow_steps s ON s.workflow_id=w.id
+		JOIN chat_threads th ON th.id=a.chat_thread_id
 		WHERE a.chat_run_id=? AND a.status IN ('ready','resuming')
 		ORDER BY a.id LIMIT 1`, tc.Run.ID).Row().Scan(
-		&state.AwaitID, &state.ToolExecutionID, &state.AwaitStatus, &state.WorkflowUUID, &state.WorkflowStatus,
-		&state.TaskUUID, &state.ResourceUUID, &state.OutputJSON, &state.ErrorCode,
+		&state.AwaitID, &state.ToolExecutionID, &state.AwaitStatus, &state.WorkflowID, &state.WorkflowUUID,
+		&state.WorkflowKind, &state.WorkflowStatus, &state.ThreadUUID, &state.CurrentStepKey, &state.ErrorCode,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
@@ -36,6 +51,14 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	}
 	if state.WorkflowStatus != WorkflowCompleted && state.WorkflowStatus != WorkflowFailed && state.WorkflowStatus != WorkflowCancelled && state.WorkflowStatus != WorkflowInterrupted {
 		return false, domainError(CodeStateConflict, "Workflow 尚未终止", "Chat Resume 只能读取持久化 Workflow 终态。", nil)
+	}
+	if err := store.DB().WithContext(ctx).Raw(`SELECT uuid,step_key,position,status,COALESCE(task_uuid,''),COALESCE(resource_uuid,''),COALESCE(output_json,'{}'),COALESCE(error_code,'')
+		FROM workflow_steps WHERE workflow_id=? ORDER BY position,id`, state.WorkflowID).Scan(&state.Steps).Error; err != nil {
+		return false, err
+	}
+	if state.WorkflowKind != WorkflowYolo && len(state.Steps) > 0 {
+		step := state.Steps[len(state.Steps)-1]
+		state.TaskUUID, state.ResourceUUID, state.OutputJSON = step.TaskUUID, step.ResourceUUID, step.OutputJSON
 	}
 	now := service.now().UTC()
 	if err := store.DB().WithContext(ctx).Table("workflow_awaits").Where("id=? AND status='ready'", state.AwaitID).Updates(map[string]any{"status": "resuming", "updated_at": now}).Error; err != nil {
@@ -61,6 +84,46 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 }
 
 func workflowTerminalToolResult(state workflowResumeState) json.RawMessage {
+	if state.WorkflowKind == WorkflowYolo {
+		currentStepKey := strings.TrimSpace(state.CurrentStepKey)
+		if currentStepKey == "" && len(state.Steps) > 0 {
+			if state.WorkflowStatus == WorkflowCompleted {
+				currentStepKey = state.Steps[len(state.Steps)-1].StepKey
+			} else {
+				currentStepKey = state.Steps[0].StepKey
+			}
+		}
+		steps := make([]workflowTerminalStepSummary, 0, len(state.Steps))
+		for _, step := range state.Steps {
+			steps = append(steps, workflowTerminalStepSummary{
+				UUID: publicUUIDOrEmpty(step.UUID), StepKey: step.StepKey, Position: step.Position, Status: step.Status,
+				TaskUUID: publicUUIDOrEmpty(step.TaskUUID), ResourceUUID: publicUUIDOrEmpty(step.ResourceUUID), ErrorCode: strings.TrimSpace(step.ErrorCode),
+			})
+		}
+		data := map[string]any{
+			"workflow_uuid":     publicUUIDOrEmpty(state.WorkflowUUID),
+			"thread_uuid":       publicUUIDOrEmpty(state.ThreadUUID),
+			"presentation_mode": string(PresentationInline),
+			"kind":              state.WorkflowKind,
+			"status":            state.WorkflowStatus,
+			"current_step_key":  currentStepKey,
+			"steps":             steps,
+		}
+		if state.WorkflowStatus == WorkflowCompleted {
+			encoded, _ := json.Marshal(map[string]any{"success": true, "data": data})
+			return encoded
+		}
+		code := strings.TrimSpace(state.ErrorCode)
+		if code == "" {
+			code = "workflow_" + state.WorkflowStatus
+		}
+		encoded, _ := json.Marshal(map[string]any{
+			"success": false,
+			"data":    data,
+			"error":   map[string]any{"code": code, "message": "异步生成未完成。", "details": ""},
+		})
+		return encoded
+	}
 	data := map[string]any{
 		"workflow_uuid": state.WorkflowUUID,
 		"task_uuid":     state.TaskUUID,

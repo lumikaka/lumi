@@ -1,7 +1,7 @@
 const chatDetailKeys = ['chat-items', 'chat-turns', 'chat-follow-ups', 'chat-input-requests', 'chat-events', 'chat-trajectory']
 const workflowDetailKeys = ['workflow', 'workflow-runs', 'workflow-events']
 const comicKeys = ['comic-sections', 'comic-state', 'comic-storyboards', 'comic-images', 'comic-snapshots', 'comic-snapshot', 'comic-exports']
-const premiseKeys = ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-variants']
+const premiseKeys = ['premise', 'premise-sources', 'premise-settings', 'premise-assets', 'premise-asset', 'premise-variants']
 
 function isAssetMaintenanceKind(kind) {
   return typeof kind === 'string' && kind.startsWith('asset_')
@@ -60,6 +60,7 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     add('story-tasks')
     add('story-project')
     add('story-chapters')
+    queryKeys.push(['recent-projects'])
     if (payload.chapter_uuid || payload.resource_uuid) {
       const chapterUuid = payload.chapter_uuid || payload.resource_uuid
       add('story-chapter', chapterUuid)

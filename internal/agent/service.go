@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -34,6 +35,13 @@ type Service struct {
 	projectAPIDispatcher ProjectAPIDispatcher
 	turnBudget           turnBudgetLimits
 	now                  func() time.Time
+	executionLocksMu     sync.Mutex
+	executionLocks       map[string]*executionLock
+}
+
+type executionLock struct {
+	mu   sync.Mutex
+	refs int
 }
 
 type turnBudgetLimits struct {
@@ -52,6 +60,35 @@ var defaultTurnBudgetLimits = turnBudgetLimits{
 
 func NewService(projects *project.Manager, providers *provider.Service, model llm.ToolClient, queue Queue, hub *realtime.Hub) *Service {
 	return &Service{projects: projects, providers: providers, models: modelsettings.NewResolver(providers), model: model, queue: queue, hub: hub, turnBudget: defaultTurnBudgetLimits, now: time.Now}
+}
+
+// lockExecution serializes workers that target the same durable chat turn.
+// River uniqueness is the normal first line of defence, but recovery and
+// duplicate enqueue windows must not permit concurrent Provider requests or
+// concurrent execution of the same pending tool intent in one process.
+func (service *Service) lockExecution(key string) func() {
+	service.executionLocksMu.Lock()
+	if service.executionLocks == nil {
+		service.executionLocks = make(map[string]*executionLock)
+	}
+	entry := service.executionLocks[key]
+	if entry == nil {
+		entry = &executionLock{}
+		service.executionLocks[key] = entry
+	}
+	entry.refs++
+	service.executionLocksMu.Unlock()
+
+	entry.mu.Lock()
+	return func() {
+		entry.mu.Unlock()
+		service.executionLocksMu.Lock()
+		entry.refs--
+		if entry.refs == 0 {
+			delete(service.executionLocks, key)
+		}
+		service.executionLocksMu.Unlock()
+	}
 }
 
 func (service *Service) WithImageClient(client imagegen.Client) *Service {
@@ -586,6 +623,10 @@ func itemDTO(row itemRecord, threadUUID, turnUUID, runUUID string) Item {
 		var publicMetadata map[string]json.RawMessage
 		if json.Unmarshal(metadata, &publicMetadata) == nil {
 			delete(publicMetadata, "prompt_snapshot")
+			// Provider call IDs are an internal pairing mechanism. In particular,
+			// confirmation replay uses a deterministic synthetic ID that must never
+			// become part of the public REST/WebSocket contract.
+			delete(publicMetadata, "provider_call_id")
 			if encoded, err := json.Marshal(publicMetadata); err == nil {
 				metadata = sanitizeDiagnosticJSON(string(encoded))
 			}

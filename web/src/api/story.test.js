@@ -8,7 +8,9 @@ import {
   importExternalStoryMD,
   listChapters,
   permanentlyDeleteChapter,
+  reorderChapters,
   restoreChapter,
+  restoreStoryProfileVersion,
   trashChapter,
   updateChapterStory,
 } from './story.js'
@@ -45,6 +47,29 @@ test('story API create, edit, trash and restore use UUID resources and revisions
   assert.equal(calls[5].path, `/api/v1/projects/${projectUuid}/chapters/${chapterUuid}/permanent?expected_revision=4`)
   assert.equal(calls[6].path, `/api/v1/projects/${projectUuid}/chapters/trash`)
   assert.equal(calls[6].options.method, 'DELETE')
+})
+
+test('chapter ordering and story profile restoration use stable resource routes', async () => {
+  const originalFetch = globalThis.fetch
+  const calls = []
+  globalThis.fetch = async (path, options = {}) => {
+    calls.push({ path, options })
+    return envelope({ items: [] })
+  }
+  const projectUuid = '01989abc-def0-7000-8000-000000000001'
+  const versionUuid = '01989abc-def0-7000-8000-000000000009'
+  try {
+    await reorderChapters(projectUuid, ['chapter-b', 'chapter-a'])
+    await restoreStoryProfileVersion(projectUuid, versionUuid, 8)
+    assert.equal(calls[0].path, `/api/v1/projects/${projectUuid}/chapter-order`)
+    assert.equal(calls[0].options.method, 'PUT')
+    assert.deepEqual(JSON.parse(calls[0].options.body), { chapter_uuids: ['chapter-b', 'chapter-a'] })
+    assert.equal(calls[1].path, `/api/v1/projects/${projectUuid}/story-profile/versions/${versionUuid}/restorations`)
+    assert.equal(calls[1].options.method, 'POST')
+    assert.deepEqual(JSON.parse(calls[1].options.body), { expected_revision: 8 })
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('story file import uses multipart without persisting a local path', async () => {

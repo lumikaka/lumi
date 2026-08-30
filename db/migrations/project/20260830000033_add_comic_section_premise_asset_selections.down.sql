@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS comic_section_premise_asset_selections_asset_index;
+DROP TABLE IF EXISTS comic_section_premise_asset_selections;

@@ -772,6 +772,18 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 }
 
 func (service *Service) executeTool(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord) (json.RawMessage, error) {
+	if execution.ID > 0 && execution.State == "completed" {
+		if execution.ResultJSON == nil || len(*execution.ResultJSON) > MaxToolResult || !json.Valid([]byte(*execution.ResultJSON)) {
+			return nil, domainError(CodeStateConflict, "已完成工具结果损坏", "completed 工具调用必须保留有效且未超限的结果信封。", nil)
+		}
+		var envelope struct {
+			Success *bool `json:"success"`
+		}
+		if json.Unmarshal([]byte(*execution.ResultJSON), &envelope) != nil || envelope.Success == nil {
+			return nil, domainError(CodeStateConflict, "已完成工具结果损坏", "completed 工具调用缺少统一结果信封，不能安全重放。", nil)
+		}
+		return append(json.RawMessage(nil), (*execution.ResultJSON)...), nil
+	}
 	var args map[string]any
 	if err := json.Unmarshal([]byte(execution.ArgumentsJSON), &args); err != nil {
 		return nil, domainError(CodeToolValidation, "持久化工具参数损坏", "无法安全恢复工具调用。", err)
@@ -781,12 +793,28 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 	delete(args, "__request_ordinal")
 	// Active request_api calls are schema-required to provide a narrow filter.
 	// A pre-upgrade intent may already be persisted without one, so recovery
-	// alone falls back to the former complete compact response contract.
+	// selects a projector-compatible filter without weakening new-call checks.
 	if execution.ToolName == "request_api" && strings.TrimSpace(stringArg(args, "response_filter")) == "" {
-		args["response_filter"] = ".data"
+		args["response_filter"] = service.recoveryAgentAPIResponseFilter(args)
 	}
 	service.hydrateToolExecutionMetadata(tc, &execution, args)
-	_ = store.DB().WithContext(ctx).Model(&toolExecutionRecord{}).Table("agent_tool_executions").Where("id=? AND state='intent'", execution.ID).Updates(map[string]any{"state": "executing", "started_at": service.now().UTC(), "updated_at": service.now().UTC()}).Error
+	if execution.ID > 0 && execution.State != "executing" {
+		now := service.now().UTC()
+		updated := store.DB().WithContext(ctx).Model(&toolExecutionRecord{}).Table("agent_tool_executions").Where("id=? AND state='intent'", execution.ID).Updates(map[string]any{"state": "executing", "started_at": now, "updated_at": now})
+		if updated.Error != nil {
+			return nil, updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			var state string
+			if err := store.DB().WithContext(ctx).Table("agent_tool_executions").Select("state").Where("id=?", execution.ID).Scan(&state).Error; err != nil {
+				return nil, err
+			}
+			if state != "executing" {
+				return nil, domainError(CodeStateConflict, "工具执行状态无法领取", "只有 intent 或已领取的 executing 工具调用可以执行。", nil)
+			}
+		}
+		execution.State = "executing"
+	}
 	var value any
 	var uiRef *agentUIReference
 	var err error

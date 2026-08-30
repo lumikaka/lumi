@@ -5,6 +5,8 @@ plan_state: finished
 
 # 对话式项目创建接入 YOLO 实施计划
 
+> 兼容更新（2026-08-30）：本文记录的是首次接入时的历史实施边界，其中 bootstrap YOLO 的 `dedicated_thread`、立即结束 Turn 和不建立 await 的描述已被后续实现取代。当前事实以 Workflow / Chat Thread PRD 为准：升级后新建的 bootstrap YOLO 在原 conversation Thread 的来源 Turn 内以 `inline` 展示，持久等待终态并恢复同一 Run；Direct UI 与既有 dedicated YOLO 保持原行为。
+
 ## current_status
 
 - 首页一句话创建已经把原始输入写入 draft 项目的普通 conversation Thread，并由首个 Turn 维护 Project Setup；`project_creation_bootstraps` 已用 `creation_session_uuid`、`thread_id` 和 `turn_id` 唯一标记这次 bootstrap。

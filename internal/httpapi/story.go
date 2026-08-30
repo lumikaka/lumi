@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"lumi/internal/agentcheckpoint"
 	"lumi/internal/project"
 	"lumi/internal/story"
 
@@ -18,15 +19,20 @@ import (
 
 type StoryHandler struct {
 	manager *project.Manager
+	events  story.EventPublisher
 }
 
-func NewStoryHandler(manager *project.Manager) *StoryHandler {
-	return &StoryHandler{manager: manager}
+func NewStoryHandler(manager *project.Manager, publishers ...story.EventPublisher) *StoryHandler {
+	var events story.EventPublisher
+	if len(publishers) > 0 {
+		events = publishers[0]
+	}
+	return &StoryHandler{manager: manager, events: events}
 }
 
 func (handler *StoryHandler) withService(c echo.Context, operation func(*story.Service) error) error {
 	err := handler.manager.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
-		return operation(story.NewService(store))
+		return operation(story.NewService(store).WithEvents(handler.events))
 	})
 	if err != nil {
 		return storyAPIError(err)
@@ -45,7 +51,7 @@ func storyAPIError(err error) error {
 	}
 	status := http.StatusUnprocessableEntity
 	switch domainErr.Code {
-	case story.CodeChapterNotFound, story.CodePromptVersionNotFound:
+	case story.CodeChapterNotFound, story.CodeStoryProfileNotFound, story.CodePromptVersionNotFound:
 		status = http.StatusNotFound
 	case story.CodeProjectRevisionConflict, story.CodeChapterConflict, story.CodeChapterRevisionConflict,
 		story.CodeChapterStateConflict, story.CodeChapterDeleteBlocked, story.CodeStoryProfileConflict, story.CodeStoryMDConflict,
@@ -128,6 +134,24 @@ func (handler *StoryHandler) ListChapters(c echo.Context) error {
 		var err error
 		items, err = service.ListChapters(c.Request().Context(), c.QueryParam("state"))
 		return err
+	}); err != nil {
+		return err
+	}
+	return Success(c, http.StatusOK, map[string]any{"items": items})
+}
+
+func (handler *StoryHandler) ReorderChapters(c echo.Context) error {
+	var request struct {
+		ChapterUUIDs []string `json:"chapter_uuids"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		return err
+	}
+	var items []story.Chapter
+	if err := handler.withService(c, func(service *story.Service) error {
+		var operationErr error
+		items, operationErr = service.ReorderChapters(c.Request().Context(), request.ChapterUUIDs)
+		return operationErr
 	}); err != nil {
 		return err
 	}
@@ -296,6 +320,9 @@ func (handler *StoryHandler) PermanentlyDeleteChapter(c echo.Context) error {
 		return err
 	}
 	if err := handler.withService(c, func(service *story.Service) error {
+		if executionUUID := agentToolExecutionForRoute(c, agentcheckpoint.RouteChapterPermanentDelete); executionUUID != "" {
+			return service.PermanentlyDeleteChapterFromTool(c.Request().Context(), c.Param("chapter_uuid"), revision, executionUUID)
+		}
 		return service.PermanentlyDeleteChapter(c.Request().Context(), c.Param("chapter_uuid"), revision)
 	}); err != nil {
 		return err
@@ -307,7 +334,11 @@ func (handler *StoryHandler) EmptyChapterTrash(c echo.Context) error {
 	var result story.EmptyChapterTrashResult
 	if err := handler.withService(c, func(service *story.Service) error {
 		var operationErr error
-		result, operationErr = service.EmptyChapterTrash(c.Request().Context())
+		if executionUUID := agentToolExecutionForRoute(c, agentcheckpoint.RouteChapterTrashEmpty); executionUUID != "" {
+			result, operationErr = service.EmptyChapterTrashFromTool(c.Request().Context(), executionUUID)
+		} else {
+			result, operationErr = service.EmptyChapterTrash(c.Request().Context())
+		}
 		return operationErr
 	}); err != nil {
 		return err
@@ -426,6 +457,26 @@ func (handler *StoryHandler) ListStoryProfiles(c echo.Context) error {
 		return err
 	}
 	return Success(c, http.StatusOK, map[string]any{"items": items})
+}
+
+func (handler *StoryHandler) RestoreStoryProfile(c echo.Context) error {
+	var request revisionRequest
+	if err := decodeJSON(c, &request); err != nil {
+		return err
+	}
+	revision, err := requiredRevision(request.ExpectedRevision)
+	if err != nil {
+		return err
+	}
+	var profile story.StoryProfile
+	if err := handler.withService(c, func(service *story.Service) error {
+		var operationErr error
+		profile, operationErr = service.RestoreStoryProfile(c.Request().Context(), c.Param("version_uuid"), revision)
+		return operationErr
+	}); err != nil {
+		return err
+	}
+	return Success(c, http.StatusCreated, profile)
 }
 
 func (handler *StoryHandler) ImportExternalStoryMD(c echo.Context) error {

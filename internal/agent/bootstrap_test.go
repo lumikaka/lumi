@@ -329,6 +329,9 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 		t.Fatalf("bootstrap context=%+v err=%v", reloaded, err)
 	}
 	reloaded.ToolMode = ToolModeProjectAPI
+	if err := harness.service.claimRun(ctx, harness.store, &reloaded); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := executeRequestAPITool(ctx, harness.service, harness.store, reloaded, toolExecutionRecord{UUID: mustAgentUUID(t)}, map[string]any{
 		"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID,
@@ -364,28 +367,55 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 			"response_filter": ".data | {uuid,thread_uuid,presentation_mode,kind,title,status,current_step_key,steps}",
 		}
 	}
-	first, err := executeRequestAPIToolWithUIRef(ctx, harness.service, harness.store, reloaded, toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "bootstrap-yolo-first"}, yoloArgs("一只小狐狸替月亮送信。"))
+	rawArgs, err := json.Marshal(yoloArgs("一只小狐狸替月亮送信。"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := executeRequestAPIToolWithUIRef(ctx, harness.service, harness.store, reloaded, toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "bootstrap-yolo-replay"}, yoloArgs("即使故事 Brief 改变也只能返回同一个工作流。"))
-	if err != nil {
-		t.Fatal(err)
+	execution, replay, completed, err := harness.service.persistToolIntent(ctx, harness.store, reloaded, "bootstrap-yolo-inline", "request_api", string(rawArgs))
+	if err != nil || completed || replay != nil {
+		t.Fatalf("persist Yolo intent: execution=%+v completed=%v replay=%s err=%v", execution, completed, replay, err)
 	}
-	firstValue, _ := first.Data.(map[string]any)
-	secondValue, _ := second.Data.(map[string]any)
-	if firstValue["uuid"] == "" || firstValue["uuid"] != secondValue["uuid"] || firstValue["thread_uuid"] != secondValue["thread_uuid"] || firstValue["kind"] != WorkflowYolo || firstValue["presentation_mode"] != string(PresentationDedicatedThread) {
-		t.Fatalf("first=%+v second=%+v", firstValue, secondValue)
+	if _, err := executeRequestAPIToolWithUIRef(ctx, harness.service, harness.store, reloaded, execution, yoloArgs("一只小狐狸替月亮送信。")); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("first inline Yolo did not wait: %v", err)
 	}
-	if first.UIRef == nil || first.UIRef.Href != "@project/workflows/"+firstValue["uuid"].(string) {
-		t.Fatalf("workflow ui_ref=%+v value=%+v", first.UIRef, firstValue)
+	jobsAfterFirst := len(harness.queue.jobs)
+	if _, err := executeRequestAPIToolWithUIRef(ctx, harness.service, harness.store, reloaded, execution, yoloArgs("即使故事 Brief 改变也只能返回同一个工作流。")); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("replayed inline Yolo did not remain waiting: %v", err)
+	}
+	if len(harness.queue.jobs) != jobsAfterFirst {
+		t.Fatalf("idempotent replay enqueued another job: before=%d after=%d", jobsAfterFirst, len(harness.queue.jobs))
+	}
+	workflows, err := harness.service.ListWorkflows(ctx, harness.project.UUID)
+	if err != nil || len(workflows) != 1 {
+		t.Fatalf("workflows=%+v err=%v", workflows, err)
+	}
+	workflow := workflows[0]
+	if workflow.UUID == "" || workflow.ThreadUUID != thread.UUID || workflow.Kind != WorkflowYolo || workflow.PresentationMode != string(PresentationInline) || workflow.OriginTurnUUID != turn.UUID || workflow.OriginRunUUID != reloaded.Run.UUID || workflow.OriginToolCallUUID != execution.ToolCallUUID || workflow.AwaitStatus != "waiting" {
+		t.Fatalf("inline workflow=%+v execution=%+v", workflow, execution)
 	}
 	var workflowCount int64
 	if err := harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&workflowCount).Error; err != nil || workflowCount != 1 {
 		t.Fatalf("workflow count=%d err=%v", workflowCount, err)
 	}
+	var threadCount, awaitCount int64
+	if err := harness.store.DB().Table("chat_threads").Count(&threadCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("workflow_awaits").Where("status='waiting'").Count(&awaitCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if threadCount != 1 || awaitCount != 1 {
+		t.Fatalf("threads=%d awaits=%d", threadCount, awaitCount)
+	}
+	projectedTurns, err := harness.service.ListTurns(ctx, harness.project.UUID, thread.UUID)
+	if err != nil || len(projectedTurns) != 1 || projectedTurns[0].Status != TurnWaitingForWorkflow {
+		t.Fatalf("waiting Turn projection=%+v err=%v", projectedTurns, err)
+	}
 
-	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); err != nil {
+	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, workflow.UUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
 		t.Fatal(err)
 	}
 	secondTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "现在手工补一个章节"})
@@ -580,22 +610,27 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		case 5:
 			return toolCall("bootstrap-yolo", "request_api", yoloCreate), nil
 		case 6:
-			var href string
+			var terminal struct {
+				Success bool `json:"success"`
+				Data    struct {
+					WorkflowUUID     string           `json:"workflow_uuid"`
+					ThreadUUID       string           `json:"thread_uuid"`
+					PresentationMode string           `json:"presentation_mode"`
+					Kind             string           `json:"kind"`
+					Status           string           `json:"status"`
+					Steps            []map[string]any `json:"steps"`
+				} `json:"data"`
+			}
 			for _, message := range request.Messages {
 				if message.Role != "tool" {
 					continue
 				}
-				var result struct {
-					UIRef *agentUIReference `json:"ui_ref"`
-				}
-				if json.Unmarshal([]byte(message.Content), &result) == nil && result.UIRef != nil && strings.HasPrefix(result.UIRef.Href, "@project/workflows/") {
-					href = result.UIRef.Href
-				}
+				_ = json.Unmarshal([]byte(message.Content), &terminal)
 			}
-			if !strings.HasPrefix(href, "@project/workflows/") {
-				t.Fatalf("YOLO Tool Result did not expose a Workflow ui_ref: %q", href)
+			if terminal.Success || !isUUIDv7(terminal.Data.WorkflowUUID) || terminal.Data.ThreadUUID != bootstrap.Thread.UUID || terminal.Data.PresentationMode != string(PresentationInline) || terminal.Data.Kind != WorkflowYolo || terminal.Data.Status != WorkflowCancelled || len(terminal.Data.Steps) != len(YoloStepKeys) {
+				t.Fatalf("YOLO terminal Tool Result=%+v", terminal)
 			}
-			return finalResponse("[YOLO 快速创作](" + href + ")已启动。"), nil
+			return finalResponse("YOLO 已取消，当前对话已恢复。"), nil
 		default:
 			t.Fatalf("unexpected model call %d", call)
 			return finalResponse("unexpected"), nil
@@ -615,8 +650,8 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatResume); err != nil {
-		t.Fatal(err)
+	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatResume); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("bootstrap did not wait for inline Yolo: %v", err)
 	}
 	if harness.store.SetupStatus() != project.SetupStatusReady {
 		t.Fatalf("setup status=%s", harness.store.SetupStatus())
@@ -631,8 +666,32 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	if workflows != 1 || chapters != 0 {
 		t.Fatalf("workflow count=%d chapters before worker=%d", workflows, chapters)
 	}
+	items, err := harness.service.ListWorkflows(ctx, harness.project.UUID)
+	if err != nil || len(items) != 1 || items[0].ThreadUUID != bootstrap.Thread.UUID || items[0].PresentationMode != string(PresentationInline) || items[0].OriginTurnUUID != bootstrap.Turn.UUID || items[0].AwaitStatus != "waiting" {
+		t.Fatalf("bootstrap inline workflow=%+v err=%v", items, err)
+	}
+	var threadCount, awaitCount int64
+	if err := harness.store.DB().Table("chat_threads").Count(&threadCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("workflow_awaits").Where("status='waiting'").Count(&awaitCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if threadCount != 1 || awaitCount != 1 {
+		t.Fatalf("threads=%d awaits=%d", threadCount, awaitCount)
+	}
 	var idempotencyKey string
 	if err := harness.store.DB().Table("workflows").Select("idempotency_key").Where("kind=?", WorkflowYolo).Take(&idempotencyKey).Error; err != nil || idempotencyKey != bootstrapYoloIdempotencyPrefix+creationSessionUUID {
 		t.Fatalf("idempotency_key=%q err=%v", idempotencyKey, err)
+	}
+	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, items[0].UUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatResume); err != nil {
+		t.Fatal(err)
+	}
+	turns, err := harness.service.ListTurns(ctx, harness.project.UUID, bootstrap.Thread.UUID)
+	if err != nil || len(turns) != 1 || turns[0].Status != TurnCompleted {
+		t.Fatalf("resumed bootstrap Turn=%+v err=%v", turns, err)
 	}
 }

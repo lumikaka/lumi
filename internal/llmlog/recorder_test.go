@@ -2,7 +2,10 @@ package llmlog
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -100,8 +103,16 @@ func TestRecorderBroadcastsPublicStatusChangesAfterPersistence(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if err := Finish(ctx, store, publisher, handle, FinishInput{Response: json.RawMessage(`{"content":"done"}`)}); err != nil {
+		unsafeFinishReason := "Bearer finish-token https://signed.example/object /Users/private/file " + strings.Repeat("x", 400)
+		if err := Finish(ctx, store, publisher, handle, FinishInput{Response: json.RawMessage(`{"content":"done"}`), FinishReason: unsafeFinishReason}); err != nil {
 			return err
+		}
+		var persistedFinishReason string
+		if err := store.DB().Table("llm_logs").Select("finish_reason").Where("id=?", handle.ID).Scan(&persistedFinishReason).Error; err != nil {
+			return err
+		}
+		if len(persistedFinishReason) > 255 || strings.Contains(persistedFinishReason, "finish-token") || strings.Contains(persistedFinishReason, "signed.example") || strings.Contains(persistedFinishReason, "/Users/private") {
+			return fmt.Errorf("unsafe persisted finish_reason=%q", persistedFinishReason)
 		}
 		if len(publisher.events) != 2 {
 			t.Fatalf("events = %+v", publisher.events)
@@ -130,7 +141,39 @@ func TestRecorderBroadcastsPublicStatusChangesAfterPersistence(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return Finish(ctx, store, panickingRecorderEventPublisher{}, panicHandle, FinishInput{Response: json.RawMessage(`{"content":"done"}`)})
+		if err := Finish(ctx, store, panickingRecorderEventPublisher{}, panicHandle, FinishInput{Response: json.RawMessage(`{"content":"done"}`)}); err != nil {
+			return err
+		}
+
+		atomicHandle, err := Begin(ctx, store, publisher, StartInput{
+			ProjectID: projectID, TaskRunID: taskID, SourceType: SourceStoryGeneration, Scenario: "story_chapter_generation", RequestType: RequestText,
+			Attempt: 3, ProviderUUID: providerUUID.String(), ProviderType: "test", Model: "test-model",
+			RequestPayload: json.RawMessage(`{"messages":[{"role":"user","content":"atomic"}]}`),
+		})
+		if err != nil {
+			return err
+		}
+		mutationErr := errors.New("budget update failed")
+		err = FinishAtomic(ctx, store, publisher, atomicHandle, FinishInput{Response: json.RawMessage(`{"content":"must roll back"}`)}, func(ctx context.Context, tx *sql.Tx) error {
+			if _, err := tx.ExecContext(ctx, `UPDATE projects SET name='must-not-commit' WHERE id=?`, projectID); err != nil {
+				return err
+			}
+			return mutationErr
+		})
+		if !errors.Is(err, mutationErr) {
+			return fmt.Errorf("FinishAtomic error=%v", err)
+		}
+		var status, projectName string
+		if err := store.DB().Table("llm_logs").Select("status").Where("id=?", atomicHandle.ID).Scan(&status).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("projects").Select("name").Where("id=?", projectID).Scan(&projectName).Error; err != nil {
+			return err
+		}
+		if status != "pending" || projectName == "must-not-commit" {
+			return fmt.Errorf("atomic rollback status=%q project_name=%q", status, projectName)
+		}
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -195,6 +195,6 @@ projects ──< actors
 3. 每张参考图使用预分配 Upload/File UUIDv7 重试；项目库单事务完成 File finalize 与创建绑定，应用库随后标记 `ready`。启动 reconciliation 以项目绑定为事实校准跨库崩溃窗口。
 4. 全部参考图 ready 后，普通 Chat bootstrap 在项目库单事务创建首个 Thread/Turn/Run/User Item/Job，并把 File References 按清单顺序挂到首个 User Item；无参考图时直接进入该步骤。
 5. 用户明确选择“定稿并启动 YOLO”后，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
-6. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 existing YOLO Workflow 后立即完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
+6. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline existing YOLO Workflow 和唯一 await，等待成功、失败或取消终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 7. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
 8. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。

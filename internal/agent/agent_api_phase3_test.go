@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,8 +26,8 @@ func TestPhase3RouteContractsAreCompleteAndSecure(t *testing.T) {
 		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
 	}
 	routes := phase3AgentAPIRoutes()
-	if len(routes) != 57 || len(agentAPIRoutes()) != 79 {
-		t.Fatalf("phase3 routes=%d total=%d want=57/79", len(routes), len(agentAPIRoutes()))
+	if len(routes) != 57 || len(agentAPIRoutes()) != 83 {
+		t.Fatalf("phase3 routes=%d total=%d want=57/83", len(routes), len(agentAPIRoutes()))
 	}
 	seenIDs := map[string]bool{}
 	seenMethodPaths := map[string]bool{}
@@ -159,6 +160,9 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	}
 	tc.ToolMode = ToolModeProjectAPI
 	tc = seedReadyBootstrapYoloAuthorization(t, harness, tc, mustAgentUUID(t))
+	if err := harness.service.claimRun(ctx, harness.store, &tc); err != nil {
+		t.Fatal(err)
+	}
 	executed := map[string]bool{}
 	call := func(routeID string, params map[string]string, query, body map[string]any) any {
 		t.Helper()
@@ -203,7 +207,27 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 				t.Fatalf("route %s accepted a stale expected_revision", routeID)
 			}
 		}
-		value, err := executeAgentAPIRoute(ctx, harness.service, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "phase3-success:" + routeID}, request)
+		execution := toolExecutionRecord{UUID: mustAgentUUID(t), IdempotencyKey: "phase3-success:" + routeID}
+		if routeID == RouteYoloWorkflowCreate {
+			encoded, marshalErr := json.Marshal(args)
+			if marshalErr != nil {
+				t.Fatal(marshalErr)
+			}
+			var completed bool
+			var replay json.RawMessage
+			execution, replay, completed, err = harness.service.persistToolIntent(ctx, harness.store, tc, "phase3-success:"+routeID, "request_api", string(encoded))
+			if err != nil || completed || replay != nil {
+				t.Fatalf("persist %s: execution=%+v completed=%v replay=%s err=%v", routeID, execution, completed, replay, err)
+			}
+		}
+		value, err := executeAgentAPIRoute(ctx, harness.service, harness.store, tc, execution, request)
+		if routeID == RouteYoloWorkflowCreate && errors.Is(err, ErrWaitingWorkflow) {
+			workflows, listErr := harness.service.ListWorkflows(ctx, harness.project.UUID)
+			if listErr != nil || len(workflows) == 0 {
+				t.Fatalf("list inline Yolo: workflows=%+v err=%v", workflows, listErr)
+			}
+			value, err = agentYoloWorkflowValue(workflows[0]), nil
+		}
 		if err != nil {
 			t.Fatalf("execute %s: %v args=%+v", routeID, err, args)
 		}
@@ -233,7 +257,18 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	call(RouteProjectGet, nil, nil, nil)
 	yoloWorkflow := call(RouteYoloWorkflowCreate, nil, nil, map[string]any{"story_prompt": "一只小狐狸替月亮送信。"}).(map[string]any)
 	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, stringArg(yoloWorkflow, "uuid")); err != nil {
-		t.Fatalf("cancel isolated Yolo route fixture: %v", err)
+		t.Fatalf("cancel inline Yolo route fixture: %v", err)
+	}
+	if resumed, err := harness.service.resumeWorkflowAwait(ctx, harness.store, tc); err != nil || !resumed {
+		t.Fatalf("resume inline Yolo route fixture: resumed=%v err=%v", resumed, err)
+	}
+	tc, err = harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode = ToolModeProjectAPI
+	if err := harness.service.claimRun(ctx, harness.store, &tc); err != nil {
+		t.Fatal(err)
 	}
 	call(RouteProjectUpdate, nil, nil, map[string]any{"name": "Phase 3 Agent API", "description": "route integration", "generation_language": "zh-Hans", "expected_revision": revision(project.Revision)})
 

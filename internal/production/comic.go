@@ -45,6 +45,20 @@ type comicSectionRecord struct {
 
 func (comicSectionRecord) TableName() string { return "comic_sections" }
 
+const MaxSectionPremiseAssetSelections = 12
+
+type comicSectionPremiseAssetSelectionRecord struct {
+	ID             int64 `gorm:"primaryKey"`
+	ComicSectionID int64
+	PremiseAssetID int64
+	SortOrder      int
+	CreatedAt      time.Time
+}
+
+func (comicSectionPremiseAssetSelectionRecord) TableName() string {
+	return "comic_section_premise_asset_selections"
+}
+
 func (service *Service) normalizePageRole(value string, defaultBody bool) (string, error) {
 	role := strings.ToLower(strings.TrimSpace(value))
 	if role == "" && defaultBody {
@@ -731,6 +745,72 @@ func (service *Service) ReorderSections(ctx context.Context, chapterUUID string,
 	}
 	service.emit("comic:sections_reordered", map[string]any{"chapter_uuid": chapterUUID})
 	return service.ListSections(ctx, chapterUUID)
+}
+
+func (service *Service) SetSectionPremiseAssets(ctx context.Context, chapterUUID, sectionUUID string, orderedAssetUUIDs []string, expectedRevision int64) (ComicSection, error) {
+	if len(orderedAssetUUIDs) > MaxSectionPremiseAssetSelections {
+		return ComicSection{}, domainError(CodeValidation, "页面设定引用过多", fmt.Sprintf("premise_asset_uuids 最多包含 %d 个设定项。", MaxSectionPremiseAssetSelections), nil)
+	}
+	seen := make(map[string]struct{}, len(orderedAssetUUIDs))
+	for _, assetUUID := range orderedAssetUUIDs {
+		if !isUUIDv7(assetUUID) {
+			return ComicSection{}, domainError(CodeValidation, "设定引用 UUID 无效", "premise_asset_uuids 只能包含 UUIDv7。", nil)
+		}
+		if _, exists := seen[assetUUID]; exists {
+			return ComicSection{}, domainError(CodeValidation, "设定引用重复", "premise_asset_uuids 不得包含重复值。", nil)
+		}
+		seen[assetUUID] = struct{}{}
+	}
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
+		if err != nil {
+			return err
+		}
+		var section comicSectionRecord
+		if err := tx.Where("uuid = ? AND chapter_comic_state_id = ? AND deleted_at IS NULL", sectionUUID, state.ID).First(&section).Error; err != nil {
+			return notFound(err, "Comic section 不存在")
+		}
+		if section.Revision != expectedRevision {
+			return domainError(CodeConflict, "Section 已被修改", "刷新后重试。", nil)
+		}
+		assetIDs := make([]int64, 0, len(orderedAssetUUIDs))
+		for _, assetUUID := range orderedAssetUUIDs {
+			var asset premiseAssetRecord
+			if err := tx.Where("uuid = ? AND project_id=(SELECT id FROM projects WHERE uuid=?) AND deleted_at IS NULL AND current_variant_id IS NOT NULL", assetUUID, service.store.ProjectUUID()).First(&asset).Error; err != nil {
+				return notFound(err, "设定引用不存在或尚无图片")
+			}
+			assetIDs = append(assetIDs, asset.ID)
+		}
+		if err := tx.Where("comic_section_id = ?", section.ID).Delete(&comicSectionPremiseAssetSelectionRecord{}).Error; err != nil {
+			return err
+		}
+		now := service.now().UTC()
+		for index, assetID := range assetIDs {
+			selection := comicSectionPremiseAssetSelectionRecord{ComicSectionID: section.ID, PremiseAssetID: assetID, SortOrder: index + 1, CreatedAt: now}
+			if err := tx.Create(&selection).Error; err != nil {
+				return conflictErr(err)
+			}
+		}
+		result := tx.Model(&section).Where("revision = ?", expectedRevision).Updates(map[string]any{"revision": gorm.Expr("revision + 1"), "updated_at": now})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return domainError(CodeConflict, "Section 已被修改", "刷新后重试。", nil)
+		}
+		if err := appendSectionEvent(tx, section.ID, "premise_assets_selected", map[string]any{"section_uuid": section.UUID, "premise_asset_uuids": orderedAssetUUIDs}, now); err != nil {
+			return err
+		}
+		return updateComicStateTx(tx, state.ID, now)
+	})
+	if err != nil {
+		return ComicSection{}, err
+	}
+	section, err := service.GetSection(ctx, chapterUUID, sectionUUID)
+	if err == nil {
+		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID})
+	}
+	return section, err
 }
 
 func (service *Service) CreateStoryboard(ctx context.Context, chapterUUID, sectionUUID, content, sourceType string, expectedRevision int64) (ComicSection, error) {
@@ -1532,7 +1612,23 @@ func (service *Service) imageVariantDTO(ctx context.Context, row imageVariantRec
 	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: row.SourceType, GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
 }
 func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, chapterUUID string) (ComicSection, error) {
-	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, PremiseAssets: []PremiseAssetReference{}, Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	var references []struct {
+		AssetUUID, VariantUUID, FileUUID, Title string
+	}
+	if err := service.store.DB().WithContext(ctx).
+		Table("comic_section_premise_asset_selections AS selections").
+		Select("assets.uuid AS asset_uuid, variants.uuid AS variant_uuid, files.uuid AS file_uuid, assets.title").
+		Joins("JOIN premise_assets AS assets ON assets.id=selections.premise_asset_id AND assets.deleted_at IS NULL").
+		Joins("JOIN premise_asset_variants AS variants ON variants.id=assets.current_variant_id").
+		Joins("JOIN files ON files.id=variants.file_id AND files.deleted_at IS NULL").
+		Where("selections.comic_section_id = ?", row.ID).
+		Order("selections.sort_order ASC").Scan(&references).Error; err != nil {
+		return result, err
+	}
+	for _, reference := range references {
+		result.PremiseAssets = append(result.PremiseAssets, PremiseAssetReference{AssetUUID: reference.AssetUUID, VariantUUID: reference.VariantUUID, FileUUID: reference.FileUUID, Title: reference.Title})
+	}
 	if row.CurrentStoryboardVariantID != nil {
 		var variant storyboardRecord
 		if err := service.store.DB().WithContext(ctx).First(&variant, *row.CurrentStoryboardVariantID).Error; err == nil {

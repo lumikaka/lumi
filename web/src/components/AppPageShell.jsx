@@ -12,7 +12,7 @@ export default function AppPageShell({ title, subtitle, actions, children, class
   const [sidebarCollapsed, setSidebarCollapsed] = useGlobalSidebarState()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
-  const switchProject = (uuid) => navigate(`/projects/${encodeURIComponent(uuid)}/overview/summary`)
+  const switchProject = (uuid) => navigate(`/projects/${encodeURIComponent(uuid)}`)
 
   return (
     <main className={`app-route-shell ${sidebarCollapsed ? 'global-sidebar-collapsed' : ''} ${className}`.trim()}>

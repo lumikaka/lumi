@@ -160,8 +160,10 @@
   flex: 0 0 auto
   width: 34px
   height: 34px
+  padding: 0
   display: grid
   place-items: center
+  border: 0
   border-radius: $radius-sm
   color: #747970
   background: transparent
@@ -170,6 +172,108 @@
   &:focus-visible
     color: $color-text
     background: rgba($color-surface, .62)
+
+.global-sidebar__project-creator-anchor
+  flex: 0 0 auto
+
+.lumi-dialog.sidebar-project-creator-dialog
+  width: min(500px, calc(100vw - 32px))
+
+.sidebar-project-creator-dialog__body
+  gap: 16px
+
+.sidebar-project-creator-dialog__form
+  display: grid
+  gap: 8px
+
+  > label
+    color: $color-muted
+    font-size: $font-size-small
+    font-weight: $font-weight-medium
+
+  > input
+    width: 100%
+    min-height: 40px
+    padding: 0 11px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface-subtle
+    font: inherit
+
+    &:hover
+      border-color: $color-border-strong
+
+    &:focus
+      border-color: $color-accent
+      outline: 2px solid rgba($color-accent, .14)
+      outline-offset: 1px
+
+  > button
+    width: 100%
+    min-height: 38px
+    justify-content: space-between
+
+  > small
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-micro
+    line-height: 1.45
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.sidebar-project-creator-dialog__divider
+  display: grid
+  grid-template-columns: 1fr auto 1fr
+  align-items: center
+  gap: 9px
+  color: $color-muted
+  font-size: $font-size-micro
+
+  &::before,
+  &::after
+    height: 1px
+    background: $color-border-subtle
+    content: ''
+
+.sidebar-project-creator-dialog__actions
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  gap: 8px
+
+  button
+    min-width: 0
+    min-height: 38px
+    padding: 0 11px
+
+    span
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+.sidebar-project-creator-dialog__error
+  padding: 10px
+  display: flex
+  align-items: flex-start
+  gap: 8px
+  border: 1px solid rgba($color-danger, .25)
+  border-radius: $radius-sm
+  color: $color-danger
+  background: $color-danger-muted
+  font-size: $font-size-small
+
+  > div
+    min-width: 0
+    display: grid
+    gap: 2px
+
+  strong,
+  span
+    display: block
+
+  .button-quiet
+    min-height: 26px
+    padding: 0 4px
 
 .global-sidebar__recent nav
   max-height: calc(100% - 34px)

@@ -1139,7 +1139,39 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 	base := "/api/v1/projects/" + harness.project.UUID
 	call := func(key, method, url string, body map[string]any) map[string]any {
 		t.Helper()
-		args := map[string]any{"method": method, "url": url, "response_filter": ".data"}
+		responseFilter := ""
+		for _, route := range harness.service.requestAPIRoutes() {
+			if route.Method != method {
+				continue
+			}
+			if _, matched := matchAgentAPIPath(route.PathTemplate, url); !matched {
+				continue
+			}
+			projector, ok := agentAPIProjectorByKey(route.Projector)
+			if !ok {
+				break
+			}
+			if projector.NullData {
+				responseFilter = ".data"
+				break
+			}
+			prefix := ".data | {"
+			if projector.List {
+				projector, ok = agentAPIProjectorByKey(projector.ItemProjector)
+				if !ok {
+					break
+				}
+				prefix = ".data | {items:{"
+				responseFilter = prefix + strings.Join(agentAPIProjectorFieldNames(projector), ",") + "}}"
+			} else {
+				responseFilter = prefix + strings.Join(agentAPIProjectorFieldNames(projector), ",") + "}"
+			}
+			break
+		}
+		if responseFilter == "" {
+			t.Fatalf("no reviewed response projector for %s %s", method, url)
+		}
+		args := map[string]any{"method": method, "url": url, "response_filter": responseFilter}
 		if body != nil {
 			args["request_body"] = body
 		}
@@ -1223,7 +1255,7 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 		body := map[string]any{"prompt": "生成 " + fixture.name, "model": "explicit-model"}
 		if fixture.kind == "story_chapter_generation" {
 			body["prompt_key"] = "next_story_chapter"
-		} else {
+		} else if fixture.kind == "comic_image_generation" {
 			body["premise_asset_uuids"] = []any{assetReferenceUUID}
 		}
 		task := call(key, "POST", fixture.url, body)
@@ -1244,7 +1276,7 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 		if fixture.kind == "story_chapter_generation" && request.PromptKey != "next_story_chapter" {
 			t.Fatalf("chapter generation prompt_key was not forwarded: %+v", request)
 		}
-		if fixture.kind != "story_chapter_generation" && strings.Join(request.PremiseAssetUUIDs, ",") != assetReferenceUUID {
+		if fixture.kind == "comic_image_generation" && strings.Join(request.PremiseAssetUUIDs, ",") != assetReferenceUUID {
 			t.Fatalf("%s generation references were not forwarded: %+v", fixture.name, request)
 		}
 	}

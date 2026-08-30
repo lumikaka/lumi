@@ -32,6 +32,10 @@ export function createChapter(projectUuid, payload) {
   return apiRequest(projectPath(projectUuid, '/chapters'), jsonRequest('POST', payload))
 }
 
+export function reorderChapters(projectUuid, chapterUuids) {
+  return apiRequest(projectPath(projectUuid, '/chapter-order'), jsonRequest('PUT', { chapter_uuids: chapterUuids }))
+}
+
 export function updateChapter(projectUuid, chapterUuid, payload) {
   return apiRequest(projectPath(projectUuid, `/chapters/${encodeURIComponent(chapterUuid)}`), jsonRequest('PATCH', payload))
 }
@@ -83,6 +87,10 @@ export function updateStoryProfile(projectUuid, payload) {
 
 export function listStoryProfileVersions(projectUuid) {
   return apiRequest(projectPath(projectUuid, '/story-profile/versions'))
+}
+
+export function restoreStoryProfileVersion(projectUuid, versionUuid, expectedRevision) {
+  return apiRequest(projectPath(projectUuid, `/story-profile/versions/${encodeURIComponent(versionUuid)}/restorations`), jsonRequest('POST', { expected_revision: expectedRevision }))
 }
 
 export function importExternalStoryMD(projectUuid, expectedRevision) {

@@ -2,6 +2,7 @@ package llmlog
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -116,6 +117,14 @@ func Begin(ctx context.Context, store *project.Store, events EventPublisher, inp
 }
 
 func Finish(ctx context.Context, store *project.Store, events EventPublisher, handle Handle, input FinishInput) error {
+	return FinishAtomic(ctx, store, events, handle, input, nil)
+}
+
+// FinishAtomic completes one physical Provider request and, when supplied,
+// applies its caller-owned accounting mutation in the same SQLite
+// transaction. This keeps the durable response diagnostic and the Run budget
+// charge at one crash-consistent boundary.
+func FinishAtomic(ctx context.Context, store *project.Store, events EventPublisher, handle Handle, input FinishInput, mutate func(context.Context, *sql.Tx) error) error {
 	if store == nil || handle.ID <= 0 {
 		return fmt.Errorf("invalid AI call log handle")
 	}
@@ -142,17 +151,38 @@ func Finish(ctx context.Context, store *project.Store, events EventPublisher, ha
 	if handle.RequestType == RequestText && len(input.Response) > 0 {
 		outputCharacters = snapshotCharacterCount(input.Response)
 	}
-	result := store.DB().WithContext(ctx).Exec(`UPDATE llm_logs SET
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `UPDATE llm_logs SET
 		status=?,output_summary=?,input_tokens=?,cached_input_tokens=?,output_tokens=?,output_characters=?,duration_ms=?,finish_reason=?,
 		error_code=?,error_message=?,http_status=?,provider_error_code=?,provider_request_id=?,response=?,completed_at=?
 		WHERE id=? AND status='pending'`,
-		status, Summarize(input.OutputSummary, 1000), input.InputTokens, nullableInt(input.CachedInputTokens), input.OutputTokens, outputCharacters, time.Since(handle.StartedAt).Milliseconds(), input.FinishReason,
+		status, Summarize(input.OutputSummary, 1000), input.InputTokens, nullableInt(input.CachedInputTokens), input.OutputTokens, outputCharacters, time.Since(handle.StartedAt).Milliseconds(), providerdiag.RedactPreview(input.FinishReason, "", 255),
 		errorCode, Summarize(errorMessage, 2000), diagnostic.HTTPStatus, diagnostic.ProviderCode, diagnostic.RequestID, nullableJSON(input.Response), time.Now().UTC(), handle.ID)
-	if result.Error != nil {
-		return result.Error
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected != 1 {
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected != 1 {
 		return fmt.Errorf("AI call log %s is not pending", handle.UUID)
+	}
+	if mutate != nil {
+		if err := mutate(ctx, tx); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	emitChanged(events, store.ProjectUUID(), handle.UUID, status)
 	return nil

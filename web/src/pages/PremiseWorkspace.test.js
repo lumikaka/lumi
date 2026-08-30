@@ -49,13 +49,15 @@ test('project thread lists are shared while premise entries preselect a Referenc
 })
 
 test('premise asset project references load the exact active or trashed detail and clear on close', () => {
-	assert.match(source, /linkedAssetUuid = searchParams\.get\('premise_asset_uuid'\)/)
+	assert.match(source, /const \{ assetUuid: routeAssetUuid = '' \} = useParams\(\)/)
+	assert.match(source, /linkedAssetUuid = routeAssetUuid \|\| searchParams\.get\('premise_asset_uuid'\) \|\| ''/)
 	assert.match(source, /getPremiseAsset\(projectUuid, linkedAssetUuid\)/)
 	assert.match(source, /setActiveTab\(asset\.deleted_at \? 'trash' : 'assets'\)/)
 	assert.match(source, /asset\.uuid !== linkedAssetUuid/)
 	assert.match(source, /asset\.uuid !== linkedAssetUuid\)[\s\S]*setHistoryAsset\(null\)[\s\S]*setDetailDraft\(null\)/)
 	assert.match(source, /linkedAssetQuery\.error/)
-	assert.match(source, /next\.delete\('premise_asset_uuid'\)[\s\S]*setSearchParams\(next, \{ replace: true \}\)/)
+	assert.match(source, /navigate\(projectPremiseAssetRoute\(projectUuid, asset\.uuid, next\)\)/)
+	assert.match(source, /routeAssetUuid[\s\S]*navigate\(projectRoute\(projectUuid, 'premise', location\.search\), \{ replace: true \}\)/)
 })
 
 test('premise batches expose full detail and optimistic Ignore or restore', () => {

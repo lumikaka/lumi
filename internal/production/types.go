@@ -97,17 +97,18 @@ const (
 )
 
 type ComicSection struct {
-	UUID              string             `json:"uuid"`
-	ChapterUUID       string             `json:"chapter_uuid"`
-	SectionNo         int                `json:"section_no"`
-	PageRole          string             `json:"page_role"`
-	Title             string             `json:"title"`
-	DescriptionMD     string             `json:"description_md"`
-	CurrentStoryboard *StoryboardVariant `json:"current_storyboard"`
-	CurrentImage      *ImageVariant      `json:"current_image"`
-	Revision          int64              `json:"revision"`
-	CreatedAt         time.Time          `json:"created_at"`
-	UpdatedAt         time.Time          `json:"updated_at"`
+	UUID              string                  `json:"uuid"`
+	ChapterUUID       string                  `json:"chapter_uuid"`
+	SectionNo         int                     `json:"section_no"`
+	PageRole          string                  `json:"page_role"`
+	Title             string                  `json:"title"`
+	DescriptionMD     string                  `json:"description_md"`
+	CurrentStoryboard *StoryboardVariant      `json:"current_storyboard"`
+	CurrentImage      *ImageVariant           `json:"current_image"`
+	PremiseAssets     []PremiseAssetReference `json:"premise_assets"`
+	Revision          int64                   `json:"revision"`
+	CreatedAt         time.Time               `json:"created_at"`
+	UpdatedAt         time.Time               `json:"updated_at"`
 }
 
 type StoryboardVariant struct {

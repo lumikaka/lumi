@@ -109,7 +109,7 @@ func TestProjectCreationReferenceFileMigrationUpAndDown(t *testing.T) {
 	if !containsTable(tableNames(t, dsn), "project_creation_reference_files") {
 		t.Fatal("project reference migration did not create its binding table")
 	}
-	if err := runner.Down(2); err != nil {
+	if err := runner.Down(3); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_creation_reference_files") {
@@ -133,7 +133,7 @@ func TestComicSectionPageRoleMigrationBackfillsAndConstrainsSpecialPages(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -179,11 +179,63 @@ func TestComicSectionPageRoleMigrationBackfillsAndConstrainsSpecialPages(t *test
 	if _, err := db.Exec(`DELETE FROM comic_sections WHERE page_role <> 'body'`); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "comic_sections", "page_role") {
 		t.Fatal("page-role down migration retained page_role")
+	}
+}
+
+func TestComicSectionPremiseAssetSelectionMigrationUpAndDown(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "comic-section-premise-selections.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsTable(tableNames(t, dsn), "comic_section_premise_asset_selections") {
+		t.Fatal("selection migration did not create its relation table")
+	}
+	var sectionFK, assetFK int
+	rows, err := db.Query(`SELECT "table" FROM pragma_foreign_key_list('comic_section_premise_asset_selections')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var table string
+		if err := rows.Scan(&table); err != nil {
+			t.Fatal(err)
+		}
+		if table == "comic_sections" {
+			sectionFK++
+		}
+		if table == "premise_assets" {
+			assetFK++
+		}
+	}
+	_ = rows.Close()
+	if sectionFK != 1 || assetFK != 1 {
+		t.Fatalf("selection foreign keys section=%d asset=%d", sectionFK, assetFK)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+	if containsTable(tableNames(t, dsn), "comic_section_premise_asset_selections") {
+		t.Fatal("selection down migration retained its relation table")
+	}
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -263,7 +315,7 @@ func TestComicSectionPageRoleMigrationRejectsLossyDown(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := runner.Down(1); err == nil {
+			if err := runner.Down(2); err == nil {
 				t.Fatal("down migration accepted page-role history that the old schema cannot represent")
 			}
 			if !tableHasColumn(t, db, "comic_sections", "page_role") {
@@ -283,7 +335,7 @@ func TestProjectSetupLifecycleMigrationKeepsExistingProjectsReady(t *testing.T) 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(3); err != nil {
+	if err := runner.Down(4); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -354,7 +406,7 @@ func TestChapterChatReferenceMigrationUsesUUIDOnlyInFinalSchema(t *testing.T) {
 			t.Fatalf("chapter Reference schema missing %q: %s", required, tableSQL)
 		}
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_context_references", "chapter_id") {
@@ -378,7 +430,7 @@ func TestChapterChatReferenceMigrationPreservesUUIDWithoutChapterForeignKey(t *t
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -418,7 +470,7 @@ func TestChapterChatReferenceMigrationPreservesUUIDWithoutChapterForeignKey(t *t
 	if retainedUUID != "01990000-0000-7000-8000-000000000502" {
 		t.Fatalf("deleted Chapter reference uuid=%q", retainedUUID)
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_context_references", "chapter_id") {
@@ -462,7 +514,7 @@ func TestInlineWorkflowAwaitMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -493,7 +545,7 @@ func TestLongRunningChatTurnMigrationBackfillsLegacyStepsAndRoundTrips(t *testin
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(6); err != nil {
+	if err := runner.Down(7); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -524,7 +576,7 @@ func TestLongRunningChatTurnMigrationBackfillsLegacyStepsAndRoundTrips(t *testin
 	if requestCount != 7 || maxRequests != 256 || maxDuration != 7_200_000 || maxTokens != 1_000_000 || noProgressRounds != 2 {
 		t.Fatalf("backfilled budgets=%d/%d duration=%d tokens=%d no-progress=%d", requestCount, maxRequests, maxDuration, maxTokens, noProgressRounds)
 	}
-	if err := runner.Down(6); err != nil {
+	if err := runner.Down(7); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_runs", "model_request_count") {
@@ -548,7 +600,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(7); err != nil {
+	if err := runner.Down(8); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -592,7 +644,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if schemaVersion != "legacy_choice_v1" || !strings.Contains(requestJSON, `"input_type":"multiple_choice"`) || !responseJSON.Valid || !strings.Contains(responseJSON.String, `"selected_option_uuids"`) || !strings.Contains(responseJSON.String, `"other_text":"自定义标签"`) || status != "answered" {
 		t.Fatalf("legacy answered multiple choice and Other were not preserved: schema=%s request=%s response=%+v status=%s", schemaVersion, requestJSON, responseJSON, status)
 	}
-	if err := runner.Down(7); err != nil {
+	if err := runner.Down(8); err != nil {
 		t.Fatal(err)
 	}
 	var inputType, question, optionsJSON string
@@ -617,7 +669,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if _, err := db.Exec(`INSERT INTO chat_user_input_requests(id,uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,schema_version,request_json,status,created_at,updated_at) VALUES(3,'01990000-0000-7000-8000-000000000317',1,1,1,3,'01990000-0000-7000-8000-000000000318','codex_questions_v1','{"questions":[]}','pending',?,?)`, now, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(7); err == nil {
+	if err := runner.Down(8); err == nil {
 		t.Fatal("down migration accepted a v4 multi-question row and would lose data")
 	}
 }
@@ -632,7 +684,7 @@ func TestPictureBookProfileMigrationBackfillsPreProfileProjectsAndIsImmutable(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(14); err != nil {
+	if err := runner.Down(15); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_picture_book_profiles") {
@@ -705,7 +757,7 @@ func TestProjectModelSettingsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(16); err != nil {
+	if err := runner.Down(17); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -738,7 +790,7 @@ func TestProjectChatContextReferenceMigrationUpAndDown(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 
@@ -867,7 +919,7 @@ func TestProjectChatContextReferenceMigrationUpAndDown(t *testing.T) {
 		t.Fatalf("legacy context = %q %q %q", legacyScope, legacyScene, legacySubject)
 	}
 
-	if err := runner.Down(9); err != nil {
+	if err := runner.Down(10); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "chat_context_references") {
@@ -930,7 +982,7 @@ func TestProjectChatContextReferenceDownRejectsLossyData(t *testing.T) {
 			t.Fatalf("seed protected down: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(9); err == nil {
+	if err := runner.Down(10); err == nil {
 		t.Fatal("down migration accepted five file references and would lose data")
 	}
 }
@@ -963,7 +1015,7 @@ func TestProjectChatContextReferenceDownRejectsTurnScopedDomainReference(t *test
 			t.Fatalf("seed turn-scoped protected down: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(9); err == nil {
+	if err := runner.Down(10); err == nil {
 		t.Fatal("down migration accepted a domain Reference that only applies to one Turn")
 	}
 }
@@ -979,7 +1031,7 @@ func TestAssetStoreMigrationDownRemovesSchemaCleanly(t *testing.T) {
 	}
 	// Every later project migration depends on Asset Store, so roll back
 	// through the Asset Store migration before asserting its down contract.
-	if err := runner.Down(30); err != nil {
+	if err := runner.Down(31); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -1043,7 +1095,7 @@ func TestComicSectionPremiseMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(20); err != nil {
+	if err := runner.Down(21); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1071,7 +1123,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(18); err != nil {
+	if err := runner.Down(19); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1133,7 +1185,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertGraph("up")
-	if err := runner.Down(18); err != nil {
+	if err := runner.Down(19); err != nil {
 		t.Fatal(err)
 	}
 	assertGraph("down")
@@ -1150,7 +1202,7 @@ func TestPremiseComicMigrationDownKeepsAssetStore(t *testing.T) {
 	}
 	// Roll back Prompt catalog, Premise Chat parity, project language and
 	// Chat/Yolo first, then Premise/Comic.
-	if err := runner.Down(28); err != nil {
+	if err := runner.Down(29); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -1180,7 +1232,7 @@ func TestPremiseChatParityMigrationPreservesExistingRowsAndForeignKeys(t *testin
 		t.Fatal(err)
 	}
 	// Roll back unified logs and Prompt catalog first, then Premise Chat parity.
-	if err := runner.Down(25); err != nil {
+	if err := runner.Down(26); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1272,7 +1324,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(23); err != nil {
+	if err := runner.Down(24); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1370,7 +1422,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 		t.Fatal(err)
 	}
 
-	if err := runner.Down(23); err != nil {
+	if err := runner.Down(24); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1423,7 +1475,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(22); err != nil {
+	if err := runner.Down(23); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1512,7 +1564,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(22); err != nil {
+	if err := runner.Down(23); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1538,7 +1590,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(21); err != nil {
+	if err := runner.Down(22); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1590,7 +1642,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(21); err != nil {
+	if err := runner.Down(22); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1617,7 +1669,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(19); err != nil {
+	if err := runner.Down(20); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1681,7 +1733,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(19); err != nil {
+	if err := runner.Down(20); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1738,7 +1790,7 @@ func TestLLMUsageMetricsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(15); err != nil {
+	if err := runner.Down(16); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1813,7 +1865,7 @@ func TestStoryChapterWorkflowMigrationPreservesExistingGraphAndDropsOnlyProjecti
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1896,7 +1948,7 @@ func TestComicStoryboardWorkflowMigrationPreservesGraphAndRollsBackKind(t *testi
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1958,7 +2010,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -2027,7 +2079,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2062,7 +2114,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -2108,7 +2160,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)

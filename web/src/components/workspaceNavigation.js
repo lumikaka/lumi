@@ -1,16 +1,16 @@
 export const WORKSPACE_SECTIONS = Object.freeze([
-  { key: 'overview', labelKey: 'projects.section.overview', route: 'overview/summary' },
+  { key: 'overview', labelKey: 'projects.section.overview', route: '' },
   { key: 'premise', labelKey: 'projects.section.premise', route: 'premise' },
   { key: 'chapters', labelKey: 'projects.section.chapters', route: 'chapters' },
 ])
 
 export const WORKSPACE_GROUP_ITEMS = Object.freeze({
   overview: [
-    { key: 'summary', labelKey: 'projects.tab.summary', route: 'overview/summary', end: true },
-    { key: 'profile', labelKey: 'projects.tab.profile', route: 'overview/profile', end: true },
-    { key: 'prompts', labelKey: 'projects.tab.prompts', route: 'overview/prompts', end: true },
-    { key: 'llm-logs', labelKey: 'projects.tab.llm_logs', route: 'overview/llm-logs', end: true },
-    { key: 'exports', labelKey: 'projects.tab.exports', route: 'overview/exports', end: true },
+    { key: 'summary', labelKey: 'projects.tab.summary', route: '', end: true },
+    { key: 'profile', labelKey: 'projects.tab.profile', route: 'story', end: true },
+    { key: 'prompts', labelKey: 'projects.tab.prompts', route: 'prompts', end: true },
+    { key: 'llm-logs', labelKey: 'projects.tab.llm_logs', route: 'llm-logs', end: true },
+    { key: 'exports', labelKey: 'projects.tab.exports', route: 'exports', end: true },
   ],
   premise: [
     { key: 'premise', labelKey: 'projects.tab.premise', route: 'premise', end: true },
@@ -18,8 +18,7 @@ export const WORKSPACE_GROUP_ITEMS = Object.freeze({
   ],
   chapters: [
     { key: 'chapters', labelKey: 'projects.section.chapters', route: 'chapters' },
-    { key: 'comic', labelKey: 'projects.tab.comic', route: 'comic' },
-    { key: 'trash', labelKey: 'projects.tab.trash', route: 'trash' },
+    { key: 'trash', labelKey: 'projects.tab.trash', route: 'chapters?state=trashed' },
   ],
 })
 
@@ -27,12 +26,18 @@ export function workspaceSectionForPath(pathname = '') {
   const match = pathname.match(/^\/projects\/[^/]+(?:\/([^/?#]+))?/)
   const route = match?.[1] || ''
   if (route === 'premise' || route === 'assets') return 'premise'
-  if (route === 'chapters' || route === 'comic' || route === 'trash') return 'chapters'
+  if (route === 'chapters') return 'chapters'
   return 'overview'
 }
 
 export function workspaceRoute(projectUuid, route = '', search = '') {
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
-  const pathname = route ? `${base}/${route}` : base
-  return { pathname, search: search || '' }
+  const [path, routeSearch = ''] = String(route || '').split('?', 2)
+  const pathname = path ? `${base}/${path}` : base
+  const params = new URLSearchParams(String(search || '').replace(/^\?/, ''))
+  const routeParams = new URLSearchParams(routeSearch)
+  if (!routeParams.has('state')) params.delete('state')
+  routeParams.forEach((value, key) => params.set(key, value))
+  const query = params.toString()
+  return { pathname, search: query ? `?${query}` : '' }
 }

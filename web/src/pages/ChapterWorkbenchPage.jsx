@@ -21,7 +21,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { createAssetUpload } from '../api/assets.js'
 import {
@@ -74,6 +74,7 @@ import {
   reorderedComicBodyUuids,
 } from './comicPageRoles.js'
 import { formatTerminologyMessageKey, readImageFileDimensions } from './pictureBookProfile.js'
+import { projectChapterRoute, projectSectionRoute } from '../projectRoutes.js'
 import {
   enterTimelineMultiSelect,
   filterTimelineSelection,
@@ -129,6 +130,7 @@ function snapshotMediaStatus(t, status) {
 
 export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
   const { chapterUuid } = useParams()
+  const navigate = useNavigate()
   const { formatDateTime, t } = useI18n()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -174,7 +176,10 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
     onSuccess: (result) => {
       refreshComic()
       const firstSection = result?.items?.[0]
-      updateSearchParams(searchParams, setSearchParams, { history: null, snapshot_uuid: null, section_uuid: firstSection?.uuid || null, preview_tab: null })
+      const next = patchWorkbenchSearch(searchParams, { history: null, snapshot_uuid: null, section_uuid: null, preview_tab: null })
+      navigate(firstSection
+        ? projectSectionRoute(projectUuid, chapterUuid, firstSection.uuid, next)
+        : projectChapterRoute(projectUuid, chapterUuid, next), { replace: true })
       setHistoryOpen(false)
       setSelectedSnapshotUuid('')
       setError(null)
@@ -314,8 +319,10 @@ function ChapterComicSkeleton({ t }) {
 
 function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, sections, searchParams, setSearchParams, refreshComic, pictureBook, unit = 'section' }) {
   const { t } = useI18n()
+  const navigate = useNavigate()
+  const { sectionUuid: routeSectionUuid = '' } = useParams()
   const queryClient = useQueryClient()
-  const requestedSectionUuid = searchParams.get('section_uuid') || ''
+  const requestedSectionUuid = routeSectionUuid || searchParams.get('section_uuid') || ''
   const selected = sections.find((section) => section.uuid === requestedSectionUuid) || sections[0] || null
   const previewTab = normalizedPreviewTab(searchParams.get('preview_tab'))
   const [storyboard, setStoryboard] = useState('')
@@ -390,7 +397,13 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
     queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] })
     queryClient.invalidateQueries({ queryKey: ['comic-exports', projectUuid] })
   }, [projectUuid, queryClient])
-  const selectSection = (sectionUuid) => updateSearchParams(searchParams, setSearchParams, { section_uuid: sectionUuid })
+  const selectSection = (sectionUuid, { replace = false } = {}) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('section_uuid')
+    navigate(sectionUuid
+      ? projectSectionRoute(projectUuid, chapterUuid, sectionUuid, next)
+      : projectChapterRoute(projectUuid, chapterUuid, next), { replace })
+  }
 	const selectImageFile = async (file) => {
 		setImageFile(file)
 		setImageFileDimensions(null)
@@ -450,7 +463,7 @@ function ChapterComicWorkbench({ projectUuid, chapterUuid, chapterLabel, section
   })
   const sectionDelete = useMutation({
     mutationFn: (section) => deleteComicSection(projectUuid, chapterUuid, section.uuid, section.revision),
-    onSuccess: () => { mutationOptions.onSuccess(); updateSearchParams(searchParams, setSearchParams, { section_uuid: null }, true) },
+    onSuccess: () => { mutationOptions.onSuccess(); selectSection('', { replace: true }) },
     onError: setError,
   })
   const reorder = useMutation({ mutationFn: (uuids) => reorderComicSections(projectUuid, chapterUuid, uuids), ...mutationOptions })

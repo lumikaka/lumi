@@ -2429,11 +2429,17 @@ func TestRequestUserInputPausesAndResumesSameRun(t *testing.T) {
 	harness.queue.mu.Lock()
 	jobsAfterAnswer := len(harness.queue.jobs)
 	harness.queue.mu.Unlock()
-	if _, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+	if repeated, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
 		"art_style":  {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
 		"page_count": {OtherText: "12 页"},
+	}}); err != nil || repeated.Status != "resuming" {
+		t.Fatalf("identical duplicate answer was not idempotent: request=%+v err=%v", repeated, err)
+	}
+	if _, err := harness.service.RespondUserInput(context.Background(), harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+		"art_style":  {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID},
+		"page_count": {OtherText: "12 页"},
 	}}); errorCode(err) != CodeStateConflict {
-		t.Fatalf("duplicate answer was not rejected: %v", err)
+		t.Fatalf("different duplicate answer was not rejected: %v", err)
 	}
 	harness.queue.mu.Lock()
 	jobsAfterDuplicate := len(harness.queue.jobs)
@@ -2549,9 +2555,35 @@ func TestYoloWorkflowIsIdempotentRecoverableAndCancellable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if workflow.PresentationMode != string(PresentationDedicatedThread) || workflow.ThreadUUID == "" || workflow.AwaitStatus != "" {
+		t.Fatalf("direct UI YOLO presentation=%+v", workflow)
+	}
+	var threadCount, awaitCount int64
+	var threadType string
+	if err := harness.store.DB().Table("chat_threads").Count(&threadCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("workflow_awaits").Count(&awaitCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_threads").Select("thread_type").Where("uuid=?", workflow.ThreadUUID).Scan(&threadType).Error; err != nil {
+		t.Fatal(err)
+	}
+	if threadCount != 1 || awaitCount != 0 || threadType != ThreadTypeWorkflow {
+		t.Fatalf("direct UI YOLO threads=%d awaits=%d thread_type=%s", threadCount, awaitCount, threadType)
+	}
 	replayed, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, input)
 	if err != nil || replayed.UUID != workflow.UUID || len(workflow.Steps) != len(YoloStepKeys) {
 		t.Fatalf("replayed workflow = %+v, error=%v", replayed, err)
+	}
+	legacyReplayInput := input
+	legacyReplayInput.Invocation = DomainInvocationContext{
+		Source: InvocationChatTool, PresentationMode: PresentationInline, AwaitCompletion: true,
+		ThreadUUID: mustAgentUUID(t), TurnUUID: mustAgentUUID(t), RunUUID: mustAgentUUID(t), ToolExecutionUUID: mustAgentUUID(t),
+	}
+	legacyReplay, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, legacyReplayInput)
+	if err != nil || legacyReplay.UUID != workflow.UUID || legacyReplay.PresentationMode != string(PresentationDedicatedThread) || legacyReplay.AwaitStatus != "" {
+		t.Fatalf("legacy dedicated replay was migrated: workflow=%+v err=%v", legacyReplay, err)
 	}
 	restartedWithoutProviderState := NewService(harness.projects, nil, harness.model, harness.queue, nil)
 	recovered, err := restartedWithoutProviderState.CreateYoloWorkflow(context.Background(), harness.project.UUID, input)

@@ -8,16 +8,19 @@ import (
 
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
+	"lumi/internal/providerdiag"
 )
 
-const redactedSnapshotValue = "[REDACTED]"
+const (
+	redactedSnapshotValue                  = "[REDACTED]"
+	internalSyntheticCallIDSnapshotValue   = "[INTERNAL_SYNTHETIC_CALL_ID]"
+	maxProviderDiagnosticFinishReasonBytes = 255
+)
 
 var (
-	snapshotBearerPattern      = regexp.MustCompile(`(?i)bearer\s+[a-z0-9._~+/=-]+`)
-	snapshotKeyPattern         = regexp.MustCompile(`(?i)((?:api[_ -]?key|authorization|access[_ -]?token)\s*[:=]\s*)[^\s,;]+`)
-	snapshotJSONKeyPattern     = regexp.MustCompile(`(?i)("(?:api[_ -]?key|authorization|access[_ -]?token)"\s*:\s*")[^"]*(")`)
-	snapshotUnixPathPattern    = regexp.MustCompile(`(?m)(^|[\s"'\x60(])(?:file://)?/(?:Users|Volumes|home|root|private|var|tmp|opt|etc|mnt|srv|workspace)/[^\s"'\x60)]+`)
-	snapshotWindowsPathPattern = regexp.MustCompile(`(?i)(^|[\s"'\x60(])[a-z]:\\[^\s"'\x60)]+`)
+	snapshotBearerPattern  = regexp.MustCompile(`(?i)bearer\s+[a-z0-9._~+/=-]+`)
+	snapshotKeyPattern     = regexp.MustCompile(`(?i)((?:[a-z0-9_.-]*(?:api[_ -]?key|authorization|token|password|cookie|secret|credential)[a-z0-9_.-]*)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}\]]+)`)
+	snapshotJSONKeyPattern = regexp.MustCompile(`(?i)("[^"]*(?:api[_ -]?key|authorization|token|password|cookie|secret|credential)[^"]*"\s*:\s*")(?:\\.|[^"\\])*(")`)
 )
 
 type textRequestSnapshot struct {
@@ -57,6 +60,22 @@ type chatResponseSnapshot struct {
 	FinishReason string          `json:"finish_reason"`
 }
 
+type providerResponseDiagnosticSnapshot struct {
+	SnapshotType      string                            `json:"snapshot_type"`
+	SchemaVersion     int                               `json:"schema_version"`
+	Reason            llm.ProviderResponseFailureReason `json:"reason"`
+	ChoiceIndex       *int                              `json:"choice_index,omitempty"`
+	ToolIndex         *int                              `json:"tool_index,omitempty"`
+	HTTPStatus        int                               `json:"http_status"`
+	ProviderRequestID string                            `json:"provider_request_id,omitempty"`
+	ContentType       string                            `json:"content_type,omitempty"`
+	FinishReason      string                            `json:"finish_reason,omitempty"`
+	Usage             llm.Usage                         `json:"usage"`
+	BodyLength        int64                             `json:"body_length"`
+	BodyTruncated     bool                              `json:"body_truncated"`
+	Preview           string                            `json:"preview,omitempty"`
+}
+
 type imageRequestSnapshot struct {
 	Model   string               `json:"model"`
 	Prompt  string               `json:"prompt"`
@@ -88,18 +107,64 @@ func EncodeTextRequest(input llm.Request) (json.RawMessage, error) {
 }
 
 func EncodeTextResponse(input llm.Response, apiKey string) (json.RawMessage, error) {
-	return encodeSnapshot(textResponseSnapshot{Content: input.Content, Usage: input.Usage, FinishReason: input.FinishReason}, apiKey)
+	return encodeSnapshot(textResponseSnapshot{Content: input.Content, Usage: input.Usage, FinishReason: providerdiag.RedactPreview(input.FinishReason, apiKey, maxProviderDiagnosticFinishReasonBytes)}, apiKey)
 }
 
 func EncodeChatRequest(input llm.ChatRequest) (json.RawMessage, error) {
 	return encodeSnapshot(chatRequestSnapshot{
-		Model: input.Model, Messages: input.Messages, Tools: input.Tools,
+		Model: input.Model, Messages: snapshotChatMessages(input.Messages), Tools: input.Tools,
 		Temperature: input.Temperature, MaxTokens: input.MaxTokens, Stream: false,
 	}, input.APIKey)
 }
 
 func EncodeChatResponse(input llm.ChatResponse, apiKey string) (json.RawMessage, error) {
-	return encodeSnapshot(chatResponseSnapshot{Message: input.Message, Usage: input.Usage, FinishReason: input.FinishReason}, apiKey)
+	return encodeSnapshot(chatResponseSnapshot{Message: snapshotChatMessage(input.Message), Usage: input.Usage, FinishReason: providerdiag.RedactPreview(input.FinishReason, apiKey, maxProviderDiagnosticFinishReasonBytes)}, apiKey)
+}
+
+func snapshotChatMessages(messages []llm.ChatMessage) []llm.ChatMessage {
+	result := make([]llm.ChatMessage, len(messages))
+	for index, message := range messages {
+		result[index] = snapshotChatMessage(message)
+	}
+	return result
+}
+
+func snapshotChatMessage(message llm.ChatMessage) llm.ChatMessage {
+	result := message
+	if message.ToolCallIDSynthetic {
+		result.ToolCallID = internalSyntheticCallIDSnapshotValue
+	}
+	if len(message.ToolCalls) > 0 {
+		result.ToolCalls = append([]llm.ToolCall(nil), message.ToolCalls...)
+		for index := range result.ToolCalls {
+			if result.ToolCalls[index].SyntheticID {
+				result.ToolCalls[index].ID = internalSyntheticCallIDSnapshotValue
+			}
+		}
+	}
+	return result
+}
+
+// EncodeProviderResponseDiagnostic persists the versioned, discriminated
+// snapshot used when a 2xx Provider response cannot safely be paired into a
+// normal assistant/tool message.
+func EncodeProviderResponseDiagnostic(input llm.ProviderResponseDiagnostic, apiKey string) (json.RawMessage, error) {
+	return encodeSnapshot(providerResponseDiagnosticSnapshot{
+		SnapshotType: "provider_response_diagnostic", SchemaVersion: 1,
+		Reason: input.Reason, ChoiceIndex: input.ChoiceIndex, ToolIndex: input.ToolIndex,
+		HTTPStatus:        input.HTTPStatus,
+		ProviderRequestID: providerdiag.RedactPreview(input.ProviderRequestID, apiKey, 255),
+		ContentType:       providerdiag.RedactPreview(input.ContentType, apiKey, 255),
+		FinishReason:      providerdiag.RedactPreview(input.FinishReason, apiKey, maxProviderDiagnosticFinishReasonBytes),
+		Usage:             input.Usage, BodyLength: input.BodyLength,
+		BodyTruncated: input.BodyTruncated, Preview: providerdiag.RedactPreview(input.Preview, apiKey, 8<<10),
+	}, apiKey)
+}
+
+// EncodeChatResponseDiagnostic is kept as a descriptive alias for Agent
+// runtime call sites that operate specifically on chat completions.
+func EncodeChatResponseDiagnostic(input llm.ProviderResponseDiagnostic, apiKey string) (json.RawMessage, error) {
+	return EncodeProviderResponseDiagnostic(input, apiKey)
 }
 
 func EncodeImageRequest(input imagegen.Request) (json.RawMessage, error) {
@@ -165,6 +230,5 @@ func redactSnapshotText(value, apiKey string) string {
 	value = snapshotBearerPattern.ReplaceAllString(value, "Bearer "+redactedSnapshotValue)
 	value = snapshotKeyPattern.ReplaceAllString(value, "${1}"+redactedSnapshotValue)
 	value = snapshotJSONKeyPattern.ReplaceAllString(value, "${1}"+redactedSnapshotValue+"${2}")
-	value = snapshotUnixPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
-	return snapshotWindowsPathPattern.ReplaceAllString(value, "${1}[REDACTED_PATH]")
+	return value
 }
