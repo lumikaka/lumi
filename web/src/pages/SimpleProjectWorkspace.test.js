@@ -19,17 +19,24 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeSetting.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'ProjectDashboardModeSetting.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
   assert.doesNotMatch(workspaceSource, /SimpleProjectSidebar|simple-project-sidebar|SIMPLE_SIDEBAR_KEY/)
-  assert.match(globalSidebarSource, /stableRecentProjects\.slice\(0, 6\)/)
+  assert.match(globalSidebarSource, /stableRecentProjects\.map\(\(project, index\)/)
+  assert.doesNotMatch(globalSidebarSource, /stableRecentProjects\.slice\(/)
   assert.match(workspaceSource, /<SimpleProjectTopbar/)
   assert.doesNotMatch(workspaceSource, /className="simple-project-topbar__nav"/)
   assert.match(workspaceSource, /<MessageCircle size=\{16\} strokeWidth=\{1\.6\}/)
   assert.match(workspaceSource, /<MoreHorizontal size=\{16\} strokeWidth=\{1\.6\}/)
   assert.match(workspaceSource, /openProjectConfiguration: true/)
+  assert.match(workspaceSource, /aria-haspopup="menu"/)
+  assert.match(workspaceSource, /className="simple-project-topbar__dropdown"[\s\S]*role="menu"/)
+  assert.equal((workspaceSource.match(/<(?:button|Link)[^>]*role="menuitem"/g) || []).length, 4)
+  for (const key of ['projects.configuration', 'simple.shell.switch_workspace_mode', 'settings.llm_logs', 'projects.tab.exports']) {
+    assert.ok(workspaceSource.includes(`t('${key}')`), `missing project action ${key}`)
+  }
   assert.match(pagesSource, /location\.state\?\.openProjectConfiguration/)
   assert.match(workspaceSource, /<ChatArea projectUuid=\{projectUuid\}/)
   assert.doesNotMatch(combined, /ProjectWorkspaceLayout|OverviewSummaryPanel|PremiseWorkspace|ChaptersWorkspace|ChapterWorkbenchPage/)
@@ -67,12 +74,13 @@ test('one canonical route tree selects the simple or expert renderer from projec
   assert.match(expertLayoutSource, /forcedExpert[\s\S]*expert_page_notice/)
 })
 
-test('project configuration and the expert topbar expose mode switching', () => {
+test('project actions, project configuration, and the expert topbar expose mode switching', () => {
   assert.match(pagesSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
   assert.match(overviewSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
   assert.match(pagesSource, /t\('projects\.configuration'\)/)
   assert.match(overviewSource, /t\('projects\.configuration'\)/)
-  assert.doesNotMatch(workspaceSource, /mode-switch|switch_to_expert|projectDashboardModeDestination/)
+  assert.match(workspaceSource, /selectMode\(PROJECT_DASHBOARD_MODE_EXPERT\)/)
+  assert.doesNotMatch(workspaceSource, /projectDashboardModeDestination/)
   assert.match(expertLayoutSource, /project-topbar__mode-switch/)
   assert.match(expertLayoutSource, /simple\.mode\.switch_to_simple/)
   assert.match(expertLayoutSource, /selectMode\(PROJECT_DASHBOARD_MODE_SIMPLE\)/)
@@ -104,10 +112,48 @@ test('every simple workflow is independently deep-linkable through the shared re
     assert.ok(workspaceSource.includes(`path="${route}"`), `missing simple route ${route}`)
   }
   assert.match(workspaceSource, /<Route index element=\{<SimpleHomePage/)
-  assert.match(pagesSource, /chapters\.length === 1[\s\S]*chapters\/\$\{encodeURIComponent\(chapters\[0\]\.uuid\)\}/)
+  assert.match(workspaceSource, /path="chapters\/:chapterUuid" element=\{<SimplePageView project=\{project\} projectUuid=\{projectUuid\} \/>\}/)
+  assert.match(workspaceSource, /enabled: \['page', 'pages'\]\.includes\(routeState\.key\)/)
+  assert.match(pagesSource, /<SimpleBookPreviewGrid projectUuid=\{projectUuid\} chapters=\{chapters\}/)
+  assert.match(pagesSource, /projectRoute\(projectUuid, `chapters\/\$\{encodeURIComponent\(chapter\.uuid\)\}`/)
+  assert.match(pagesSource, /const sectionUuid = routeSectionUuid \|\| sections\[0\]\?\.uuid \|\| ''/)
+  assert.match(pagesSource, /enabled: Boolean\(sectionUuid\)/)
+  assert.match(pagesSource, /projectRoute\(projectUuid, '', location\.search\)[\s\S]*simple\.shell\.page\.home/)
   assert.match(pagesSource, /const multipleChapters = \(chaptersQuery\.data\?\.items \|\| \[\]\)\.length > 1/)
   assert.match(pagesSource, /backTo=\{projectRoute\(projectUuid, multipleChapters \? 'chapters' : ''/)
   assert.doesNotMatch(`${workspaceSource}\n${pagesSource}`, /\/simple\/|simpleProjectRoute\(/)
+})
+
+test('simple home previews picture books instead of individual artwork pages', () => {
+  assert.match(pagesSource, /simple\.home\.books_title/)
+  assert.match(pagesSource, /simple\.home\.books_progress/)
+  assert.match(pagesSource, /simple-book-list simple-book-list--preview/)
+  assert.doesNotMatch(pagesSource, /SimplePagePreviewStrip|simple\.home\.pages_title|simple\.home\.pages_progress/)
+  assert.match(messages, /'simple\.home\.books_title': \['绘本', 'Picture books'\]/)
+  assert.doesNotMatch(messages, /'simple\.home\.pages_title'/)
+})
+
+test('simple per-page rail exposes the expert page-role creation choices from a plus menu', () => {
+  assert.match(pagesSource, /className="simple-page-rail__header"[\s\S]*t\('simple\.shell\.page\.pages'\)/)
+  assert.match(pagesSource, /className="simple-page-rail__create"[\s\S]*aria-haspopup="menu"[\s\S]*aria-expanded=\{createMenuOpen\}/)
+  assert.match(pagesSource, /className="simple-page-rail__menu" role="menu"/)
+  assert.match(pagesSource, /const createRoles = project\?\.picture_book\?\.format === 'vertical_strip' \? \['body'\] : COMIC_PAGE_ROLES/)
+  assert.match(pagesSource, /createComicSection\(projectUuid, chapterUuid, \{ title: '', description_md: '', storyboard_md: '', page_role: pageRole \}\)/)
+  assert.match(pagesSource, /comicPageRoleOptionDisabled\(sections, pageRole\)/)
+  for (const key of ['simple.page.role_front', 'simple.page.role_body', 'simple.page.role_back']) assert.ok(pagesSource.includes(`t('${key}')`), `missing page role label ${key}`)
+  assert.match(styles, /\.simple-page-rail__menu/)
+  assert.match(styles, /\[aria-expanded="true"\]:hover/)
+})
+
+test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {
+  assert.match(workspaceSource, /const pageEditorActive = project\?\.setup_status !== 'draft' && \['page', 'pages'\]\.includes\(routeState\.key\)/)
+  assert.match(workspaceSource, /simple-project-content\$\{pageEditorActive \? ' simple-project-content--page-editor' : ''\}/)
+  assert.match(styles, /\.simple-project-content--page-editor\s+overflow: hidden/)
+  assert.match(styles, /\.simple-page-view\s+[\s\S]*?height: 100%[\s\S]*?overflow: hidden/)
+  assert.match(styles, /\.simple-page-editor-layout\s+[\s\S]*?flex: 1 1 auto[\s\S]*?min-height: 0[\s\S]*?overflow: hidden/)
+  assert.match(styles, /\.simple-page-rail\s+[\s\S]*?height: 100%/)
+  assert.match(styles, /\.simple-page-rail__list\s+[\s\S]*?flex: 1 1 auto[\s\S]*?overflow-y: auto/)
+  assert.match(styles, /\.simple-page-editor\s+[\s\S]*?height: 100%[\s\S]*?overflow-y: auto/)
 })
 
 test('simple pages read and mutate the shared REST facts through TanStack Query', () => {

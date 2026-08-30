@@ -27,6 +27,10 @@ export function simpleProjectChatReference(routeState, { asset, chapter, section
     const imageUuid = section.current_image?.asset?.uuid || ''
     return readyReference('comic_section', section.uuid, section.title, imageUuid)
   }
+  if (routeState?.key === 'pages' && section?.uuid) {
+    const imageUuid = section.current_image?.asset?.uuid || ''
+    return readyReference('comic_section', section.uuid, section.title, imageUuid)
+  }
   if (['chapter', 'pages', 'book'].includes(routeState?.key) && chapter?.uuid === routeState.chapterUuid) {
     return readyReference('chapter', chapter.uuid, [chapter.chapter_code, chapter.title].filter(Boolean).join(' · '))
   }

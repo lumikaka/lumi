@@ -61,7 +61,8 @@
     align-items: center
     gap: 12px
 
-    > button
+    > button,
+    .simple-project-topbar__more > button
       width: 34px
       height: 34px
       min-height: 34px
@@ -77,6 +78,62 @@
       &:focus-visible
         color: $color-text
         background: $color-surface-muted
+
+      &[aria-expanded="true"]
+        color: $color-text
+        background: $color-surface-muted
+
+      &[aria-expanded="true"]:hover
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+  .simple-project-topbar__more
+    position: relative
+
+  .simple-project-topbar__dropdown
+    position: absolute
+    z-index: 10
+    top: calc(100% + 6px)
+    right: 0
+    width: min(224px, calc(100vw - 24px))
+    padding: 6px
+    display: grid
+    gap: 2px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+    box-shadow: $shadow-floating
+
+    > button,
+    > a
+      width: 100%
+      min-height: 38px
+      padding: 0 10px
+      display: flex
+      align-items: center
+      justify-content: flex-start
+      gap: 10px
+      border: 0
+      border-radius: $radius-sm
+      color: $color-text
+      background: transparent
+      font-size: 13px
+      font-weight: $font-weight-medium
+      line-height: 1.2
+      text-align: left
+      text-decoration: none
+
+      svg
+        flex: 0 0 auto
+        color: $color-muted
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: $color-surface-muted
+
+        svg
+          color: $color-accent-strong
 
   .simple-project-workbench
     grid-column: 2
@@ -94,6 +151,9 @@
     min-height: 0
     overflow: auto
     background: #fbfbf8
+
+  .simple-project-content--page-editor
+    overflow: hidden
 
   .simple-project-page
     width: min(100%, 1160px)
@@ -252,7 +312,7 @@
 
     > img
       display: block
-      object-fit: cover
+      object-fit: contain
 
     > span
       min-width: 0
@@ -278,50 +338,6 @@
       border-color: $color-accent
       transform: translateY(-1px)
       box-shadow: 0 9px 22px rgba(34, 45, 38, .08)
-
-  .simple-page-preview-strip
-    min-width: 0
-    display: grid
-    grid-template-columns: repeat(6, minmax(96px, 1fr))
-    gap: 9px
-    overflow-x: auto
-
-    a
-      position: relative
-      min-width: 96px
-      aspect-ratio: 4 / 3
-      overflow: hidden
-      border: 1px solid $color-border
-      border-radius: $radius-sm
-      color: $color-text
-      background: $color-surface
-
-      img,
-      .simple-image-placeholder
-        width: 100%
-        height: 100%
-
-      img
-        display: block
-        object-fit: cover
-
-      > span
-        position: absolute
-        left: 6px
-        bottom: 6px
-        min-width: 22px
-        min-height: 22px
-        padding: 2px 5px
-        display: grid
-        place-items: center
-        border-radius: 4px
-        background: rgba($color-surface, .9)
-        font-size: $font-size-micro
-        font-weight: $font-weight-semibold
-
-      &:hover,
-      &:focus-visible
-        border-color: $color-accent
 
   .simple-empty-copy
     margin: 12px 0
@@ -634,10 +650,16 @@
 
   .simple-page-view
     width: 100%
+    height: 100%
+    min-height: 0
     max-width: none
     padding: 0
+    display: flex
+    flex-direction: column
+    overflow: hidden
 
   .simple-page-view__toolbar
+    flex: 0 0 auto
     min-height: 54px
     padding: 9px 22px
     display: flex
@@ -660,20 +682,119 @@
       gap: 8px
 
   .simple-page-editor-layout
-    min-height: calc(100dvh - #{$topbar-height} - 55px)
+    flex: 1 1 auto
+    min-height: 0
     display: grid
-    grid-template-columns: 142px minmax(0, 1fr)
+    grid-template-columns: 154px minmax(0, 1fr)
+    overflow: hidden
 
   .simple-page-rail
+    position: relative
+    height: 100%
     min-height: 0
-    padding: 14px 10px
+    display: flex
+    flex-direction: column
+    overflow: visible
+    border-right: 1px solid $color-border
+    background: $color-surface-muted
+
+  .simple-page-rail__header
+    position: relative
+    flex: 0 0 auto
+    min-height: 54px
+    padding: 14px 16px 10px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+    h2
+      margin: 0
+      color: $color-muted
+      font-size: 13px
+      font-weight: $font-weight-semibold
+
+  .simple-page-rail__create
+    position: relative
+
+    > button
+      width: 28px
+      height: 28px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 0
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: rgba($color-surface, .9)
+
+      &[aria-expanded="true"]
+        color: $color-accent-strong
+        background: $color-surface
+
+      &[aria-expanded="true"]:hover,
+      &[aria-expanded="true"]:focus-visible
+        color: $color-accent-strong
+        background: $color-surface
+
+  .simple-page-rail__menu
+    position: absolute
+    top: calc(100% + 5px)
+    right: -4px
+    z-index: 8
+    width: 154px
+    padding: 5px
+    display: grid
+    gap: 2px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface
+    box-shadow: $shadow-floating
+
+    button
+      width: 100%
+      min-height: 34px
+      padding: 7px 10px
+      border: 0
+      border-radius: 5px
+      color: $color-text
+      background: transparent
+      text-align: left
+      font-size: $font-size-small
+      font-weight: $font-weight-medium
+
+      &:hover,
+      &:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &:disabled
+        color: $color-muted
+        background: transparent
+        cursor: not-allowed
+        opacity: .48
+
+      &:disabled:hover
+        color: $color-muted
+        background: transparent
+
+  .simple-page-rail__list
+    flex: 1 1 auto
+    min-height: 0
+    padding: 4px 16px 14px
     display: grid
     align-content: start
     gap: 9px
-    overflow: auto
-    border-right: 1px solid $color-border
-    background: #f2f2ed
+    overflow-x: hidden
+    overflow-y: auto
+    overscroll-behavior: contain
 
+  .simple-page-rail
     a
       position: relative
       min-width: 0
@@ -721,8 +842,12 @@
 
   .simple-page-editor
     width: min(100%, 860px)
+    height: 100%
+    min-height: 0
     margin: 0 auto
     padding: 26px 30px 52px
+    overflow-y: auto
+    overscroll-behavior: contain
 
     > header
       margin-bottom: 18px
@@ -1564,6 +1689,9 @@
           background: $color-surface
           font-size: $font-size-small
 
+  .simple-version-gallery > div:last-child article > img
+    object-fit: contain
+
   .simple-page-meta-form
     margin-bottom: 14px
     display: grid
@@ -1641,7 +1769,7 @@
         width: 42px
         height: 42px
         border-radius: 5px
-        object-fit: cover
+        object-fit: contain
 
       > span
         min-width: 0
@@ -1851,6 +1979,14 @@
     .simple-project-overlay__panel
       width: 100%
 
+    .simple-project-content--page-editor
+      overflow: auto
+
+    .simple-page-view
+      height: auto
+      min-height: 100%
+      overflow: visible
+
     .simple-project-page
       padding: 24px 18px 48px
 
@@ -1898,19 +2034,36 @@
 
     .simple-page-editor-layout
       display: block
+      overflow: visible
 
     .simple-page-rail
-      padding: 10px
-      display: flex
-      overflow-x: auto
+      height: auto
+      display: block
+      overflow: visible
       border-right: 0
       border-bottom: 1px solid $color-border
+
+    .simple-page-rail__header
+      min-height: 48px
+      padding: 9px 12px 7px
+
+    .simple-page-rail__menu
+      right: -2px
+
+    .simple-page-rail__list
+      padding: 2px 10px 10px
+      display: flex
+      gap: 9px
+      overflow-x: auto
+      overflow-y: hidden
 
       a
         flex: 0 0 104px
 
     .simple-page-editor
+      height: auto
       padding: 22px 18px 44px
+      overflow: visible
 
     .simple-project-overlay__panel
       width: min(100%, 430px)

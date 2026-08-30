@@ -94,6 +94,53 @@ final result: passed
 
 ---
 
+## Chapter entry opens the existing page editor — current QA
+
+### Comparison target
+
+- Upstream interaction reference: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`, opened in its `进入画面` / `逐页编辑` state.
+- User-confirmed canonical implementation target: `/projects/01a05234-b434-7f1b-9aad-9a1468bdf599/chapters/01a0523b-cca1-7524-8085-49f47f347c31/sections/01a05241-8103-7340-8a9e-807a5e3d9a71`.
+- Prototype state capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/prototype-page-editor-1440x900.png`.
+- Chapter-entry full capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/chapter-entry-full-1440x900.png`.
+- Chapter-entry focused content capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/chapter-entry-content.png`.
+- Canonical section focused content capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/section-canonical-content.png`.
+- Focused side-by-side comparison: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/chapter-entry-content-comparison.png` (chapter entry left, canonical section route right).
+- Viewport and density: both implementation states use a 1440 × 900 CSS viewport at device scale factor 1. Full output is 1440 × 900 pixels; both focused `.simple-project-content` captures are 886 × 842 pixels. No density normalization was required. The upstream prototype was inspected at 1440 × 900 CSS pixels; its Browser capture is normalized to 1440 × 900 output pixels despite the embedded surface reporting DPR 2.
+- State: cover selected, saved/idle, project Agent expanded, global sidebar expanded. The focused comparison uses the same project facts, page, images, scroll position, and interaction state.
+
+### Required fidelity surfaces
+
+- Fonts and typography: passed. The chapter entry renders the exact existing `SimplePageView` component, so heading, labels, fields, status copy, weights, sizes, line heights, wrapping, and truncation match the canonical section route.
+- Spacing and layout rhythm: passed. Both focused captures measure 886 × 842 pixels and retain the same toolbar, 142px page rail, editor column, gutters, borders, radii, and vertical rhythm. The normalized RMSE is `0.00352012`; the remaining pixel noise is JPEG/paint timing rather than visible layout drift.
+- Colors and visual tokens: passed. Both routes reuse the same scoped Sass tokens and rendered component tree; no route-specific color, opacity, border, or surface variation is visible.
+- Image quality and asset fidelity: passed. The default cover and every rail thumbnail are the same REST-backed image assets at the same crop, scale, and containment mode. No new or substitute asset was introduced.
+- Copy and content: passed. The chapter title, page label, metadata, storyboard text, direction, references, generation state, candidates, and version content are the same SQLite-backed facts as the canonical section view.
+- Responsive and route behavior: passed for the requested desktop entry. `/chapters/:chapterUuid` remains in place and directly renders the editor instead of redirecting; it selects the first ordered page (cover, then body pages, then back cover). Explicit `/sections/:sectionUuid` deep links still select the requested page.
+- Interaction and accessibility: passed. Rail navigation moves to the public section UUID route, browser Back restores the chapter entry with the cover selected, the project-home action is no longer a self-link, and the chapter entry supplies the selected comic-section reference to Project Agent. Accessible roles, names, current-page state, and form controls are inherited unchanged from the canonical editor.
+
+### Comparison history
+
+1. Initial browser inspection showed the chapter root rendering the separate page-card management grid while the user-confirmed target lived at the cover section deep link.
+2. The chapter route now renders `SimplePageView` directly. `SimplePageView` resolves an omitted section UUID to the first ordered page and delays section-dependent queries until that UUID exists; an empty chapter retains the existing create-page fallback.
+3. The page-editor back action now returns to the project home instead of self-linking to the chapter entry. Project Agent context at the chapter entry resolves to the selected default comic section.
+4. Post-fix focused comparison found no actionable P0, P1, or P2 differences between the chapter entry and the existing canonical section view.
+
+### Findings
+
+No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the requested chapter-entry scope.
+
+### Verification
+
+- Primary interactions tested: direct chapter entry, default cover selection, rail navigation to `正文第 1 页`, explicit section deep-link persistence, browser Back to the cover entry, project-home target, and comic-section Agent reference construction.
+- Browser console after clean navigation and interaction checks: no warnings or errors.
+- Focused source/implementation comparison: passed.
+- Frontend unit suite: passed, 324 tests.
+- Frontend production build: passed.
+
+final result: passed
+
+---
+
 ## Simple project topbar — current QA
 
 ### Comparison target
@@ -132,6 +179,50 @@ No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the
 - Browser console after clean reload and interaction checks: no warnings or errors.
 - Frontend unit suite: passed, 315 tests.
 - Focused source/implementation comparison: passed.
+- Frontend production build: passed.
+
+final result: passed
+
+---
+
+## Simple page rail create menu — current QA
+
+### Comparison target
+
+- User-supplied rail reference: `/var/folders/bh/q3rhh5290rxft20rp4691vz80000gn/T/codex-clipboard-6c8d22c3-d5b1-4c7a-9ccd-8afdc940ead4.png`.
+- Upstream interaction reference: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`, opened in its `进入画面` / `逐页编辑` state.
+- Implementation closed state: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/page-rail-closed.png`.
+- Implementation menu state: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/page-rail-menu-open.png`.
+- Focused side-by-side comparison: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/page-rail-comparison.png` (reference left, implementation right).
+- Narrow-screen menu capture: `/Users/qingyang/.codex/visualizations/2026/08/30/01a05362-26de-7d20-bd06-d00b9bffd776/page-rail-mobile-menu.png`.
+- Comparison normalization: the supplied 392 × 760 DPR-2 rail crop is compared with a 392 × 760 implementation crop at the same visual scale and interaction state.
+
+### Required fidelity surfaces
+
+- Fonts and typography: passed. The rail heading is the same 13px semibold muted label as the reference after density normalization; menu items use the existing 12px/500 Lumi control typography.
+- Spacing and layout rhythm: passed. The rail is 154px wide with 16px side gutters, a 54px header, 28px plus target, 122px page cards, and 9px card gaps. In the focused comparison, the heading, plus center, divider, and thumbnail bounds align with the supplied reference.
+- Colors and visual tokens: passed. The rail uses the standard subtle surface, shared border, muted text, white floating menu, accent hover/focus state, and existing floating shadow tokens.
+- Image quality and asset fidelity: passed for the requested scope. Existing SQLite-backed page images and Lucide `Plus` icon are reused; no substitute raster, placeholder asset, handcrafted SVG, or CSS drawing was introduced.
+- Copy and content: passed. The visible heading is `页面`. The menu reproduces the expert-mode page-role choices in the same order: `封面`, `正文页`, `封底`. Existing roles are disabled by the same shared rule, so the current project correctly disables its already-present cover.
+- Responsive behavior: passed at the desktop reference size and 760 × 844. Desktop keeps the vertical rail; narrow layouts keep the heading and plus above a horizontally scrollable page list, with the menu anchored to the trigger and fully visible.
+- Interaction and accessibility: passed. The plus exposes `aria-haspopup="menu"` and `aria-expanded`; opening focuses the first enabled item, Arrow keys cycle enabled choices, Home/End jump, Escape closes and restores trigger focus, Tab and outside pointer dismiss, and selecting a role uses the same REST-backed blank-page creation semantics as expert mode. Dirty current-page edits are saved before creation.
+
+### Comparison history
+
+1. Initial implementation exposed the required choices, but the first visual crop showed the existing 142px rail and 10px gutters were narrower than the supplied reference.
+2. Measurement of the DPR-2 reference established a 154px CSS rail with 16px gutters and 122px cards. The implementation now uses those dimensions and the shared subtle-surface token.
+3. The first closed-state capture retained the trigger focus ring after Escape. The final comparison moves focus back into the editor so the idle plus state matches the supplied reference; focus feedback remains intact for keyboard users.
+4. Final desktop and narrow-screen checks found no actionable P0, P1, or P2 mismatch for the requested page-heading and create-menu scope.
+
+### Findings
+
+No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the requested page-creation menu scope.
+
+### Verification
+
+- Primary interactions tested: click open, disabled existing cover, ArrowDown navigation, Escape dismissal with focus return, outside-pointer dismissal, desktop layout, and narrow-screen layout.
+- Clean browser tab console: no warnings or errors.
+- Frontend unit suite: passed, 325 tests.
 - Frontend production build: passed.
 
 final result: passed

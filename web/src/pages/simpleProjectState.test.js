@@ -57,6 +57,18 @@ test('ChatArea receives exact setting, chapter, and page reference contexts', ()
   assert.equal(page.resource_type, 'comic_section')
   assert.equal(page.resource_uuid, sectionUuid)
   assert.equal(page.image_file_uuid, imageUuid)
+  const chapterEntryPage = simpleProjectChatReference(
+    { key: 'pages', chapterUuid },
+    { section: { uuid: sectionUuid, title: '封面', current_image: { asset: { uuid: imageUuid } } } },
+  )
+  assert.equal(chapterEntryPage.resource_type, 'comic_section')
+  assert.equal(chapterEntryPage.resource_uuid, sectionUuid)
+  const emptyChapterEntry = simpleProjectChatReference(
+    { key: 'pages', chapterUuid },
+    { chapter: { uuid: chapterUuid, chapter_code: 'CH-01', title: '月光森林' } },
+  )
+  assert.equal(emptyChapterEntry.resource_type, 'chapter')
+  assert.equal(emptyChapterEntry.resource_uuid, chapterUuid)
   assert.equal(simpleProjectChatReference({ key: 'home' }), null)
   assert.equal(simpleProjectChatReference({ key: 'page', sectionUuid }, { section: { uuid: 'different' } }), null)
 })

@@ -226,12 +226,12 @@ export default function GlobalSidebar({
             </div>
           </header>
           <nav aria-label={t('projects.title')}>
-            {stableRecentProjects.slice(0, 6).map((project, index) => (
+            {stableRecentProjects.map((project, index) => (
               <RecentProjectLink
                 key={project.uuid}
                 active={isProjectActive(location.pathname, project.uuid)}
                 project={project}
-                tone={PROJECT_TONES[index]}
+                tone={PROJECT_TONES[index % PROJECT_TONES.length]}
                 onSwitchProject={onSwitchProject}
               />
             ))}
