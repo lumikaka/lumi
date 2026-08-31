@@ -46,6 +46,10 @@ export async function getProjectSetup(projectUuid) {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/project-setup`)
 }
 
+export async function updateProjectSetupReference(projectUuid, referenceUuid, payload) {
+  return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/project-setup/references/${encodeURIComponent(referenceUuid)}`, jsonRequest('PATCH', payload))
+}
+
 export async function preflightImageGeneration(pictureBook) {
   return apiRequest('/api/v1/image-generation-preflights', jsonRequest('POST', { picture_book: pictureBook }))
 }

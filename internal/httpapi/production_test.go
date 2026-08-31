@@ -56,6 +56,8 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, s
 	e.PATCH("/api/v1/projects/:project_uuid/premise-sources/:source_uuid", handler.UpdatePremiseSource)
 	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections", handler.CreateSection)
 	e.PATCH("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", handler.UpdateSection)
+	e.DELETE("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", handler.DeleteSection)
+	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/restorations", handler.RestoreSection)
 	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-section-order", handler.ReorderSections)
 	e.PUT("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/premise-assets", handler.SetSectionPremiseAssets)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic", handler.ShowComicState)
@@ -290,6 +292,52 @@ func TestProductionAPIComicSectionPageRoleContract(t *testing.T) {
 	})
 	if reorderResponse.Code != http.StatusOK || !strings.Contains(reorderResponse.Body.String(), `"page_role":"body"`) || !strings.Contains(reorderResponse.Body.String(), `"page_role":"back_cover"`) {
 		t.Fatalf("reorder status=%d body=%s", reorderResponse.Code, reorderResponse.Body.String())
+	}
+}
+
+func TestProductionAPIComicSectionTrashAndRestoreContract(t *testing.T) {
+	e, _, projectUUID, chapter := productionAPIHarness(t)
+	base := "/api/v1/projects/" + projectUUID + "/chapters/" + chapter.UUID
+	firstResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{"title": "Recover me"})
+	secondResponse := requestJSON(t, e, http.MethodPost, base+"/comic-sections", map[string]any{"title": "Keep me"})
+	if firstResponse.Code != http.StatusCreated || secondResponse.Code != http.StatusCreated {
+		t.Fatalf("create statuses=%d/%d first=%s second=%s", firstResponse.Code, secondResponse.Code, firstResponse.Body.String(), secondResponse.Body.String())
+	}
+	first := envelopeData(t, firstResponse)
+	sectionPath := base + "/comic-sections/" + first["uuid"].(string)
+	deleted := requestJSON(t, e, http.MethodDelete, sectionPath+"?expected_revision="+fmt.Sprint(first["revision"]), nil)
+	if deleted.Code != http.StatusOK || !strings.Contains(deleted.Body.String(), `"data":null`) {
+		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
+	}
+	active := requestJSON(t, e, http.MethodGet, base+"/comic-sections", nil)
+	if active.Code != http.StatusOK || strings.Contains(active.Body.String(), first["uuid"].(string)) {
+		t.Fatalf("active status=%d body=%s", active.Code, active.Body.String())
+	}
+	trash := requestJSON(t, e, http.MethodGet, base+"/comic-sections?state=trashed", nil)
+	if trash.Code != http.StatusOK || !strings.Contains(trash.Body.String(), `"deleted_at":`) || strings.Contains(trash.Body.String(), `"id":`) {
+		t.Fatalf("trash status=%d body=%s", trash.Code, trash.Body.String())
+	}
+	trashItems := envelopeData(t, trash)["items"].([]any)
+	trashedPage := trashItems[0].(map[string]any)
+	missingRevision := requestJSON(t, e, http.MethodPost, sectionPath+"/restorations", map[string]any{})
+	if missingRevision.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("missing revision status=%d body=%s", missingRevision.Code, missingRevision.Body.String())
+	}
+	restoredResponse := requestJSON(t, e, http.MethodPost, sectionPath+"/restorations", map[string]any{"expected_revision": trashedPage["revision"]})
+	if restoredResponse.Code != http.StatusOK || strings.Contains(restoredResponse.Body.String(), `"deleted_at":`) || strings.Contains(restoredResponse.Body.String(), `"id":`) {
+		t.Fatalf("restore status=%d body=%s", restoredResponse.Code, restoredResponse.Body.String())
+	}
+	restored := envelopeData(t, restoredResponse)
+	if restored["uuid"] != first["uuid"] || restored["revision"].(float64) != trashedPage["revision"].(float64)+1 {
+		t.Fatalf("restored=%#v trash=%#v", restored, trashedPage)
+	}
+	emptyTrash := requestJSON(t, e, http.MethodGet, base+"/comic-sections?state=trashed", nil)
+	if emptyTrash.Code != http.StatusOK || !strings.Contains(emptyTrash.Body.String(), `"items":[]`) {
+		t.Fatalf("empty trash status=%d body=%s", emptyTrash.Code, emptyTrash.Body.String())
+	}
+	invalidState := requestJSON(t, e, http.MethodGet, base+"/comic-sections?state=unknown", nil)
+	if invalidState.Code != http.StatusUnprocessableEntity || !strings.Contains(invalidState.Body.String(), `"code":"production_validation_failed"`) {
+		t.Fatalf("invalid state status=%d body=%s", invalidState.Code, invalidState.Body.String())
 	}
 }
 

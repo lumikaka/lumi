@@ -59,7 +59,7 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		_ = runtime.failProduction(context.WithoutCancel(ctx), record, "invalid_input_snapshot", "生产输入快照损坏。", job.Attempt)
 		return river.JobCancel(errors.New("production snapshot mismatch"))
 	}
-	validVersion := snapshot.Version == 1 || snapshot.Version == 2 || ((snapshot.Version == 3 || snapshot.Version == 4 || snapshot.Version == 5) && snapshot.Kind == KindComicImageGeneration)
+	validVersion := snapshot.Version == 1 || snapshot.Version == 2 || (snapshot.Version == 3 && (snapshot.Kind == KindPremiseSettingGeneration || snapshot.Kind == KindComicImageGeneration)) || ((snapshot.Version == 4 || snapshot.Version == 5) && snapshot.Kind == KindComicImageGeneration)
 	validPageRole := snapshot.Version < 5 || snapshot.Kind != KindComicImageGeneration || snapshot.PageRole == production.PageRoleFrontCover || snapshot.PageRole == production.PageRoleBody || snapshot.PageRole == production.PageRoleBackCover
 	if !validVersion || !validPageRole || snapshot.Kind != record.Kind || snapshot.ResourceUUID != record.ResourceUUID {
 		_ = runtime.failProduction(context.WithoutCancel(ctx), record, "invalid_input_snapshot", "生产输入快照损坏。", job.Attempt)
@@ -114,8 +114,22 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 		return err
 	}
 	prompt := strings.TrimSpace(snapshot.Prompt)
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Prompt: prompt, Size: "1536x1024"})
+	referenceImages := []imagegen.ImageInput{}
+	if len(snapshot.ReferenceFiles) > 0 {
+		board, _, boardErr := runtime.prepareCreationReferenceBoard(ctx, service, record, snapshot)
+		if boardErr != nil {
+			return boardErr
+		}
+		if len(board) == 0 {
+			return productionError("yolo_reference_board_failed", "创建参考板为空", true)
+		}
+		referenceImages = append(referenceImages, imagegen.ImageInput{MIMEType: "image/png", Data: board})
+	}
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Prompt: prompt, Size: "1536x1024", Images: referenceImages})
 	if err != nil {
+		if len(referenceImages) > 0 && referenceImageRejected(err) {
+			return productionError("image_reference_unsupported", "图片 Provider 拒绝了参考图输入；请确认模型支持图片参考后重试当前步骤。", true)
+		}
 		return err
 	}
 	if err := runtime.productionProgress(ctx, record, 75); err != nil {
@@ -126,7 +140,27 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 		return err
 	}
 	now := runtime.manager.now().UTC()
-	return runtime.store.DB().WithContext(ctx).Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=(SELECT id FROM premise_setting_images WHERE uuid=?),output_json=json_object('setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, setting.UUID, setting.UUID, now, record.UUID).Error
+	return runtime.store.DB().WithContext(ctx).Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=(SELECT id FROM premise_setting_images WHERE uuid=?),output_json=json_set(CASE WHEN json_valid(output_json) THEN output_json ELSE '{}' END,'$.setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, setting.UUID, setting.UUID, now, record.UUID).Error
+}
+
+func referenceImageRejected(err error) bool {
+	var imageErr *imagegen.Error
+	if !errors.As(err, &imageErr) {
+		return false
+	}
+	if imageErr.Code == "image_invalid_input" || imageErr.Code == "image_provider_unsupported" {
+		return true
+	}
+	if imageErr.Code != "image_provider_error" || (imageErr.Diagnostic.HTTPStatus != 400 && imageErr.Diagnostic.HTTPStatus != 422) {
+		return false
+	}
+	details := strings.ToLower(strings.Join([]string{imageErr.Diagnostic.ProviderCode, imageErr.Diagnostic.Message}, " "))
+	for _, marker := range []string{"reference image", "input_image", "image input", "multimodal", "vision", "参考图", "图片输入"} {
+		if strings.Contains(details, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func (runtime *projectRuntime) generatePremiseAsset(ctx context.Context, service *production.Service, record productionTaskRecord, snapshot production.GenerationSnapshot) error {

@@ -21,6 +21,10 @@
 
 reconcile、扫描、修复、GC 与缩略图重建均生成可查询任务或计划，不允许任意路径删除。磁盘路径从不作为公开 API 字段返回。
 
+### 创建参考与参考板
+
+首页原图使用 `project_chatbot_reference` purpose 并由创建 binding 长期保留。YOLO setting task 可从 included 原图确定性生成一个 `premise_reference_board` PNG；参考板是派生 File，UUID 进入任务 checkpoint 和快照引用，但原图、来源 Premise Variant 与参考板不复制或替换彼此的 Object 语义。
+
 ## Feature 列表
 
 | Feature | 文档 | 说明 |
@@ -35,6 +39,6 @@ reconcile、扫描、修复、GC 与缩略图重建均生成可查询任务或�
 |---|---|
 | 项目 | 所有 File/Object 属于单一项目；首页创建参考图以稳定 Upload/File UUIDv7 导入，并由 `project_creation_reference_files` 保护跨库恢复窗口。项目关闭时 Runtime 按项目停止。 |
 | 章节 | 导入源使用 `story_source_items.file_id` 关联 File。 |
-| Premise 资产 / 漫画 Section | 设定图、variant 和 Section 图片引用受控 File。 |
+| Premise 资产 / 漫画 Section | 设定图、variant、创建参考板和 Section 图片引用受控 File；来源 Asset 直接复用首页原图的逻辑 File。 |
 | Chat Thread | `file` Reference 及其他资源 Reference 的 `image_file_id` 冻结关联 File；不允许跨项目引用或暴露磁盘路径。 |
 | 导出 | 新漫画导出不写入 Asset Store；旧 `output_file_id` 仅为到期兼容回收。 |

@@ -62,6 +62,35 @@ func (handler *ProjectSetupHandler) Update(c echo.Context) error {
 	return Success(c, http.StatusOK, state)
 }
 
+type updateProjectSetupReferenceRequest struct {
+	ExpectedRevision int64   `json:"expected_revision"`
+	ReferenceRole    *string `json:"reference_role"`
+	Title            *string `json:"title"`
+	Instruction      *string `json:"instruction"`
+	IncludeInYolo    *bool   `json:"include_in_yolo"`
+}
+
+func (handler *ProjectSetupHandler) UpdateReference(c echo.Context) error {
+	var request updateProjectSetupReferenceRequest
+	if err := decodeUniqueJSON(c, &request); err != nil {
+		return err
+	}
+	var state project.SetupState
+	err := handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
+		var err error
+		state, err = store.UpdateProjectSetupReference(c.Request().Context(), c.Param("reference_uuid"), project.SetupReferencePatchInput{
+			ExpectedRevision: request.ExpectedRevision, ReferenceRole: request.ReferenceRole, Title: request.Title,
+			Instruction: request.Instruction, IncludeInYolo: request.IncludeInYolo, Source: project.SetupSourceUserConfirmed,
+		})
+		return err
+	})
+	if err != nil {
+		return ProjectAPIError(err)
+	}
+	handler.broadcast(state)
+	return Success(c, http.StatusOK, state)
+}
+
 type finalizeProjectSetupRequest struct {
 	ExpectedRevision int64 `json:"expected_revision"`
 }

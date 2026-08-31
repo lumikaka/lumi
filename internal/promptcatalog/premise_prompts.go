@@ -58,6 +58,32 @@ Text requirements:
 
 {{input_text}}`
 
+const premiseSettingReferenceUsageZH = `## 创建参考图
+
+图片输入是一张由用户参考图组成的带标签参考板。请根据以下冻结计划使用各图片：
+{{reference_plan}}
+
+- character：保留身份、外貌、服装和标志性特征。
+- scene：参考空间关系、建筑、材质、光照和环境气氛。
+- prop：参考物件的形态、结构、材质和颜色。
+- style：只参考线条、色彩、纹理和光照，不复制主体或构图。
+- auto：作为通用视觉灵感，结合 premise 决定合理用途。
+
+只参考各 tile 内的原始视觉内容；不要复制参考板的网格、标签、编号、留白或排版。最终仍需严格遵守上方设定图的白底、独立主体和可裁切要求。`
+
+const premiseSettingReferenceUsageEN = `## Creation references
+
+The image input is one labeled board composed from the user's reference images. Use each image according to this frozen plan:
+{{reference_plan}}
+
+- character: preserve identity, appearance, clothing, and signature traits.
+- scene: reference spatial relationships, architecture, materials, lighting, and atmosphere.
+- prop: reference form, construction, materials, and colors.
+- style: reference only linework, palette, texture, and lighting; do not copy subjects or composition.
+- auto: treat as general visual inspiration and infer a reasonable use from the premise.
+
+Use only the original visual content inside each tile. Do not copy the board grid, labels, numbering, whitespace, or layout. The final image must still obey the white-background, independent-subject, cuttable setting-board requirements above.`
+
 const premiseAssetBreakdownPromptZH = `你是漫画制作资产整理员。请直接理解输入设定图，并承担完整的拆解决策：读取画面内容、判断版式、选择拆解策略、生成候选区域、过滤合并区域、分类命名、输出裁切坐标和质量检查结果。
 
 系统会把你输出的 crop_box 交给本地图像工具裁切 PNG，并生成 manifest、检测框预览、contact sheet 和 report。本地图像工具不负责理解图片或决定拆解策略，只执行你的 JSON 结果。
@@ -192,6 +218,7 @@ func premiseDefinitions(language string) []Definition {
 	}
 	return []Definition{
 		meta("setting_image", "Premise 设定图生成", "根据 Premise 文本和整体画风生成一张可拆解的设定图。", "Premise setting image generation", "Generate one setting image that can be broken down from Premise text and the overall art style.", choose(premiseSettingImagePromptZH, premiseSettingImagePromptEN), "setting_generation"),
+		{Group: GroupPremise, Key: "setting_reference_usage", Title: choose("创建参考图使用说明", "Creation-reference usage"), Description: choose("仅在 Premise 设定图包含首页参考图时追加。", "Appended only when a Premise setting image includes home-page references."), PromptType: PromptTypeFragment, DefaultValue: choose(premiseSettingReferenceUsageZH, premiseSettingReferenceUsageEN)},
 		meta("asset_breakdown", "Premise 设定项拆解", "根据设定图和 Premise 文本拆解可搜索、可复用的设定项。", "Premise setting asset breakdown", "Break down reusable searchable setting assets from the setting image and Premise text.", choose(premiseAssetBreakdownPromptZH, premiseAssetBreakdownPromptEN)),
 		meta("single_asset_generation", "单项 AI 生成", "Premise ChatArea 创建新设定项或新图片版本时使用。", "Single asset generation", "Used by Premise ChatArea to create a setting item or image version.", choose(singleAssetPromptZH, singleAssetPromptEN)),
 	}

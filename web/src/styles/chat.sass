@@ -533,6 +533,171 @@
   li + li
     margin-top: 2px
 
+.project-setup-card__references
+  display: grid
+  gap: 7px
+
+  > header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 8px
+
+    strong
+      font-size: 12px
+
+    p
+      margin-top: 2px
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.4
+
+    > span
+      flex: 0 0 auto
+      color: $color-muted
+      font-size: $font-size-small
+
+  > div
+    display: grid
+    gap: 6px
+
+.project-setup-reference
+  min-width: 0
+  padding: 7px
+  display: grid
+  grid-template-columns: 38px minmax(0, 1fr) auto auto
+  align-items: center
+  gap: 6px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: rgba($color-surface, .82)
+
+  > img
+    width: 38px
+    height: 38px
+    grid-row: 1 / span 2
+    display: block
+    border-radius: 6px
+    object-fit: cover
+    background: $color-surface-muted
+
+  > select
+    width: auto
+    min-width: 84px
+    min-height: 30px
+    padding: 3px 22px 3px 6px
+    font-size: $font-size-small
+
+  > label
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+
+    input,
+    textarea
+      width: 100%
+      min-height: 32px
+      padding: 5px 7px
+      border: 1px solid $color-border
+      border-radius: 5px
+      background: $color-surface
+      font: inherit
+      font-size: $font-size-small
+
+    textarea
+      height: auto
+      resize: vertical
+
+    input:focus,
+    textarea:focus
+      border-color: $color-accent
+      box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
+.project-setup-reference__heading
+  min-width: 0
+  display: grid
+  gap: 2px
+
+  strong
+    overflow: hidden
+    font-size: 12px
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  small
+    color: $color-muted
+    font-size: $font-size-small
+
+  small[data-source="agent_proposed"]
+    color: $color-accent
+
+  small[data-source="user_confirmed"]
+    color: $color-success
+
+.project-setup-reference__include,
+.project-setup-reference__save
+  min-height: 30px
+  padding: 4px 7px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  gap: 4px
+  border: 1px solid $color-border
+  border-radius: 5px
+  color: $color-muted
+  background: transparent
+  font-size: $font-size-small
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-text
+    background: $color-accent-muted
+
+.project-setup-reference__include[aria-pressed="true"]
+  border-color: rgba($color-success, .45)
+  color: $color-success
+  background: $color-success-muted
+
+.project-setup-reference__include[aria-pressed="true"]:hover
+  border-color: $color-success
+  color: $color-success
+  background: rgba($color-success, .16)
+
+.project-setup-reference__instruction
+  grid-column: 3 / -1
+
+.project-setup-reference__save
+  grid-column: 3 / -1
+  justify-self: end
+
+.project-setup-reference__error
+  grid-column: 2 / -1
+
+.project-setup-reference__readonly
+  grid-column: 3 / -1
+  display: flex
+  flex-wrap: wrap
+  justify-content: flex-end
+  gap: 4px
+  color: $color-muted
+  font-size: $font-size-small
+
+  span
+    padding: 2px 6px
+    border-radius: 999px
+    background: $color-surface-muted
+
+  p
+    flex-basis: 100%
+    color: $color-text
+    font-size: $font-size-small
+    line-height: 1.4
+
 .chat-error
   margin: 0
   padding: 10px 11px
@@ -2417,6 +2582,20 @@
     animation: none
 
 @media (max-width: 760px)
+  .project-setup-reference
+    grid-template-columns: 38px minmax(0, 1fr) auto
+
+  .project-setup-reference__include,
+  .project-setup-reference > select
+    grid-column: 2 / -1
+    justify-self: start
+
+  .project-setup-reference > label,
+  .project-setup-reference__instruction,
+  .project-setup-reference__save,
+  .project-setup-reference__readonly
+    grid-column: 1 / -1
+
   .chat-message__user-bubble
     max-width: 100%
 

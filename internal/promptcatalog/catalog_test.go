@@ -35,13 +35,13 @@ func TestCatalogContainsCanonicalKeys(t *testing.T) {
 	want := map[string][]string{
 		GroupStory:        {"json_system", "story_profile", "story_chapter", "chapter_batch_plan", "next_story_chapter", "profile_from_chapters"},
 		GroupChapter:      {"json_system", "comic_storyboard", "cover_storyboard", "section_premise_selection", "before_image", "cover_before_image", "back_cover_before_image", "section_reference_present", "section_reference_absent", "section_additional_direction", "section_image"},
-		GroupPremise:      {"setting_image", "asset_breakdown", "single_asset_generation"},
+		GroupPremise:      {"setting_image", "setting_reference_usage", "asset_breakdown", "single_asset_generation"},
 		GroupPremiseStyle: {"project_overall_style", "simple_cel_anime", "hong_kong_comic", "minimal_japanese_handdrawn"},
 		GroupAgent:        {"base", "conversation_summary"},
 		GroupRuntime:      {"project_language_instruction"},
 	}
-	if definitions := Definitions(LanguageChinese); len(definitions) != 27 {
-		t.Fatalf("catalog size = %d, want 27", len(definitions))
+	if definitions := Definitions(LanguageChinese); len(definitions) != 28 {
+		t.Fatalf("catalog size = %d, want 28", len(definitions))
 	}
 	for group, keys := range want {
 		for _, key := range keys {
@@ -218,7 +218,7 @@ func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 			// The special-page prompt keys are new picture-book-only capabilities. Keep the
 			// canary pinned to the pre-existing vertical-strip suite so adding the
 			// unused key does not require blessing changes to protected prompts.
-			if definition.Group == GroupChapter && (definition.Key == "cover_storyboard" || definition.Key == "cover_before_image" || definition.Key == "back_cover_before_image") {
+			if (definition.Group == GroupChapter && (definition.Key == "cover_storyboard" || definition.Key == "cover_before_image" || definition.Key == "back_cover_before_image")) || (definition.Group == GroupPremise && definition.Key == "setting_reference_usage") {
 				continue
 			}
 			_, _ = fmt.Fprintf(hasher, "%s\x00%s\x00%s\x00%s\x00", language, definition.Group, definition.Key, definition.DefaultValue)

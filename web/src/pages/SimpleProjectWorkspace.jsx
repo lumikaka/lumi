@@ -31,6 +31,7 @@ import {
   SimpleHomePage,
   SimpleNotFound,
   SimplePageView,
+  SimpleProjectSettingsPage,
   SimpleSettingDetailPage,
   SimpleSettingsPage,
   SimpleStoryPage,
@@ -73,7 +74,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     : referenceSections[0]
   const chatReference = simpleProjectChatReference(routeState, { asset: referenceAssetQuery.data, chapter: referenceChapterQuery.data, section: referenceSection })
   const project = projectQuery.data
-  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book' }[routeState.key] || 'simple.shell.page.home')
+  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book' }[routeState.key] || 'simple.shell.page.home')
   const chatOpen = compact ? chatOverlayOpen : !chatCollapsed
   const pageEditorActive = project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
@@ -124,10 +125,6 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     setChatCollapsed((collapsed) => !collapsed)
   }
 
-  const openProjectConfiguration = () => {
-    navigate(projectRoute(projectUuid, '', location.search), { state: { openProjectConfiguration: true } })
-  }
-
   return (
     <main className={`simple-project-shell${sidebarCollapsed ? ' global-sidebar-collapsed' : ''}`}>
       <GlobalSidebar collapsed={sidebarCollapsed} mobileOpen={mobileNavigationOpen} onClose={() => setMobileNavigationOpen(false)} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} recentProjects={recentQuery.data?.items || []} recentProjectsLoading={recentQuery.isLoading} onSwitchProject={switchProject} />
@@ -138,7 +135,6 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
         search={location.search}
         chatOpen={chatOpen}
         onToggleChat={toggleChat}
-        onOpenProjectConfiguration={openProjectConfiguration}
         onSwitchWorkspaceMode={() => selectMode(PROJECT_DASHBOARD_MODE_EXPERT)}
         onOpenNavigation={() => setMobileNavigationOpen(true)}
       />
@@ -147,6 +143,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
           {project?.setup_status === 'draft' ? <DraftProjectWorkspace /> : (
             <Routes>
               <Route index element={<SimpleHomePage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
+              <Route path="settings" element={<SimpleProjectSettingsPage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
               <Route path="story" element={<SimpleStoryPage project={project} projectUuid={projectUuid} />} />
               <Route path="llm-logs" element={<div className="simple-project-page simple-llm-logs-page"><ProjectLLMLogsPanel projectUuid={projectUuid} standalone /></div>} />
               <Route path="exports" element={<div className="simple-project-page simple-exports-page"><OverviewExportsPanel projectUuid={projectUuid} standalone /></div>} />
@@ -167,7 +164,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   )
 }
 
-function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen, onToggleChat, onOpenProjectConfiguration, onSwitchWorkspaceMode, onOpenNavigation }) {
+function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen, onToggleChat, onSwitchWorkspaceMode, onOpenNavigation }) {
   const { t } = useI18n()
   const menuId = useId()
   const menuRef = useRef(null)
@@ -238,7 +235,7 @@ function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen
           </button>
           {projectActionsOpen ? (
             <div className="simple-project-topbar__dropdown" id={menuId} role="menu" aria-label={t('simple.shell.more_project_actions')} onKeyDown={handleMenuKeyDown}>
-              <button type="button" role="menuitem" onClick={() => closeAndRun(onOpenProjectConfiguration)}><Settings size={16} aria-hidden="true" /><span>{t('projects.configuration')}</span></button>
+              <Link role="menuitem" to={projectRoute(projectUuid, 'settings', search)} onClick={() => setProjectActionsOpen(false)}><Settings size={16} aria-hidden="true" /><span>{t('projects.configuration')}</span></Link>
               <button type="button" role="menuitem" onClick={() => closeAndRun(onSwitchWorkspaceMode)}><LayoutDashboard size={16} aria-hidden="true" /><span>{t('simple.shell.switch_workspace_mode')}</span></button>
               <Link role="menuitem" to={projectRoute(projectUuid, 'llm-logs', search)} onClick={() => setProjectActionsOpen(false)}><Activity size={16} aria-hidden="true" /><span>{t('settings.llm_logs')}</span></Link>
               <Link role="menuitem" to={projectRoute(projectUuid, 'exports', search)} onClick={() => setProjectActionsOpen(false)}><Download size={16} aria-hidden="true" /><span>{t('projects.tab.exports')}</span></Link>

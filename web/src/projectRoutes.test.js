@@ -29,6 +29,7 @@ test('legacy simple and expert locations normalize to one resource URL and prese
   const cases = [
     [`/projects/${projectUuid}/simple/home`, '', `/projects/${projectUuid}`, ''],
     [`/projects/${projectUuid}/overview/profile`, '?chat_thread_uuid=thread', `/projects/${projectUuid}/story`, '?chat_thread_uuid=thread'],
+    [`/projects/${projectUuid}/simple/settings`, '', `/projects/${projectUuid}/premise`, ''],
     [`/projects/${projectUuid}/simple/settings/${assetUuid}`, '', `/projects/${projectUuid}/premise/assets/${assetUuid}`, ''],
     [`/projects/${projectUuid}/simple/books/${chapterUuid}/pages/${sectionUuid}`, '?chat_new=1', `/projects/${projectUuid}/chapters/${chapterUuid}/sections/${sectionUuid}`, '?chat_new=1'],
     [`/projects/${projectUuid}/simple/books/${chapterUuid}/book`, '', `/projects/${projectUuid}/chapters/${chapterUuid}/preview`, ''],
@@ -73,6 +74,7 @@ test('expert-only routes force an expert surface while shared utilities honor th
   }
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/llm-logs`, projectUuid), false)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/exports`, projectUuid), false)
+  assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/settings`, projectUuid), false)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/story`, projectUuid), false)
   assert.equal(projectModeOverride('?workspace_mode=expert&chat_new=1'), 'expert')
   assert.equal(withoutProjectModeOverride('?workspace_mode=expert&chat_new=1'), '?chat_new=1')

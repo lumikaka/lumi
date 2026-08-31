@@ -14,6 +14,7 @@ import {
   Images,
   Maximize2,
   Minimize2,
+  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
@@ -51,6 +52,7 @@ import {
   listProductionTasks,
   listStoryboards,
   reorderComicSections,
+  restoreComicSection,
   restorePremiseAsset,
   selectImageVariant,
   selectPremiseAssetVariant,
@@ -99,17 +101,15 @@ import {
 
 const ACTIVE_TASK_STATUSES = new Set(['queued', 'running', 'waiting_for_input'])
 const PREMISE_ASSET_TYPES = ['character', 'scene', 'prop']
+const SIMPLE_FEEDBACK_AUTO_DISMISS_MS = 5000
+const SIMPLE_FRESH_IMAGE_MS = 2400
+const SIMPLE_PAGE_CONTEXT_MENU_MARGIN = 8
+const SIMPLE_PAGE_CONTEXT_MENU_WIDTH = 132
+const SIMPLE_PAGE_CONTEXT_MENU_HEIGHT = 46
 
 export function SimpleHomePage({ project, projectUuid, projectQuery }) {
   const { t } = useI18n()
   const location = useLocation()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(project?.name || '')
-  const [description, setDescription] = useState(project?.description || '')
-  const [language, setLanguage] = useState(project?.generation_language || 'zh-Hans')
-  const [feedback, setFeedback] = useState(null)
   const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid], queryFn: () => getStoryProfile(projectUuid) })
   const premiseQuery = useQuery({ queryKey: ['premise', projectUuid], queryFn: () => getPremise(projectUuid) })
   const assetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid, { state: 'active' }) })
@@ -124,53 +124,16 @@ export function SimpleHomePage({ project, projectUuid, projectQuery }) {
   const displayDescription = project?.description || simpleStoryExcerpt(story) || t('simple.home.description_fallback')
   const loading = projectQuery.isLoading || profileQuery.isLoading || premiseQuery.isLoading || assetsQuery.isLoading || chaptersQuery.isLoading
   const error = projectQuery.error || profileQuery.error || premiseQuery.error || assetsQuery.error || chaptersQuery.error || sectionQueries.find((query) => query.error)?.error
-  const saveProject = useMutation({
-    mutationFn: () => updateStoryProject(projectUuid, {
-      name: name.trim(),
-      description: description.trim(),
-      generation_language: language,
-      expected_revision: project.revision,
-    }),
-    onMutate: () => setFeedback(null),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['story-project', projectUuid], updated)
-      void queryClient.invalidateQueries({ queryKey: ['recent-projects'] })
-      setFeedback({ kind: 'success', message: t('simple.feedback.saved') })
-      setEditing(false)
-    },
-    onError: (mutationError) => {
-      setFeedback({ kind: 'error', error: mutationError })
-      void projectQuery.refetch()
-    },
-  })
-  const openEditor = () => {
-    setName(project?.name || '')
-    setDescription(project?.description || '')
-    setLanguage(project?.generation_language || 'zh-Hans')
-    setFeedback(null)
-    setEditing(true)
-  }
-  const configurationDirty = Boolean(project) && (
-    name !== (project.name || '')
-    || description !== (project.description || '')
-    || language !== (project.generation_language || 'zh-Hans')
-  )
-  useEffect(() => {
-    if (!location.state?.openProjectConfiguration || !project) return
-    openEditor()
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null })
-  }, [location.pathname, location.search, location.state, navigate, project]) // eslint-disable-line react-hooks/exhaustive-deps
   if (loading && !project) return <SimpleLoading message={t('simple.loading.project')} />
   return (
     <div className="simple-project-page simple-project-home">
       <SimpleError error={error} onRetry={() => { projectQuery.refetch(); profileQuery.refetch(); premiseQuery.refetch(); assetsQuery.refetch(); chaptersQuery.refetch(); sectionQueries.forEach((query) => query.refetch()) }} />
-      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
       <section className="simple-home-hero">
         <div className="simple-home-cover" style={{ '--simple-page-ratio': ratio ? `${ratio.width} / ${ratio.height}` : '4 / 3' }}>
           <SimpleImage asset={cover} alt={project?.name || t('projects.fallback_name')} fallbackIcon={<BookOpenText size={28} aria-hidden="true" />} />
         </div>
         <div className="simple-home-hero__copy">
-          <header><h1 data-no-i18n>{project?.name || t('projects.fallback_name')}</h1><div><Link className="simple-button" to={projectRoute(projectUuid, 'story', location.search)}><BookOpenText size={15} aria-hidden="true" />{t('simple.home.story_action')}</Link><button className="simple-button simple-button--secondary" type="button" onClick={openEditor}><Pencil size={15} aria-hidden="true" />{t('projects.configuration')}</button></div></header>
+          <header><h1 data-no-i18n>{project?.name || t('projects.fallback_name')}</h1><div><Link className="simple-button" to={projectRoute(projectUuid, 'story', location.search)}><BookOpenText size={15} aria-hidden="true" />{t('simple.home.story_action')}</Link><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'settings', location.search)}><Pencil size={15} aria-hidden="true" />{t('projects.configuration')}</Link></div></header>
           <p data-user-content>{displayDescription}</p>
           <dl>
             <div><dt>{t('simple.home.style')}</dt><dd data-user-content>{premiseQuery.data?.default_style || '—'}</dd></div>
@@ -188,21 +151,89 @@ export function SimpleHomePage({ project, projectUuid, projectQuery }) {
         <header><div><h2>{t('simple.home.books_title')}</h2><p>{t('simple.home.books_progress', { count: chapters.length })}</p></div><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'chapters', location.search)}>{t('simple.home.books_action')}<ChevronRight size={15} aria-hidden="true" /></Link></header>
         {chapters.length ? <SimpleBookPreviewGrid projectUuid={projectUuid} chapters={chapters} sectionQueries={sectionQueries} /> : <p className="simple-empty-copy">{t('simple.home.no_books')}</p>}
       </section>
-      {editing ? (
-        <SimpleDialog title={t('projects.configuration')} onClose={() => !saveProject.isPending && setEditing(false)}>
-          <form className="simple-form" onSubmit={(event) => { event.preventDefault(); saveProject.mutate() }}>
-            <label>{t('common.label.name')}<input autoFocus maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
+    </div>
+  )
+}
+
+export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }) {
+  const { t } = useI18n()
+  const location = useLocation()
+  const queryClient = useQueryClient()
+  const initialValues = projectConfigurationValues(project)
+  const baselineRef = useRef(initialValues)
+  const [name, setName] = useState(initialValues.name)
+  const [description, setDescription] = useState(initialValues.description)
+  const [language, setLanguage] = useState(initialValues.language)
+  const [feedback, setFeedback] = useState(null)
+
+  useEffect(() => {
+    if (!project) return
+    const previous = baselineRef.current
+    const next = projectConfigurationValues(project)
+    setName((current) => !previous || current === previous.name ? next.name : current)
+    setDescription((current) => !previous || current === previous.description ? next.description : current)
+    setLanguage((current) => !previous || current === previous.language ? next.language : current)
+    baselineRef.current = next
+  }, [project?.description, project?.generation_language, project?.name, project?.revision])
+
+  const configurationDirty = Boolean(project) && (
+    name !== (project.name || '')
+    || description !== (project.description || '')
+    || language !== (project.generation_language || 'zh-Hans')
+  )
+  const saveProject = useMutation({
+    mutationFn: () => updateStoryProject(projectUuid, {
+      name: name.trim(),
+      description: description.trim(),
+      generation_language: language,
+      expected_revision: project.revision,
+    }),
+    onMutate: () => setFeedback(null),
+    onSuccess: (updated) => {
+      const next = projectConfigurationValues(updated)
+      baselineRef.current = next
+      setName(next.name)
+      setDescription(next.description)
+      setLanguage(next.language)
+      queryClient.setQueryData(['story-project', projectUuid], updated)
+      void queryClient.invalidateQueries({ queryKey: ['recent-projects'] })
+      setFeedback({ kind: 'success', message: t('simple.feedback.saved') })
+    },
+    onError: (mutationError) => {
+      setFeedback({ kind: 'error', error: mutationError })
+      void projectQuery.refetch()
+    },
+  })
+
+  if (projectQuery.isLoading && !project) return <SimpleLoading message={t('simple.loading.project')} />
+  return (
+    <div className="simple-project-page simple-project-settings-page">
+      <SimplePageHeading title={t('projects.configuration')} description={t('simple.project.configuration_description')} backTo={projectRoute(projectUuid, '', location.search)} />
+      <SimpleError error={!project ? projectQuery.error : null} onRetry={() => projectQuery.refetch()} />
+      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
+      {project ? (
+        <section className="simple-project-settings-card">
+          <form className="simple-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || saveProject.isPending) return; saveProject.mutate() }}>
+            <label>{t('common.label.name')}<input autoFocus required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
             <label>{t('common.label.description')}<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
             <label>{t('simple.home.language')}<select value={language} onChange={(event) => setLanguage(event.target.value)}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
-            <label>{t('simple.home.format')}<input value={project?.picture_book ? t(pictureBookFormatKey(project.picture_book.format)) : '—'} disabled /></label>
+            <label>{t('simple.home.format')}<input value={project.picture_book ? t(pictureBookFormatKey(project.picture_book.format)) : '—'} disabled /></label>
             <p className="simple-form__hint">{t('simple.project.immutable_hint')}</p>
             <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={saveProject.isPending} />
-            <SimpleDialogActions pending={saveProject.isPending} submitDisabled={!name.trim()} onCancel={() => setEditing(false)} />
+            <div className="simple-form__actions"><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, '', location.search)}>{t('simple.shell.page.home')}</Link><button className="simple-button" type="submit" disabled={saveProject.isPending || !name.trim()}>{t(saveProject.isPending ? 'common.status.saving' : 'common.action.save')}</button></div>
           </form>
-        </SimpleDialog>
+        </section>
       ) : null}
     </div>
   )
+}
+
+function projectConfigurationValues(project) {
+  return {
+    name: project?.name || '',
+    description: project?.description || '',
+    language: project?.generation_language || 'zh-Hans',
+  }
 }
 
 export function SimpleStoryPage({ project, projectUuid }) {
@@ -498,6 +529,7 @@ export function SimplePagesPage({ project, projectUuid }) {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(null)
+  const [trashOpen, setTrashOpen] = useState(false)
   const [newPage, setNewPage] = useState(emptyPageDraft)
   const [feedback, setFeedback] = useState(null)
   const chaptersQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
@@ -525,11 +557,12 @@ export function SimplePagesPage({ project, projectUuid }) {
   if (chaptersQuery.isLoading || chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
   return (
     <div className="simple-project-page simple-pages-page">
-      <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
+      <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
       <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
       <SimpleError error={chaptersQuery.error || chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chaptersQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
       {activeTaskCount ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTaskCount })}</p> : null}
       {sections.length ? <div className="simple-page-grid">{sections.map((section, index) => <SimpleManagedPageCard key={section.uuid} projectUuid={projectUuid} chapterUuid={chapterUuid} section={section} sections={sections} index={index} pending={remove.isPending || reorder.isPending} onDelete={() => setDeleting(section)} onMove={move} />)}</div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} actions={<button className="simple-button" type="button" onClick={() => setCreating(true)}>{t('simple.pages.add')}</button>} />}
+      {trashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
       {creating ? <SimpleDialog title={t('simple.pages.add_title')} onClose={() => !create.isPending && setCreating(false)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); create.mutate() }}><label>{t('simple.page.role')}<select value={newPage.role} onChange={(event) => setNewPage((value) => ({ ...value, role: event.target.value }))}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover')}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover')}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input autoFocus maxLength={160} value={newPage.title} onChange={(event) => setNewPage((value) => ({ ...value, title: event.target.value }))} /></label><label>{t('simple.page.text')}<textarea value={newPage.text} onChange={(event) => setNewPage((value) => ({ ...value, text: event.target.value }))} /></label><label>{t('simple.page.visual_direction')}<textarea value={newPage.direction} onChange={(event) => setNewPage((value) => ({ ...value, direction: event.target.value }))} /></label><SimpleDialogActions pending={create.isPending} submitDisabled={false} onCancel={() => setCreating(false)} /></form></SimpleDialog> : null}
       {deleting ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deleting) })} pending={remove.isPending} onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)} /> : null}
     </div>
@@ -544,6 +577,10 @@ export function SimplePageView({ project, projectUuid }) {
   const queryClient = useQueryClient()
   const createMenuRef = useRef(null)
   const createTriggerRef = useRef(null)
+  const pageActionsRef = useRef(null)
+  const pageActionsTriggerRef = useRef(null)
+  const pageItemMenuRef = useRef(null)
+  const pageItemMenuReturnFocusRef = useRef(null)
   const pageDragRef = useRef(null)
   const pageDragClickSuppressed = useRef(false)
   const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid], queryFn: () => getChapter(projectUuid, chapterUuid) })
@@ -564,9 +601,15 @@ export function SimplePageView({ project, projectUuid }) {
   const [imageFile, setImageFile] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const [pageActionsOpen, setPageActionsOpen] = useState(false)
+  const [pageItemMenu, setPageItemMenu] = useState(null)
+  const [pageTrashOpen, setPageTrashOpen] = useState(false)
+  const [deletingPage, setDeletingPage] = useState(null)
   const [imageCandidatesOpen, setImageCandidatesOpen] = useState(false)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [pageDrag, setPageDrag] = useState(null)
-  const completedTask = useRef('')
+  const [freshImageTask, setFreshImageTask] = useState('')
+  const taskStateRef = useRef(null)
   const task = (tasksQuery.data?.items || []).find((item) => item.kind === 'comic_image_generation' && item.resource_uuid === sectionUuid)
   const taskActive = Boolean(task && ACTIVE_TASK_STATUSES.has(task.status))
   const dirty = Boolean(section) && (title.trim() !== (section.title || '') || text.trim() !== (section.current_storyboard?.content_md || '') || direction.trim() !== (section.description_md || '') || role !== comicPageRole(section))
@@ -581,15 +624,30 @@ export function SimplePageView({ project, projectUuid }) {
     setDirection(section.description_md || '')
     setRole(comicPageRole(section))
     setSelectedRefs((section.premise_assets || []).map((item) => item.asset_uuid))
-  }, [section?.revision, section?.current_storyboard?.uuid])
+  }, [section?.uuid, section?.revision, section?.current_storyboard?.uuid])
 
   useEffect(() => {
-    if (task?.status !== 'completed' || completedTask.current === task.uuid) return
-    completedTask.current = task.uuid
+    taskStateRef.current = null
+    setFreshImageTask('')
+    setImagePreviewOpen(false)
+  }, [sectionUuid])
+
+  useEffect(() => {
+    if (!task?.uuid) return
+    const previous = taskStateRef.current
+    taskStateRef.current = { uuid: task.uuid, status: task.status }
+    if (task.status !== 'completed' || previous?.uuid !== task.uuid || !ACTIVE_TASK_STATUSES.has(previous.status)) return
     void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
     void queryClient.invalidateQueries({ queryKey: ['comic-images', projectUuid, chapterUuid, sectionUuid] })
+    setFreshImageTask(task.uuid)
     setFeedback({ kind: 'success', message: t('simple.page.generation_complete') })
   }, [chapterUuid, projectUuid, queryClient, sectionUuid, task?.status, task?.uuid, t])
+
+  useEffect(() => {
+    if (!freshImageTask) return undefined
+    const timeout = window.setTimeout(() => setFreshImageTask(''), SIMPLE_FRESH_IMAGE_MS)
+    return () => window.clearTimeout(timeout)
+  }, [freshImageTask])
 
   useEffect(() => {
     if (!createMenuOpen) return undefined
@@ -632,6 +690,86 @@ export function SimplePageView({ project, projectUuid }) {
     }
   }, [createMenuOpen])
 
+  useEffect(() => {
+    if (!pageActionsOpen) return undefined
+    const focusFrame = window.requestAnimationFrame(() => {
+      pageActionsRef.current?.querySelector('[role="menuitem"]')?.focus()
+    })
+    const closeAndReturnFocus = () => {
+      setPageActionsOpen(false)
+      pageActionsTriggerRef.current?.focus()
+    }
+    const handlePointerDown = (event) => {
+      if (!pageActionsRef.current?.contains(event.target)) setPageActionsOpen(false)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeAndReturnFocus()
+        return
+      }
+      if (event.key === 'Tab') setPageActionsOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [pageActionsOpen])
+
+  useEffect(() => {
+    if (!pageItemMenu) return undefined
+    const focusFrame = window.requestAnimationFrame(() => {
+      pageItemMenuRef.current?.querySelector('[role="menuitem"]:not(:disabled)')?.focus()
+    })
+    const closeAndReturnFocus = () => {
+      setPageItemMenu(null)
+      pageItemMenuReturnFocusRef.current?.focus()
+    }
+    const handlePointerDown = (event) => {
+      if (!pageItemMenuRef.current?.contains(event.target)) setPageItemMenu(null)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeAndReturnFocus()
+        return
+      }
+      if (event.key === 'Tab') setPageItemMenu(null)
+    }
+    const handleViewportChange = () => setPageItemMenu(null)
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [pageItemMenu])
+
+  const openPageItemMenu = (event, item) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setCreateMenuOpen(false)
+    setPageActionsOpen(false)
+    const trigger = event.currentTarget.matches('a') ? event.currentTarget : event.currentTarget.querySelector('a')
+    const triggerBounds = trigger?.getBoundingClientRect()
+    const anchorLeft = event.type === 'contextmenu' ? event.clientX : triggerBounds?.left || SIMPLE_PAGE_CONTEXT_MENU_MARGIN
+    const anchorTop = event.type === 'contextmenu' ? event.clientY : triggerBounds?.bottom || SIMPLE_PAGE_CONTEXT_MENU_MARGIN
+    const maxLeft = Math.max(SIMPLE_PAGE_CONTEXT_MENU_MARGIN, window.innerWidth - SIMPLE_PAGE_CONTEXT_MENU_WIDTH - SIMPLE_PAGE_CONTEXT_MENU_MARGIN)
+    const maxTop = Math.max(SIMPLE_PAGE_CONTEXT_MENU_MARGIN, window.innerHeight - SIMPLE_PAGE_CONTEXT_MENU_HEIGHT - SIMPLE_PAGE_CONTEXT_MENU_MARGIN)
+    pageItemMenuReturnFocusRef.current = trigger
+    setPageItemMenu({
+      sectionUuid: item.uuid,
+      left: Math.max(SIMPLE_PAGE_CONTEXT_MENU_MARGIN, Math.min(anchorLeft, maxLeft)),
+      top: Math.max(SIMPLE_PAGE_CONTEXT_MENU_MARGIN, Math.min(anchorTop, maxTop)),
+    })
+  }
+
   const updateSectionCache = (updated) => {
     queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], (current) => ({ ...current, items: (current?.items || []).map((item) => item.uuid === updated.uuid ? updated : item) }))
   }
@@ -650,10 +788,10 @@ export function SimplePageView({ project, projectUuid }) {
       if (JSON.stringify(selectedRefs) !== JSON.stringify(persistedReferences)) current = await setComicSectionPremiseAssets(projectUuid, chapterUuid, sectionUuid, selectedRefs, current.revision)
       return current
     },
-    onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.feedback.saved') }) },
+    onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback(null) },
     onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() },
   })
-  const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: '', premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.page.generation_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
+  const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: '', premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: async () => { setFeedback(null); await queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const importImage = useMutation({ mutationFn: async () => { const upload = await createAssetUpload(projectUuid, { purpose: 'comic_section_image', displayName: section.title || sectionUuid, file: imageFile }); return importSectionImage(projectUuid, chapterUuid, sectionUuid, { upload_uuid: upload.uuid, expected_revision: section.revision }) }, onSuccess: (updated) => { setImageFile(null); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_imported') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { setImageCandidatesOpen(false); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const chooseStoryboard = useMutation({ mutationFn: (variant) => selectStoryboard(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.text_restored') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
@@ -671,6 +809,25 @@ export function SimplePageView({ project, projectUuid }) {
       navigate(projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(created.uuid)}`, location.search))
     },
     onError: (error) => { setCreateMenuOpen(false); setFeedback({ kind: 'error', error }) },
+  })
+  const trashPage = useMutation({
+    mutationFn: (page) => deleteComicSection(projectUuid, chapterUuid, page.uuid, page.revision),
+    onSuccess: (_, deletedPage) => {
+      const deletedIndex = sections.findIndex((item) => item.uuid === deletedPage.uuid)
+      const destination = sections[deletedIndex + 1] || sections[deletedIndex - 1]
+      const deletingCurrentPage = deletedPage.uuid === sectionUuid
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], (current) => current ? { ...current, items: (current.items || []).filter((item) => item.uuid !== deletedPage.uuid) } : current)
+      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+      void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+      setPageItemMenu(null)
+      setDeletingPage(null)
+      setFeedback({ kind: 'success', message: t('simple.pages.deleted') })
+      if (deletingCurrentPage) navigate(projectRoute(projectUuid, destination ? `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(destination.uuid)}` : `chapters/${encodeURIComponent(chapterUuid)}`, location.search), { replace: true })
+    },
+    onError: (error) => {
+      setFeedback({ kind: 'error', error })
+      void sectionsQuery.refetch()
+    },
   })
   const reorderPages = useMutation({
     mutationFn: (uuids) => reorderComicSections(projectUuid, chapterUuid, uuids),
@@ -775,48 +932,85 @@ export function SimplePageView({ project, projectUuid }) {
   const previous = sections[index - 1]
   const next = sections[index + 1]
   const imageVariants = imagesQuery.data?.items || []
+  const currentImageAsset = section.current_image?.asset
+  const currentImageReady = currentImageAsset?.status === 'ready' && Boolean(currentImageAsset.content_url)
+  const bodyPageCount = sections.filter((item) => comicPageRole(item) === 'body').length
+  const pageItemMenuPage = pageItemMenu ? sections.find((item) => item.uuid === pageItemMenu.sectionUuid) : null
+  const pageItemMenuLabel = pageItemMenuPage ? comicPageLabel(t, sections, pageItemMenuPage) : ''
+  const pageItemMenuKeepsRequiredBody = Boolean(pageItemMenuPage) && project?.picture_book?.format !== 'vertical_strip' && comicPageRole(pageItemMenuPage) === 'body' && bodyPageCount <= 1
   return (
     <div className="simple-project-page simple-page-view">
       <div className="simple-page-view__toolbar"><Link to={projectRoute(projectUuid, '', location.search)}><ArrowLeft size={15} aria-hidden="true" />{t('simple.shell.page.home')}</Link><div><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div></div>
-      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
+      <SimpleFeedback feedback={feedback} floating autoDismiss onDismiss={() => setFeedback(null)} />
       <SimpleError error={chapterQuery.error || sectionsQuery.error || assetsQuery.error || storyboardsQuery.error || imagesQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); assetsQuery.refetch(); storyboardsQuery.refetch(); imagesQuery.refetch(); tasksQuery.refetch() }} />
       <div className="simple-page-editor-layout">
         <aside className="simple-page-rail" aria-label={t('simple.pages.title')}>
           <header className="simple-page-rail__header">
             <h2>{t('simple.shell.page.pages')}</h2>
-            <div className="simple-page-rail__create" ref={createMenuRef}>
-              <button
-                ref={createTriggerRef}
-                type="button"
-                aria-label={t('simple.pages.add')}
-                title={t('simple.pages.add')}
-                aria-haspopup="menu"
-                aria-expanded={createMenuOpen}
-                disabled={createPage.isPending || save.isPending}
-                onClick={() => setCreateMenuOpen((current) => !current)}
-                onKeyDown={(event) => {
-                  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return
-                  event.preventDefault()
-                  setCreateMenuOpen(true)
-                }}
-              >
-                <Plus size={18} strokeWidth={1.7} aria-hidden="true" />
-              </button>
-              {createMenuOpen ? (
-                <div className="simple-page-rail__menu" role="menu" aria-label={t('comic.page_role.create_label')}>
-                  {createRoles.map((pageRole) => (
-                    <button
-                      key={pageRole}
-                      type="button"
-                      role="menuitem"
-                      disabled={invalidEmptyText || createPage.isPending || save.isPending || comicPageRoleOptionDisabled(sections, pageRole)}
-                      onClick={() => createPage.mutate(pageRole)}
-                    >
-                      {simplePageRoleLabel(t, pageRole)}
+            <div className="simple-page-rail__header-actions">
+              <div className="simple-page-rail__more" ref={pageActionsRef}>
+                <button
+                  ref={pageActionsTriggerRef}
+                  type="button"
+                  aria-label={t('simple.pages.more_actions')}
+                  title={t('simple.pages.more_actions')}
+                  aria-haspopup="menu"
+                  aria-expanded={pageActionsOpen}
+                  disabled={trashPage.isPending}
+                  onClick={() => { setCreateMenuOpen(false); setPageItemMenu(null); setPageActionsOpen((current) => !current) }}
+                  onKeyDown={(event) => {
+                    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return
+                    event.preventDefault()
+                    setCreateMenuOpen(false)
+                    setPageActionsOpen(true)
+                  }}
+                >
+                  <MoreHorizontal size={18} strokeWidth={1.7} aria-hidden="true" />
+                </button>
+                {pageActionsOpen ? (
+                  <div className="simple-page-rail__menu simple-page-rail__menu--actions" role="menu" aria-label={t('simple.pages.more_actions')}>
+                    <button className="simple-page-rail__menu-action" type="button" role="menuitem" onClick={() => { setPageActionsOpen(false); setPageTrashOpen(true) }}>
+                      <Trash2 size={14} aria-hidden="true" />
+                      <span>{t('simple.pages.open_trash')}</span>
                     </button>
-                  ))}
-                </div>
-              ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <div className="simple-page-rail__create" ref={createMenuRef}>
+                <button
+                  ref={createTriggerRef}
+                  type="button"
+                  aria-label={t('simple.pages.add')}
+                  title={t('simple.pages.add')}
+                  aria-haspopup="menu"
+                  aria-expanded={createMenuOpen}
+                  disabled={createPage.isPending || save.isPending}
+                  onClick={() => { setPageActionsOpen(false); setPageItemMenu(null); setCreateMenuOpen((current) => !current) }}
+                  onKeyDown={(event) => {
+                    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return
+                    event.preventDefault()
+                    setPageActionsOpen(false)
+                    setCreateMenuOpen(true)
+                  }}
+                >
+                  <Plus size={18} strokeWidth={1.7} aria-hidden="true" />
+                </button>
+                {createMenuOpen ? (
+                  <div className="simple-page-rail__menu" role="menu" aria-label={t('comic.page_role.create_label')}>
+                    {createRoles.map((pageRole) => (
+                      <button
+                        key={pageRole}
+                        type="button"
+                        role="menuitem"
+                        disabled={invalidEmptyText || createPage.isPending || save.isPending || comicPageRoleOptionDisabled(sections, pageRole)}
+                        onClick={() => createPage.mutate(pageRole)}
+                      >
+                        {simplePageRoleLabel(t, pageRole)}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </header>
           <div className="simple-page-rail__list" aria-busy={reorderPages.isPending} onPointerMove={updatePageDrag} onPointerUp={finishPageDrag} onPointerCancel={cancelPageDrag}>{sections.map((item) => {
@@ -836,11 +1030,11 @@ export function SimplePageView({ project, projectUuid }) {
                 data-page-uuid={item.uuid}
                 data-reorderable={reorderable}
                 draggable={false}
-                title={reorderable ? t('comic.workbench.pages.drag_role', { label: itemLabel }) : t('comic.workbench.pages.fixed_title')}
-                onPointerDown={(event) => startPageDrag(event, item)}
+                title={reorderable ? undefined : t('comic.workbench.pages.fixed_title')}
+                onContextMenu={(event) => openPageItemMenu(event, item)}
               >
-                <Link draggable={false} className={item.uuid === section.uuid ? 'is-active' : ''} aria-current={item.uuid === section.uuid ? 'page' : undefined} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(item.uuid)}`, location.search)} onClick={(event) => { if (pageDragClickSuppressed.current) { event.preventDefault(); event.stopPropagation(); pageDragClickSuppressed.current = false } }}><SimpleImage asset={item.current_image?.asset} alt="" fallbackText={itemLabel} /><span>{itemLabel}</span></Link>
-                {reorderable ? <span className="simple-page-rail__drag-handle" aria-hidden="true"><GripVertical size={15} strokeWidth={1.8} /></span> : null}
+                <Link draggable={false} className={item.uuid === section.uuid ? 'is-active' : ''} aria-current={item.uuid === section.uuid ? 'page' : undefined} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(item.uuid)}`, location.search)} onClick={(event) => { if (pageDragClickSuppressed.current) { event.preventDefault(); event.stopPropagation(); pageDragClickSuppressed.current = false } }} onKeyDown={(event) => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openPageItemMenu(event, item) }}><SimpleImage asset={item.current_image?.asset} alt="" fallbackText={itemLabel} /><span>{itemLabel}</span></Link>
+                {reorderable ? <button type="button" className="simple-page-rail__drag-handle" aria-label={t('comic.workbench.pages.drag_role', { label: itemLabel })} title={t('comic.workbench.pages.drag_role', { label: itemLabel })} onPointerDown={(event) => startPageDrag(event, item)}><GripVertical size={15} strokeWidth={1.8} aria-hidden="true" /></button> : null}
               </div>
             )
           })}</div>
@@ -848,11 +1042,26 @@ export function SimplePageView({ project, projectUuid }) {
         <main className="simple-page-editor">
           <header><div><span data-user-content>{chapterQuery.data?.title}</span><h1>{label}</h1></div><small role="status">{dirty || refsDirty ? t('simple.page.unsaved') : t('common.status.saved')}</small></header>
           <section className="simple-page-meta-form"><label>{t('simple.page.role')}<select value={role} onChange={(event) => setRole(event.target.value)}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover', section.uuid)}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover', section.uuid)}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} /></label></section>
-          <div className="simple-page-current-image"><SimpleImage asset={section.current_image?.asset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} />{section.current_image ? <span>{t('simple.page.current_image', { version: section.current_image.version_no })}</span> : null}</div>
+          {currentImageReady ? (
+            <button
+              type="button"
+              className={`simple-page-current-image${freshImageTask ? ' is-fresh' : ''}`}
+              aria-label={t('simple.page.open_image_preview')}
+              aria-haspopup="dialog"
+              aria-expanded={imagePreviewOpen}
+              title={t('simple.page.open_image_preview')}
+              onClick={() => setImagePreviewOpen(true)}
+            >
+              <SimpleImage asset={currentImageAsset} alt={section.title || label} />
+              <span>{t('simple.page.current_image', { version: section.current_image.version_no })}</span>
+            </button>
+          ) : (
+            <div className={`simple-page-current-image${freshImageTask ? ' is-fresh' : ''}`}><SimpleImage asset={currentImageAsset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} />{section.current_image ? <span>{t('simple.page.current_image', { version: section.current_image.version_no })}</span> : null}</div>
+          )}
           <div className="simple-illustration-actions">
-            <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => setImageCandidatesOpen(true)}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{t('simple.page.image_drafts_count', { count: imageVariants.length })}</span></button>
+            <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => setImageCandidatesOpen(true)}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{t(imageVariants.length === 1 ? 'simple.page.image_drafts_count.one' : 'simple.page.image_drafts_count.other', { count: imageVariants.length })}</span></button>
             {taskActive ? <SimpleTaskStatus task={task} /> : null}
-            <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
+            <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(generate.isPending ? 'simple.page.generation_starting' : section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
           </div>
           <section className="simple-page-content-card"><h2>{t('simple.page.content')}</h2><label><span>{t('simple.page.text')}</span><textarea value={text} onChange={(event) => setText(event.target.value)} /></label><label><span>{t('simple.page.visual_direction')}</span><textarea value={direction} onChange={(event) => setDirection(event.target.value)} /></label></section>
           <section className="simple-page-references"><header><div><h2>{t('simple.page.references')}</h2><p>{t('simple.page.references_body')}</p></div><button type="button" disabled={!refsDirty || save.isPending || invalidEmptyText} onClick={() => save.mutate()}>{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></header><div>{(assetsQuery.data?.items || []).filter((asset) => asset.current_variant).map((asset) => <label className={selectedRefs.includes(asset.uuid) ? 'is-selected' : ''} key={asset.uuid}><input type="checkbox" checked={selectedRefs.includes(asset.uuid)} disabled={!selectedRefs.includes(asset.uuid) && selectedRefs.length >= 12} onChange={(event) => setSelectedRefs((current) => event.target.checked ? [...current, asset.uuid] : current.filter((uuid) => uuid !== asset.uuid))} /><SimpleImage asset={asset.current_variant?.asset} alt="" /><span><strong data-user-content>{asset.title}</strong><small>{assetTypeLabel(t, asset.asset_type)}</small></span></label>)}</div></section>
@@ -860,8 +1069,60 @@ export function SimplePageView({ project, projectUuid }) {
           <nav className="simple-page-stepper" aria-label={t('simple.shell.page.pages')}>{previous ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(previous.uuid)}`, location.search)}><ChevronLeft size={15} aria-hidden="true" />{t('simple.page.previous')}</Link> : <span />}{next ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(next.uuid)}`, location.search)}>{t('simple.page.next')}<ChevronRight size={15} aria-hidden="true" /></Link> : null}</nav>
         </main>
       </div>
+      {pageItemMenu && pageItemMenuPage ? <div ref={pageItemMenuRef} className="simple-page-rail__menu simple-page-rail__item-menu" role="menu" aria-label={t('simple.pages.page_actions', { page: pageItemMenuLabel })} style={{ left: pageItemMenu.left, top: pageItemMenu.top }}><button className="simple-page-rail__menu-action is-danger" type="button" role="menuitem" aria-label={t('simple.pages.delete_page', { page: pageItemMenuLabel })} disabled={pageItemMenuKeepsRequiredBody || trashPage.isPending || save.isPending} title={pageItemMenuKeepsRequiredBody ? t('simple.pages.keep_body') : undefined} onClick={() => { setPageItemMenu(null); setDeletingPage(pageItemMenuPage) }}><Trash2 size={14} aria-hidden="true" /><span>{t('common.action.delete')}</span></button></div> : null}
+      {pageTrashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setPageTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
+      {deletingPage ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deletingPage) })} pending={trashPage.isPending} onCancel={() => setDeletingPage(null)} onConfirm={() => trashPage.mutate(deletingPage)} /> : null}
+      {imagePreviewOpen ? <SimpleDialog wide title={t('simple.page.image_preview')} onClose={() => setImagePreviewOpen(false)}><div className="simple-page-image-preview"><SimpleImage asset={currentImageAsset} alt={section.title || label} /></div></SimpleDialog> : null}
       {imageCandidatesOpen ? <SimpleDialog title={t('simple.page.image_candidates')} onClose={() => !importImage.isPending && !chooseImage.isPending && setImageCandidatesOpen(false)}><div className="simple-page-candidates-dialog"><header><p>{t('simple.page.image_candidates_body')}</p><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" disabled={importImage.isPending} onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{imageVariants.map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /><footer><div><strong>v{variant.version_no}</strong><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending || importImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></div></SimpleDialog> : null}
     </div>
+  )
+}
+
+function SimplePageTrashDialog({ projectUuid, chapterUuid, activeSections, requiresBodyPage, onClose, onRestored }) {
+  const { formatDateTime, t } = useI18n()
+  const queryClient = useQueryClient()
+  const activeQueryKey = ['comic-sections', projectUuid, chapterUuid]
+  const trashQueryKey = ['comic-sections', projectUuid, chapterUuid, 'trashed']
+  const trashQuery = useQuery({ queryKey: trashQueryKey, queryFn: () => listComicSections(projectUuid, chapterUuid, { state: 'trashed' }) })
+  const restore = useMutation({
+    mutationFn: (page) => restoreComicSection(projectUuid, chapterUuid, page.uuid, page.revision),
+    onSuccess: (restored) => {
+      queryClient.setQueryData(trashQueryKey, (current) => current ? { ...current, items: (current.items || []).filter((item) => item.uuid !== restored.uuid) } : current)
+      queryClient.setQueryData(activeQueryKey, (current) => ({ ...(current || {}), items: orderedSimplePages([...(current?.items || []).filter((item) => item.uuid !== restored.uuid), restored]) }))
+      void queryClient.invalidateQueries({ queryKey: activeQueryKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: trashQueryKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+      onRestored?.(restored)
+    },
+  })
+  const trashedSections = trashQuery.data?.items || []
+  const activeBodyExists = activeSections.some((item) => comicPageRole(item) === 'body')
+  const restoreBlockReason = (page) => {
+    const pageRole = comicPageRole(page)
+    if (pageRole !== 'body' && activeSections.some((item) => comicPageRole(item) === pageRole)) return t('simple.pages.restore_role_conflict')
+    if (requiresBodyPage && pageRole !== 'body' && !activeBodyExists) return t('simple.pages.restore_body_first')
+    return ''
+  }
+  const close = () => {
+    if (!restore.isPending) onClose()
+  }
+
+  return (
+    <SimpleDialog wide title={t('simple.pages.trash_title')} onClose={close}>
+      <div className="simple-page-trash">
+        <p>{t('simple.pages.trash_body')}</p>
+        {trashQuery.isLoading ? <div className="simple-page-trash__status" role="status">{t('simple.pages.trash_loading')}</div> : null}
+        {trashQuery.error ? <SimpleError error={trashQuery.error} onRetry={() => trashQuery.refetch()} /> : null}
+        {restore.error ? <SimpleError error={restore.error} /> : null}
+        {!trashQuery.isLoading && !trashQuery.error && !trashedSections.length ? <div className="simple-page-trash__status"><Trash2 size={22} aria-hidden="true" /><span>{t('simple.pages.trash_empty')}</span></div> : null}
+        {trashedSections.length ? <ul className="simple-page-trash__list">{trashedSections.map((page) => {
+          const roleLabel = simplePageRoleLabel(t, comicPageRole(page))
+          const blockReason = restoreBlockReason(page)
+          const restoring = restore.isPending && restore.variables?.uuid === page.uuid
+          return <li key={page.uuid}><div className="simple-page-trash__image"><SimpleImage asset={page.current_image?.asset} alt="" fallbackText={roleLabel} /></div><div className="simple-page-trash__details"><strong data-user-content>{page.title?.trim() || comicPageFallbackTitle(t, page)}</strong><span>{roleLabel}</span>{page.deleted_at ? <time dateTime={page.deleted_at}>{t('simple.pages.trashed_at', { date: formatDateTime(page.deleted_at) })}</time> : null}{blockReason ? <small>{blockReason}</small> : null}</div><button className="simple-button simple-button--secondary" type="button" disabled={Boolean(blockReason) || restore.isPending} title={blockReason || undefined} onClick={() => { restore.reset(); restore.mutate(page) }}><RefreshCw size={14} aria-hidden="true" />{t(restoring ? 'common.status.saving' : 'simple.pages.restore')}</button></li>
+        })}</ul> : null}
+      </div>
+    </SimpleDialog>
   )
 }
 
@@ -944,11 +1205,27 @@ function SimpleTaskStatus({ task }) {
   return <span className={`simple-task-status is-${task.status}`} role="status">{t('simple.task.status', { status: task.status, progress: task.progress || 0 })}</span>
 }
 
-function SimpleFeedback({ feedback, onDismiss }) {
+function SimpleFeedback({ feedback, floating = false, autoDismiss = false, onDismiss }) {
   const { t } = useI18n()
+  const [pausedFeedback, setPausedFeedback] = useState(null)
+  const dismissRef = useRef(onDismiss)
+  dismissRef.current = onDismiss
+  const paused = pausedFeedback === feedback
+  useEffect(() => {
+    if (!feedback || feedback.kind !== 'success' || !autoDismiss || paused || !dismissRef.current) return undefined
+    const timeout = window.setTimeout(() => dismissRef.current?.(), SIMPLE_FEEDBACK_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timeout)
+  }, [autoDismiss, feedback, paused])
   if (!feedback) return null
-  if (feedback.kind === 'success') return <div className="simple-feedback is-success" role="status"><Check size={16} aria-hidden="true" /><span>{feedback.message}</span>{onDismiss ? <button type="button" aria-label={t('common.action.close')} onClick={onDismiss}><X size={14} aria-hidden="true" /></button> : null}</div>
-  return <div className="simple-feedback is-error" role="alert"><div><strong>{feedback.error?.message || t('simple.error.title')}</strong>{feedback.error?.details ? <p>{feedback.error.details}</p> : null}{feedback.error?.code ? <code data-machine-value>{feedback.error.code}</code> : null}</div>{onDismiss ? <button type="button" aria-label={t('common.action.close')} onClick={onDismiss}><X size={14} aria-hidden="true" /></button> : null}</div>
+  const className = `simple-feedback${floating ? ' simple-feedback--floating' : ''} is-${feedback.kind}`
+  const pause = () => { if (autoDismiss) setPausedFeedback(feedback) }
+  const resume = (event) => {
+    if (!autoDismiss || event.currentTarget.contains(event.relatedTarget)) return
+    setPausedFeedback((current) => current === feedback ? null : current)
+  }
+  const pauseProps = { onMouseEnter: pause, onMouseLeave: resume, onFocus: pause, onBlur: resume }
+  if (feedback.kind === 'success') return <div className={className} role="status" aria-live="polite" aria-atomic="true" {...pauseProps}><Check size={16} aria-hidden="true" /><span>{feedback.message}</span>{onDismiss ? <button type="button" aria-label={t('common.action.close')} onClick={onDismiss}><X size={14} aria-hidden="true" /></button> : null}</div>
+  return <div className={className} role="alert" aria-atomic="true"><div><strong>{feedback.error?.message || t('simple.error.title')}</strong>{feedback.error?.details ? <p>{feedback.error.details}</p> : null}{feedback.error?.code ? <code data-machine-value>{feedback.error.code}</code> : null}</div>{onDismiss ? <button type="button" aria-label={t('common.action.close')} onClick={onDismiss}><X size={14} aria-hidden="true" /></button> : null}</div>
 }
 
 function SimpleDialog({ title, wide = false, onClose, children }) {

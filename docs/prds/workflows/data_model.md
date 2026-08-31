@@ -31,7 +31,9 @@ Workflow、Step 与 Event 的内部关联使用 bigint `id`；外部 API 和实�
 - `workflow_steps` 以 `step_key` 和 `position` 在同一 Workflow 中唯一，保存状态、任务 UUID、资源 UUID、输入输出 JSON 和错误。
 - `workflow_events` 以 `(workflow_id, sequence)` 唯一追加事件，可选关联一个 Step。
 
-`yolo_project_initialization` 固定使用 `project_initialization → story → story_profile → premise → comic_sections → first_section_image`。YOLO 输入快照 v5 的 `comic_sections` 输出保留只含正文页的 `section_uuids` 和指向首个 `body` 的 `first_section_uuid`，新增同样指向该页的 `body_section_uuid`；非 `vertical_strip` 还记录或复用 `cover_section_uuid`。
+`yolo_project_initialization` 固定使用 `project_initialization → story → story_profile → premise → comic_sections → first_section_image`。新 Workflow 使用输入快照 v6，在 v5 的绘本规格、模型、Prompt 与页面语义之上新增 `creation_session_uuid` 和按 `position,reference_uuid` 排序的完整 `creation_references`。每项只含 Project binding/File UUIDv7、位置、用途、标题、instruction、included 与来源，不含内部 ID、路径、URL 或图片字节。v1–v5 快照保持原恢复语义。
+
+`comic_sections` 输出保留只含正文页的 `section_uuids` 和指向首个 `body` 的 `first_section_uuid`，并以 `body_section_uuid` 明确正文页；非 `vertical_strip` 还记录或复用 `cover_section_uuid`。
 
 `first_section_image` 是为旧 Workflow 保留的稳定 step key。v5 中它使用可恢复的批量任务生成封面与第一张正文页的缺失图片，`vertical_strip` 则仍只生成第一个 `body` 图片。旧主字段 `section_uuid|image_variant_uuid` 仍指向首个 `body`；新输出使用 `body_section_uuid|body_image_variant_uuid`、普通绘本的 `cover_section_uuid|cover_image_variant_uuid`、本步骤目标按装订顺序排列的 `section_uuids|image_variant_uuids` 和批量 `task_uuids`。存在正文页图片任务时，兼容字段 `task_uuid` 仍指向该任务。
 
@@ -51,6 +53,7 @@ Chat Tool 异步调用的持久恢复边界。
 
 1. 创建 Workflow 时写入冻结快照及初始 Steps；Direct UI 同时建立独立 Thread，Chat Tool 则复用来源 conversation Thread。
 2. Worker 按 position 推进 Step，并持久化状态、输出和 Event；YOLO 页面步骤会持久封面脚本 checkpoint 和按 Section UUID 绑定的图片任务 UUID，使重试不重复生产已完成页面。
+   YOLO v6 premise 步骤冻结的 included 引用会进入内部 production task v3；task 快照保存引用计划、`creation_reference_board/v1` 合成器和追加后的参考提示词。参考板 File UUID 先写入 step output，再调用图片 Provider，重试优先复用。
 3. Chat Tool Workflow 创建时在同一业务事务写入 Workflow、全部 Steps、await 与首个任务；父 Run 保持可恢复等待且不占 worker。新式 bootstrap YOLO 也使用此边界，既有 dedicated YOLO 不迁移。
 4. Workflow 终态事务把有效 await 标为 `ready`、父 Turn/Run 重新排为 `queued`，并唯一插入 `JobChatResume`；恢复先幂等写入结构化 Tool Result，再把 await 标为 `resumed`。
 5. 父 Run 取消会把 await 标为 `cancelled` 并请求取消其独占 Workflow；单独取消 Workflow 则以 cancelled Tool Result 唤醒仍有效的父 Run。失败、中断和取消都保留可诊断快照。

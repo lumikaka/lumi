@@ -129,6 +129,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/projects/:project_uuid", storyHandler.ShowProject)
 	api.GET("/projects/:project_uuid/project-setup", projectSetupHandler.Show)
 	api.PATCH("/projects/:project_uuid/project-setup", projectSetupHandler.Update)
+	api.PATCH("/projects/:project_uuid/project-setup/references/:reference_uuid", projectSetupHandler.UpdateReference)
 	api.POST("/projects/:project_uuid/project-setup-finalizations", projectSetupHandler.Finalize)
 	api.POST("/projects/:project_uuid/image-generation-preflights", projectImagePreflightHandler.Create)
 	api.GET("/projects/:project_uuid/llm-logs", llmLogHandler.Index)
@@ -248,6 +249,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", productionHandler.ShowSection)
 	api.PATCH("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", productionHandler.UpdateSection)
 	api.DELETE("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", productionHandler.DeleteSection)
+	api.POST("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/restorations", productionHandler.RestoreSection)
 	api.PUT("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/premise-assets", productionHandler.SetSectionPremiseAssets)
 	api.GET("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/storyboard-variants", productionHandler.ListStoryboards)
 	api.POST("/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/storyboard-variants", productionHandler.CreateStoryboard)
@@ -373,6 +375,9 @@ func draftProjectRequestAllowed(method, path string) bool {
 		return true
 	}
 	if path == "/api/v1/projects/:project_uuid/project-setup" && method == http.MethodPatch {
+		return true
+	}
+	if path == "/api/v1/projects/:project_uuid/project-setup/references/:reference_uuid" && method == http.MethodPatch {
 		return true
 	}
 	if path == "/api/v1/projects/:project_uuid/project-setup-finalizations" && method == http.MethodPost {

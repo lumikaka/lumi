@@ -87,6 +87,24 @@ func seedReadyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc
 	return tc
 }
 
+func seedBootstrapCreationReference(t *testing.T, harness *agentHarness, projectID int64, creationSessionUUID string, position int, role, title, instruction string, include bool) (string, string) {
+	t.Helper()
+	now := time.Now().UTC()
+	objectUUID, fileUUID := mustAgentUUID(t), mustAgentUUID(t)
+	bindingUUID, sourceReferenceUUID := mustAgentUUID(t), mustAgentUUID(t)
+	sha := strings.Repeat("c", 63) + string(rune('0'+position))
+	if err := harness.store.DB().Exec(`INSERT INTO file_objects(uuid,project_id,sha256,key_path,mime_type,canonical_ext,byte_size,width,height,state,created_at,verified_at) VALUES(?,?,?,?,'image/png','png',128,16,16,'ready',?,?)`, objectUUID, projectID, sha, "objects/"+objectUUID+".png", now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`INSERT INTO files(uuid,project_id,file_object_id,kind,purpose,original_filename,display_name,source_type,metadata_json,created_at) VALUES(?,?,(SELECT id FROM file_objects WHERE uuid=?),'image','project_chatbot_reference',?,?,'imported','{}',?)`, fileUUID, projectID, objectUUID, title+".png", title, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,reference_role,title,instruction,include_in_yolo,plan_source,created_at,updated_at) VALUES(?,?,?,?,?,(SELECT id FROM files WHERE uuid=?),?,?,?,?, 'user_confirmed',?,?)`, bindingUUID, projectID, creationSessionUUID, sourceReferenceUUID, position, fileUUID, role, title, instruction, include, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	return bindingUUID, fileUUID
+}
+
 func makeHarnessProjectDraft(t *testing.T, harness *agentHarness, setupUUID, originalInput string) {
 	t.Helper()
 	now := time.Now().UTC()
@@ -324,6 +342,8 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 	tc.ToolMode = ToolModeProjectAPI
 	sessionUUID := mustAgentUUID(t)
 	tc = seedReadyBootstrapYoloAuthorization(t, harness, tc, sessionUUID)
+	includedReferenceUUID, includedFileUUID := seedBootstrapCreationReference(t, harness, tc.Thread.ProjectID, sessionUUID, 1, "character", "月光邮差", "保持角色轮廓和服装层次", true)
+	excludedReferenceUUID, _ := seedBootstrapCreationReference(t, harness, tc.Thread.ProjectID, sessionUUID, 2, "style", "旧版笔触", "只供讨论，不参与本次生成", false)
 	reloaded, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
 	if err != nil || reloaded.BootstrapCreationSessionUUID != sessionUUID {
 		t.Fatalf("bootstrap context=%+v err=%v", reloaded, err)
@@ -392,6 +412,27 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 	workflow := workflows[0]
 	if workflow.UUID == "" || workflow.ThreadUUID != thread.UUID || workflow.Kind != WorkflowYolo || workflow.PresentationMode != string(PresentationInline) || workflow.OriginTurnUUID != turn.UUID || workflow.OriginRunUUID != reloaded.Run.UUID || workflow.OriginToolCallUUID != execution.ToolCallUUID || workflow.AwaitStatus != "waiting" {
 		t.Fatalf("inline workflow=%+v execution=%+v", workflow, execution)
+	}
+	var snapshotJSON string
+	if err := harness.store.DB().Table("workflows").Select("input_snapshot").Where("uuid=?", workflow.UUID).Scan(&snapshotJSON).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(snapshotJSON), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Version != 6 || snapshot.CreationSessionUUID != sessionUUID || len(snapshot.CreationReferences) != 2 {
+		t.Fatalf("creation reference snapshot=%+v", snapshot)
+	}
+	if got := snapshot.CreationReferences[0]; got.ReferenceUUID != includedReferenceUUID || got.FileUUID != includedFileUUID || got.ReferenceRole != "character" || got.Title != "月光邮差" || got.Instruction != "保持角色轮廓和服装层次" || !got.IncludeInYolo || got.PlanSource != project.SetupSourceUserConfirmed {
+		t.Fatalf("included creation reference=%+v", got)
+	}
+	if got := snapshot.CreationReferences[1]; got.ReferenceUUID != excludedReferenceUUID || got.IncludeInYolo {
+		t.Fatalf("excluded creation reference=%+v", got)
+	}
+	var frozenEventCount int64
+	if err := harness.store.DB().Table("workflow_events").Joins("JOIN workflows ON workflows.id=workflow_events.workflow_id").Where("workflows.uuid=? AND workflow_events.event_type='creation_references_frozen'", workflow.UUID).Count(&frozenEventCount).Error; err != nil || frozenEventCount != 1 {
+		t.Fatalf("creation_references_frozen events=%d err=%v", frozenEventCount, err)
 	}
 	var workflowCount int64
 	if err := harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&workflowCount).Error; err != nil || workflowCount != 1 {

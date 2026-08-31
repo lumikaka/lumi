@@ -17,6 +17,8 @@
 
 `premise_sources` 是不可变的生成或人工输入批次；setting image 是候选图历史。用户可从候选图创建或拆分出独立 `premise_assets`，资产通过 current variant 选择当前视觉版本。
 
+首页创建参考图在 Project Setup 定稿后可由 YOLO 注册为来源型 Premise Asset。来源 Asset 复用原 `files.id`，并以类型、标签和事件记录 `character|scene|prop|style|auto` 用途；它们与手动或生成资产进入同一列表、Section 选择和版本链路，不形成第二套资产系统。
+
 ### 领域删除与文件删除分离
 
 删除 Premise 资产先进入回收站。永久删除只移除领域记录和无引用逻辑 File；Object 的物理回收仍由 `files` 的引用复检、grace period 与 GC 计划决定。
@@ -32,7 +34,8 @@
 
 | 模块 | 关系 |
 |---|---|
-| 文件 | setting image 和 asset variant 通过 `files.id` 引用受控 File。 |
-| 漫画 Section | Section Premise 从 active、current variant 且 ready 的资产中选择参考。 |
+| 项目 | `project_creation_reference_files.premise_asset_id` 把 included 首页参考计划幂等绑定到来源 Asset；excluded 项不导入。 |
+| 文件 | setting image、asset variant 和确定性的 `premise_reference_board` 通过 `files.id` 引用受控 File。 |
+| 漫画 Section | Section Premise 从 active、current variant 且 ready 的资产中选择参考；候选提示包含资产类型、截断 summary 与来源角色。 |
 | AI 运行时 | Premise 任务在创建时冻结文本或图片模型和 Prompt。 |
 | Chat Thread | Agent 可在受控业务 API 下创建、更新或引用 Premise 资产。 |

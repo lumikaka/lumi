@@ -62,6 +62,11 @@ type ProjectCreationReference struct {
 	OriginalFilename         string
 	DeclaredMIMEType         string
 	DeclaredByteSize         int64
+	ReferenceRole            string
+	Title                    string
+	Instruction              string
+	IncludeInYolo            bool
+	PlanSource               string
 	Status                   string
 	ErrorCode                string
 	CreatedAt                time.Time
@@ -215,6 +220,17 @@ func (store *Store) CreateOrGetProjectCreationSession(ctx context.Context, sessi
 		}
 		for index := range references {
 			references[index].ProjectCreationSessionID = session.ID
+			if references[index].ReferenceRole == "" {
+				references[index].ReferenceRole = "auto"
+			}
+			if references[index].PlanSource == "" {
+				references[index].PlanSource = "system_default"
+			}
+			// A zero value comes from older callers that predate reference plans.
+			// Keep their historical behavior: every uploaded reference participates.
+			if references[index].ReferenceRole == "auto" && references[index].PlanSource == "system_default" && !references[index].IncludeInYolo {
+				references[index].IncludeInYolo = true
+			}
 		}
 		if len(references) > 0 {
 			if err := tx.Create(&references).Error; err != nil {

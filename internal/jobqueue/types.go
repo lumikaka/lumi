@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"lumi/internal/agent"
+	"lumi/internal/production"
 	"lumi/internal/project"
 )
 
@@ -290,19 +291,20 @@ type ProductionTask struct {
 }
 
 type CreateProductionGenerationInput struct {
-	ProviderUUID          string               `json:"-"`
-	Model                 string               `json:"model"`
-	SelectionProviderUUID string               `json:"-"`
-	SelectionModel        string               `json:"-"`
-	Prompt                string               `json:"prompt"`
-	Parameters            GenerationParameters `json:"parameters"`
-	PremiseAssetUUIDs     []string             `json:"premise_asset_uuids,omitempty"`
-	AssetOperation        string               `json:"asset_operation,omitempty"`
-	AssetType             string               `json:"asset_type,omitempty"`
-	AssetTitle            string               `json:"asset_title,omitempty"`
-	AssetSummary          string               `json:"asset_summary,omitempty"`
-	AssetTags             []string             `json:"asset_tags,omitempty"`
-	IdempotencyKey        string               `json:"idempotency_key"`
+	ProviderUUID          string                               `json:"-"`
+	Model                 string                               `json:"model"`
+	SelectionProviderUUID string                               `json:"-"`
+	SelectionModel        string                               `json:"-"`
+	Prompt                string                               `json:"prompt"`
+	Parameters            GenerationParameters                 `json:"parameters"`
+	PremiseAssetUUIDs     []string                             `json:"premise_asset_uuids,omitempty"`
+	ReferenceFiles        []production.GenerationReferenceFile `json:"-"`
+	AssetOperation        string                               `json:"asset_operation,omitempty"`
+	AssetType             string                               `json:"asset_type,omitempty"`
+	AssetTitle            string                               `json:"asset_title,omitempty"`
+	AssetSummary          string                               `json:"asset_summary,omitempty"`
+	AssetTags             []string                             `json:"asset_tags,omitempty"`
+	IdempotencyKey        string                               `json:"idempotency_key"`
 }
 
 type CreateComicImageGenerationBatchInput struct {

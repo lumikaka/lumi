@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, ClipboardList } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CheckCircle2, ClipboardList, Save } from 'lucide-react'
 
-import { getProjectSetup } from '../api/projects.js'
+import { getProjectSetup, updateProjectSetupReference } from '../api/projects.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -39,6 +39,56 @@ function pictureBookFields(draftValues, t) {
   return fields
 }
 
+const setupReferenceRoles = ['auto', 'character', 'scene', 'prop', 'style']
+
+function SetupReferenceItem({ projectUuid, revision, reference, editable }) {
+  const { t } = useI18n()
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState(() => ({
+    reference_role: reference.reference_role,
+    title: reference.title,
+    instruction: reference.instruction || '',
+    include_in_yolo: reference.include_in_yolo,
+  }))
+  useEffect(() => {
+    setDraft({
+      reference_role: reference.reference_role,
+      title: reference.title,
+      instruction: reference.instruction || '',
+      include_in_yolo: reference.include_in_yolo,
+    })
+  }, [reference])
+  const mutation = useMutation({
+    mutationFn: () => updateProjectSetupReference(projectUuid, reference.uuid, { expected_revision: revision, ...draft }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectQueryKeys.setup(projectUuid) }),
+    onError: () => queryClient.invalidateQueries({ queryKey: projectQueryKeys.setup(projectUuid) }),
+  })
+  const dirty = draft.reference_role !== reference.reference_role
+    || draft.title !== reference.title
+    || draft.instruction !== (reference.instruction || '')
+    || draft.include_in_yolo !== reference.include_in_yolo
+  const title = draft.title || reference.title
+  return (
+    <article className="project-setup-reference">
+      <img src={reference.thumbnail_url} alt="" loading="lazy" />
+      <div className="project-setup-reference__heading">
+        <strong>{title}</strong>
+        <small data-source={reference.plan_source}>{t(sourceCopy(reference.plan_source))}</small>
+      </div>
+      {editable ? <>
+        <select aria-label={t('chat.setup.reference.role_label', { title })} value={draft.reference_role} disabled={mutation.isPending} onChange={(event) => setDraft((current) => ({ ...current, reference_role: event.target.value }))}>
+          {setupReferenceRoles.map((role) => <option value={role} key={role}>{t(`reference.role.${role}`)}</option>)}
+        </select>
+        <button type="button" className="project-setup-reference__include" aria-pressed={draft.include_in_yolo} disabled={mutation.isPending} onClick={() => setDraft((current) => ({ ...current, include_in_yolo: !current.include_in_yolo }))}>{t(draft.include_in_yolo ? 'chat.setup.reference.included' : 'chat.setup.reference.excluded')}</button>
+        <label><span>{t('chat.setup.reference.title')}</span><input value={draft.title} maxLength="160" disabled={mutation.isPending} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
+        <label className="project-setup-reference__instruction"><span>{t('chat.setup.reference.instruction')}</span><textarea rows="2" value={draft.instruction} maxLength="2000" disabled={mutation.isPending} onChange={(event) => setDraft((current) => ({ ...current, instruction: event.target.value }))} /></label>
+        <button type="button" className="project-setup-reference__save" disabled={!dirty || !draft.title.trim() || mutation.isPending} onClick={() => mutation.mutate()}><Save size={13} aria-hidden="true" />{t(mutation.isPending ? 'chat.setup.reference.saving' : 'chat.setup.reference.save')}</button>
+        {mutation.isError ? <LocalizedErrorMessage error={mutation.error} className="chat-error project-setup-reference__error" compact /> : null}
+      </> : <div className="project-setup-reference__readonly"><span>{t(`reference.role.${reference.reference_role}`)}</span><span>{t(reference.include_in_yolo ? 'chat.setup.reference.included' : 'chat.setup.reference.excluded')}</span>{reference.instruction ? <p>{reference.instruction}</p> : null}</div>}
+    </article>
+  )
+}
+
 export default function ProjectSetupCard({ projectUuid, enabled }) {
   const { t } = useI18n()
   const [activeField, setActiveField] = useState('')
@@ -72,6 +122,10 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
           return <button key={field.key} type="button" className="project-setup-card__field" aria-pressed={activeField === field.key} onClick={() => setActiveField((current) => current === field.key ? '' : field.key)}><span>{field.label}</span><strong>{valueOrMissing(field.value, t)}</strong><small data-source={source}>{t(sourceCopy(source))}</small></button>
         })}
       </div>
+      {setup.reference_plan?.items?.length ? <section className="project-setup-card__references" aria-labelledby="project-setup-reference-title">
+        <header><div><strong id="project-setup-reference-title">{t('chat.setup.reference.title_section')}</strong><p>{t(setup.setup_status === 'ready' ? 'chat.setup.reference.frozen' : 'chat.setup.reference.hint')}</p></div><span>{setup.reference_plan.items.filter((item) => item.include_in_yolo).length}/{setup.reference_plan.items.length}</span></header>
+        <div>{setup.reference_plan.items.map((reference) => <SetupReferenceItem key={reference.uuid} projectUuid={projectUuid} revision={setup.revision} reference={reference} editable={setup.setup_status === 'draft'} />)}</div>
+      </section> : null}
       {setup.missing_information?.length ? <div className="project-setup-card__missing"><strong>{t('chat.setup.missing')}</strong><ul>{setup.missing_information.map((field) => <li key={field}>{t(missingCopy[field] || 'chat.setup.field.unknown')}</li>)}</ul></div> : null}
       <footer><span>{t('chat.setup.revision', { revision: setup.revision })}</span><span>{t('chat.setup.directory_hint')}</span></footer>
     </section>

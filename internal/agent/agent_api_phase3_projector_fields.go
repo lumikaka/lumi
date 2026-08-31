@@ -40,6 +40,7 @@ var phase3AgentAPIResponseFields = map[string]agentAPIResponseField{
 	"field_sources":             phase3ResponseField("field_sources", "object<string,string>", "初始化字段到来源的公开映射。"),
 	"missing_information":       phase3ResponseField("missing_information", "array<string>", "仍需补充的信息项。"),
 	"final_picture_book":        phase3ResponseField("final_picture_book", "object", "定稿后的绘本配置；未定稿时省略该字段。"),
+	"reference_plan":            phase3ResponseField("reference_plan", "object", "首页创建引用图的公开计划；只含公开 UUID、用途与用户说明。"),
 	"error_code":                phase3ResponseField("error_code", "string", "公开错误码；无错误时省略该字段。"),
 	"error_message":             phase3ResponseField("error_message", "string", "公开错误信息；无错误时省略该字段。"),
 	"presentation_mode":         phase3ResponseField("presentation_mode", "string", "Workflow 的展示模式。"),

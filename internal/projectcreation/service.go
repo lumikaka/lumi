@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +39,13 @@ const (
 	CodeReferenceNotReady   = "project_creation_reference_not_ready"
 	MaxReferenceFiles       = 16
 	MaxReferenceFileBytes   = int64(32 << 20)
+	ReferenceRoleAuto       = "auto"
+	ReferenceRoleCharacter  = "character"
+	ReferenceRoleScene      = "scene"
+	ReferenceRoleProp       = "prop"
+	ReferenceRoleStyle      = "style"
+	PlanSourceSystemDefault = "system_default"
+	PlanSourceUserConfirmed = "user_confirmed"
 )
 
 type Error struct {
@@ -71,6 +79,10 @@ type ReferenceFileInput struct {
 	OriginalFilename string `json:"original_filename"`
 	MIMEType         string `json:"mime_type"`
 	ByteSize         int64  `json:"byte_size"`
+	ReferenceRole    string `json:"reference_role,omitempty"`
+	Title            string `json:"title,omitempty"`
+	Instruction      string `json:"instruction,omitempty"`
+	IncludeInYolo    *bool  `json:"include_in_yolo,omitempty"`
 }
 
 type Reference struct {
@@ -79,6 +91,11 @@ type Reference struct {
 	OriginalFilename string `json:"original_filename"`
 	MIMEType         string `json:"mime_type"`
 	ByteSize         int64  `json:"byte_size"`
+	ReferenceRole    string `json:"reference_role"`
+	Title            string `json:"title"`
+	Instruction      string `json:"instruction,omitempty"`
+	IncludeInYolo    bool   `json:"include_in_yolo"`
+	PlanSource       string `json:"plan_source"`
 	Status           string `json:"status"`
 	FileUUID         string `json:"file_uuid,omitempty"`
 	ErrorCode        string `json:"error_code,omitempty"`
@@ -142,6 +159,7 @@ func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, 
 		return nil, &Error{Code: CodeInvalidInput, Message: "参考图过多", Details: "首页首条消息最多携带 16 张参考图。"}
 	}
 	allowedMIME := map[string]bool{"image/png": true, "image/jpeg": true, "image/webp": true}
+	allowedRoles := map[string]bool{ReferenceRoleAuto: true, ReferenceRoleCharacter: true, ReferenceRoleScene: true, ReferenceRoleProp: true, ReferenceRoleStyle: true}
 	result := make([]ReferenceFileInput, 0, len(values))
 	for _, value := range values {
 		value.OriginalFilename = strings.TrimSpace(value.OriginalFilename)
@@ -155,9 +173,47 @@ func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, 
 		if value.ByteSize <= 0 || value.ByteSize > MaxReferenceFileBytes {
 			return nil, &Error{Code: CodeInvalidInput, Message: "参考图大小无效", Details: "每张参考图必须大于 0 字节且不超过 32 MiB。"}
 		}
+		defaultTitle := strings.TrimSpace(strings.TrimSuffix(filepath.Base(value.OriginalFilename), filepath.Ext(value.OriginalFilename)))
+		if defaultTitle == "" {
+			defaultTitle = value.OriginalFilename
+		}
+		value.ReferenceRole = strings.ToLower(strings.TrimSpace(value.ReferenceRole))
+		if value.ReferenceRole == "" {
+			value.ReferenceRole = ReferenceRoleAuto
+		}
+		if !allowedRoles[value.ReferenceRole] {
+			return nil, &Error{Code: CodeInvalidInput, Message: "参考图用途无效", Details: "reference_role 只支持 auto、character、scene、prop 或 style。"}
+		}
+		value.Title = strings.TrimSpace(value.Title)
+		if value.Title == "" {
+			value.Title = defaultTitle
+		}
+		value.Instruction = strings.TrimSpace(value.Instruction)
+		if !utf8.ValidString(value.Title) || strings.ContainsRune(value.Title, 0) || len([]rune(value.Title)) > 160 {
+			return nil, &Error{Code: CodeInvalidInput, Message: "参考图标题无效", Details: "title 必须是 1 到 160 个有效字符。"}
+		}
+		if !utf8.ValidString(value.Instruction) || strings.ContainsRune(value.Instruction, 0) || len([]rune(value.Instruction)) > 2000 {
+			return nil, &Error{Code: CodeInvalidInput, Message: "参考图说明无效", Details: "instruction 最多允许 2000 个有效字符。"}
+		}
+		include := true
+		if value.IncludeInYolo != nil {
+			include = *value.IncludeInYolo
+		}
+		value.IncludeInYolo = &include
 		result = append(result, value)
 	}
 	return result, nil
+}
+
+func referencePlanSource(input ReferenceFileInput) string {
+	defaultTitle := strings.TrimSpace(strings.TrimSuffix(filepath.Base(input.OriginalFilename), filepath.Ext(input.OriginalFilename)))
+	if defaultTitle == "" {
+		defaultTitle = input.OriginalFilename
+	}
+	if input.ReferenceRole == ReferenceRoleAuto && input.Title == defaultTitle && input.Instruction == "" && input.IncludeInYolo != nil && *input.IncludeInYolo {
+		return PlanSourceSystemDefault
+	}
+	return PlanSourceUserConfirmed
 }
 
 func initialLanguage(input string) string {
@@ -175,7 +231,7 @@ func referenceManifestMatches(records []appstore.ProjectCreationReference, input
 	}
 	for index, record := range records {
 		input := inputs[index]
-		if record.Position != index+1 || record.OriginalFilename != input.OriginalFilename || record.DeclaredMIMEType != input.MIMEType || record.DeclaredByteSize != input.ByteSize {
+		if record.Position != index+1 || record.OriginalFilename != input.OriginalFilename || record.DeclaredMIMEType != input.MIMEType || record.DeclaredByteSize != input.ByteSize || record.ReferenceRole != input.ReferenceRole || record.Title != input.Title || record.Instruction != input.Instruction || record.IncludeInYolo != (input.IncludeInYolo != nil && *input.IncludeInYolo) || record.PlanSource != referencePlanSource(input) {
 			return false
 		}
 	}
@@ -193,7 +249,11 @@ func (service *Service) publicSession(ctx context.Context, record appstore.Proje
 	}
 	references := make([]Reference, 0, len(records))
 	for _, item := range records {
-		reference := Reference{UUID: item.UUID, Position: item.Position, OriginalFilename: item.OriginalFilename, MIMEType: item.DeclaredMIMEType, ByteSize: item.DeclaredByteSize, Status: item.Status, ErrorCode: item.ErrorCode}
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			title = strings.TrimSpace(strings.TrimSuffix(filepath.Base(item.OriginalFilename), filepath.Ext(item.OriginalFilename)))
+		}
+		reference := Reference{UUID: item.UUID, Position: item.Position, OriginalFilename: item.OriginalFilename, MIMEType: item.DeclaredMIMEType, ByteSize: item.DeclaredByteSize, ReferenceRole: item.ReferenceRole, Title: title, Instruction: item.Instruction, IncludeInYolo: item.IncludeInYolo, PlanSource: item.PlanSource, Status: item.Status, ErrorCode: item.ErrorCode}
 		if item.Status == "ready" {
 			reference.FileUUID = item.FileUUID
 		}
@@ -263,6 +323,7 @@ func (service *Service) CreateWithReferences(ctx context.Context, inputText, ide
 		references = append(references, appstore.ProjectCreationReference{
 			UUID: referenceUUID, Position: index + 1, UploadUUID: uploadUUID, FileUUID: fileUUID,
 			OriginalFilename: input.OriginalFilename, DeclaredMIMEType: input.MIMEType, DeclaredByteSize: input.ByteSize,
+			ReferenceRole: input.ReferenceRole, Title: input.Title, Instruction: input.Instruction, IncludeInYolo: input.IncludeInYolo != nil && *input.IncludeInYolo, PlanSource: referencePlanSource(input),
 			Status: "pending", CreatedAt: now, UpdatedAt: now,
 		})
 	}
@@ -316,8 +377,12 @@ func bindProjectReference(tx *gorm.DB, projectID int64, sessionUUID string, refe
 		}
 		return nil
 	}
-	return tx.Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,created_at) VALUES(?,?,?,?,?,?,?)`,
-		reference.UUID, projectID, sessionUUID, reference.UUID, reference.Position, fileID, now).Error
+	bindingUUID, err := newUUIDv7()
+	if err != nil {
+		return err
+	}
+	return tx.Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,reference_role,title,instruction,include_in_yolo,plan_source,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		bindingUUID, projectID, sessionUUID, reference.UUID, reference.Position, fileID, reference.ReferenceRole, reference.Title, reference.Instruction, reference.IncludeInYolo, reference.PlanSource, now, now).Error
 }
 
 func (service *Service) projectReferenceBindings(ctx context.Context, projectUUID, sessionUUID string) (map[string]string, error) {

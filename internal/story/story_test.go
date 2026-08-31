@@ -616,8 +616,8 @@ func TestPromptCatalogSeedsDefaultsAndUpdatesGroupsAtomically(t *testing.T) {
 	if err := service.store.DB().Model(&promptVersionRecord{}).Count(&initialCount).Error; err != nil {
 		t.Fatal(err)
 	}
-	if initialCount != 27 {
-		t.Fatalf("initial prompt versions = %d, want 27", initialCount)
+	if initialCount != 28 {
+		t.Fatalf("initial prompt versions = %d, want 28", initialCount)
 	}
 	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
 		t.Fatal(err)

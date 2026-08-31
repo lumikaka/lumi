@@ -2,6 +2,8 @@ package jobqueue
 
 import (
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -9,7 +11,47 @@ import (
 	"testing"
 
 	"lumi/internal/production"
+
+	"golang.org/x/image/font/basicfont"
 )
+
+func TestCreationReferenceEXIFOrientationIsAppliedBeforeComposition(t *testing.T) {
+	tiff := make([]byte, 26)
+	copy(tiff[:2], "II")
+	binary.LittleEndian.PutUint16(tiff[2:4], 42)
+	binary.LittleEndian.PutUint32(tiff[4:8], 8)
+	binary.LittleEndian.PutUint16(tiff[8:10], 1)
+	binary.LittleEndian.PutUint16(tiff[10:12], 0x0112)
+	binary.LittleEndian.PutUint16(tiff[12:14], 3)
+	binary.LittleEndian.PutUint32(tiff[14:18], 1)
+	binary.LittleEndian.PutUint16(tiff[18:20], 6)
+	payload := append([]byte{'E', 'x', 'i', 'f', 0, 0}, tiff...)
+	if got := creationReferenceEXIFOrientation(payload); got != 6 {
+		t.Fatalf("orientation=%d", got)
+	}
+
+	source := image.NewRGBA(image.Rect(10, 20, 12, 23))
+	source.Set(10, 20, color.RGBA{R: 10, G: 20, A: 255})
+	source.Set(10, 22, color.RGBA{R: 10, G: 22, A: 255})
+	source.Set(11, 22, color.RGBA{R: 11, G: 22, A: 255})
+	oriented := orientCreationReferenceImage(source, 6)
+	if oriented.Bounds() != image.Rect(0, 0, 3, 2) {
+		t.Fatalf("oriented bounds=%v", oriented.Bounds())
+	}
+	for point, want := range map[image.Point]color.RGBA{
+		{X: 0, Y: 0}: {R: 10, G: 22, A: 255},
+		{X: 2, Y: 0}: {R: 10, G: 20, A: 255},
+		{X: 0, Y: 1}: {R: 11, G: 22, A: 255},
+	} {
+		got := color.RGBAModel.Convert(oriented.At(point.X, point.Y)).(color.RGBA)
+		if got != want {
+			t.Fatalf("oriented pixel %v=%v want=%v", point, got, want)
+		}
+	}
+	if got := creationReferenceEXIFOrientation([]byte("not exif")); got != 1 {
+		t.Fatalf("invalid orientation=%d", got)
+	}
+}
 
 func TestPremiseReferenceUUIDsPreservesPersistedSelectionOrder(t *testing.T) {
 	references := []production.PremiseAssetReference{{AssetUUID: "asset-b"}, {AssetUUID: "asset-a"}}
@@ -85,6 +127,35 @@ func TestComposeSectionPremiseTwelveAssets(t *testing.T) {
 		t.Fatalf("composition size=%dx%d", composition.Width, composition.Height)
 	}
 	if _, err := png.Decode(bytes.NewReader(composition.Bytes)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreationReferenceBoardSupportsSixteenTransparentImagesDeterministically(t *testing.T) {
+	sources := make([]sectionPremiseSource, maxCreationReferenceFiles)
+	labels := make([]string, maxCreationReferenceFiles)
+	for index := range sources {
+		picture := image.NewNRGBA(image.Rect(0, 0, 32+index, 24+index))
+		picture.SetNRGBA(index%picture.Bounds().Dx(), index%picture.Bounds().Dy(), color.NRGBA{R: uint8(index * 11), G: 80, B: 170, A: 128})
+		sources[index] = sectionPremiseSource{Reference: production.PremiseAssetReference{Title: "Asset"}, Image: picture}
+		labels[index] = fmt.Sprintf("%d. [style] Asset %d", index+1, index+1)
+	}
+
+	first, err := composeSectionPremiseWithFace(sources, labels, basicfont.Face7x13)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := composeSectionPremiseWithFace(sources, labels, basicfont.Face7x13)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Width != 1176 || first.Height != 2400 {
+		t.Fatalf("composition size=%dx%d", first.Width, first.Height)
+	}
+	if !bytes.Equal(first.Bytes, second.Bytes) {
+		t.Fatal("creation reference board output was not deterministic")
+	}
+	if _, err := png.Decode(bytes.NewReader(first.Bytes)); err != nil {
 		t.Fatal(err)
 	}
 }

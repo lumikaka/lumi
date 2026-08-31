@@ -393,6 +393,16 @@
     justify-content: flex-end
     gap: 8px
 
+  .simple-project-settings-card
+    width: min(100%, 720px)
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    .simple-form
+      padding: 24px
+
   .simple-story-layout
     display: grid
     grid-template-columns: minmax(0, 1fr) 210px
@@ -649,6 +659,7 @@
       transform: translateY(-1px)
 
   .simple-page-view
+    position: relative
     width: 100%
     height: 100%
     min-height: 0
@@ -714,12 +725,24 @@
       font-size: 13px
       font-weight: $font-weight-semibold
 
-  .simple-page-rail__create
+    &:hover .simple-page-rail__more > button,
+    &:focus-within .simple-page-rail__more > button
+      opacity: 1
+      pointer-events: auto
+
+  .simple-page-rail__header-actions
+    display: flex
+    align-items: center
+    gap: 2px
+
+  .simple-page-rail__create,
+  .simple-page-rail__more
     position: relative
 
     > button
       width: 28px
       height: 28px
+      min-height: 28px
       padding: 0
       display: grid
       place-items: center
@@ -741,6 +764,16 @@
       &[aria-expanded="true"]:focus-visible
         color: $color-accent-strong
         background: $color-surface
+
+  .simple-page-rail__more
+    > button
+      opacity: 0
+      pointer-events: none
+      transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease
+
+      &[aria-expanded="true"]
+        opacity: 1
+        pointer-events: auto
 
   .simple-page-rail__menu
     position: absolute
@@ -783,6 +816,32 @@
         color: $color-muted
         background: transparent
 
+  .simple-page-rail__menu--actions
+    right: -34px
+
+  .simple-page-rail__item-menu
+    position: fixed
+    z-index: 100
+    top: auto
+    right: auto
+    width: 132px
+
+  .simple-page-rail__menu-action
+    display: flex
+    align-items: center
+    gap: 8px
+
+    svg
+      flex: 0 0 auto
+
+    &.is-danger
+      color: $color-danger
+
+      &:hover,
+      &:focus-visible
+        color: $color-danger
+        background: rgba($color-danger, .08)
+
   .simple-page-rail__list
     flex: 1 1 auto
     min-height: 0
@@ -798,13 +857,6 @@
     position: relative
     min-width: 0
     border-radius: $radius-sm
-
-    &.is-reorderable
-      cursor: grab
-      user-select: none
-
-    &.is-reorderable:active
-      cursor: grabbing
 
     &.is-dragging
       opacity: .46
@@ -836,6 +888,7 @@
     right: 5px
     width: 22px
     height: 22px
+    padding: 0
     display: grid
     place-items: center
     border: 1px solid rgba($color-border-strong, .72)
@@ -843,7 +896,11 @@
     color: $color-muted
     background: rgba($color-surface, .9)
     box-shadow: 0 2px 6px rgba($color-text, .08)
-    pointer-events: none
+    cursor: grab
+    pointer-events: auto
+
+    &:active
+      cursor: grabbing
 
   .simple-page-rail
     a
@@ -864,7 +921,7 @@
         height: 100%
 
       img
-        object-fit: cover
+        object-fit: contain
         -webkit-user-drag: none
 
       > span
@@ -929,6 +986,9 @@
     border-radius: $radius-md
     background: $color-surface-muted
 
+    &.is-fresh
+      animation: simple-page-image-fresh 2200ms ease-out
+
     img,
     .simple-image-placeholder
       width: 100%
@@ -948,6 +1008,36 @@
       background: rgba($color-text, .78)
       font-size: $font-size-small
       font-weight: $font-weight-semibold
+
+  button.simple-page-current-image
+    padding: 0
+    display: block
+    color: inherit
+    text-align: inherit
+    cursor: zoom-in
+    transition: border-color 120ms ease, box-shadow 120ms ease
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      box-shadow: 0 0 0 3px rgba($color-accent, .12)
+
+  .simple-page-image-preview
+    min-height: 0
+    padding: 18px
+    display: grid
+    place-items: center
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      max-height: calc(88dvh - 126px)
+
+    img
+      height: auto
+      display: block
+      object-fit: contain
 
   .simple-illustration-actions
     min-height: 34px
@@ -1248,6 +1338,49 @@
       color: inherit
       background: transparent
 
+  .simple-feedback--floating
+    --simple-feedback-x: -50%
+    position: absolute
+    z-index: 20
+    top: 8px
+    left: 50%
+    width: max-content
+    max-width: min(320px, calc(100% - 340px))
+    min-height: 38px
+    margin: 0
+    padding: 5px 6px 5px 11px
+    border-radius: $radius-md
+    box-shadow: $shadow-floating
+    transform: translateX(var(--simple-feedback-x))
+    animation: simple-feedback-in 160ms ease-out
+
+    > svg
+      flex: 0 0 auto
+
+    > span
+      min-width: 0
+      overflow-wrap: anywhere
+
+    > button
+      width: 30px
+      height: 30px
+
+      &:hover,
+      &:focus-visible
+        background: rgba($color-accent, .1)
+
+    &.is-error
+      --simple-feedback-x: 0%
+      top: 66px
+      right: 16px
+      left: auto
+      width: min(420px, calc(100% - 32px))
+      max-width: none
+
+      > button:hover,
+      > button:focus-visible
+        background: rgba($color-danger, .1)
+
   .simple-conflict
     margin-bottom: 18px
     padding: 14px
@@ -1421,9 +1554,11 @@
 
     > div
       display: grid
+      grid-template-columns: minmax(0, 1fr)
       gap: 7px
 
     article
+      min-width: 0
       padding: 10px 11px
       display: flex
       align-items: center
@@ -1439,9 +1574,11 @@
 
       > div
         min-width: 0
+        flex: 1 1 auto
         display: flex
         align-items: center
         gap: 9px
+        overflow: hidden
 
       strong
         flex: 0 0 auto
@@ -1454,6 +1591,13 @@
         font-size: $font-size-small
         text-overflow: ellipsis
         white-space: nowrap
+
+      span
+        flex: 1 1 auto
+
+      time,
+      button
+        flex: 0 0 auto
 
       button
         min-height: 30px
@@ -1695,6 +1839,93 @@
     p
       margin: 0 0 18px
       line-height: 1.65
+
+  .simple-page-trash
+    padding: 18px
+
+    > p
+      margin: 0 0 16px
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.6
+
+    .simple-error
+      margin-bottom: 12px
+
+  .simple-page-trash__status
+    min-height: 190px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 9px
+    color: $color-muted
+    font-size: $font-size-small
+
+  .simple-page-trash__list
+    margin: 0
+    padding: 0
+    display: grid
+    gap: 9px
+    list-style: none
+
+    > li
+      min-width: 0
+      padding: 10px
+      display: grid
+      grid-template-columns: 92px minmax(0, 1fr) auto
+      align-items: center
+      gap: 12px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      > button
+        align-self: center
+
+  .simple-page-trash__image
+    width: 92px
+    aspect-ratio: 4 / 3
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: 5px
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      display: block
+      object-fit: cover
+
+    .simple-image-placeholder
+      min-height: 0
+
+  .simple-page-trash__details
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    strong,
+    span,
+    time,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+
+    strong
+      white-space: nowrap
+
+    span,
+    time,
+    small
+      color: $color-muted
+      font-size: $font-size-micro
+
+    small
+      color: $color-danger
+      white-space: normal
 
   .simple-upload-confirm
     margin-bottom: 12px
@@ -1973,6 +2204,11 @@
       font-size: $font-size-micro
       text-decoration: none
 
+  @media (hover: none)
+    .simple-page-rail__more > button
+      opacity: 1
+      pointer-events: auto
+
   @media (max-width: 900px)
     .simple-version-gallery > div:last-child,
     .simple-candidate-grid,
@@ -2001,6 +2237,16 @@
     .simple-version-list article > div
       align-items: flex-start
       flex-direction: column
+
+    .simple-page-trash__list > li
+      grid-template-columns: 72px minmax(0, 1fr)
+
+      > button
+        grid-column: 1 / -1
+        justify-self: stretch
+
+    .simple-page-trash__image
+      width: 72px
 
     .simple-book-reader:fullscreen,
     .simple-book-reader.is-fullscreen
@@ -2102,6 +2348,18 @@
       min-height: 100%
       overflow: visible
 
+    .simple-feedback--floating,
+    .simple-feedback--floating.is-error
+      --simple-feedback-x: 0%
+      position: fixed
+      z-index: 70
+      top: auto
+      right: 16px
+      bottom: 16px
+      left: 16px
+      width: auto
+      max-width: none
+
     .simple-project-page
       padding: 24px 18px 48px
 
@@ -2165,6 +2423,9 @@
     .simple-page-rail__menu
       right: -2px
 
+    .simple-page-rail__menu--actions
+      right: -34px
+
     .simple-page-rail__list
       padding: 2px 10px 10px
       display: flex
@@ -2200,8 +2461,14 @@
 
   @media (prefers-reduced-motion: reduce)
     .simple-loading span,
-    .simple-project-overlay__panel
+    .simple-project-overlay__panel,
+    .simple-feedback--floating,
+    .simple-page-current-image.is-fresh
       animation: none
+
+    .simple-page-current-image.is-fresh
+      border-color: $color-accent
+      box-shadow: 0 0 0 3px rgba($color-accent, .2)
 
 @keyframes simple-project-spin
   to
@@ -2215,3 +2482,25 @@
   to
     opacity: 1
     transform: translateX(0)
+
+@keyframes simple-feedback-in
+  from
+    opacity: 0
+    transform: translateX(var(--simple-feedback-x)) translateY(-5px)
+
+  to
+    opacity: 1
+    transform: translateX(var(--simple-feedback-x)) translateY(0)
+
+@keyframes simple-page-image-fresh
+  0%
+    border-color: $color-accent
+    box-shadow: 0 0 0 0 rgba($color-accent, 0)
+
+  26%
+    border-color: $color-accent
+    box-shadow: 0 0 0 4px rgba($color-accent, .22)
+
+  100%
+    border-color: $color-border
+    box-shadow: 0 0 0 0 rgba($color-accent, 0)

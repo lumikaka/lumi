@@ -689,7 +689,10 @@ func truncateSummary(value string, limit int) string {
 	if len(runes) <= limit {
 		return value
 	}
-	return string(runes[:limit]) + "…"
+	if limit <= 0 {
+		return ""
+	}
+	return string(runes[:limit-1]) + "…"
 }
 
 func newUUIDv7() (string, error) {

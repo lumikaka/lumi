@@ -107,6 +107,7 @@ type ComicSection struct {
 	CurrentImage      *ImageVariant           `json:"current_image"`
 	PremiseAssets     []PremiseAssetReference `json:"premise_assets"`
 	Revision          int64                   `json:"revision"`
+	DeletedAt         *time.Time              `json:"deleted_at,omitempty"`
 	CreatedAt         time.Time               `json:"created_at"`
 	UpdatedAt         time.Time               `json:"updated_at"`
 }
@@ -313,6 +314,8 @@ type GenerationSnapshot struct {
 	PageRole                  string                      `json:"page_role,omitempty"`
 	PremiseAssets             []PremiseAssetReference     `json:"premise_assets,omitempty"`
 	PremiseCandidates         []PremiseAssetReference     `json:"premise_candidates,omitempty"`
+	ReferenceFiles            []GenerationReferenceFile   `json:"reference_files,omitempty"`
+	ReferenceComposerVersion  string                      `json:"reference_composer_version,omitempty"`
 	AssetOperation            string                      `json:"asset_operation,omitempty"`
 	AssetType                 string                      `json:"asset_type,omitempty"`
 	AssetTitle                string                      `json:"asset_title,omitempty"`
@@ -330,10 +333,22 @@ type GenerationSnapshot struct {
 }
 
 type PremiseAssetReference struct {
-	AssetUUID   string `json:"asset_uuid"`
-	VariantUUID string `json:"variant_uuid"`
-	FileUUID    string `json:"file_uuid,omitempty"`
-	Title       string `json:"title,omitempty"`
+	AssetUUID     string `json:"asset_uuid"`
+	VariantUUID   string `json:"variant_uuid"`
+	FileUUID      string `json:"file_uuid,omitempty"`
+	Title         string `json:"title,omitempty"`
+	AssetType     string `json:"asset_type,omitempty"`
+	Summary       string `json:"summary,omitempty"`
+	ReferenceRole string `json:"reference_role,omitempty"`
+}
+
+type GenerationReferenceFile struct {
+	ReferenceUUID string `json:"reference_uuid"`
+	FileUUID      string `json:"file_uuid"`
+	Position      int    `json:"position"`
+	ReferenceRole string `json:"reference_role"`
+	Title         string `json:"title"`
+	Instruction   string `json:"instruction,omitempty"`
 }
 
 type ExportSnapshot struct {

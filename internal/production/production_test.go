@@ -86,6 +86,93 @@ func upload(t *testing.T, service *Service, purpose string, content []byte) stri
 	return value.UUID
 }
 
+func TestProjectCreationReferenceBecomesIdempotentPremiseAssetAndProtectsSourceVariant(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	var projectID int64
+	if err := h.service.store.DB().Table("projects").Where("uuid=?", h.project.UUID).Pluck("id", &projectID).Error; err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	sessionUUID := mustUUID(t)
+	seedReference := func(position int, role, title, instruction string, included bool, seed byte) GenerationReferenceFile {
+		t.Helper()
+		uploadUUID := upload(t, h.service, "project_chatbot_reference", imageBytes(t, seed))
+		file, err := h.service.Files().FinalizeUpload(ctx, uploadUUID, "project_chatbot_reference")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fileUUID := file.UUID
+		bindingUUID := mustUUID(t)
+		if err := h.service.store.DB().Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,reference_role,title,instruction,include_in_yolo,plan_source,created_at,updated_at) VALUES(?,?,?,?,?,(SELECT id FROM files WHERE uuid=?),?,?,?,?,'user_confirmed',?,?)`, bindingUUID, projectID, sessionUUID, mustUUID(t), position, fileUUID, role, title, instruction, included, now, now).Error; err != nil {
+			t.Fatal(err)
+		}
+		return GenerationReferenceFile{ReferenceUUID: bindingUUID, FileUUID: fileUUID, Position: position, ReferenceRole: role, Title: title, Instruction: instruction}
+	}
+
+	characterReference := seedReference(1, "character", "月光邮差", "保留红围巾和耳尖颜色", true, 32)
+	created, err := h.service.BindProjectCreationReferenceAsset(ctx, characterReference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.AssetType != "character" || created.Title != characterReference.Title || !strings.Contains(created.Summary, characterReference.Instruction) || created.CurrentVariant == nil || created.CurrentVariant.Asset.UUID != characterReference.FileUUID || strings.Join(created.Tags, ",") != "project-creation-reference,reference-role-character" {
+		t.Fatalf("created reference asset=%+v", created)
+	}
+	replayed, err := h.service.BindProjectCreationReferenceAsset(ctx, characterReference)
+	if err != nil || replayed.UUID != created.UUID || replayed.CurrentVariant == nil || replayed.CurrentVariant.UUID != created.CurrentVariant.UUID {
+		t.Fatalf("replayed reference asset=%+v err=%v", replayed, err)
+	}
+	var assetCount, variantCount, createdEventCount int64
+	if err := h.service.store.DB().Table("premise_assets").Where("uuid=?", created.UUID).Count(&assetCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Table("premise_asset_variants").Where("premise_asset_id=(SELECT id FROM premise_assets WHERE uuid=?)", created.UUID).Count(&variantCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.store.DB().Table("premise_asset_events").Where("premise_asset_id=(SELECT id FROM premise_assets WHERE uuid=?) AND event_type='asset_created_from_project_reference'", created.UUID).Count(&createdEventCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if assetCount != 1 || variantCount != 1 || createdEventCount != 1 {
+		t.Fatalf("idempotent counts assets=%d variants=%d events=%d", assetCount, variantCount, createdEventCount)
+	}
+
+	trashed, err := h.service.SetPremiseAssetTrashed(ctx, created.UUID, true, created.Revision)
+	if err != nil || trashed.DeletedAt == nil {
+		t.Fatalf("trashed=%+v err=%v", trashed, err)
+	}
+	restored, err := h.service.BindProjectCreationReferenceAsset(ctx, characterReference)
+	if err != nil || restored.UUID != created.UUID || restored.DeletedAt != nil || restored.CurrentVariant == nil || restored.CurrentVariant.UUID != created.CurrentVariant.UUID {
+		t.Fatalf("restored=%+v err=%v", restored, err)
+	}
+
+	taskUUID := mustUUID(t)
+	if err := h.service.store.DB().Exec(`INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,progress,attempt,max_attempts,created_at,updated_at) VALUES(?,?,'premise_asset_breakdown',?,'{}','running',?,0,1,3,?,?)`, taskUUID, projectID, mustUUID(t), "breakdown-protection:"+taskUUID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	matched, err := h.service.CommitGeneratedPremiseAsset(ctx, taskUUID, mustUUID(t), CreateAssetInput{AssetType: "character", Title: characterReference.Title}, bytes.NewReader([]byte("must not be committed")))
+	if err != nil || matched.UUID != created.UUID || matched.CurrentVariant == nil || matched.CurrentVariant.UUID != created.CurrentVariant.UUID {
+		t.Fatalf("matched source reference=%+v err=%v", matched, err)
+	}
+	matchedAgain, err := h.service.CommitGeneratedPremiseAsset(ctx, taskUUID, mustUUID(t), CreateAssetInput{AssetType: "character", Title: characterReference.Title}, bytes.NewReader([]byte("must not be committed")))
+	if err != nil || matchedAgain.UUID != created.UUID {
+		t.Fatalf("replayed match=%+v err=%v", matchedAgain, err)
+	}
+	var matchedEvents int64
+	if err := h.service.store.DB().Table("premise_asset_events").Where("premise_asset_id=(SELECT id FROM premise_assets WHERE uuid=?) AND event_type='breakdown_matched_project_reference'", created.UUID).Count(&matchedEvents).Error; err != nil || matchedEvents != 1 {
+		t.Fatalf("matched events=%d err=%v", matchedEvents, err)
+	}
+
+	styleReference := seedReference(2, "style", characterReference.Title, "只参考笔触", true, 64)
+	styleAsset, err := h.service.BindProjectCreationReferenceAsset(ctx, styleReference)
+	if err != nil || styleAsset.AssetType != "reference" || styleAsset.Title != characterReference.Title+" · 参考图 2" {
+		t.Fatalf("collision asset=%+v err=%v", styleAsset, err)
+	}
+	excludedReference := seedReference(3, "scene", "排除的场景", "", false, 96)
+	if _, err := h.service.BindProjectCreationReferenceAsset(ctx, excludedReference); !productionErrorIs(err, CodeValidation) {
+		t.Fatalf("excluded reference error=%v", err)
+	}
+}
+
 func TestOverallStylePromptAndLegacyPremiseStayInSync(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

@@ -699,6 +699,7 @@ function StoryWorkspaceContent({ projectUuid }) {
       <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
         {draftProject ? <DraftProjectWorkspace /> : <Routes>
           <Route index element={<OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} />} />
+          <Route path="settings" element={<Navigate replace to={projectRoute(projectUuid, '', location.search)} />} />
           <Route path="story" element={<StoryProfilePanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="prompts" element={<PromptPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />

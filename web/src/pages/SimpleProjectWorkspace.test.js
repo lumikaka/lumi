@@ -30,14 +30,15 @@ test('simple mode owns its project workspace while reusing the app sidebar, Chat
   assert.doesNotMatch(workspaceSource, /className="simple-project-topbar__nav"/)
   assert.match(workspaceSource, /<MessageCircle size=\{16\} strokeWidth=\{1\.6\}/)
   assert.match(workspaceSource, /<MoreHorizontal size=\{16\} strokeWidth=\{1\.6\}/)
-  assert.match(workspaceSource, /openProjectConfiguration: true/)
+  assert.match(workspaceSource, /projectRoute\(projectUuid, 'settings', search\)/)
+  assert.doesNotMatch(workspaceSource, /openProjectConfiguration/)
   assert.match(workspaceSource, /aria-haspopup="menu"/)
   assert.match(workspaceSource, /className="simple-project-topbar__dropdown"[\s\S]*role="menu"/)
   assert.equal((workspaceSource.match(/<(?:button|Link)[^>]*role="menuitem"/g) || []).length, 4)
   for (const key of ['projects.configuration', 'simple.shell.switch_workspace_mode', 'settings.llm_logs', 'projects.tab.exports']) {
     assert.ok(workspaceSource.includes(`t('${key}')`), `missing project action ${key}`)
   }
-  assert.match(pagesSource, /location\.state\?\.openProjectConfiguration/)
+  assert.doesNotMatch(pagesSource, /location\.state\?\.openProjectConfiguration/)
   assert.match(workspaceSource, /<ChatArea projectUuid=\{projectUuid\}/)
   assert.doesNotMatch(combined, /ProjectWorkspaceLayout|OverviewSummaryPanel|PremiseWorkspace|ChaptersWorkspace|ChapterWorkbenchPage/)
   assert.match(pagesSource, /useMutation/)
@@ -63,7 +64,7 @@ test('one canonical route tree selects the simple or expert renderer from projec
   assert.match(storyWorkspaceSource, /<ProjectDashboardModeProvider key=\{projectUuid\}/)
   assert.match(storyWorkspaceSource, /canonicalProjectLocation\(/)
   assert.match(storyWorkspaceSource, /if \(simple\)[\s\S]*<SimpleProjectWorkspace/)
-  for (const route of ['', 'story', 'prompts', 'llm-logs', 'exports', 'chapters', 'chapters/:chapterUuid', 'chapters/:chapterUuid/sections/:sectionUuid', 'premise', 'premise/assets/:assetUuid', 'assets']) {
+  for (const route of ['', 'settings', 'story', 'prompts', 'llm-logs', 'exports', 'chapters', 'chapters/:chapterUuid', 'chapters/:chapterUuid/sections/:sectionUuid', 'premise', 'premise/assets/:assetUuid', 'assets']) {
     if (!route) {
       assert.match(storyWorkspaceSource, /<Route index element=\{<OverviewSummaryPanel/)
       continue
@@ -72,6 +73,25 @@ test('one canonical route tree selects the simple or expert renderer from projec
   }
   assert.doesNotMatch(expertLayoutSource, /writeProjectDashboardMode/)
   assert.match(expertLayoutSource, /forcedExpert[\s\S]*expert_page_notice/)
+})
+
+test('simple project configuration is a dedicated settings page with shared project facts', () => {
+  assert.match(workspaceSource, /configuration: 'projects\.configuration'/)
+  assert.match(workspaceSource, /path="settings" element=\{<SimpleProjectSettingsPage project=\{project\} projectUuid=\{projectUuid\} projectQuery=\{projectQuery\} \/>\}/)
+  assert.match(pagesSource, /export function SimpleProjectSettingsPage\(\{ project, projectUuid, projectQuery \}\)/)
+  assert.match(pagesSource, /projectRoute\(projectUuid, 'settings', location\.search\)/)
+  assert.match(pagesSource, /updateStoryProject\(projectUuid, \{[\s\S]*expected_revision: project\.revision/)
+  assert.match(pagesSource, /if \(!name\.trim\(\) \|\| saveProject\.isPending\) return/)
+  assert.match(pagesSource, /autoFocus required maxLength=\{120\}/)
+  assert.match(pagesSource, /queryClient\.setQueryData\(\['story-project', projectUuid\], updated\)/)
+  assert.match(pagesSource, /invalidateQueries\(\{ queryKey: \['recent-projects'\] \}\)/)
+  assert.match(pagesSource, /setFeedback\(\{ kind: 'success', message: t\('simple\.feedback\.saved'\) \}\)/)
+  assert.match(pagesSource, /onError: \(mutationError\) => \{[\s\S]*kind: 'error'[\s\S]*projectQuery\.refetch\(\)/)
+  assert.match(pagesSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
+  assert.match(storyWorkspaceSource, /path="settings" element=\{<Navigate replace to=\{projectRoute\(projectUuid, '', location\.search\)\} \/>\}/)
+  assert.match(styles, /\.simple-project-settings-card/)
+  assert.doesNotMatch(pagesSource, /<SimpleDialog title=\{t\('projects\.configuration'\)\}/)
+  assert.doesNotMatch(pagesSource, /location\.state\?\.openProjectConfiguration/)
 })
 
 test('LLM logs reuse the complete panel in simple mode under the simple topbar', () => {
@@ -115,6 +135,7 @@ test('application-level project switching is mode-neutral and resolves through t
 
 test('every simple workflow is independently deep-linkable through the shared resource paths', () => {
   for (const route of [
+    'settings',
     'story',
     'premise',
     'premise/assets/:assetUuid',
@@ -132,6 +153,7 @@ test('every simple workflow is independently deep-linkable through the shared re
   assert.match(pagesSource, /projectRoute\(projectUuid, `chapters\/\$\{encodeURIComponent\(chapter\.uuid\)\}`/)
   assert.match(pagesSource, /const sectionUuid = routeSectionUuid \|\| sections\[0\]\?\.uuid \|\| ''/)
   assert.match(pagesSource, /enabled: Boolean\(sectionUuid\)/)
+  assert.match(pagesSource, /\}, \[section\?\.uuid, section\?\.revision, section\?\.current_storyboard\?\.uuid\]\)/)
   assert.match(pagesSource, /projectRoute\(projectUuid, '', location\.search\)[\s\S]*simple\.shell\.page\.home/)
   assert.match(pagesSource, /const multipleChapters = \(chaptersQuery\.data\?\.items \|\| \[\]\)\.length > 1/)
   assert.match(pagesSource, /backTo=\{projectRoute\(projectUuid, multipleChapters \? 'chapters' : ''/)
@@ -159,18 +181,56 @@ test('simple per-page rail exposes the expert page-role creation choices from a 
   assert.match(styles, /\[aria-expanded="true"\]:hover/)
 })
 
+test('simple per-page rail opens recoverable page trash from its hover-revealed more menu', () => {
+  assert.match(pagesSource, /MoreHorizontal/)
+  assert.match(pagesSource, /const \[pageActionsOpen, setPageActionsOpen\] = useState\(false\)/)
+  assert.match(pagesSource, /const \[pageTrashOpen, setPageTrashOpen\] = useState\(false\)/)
+  assert.match(pagesSource, /listComicSections\(projectUuid, chapterUuid, \{ state: 'trashed' \}\)/)
+  assert.match(pagesSource, /restoreComicSection\(projectUuid, chapterUuid, page\.uuid, page\.revision\)/)
+  assert.match(pagesSource, /<SimplePageTrashDialog[\s\S]*activeSections=\{sections\}/)
+  assert.match(pagesSource, /simple-page-rail__menu--actions" role="menu"[\s\S]*setPageTrashOpen\(true\)[\s\S]*simple\.pages\.open_trash/)
+  assert.match(pagesSource, /simple-page-trash__list[\s\S]*simple\.pages\.restore/)
+  assert.match(messages, /'simple\.pages\.open_trash': \['进入回收站', 'Open trash'\]/)
+  assert.match(messages, /'simple\.pages\.restored': \['页面已恢复', 'Page restored'\]/)
+  assert.match(styles, /\.simple-page-trash__list/)
+  assert.match(styles, /\.simple-page-rail__header[\s\S]*&:hover \.simple-page-rail__more > button[\s\S]*opacity: 1[\s\S]*pointer-events: auto/)
+  assert.match(styles, /\.simple-page-rail__more[\s\S]*opacity: 0[\s\S]*pointer-events: none/)
+})
+
+test('simple per-page rail moves a chosen page to trash from its context menu', () => {
+  assert.match(pagesSource, /const \[deletingPage, setDeletingPage\] = useState\(null\)/)
+  assert.match(pagesSource, /const trashPage = useMutation\(\{[\s\S]*deleteComicSection\(projectUuid, chapterUuid, page\.uuid, page\.revision\)/)
+  assert.match(pagesSource, /const \[pageItemMenu, setPageItemMenu\] = useState\(null\)/)
+  assert.match(pagesSource, /onContextMenu=\{\(event\) => openPageItemMenu\(event, item\)\}/)
+  assert.match(pagesSource, /event\.key === 'ContextMenu' \|\| \(event\.shiftKey && event\.key === 'F10'\)/)
+  assert.match(pagesSource, /event\.type === 'contextmenu' \? event\.clientX : triggerBounds\?\.left/)
+  assert.match(pagesSource, /event\.type === 'contextmenu' \? event\.clientY : triggerBounds\?\.bottom/)
+  assert.match(pagesSource, /style=\{\{ left: pageItemMenu\.left, top: pageItemMenu\.top \}\}/)
+  assert.match(pagesSource, /className="simple-page-rail__menu simple-page-rail__item-menu"[\s\S]*setDeletingPage\(pageItemMenuPage\)[\s\S]*common\.action\.delete/)
+  assert.match(pagesSource, /deletingPage \? <SimpleConfirm danger[\s\S]*trashPage\.mutate\(deletingPage\)/)
+  assert.match(pagesSource, /const destination = sections\[deletedIndex \+ 1\] \|\| sections\[deletedIndex - 1\]/)
+  assert.match(pagesSource, /if \(deletingCurrentPage\) navigate\(projectRoute\(projectUuid, destination \?[^;]+\{ replace: true \}\)/)
+  assert.match(styles, /\.simple-page-rail__item-menu\s+[\s\S]*?position: fixed/)
+  assert.match(styles, /\.simple-page-rail__menu-action[\s\S]*&\.is-danger/)
+  assert.match(messages, /'simple\.pages\.deleted': \['页面已移入回收站', 'Page moved to trash'\]/)
+})
+
 test('simple per-page rail drag-sorts body pages while covers stay fixed', () => {
   assert.match(pagesSource, /const reorderPages = useMutation\(\{[\s\S]*reorderComicSections\(projectUuid, chapterUuid, uuids\)/)
   assert.match(pagesSource, /const reorderable = comicPageRole\(item\) === 'body'/)
-  assert.match(pagesSource, /data-reorderable=\{reorderable\}[\s\S]*onPointerDown=\{\(event\) => startPageDrag\(event, item\)\}/)
+  const railItemOpeningTag = pagesSource.match(/<div\s+className=\{itemClasses\}[\s\S]*?>/)?.[0] || ''
+  assert.doesNotMatch(railItemOpeningTag, /onPointerDown/)
+  assert.match(pagesSource, /<button type="button" className="simple-page-rail__drag-handle"[\s\S]*?onPointerDown=\{\(event\) => startPageDrag\(event, item\)\}/)
   assert.match(pagesSource, /className="simple-page-rail__list"[\s\S]*onPointerMove=\{updatePageDrag\}[\s\S]*onPointerUp=\{finishPageDrag\}/)
   assert.match(pagesSource, /list\?\.setPointerCapture\?\.\(event\.pointerId\)/)
   assert.match(pagesSource, /querySelectorAll\('\[data-reorderable="true"\]'\)/)
   assert.match(pagesSource, /window\.getComputedStyle\(list\)\.display === 'flex'/)
   assert.match(pagesSource, /reorderedComicBodyUuids\(sections, drag\.sectionUuid, targetUuid, placement\)/)
   assert.match(pagesSource, /<Link draggable=\{false\}/)
-  assert.match(styles, /\.simple-page-rail__item[\s\S]*&\.is-reorderable[\s\S]*&\.is-drop-before::before[\s\S]*&\.is-drop-after::after/)
+  assert.match(styles, /\.simple-page-rail__item[\s\S]*&\.is-dragging[\s\S]*&\.is-drop-before::before[\s\S]*&\.is-drop-after::after/)
   assert.match(styles, /\.simple-page-rail__drag-handle/)
+  assert.match(styles, /\.simple-page-rail__drag-handle[\s\S]*cursor: grab/)
+  assert.match(styles, /\.simple-page-rail__drag-handle[\s\S]*pointer-events: auto/)
 })
 
 test('simple page candidates use the reference action row and open the existing grid in a dialog', () => {
@@ -185,6 +245,19 @@ test('simple page candidates use the reference action row and open the existing 
   assert.match(styles, /\.simple-illustration-actions__drafts[\s\S]*margin-right: auto[\s\S]*\[aria-expanded="true"\]:hover/)
 })
 
+test('simple page current image opens an accessible large-image dialog', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pageViewSource, /const \[imagePreviewOpen, setImagePreviewOpen\] = useState\(false\)/)
+  assert.match(pageViewSource, /currentImageReady \? \([\s\S]*<button[\s\S]*className=\{`simple-page-current-image[\s\S]*aria-haspopup="dialog"[\s\S]*onClick=\{\(\) => setImagePreviewOpen\(true\)\}/)
+  assert.match(pageViewSource, /imagePreviewOpen \? <SimpleDialog wide title=\{t\('simple\.page\.image_preview'\)\}[\s\S]*className="simple-page-image-preview"/)
+  assert.match(messages, /'simple\.page\.open_image_preview': \['查看当前画面大图', 'View current artwork full size'\]/)
+  assert.match(styles, /button\.simple-page-current-image[\s\S]*cursor: zoom-in[\s\S]*&:hover,[\s\S]*&:focus-visible/)
+  assert.match(styles, /\.simple-page-image-preview[\s\S]*max-height: calc\(88dvh - 126px\)[\s\S]*object-fit: contain/)
+})
+
 test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {
   assert.match(workspaceSource, /const pageEditorActive = project\?\.setup_status !== 'draft' && \['page', 'pages'\]\.includes\(routeState\.key\)/)
   assert.match(workspaceSource, /simple-project-content\$\{pageEditorActive \? ' simple-project-content--page-editor' : ''\}/)
@@ -193,6 +266,7 @@ test('simple per-page workspace keeps the page rail fixed while the editor and t
   assert.match(styles, /\.simple-page-editor-layout\s+[\s\S]*?flex: 1 1 auto[\s\S]*?min-height: 0[\s\S]*?overflow: hidden/)
   assert.match(styles, /\.simple-page-rail\s+[\s\S]*?height: 100%/)
   assert.match(styles, /\.simple-page-rail__list\s+[\s\S]*?flex: 1 1 auto[\s\S]*?overflow-y: auto/)
+  assert.match(styles, /\.simple-page-rail\s+[\s\S]*?img\s+object-fit: contain/)
   assert.match(styles, /\.simple-page-editor\s+[\s\S]*?height: 100%[\s\S]*?overflow-y: auto/)
 })
 
@@ -205,7 +279,7 @@ test('simple pages read and mutate the shared REST facts through TanStack Query'
     'createPremiseAsset', 'updatePremiseAsset', 'trashPremiseAsset', 'restorePremiseAsset',
     'createPremiseAssetVariant', 'generatePremiseAssetVariant', 'selectPremiseAssetVariant',
     'createChapter', 'updateChapter', 'trashChapter', 'restoreChapter', 'reorderChapters',
-    'createComicSection', 'updateComicSection', 'deleteComicSection', 'reorderComicSections',
+    'createComicSection', 'updateComicSection', 'deleteComicSection', 'restoreComicSection', 'reorderComicSections',
     'createStoryboard', 'setComicSectionPremiseAssets', 'generateSectionImage', 'importSectionImage',
     'selectImageVariant', 'selectStoryboard', 'generateChapterImagesBatch',
   ]) {
@@ -218,6 +292,27 @@ test('simple pages read and mutate the shared REST facts through TanStack Query'
   assert.match(pagesSource, /expected_revision/)
   assert.match(pagesSource, /SimpleFeedback/)
   assert.match(pagesSource, /SimpleConfirm/)
+})
+
+test('page editor feedback floats without shifting the workspace and only announces new completions', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pageViewSource, /<SimpleFeedback feedback=\{feedback\} floating autoDismiss/)
+  assert.match(pageViewSource, /taskStateRef\.current = \{ uuid: task\.uuid, status: task\.status \}/)
+  assert.match(pageViewSource, /previous\?\.uuid !== task\.uuid \|\| !ACTIVE_TASK_STATUSES\.has\(previous\.status\)/)
+  assert.match(pageViewSource, /setFreshImageTask\(task\.uuid\)/)
+  assert.match(pageViewSource, /onSuccess: \(updated\) => \{ updateSectionCache\(updated\); refreshPage\(\); setFeedback\(null\) \}/)
+  assert.match(pageViewSource, /onSuccess: async \(\) => \{ setFeedback\(null\); await queryClient\.invalidateQueries/)
+  assert.match(pagesSource, /SIMPLE_FEEDBACK_AUTO_DISMISS_MS = 5000/)
+  assert.match(pagesSource, /feedback\.kind !== 'success' \|\| !autoDismiss \|\| paused/)
+  assert.match(pagesSource, /aria-live="polite" aria-atomic="true"/)
+  assert.match(styles, /\.simple-page-view\n\s+position: relative/)
+  assert.match(styles, /\.simple-feedback--floating[\s\S]*position: absolute[\s\S]*margin: 0/)
+  assert.match(styles, /\.simple-feedback--floating\.is-error[\s\S]*position: fixed/)
+  assert.match(styles, /\.simple-page-current-image[\s\S]*&\.is-fresh[\s\S]*simple-page-image-fresh/)
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*\.simple-feedback--floating[\s\S]*animation: none/)
 })
 
 test('simple operations use realtime invalidation and never HTTP polling or expert-operation handoffs', () => {

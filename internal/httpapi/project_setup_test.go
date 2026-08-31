@@ -40,6 +40,11 @@ func TestProjectSetupStateJSONUsesDraftValues(t *testing.T) {
 			"project_name": project.SetupSourceAgentProposed,
 		},
 		MissingInformation: []string{},
+		ReferencePlan: project.SetupReferencePlan{Items: []project.SetupReference{{
+			UUID: "019c0000-0000-7000-8000-000000000003", FileUUID: "019c0000-0000-7000-8000-000000000004", Position: 1,
+			ReferenceRole: "character", Title: "Moon fox", Instruction: "Keep the scarf", IncludeInYolo: true,
+			PlanSource: project.SetupSourceUserConfirmed, ThumbnailURL: "/media/projects/019c0000-0000-7000-8000-000000000002/assets/019c0000-0000-7000-8000-000000000004/content",
+		}}},
 	}
 	encoded, err := json.Marshal(state)
 	if err != nil {
@@ -51,5 +56,15 @@ func TestProjectSetupStateJSONUsesDraftValues(t *testing.T) {
 	}
 	if strings.Contains(value, `"candidate"`) {
 		t.Fatalf("response retained legacy candidate field: %s", value)
+	}
+	for _, expected := range []string{`"reference_plan":{"items":[{`, `"reference_role":"character"`, `"include_in_yolo":true`, `"thumbnail_url":"/media/projects/`} {
+		if !strings.Contains(value, expected) {
+			t.Fatalf("response missing %q: %s", expected, value)
+		}
+	}
+	for _, forbidden := range []string{`"id":`, `"file_id":`, `root_path`, `/Users/`} {
+		if strings.Contains(value, forbidden) {
+			t.Fatalf("response leaked %q: %s", forbidden, value)
+		}
 	}
 }

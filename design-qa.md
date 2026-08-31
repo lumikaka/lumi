@@ -131,8 +131,9 @@ No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the
 
 - Primary interactions tested: open candidate dialog, `aria-expanded` transition, Escape dismissal, focus return, idle hover feedback, dialog geometry, and current-candidate disabled state.
 - Browser console: no warnings or errors.
-- Frontend unit suite: passed, 330 tests before the final focused assertion; the focused suite was rerun afterward.
-- Frontend production build: passed and was rerun after final styling.
+- Focused candidate-entry regression: passed (1 test). Message-bundle and plural-family checks: passed (2 tests).
+- Frontend production build: passed after the final styling and localized singular/plural count update.
+- The latest full-suite run is not green because two tests in concurrently changed project-configuration code fail outside this scope: the old `location.state?.openProjectConfiguration` expectation and a missing `simple.project.configuration_description` message. The same full suite passed all 330 tests before those concurrent edits appeared.
 
 final result: passed
 

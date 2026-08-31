@@ -17,6 +17,8 @@
 
 Workflow 创建时冻结 Provider、模型和 `input_snapshot`。后续步骤使用同一冻结选择；重试读取已冻结输入而非当前项目设置或当前业务资源。
 
+YOLO v6 还从可信 bootstrap 创建会话冻结完整视觉参考计划。快照保留 included 与 excluded 项用于审计，生产步骤只消费 included 项；Direct UI 或没有创建会话的 YOLO 仍走无参考图路径。
+
 ### 独立恢复
 
 Step 和 Event 分别按 position / sequence 持久化。客户端读取 Workflow、runs、events 和关联 LLM logs 恢复诊断，WebSocket 只触发失效。
@@ -41,6 +43,6 @@ Workflow 创建和 Worker 执行都重新读取项目事实。`setup_status=draf
 | 模块 | 关系 |
 |---|---|
 | Chat Thread | `direct_ui` 使用独立 `workflow` Thread；`chat_tool`（含 bootstrap YOLO）复用 `conversation` Thread 并内联展示；父对话只通过 await 等待，不拥有 Workflow 状态。 |
-| 项目 | `draft` 项目禁止创建或执行业务 Workflow；Project Setup 原子定稿为 `ready` 后才开放。 |
+| 项目 | `draft` 项目禁止创建或执行业务 Workflow；Project Setup 原子定稿为 `ready` 后才开放。bootstrap YOLO 只能从服务端绑定的创建会话加载引用计划，Agent 不能提交任意 File UUID。 |
 | AI 运行时 | 解析并冻结模型，统一记录 LLM 调用。 |
-| 章节、Premise、漫画 Section | Workflow step 调用其领域服务并生成业务结果。 |
+| 章节、Premise、漫画 Section | Workflow step 调用其领域服务并生成业务结果；YOLO premise 步骤把 included 创建参考图导入 Premise 并生成参考板，后续 Section 使用同一候选选择链路。 |

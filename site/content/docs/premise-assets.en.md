@@ -14,6 +14,20 @@ The Premise workspace stores the shared visual foundation of the picture book. A
 
 Open Premise → AI batch generation and enter the project’s default visual style—for example, “children’s watercolor picture book, soft paper texture, warm backlight, simple outlines.” Describe traits that should remain stable instead of actions needed by only one frame.
 
+## Use references when creating a project
+
+When you create a project from Home, each image can be marked as Auto, Character, Scene, Prop, or Style, with an optional name and instruction. Images participate in the YOLO visual setup by default; mark an image as excluded when it should not be used. You can revise the plan in Project Setup’s Visual references section before confirming the project.
+
+- Character references preserve identity, appearance, clothing, and signature traits.
+- Scene references guide spatial relationships, architecture, materials, lighting, and atmosphere.
+- Prop references guide an object’s form, construction, material, and color.
+- Style references guide line, color, texture, and lighting without requiring the subject or composition to be copied.
+- Auto references provide general visual inspiration interpreted together with your written brief.
+
+After you confirm and start YOLO, included images are used for the premise setting image and become reusable premise items in the project. Excluded images are not sent with that image-generation request. References affect visual setup only. If an image should also change the plot, state that explicitly in the story brief or the image instruction.
+
+If a step reports a missing or damaged reference, or says the selected model does not support image input, correct that image or model configuration and retry the current step. You do not need to recreate the project, and Lumi will not silently continue with text only.
+
 ## Generate premise items in a batch
 
 1. Start a batch and describe the main characters, places, key props, and visual traits that must stay consistent.

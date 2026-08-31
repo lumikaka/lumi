@@ -19,6 +19,7 @@ const assetUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff813'
 test('simple dashboard deep links parse into stable public-resource route state', () => {
   const base = `/projects/${projectUuid}`
   assert.deepEqual(simpleProjectRouteState(base, projectUuid), { key: 'home', assetUuid: '', chapterUuid: '', sectionUuid: '' })
+  assert.deepEqual(simpleProjectRouteState(`${base}/settings`, projectUuid), { key: 'configuration', assetUuid: '', chapterUuid: '', sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/llm-logs`, projectUuid), { key: 'llm_logs', assetUuid: '', chapterUuid: '', sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/exports`, projectUuid), { key: 'exports', assetUuid: '', chapterUuid: '', sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/premise/assets/${assetUuid}`, projectUuid), { key: 'setting', assetUuid, chapterUuid: '', sectionUuid: '' })

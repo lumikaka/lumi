@@ -7,6 +7,7 @@ const (
 	RouteProjectUpdate                   = "project.update"
 	RouteProjectSetupGet                 = "project_setup.get"
 	RouteProjectSetupUpdate              = "project_setup.update"
+	RouteProjectSetupReferenceUpdate     = "project_setup_reference.update"
 	RouteProjectSetupFinalize            = "project_setup.finalize"
 	RouteYoloWorkflowCreate              = "workflow.yolo.create"
 	RouteChapterCreate                   = "chapter.create"
@@ -102,6 +103,16 @@ func projectSetupDraftUpdateBodySchema() map[string]any {
 	}, "expected_revision")
 }
 
+func projectSetupReferenceUpdateBodySchema() map[string]any {
+	return apiObject(map[string]any{
+		"expected_revision": apiBoundedInteger("刚读取到的最新设置 revision。", 1, 1<<31-1),
+		"reference_role":    apiEnum("参考图用途。", "auto", "character", "scene", "prop", "style"),
+		"title":             apiLimitedString("参考图可读标题。", 160),
+		"instruction":       apiLimitedString("参考图的使用说明。", 2000),
+		"include_in_yolo":   apiBoolean("是否让该图参与本次 YOLO 视觉生成。"),
+	}, "expected_revision")
+}
+
 func phase3AgentAPIProjectors() []agentAPIProjector {
 	fields := func(names ...string) []agentAPIResponseField {
 		result := make([]agentAPIResponseField, 0, len(names))
@@ -112,7 +123,7 @@ func phase3AgentAPIProjectors() []agentAPIProjector {
 	}
 	return []agentAPIProjector{
 		{Key: "project", Fields: fields("uuid", "name", "description", "generation_language", "revision", "chapter_count", "trash_count", "updated_at"), RecommendedFields: []string{"uuid", "name", "description", "generation_language", "revision", "chapter_count", "trash_count", "updated_at"}},
-		{Key: "project_setup", Fields: fields("uuid", "project_uuid", "setup_status", "status", "revision", "original_input", "draft_values", "field_sources", "missing_information", "final_picture_book", "error_code", "error_message", "created_at", "updated_at", "finalized_at"), RecommendedFields: []string{"uuid", "project_uuid", "setup_status", "status", "revision", "draft_values", "field_sources", "missing_information", "final_picture_book", "updated_at"}},
+		{Key: "project_setup", Fields: fields("uuid", "project_uuid", "setup_status", "status", "revision", "original_input", "draft_values", "field_sources", "missing_information", "final_picture_book", "reference_plan", "error_code", "error_message", "created_at", "updated_at", "finalized_at"), RecommendedFields: []string{"uuid", "project_uuid", "setup_status", "status", "revision", "draft_values", "field_sources", "missing_information", "final_picture_book", "reference_plan", "updated_at"}},
 		{Key: "workflow", Fields: fields("uuid", "thread_uuid", "presentation_mode", "kind", "title", "status", "current_step_key", "steps"), RecommendedFields: []string{"uuid", "thread_uuid", "presentation_mode", "kind", "title", "status", "current_step_key", "steps"}},
 		{Key: "chapter_story", Fields: fields("uuid", "version_no", "source_type", "source_uuid", "source_item_uuid", "content", "content_format", "char_count", "created_at"), RecommendedFields: []string{"uuid", "version_no", "source_type", "source_uuid", "source_item_uuid", "content_format", "char_count", "created_at"}},
 		{Key: "chapter_story_list", List: true, ItemProjector: "chapter_story"},

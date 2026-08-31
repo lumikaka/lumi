@@ -38,6 +38,66 @@ type yoloSnapshot struct {
 	Prompts               map[string]string           `json:"prompts,omitempty"`
 	PictureBook           *project.PictureBookProfile `json:"picture_book,omitempty"`
 	OutputSize            string                      `json:"output_size,omitempty"`
+	CreationSessionUUID   string                      `json:"creation_session_uuid,omitempty"`
+	CreationReferences    []yoloCreationReference     `json:"creation_references,omitempty"`
+}
+
+type yoloCreationReference struct {
+	ReferenceUUID string `json:"reference_uuid"`
+	FileUUID      string `json:"file_uuid"`
+	Position      int    `json:"position"`
+	ReferenceRole string `json:"reference_role"`
+	Title         string `json:"title"`
+	Instruction   string `json:"instruction,omitempty"`
+	IncludeInYolo bool   `json:"include_in_yolo"`
+	PlanSource    string `json:"plan_source"`
+}
+
+func loadYoloCreationReferences(ctx context.Context, tx *sql.Tx, projectID int64, sessionUUID string) ([]yoloCreationReference, error) {
+	sessionUUID = strings.TrimSpace(sessionUUID)
+	if sessionUUID == "" {
+		return []yoloCreationReference{}, nil
+	}
+	var authorized bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM project_creation_bootstraps WHERE project_id=? AND creation_session_uuid=?)`, projectID, sessionUUID).Scan(&authorized); err != nil {
+		return nil, err
+	}
+	if !authorized {
+		return nil, domainError(CodeValidation, "创建会话无效", "creation_session_uuid 未绑定到当前项目的 bootstrap Turn。", nil)
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT refs.uuid,files.uuid,refs.position,refs.reference_role,refs.title,refs.instruction,refs.include_in_yolo,refs.plan_source,COALESCE(files.original_filename,'')
+		FROM project_creation_reference_files refs JOIN files ON files.id=refs.file_id
+		WHERE refs.project_id=? AND refs.creation_session_uuid=? ORDER BY refs.position,refs.uuid`, projectID, sessionUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []yoloCreationReference{}
+	for rows.Next() {
+		var item yoloCreationReference
+		var filename string
+		if err := rows.Scan(&item.ReferenceUUID, &item.FileUUID, &item.Position, &item.ReferenceRole, &item.Title, &item.Instruction, &item.IncludeInYolo, &item.PlanSource, &filename); err != nil {
+			return nil, err
+		}
+		item.ReferenceRole = strings.TrimSpace(item.ReferenceRole)
+		if item.ReferenceRole == "" {
+			item.ReferenceRole = "auto"
+		}
+		item.Title = strings.TrimSpace(item.Title)
+		if item.Title == "" {
+			filename = strings.TrimSpace(filename)
+			if dot := strings.LastIndex(filename, "."); dot > 0 {
+				filename = filename[:dot]
+			}
+			item.Title = filename
+		}
+		item.PlanSource = strings.TrimSpace(item.PlanSource)
+		if item.PlanSource == "" {
+			item.PlanSource = project.SetupSourceSystemDefault
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
 }
 
 func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID string, input CreateYoloInput) (Workflow, error) {
@@ -50,7 +110,8 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		return Workflow{}, domainError(CodeValidation, "故事创意无效", "story_prompt 需要 1 到 4000 个字符。", err)
 	}
 	key := strings.TrimSpace(input.IdempotencyKey)
-	if len(key) < 8 || len(key) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) {
+	creationSessionUUID := strings.TrimSpace(input.CreationSessionUUID)
+	if len(key) < 8 || len(key) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) || (creationSessionUUID != "" && !isUUIDv7(creationSessionUUID)) {
 		return Workflow{}, domainError(CodeValidation, "Yolo 参数无效", "idempotency_key 需要 8 到 160 字符。", nil)
 	}
 	invocation, err := normalizeYoloInvocation(input.Invocation)
@@ -122,6 +183,10 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		} else if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
+		creationReferences, err := loadYoloCreationReferences(ctx, tx, pid, creationSessionUUID)
+		if err != nil {
+			return err
+		}
 		now := service.now().UTC()
 		var threadID int64
 		var threadUUID string
@@ -153,7 +218,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		snapshot, _ := json.Marshal(yoloSnapshot{Version: 5, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String()})
+		snapshot, _ := json.Marshal(yoloSnapshot{Version: 6, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String(), CreationSessionUUID: creationSessionUUID, CreationReferences: creationReferences})
 		result, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
@@ -203,6 +268,19 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		}
 		if err := appendWorkflowEventTx(ctx, tx, workflowID, nil, "workflow_queued", eventPayload, now); err != nil {
 			return err
+		}
+		if creationSessionUUID != "" {
+			frozen := make([]map[string]any, 0, len(creationReferences))
+			included := 0
+			for _, reference := range creationReferences {
+				if reference.IncludeInYolo {
+					included++
+				}
+				frozen = append(frozen, map[string]any{"reference_uuid": reference.ReferenceUUID, "file_uuid": reference.FileUUID, "position": reference.Position, "reference_role": reference.ReferenceRole, "title": reference.Title, "include_in_yolo": reference.IncludeInYolo})
+			}
+			if err := appendWorkflowEventTx(ctx, tx, workflowID, nil, "creation_references_frozen", map[string]any{"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "creation_session_uuid": creationSessionUUID, "reference_count": len(creationReferences), "included_reference_count": included, "references": frozen}, now); err != nil {
+				return err
+			}
 		}
 		jobID, err := service.queue.EnqueueAgentTx(ctx, projectUUID, tx, JobSpec{Version: 1, ProjectUUID: projectUUID, JobKind: JobWorkflowStep, ResourceUUID: firstStepUUID, ThreadUUID: threadUUID})
 		if err != nil {
@@ -484,7 +562,7 @@ func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *proj
 
 func (service *Service) runYoloStep(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (map[string]any, bool, error) {
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5) || snapshot.ProjectUUID != store.ProjectUUID() {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5 && snapshot.Version != 6) || snapshot.ProjectUUID != store.ProjectUUID() {
 		return nil, false, domainError(CodeStateConflict, "Yolo 输入快照损坏", "workflow 无法安全恢复。", err)
 	}
 	if snapshot.ImageProviderUUID == "" {
@@ -641,6 +719,18 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 		return nil, false, err
 	}
 	productionService := production.NewService(store, service.hub)
+	includedReferences := make([]yoloCreationReference, 0, len(snapshot.CreationReferences))
+	if snapshot.Version >= 6 {
+		for _, reference := range snapshot.CreationReferences {
+			if !reference.IncludeInYolo {
+				continue
+			}
+			includedReferences = append(includedReferences, reference)
+			if _, bindErr := productionService.BindProjectCreationReferenceAsset(ctx, production.GenerationReferenceFile{ReferenceUUID: reference.ReferenceUUID, FileUUID: reference.FileUUID, Position: reference.Position, ReferenceRole: reference.ReferenceRole, Title: reference.Title, Instruction: reference.Instruction}); bindErr != nil {
+				return nil, false, domainError("yolo_reference_unavailable", "创建参考图无法导入 Premise", bindErr.Error(), bindErr)
+			}
+		}
+	}
 	sources, err := productionService.ListPremiseSources(ctx)
 	if err != nil {
 		return nil, false, err
@@ -669,8 +759,12 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 			break
 		}
 	}
-	if setting.UUID == "" {
-		task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "premise_setting_generation", ResourceUUID: source.UUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, Prompt: source.SourceText, IdempotencyKey: step.IdempotencyKey + ":setting"})
+	if setting.UUID == "" || len(includedReferences) > 0 {
+		referenceFiles := make([]DomainReferenceFile, 0, len(includedReferences))
+		for _, reference := range includedReferences {
+			referenceFiles = append(referenceFiles, DomainReferenceFile{ReferenceUUID: reference.ReferenceUUID, FileUUID: reference.FileUUID, Position: reference.Position, ReferenceRole: reference.ReferenceRole, Title: reference.Title, Instruction: reference.Instruction})
+		}
+		task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "premise_setting_generation", ResourceUUID: source.UUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, Prompt: source.SourceText, IdempotencyKey: step.IdempotencyKey + ":setting", ReferenceFiles: referenceFiles})
 		if err != nil {
 			return nil, false, err
 		}
@@ -695,7 +789,7 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 	if err != nil {
 		return nil, false, err
 	}
-	if len(assets) == 0 {
+	if len(assets) == 0 || len(includedReferences) > 0 {
 		task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "premise_asset_breakdown", ResourceUUID: setting.UUID, ProviderUUID: snapshot.ProviderUUID, Model: snapshot.Model, Prompt: snapshot.StoryPrompt, IdempotencyKey: step.IdempotencyKey + ":breakdown"})
 		if err != nil {
 			return nil, false, err

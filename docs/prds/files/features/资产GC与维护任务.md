@@ -4,7 +4,7 @@
 
 该 Feature 以“先审计、后应用”的方式回收不再被任何结构化引用、历史、快照或受保护任务使用的 Object。GC 不能由业务删除直接触发物理移除：先生成 dry-run 计划，复核快照和引用，再由维护任务应用。
 
-同一套维护任务也承载 reconcile、完整性扫描、缩略图重建和上传清理，并通过进度、事件、取消和终态让页面恢复操作状态。`chat_context_references.file_id`、`image_file_id` 与 `project_creation_reference_files.file_id` 均属于结构化保留来源，即使原业务资源已经永久删除或首页跨库检查点尚未完成也不能回收对应 Object。
+同一套维护任务也承载 reconcile、完整性扫描、缩略图重建和上传清理，并通过进度、事件、取消和终态让页面恢复操作状态。`chat_context_references.file_id`、`image_file_id` 与 `project_creation_reference_files.file_id` 均属于结构化保留来源，即使图片被用户排除、尚未导入 Premise、原业务资源已经永久删除或首页跨库检查点尚未完成也不能回收对应 Object。GC 还必须扫描 production task、Premise step 和 Workflow JSON 中的公开 File UUID，以保留有效参考板及历史快照。
 
 ## data_model
 

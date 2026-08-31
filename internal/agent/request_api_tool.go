@@ -19,7 +19,7 @@ func executeRequestAPIToolWithUIRef(ctx context.Context, service *Service, store
 	if err != nil {
 		return requestAPIToolOutput{}, err
 	}
-	if store != nil && store.SetupStatus() == project.SetupStatusDraft && request.Method != "GET" && request.Route.ID != RouteProjectSetupUpdate && request.Route.ID != RouteProjectSetupFinalize {
+	if store != nil && store.SetupStatus() == project.SetupStatusDraft && request.Method != "GET" && request.Route.ID != RouteProjectSetupUpdate && request.Route.ID != RouteProjectSetupReferenceUpdate && request.Route.ID != RouteProjectSetupFinalize {
 		return requestAPIToolOutput{}, domainError(project.CodeProjectSetupIncomplete, "项目设置尚未定稿", "draft 阶段只允许读取项目事实和修改或定稿 project setup。", nil)
 	}
 	if store != nil && store.SetupStatus() == project.SetupStatusReady && isBootstrapToolContext(tc) && request.Method != "GET" {

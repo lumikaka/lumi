@@ -465,7 +465,7 @@ func (handler *ProductionHandler) ListSections(c echo.Context) error {
 	var items []production.ComicSection
 	if err := handler.withService(c, func(service *production.Service) error {
 		var err error
-		items, err = service.ListSections(c.Request().Context(), c.Param("chapter_uuid"))
+		items, err = service.ListSectionsByState(c.Request().Context(), c.Param("chapter_uuid"), c.QueryParam("state"))
 		return err
 	}); err != nil {
 		return err
@@ -538,6 +538,27 @@ func (handler *ProductionHandler) DeleteSection(c echo.Context) error {
 		return err
 	}
 	return Success(c, http.StatusOK, nil)
+}
+func (handler *ProductionHandler) RestoreSection(c echo.Context) error {
+	var request struct {
+		ExpectedRevision *int64 `json:"expected_revision"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		return err
+	}
+	revision, err := requiredRevision(request.ExpectedRevision)
+	if err != nil {
+		return err
+	}
+	var value production.ComicSection
+	if err := handler.withService(c, func(service *production.Service) error {
+		var restoreErr error
+		value, restoreErr = service.RestoreSection(c.Request().Context(), c.Param("chapter_uuid"), c.Param("section_uuid"), revision)
+		return restoreErr
+	}); err != nil {
+		return err
+	}
+	return Success(c, http.StatusOK, value)
 }
 func (handler *ProductionHandler) ReorderSections(c echo.Context) error {
 	var request struct {

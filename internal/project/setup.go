@@ -85,11 +85,38 @@ type SetupState struct {
 	FieldSources       map[string]string   `json:"field_sources"`
 	MissingInformation []string            `json:"missing_information"`
 	FinalPictureBook   *PictureBookProfile `json:"final_picture_book,omitempty"`
+	ReferencePlan      SetupReferencePlan  `json:"reference_plan"`
 	ErrorCode          string              `json:"error_code,omitempty"`
 	ErrorMessage       string              `json:"error_message,omitempty"`
 	CreatedAt          time.Time           `json:"created_at,omitempty"`
 	UpdatedAt          time.Time           `json:"updated_at,omitempty"`
 	FinalizedAt        *time.Time          `json:"finalized_at,omitempty"`
+}
+
+type SetupReferencePlan struct {
+	Items []SetupReference `json:"items"`
+}
+
+type SetupReference struct {
+	UUID             string `json:"uuid"`
+	FileUUID         string `json:"file_uuid"`
+	Position         int    `json:"position"`
+	ReferenceRole    string `json:"reference_role"`
+	Title            string `json:"title"`
+	Instruction      string `json:"instruction,omitempty"`
+	IncludeInYolo    bool   `json:"include_in_yolo"`
+	PlanSource       string `json:"plan_source"`
+	PremiseAssetUUID string `json:"premise_asset_uuid,omitempty"`
+	ThumbnailURL     string `json:"thumbnail_url"`
+}
+
+type SetupReferencePatchInput struct {
+	ExpectedRevision int64
+	ReferenceRole    *string
+	Title            *string
+	Instruction      *string
+	IncludeInYolo    *bool
+	Source           string
 }
 
 type SetupDraftPatchInput struct {
@@ -146,7 +173,7 @@ func setupState(projectRecord Project, record *setupDraftRecord, profile *Pictur
 	state := SetupState{
 		ProjectUUID: projectRecord.UUID, SetupStatus: projectRecord.SetupStatus,
 		Status: SetupDraftStatusFinalized, FieldSources: map[string]string{}, MissingInformation: []string{},
-		FinalPictureBook: profile,
+		FinalPictureBook: profile, ReferencePlan: SetupReferencePlan{Items: []SetupReference{}},
 	}
 	if record == nil {
 		state.DraftValues = SetupDraftValues{ProjectName: projectRecord.Name, GenerationLanguage: projectRecord.GenerationLanguage, PictureBook: profile}
@@ -187,7 +214,140 @@ func (store *Store) ProjectSetup(ctx context.Context) (SetupState, error) {
 	if result.RowsAffected == 1 {
 		recordPointer = &record
 	}
-	return setupState(projectRecord, recordPointer, store.OptionalPictureBookProfile()), nil
+	state := setupState(projectRecord, recordPointer, store.OptionalPictureBookProfile())
+	items, err := store.setupReferences(ctx, projectRecord.ID, projectRecord.UUID)
+	if err != nil {
+		return SetupState{}, err
+	}
+	state.ReferencePlan.Items = items
+	return state, nil
+}
+
+func (store *Store) setupReferences(ctx context.Context, projectID int64, projectUUID string) ([]SetupReference, error) {
+	var rows []struct {
+		UUID, FileUUID, OriginalFilename, ReferenceRole, Title, Instruction, PlanSource, PremiseAssetUUID string
+		Position                                                                                          int
+		IncludeInYolo                                                                                     bool
+	}
+	if err := store.db.WithContext(ctx).Table("project_creation_reference_files AS refs").
+		Select(`refs.uuid,files.uuid AS file_uuid,COALESCE(files.original_filename,'') AS original_filename,
+			refs.position,refs.reference_role,refs.title,refs.instruction,refs.include_in_yolo,refs.plan_source,
+			COALESCE(assets.uuid,'') AS premise_asset_uuid`).
+		Joins("JOIN files ON files.id=refs.file_id").
+		Joins("LEFT JOIN premise_assets AS assets ON assets.id=refs.premise_asset_id").
+		Where("refs.project_id=?", projectID).Order("refs.position,refs.id").Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]SetupReference, 0, len(rows))
+	for _, row := range rows {
+		title := strings.TrimSpace(row.Title)
+		if title == "" {
+			filename := strings.TrimSpace(row.OriginalFilename)
+			if dot := strings.LastIndex(filename, "."); dot > 0 {
+				filename = filename[:dot]
+			}
+			title = filename
+		}
+		role := strings.TrimSpace(row.ReferenceRole)
+		if role == "" {
+			role = "auto"
+		}
+		source := strings.TrimSpace(row.PlanSource)
+		if source == "" {
+			source = SetupSourceSystemDefault
+		}
+		items = append(items, SetupReference{
+			UUID: row.UUID, FileUUID: row.FileUUID, Position: row.Position, ReferenceRole: role,
+			Title: title, Instruction: row.Instruction, IncludeInYolo: row.IncludeInYolo, PlanSource: source,
+			PremiseAssetUUID: row.PremiseAssetUUID,
+			ThumbnailURL:     "/media/projects/" + projectUUID + "/assets/" + row.FileUUID + "/content",
+		})
+	}
+	return items, nil
+}
+
+func (store *Store) UpdateProjectSetupReference(ctx context.Context, referenceUUID string, input SetupReferencePatchInput) (SetupState, error) {
+	if !isUUIDv7(strings.TrimSpace(referenceUUID)) || input.ExpectedRevision < 1 {
+		return SetupState{}, projectError(CodeProjectSetupConflict, "项目设置版本冲突", "reference_uuid 与 expected_revision 必须有效。", nil)
+	}
+	if input.ReferenceRole == nil && input.Title == nil && input.Instruction == nil && input.IncludeInYolo == nil {
+		return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图计划没有变化", "至少提供一个参考图计划字段。", nil)
+	}
+	source := strings.TrimSpace(input.Source)
+	if source == "" {
+		source = SetupSourceUserConfirmed
+	}
+	if source != SetupSourceAgentProposed && source != SetupSourceUserConfirmed {
+		return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图来源无效", "计划来源只能由可信调用方设置。", nil)
+	}
+	updates := map[string]any{"plan_source": source}
+	if input.ReferenceRole != nil {
+		role := strings.ToLower(strings.TrimSpace(*input.ReferenceRole))
+		if role != "auto" && role != "character" && role != "scene" && role != "prop" && role != "style" {
+			return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图用途无效", "reference_role 只支持 auto、character、scene、prop 或 style。", nil)
+		}
+		updates["reference_role"] = role
+	}
+	if input.Title != nil {
+		title, err := validateSetupText(*input.Title, 160, "title")
+		if err != nil {
+			return SetupState{}, err
+		}
+		updates["title"] = title
+	}
+	if input.Instruction != nil {
+		instruction := strings.TrimSpace(*input.Instruction)
+		if !utf8.ValidString(instruction) || strings.ContainsRune(instruction, 0) || len([]rune(instruction)) > 2000 {
+			return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图说明无效", "instruction 最多允许 2000 个有效字符。", nil)
+		}
+		updates["instruction"] = instruction
+	}
+	if input.IncludeInYolo != nil {
+		updates["include_in_yolo"] = *input.IncludeInYolo
+	}
+	now := time.Now().UTC()
+	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var projectRecord Project
+		if err := tx.Where("uuid=?", store.ProjectUUID()).First(&projectRecord).Error; err != nil {
+			return err
+		}
+		if projectRecord.SetupStatus != SetupStatusDraft {
+			return projectError(CodePictureBookImmutable, "项目设置已经定稿", "ready 项目的参考图计划不可修改。", nil)
+		}
+		var record setupDraftRecord
+		if err := tx.Where("project_id=?", projectRecord.ID).First(&record).Error; err != nil {
+			return err
+		}
+		if record.Status == SetupDraftStatusFinalized || record.Revision != input.ExpectedRevision {
+			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
+		}
+		updates["updated_at"] = now
+		result := tx.Table("project_creation_reference_files").Where("project_id=? AND uuid=?", projectRecord.ID, referenceUUID).Updates(updates)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return projectError(CodeProjectSetupInvalid, "参考图不存在", "reference_uuid 不属于当前项目。", nil)
+		}
+		status := SetupDraftStatusDraft
+		if len(setupMissing(record)) == 0 {
+			status = SetupDraftStatusPendingConfirmation
+		}
+		result = tx.Model(&setupDraftRecord{}).Where("id=? AND revision=?", record.ID, input.ExpectedRevision).Updates(map[string]any{
+			"status": status, "revision": gorm.Expr("revision + 1"), "error_code": "", "error_message": "", "updated_at": now,
+		})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
+		}
+		return nil
+	})
+	if err != nil {
+		return SetupState{}, err
+	}
+	return store.ProjectSetup(ctx)
 }
 
 func validateSetupText(value string, maximum int, field string) (string, error) {
@@ -405,6 +565,9 @@ func (store *Store) FinalizeProjectSetup(ctx context.Context, expectedRevision i
 		}
 		sourcesJSON, _ := json.Marshal(sources)
 		finalizedRevision := record.Revision
+		if err := tx.Table("project_creation_reference_files").Where("project_id=?", projectRecord.ID).Updates(map[string]any{"plan_source": SetupSourceUserConfirmed, "updated_at": now}).Error; err != nil {
+			return err
+		}
 		return tx.Model(&setupDraftRecord{}).Where("id = ? AND revision = ?", record.ID, expectedRevision).Updates(map[string]any{
 			"status": SetupDraftStatusFinalized, "field_sources_json": string(sourcesJSON), "missing_fields_json": "[]",
 			"finalized_revision": finalizedRevision, "finalized_at": now, "updated_at": now,

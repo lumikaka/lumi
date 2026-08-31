@@ -1,8 +1,12 @@
 package projectcreation
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"image"
+	"image/color"
+	"image/png"
 	"path/filepath"
 	"testing"
 	"time"
@@ -10,10 +14,27 @@ import (
 	"lumi/internal/agent"
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/files"
 	"lumi/internal/project"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
+
+func creationReferencePNG(t *testing.T) []byte {
+	t.Helper()
+	imageValue := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	for y := 0; y < 8; y++ {
+		for x := 0; x < 8; x++ {
+			imageValue.Set(x, y, color.RGBA{R: uint8(20 + x), G: uint8(40 + y), B: 120, A: 255})
+		}
+	}
+	var buffer bytes.Buffer
+	if err := png.Encode(&buffer, imageValue); err != nil {
+		t.Fatal(err)
+	}
+	return buffer.Bytes()
+}
 
 func creationTestUUID(t *testing.T) string {
 	t.Helper()
@@ -170,15 +191,16 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 	projects := &creationProjectsFake{app: app}
 	agents := &creationAgentsFake{threadUUID: creationTestUUID(t), turnUUID: creationTestUUID(t)}
 	service := NewService(app, projects, agents)
+	excluded := false
 	references := []ReferenceFileInput{
-		{OriginalFilename: "first.png", MIMEType: "image/png", ByteSize: 123},
+		{OriginalFilename: "first.png", MIMEType: "image/png", ByteSize: 123, ReferenceRole: "character", Title: "Little Fox", Instruction: "Keep the red scarf", IncludeInYolo: &excluded},
 		{OriginalFilename: "second.webp", MIMEType: "IMAGE/WEBP", ByteSize: 456},
 	}
 	session, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
 	if err != nil || session.Status != StatusFailed || len(session.References) != 2 {
 		t.Fatalf("session=%+v err=%v", session, err)
 	}
-	if session.References[0].Position != 1 || session.References[0].MIMEType != "image/png" || session.References[0].FileUUID != "" || session.References[1].Position != 2 || session.References[1].MIMEType != "image/webp" {
+	if session.References[0].Position != 1 || session.References[0].MIMEType != "image/png" || session.References[0].FileUUID != "" || session.References[0].ReferenceRole != "character" || session.References[0].Title != "Little Fox" || session.References[0].Instruction != "Keep the red scarf" || session.References[0].IncludeInYolo || session.References[0].PlanSource != PlanSourceUserConfirmed || session.References[1].Position != 2 || session.References[1].MIMEType != "image/webp" || session.References[1].ReferenceRole != "auto" || session.References[1].Title != "second" || !session.References[1].IncludeInYolo || session.References[1].PlanSource != PlanSourceSystemDefault {
 		t.Fatalf("references=%+v", session.References)
 	}
 	replayed, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
@@ -186,7 +208,7 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 		t.Fatalf("replayed=%+v err=%v", replayed, err)
 	}
 	changed := append([]ReferenceFileInput(nil), references...)
-	changed[1].ByteSize++
+	changed[1].ReferenceRole = "style"
 	if _, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", changed); err == nil {
 		t.Fatal("idempotency key accepted another ordered reference manifest")
 	} else {
@@ -206,6 +228,66 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 		if !errors.As(err, &creationErr) || creationErr.Code != CodeInvalidInput {
 			t.Fatalf("reference limit error=%v", err)
 		}
+	}
+}
+
+func TestProjectReferenceBindingGetsProjectUUIDAndNeverOverwritesSetupPlan(t *testing.T) {
+	ctx := context.Background()
+	app := creationTestApp(t)
+	manager := project.NewManager(app)
+	created, err := manager.CreateWithInput(ctx, project.CreateInput{Name: "Binding", PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical}}, project.ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = manager.Close() })
+	err = manager.WithStore(ctx, created.UUID, func(store *project.Store) error {
+		fileService := files.NewService(store, nil)
+		file, commitErr := fileService.CommitReader(ctx, files.CommitInput{Purpose: "project_chatbot_reference", OriginalFilename: "fox.png", DisplayName: "Fox", SourceType: "imported", Metadata: map[string]any{"source": "project_creation:test"}, Reader: bytes.NewReader(creationReferencePNG(t))})
+		if commitErr != nil {
+			return commitErr
+		}
+		var projectID, fileID int64
+		if queryErr := store.DB().Table("projects").Where("uuid=?", created.UUID).Pluck("id", &projectID).Error; queryErr != nil {
+			return queryErr
+		}
+		if queryErr := store.DB().Table("files").Where("uuid=?", file.UUID).Pluck("id", &fileID).Error; queryErr != nil {
+			return queryErr
+		}
+		sessionUUID := creationTestUUID(t)
+		reference := appstore.ProjectCreationReference{UUID: creationTestUUID(t), Position: 1, ReferenceRole: ReferenceRoleCharacter, Title: "Little Fox", Instruction: "Keep the scarf", IncludeInYolo: true, PlanSource: PlanSourceUserConfirmed}
+		if transactionErr := store.DB().Transaction(func(tx *gorm.DB) error {
+			return bindProjectReference(tx, projectID, sessionUUID, reference, fileID, time.Now().UTC())
+		}); transactionErr != nil {
+			return transactionErr
+		}
+		var bound struct {
+			UUID, ReferenceUUID, ReferenceRole, Title, Instruction, PlanSource string
+			IncludeInYolo                                                      bool
+		}
+		if queryErr := store.DB().Table("project_creation_reference_files").Where("reference_uuid=?", reference.UUID).Take(&bound).Error; queryErr != nil {
+			return queryErr
+		}
+		if bound.UUID == reference.UUID || bound.ReferenceUUID != reference.UUID || bound.ReferenceRole != ReferenceRoleCharacter || bound.Title != reference.Title || !bound.IncludeInYolo || bound.PlanSource != PlanSourceUserConfirmed {
+			t.Fatalf("initial binding=%+v source=%+v", bound, reference)
+		}
+		if updateErr := store.DB().Table("project_creation_reference_files").Where("uuid=?", bound.UUID).Updates(map[string]any{"reference_role": ReferenceRoleStyle, "title": "Confirmed style", "instruction": "Only use brushwork", "include_in_yolo": false, "plan_source": "user_confirmed"}).Error; updateErr != nil {
+			return updateErr
+		}
+		if transactionErr := store.DB().Transaction(func(tx *gorm.DB) error {
+			return bindProjectReference(tx, projectID, sessionUUID, reference, fileID, time.Now().UTC())
+		}); transactionErr != nil {
+			return transactionErr
+		}
+		if queryErr := store.DB().Table("project_creation_reference_files").Where("uuid=?", bound.UUID).Take(&bound).Error; queryErr != nil {
+			return queryErr
+		}
+		if bound.ReferenceRole != ReferenceRoleStyle || bound.Title != "Confirmed style" || bound.Instruction != "Only use brushwork" || bound.IncludeInYolo {
+			t.Fatalf("rebind overwrote Setup plan: %+v", bound)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

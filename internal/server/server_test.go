@@ -46,6 +46,7 @@ func TestDraftProjectRequestGateAllowsOnlyChatSetupAndReads(t *testing.T) {
 	allowed := []struct{ method, path string }{
 		{http.MethodGet, "/api/v1/projects/:project_uuid/chapters"},
 		{http.MethodPatch, "/api/v1/projects/:project_uuid/project-setup"},
+		{http.MethodPatch, "/api/v1/projects/:project_uuid/project-setup/references/:reference_uuid"},
 		{http.MethodPost, "/api/v1/projects/:project_uuid/project-setup-finalizations"},
 		{http.MethodPost, "/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/turns"},
 	}
@@ -147,11 +148,11 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 		if strings.HasPrefix(route.Path, "/api/v1/project-creation-sessions") {
 			creationSessionRoutes++
 		}
-		if route.Path == "/api/v1/projects/:project_uuid/project-setup" || route.Path == "/api/v1/projects/:project_uuid/project-setup-finalizations" {
+		if route.Path == "/api/v1/projects/:project_uuid/project-setup" || route.Path == "/api/v1/projects/:project_uuid/project-setup/references/:reference_uuid" || route.Path == "/api/v1/projects/:project_uuid/project-setup-finalizations" {
 			projectSetupRoutes++
 		}
 	}
-	if !websocketRouteFound || !workflowConflictRouteFound || creationSessionRoutes != 4 || projectSetupRoutes != 3 || application.RealtimeHub() == nil {
+	if !websocketRouteFound || !workflowConflictRouteFound || creationSessionRoutes != 4 || projectSetupRoutes != 4 || application.RealtimeHub() == nil {
 		t.Fatal("application realtime or workflow conflict endpoint was not initialized")
 	}
 	serverProjectRoutes := projectAPIRouteSpecs(application.Echo)
@@ -198,8 +199,8 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 			documentedRoutes[key] = entry.Name()
 		}
 	}
-	if len(documentedRoutes) != 83 {
-		t.Fatalf("documented unique Agent project routes=%d want=83", len(documentedRoutes))
+	if len(documentedRoutes) != 84 {
+		t.Fatalf("documented unique Agent project routes=%d want=84", len(documentedRoutes))
 	}
 	for key, doc := range documentedRoutes {
 		if !agentRouteKeys[key] {

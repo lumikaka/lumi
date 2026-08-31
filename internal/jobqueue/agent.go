@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"lumi/internal/agent"
+	"lumi/internal/production"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -112,7 +113,11 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		}
 		return storyDomainTask(task), nil
 	case KindPremiseSettingGeneration:
-		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
+		references := make([]production.GenerationReferenceFile, 0, len(request.ReferenceFiles))
+		for _, reference := range request.ReferenceFiles {
+			references = append(references, production.GenerationReferenceFile{ReferenceUUID: reference.ReferenceUUID, FileUUID: reference.FileUUID, Position: reference.Position, ReferenceRole: reference.ReferenceRole, Title: reference.Title, Instruction: reference.Instruction})
+		}
+		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey, ReferenceFiles: references})
 		return productionDomainTask(task), err
 	case KindPremiseAssetBreakdown:
 		task, err := manager.CreatePremiseBreakdown(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})

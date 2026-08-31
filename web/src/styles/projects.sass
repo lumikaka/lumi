@@ -318,6 +318,154 @@
 .project-creation-composer form > .chat-reference-strip
   grid-column: 1 / -1
 
+.creation-reference-editor
+  grid-column: 1 / -1
+  margin: 0 8px 8px
+  padding: 10px
+  display: grid
+  gap: 8px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-muted
+
+  > header strong
+    font-size: 13px
+
+  > header p,
+  .creation-reference-editor__locked
+    margin: 2px 0 0
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.45
+
+.creation-reference-editor__items
+  display: grid
+  gap: 6px
+
+.creation-reference-editor__item
+  min-width: 0
+  padding: 7px
+  display: grid
+  grid-template-columns: 34px minmax(0, 1fr) auto auto
+  align-items: center
+  gap: 7px
+  border: 1px solid $color-border-subtle
+  border-radius: 7px
+  background: $color-surface
+
+.creation-reference-editor__preview
+  width: 34px
+  height: 34px
+  display: grid
+  place-items: center
+  overflow: hidden
+  border-radius: 6px
+  color: $color-muted
+  background: $color-surface-muted
+
+  img
+    width: 100%
+    height: 100%
+    display: block
+    object-fit: cover
+
+.creation-reference-editor__summary
+  min-width: 0
+  display: flex
+  align-items: center
+  gap: 7px
+
+  > strong
+    min-width: 0
+    overflow: hidden
+    font-size: 12px
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  select
+    width: auto
+    min-width: 92px
+    min-height: 30px
+    padding: 3px 24px 3px 7px
+    font-size: $font-size-small
+
+.creation-reference-editor__include,
+.creation-reference-editor__expand
+  min-height: 30px
+  padding: 4px 8px
+  border: 1px solid $color-border
+  border-radius: 5px
+  color: $color-muted
+  background: transparent
+  font-size: $font-size-small
+
+  &:hover,
+  &:focus-visible
+    border-color: $color-accent
+    color: $color-text
+    background: $color-accent-muted
+
+.creation-reference-editor__include[aria-pressed="true"]
+  border-color: rgba($color-success, .45)
+  color: $color-success
+  background: $color-success-muted
+
+.creation-reference-editor__include[aria-pressed="true"]:hover
+  border-color: $color-success
+  color: $color-success
+  background: rgba($color-success, .16)
+
+.creation-reference-editor__expand
+  display: inline-flex
+  align-items: center
+  gap: 3px
+
+  svg
+    transition: transform 140ms ease
+
+  &[aria-expanded="true"] svg
+    transform: rotate(180deg)
+
+  &[aria-expanded="true"]:hover
+    border-color: $color-accent
+    color: $color-text
+    background: $color-accent-muted
+
+.creation-reference-editor__fields
+  grid-column: 2 / -1
+  display: grid
+  grid-template-columns: minmax(160px, .7fr) minmax(220px, 1.3fr)
+  gap: 8px
+
+  label
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+
+  input,
+  textarea
+    width: 100%
+    min-height: 34px
+    padding: 6px 8px
+    border: 1px solid $color-border
+    border-radius: 5px
+    background: $color-surface
+    font: inherit
+    font-size: 12px
+
+  textarea
+    height: auto
+    resize: vertical
+
+  input:focus,
+  textarea:focus
+    border-color: $color-accent
+    box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
 .project-creation-composer__reference-notice
   color: $color-muted
   font-size: $font-size-small
@@ -1110,6 +1258,17 @@
     justify-content: flex-end
 
   .project-path-picker
+    grid-template-columns: 1fr
+
+  .creation-reference-editor__item
+    grid-template-columns: 34px minmax(0, 1fr) auto
+
+  .creation-reference-editor__expand
+    grid-column: 2 / -1
+    justify-self: start
+
+  .creation-reference-editor__fields
+    grid-column: 1 / -1
     grid-template-columns: 1fr
 
   .picture-book-format-cards

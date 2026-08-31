@@ -9,6 +9,7 @@ import (
 	"lumi/internal/files"
 	"lumi/internal/production"
 	"lumi/internal/project"
+	"lumi/internal/realtime"
 	"lumi/internal/story"
 )
 
@@ -37,7 +38,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		workflow, err := service.CreateYoloWorkflow(ctx, tc.ProjectUUID, CreateYoloInput{
 			Title: projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
 			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + tc.BootstrapCreationSessionUUID,
-			Invocation: chatToolInvocationContext(tc, execution),
+			Invocation: chatToolInvocationContext(tc, execution), CreationSessionUUID: tc.BootstrapCreationSessionUUID,
 		})
 		if err != nil {
 			return nil, true, err
@@ -58,6 +59,28 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		})
 		if err == nil && service.projects != nil {
 			err = service.projects.SyncProjectName(ctx, tc.ProjectUUID)
+		}
+		return value, true, err
+	case RouteProjectSetupReferenceUpdate:
+		input := project.SetupReferencePatchInput{ExpectedRevision: intArg(args, "expected_revision"), Source: project.SetupSourceAgentProposed}
+		if value, ok := args["reference_role"].(string); ok {
+			input.ReferenceRole = &value
+		}
+		if value, ok := args["title"].(string); ok {
+			input.Title = &value
+		}
+		if value, ok := args["instruction"].(string); ok {
+			input.Instruction = &value
+		}
+		if value, ok := args["include_in_yolo"].(bool); ok {
+			input.IncludeInYolo = &value
+		}
+		value, err := store.UpdateProjectSetupReference(ctx, request.Params["reference_uuid"], input)
+		if err == nil && service.hub != nil {
+			service.hub.Broadcast(realtime.ProjectTopic(tc.ProjectUUID), "project:setup_changed", map[string]any{
+				"project_uuid": tc.ProjectUUID, "setup_uuid": value.UUID, "status": value.Status,
+				"setup_status": value.SetupStatus, "revision": value.Revision,
+			})
 		}
 		return value, true, err
 	case RouteChapterCreate:

@@ -304,7 +304,7 @@ func TestYoloPageMomentPlanCoversVerticalStripAndOtherFormats(t *testing.T) {
 	}
 }
 
-func TestYoloV5VerticalStripKeepsBodyOnly(t *testing.T) {
+func TestYoloV6VerticalStripKeepsBodyOnly(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
@@ -337,7 +337,7 @@ func TestYoloV5VerticalStripKeepsBodyOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 5 {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 6 {
 		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
 	}
 	output, wait, err := harness.service.runYoloComic(ctx, harness.store, workflow, step, snapshot)
@@ -462,7 +462,7 @@ func TestYoloV4FirstImageResumesThroughLegacySingleTask(t *testing.T) {
 	}
 }
 
-func TestYoloV5InitialImageBatchUsesFrozenModels(t *testing.T) {
+func TestYoloV6InitialImageBatchUsesFrozenModels(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
 	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
@@ -499,7 +499,7 @@ func TestYoloV5InitialImageBatchUsesFrozenModels(t *testing.T) {
 		t.Fatal(err)
 	}
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 5 {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 6 {
 		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
 	}
 	output, wait, err := harness.service.runYoloFirstImage(ctx, harness.store, workflow, step, snapshot)

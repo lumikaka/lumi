@@ -3,20 +3,35 @@ package jobqueue
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
+	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 )
 
 const (
 	premiseSettingImagePromptKey       = "setting_image"
+	premiseSettingReferencePromptKey   = "setting_reference_usage"
 	legacyPremiseSettingImagePromptKey = "setting_generation"
 	premiseAssetBreakdownPromptKey     = "asset_breakdown"
 )
 
 func defaultPremiseStyle(language string) string {
 	return promptcatalog.DefaultProjectStyle(language)
+}
+
+func renderPremiseSettingReferencePrompt(template string, references []production.GenerationReferenceFile) string {
+	lines := make([]string, 0, len(references))
+	for _, reference := range references {
+		line := fmt.Sprintf("%d. [%s] %s", reference.Position, reference.ReferenceRole, strings.TrimSpace(reference.Title))
+		if instruction := strings.TrimSpace(reference.Instruction); instruction != "" {
+			line += " — " + instruction
+		}
+		lines = append(lines, line)
+	}
+	return renderPremisePrompt(template, map[string]string{"reference_plan": strings.Join(lines, "\n")})
 }
 
 func premiseLanguageInstruction(language string) string {

@@ -120,6 +120,69 @@ func TestComicPageRolesRejectVerticalSpecialPagesAndProtectLastBody(t *testing.T
 	}
 }
 
+func TestComicSectionTrashListsAndRestoresPages(t *testing.T) {
+	h := newProductionHarnessWithFormat(t, project.PictureBookClassic)
+	ctx := context.Background()
+	chapter, err := h.stories.CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Recoverable pages"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyA, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Body A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyB, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Body B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	front, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Front", PageRole: PageRoleFrontCover})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.service.DeleteSection(ctx, chapter.UUID, front.UUID, front.Revision); err != nil {
+		t.Fatal(err)
+	}
+
+	active, err := h.service.ListSections(ctx, chapter.UUID)
+	if err != nil || len(active) != 2 || active[0].UUID != bodyA.UUID || active[1].UUID != bodyB.UUID {
+		t.Fatalf("active after trash=%+v error=%v", active, err)
+	}
+	trashed, err := h.service.ListSectionsByState(ctx, chapter.UUID, "trashed")
+	if err != nil || len(trashed) != 1 || trashed[0].UUID != front.UUID || trashed[0].DeletedAt == nil || trashed[0].Revision != front.Revision+1 {
+		t.Fatalf("trash=%+v error=%v", trashed, err)
+	}
+	restored, err := h.service.RestoreSection(ctx, chapter.UUID, front.UUID, trashed[0].Revision)
+	if err != nil || restored.DeletedAt != nil || restored.Revision != trashed[0].Revision+1 || restored.PageRole != PageRoleFrontCover || restored.SectionNo != 1 {
+		t.Fatalf("restored=%+v error=%v", restored, err)
+	}
+	active, err = h.service.ListSections(ctx, chapter.UUID)
+	if err != nil || len(active) != 3 || active[0].UUID != front.UUID || active[1].UUID != bodyA.UUID || active[2].UUID != bodyB.UUID {
+		t.Fatalf("active after restore=%+v error=%v", active, err)
+	}
+	trashed, err = h.service.ListSectionsByState(ctx, chapter.UUID, "trashed")
+	if err != nil || len(trashed) != 0 {
+		t.Fatalf("trash after restore=%+v error=%v", trashed, err)
+	}
+
+	if err := h.service.DeleteSection(ctx, chapter.UUID, restored.UUID, restored.Revision); err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := h.service.CreateSection(ctx, chapter.UUID, CreateSectionInput{Title: "Replacement front", PageRole: PageRoleFrontCover})
+	if err != nil {
+		t.Fatal(err)
+	}
+	trashed, err = h.service.ListSectionsByState(ctx, chapter.UUID, "trashed")
+	if err != nil || len(trashed) != 1 {
+		t.Fatalf("second trash=%+v error=%v", trashed, err)
+	}
+	if _, err := h.service.RestoreSection(ctx, chapter.UUID, front.UUID, trashed[0].Revision); !productionErrorIs(err, CodeConflict) {
+		t.Fatalf("restore duplicate cover with active %s error=%v", replacement.UUID, err)
+	}
+	if _, err := h.service.ListSectionsByState(ctx, chapter.UUID, "unknown"); !productionErrorIs(err, CodeValidation) {
+		t.Fatalf("invalid trash state error=%v", err)
+	}
+}
+
 func TestGeneratedComicSectionsReplaceOnlyBodyAndSnapshotPageRoles(t *testing.T) {
 	h := newProductionHarnessWithFormat(t, project.PictureBookClassic)
 	ctx := context.Background()

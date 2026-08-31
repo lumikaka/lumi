@@ -166,7 +166,7 @@ func TestProjectCreationSessionPersistsOrderedReferenceManifestAtomically(t *tes
 		t.Fatalf("created=%+v was_created=%v err=%v", created, wasCreated, err)
 	}
 	stored, err := store.ProjectCreationReferences(ctx, created.ID)
-	if err != nil || len(stored) != 2 || stored[0].UUID != references[0].UUID || stored[1].UUID != references[1].UUID || stored[0].Position != 1 || stored[1].Position != 2 {
+	if err != nil || len(stored) != 2 || stored[0].UUID != references[0].UUID || stored[1].UUID != references[1].UUID || stored[0].Position != 1 || stored[1].Position != 2 || stored[0].ReferenceRole != "auto" || !stored[0].IncludeInYolo || stored[0].PlanSource != "system_default" {
 		t.Fatalf("stored references=%+v err=%v", stored, err)
 	}
 	replayed, wasCreated, err := store.CreateOrGetProjectCreationSession(ctx, ProjectCreationSession{IdempotencyKey: session.IdempotencyKey}, nil)

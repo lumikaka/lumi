@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -73,8 +74,45 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 		return ProductionTask{}, err
 	}
 	prompt := renderPremiseSettingImagePrompt(template, inputText, source.StyleSnapshot, generationLanguage, languageInstruction)
+	references := append([]production.GenerationReferenceFile(nil), input.ReferenceFiles...)
+	if len(references) > 16 {
+		return ProductionTask{}, taskError(CodeInvalidTask, "Premise 参考图过多", "首页创建参考图最多允许 16 张。", nil)
+	}
+	allowedRoles := map[string]bool{"auto": true, "character": true, "scene": true, "prop": true, "style": true}
+	for index := range references {
+		reference := &references[index]
+		reference.ReferenceUUID = strings.TrimSpace(reference.ReferenceUUID)
+		reference.FileUUID = strings.TrimSpace(reference.FileUUID)
+		reference.ReferenceRole = strings.ToLower(strings.TrimSpace(reference.ReferenceRole))
+		reference.Title = strings.TrimSpace(reference.Title)
+		reference.Instruction = strings.TrimSpace(reference.Instruction)
+		if !isUUIDv7(reference.ReferenceUUID) || !isUUIDv7(reference.FileUUID) || reference.Position < 1 || reference.Position > 16 || !allowedRoles[reference.ReferenceRole] || reference.Title == "" || len([]rune(reference.Title)) > 160 || len([]rune(reference.Instruction)) > 2000 {
+			return ProductionTask{}, taskError(CodeInvalidTask, "Premise 参考图计划无效", "参考图 UUID、顺序、用途、标题或说明不符合限制。", nil)
+		}
+	}
+	sort.SliceStable(references, func(left, right int) bool {
+		if references[left].Position == references[right].Position {
+			return references[left].ReferenceUUID < references[right].ReferenceUUID
+		}
+		return references[left].Position < references[right].Position
+	})
+	version := 2
+	composerVersion := ""
+	if len(references) > 0 {
+		referenceTemplate, referenceErr := storyService.EffectivePrompt(ctx, promptcatalog.GroupPremise, premiseSettingReferencePromptKey)
+		if referenceErr != nil {
+			return ProductionTask{}, referenceErr
+		}
+		referencePrompt := renderPremiseSettingReferencePrompt(referenceTemplate, references)
+		if strings.TrimSpace(referencePrompt) == "" {
+			return ProductionTask{}, taskError(CodeInvalidTask, "Premise 参考图提示词无法渲染", "请检查 setting_reference_usage 是否保留 reference_plan 占位符。", nil)
+		}
+		prompt += "\n\n" + referencePrompt
+		version = 3
+		composerVersion = creationReferenceComposerVersion
+	}
 	parameters, _ := json.Marshal(input.Parameters)
-	snapshot := production.GenerationSnapshot{Version: 2, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, Parameters: parameters}
+	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
 	return manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
 		stepUUID, err := newUUIDv7()
 		if err != nil {
@@ -411,6 +449,42 @@ func premiseReferenceUUIDs(references []production.PremiseAssetReference) []stri
 	return items
 }
 
+func premiseAssetReference(asset production.PremiseAsset) production.PremiseAssetReference {
+	role := ""
+	for _, tag := range asset.Tags {
+		if strings.HasPrefix(tag, "reference-role-") {
+			role = strings.TrimPrefix(tag, "reference-role-")
+			break
+		}
+	}
+	return production.PremiseAssetReference{
+		AssetUUID: asset.UUID, VariantUUID: asset.CurrentVariant.UUID, FileUUID: asset.CurrentVariant.Asset.UUID,
+		Title: asset.Title, AssetType: asset.AssetType, Summary: truncateSummary(asset.Summary, 240), ReferenceRole: role,
+	}
+}
+
+func premiseCandidateLines(candidates []production.PremiseAssetReference) string {
+	const maximumRunes = 24_000
+	lines := make([]string, 0, len(candidates))
+	used := 0
+	for _, candidate := range candidates {
+		line := fmt.Sprintf("- %s | asset_type=%s", candidate.Title, candidate.AssetType)
+		if candidate.ReferenceRole != "" {
+			line += " | reference_role=" + candidate.ReferenceRole
+		}
+		if candidate.Summary != "" {
+			line += " | summary=" + candidate.Summary
+		}
+		length := len([]rune(line)) + 1
+		if used+length > maximumRunes {
+			break
+		}
+		lines = append(lines, line)
+		used += length
+	}
+	return strings.Join(lines, "\n")
+}
+
 func comicImageBatchTaskKey(batchKey, sectionUUID string) string {
 	return agent.ComicImageBatchTaskKey(batchKey, sectionUUID)
 }
@@ -516,7 +590,7 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		if err != nil || asset.DeletedAt != nil || asset.CurrentVariant == nil {
 			return ProductionTask{}, taskError(CodeInvalidTask, "Premise 引用无效", "只能引用 active 且有 current variant 的设定资产。", err)
 		}
-		premiseReferences = append(premiseReferences, production.PremiseAssetReference{AssetUUID: asset.UUID, VariantUUID: asset.CurrentVariant.UUID, FileUUID: asset.CurrentVariant.Asset.UUID, Title: asset.Title})
+		premiseReferences = append(premiseReferences, premiseAssetReference(asset))
 	}
 	allAssets, err := service.ListPremiseAssets(ctx, "", "active")
 	if err != nil {
@@ -527,21 +601,13 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		if asset.CurrentVariant == nil {
 			continue
 		}
-		candidates = append(candidates, production.PremiseAssetReference{AssetUUID: asset.UUID, VariantUUID: asset.CurrentVariant.UUID, FileUUID: asset.CurrentVariant.Asset.UUID, Title: asset.Title})
+		candidates = append(candidates, premiseAssetReference(asset))
 		if len(candidates) == 200 {
 			break
 		}
 	}
-	titles := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		titles = append(titles, candidate.Title)
-	}
-	titleLines := make([]string, 0, len(titles))
-	for _, title := range titles {
-		titleLines = append(titleLines, "- "+title)
-	}
 	selectionPrompt, err := promptcatalog.Render(selectionTemplate, map[string]string{
-		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": strings.Join(titleLines, "\n"), "storyboard": section.CurrentStoryboard.ContentMD,
+		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateLines(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
 	})
 	if err != nil {
 		return ProductionTask{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)

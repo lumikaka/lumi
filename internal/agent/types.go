@@ -170,6 +170,7 @@ type DomainTaskRequest struct {
 	Prompt                string
 	IdempotencyKey        string
 	PremiseAssetUUIDs     []string
+	ReferenceFiles        []DomainReferenceFile
 	AssetOperation        string
 	AssetType             string
 	AssetTitle            string
@@ -181,6 +182,15 @@ type DomainTaskRequest struct {
 	Format                string
 	AllowMissingImages    bool
 	Invocation            DomainInvocationContext
+}
+
+type DomainReferenceFile struct {
+	ReferenceUUID string
+	FileUUID      string
+	Position      int
+	ReferenceRole string
+	Title         string
+	Instruction   string
 }
 
 type DomainTaskBatchRequest struct {
@@ -544,12 +554,13 @@ type UserInputAnswer struct {
 }
 
 type CreateYoloInput struct {
-	Title          string                  `json:"title"`
-	StoryPrompt    string                  `json:"story_prompt"`
-	ProviderUUID   string                  `json:"-"`
-	Model          string                  `json:"model"`
-	IdempotencyKey string                  `json:"idempotency_key"`
-	Invocation     DomainInvocationContext `json:"-"`
+	Title               string                  `json:"title"`
+	StoryPrompt         string                  `json:"story_prompt"`
+	ProviderUUID        string                  `json:"-"`
+	Model               string                  `json:"model"`
+	IdempotencyKey      string                  `json:"idempotency_key"`
+	Invocation          DomainInvocationContext `json:"-"`
+	CreationSessionUUID string                  `json:"-"`
 }
 
 type threadRecord struct {

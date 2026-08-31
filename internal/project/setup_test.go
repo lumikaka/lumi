@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -132,5 +133,82 @@ func TestManualProjectCreationRemainsReady(t *testing.T) {
 	}
 	if created.SetupStatus != SetupStatusReady || created.PictureBook == nil {
 		t.Fatalf("manual project=%+v", created)
+	}
+}
+
+func TestProjectSetupReferencePlanIsRevisionedAndFreezesAtFinalization(t *testing.T) {
+	ctx := context.Background()
+	manager, _ := testManager(t)
+	parent := filepath.Join(t.TempDir(), "Documents", "Lumi")
+	previousResolver := resolveDefaultProjectParentDir
+	resolveDefaultProjectParentDir = func() (string, error) { return parent, nil }
+	t.Cleanup(func() { resolveDefaultProjectParentDir = previousResolver })
+	root, err := manager.PlanDraftProjectRoot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectUUID, setupUUID := setupTestUUID(t), setupTestUUID(t)
+	created, err := manager.CreateDraftAt(ctx, DraftCreateInput{
+		ProjectUUID: projectUUID, SetupUUID: setupUUID, RootPath: root,
+		InitialInput: "Create a picture book from this fox reference.", GenerationLanguage: GenerationLanguageEnglish,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := openStoreForTest(t, manager, created.UUID)
+	now := time.Now().UTC()
+	objectUUID, fileUUID, bindingUUID := setupTestUUID(t), setupTestUUID(t), setupTestUUID(t)
+	sessionUUID, sourceReferenceUUID := setupTestUUID(t), setupTestUUID(t)
+	if err := store.DB().Exec(`INSERT INTO file_objects(uuid,project_id,sha256,key_path,mime_type,canonical_ext,byte_size,width,height,state,created_at,verified_at) VALUES(?,?,?,'objects/setup-reference.png','image/png','png',128,16,16,'ready',?,?)`, objectUUID, store.project.ID, "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Exec(`INSERT INTO files(uuid,project_id,file_object_id,kind,purpose,original_filename,display_name,source_type,metadata_json,created_at) VALUES(?,?,(SELECT id FROM file_objects WHERE uuid=?),'image','project_chatbot_reference','fox.png','Fox','imported','{}',?)`, fileUUID, store.project.ID, objectUUID, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Exec(`INSERT INTO project_creation_reference_files(uuid,project_id,creation_session_uuid,reference_uuid,position,file_id,reference_role,title,instruction,include_in_yolo,plan_source,created_at,updated_at) VALUES(?,?,?,?,1,(SELECT id FROM files WHERE uuid=?),'auto','','',1,'system_default',?,?)`, bindingUUID, store.project.ID, sessionUUID, sourceReferenceUUID, fileUUID, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	initial, err := store.ProjectSetup(ctx)
+	if err != nil || len(initial.ReferencePlan.Items) != 1 {
+		t.Fatalf("initial setup=%+v err=%v", initial, err)
+	}
+	reference := initial.ReferencePlan.Items[0]
+	if reference.UUID != bindingUUID || reference.FileUUID != fileUUID || reference.Title != "fox" || reference.ReferenceRole != "auto" || !reference.IncludeInYolo || reference.PlanSource != SetupSourceSystemDefault || reference.ThumbnailURL == "" {
+		t.Fatalf("initial reference=%+v", reference)
+	}
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision}); errorCode(err) != CodeProjectSetupInvalid {
+		t.Fatalf("empty reference update error=%v", err)
+	}
+	foreignTitle := "Foreign"
+	if _, err := store.UpdateProjectSetupReference(ctx, setupTestUUID(t), SetupReferencePatchInput{ExpectedRevision: initial.Revision, Title: &foreignTitle}); errorCode(err) != CodeProjectSetupInvalid {
+		t.Fatalf("foreign reference update error=%v", err)
+	}
+	role, title, instruction, included := "style", "Watercolor fox", "Use only the brushwork and palette", false
+	updated, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{
+		ExpectedRevision: initial.Revision, ReferenceRole: &role, Title: &title, Instruction: &instruction,
+		IncludeInYolo: &included, Source: SetupSourceAgentProposed,
+	})
+	if err != nil || updated.Revision != initial.Revision+1 || len(updated.ReferencePlan.Items) != 1 {
+		t.Fatalf("updated setup=%+v err=%v", updated, err)
+	}
+	if got := updated.ReferencePlan.Items[0]; got.ReferenceRole != role || got.Title != title || got.Instruction != instruction || got.IncludeInYolo || got.PlanSource != SetupSourceAgentProposed {
+		t.Fatalf("updated reference=%+v", got)
+	}
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision, IncludeInYolo: &included}); errorCode(err) != CodeProjectSetupConflict {
+		t.Fatalf("stale reference update error=%v", err)
+	}
+
+	projectName, overallStyle := "Moon Fox", "Soft transparent watercolor"
+	completedDraft, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: updated.Revision, ProjectName: &projectName, OverallStyle: &overallStyle, PictureBook: &PictureBookInput{Format: PictureBookClassic}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalized, err := store.FinalizeProjectSetup(ctx, completedDraft.Revision)
+	if err != nil || finalized.SetupStatus != SetupStatusReady || finalized.ReferencePlan.Items[0].PlanSource != SetupSourceUserConfirmed {
+		t.Fatalf("finalized setup=%+v err=%v", finalized, err)
+	}
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: finalized.Revision, IncludeInYolo: &included}); errorCode(err) != CodePictureBookImmutable {
+		t.Fatalf("ready reference update error=%v", err)
 	}
 }

@@ -178,12 +178,29 @@ func (service *Service) GetComicState(ctx context.Context, chapterUUID string) (
 }
 
 func (service *Service) ListSections(ctx context.Context, chapterUUID string) ([]ComicSection, error) {
+	return service.ListSectionsByState(ctx, chapterUUID, "active")
+}
+
+func (service *Service) ListSectionsByState(ctx context.Context, chapterUUID, sectionState string) ([]ComicSection, error) {
+	sectionState = strings.ToLower(strings.TrimSpace(sectionState))
+	if sectionState == "" {
+		sectionState = "active"
+	}
+	if sectionState != "active" && sectionState != "trashed" {
+		return nil, domainError(CodeValidation, "页面状态筛选无效", "state 只支持 active/trashed。", nil)
+	}
 	state, chapter, err := service.ensureComicState(ctx, service.store.DB(), chapterUUID)
 	if err != nil {
 		return nil, err
 	}
+	query := service.store.DB().WithContext(ctx).Where("chapter_comic_state_id = ?", state.ID)
+	if sectionState == "trashed" {
+		query = query.Where("deleted_at IS NOT NULL").Order("deleted_at DESC, id DESC")
+	} else {
+		query = query.Where("deleted_at IS NULL").Order("section_no ASC")
+	}
 	var rows []comicSectionRecord
-	if err := service.store.DB().WithContext(ctx).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Order("section_no ASC").Find(&rows).Error; err != nil {
+	if err := query.Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	items := make([]ComicSection, 0, len(rows))
@@ -657,6 +674,72 @@ func (service *Service) DeleteSection(ctx context.Context, chapterUUID, sectionU
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID, "deleted": true})
 	}
 	return err
+}
+
+func (service *Service) RestoreSection(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64) (ComicSection, error) {
+	var row comicSectionRecord
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
+		if err != nil {
+			return err
+		}
+		_, actor, err := service.projectActor(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if err := tx.Where("uuid = ? AND chapter_comic_state_id = ?", sectionUUID, state.ID).First(&row).Error; err != nil {
+			return notFound(err, "Comic section 不存在")
+		}
+		if row.DeletedAt == nil {
+			return domainError(CodeStateConflict, "页面不在回收站", "只有已移入回收站的页面可以恢复。", nil)
+		}
+		if service.protectsLastBodyPage() && row.PageRole != PageRoleBody {
+			if err := ensureBodyPageExistsTx(tx, state.ID); err != nil {
+				return err
+			}
+		}
+		if err := ensureSpecialPageRoleAvailableTx(tx, state.ID, row.PageRole, row.ID); err != nil {
+			return err
+		}
+		var maxSectionNo int
+		if err := tx.Model(&comicSectionRecord{}).Where("chapter_comic_state_id = ? AND deleted_at IS NULL", state.ID).Select("COALESCE(MAX(section_no),0)").Scan(&maxSectionNo).Error; err != nil {
+			return err
+		}
+		now := service.now().UTC()
+		result := tx.Model(&row).Where("revision = ? AND deleted_at IS NOT NULL", expectedRevision).Updates(map[string]any{
+			"deleted_at": nil,
+			"section_no": maxSectionNo + 1,
+			"revision":   gorm.Expr("revision + 1"),
+			"updated_at": now,
+		})
+		if result.Error != nil {
+			return conflictErr(result.Error)
+		}
+		if result.RowsAffected != 1 {
+			return domainError(CodeConflict, "页面已被修改", "刷新回收站后重试。", nil)
+		}
+		if err := normalizeSectionOrderTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		if err := tx.First(&row, row.ID).Error; err != nil {
+			return err
+		}
+		if err := appendSectionEvent(tx, row.ID, "section_restored", map[string]any{"section_uuid": row.UUID, "section_no": row.SectionNo, "page_role": row.PageRole}, now); err != nil {
+			return err
+		}
+		if err := updateComicStateTx(tx, state.ID, now); err != nil {
+			return err
+		}
+		return service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "section_restored")
+	})
+	if err != nil {
+		return ComicSection{}, err
+	}
+	dto, err := service.GetSection(ctx, chapterUUID, sectionUUID)
+	if err == nil {
+		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID, "restored": true})
+	}
+	return dto, err
 }
 
 func (service *Service) ReorderSections(ctx context.Context, chapterUUID string, orderedUUIDs []string) ([]ComicSection, error) {
@@ -1612,7 +1695,7 @@ func (service *Service) imageVariantDTO(ctx context.Context, row imageVariantRec
 	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: row.SourceType, GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
 }
 func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, chapterUUID string) (ComicSection, error) {
-	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, PremiseAssets: []PremiseAssetReference{}, Revision: row.Revision, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, PremiseAssets: []PremiseAssetReference{}, Revision: row.Revision, DeletedAt: row.DeletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	var references []struct {
 		AssetUUID, VariantUUID, FileUUID, Title string
 	}

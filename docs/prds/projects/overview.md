@@ -29,7 +29,7 @@
 
 ### 草稿设置门禁
 
-首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。参考图在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后可按创建 Session 的清单续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题，并以稳定确认项同时说明“定稿并启动 YOLO”。用户明确选择后，定稿事务写入唯一正式绘本规格并把项目切换为 `ready`；同一 bootstrap Turn 只能幂等启动 existing YOLO，其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
+首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。每张图都有 `auto|character|scene|prop|style` 用途、标题、补充说明和是否参与 YOLO 的显式计划；参考图只影响视觉设定与图片生成，不根据像素自动改写故事。参考图在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后可按创建 Session 的完整清单与计划续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题，并以稳定确认项同时说明“定稿并启动 YOLO”。用户明确选择后，定稿事务冻结最终引用计划、写入唯一正式绘本规格并把项目切换为 `ready`；同一 bootstrap Turn 只能幂等启动 existing YOLO，其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 
 ## Feature 列表
 
@@ -49,5 +49,6 @@
 | 对话线程 | 创建 Saga 在草稿项目中恰好一次建立普通 `conversation` Thread、首个 Turn/Run 和原始用户 Item，并把已就绪参考图按清单顺序冻结为 Item Reference；Agent 通过受控 Setup API 推进唯一的 Setup Draft。 |
 | 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可在原 Turn 内启动并等待服务端绑定幂等键的 inline existing YOLO，后续 ready Turn 才开放普通业务编排。 |
 | AI 运行时 | `project_model_settings` 以项目为边界保存模型覆盖。 |
-| 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；绘本或章节导入源文件也通过项目 File 资产保存。 |
+| Premise 资产 | 定稿后 YOLO 把 included 创建参考图注册为来源型 Premise Asset；Project Setup 只维护创建计划，不承担后续资产版本管理。 |
+| 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；included 图还会复用同一 File 建立 Premise Asset，不复制对象内容。 |
 | 所有项目域 | URL、JSON、前端状态和实时 payload 都使用项目 UUIDv7。 |

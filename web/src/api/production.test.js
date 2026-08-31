@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, generatePremiseAssetVariant, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, selectImageVariant, setComicSectionPremiseAssets, updateComicSection, updatePremiseSource } from './production.js'
+import { createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, generatePremiseAssetVariant, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listComicSections, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, restoreComicSection, selectImageVariant, setComicSectionPremiseAssets, updateComicSection, updatePremiseSource } from './production.js'
 
 test('production API uses UUID resources, single-resource mutations, and snake_case bodies', async () => {
   const originalFetch = global.fetch
@@ -83,6 +83,27 @@ test('simple premise generation and page reference selection use public resource
     assert.equal(calls[1].path, '/api/v1/projects/project%20uuid/chapters/chapter%20%2F%20one/comic-sections/section%20%2F%20one/premise-assets')
     assert.equal(calls[1].options.method, 'PUT')
     assert.deepEqual(JSON.parse(calls[1].options.body), { premise_asset_uuids: ['asset-a', 'asset-b'], expected_revision: 7 })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('comic page trash uses a state-filtered collection and a restoration resource', async () => {
+  const originalFetch = global.fetch
+  const calls = []
+  global.fetch = async (path, options = {}) => {
+    calls.push({ path, options })
+    return { ok: true, status: 200, json: async () => ({ success: true, data: { items: [] } }) }
+  }
+  try {
+    await listComicSections('project uuid', 'chapter / one', { state: 'trashed' })
+    await restoreComicSection('project uuid', 'chapter / one', 'section / one', 7)
+
+    assert.equal(calls[0].path, '/api/v1/projects/project%20uuid/chapters/chapter%20%2F%20one/comic-sections?state=trashed')
+    assert.equal(calls[0].options.method, undefined)
+    assert.equal(calls[1].path, '/api/v1/projects/project%20uuid/chapters/chapter%20%2F%20one/comic-sections/section%20%2F%20one/restorations')
+    assert.equal(calls[1].options.method, 'POST')
+    assert.deepEqual(JSON.parse(calls[1].options.body), { expected_revision: 7 })
   } finally {
     global.fetch = originalFetch
   }

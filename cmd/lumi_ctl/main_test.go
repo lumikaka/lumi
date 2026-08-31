@@ -60,7 +60,7 @@ func TestMigrationCommandsUseEmbeddedAppMigrations(t *testing.T) {
 	}{
 		{args: []string{"migrate", "up"}, want: "migrations applied"},
 		{args: []string{"migrate", "up"}, want: "no migrations to apply"},
-		{args: []string{"migrate", "version"}, want: "version: 20260828000004, dirty: false"},
+		{args: []string{"migrate", "version"}, want: "version: 20260831000005, dirty: false"},
 		{args: []string{"migrate", "down"}, want: "rolled back 1 migration"},
 	} {
 		var output bytes.Buffer

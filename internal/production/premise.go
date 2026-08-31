@@ -450,7 +450,7 @@ func (service *Service) CommitGeneratedSettingImage(ctx context.Context, taskUUI
 		if err := tx.Model(&premiseProfileRecord{}).Where("id = ?", profile.ID).Updates(map[string]any{"current_setting_image_id": record.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error; err != nil {
 			return err
 		}
-		return tx.Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=?,output_json=json_object('setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, record.ID, record.UUID, now, taskUUID).Error
+		return tx.Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=?,output_json=json_set(CASE WHEN json_valid(output_json) THEN output_json ELSE '{}' END,'$.setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, record.ID, record.UUID, now, taskUUID).Error
 	}})
 	if err != nil {
 		return SettingImage{}, err
@@ -791,6 +791,9 @@ func (service *Service) CommitGeneratedPremiseAsset(ctx context.Context, taskUUI
 	if existing, found, err := service.premiseAssetForBreakdownTask(ctx, taskUUID, title); err != nil || found {
 		return existing, err
 	}
+	if existing, found, err := service.projectReferenceAssetByBreakdownTitle(ctx, taskUUID, title); err != nil || found {
+		return existing, err
+	}
 	tags, err := normalizeTags(input.Tags)
 	if err != nil {
 		return PremiseAsset{}, err
@@ -882,7 +885,7 @@ func (service *Service) premiseAssetForBreakdownTask(ctx context.Context, taskUU
 	var assetID int64
 	err := service.store.DB().WithContext(ctx).Table("premise_asset_events").
 		Select("premise_asset_id").
-		Where("event_type IN ('asset_created_from_breakdown','asset_candidate_added_from_breakdown') AND json_extract(payload, '$.task_uuid') = ? AND json_extract(payload, '$.title_key') = ?", taskUUID, strings.ToLower(strings.TrimSpace(title))).
+		Where("event_type IN ('asset_created_from_breakdown','asset_candidate_added_from_breakdown','breakdown_matched_project_reference') AND json_extract(payload, '$.task_uuid') = ? AND json_extract(payload, '$.title_key') = ?", taskUUID, strings.ToLower(strings.TrimSpace(title))).
 		Order("id DESC").Limit(1).Scan(&assetID).Error
 	if err != nil || assetID == 0 {
 		return PremiseAsset{}, false, err
@@ -1679,6 +1682,7 @@ func premiseVariantFileRetained(tx *gorm.DB, fileID int64) (bool, error) {
 			EXISTS (SELECT 1 FROM comic_image_generations WHERE premise_file_id=?) OR
 			EXISTS (SELECT 1 FROM comic_exports WHERE output_file_id=?) OR
 			EXISTS (SELECT 1 FROM story_source_items WHERE file_id=?) OR
+			EXISTS (SELECT 1 FROM project_creation_reference_files WHERE file_id=?) OR
 			EXISTS (SELECT 1 FROM chat_context_references WHERE file_id=? OR image_file_id=?) OR
 			EXISTS (SELECT 1 FROM files WHERE source_file_id=?) OR
 			EXISTS (SELECT 1 FROM upload_stashed WHERE finalized_file_id=? AND state<>'consumed') OR
@@ -1693,7 +1697,7 @@ func premiseVariantFileRetained(tx *gorm.DB, fileID int64) (bool, error) {
 			EXISTS (SELECT 1 FROM workflow_steps t, json_tree(t.input_json) j JOIN files f ON f.uuid=j.value WHERE f.id=?) OR
 			EXISTS (SELECT 1 FROM workflow_steps t, json_tree(t.output_json) j JOIN files f ON f.uuid=j.value WHERE f.id=?)
 		THEN 1 ELSE 0 END`,
-		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
+		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
 		fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID, fileID,
 	).Scan(&retained).Error
 	return retained == 1, err

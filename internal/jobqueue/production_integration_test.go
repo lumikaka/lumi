@@ -1200,6 +1200,100 @@ func TestProductionImageTaskUsesRiverSnapshotAndDomainIdempotency(t *testing.T) 
 	}
 }
 
+func TestPremiseSettingCreationReferencesComposeOneBoardAndReachImageProvider(t *testing.T) {
+	harness := newQueueHarness(t)
+	imageProvider := &recordingImageProvider{content: productionPNG(t)}
+	harness.queue.WithImageClient(imageProvider)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	source, err := service.CreatePremiseSource(ctx, production.CreateSourceInput{SourceText: "月光邮差穿过森林。", StyleSnapshot: "柔和水彩", SourceType: "generated"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalizeReference := func(filename string) string {
+		t.Helper()
+		upload, uploadErr := service.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "project_chatbot_reference", OriginalFilename: filename, Reader: bytes.NewReader(productionPNG(t))})
+		if uploadErr != nil {
+			t.Fatal(uploadErr)
+		}
+		asset, finalizeErr := service.Files().FinalizeUpload(ctx, upload.UUID, "project_chatbot_reference")
+		if finalizeErr != nil {
+			t.Fatal(finalizeErr)
+		}
+		return asset.UUID
+	}
+	referenceUUID1, _ := newUUIDv7()
+	referenceUUID2, _ := newUUIDv7()
+	references := []production.GenerationReferenceFile{
+		{ReferenceUUID: referenceUUID1, FileUUID: finalizeReference("fox.png"), Position: 1, ReferenceRole: "character", Title: "小狐狸", Instruction: "保留红围巾"},
+		{ReferenceUUID: referenceUUID2, FileUUID: finalizeReference("forest.png"), Position: 2, ReferenceRole: "scene", Title: "月光森林", Instruction: "参考树木层次和冷暖光"},
+	}
+	task, err := harness.queue.CreatePremiseSettingGeneration(ctx, harness.project.UUID, source.UUID, CreateProductionGenerationInput{ProviderUUID: harness.provider.UUID, Prompt: source.SourceText, ReferenceFiles: references, IdempotencyKey: "setting-with-creation-references"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot production.GenerationSnapshot
+	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Version != 3 || snapshot.ReferenceComposerVersion != creationReferenceComposerVersion || len(snapshot.ReferenceFiles) != 2 {
+		t.Fatalf("reference snapshot=%+v", snapshot)
+	}
+	for _, expected := range []string{"小狐狸", "保留红围巾", "月光森林", "参考树木层次和冷暖光", "不要复制参考板"} {
+		if !strings.Contains(snapshot.Prompt, expected) {
+			t.Fatalf("reference prompt missing %q: %s", expected, snapshot.Prompt)
+		}
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, task.UUID, StatusCompleted)
+	requests := imageProvider.snapshot()
+	if len(requests) != 1 || len(requests[0].Images) != 1 || requests[0].Images[0].MIMEType != "image/png" || len(requests[0].Images[0].Data) == 0 {
+		t.Fatalf("setting image references=%+v", requests)
+	}
+	if _, err := png.Decode(bytes.NewReader(requests[0].Images[0].Data)); err != nil {
+		t.Fatalf("provider board is not PNG: %v", err)
+	}
+	var outputJSON string
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		return store.DB().Table("premise_generation_steps").Select("output_json").Where("task_uuid=?", task.UUID).Scan(&outputJSON).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var output struct {
+		BoardUUID   string `json:"reference_board_file_uuid"`
+		SettingUUID string `json:"setting_image_uuid"`
+	}
+	if err := json.Unmarshal([]byte(outputJSON), &output); err != nil || output.BoardUUID == "" || output.SettingUUID == "" {
+		t.Fatalf("setting output=%s err=%v", outputJSON, err)
+	}
+	boardAsset, err := service.Files().GetAsset(ctx, output.BoardUUID, false)
+	if err != nil || boardAsset.Purpose != "premise_reference_board" || boardAsset.MIMEType != "image/png" {
+		t.Fatalf("board asset=%+v err=%v", boardAsset, err)
+	}
+	events, _, err := harness.queue.ListProductionTaskEvents(ctx, harness.project.UUID, task.UUID, 0, 0, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	composedEvents := 0
+	for _, event := range events {
+		if event.EventType == "creation_references_composed" {
+			composedEvents++
+		}
+	}
+	if composedEvents != 1 {
+		t.Fatalf("creation reference events=%+v", events)
+	}
+	duplicate, err := harness.queue.CreatePremiseSettingGeneration(ctx, harness.project.UUID, source.UUID, CreateProductionGenerationInput{ProviderUUID: harness.provider.UUID, Prompt: source.SourceText, ReferenceFiles: references, IdempotencyKey: "setting-with-creation-references"})
+	if err != nil || duplicate.UUID != task.UUID || len(imageProvider.snapshot()) != 1 {
+		t.Fatalf("duplicate=%+v requests=%d err=%v", duplicate, len(imageProvider.snapshot()), err)
+	}
+}
+
 func TestPremiseBatchPromptsAndVisualBreakdownUseCatalogContract(t *testing.T) {
 	harness := newQueueHarness(t)
 	imageProvider := &recordingImageProvider{content: productionPNG(t)}

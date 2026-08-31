@@ -4,6 +4,7 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
   const route = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, '') : ''
   if (!route) return { key: 'home', assetUuid: '', chapterUuid: '', sectionUuid: '' }
+  if (route === 'settings') return { key: 'configuration', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'story') return { key: 'story', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'llm-logs') return { key: 'llm_logs', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'exports') return { key: 'exports', assetUuid: '', chapterUuid: '', sectionUuid: '' }
