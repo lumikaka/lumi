@@ -74,6 +74,20 @@ test('one canonical route tree selects the simple or expert renderer from projec
   assert.match(expertLayoutSource, /forcedExpert[\s\S]*expert_page_notice/)
 })
 
+test('LLM logs reuse the complete panel in simple mode under the simple topbar', () => {
+  assert.match(workspaceSource, /import ProjectLLMLogsPanel from '\.\/ProjectLLMLogsPanel\.jsx'/)
+  assert.match(workspaceSource, /llm_logs: 'settings\.llm_logs'/)
+  assert.match(workspaceSource, /path="llm-logs" element=\{<div className="simple-project-page simple-llm-logs-page"><ProjectLLMLogsPanel projectUuid=\{projectUuid\} standalone \/><\/div>\}/)
+})
+
+test('exports reuse the complete panel in simple mode under the simple topbar', () => {
+  assert.match(workspaceSource, /import \{ OverviewExportsPanel \} from '\.\/ProjectOverviewPanels\.jsx'/)
+  assert.match(workspaceSource, /exports: 'projects\.tab\.exports'/)
+  assert.match(workspaceSource, /path="exports" element=\{<div className="simple-project-page simple-exports-page"><OverviewExportsPanel projectUuid=\{projectUuid\} standalone \/><\/div>\}/)
+  assert.match(overviewSource, /export function OverviewExportsPanel\(\{ projectUuid, standalone = false \}\)/)
+  assert.match(overviewSource, /role=\{standalone \? undefined : 'tabpanel'\}/)
+})
+
 test('project actions, project configuration, and the expert topbar expose mode switching', () => {
   assert.match(pagesSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
   assert.match(overviewSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
@@ -143,6 +157,32 @@ test('simple per-page rail exposes the expert page-role creation choices from a 
   for (const key of ['simple.page.role_front', 'simple.page.role_body', 'simple.page.role_back']) assert.ok(pagesSource.includes(`t('${key}')`), `missing page role label ${key}`)
   assert.match(styles, /\.simple-page-rail__menu/)
   assert.match(styles, /\[aria-expanded="true"\]:hover/)
+})
+
+test('simple per-page rail drag-sorts body pages while covers stay fixed', () => {
+  assert.match(pagesSource, /const reorderPages = useMutation\(\{[\s\S]*reorderComicSections\(projectUuid, chapterUuid, uuids\)/)
+  assert.match(pagesSource, /const reorderable = comicPageRole\(item\) === 'body'/)
+  assert.match(pagesSource, /data-reorderable=\{reorderable\}[\s\S]*onPointerDown=\{\(event\) => startPageDrag\(event, item\)\}/)
+  assert.match(pagesSource, /className="simple-page-rail__list"[\s\S]*onPointerMove=\{updatePageDrag\}[\s\S]*onPointerUp=\{finishPageDrag\}/)
+  assert.match(pagesSource, /list\?\.setPointerCapture\?\.\(event\.pointerId\)/)
+  assert.match(pagesSource, /querySelectorAll\('\[data-reorderable="true"\]'\)/)
+  assert.match(pagesSource, /window\.getComputedStyle\(list\)\.display === 'flex'/)
+  assert.match(pagesSource, /reorderedComicBodyUuids\(sections, drag\.sectionUuid, targetUuid, placement\)/)
+  assert.match(pagesSource, /<Link draggable=\{false\}/)
+  assert.match(styles, /\.simple-page-rail__item[\s\S]*&\.is-reorderable[\s\S]*&\.is-drop-before::before[\s\S]*&\.is-drop-after::after/)
+  assert.match(styles, /\.simple-page-rail__drag-handle/)
+})
+
+test('simple page candidates use the reference action row and open the existing grid in a dialog', () => {
+  assert.match(pagesSource, /const \[imageCandidatesOpen, setImageCandidatesOpen\] = useState\(false\)/)
+  assert.match(pagesSource, /className="simple-illustration-actions"[\s\S]*aria-haspopup="dialog"[\s\S]*simple\.page\.image_drafts_count/)
+  assert.match(pagesSource, /simple-illustration-actions__generate[\s\S]*generate\.mutate\(\)/)
+  assert.match(pagesSource, /imageCandidatesOpen \? <SimpleDialog title=\{t\('simple\.page\.image_candidates'\)\}/)
+  assert.match(pagesSource, /className="simple-page-candidates-dialog"[\s\S]*className="simple-candidate-grid"/)
+  assert.match(pagesSource, /const chooseImage = useMutation\([\s\S]*onSuccess: \(updated\) => \{ setImageCandidatesOpen\(false\)/)
+  assert.doesNotMatch(pagesSource, /<section className="simple-page-candidates"/)
+  assert.match(styles, /\.simple-illustration-actions[\s\S]*justify-content: flex-end[\s\S]*gap: 10px/)
+  assert.match(styles, /\.simple-illustration-actions__drafts[\s\S]*margin-right: auto[\s\S]*\[aria-expanded="true"\]:hover/)
 })
 
 test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {

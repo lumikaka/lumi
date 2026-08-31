@@ -23,6 +23,8 @@ import GlobalSidebar, { useGlobalSidebarState } from '../components/GlobalSideba
 import { useProjectDashboardMode } from '../components/ProjectDashboardModeContext.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { PROJECT_DASHBOARD_MODE_EXPERT } from '../projectDashboardMode.js'
+import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
+import { OverviewExportsPanel } from './ProjectOverviewPanels.jsx'
 import {
   SimpleBookView,
   SimpleBooksPage,
@@ -71,7 +73,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     : referenceSections[0]
   const chatReference = simpleProjectChatReference(routeState, { asset: referenceAssetQuery.data, chapter: referenceChapterQuery.data, section: referenceSection })
   const project = projectQuery.data
-  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book' }[routeState.key] || 'simple.shell.page.home')
+  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book' }[routeState.key] || 'simple.shell.page.home')
   const chatOpen = compact ? chatOverlayOpen : !chatCollapsed
   const pageEditorActive = project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
@@ -146,6 +148,8 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
             <Routes>
               <Route index element={<SimpleHomePage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
               <Route path="story" element={<SimpleStoryPage project={project} projectUuid={projectUuid} />} />
+              <Route path="llm-logs" element={<div className="simple-project-page simple-llm-logs-page"><ProjectLLMLogsPanel projectUuid={projectUuid} standalone /></div>} />
+              <Route path="exports" element={<div className="simple-project-page simple-exports-page"><OverviewExportsPanel projectUuid={projectUuid} standalone /></div>} />
               <Route path="premise" element={<SimpleSettingsPage projectUuid={projectUuid} />} />
               <Route path="premise/assets/:assetUuid" element={<SimpleSettingDetailPage projectUuid={projectUuid} />} />
               <Route path="chapters" element={<SimpleBooksPage projectUuid={projectUuid} />} />

@@ -307,7 +307,7 @@ function OverviewExportPagination({ page, pagination, fetching, onPageChange, la
   return <nav className="overview-export-pagination" aria-label={label}><button type="button" className="button-secondary" disabled={page <= 1 || fetching} onClick={() => onPageChange(Math.max(1, page - 1))}>{t('common.action.previous_page')}</button><span>{pagination.current_page} / {pagination.last_page}</span><button type="button" className="button-secondary" disabled={page >= pagination.last_page || fetching} onClick={() => onPageChange(page + 1)}>{t('common.action.next_page')}</button></nav>
 }
 
-export function OverviewExportsPanel({ projectUuid }) {
+export function OverviewExportsPanel({ projectUuid, standalone = false }) {
   const { formatCount, t } = useI18n()
   const [chapterUuid, setChapterUuid] = useState('')
   const [projectPage, setProjectPage] = useState(1)
@@ -338,7 +338,12 @@ export function OverviewExportsPanel({ projectUuid }) {
   const total = projectPagination.total + chapterPagination.total
 
   return (
-    <div className="project-overview project-overview--exports" role="tabpanel" id="overview-panel-exports" aria-labelledby="overview-tab-exports">
+    <div
+      className={`project-overview project-overview--exports ${standalone ? 'project-overview--standalone' : ''}`}
+      role={standalone ? undefined : 'tabpanel'}
+      id={standalone ? undefined : 'overview-panel-exports'}
+      aria-labelledby={standalone ? undefined : 'overview-tab-exports'}
+    >
       <LocalizedErrorMessage error={projectQuery.error || projectExportsQuery.error || chapterExportsQuery.error || chaptersQuery.error} />
       <section className="overview-card overview-exports-panel">
         <header className="overview-card__header"><div><h1>{t('projects.tab.exports')}</h1><p>{term('projects.exports.description')}</p></div><span>{formatCount('common.count.items', total)}</span></header>

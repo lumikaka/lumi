@@ -5,6 +5,8 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   const route = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, '') : ''
   if (!route) return { key: 'home', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'story') return { key: 'story', assetUuid: '', chapterUuid: '', sectionUuid: '' }
+  if (route === 'llm-logs') return { key: 'llm_logs', assetUuid: '', chapterUuid: '', sectionUuid: '' }
+  if (route === 'exports') return { key: 'exports', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'premise') return { key: 'settings', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   const setting = route.match(/^premise\/assets\/([^/]+)$/)
   if (setting) return { key: 'setting', assetUuid: decodeSegment(setting[1]), chapterUuid: '', sectionUuid: '' }

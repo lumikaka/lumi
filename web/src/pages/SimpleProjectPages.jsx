@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
+  GripVertical,
   History,
   Images,
   Maximize2,
@@ -86,6 +87,7 @@ import {
   comicPageLabel,
   comicPageRole,
   comicPageRoleOptionDisabled,
+  reorderedComicBodyUuids,
 } from './comicPageRoles.js'
 import { pictureBookFormatKey, pictureBookRatio } from './pictureBookProfile.js'
 import {
@@ -542,6 +544,8 @@ export function SimplePageView({ project, projectUuid }) {
   const queryClient = useQueryClient()
   const createMenuRef = useRef(null)
   const createTriggerRef = useRef(null)
+  const pageDragRef = useRef(null)
+  const pageDragClickSuppressed = useRef(false)
   const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid], queryFn: () => getChapter(projectUuid, chapterUuid) })
   const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid], queryFn: () => listComicSections(projectUuid, chapterUuid) })
   const assetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid, { state: 'active' }) })
@@ -557,10 +561,11 @@ export function SimplePageView({ project, projectUuid }) {
   const [direction, setDirection] = useState('')
   const [role, setRole] = useState('body')
   const [selectedRefs, setSelectedRefs] = useState([])
-  const [generationPrompt, setGenerationPrompt] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const [imageCandidatesOpen, setImageCandidatesOpen] = useState(false)
+  const [pageDrag, setPageDrag] = useState(null)
   const completedTask = useRef('')
   const task = (tasksQuery.data?.items || []).find((item) => item.kind === 'comic_image_generation' && item.resource_uuid === sectionUuid)
   const taskActive = Boolean(task && ACTIVE_TASK_STATUSES.has(task.status))
@@ -648,9 +653,9 @@ export function SimplePageView({ project, projectUuid }) {
     onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.feedback.saved') }) },
     onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() },
   })
-  const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: generationPrompt.trim(), premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: () => { setGenerationPrompt(''); void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.page.generation_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
+  const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: '', premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.page.generation_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const importImage = useMutation({ mutationFn: async () => { const upload = await createAssetUpload(projectUuid, { purpose: 'comic_section_image', displayName: section.title || sectionUuid, file: imageFile }); return importSectionImage(projectUuid, chapterUuid, sectionUuid, { upload_uuid: upload.uuid, expected_revision: section.revision }) }, onSuccess: (updated) => { setImageFile(null); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_imported') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
-  const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
+  const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { setImageCandidatesOpen(false); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const chooseStoryboard = useMutation({ mutationFn: (variant) => selectStoryboard(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.text_restored') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const createPage = useMutation({
     mutationFn: async (pageRole) => {
@@ -667,6 +672,101 @@ export function SimplePageView({ project, projectUuid }) {
     },
     onError: (error) => { setCreateMenuOpen(false); setFeedback({ kind: 'error', error }) },
   })
+  const reorderPages = useMutation({
+    mutationFn: (uuids) => reorderComicSections(projectUuid, chapterUuid, uuids),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], data)
+      void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+      setFeedback({ kind: 'success', message: t('simple.pages.reordered') })
+    },
+    onError: (error) => {
+      setFeedback({ kind: 'error', error })
+      void sectionsQuery.refetch()
+    },
+  })
+
+  const pageDropIntentForPointer = (list, clientX, clientY, draggingUuid) => {
+    if (!list) return null
+    const listRect = list.getBoundingClientRect()
+    if (clientX < listRect.left - 24 || clientX > listRect.right + 24 || clientY < listRect.top - 24 || clientY > listRect.bottom + 24) return null
+    const horizontal = window.getComputedStyle(list).display === 'flex'
+    const targets = [...list.querySelectorAll('[data-reorderable="true"]')]
+      .filter((element) => element.dataset.pageUuid !== draggingUuid)
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { uuid: element.dataset.pageUuid, left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+      })
+      .filter((item) => item.uuid && item.width > 0 && item.height > 0)
+    if (!targets.length) return null
+    const beforeTarget = targets.find((item) => horizontal ? clientX < item.left + item.width / 2 : clientY < item.top + item.height / 2)
+    return beforeTarget ? { targetUuid: beforeTarget.uuid, placement: 'before' } : { targetUuid: targets.at(-1).uuid, placement: 'after' }
+  }
+  const clearPageDrag = () => {
+    pageDragRef.current = null
+    setPageDrag(null)
+  }
+  const startPageDrag = (event, item) => {
+    if ((event.pointerType === 'mouse' && event.button !== 0) || comicPageRole(item) !== 'body' || reorderPages.isPending) return
+    const list = event.currentTarget.closest('.simple-page-rail__list')
+    pageDragRef.current = {
+      sectionUuid: item.uuid,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      list,
+      targetUuid: '',
+      placement: '',
+    }
+    list?.setPointerCapture?.(event.pointerId)
+  }
+  const updatePageDrag = (event) => {
+    const drag = pageDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (!drag.active) {
+      drag.active = true
+      setPageDrag({ sectionUuid: drag.sectionUuid, targetUuid: '', placement: '' })
+    }
+    const listRect = drag.list?.getBoundingClientRect()
+    if (drag.list && listRect) {
+      if (window.getComputedStyle(drag.list).display === 'flex') {
+        if (event.clientX < listRect.left + 36) drag.list.scrollLeft -= 18
+        else if (event.clientX > listRect.right - 36) drag.list.scrollLeft += 18
+      } else if (event.clientY < listRect.top + 36) drag.list.scrollTop -= 18
+      else if (event.clientY > listRect.bottom - 36) drag.list.scrollTop += 18
+    }
+    const intent = pageDropIntentForPointer(drag.list, event.clientX, event.clientY, drag.sectionUuid)
+    drag.targetUuid = intent?.targetUuid || ''
+    drag.placement = intent?.placement || ''
+    setPageDrag({ sectionUuid: drag.sectionUuid, targetUuid: drag.targetUuid, placement: drag.placement })
+  }
+  const finishPageDrag = (event) => {
+    const drag = pageDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    if (!drag.active) {
+      clearPageDrag()
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    pageDragClickSuppressed.current = true
+    window.setTimeout(() => { pageDragClickSuppressed.current = false }, 0)
+    const intent = pageDropIntentForPointer(drag.list, event.clientX, event.clientY, drag.sectionUuid)
+    const targetUuid = intent?.targetUuid || drag.targetUuid
+    const placement = intent?.placement || drag.placement
+    clearPageDrag()
+    const uuids = reorderedComicBodyUuids(sections, drag.sectionUuid, targetUuid, placement)
+    if (uuids && !reorderPages.isPending) reorderPages.mutate(uuids)
+  }
+  const cancelPageDrag = (event) => {
+    const drag = pageDragRef.current
+    if (drag && drag.pointerId !== event.pointerId) return
+    clearPageDrag()
+  }
 
   if (chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
   if (!section) return routeSectionUuid ? <SimpleNotFound projectUuid={projectUuid} /> : <SimplePagesPage project={project} projectUuid={projectUuid} />
@@ -674,6 +774,7 @@ export function SimplePageView({ project, projectUuid }) {
   const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label)
   const previous = sections[index - 1]
   const next = sections[index + 1]
+  const imageVariants = imagesQuery.data?.items || []
   return (
     <div className="simple-project-page simple-page-view">
       <div className="simple-page-view__toolbar"><Link to={projectRoute(projectUuid, '', location.search)}><ArrowLeft size={15} aria-hidden="true" />{t('simple.shell.page.home')}</Link><div><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div></div>
@@ -718,20 +819,48 @@ export function SimplePageView({ project, projectUuid }) {
               ) : null}
             </div>
           </header>
-          <div className="simple-page-rail__list">{sections.map((item) => { const itemLabel = comicPageLabel(t, sections, item); return <Link className={item.uuid === section.uuid ? 'is-active' : ''} key={item.uuid} aria-current={item.uuid === section.uuid ? 'page' : undefined} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(item.uuid)}`, location.search)}><SimpleImage asset={item.current_image?.asset} alt="" fallbackText={itemLabel} /><span>{itemLabel}</span></Link> })}</div>
+          <div className="simple-page-rail__list" aria-busy={reorderPages.isPending} onPointerMove={updatePageDrag} onPointerUp={finishPageDrag} onPointerCancel={cancelPageDrag}>{sections.map((item) => {
+            const itemLabel = comicPageLabel(t, sections, item)
+            const reorderable = comicPageRole(item) === 'body'
+            const itemClasses = [
+              'simple-page-rail__item',
+              reorderable ? 'is-reorderable' : 'is-fixed',
+              pageDrag?.sectionUuid === item.uuid ? 'is-dragging' : '',
+              pageDrag?.targetUuid === item.uuid && pageDrag.placement === 'before' ? 'is-drop-before' : '',
+              pageDrag?.targetUuid === item.uuid && pageDrag.placement === 'after' ? 'is-drop-after' : '',
+            ].filter(Boolean).join(' ')
+            return (
+              <div
+                className={itemClasses}
+                key={item.uuid}
+                data-page-uuid={item.uuid}
+                data-reorderable={reorderable}
+                draggable={false}
+                title={reorderable ? t('comic.workbench.pages.drag_role', { label: itemLabel }) : t('comic.workbench.pages.fixed_title')}
+                onPointerDown={(event) => startPageDrag(event, item)}
+              >
+                <Link draggable={false} className={item.uuid === section.uuid ? 'is-active' : ''} aria-current={item.uuid === section.uuid ? 'page' : undefined} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(item.uuid)}`, location.search)} onClick={(event) => { if (pageDragClickSuppressed.current) { event.preventDefault(); event.stopPropagation(); pageDragClickSuppressed.current = false } }}><SimpleImage asset={item.current_image?.asset} alt="" fallbackText={itemLabel} /><span>{itemLabel}</span></Link>
+                {reorderable ? <span className="simple-page-rail__drag-handle" aria-hidden="true"><GripVertical size={15} strokeWidth={1.8} /></span> : null}
+              </div>
+            )
+          })}</div>
         </aside>
         <main className="simple-page-editor">
           <header><div><span data-user-content>{chapterQuery.data?.title}</span><h1>{label}</h1></div><small role="status">{dirty || refsDirty ? t('simple.page.unsaved') : t('common.status.saved')}</small></header>
           <section className="simple-page-meta-form"><label>{t('simple.page.role')}<select value={role} onChange={(event) => setRole(event.target.value)}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover', section.uuid)}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover', section.uuid)}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} /></label></section>
           <div className="simple-page-current-image"><SimpleImage asset={section.current_image?.asset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} />{section.current_image ? <span>{t('simple.page.current_image', { version: section.current_image.version_no })}</span> : null}</div>
+          <div className="simple-illustration-actions">
+            <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => setImageCandidatesOpen(true)}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{t('simple.page.image_drafts_count', { count: imageVariants.length })}</span></button>
+            {taskActive ? <SimpleTaskStatus task={task} /> : null}
+            <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
+          </div>
           <section className="simple-page-content-card"><h2>{t('simple.page.content')}</h2><label><span>{t('simple.page.text')}</span><textarea value={text} onChange={(event) => setText(event.target.value)} /></label><label><span>{t('simple.page.visual_direction')}</span><textarea value={direction} onChange={(event) => setDirection(event.target.value)} /></label></section>
           <section className="simple-page-references"><header><div><h2>{t('simple.page.references')}</h2><p>{t('simple.page.references_body')}</p></div><button type="button" disabled={!refsDirty || save.isPending || invalidEmptyText} onClick={() => save.mutate()}>{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></header><div>{(assetsQuery.data?.items || []).filter((asset) => asset.current_variant).map((asset) => <label className={selectedRefs.includes(asset.uuid) ? 'is-selected' : ''} key={asset.uuid}><input type="checkbox" checked={selectedRefs.includes(asset.uuid)} disabled={!selectedRefs.includes(asset.uuid) && selectedRefs.length >= 12} onChange={(event) => setSelectedRefs((current) => event.target.checked ? [...current, asset.uuid] : current.filter((uuid) => uuid !== asset.uuid))} /><SimpleImage asset={asset.current_variant?.asset} alt="" /><span><strong data-user-content>{asset.title}</strong><small>{assetTypeLabel(t, asset.asset_type)}</small></span></label>)}</div></section>
-          <section className="simple-generation-card"><header><div><h2>{t('simple.page.generate_title')}</h2><p>{t('simple.page.generate_body')}</p></div>{task ? <SimpleTaskStatus task={task} /> : null}</header><div><input value={generationPrompt} onChange={(event) => setGenerationPrompt(event.target.value)} placeholder={t('simple.page.generate_placeholder')} /><button type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={15} aria-hidden="true" />{t(section.current_image ? 'simple.page.generate_again' : 'simple.page.generate')}</button></div></section>
-          <section className="simple-page-candidates"><header><div><h2>{t('simple.page.image_candidates')}</h2><p>{t('simple.page.image_candidates_body')}</p></div><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{(imagesQuery.data?.items || []).map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /><footer><div><strong>v{variant.version_no}</strong><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></section>
           <section className="simple-version-list"><header><div><h2>{t('simple.page.text_versions')}</h2></div><span>{storyboardsQuery.data?.items?.length || 0}</span></header><div>{(storyboardsQuery.data?.items || []).map((variant) => <article className={variant.uuid === section.current_storyboard?.uuid ? 'is-current' : ''} key={variant.uuid}><div><strong>v{variant.version_no}</strong><span data-user-content>{simpleStoryExcerpt(variant.content_md, 90)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_storyboard?.uuid || chooseStoryboard.isPending} onClick={() => chooseStoryboard.mutate(variant)}>{variant.uuid === section.current_storyboard?.uuid ? t('simple.version.current') : t('common.action.restore')}</button></article>)}</div></section>
           <nav className="simple-page-stepper" aria-label={t('simple.shell.page.pages')}>{previous ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(previous.uuid)}`, location.search)}><ChevronLeft size={15} aria-hidden="true" />{t('simple.page.previous')}</Link> : <span />}{next ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(next.uuid)}`, location.search)}>{t('simple.page.next')}<ChevronRight size={15} aria-hidden="true" /></Link> : null}</nav>
         </main>
       </div>
+      {imageCandidatesOpen ? <SimpleDialog title={t('simple.page.image_candidates')} onClose={() => !importImage.isPending && !chooseImage.isPending && setImageCandidatesOpen(false)}><div className="simple-page-candidates-dialog"><header><p>{t('simple.page.image_candidates_body')}</p><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" disabled={importImage.isPending} onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{imageVariants.map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /><footer><div><strong>v{variant.version_no}</strong><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending || importImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></div></SimpleDialog> : null}
     </div>
   )
 }

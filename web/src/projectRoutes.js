@@ -27,7 +27,7 @@ export function projectPreviewRoute(projectUuid, chapterUuid, search = '') {
 
 export function projectRouteRequiresExpert(pathname = '', projectUuid = '') {
   const route = projectRelativePath(pathname, projectUuid)
-  return /^(?:prompts|llm-logs|exports|assets|threads)(?:\/|$)/.test(route)
+  return /^(?:prompts|assets|threads)(?:\/|$)/.test(route)
 }
 
 export function projectModeOverride(search = '') {

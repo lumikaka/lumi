@@ -67,10 +67,12 @@ test('resource selection moves from expert query state into the canonical path',
   })
 })
 
-test('expert-only routes force an expert surface while optional link overrides stay non-persistent', () => {
-  for (const route of ['prompts', 'llm-logs', 'exports', 'assets', 'threads/thread/trajectory']) {
+test('expert-only routes force an expert surface while shared utilities honor the selected mode', () => {
+  for (const route of ['prompts', 'assets', 'threads/thread/trajectory']) {
     assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/${route}`, projectUuid), true, route)
   }
+  assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/llm-logs`, projectUuid), false)
+  assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/exports`, projectUuid), false)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/story`, projectUuid), false)
   assert.equal(projectModeOverride('?workspace_mode=expert&chat_new=1'), 'expert')
   assert.equal(withoutProjectModeOverride('?workspace_mode=expert&chat_new=1'), '?chat_new=1')

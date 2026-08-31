@@ -183,6 +183,7 @@ export const simpleDashboard = defineMessages({
   'simple.page.generation_started': ['页面画面生成任务已开始', 'Page artwork generation started'],
   'simple.page.generation_complete': ['页面画面已生成', 'Page artwork generated'],
   'simple.page.image_candidates': ['画面候选稿', 'Artwork candidates'],
+  'simple.page.image_drafts_count': ['{count} 稿', '{count} drafts'],
   'simple.page.image_candidates_body': ['查看全部生成或导入的稿件，并选择当前使用的画面。', 'Review every generated or imported draft and choose the current artwork.'],
   'simple.page.import_image': ['导入候选稿', 'Import candidate'],
   'simple.page.image_imported': ['画面已导入为新候选稿', 'Artwork imported as a new candidate'],

@@ -94,6 +94,50 @@ final result: passed
 
 ---
 
+## Simple page illustration actions and candidate dialog — current QA
+
+### Comparison target
+
+- Source visual truth: `https://zettos-prd-a1-prototypes.vercel.app/lumi-picture-book/home.html`, opened in `画面` / `逐页编辑` with `.lumi-illustration-actions` visible.
+- Source capture: `/Users/qingyang/.codex/visualizations/2026/08/31/01a0556e-de81-7a21-bcef-546e83b65ff6/lumi-illustration-actions-reference-1280x720.png`.
+- Implementation capture: `/Users/qingyang/.codex/visualizations/2026/08/31/01a0556e-de81-7a21-bcef-546e83b65ff6/lumi-illustration-actions-implementation-1280x720.png`.
+- Candidate dialog capture: `/Users/qingyang/.codex/visualizations/2026/08/31/01a0556e-de81-7a21-bcef-546e83b65ff6/lumi-candidates-dialog-implementation-1280x720.png`.
+- Full-view comparison: `/Users/qingyang/.codex/visualizations/2026/08/31/01a0556e-de81-7a21-bcef-546e83b65ff6/lumi-illustration-actions-full-comparison.png` (source left, implementation right).
+- Focused comparison: `/Users/qingyang/.codex/visualizations/2026/08/31/01a0556e-de81-7a21-bcef-546e83b65ff6/lumi-illustration-actions-focused-comparison.png` (source left, implementation right).
+- Viewport and density: source and implementation were rendered at 1280 × 720 CSS px and captured at 1280 × 720 output px with device scale factor 1. The focused comparison keeps both crops at native scale; the narrower implementation crop is centered on a 706 × 170 canvas without scaling.
+- State: current artwork present, generation idle, candidate dialog closed for the action-row comparison. Prototype fixture draft count and local SQLite draft count intentionally differ.
+
+### Required fidelity surfaces
+
+- Fonts and typography: passed. Count and primary actions use the reference Inter / Noto Sans SC / PingFang SC stack at 14px, weight 430, and 21px line height.
+- Spacing and layout rhythm: passed. The action row is 34px high with a 10px top margin and 10px gap. The count action is 30px high with 6px horizontal padding and a 7px icon gap; the primary action is 34px high with 12px horizontal padding. Both use a 6px radius and remain pinned to opposite edges of the current-artwork frame.
+- Colors and visual tokens: passed. The draft action uses the source `#747970` idle foreground, the primary action uses `#2f6b55` with white text, and hover/expanded states use the existing Lumi surface and accent tokens. The combined expanded-hover rule remains after the base state.
+- Image quality and asset fidelity: passed. The current artwork and candidate thumbnails remain the existing REST/SQLite-backed assets. Both actions use the matching Lucide `Images` and `Sparkles` icons at 16px with a 1.6 stroke; no substitute image, handcrafted SVG, CSS drawing, or placeholder was introduced.
+- Copy and content: passed. The trigger follows the source `{count} 稿` format and the primary action reads `生成新稿`. The dialog retains the existing candidate description, import action, version label, timestamp, current-state control, and candidate selection behavior.
+- Responsive behavior: passed for the supplied desktop target. The row is fluid to the current-artwork width and has no horizontal overflow. The existing dialog breakpoint keeps the candidate grid single-column on narrow screens.
+- Interaction and accessibility: passed. The count control exposes `aria-haspopup="dialog"` and `aria-expanded`, opens the existing focus-trapped dialog, Escape closes it and returns focus to the count control, hover feedback is visible, selecting a non-current candidate closes the dialog after the REST mutation succeeds, and import/selection actions stay guarded while pending.
+
+### Comparison history
+
+1. The original implementation kept the complete candidate grid inline and placed generation in a separate card, which did not match the compact reference interaction.
+2. The candidate grid and import flow were moved into the existing `SimpleDialog`; the current-artwork region now owns the count and generate actions. The first browser pass found a 900px dialog, 500-weight action labels, and the application's darker generic muted color. The dialog was returned to the prior 560px/three-column candidate geometry, and the action typography/color were aligned to the measured source values.
+3. The post-fix combined comparison found no actionable P0, P1, or P2 differences in the requested action row. Different artwork, titles, and draft counts are expected local facts rather than design drift.
+
+### Findings
+
+No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the requested candidate-entry scope.
+
+### Verification
+
+- Primary interactions tested: open candidate dialog, `aria-expanded` transition, Escape dismissal, focus return, idle hover feedback, dialog geometry, and current-candidate disabled state.
+- Browser console: no warnings or errors.
+- Frontend unit suite: passed, 330 tests before the final focused assertion; the focused suite was rerun afterward.
+- Frontend production build: passed and was rerun after final styling.
+
+final result: passed
+
+---
+
 ## Chapter entry opens the existing page editor — current QA
 
 ### Comparison target

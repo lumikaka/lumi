@@ -794,9 +794,62 @@
     overflow-y: auto
     overscroll-behavior: contain
 
+  .simple-page-rail__item
+    position: relative
+    min-width: 0
+    border-radius: $radius-sm
+
+    &.is-reorderable
+      cursor: grab
+      user-select: none
+
+    &.is-reorderable:active
+      cursor: grabbing
+
+    &.is-dragging
+      opacity: .46
+      transform: scale(.98)
+
+    &.is-drop-before::before,
+    &.is-drop-after::after
+      content: ''
+      position: absolute
+      z-index: 5
+      left: -5px
+      right: -5px
+      height: 3px
+      border-radius: 999px
+      background: $color-accent-strong
+      box-shadow: 0 0 0 2px rgba($color-surface, .9)
+      pointer-events: none
+
+    &.is-drop-before::before
+      top: -6px
+
+    &.is-drop-after::after
+      bottom: -6px
+
+  .simple-page-rail__drag-handle
+    position: absolute
+    z-index: 3
+    top: 5px
+    right: 5px
+    width: 22px
+    height: 22px
+    display: grid
+    place-items: center
+    border: 1px solid rgba($color-border-strong, .72)
+    border-radius: 5px
+    color: $color-muted
+    background: rgba($color-surface, .9)
+    box-shadow: 0 2px 6px rgba($color-text, .08)
+    pointer-events: none
+
   .simple-page-rail
     a
       position: relative
+      width: 100%
+      display: block
       min-width: 0
       aspect-ratio: 4 / 3
       overflow: hidden
@@ -812,6 +865,7 @@
 
       img
         object-fit: cover
+        -webkit-user-drag: none
 
       > span
         position: absolute
@@ -894,6 +948,52 @@
       background: rgba($color-text, .78)
       font-size: $font-size-small
       font-weight: $font-weight-semibold
+
+  .simple-illustration-actions
+    min-height: 34px
+    margin-top: 10px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: 10px
+
+  .simple-illustration-actions__drafts
+    min-height: 30px
+    margin-right: auto
+    padding: 0 6px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 7px
+    border: 0
+    border-radius: $radius-sm
+    color: #747970
+    background: transparent
+    font-size: 14px
+    font-weight: $font-weight-regular
+    line-height: 21px
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+    &[aria-expanded="true"]
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]:hover,
+    &[aria-expanded="true"]:focus-visible
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-illustration-actions__generate
+    min-height: 34px
+    padding: 0 12px
+    border: 0
+    font-size: 14px
+    font-weight: $font-weight-regular
+    line-height: 21px
 
   .simple-page-content-card
     margin-top: 20px
@@ -1237,8 +1337,7 @@
   .simple-generation-card,
   .simple-version-list,
   .simple-version-gallery,
-  .simple-page-references,
-  .simple-page-candidates
+  .simple-page-references
     margin-top: 22px
     padding: 18px
     border: 1px solid $color-border
@@ -1629,7 +1728,7 @@
       background: $color-surface
 
   .simple-version-gallery > header label,
-  .simple-page-candidates > header label
+  .simple-page-candidates-dialog > header label
     position: relative
 
     input
@@ -1638,6 +1737,21 @@
       height: 1px
       overflow: hidden
       opacity: 0
+
+  .simple-page-candidates-dialog
+    padding: 18px
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 14px
+
+      p
+        margin: 0
+        color: $color-muted
+        font-size: $font-size-small
 
   .simple-version-gallery > div:last-child,
   .simple-candidate-grid
@@ -1872,6 +1986,7 @@
     .simple-conflict,
     .simple-story-generation > div,
     .simple-generation-card > div,
+    .simple-page-candidates-dialog > header,
     .simple-upload-confirm
       align-items: stretch
       flex-direction: column
@@ -2057,8 +2172,23 @@
       overflow-x: auto
       overflow-y: hidden
 
-      a
+      .simple-page-rail__item
         flex: 0 0 104px
+
+        &.is-drop-before::before,
+        &.is-drop-after::after
+          top: -4px
+          bottom: -4px
+          width: 3px
+          height: auto
+
+        &.is-drop-before::before
+          left: -6px
+          right: auto
+
+        &.is-drop-after::after
+          right: -6px
+          left: auto
 
     .simple-page-editor
       height: auto
