@@ -60,6 +60,36 @@ func storyErrorCode(err error) string {
 	return ""
 }
 
+func replacePromptWithPreviousBuiltin(t *testing.T, service *Service, group, key string) (promptcatalog.Definition, promptVersionRecord) {
+	t.Helper()
+	ctx := context.Background()
+	projectRecord, actor, err := service.projectAndActor(ctx, service.store.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition, ok := service.promptDefinition(group, key, projectRecord.GenerationLanguage)
+	if !ok || len(definition.PreviousDefaultValues) != 1 {
+		t.Fatalf("%s/%s previous defaults=%v", group, key, definition.PreviousDefaultValues)
+	}
+	if err := service.store.DB().Where("project_id = ? AND prompt_group = ? AND prompt_key = ?", projectRecord.ID, group, key).Delete(&promptVersionRecord{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	uuid, err := newUUIDv7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prompt := strings.TrimSpace(definition.PreviousDefaultValues[0])
+	record := promptVersionRecord{
+		UUID: uuid, ProjectID: projectRecord.ID, ActorID: actor.ID,
+		PromptGroup: group, PromptKey: key, VersionNo: 1,
+		Prompt: prompt, PromptHash: contentHash(prompt), SourceType: "project_created", CreatedAt: service.now().UTC(),
+	}
+	if err := service.store.DB().Create(&record).Error; err != nil {
+		t.Fatal(err)
+	}
+	return definition, record
+}
+
 func TestChapterStoriesAreAppendOnlyAndRevisionChecked(t *testing.T) {
 	_, _, service := storyHarness(t)
 	ctx := context.Background()
@@ -606,6 +636,87 @@ func TestPromptCatalogLanguageSwitchPreservesCustomAndMigratesDefaults(t *testin
 	versions, _, err := service.ListPromptVersions(ctx, "story", "story_profile", 1, 20)
 	if err != nil || len(versions) != 2 || versions[0].SourceType != "project_language_changed" || !strings.Contains(versions[0].Prompt, "User story idea") {
 		t.Fatalf("migrated versions = %+v, error = %v", versions, err)
+	}
+}
+
+func TestPromptCatalogMigratesPreviousPremiseDefaultsWithoutOverwritingUserChoices(t *testing.T) {
+	_, _, service := storyHarness(t)
+	ctx := context.Background()
+	keys := []string{"setting_image", "asset_breakdown"}
+	definitions := make(map[string]promptcatalog.Definition, len(keys))
+	previousRecords := make(map[string]promptVersionRecord, len(keys))
+	for _, key := range keys {
+		definition, record := replacePromptWithPreviousBuiltin(t, service, promptcatalog.GroupPremise, key)
+		definitions[key] = definition
+		previousRecords[key] = record
+	}
+
+	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys {
+		versions, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupPremise, key, 1, 20)
+		if err != nil || pagination.Total != 2 || len(versions) != 2 {
+			t.Fatalf("%s migrated versions=%+v pagination=%+v error=%v", key, versions, pagination, err)
+		}
+		if versions[0].VersionNo != 2 || versions[0].SourceType != "migration" || versions[0].Prompt != strings.TrimSpace(definitions[key].DefaultValue) {
+			t.Fatalf("%s latest migration=%+v", key, versions[0])
+		}
+	}
+	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys {
+		_, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupPremise, key, 1, 20)
+		if err != nil || pagination.Total != 2 {
+			t.Fatalf("%s idempotent migration total=%d error=%v", key, pagination.Total, err)
+		}
+	}
+
+	settingPrevious := strings.TrimSpace(definitions["setting_image"].PreviousDefaultValues[0])
+	manual, err := service.CreatePromptVersion(ctx, CreatePromptInput{PromptGroup: promptcatalog.GroupPremise, PromptKey: "setting_image", Prompt: settingPrevious, ExpectedCurrentVersion: 2})
+	if err != nil || manual.SourceType != "manual_edit" {
+		t.Fatalf("manual previous setting prompt=%+v error=%v", manual, err)
+	}
+	restored, err := service.RestorePromptVersion(ctx, previousRecords["asset_breakdown"].UUID, 2)
+	if err != nil || restored.SourceType != "version_restore" {
+		t.Fatalf("restored previous breakdown prompt=%+v error=%v", restored, err)
+	}
+	if err := service.EnsurePromptCatalogVersions(ctx, "migration"); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range keys {
+		versions, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupPremise, key, 1, 20)
+		wantPrompt := strings.TrimSpace(definitions[key].PreviousDefaultValues[0])
+		if err != nil || pagination.Total != 3 || len(versions) != 3 || versions[0].Prompt != wantPrompt {
+			t.Fatalf("%s user-selected previous prompt was overwritten: versions=%+v pagination=%+v error=%v", key, versions, pagination, err)
+		}
+	}
+}
+
+func TestPromptLanguageSwitchRecognizesPreviousBuiltinDefault(t *testing.T) {
+	_, _, service := storyHarness(t)
+	ctx := context.Background()
+	replacePromptWithPreviousBuiltin(t, service, promptcatalog.GroupPremise, "setting_image")
+	detail, err := service.GetProject(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	english := promptcatalog.LanguageEnglish
+	if _, err := service.UpdateProject(ctx, UpdateProjectInput{Name: detail.Name, Description: detail.Description, GenerationLanguage: &english, ExpectedRevision: detail.Revision}); err != nil {
+		t.Fatal(err)
+	}
+	want, ok := promptcatalog.Lookup(promptcatalog.GroupPremise, "setting_image", promptcatalog.LanguageEnglish)
+	if !ok {
+		t.Fatal("missing English setting_image definition")
+	}
+	effective, err := service.EffectivePrompt(ctx, promptcatalog.GroupPremise, "setting_image")
+	if err != nil || effective != strings.TrimSpace(want.DefaultValue) {
+		t.Fatalf("English setting prompt=%q error=%v", effective, err)
+	}
+	versions, pagination, err := service.ListPromptVersions(ctx, promptcatalog.GroupPremise, "setting_image", 1, 20)
+	if err != nil || pagination.Total != 2 || len(versions) != 2 || versions[0].SourceType != "project_language_changed" {
+		t.Fatalf("language-migrated setting versions=%+v pagination=%+v error=%v", versions, pagination, err)
 	}
 }
 

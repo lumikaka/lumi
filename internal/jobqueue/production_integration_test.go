@@ -313,7 +313,7 @@ func (provider *recordingBreakdownProvider) Generate(_ context.Context, request 
 	provider.mu.Lock()
 	provider.request = request
 	provider.mu.Unlock()
-	return llm.Response{Content: `{"plan":{"layout":"white_background_objects"},"assets":[{"filename":"lighthouse.png","title":"黄昏灯塔","summary":"引导归航的核心地点","tags":["地点","核心地点"],"crop_box":{"x":0,"y":0,"width":1,"height":1},"confidence":0.98}],"quality_checks":["主体完整"]}`}, nil
+	return llm.Response{Content: `{"assets":[{"type":"scene","title":"黄昏灯塔","summary":"引导归航的核心地点","tags":["地点","核心地点"],"crop_box":{"x":0,"y":0,"width":1,"height":1},"confidence":0.98}]}`}, nil
 }
 
 func (provider *recordingBreakdownProvider) snapshot() llm.Request {
@@ -1326,7 +1326,7 @@ func TestPremiseBatchPromptsAndVisualBreakdownUseCatalogContract(t *testing.T) {
 		t.Fatalf("image requests = %d", len(imageRequests))
 	}
 	settingPrompt := imageRequests[0].Prompt
-	for _, required := range []string{"漫画项目的设定图设计师", "纯白背景", "6 到 12 个", source.SourceText, "纸雕赛璐璐风格"} {
+	for _, required := range []string{"资产设定板设计师", "纯白 #FFFFFF", "3 列 × 2 行", "1 到 6 个", "禁止所有可见文字", source.SourceText, "纸雕赛璐璐风格"} {
 		if !strings.Contains(settingPrompt, required) {
 			t.Fatalf("setting prompt missing %q: %s", required, settingPrompt)
 		}
@@ -1346,7 +1346,7 @@ func TestPremiseBatchPromptsAndVisualBreakdownUseCatalogContract(t *testing.T) {
 	}
 	waitProductionStatus(t, harness.queue, harness.project.UUID, breakdownTask.UUID, StatusCompleted)
 	request := breakdownProvider.snapshot()
-	for _, required := range []string{"漫画制作资产整理员", `"assets"`, `"crop_box"`, source.SourceText, "纸雕赛璐璐风格", `"width":8`, `"height":6`} {
+	for _, required := range []string{"视觉资产定位器", "不会自动添加 padding", "最终可用框", "confidence >= 0.92", `"assets"`, `"crop_box"`, source.SourceText, "纸雕赛璐璐风格", `"width":8`, `"height":6`} {
 		if !strings.Contains(request.Prompt, required) {
 			t.Fatalf("breakdown prompt missing %q: %s", required, request.Prompt)
 		}
@@ -1392,7 +1392,7 @@ func TestEnglishPremiseBreakdownAndComicRequestsUseLocalizedContextAndImages(t *
 	}
 	waitProductionStatus(t, harness.queue, harness.project.UUID, settingTask.UUID, StatusCompleted)
 	settingRequest := imageProvider.snapshot()[0]
-	for _, required := range []string{"Project language: English", "setting image designer", "pure white background", source.SourceText, source.StyleSnapshot} {
+	for _, required := range []string{"Project language: English", "asset setting-board designer", "pure white #FFFFFF", "3-column × 2-row", "1 to 6", "No visible text", source.SourceText, source.StyleSnapshot} {
 		if !strings.Contains(settingRequest.Prompt, required) {
 			t.Fatalf("English setting prompt missing %q: %s", required, settingRequest.Prompt)
 		}
@@ -1407,7 +1407,7 @@ func TestEnglishPremiseBreakdownAndComicRequestsUseLocalizedContextAndImages(t *
 	}
 	waitProductionStatus(t, harness.queue, harness.project.UUID, breakdownTask.UUID, StatusCompleted)
 	breakdownRequest := breakdownProvider.snapshot()
-	for _, required := range []string{"Project language: English", "comic-production asset organizer", `"crop_box"`, source.SourceText} {
+	for _, required := range []string{"Project language: English", "visual asset localizer", "does not add padding", "final usable box", "confidence >= 0.92", `"crop_box"`, source.SourceText} {
 		if !strings.Contains(breakdownRequest.Prompt, required) {
 			t.Fatalf("English breakdown prompt missing %q: %s", required, breakdownRequest.Prompt)
 		}

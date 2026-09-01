@@ -428,6 +428,9 @@ func (service *Service) EnsurePromptCatalogVersions(ctx context.Context, sourceT
 				if currentHash == contentHash(strings.TrimSpace(definition.DefaultValue)) {
 					continue
 				}
+				if !tracksBuiltinPrompt(current.SourceType) {
+					continue
+				}
 				matchesPreviousDefault := false
 				for _, previous := range definition.PreviousDefaultValues {
 					if currentHash == contentHash(strings.TrimSpace(previous)) {
@@ -497,6 +500,15 @@ func (service *Service) EnsurePromptCatalogVersions(ctx context.Context, sourceT
 		}
 		return nil
 	})
+}
+
+func tracksBuiltinPrompt(sourceType string) bool {
+	switch sourceType {
+	case "project_created", "migration", "project_language_changed", "default_restore":
+		return true
+	default:
+		return false
+	}
 }
 
 func (service *Service) EffectiveLanguageInstruction(ctx context.Context) (string, error) {

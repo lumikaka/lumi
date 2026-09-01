@@ -246,10 +246,21 @@ func (service *Service) migratePromptLanguage(ctx context.Context, tx *gorm.DB, 
 			return err
 		} else {
 			currentVersion = current.VersionNo
-			if current.PromptHash != contentHash(oldDefinition.DefaultValue) {
+			if !tracksBuiltinPrompt(current.SourceType) {
 				continue
 			}
-			if current.PromptHash == contentHash(newDefinition.DefaultValue) {
+			currentHash := contentHash(strings.TrimSpace(current.Prompt))
+			matchesOldDefault := currentHash == contentHash(strings.TrimSpace(oldDefinition.DefaultValue))
+			for _, previous := range oldDefinition.PreviousDefaultValues {
+				if currentHash == contentHash(strings.TrimSpace(previous)) {
+					matchesOldDefault = true
+					break
+				}
+			}
+			if !matchesOldDefault {
+				continue
+			}
+			if currentHash == contentHash(strings.TrimSpace(newDefinition.DefaultValue)) {
 				continue
 			}
 		}

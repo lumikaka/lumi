@@ -31,6 +31,94 @@ func TestCatalogLanguagesHaveIdenticalKeysGroupsAndPlaceholders(t *testing.T) {
 	}
 }
 
+func TestPremiseMachineCuttingPromptsMatchRuntimeContract(t *testing.T) {
+	tests := []struct {
+		language              string
+		settingRequired       []string
+		settingForbidden      []string
+		breakdownRequired     []string
+		breakdownForbidden    []string
+		previousSettingMark   string
+		previousBreakdownMark string
+	}{
+		{
+			language:              LanguageChinese,
+			settingRequired:       []string{"1 到 6 个", "纯白 #FFFFFF", "3 列 × 2 行", "中央 76%", "四周各保留至少 12%", "禁止所有可见文字"},
+			settingForbidden:      []string{"6 到 12 个", "最多可以到 16 个", "必须在主体附近放一个简短标题"},
+			breakdownRequired:     []string{"最终可用框", "不会自动添加 padding", "四边各外扩", "5%", "confidence >= 0.92", "不要依赖图片中的 OCR", `"type": "character"`},
+			breakdownForbidden:    []string{`"plan": {`, `"tool_options": {`, `"quality_checks":`, `"filename":`, "表示该设定项在整张图中的大致区域", "无法判断时给空对象"},
+			previousSettingMark:   "漫画项目的设定图设计师",
+			previousBreakdownMark: "漫画制作资产整理员",
+		},
+		{
+			language:              LanguageEnglish,
+			settingRequired:       []string{"1 to 6", "pure white #FFFFFF", "3-column × 2-row", "central 76%", "at least 12%", "No visible text"},
+			settingForbidden:      []string{"between 6 and 12", "at most 16", "must have a short title near the subject"},
+			breakdownRequired:     []string{"final usable box", "does not add padding", "Expand every side", "5%", "confidence >= 0.92", "Do not rely on OCR", `"type": "character"`},
+			breakdownForbidden:    []string{`"plan": {`, `"tool_options": {`, `"quality_checks":`, `"filename":`, "represents the approximate region", "if impossible to judge, return an empty object"},
+			previousSettingMark:   "setting image designer",
+			previousBreakdownMark: "comic-production asset organizer",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.language, func(t *testing.T) {
+			setting, ok := Lookup(GroupPremise, "setting_image", test.language)
+			if !ok {
+				t.Fatal("missing setting_image definition")
+			}
+			breakdown, ok := Lookup(GroupPremise, "asset_breakdown", test.language)
+			if !ok {
+				t.Fatal("missing asset_breakdown definition")
+			}
+			if got, want := Placeholders(setting.DefaultValue), []string{"input_text", "style_prompt"}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("setting_image placeholders=%v want=%v", got, want)
+			}
+			if got, want := Placeholders(breakdown.DefaultValue), []string{"image_info_json", "input_text", "style_name", "style_prompt"}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("asset_breakdown placeholders=%v want=%v", got, want)
+			}
+			for _, pair := range []struct {
+				name       string
+				definition Definition
+				mark       string
+			}{
+				{name: "setting_image", definition: setting, mark: test.previousSettingMark},
+				{name: "asset_breakdown", definition: breakdown, mark: test.previousBreakdownMark},
+			} {
+				if len(pair.definition.PreviousDefaultValues) != 1 {
+					t.Fatalf("%s previous defaults=%d want=1", pair.name, len(pair.definition.PreviousDefaultValues))
+				}
+				previous := pair.definition.PreviousDefaultValues[0]
+				if previous == pair.definition.DefaultValue || !strings.Contains(previous, pair.mark) {
+					t.Fatalf("%s previous default is not the expected legacy builtin", pair.name)
+				}
+				if !reflect.DeepEqual(Placeholders(previous), Placeholders(pair.definition.DefaultValue)) {
+					t.Fatalf("%s previous placeholders=%v current=%v", pair.name, Placeholders(previous), Placeholders(pair.definition.DefaultValue))
+				}
+			}
+			for _, required := range test.settingRequired {
+				if !strings.Contains(setting.DefaultValue, required) {
+					t.Errorf("setting_image missing %q", required)
+				}
+			}
+			for _, forbidden := range test.settingForbidden {
+				if strings.Contains(setting.DefaultValue, forbidden) {
+					t.Errorf("setting_image retained obsolete rule %q", forbidden)
+				}
+			}
+			for _, required := range test.breakdownRequired {
+				if !strings.Contains(breakdown.DefaultValue, required) {
+					t.Errorf("asset_breakdown missing %q", required)
+				}
+			}
+			for _, forbidden := range test.breakdownForbidden {
+				if strings.Contains(breakdown.DefaultValue, forbidden) {
+					t.Errorf("asset_breakdown retained obsolete or unsupported field %q", forbidden)
+				}
+			}
+		})
+	}
+}
+
 func TestCatalogContainsCanonicalKeys(t *testing.T) {
 	want := map[string][]string{
 		GroupStory:        {"json_system", "story_profile", "story_chapter", "chapter_batch_plan", "next_story_chapter", "profile_from_chapters"},
@@ -208,8 +296,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "e1d7f077d0e53fdb49eeb0dffc03af1f80b8354aee4b23c4d8dc0d4925882d5b",
-		LanguageEnglish: "bfdc16979bd8d89bdd1cdd2e4605624a4fc56cfcaf77c5815e73103e16a0faad",
+		LanguageChinese: "3c01704dcfa597167e81436df8b23191850aa34331e6ee099049a4334b873d29",
+		LanguageEnglish: "b129e9136c9376fbeda9f3059aec912d6ca5f40589e7f94ac9ffdf200da340b0",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
