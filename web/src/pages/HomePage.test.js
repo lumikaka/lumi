@@ -36,8 +36,8 @@ test('recent projects render picture-book covers with secondary details in the m
   assert.match(source, /project-index-menu__path/)
   assert.doesNotMatch(source, /project-index-table/)
   assert.match(styles, /\.project-card-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
-  assert.match(styles, /\.project-card__cover[\s\S]*height: 94px[\s\S]*object-fit: cover/)
-  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-card-grid[\s\S]*?grid-template-columns: 1fr[\s\S]*?\.project-card__cover[\s\S]*?height: 70px/)
+  assert.match(styles, /\.project-card__cover\n[\s\S]*?  aspect-ratio: 4 \/ 3[\s\S]*?\n  img\n    width: 100%\n    height: 100%\n    min-height: 0\n    display: block\n    object-fit: contain/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.project-card-grid[\s\S]*?grid-template-columns: 1fr/)
 })
 
 test('project page presents creation, open, relocation and forget dialogs', () => {
