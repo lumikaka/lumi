@@ -14,6 +14,19 @@ import (
 
 const validCodexUserInputArguments = `{"questions":[{"header":"画面风格","id":"art_style","question":"这次画面应采用哪种整体风格？","options":[{"label":"温暖手绘 (Recommended)","description":"延续绘本现有的柔和质感和亲切氛围。"},{"label":"电影写实","description":"强化真实光影、景深和镜头感。"}]}]}`
 
+func TestProjectAPIV4RequestUserInputDefinitionKeepsConfirmationTopLevel(t *testing.T) {
+	definition := projectAPIV4RequestUserInputDefinition()
+	parameters := definition["parameters"].(map[string]any)
+	properties := parameters["properties"].(map[string]any)
+	questions := properties["questions"].(map[string]any)
+	question := questions["items"].(map[string]any)
+	questionProperties := question["properties"].(map[string]any)
+	confirmation := properties["confirmation"].(map[string]any)
+	if _, nested := questionProperties["confirmation"]; nested || !strings.Contains(stringArg(confirmation, "description"), "top-level sibling") || !strings.Contains(definition["description"].(string), "never inside questions[]") {
+		t.Fatalf("request_user_input confirmation placement is ambiguous: definition=%+v", definition)
+	}
+}
+
 func TestProjectAPIV4RequestUserInputSchemaAndRuntimeValidation(t *testing.T) {
 	for count := 1; count <= 3; count++ {
 		questions := make([]map[string]any, 0, count)
@@ -100,6 +113,66 @@ func TestProjectAPIV4SingleQuestionConfirmationNormalizesQuestionID(t *testing.T
 	multiRaw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question, second}, "confirmation": confirmation})
 	if _, err := validateToolArgumentsForProtocol("request_user_input", string(multiRaw), ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
 		t.Fatalf("multi-question confirmation unexpectedly normalized: %v", err)
+	}
+}
+
+func TestProjectAPIV4SingleQuestionNestedConfirmationIsNormalized(t *testing.T) {
+	question := map[string]any{
+		"header": "生成确认", "id": "confirm_storyboard", "question": "是否生成漫画分镜？",
+		"options": []map[string]any{
+			{"label": "暂不生成 (Recommended)", "description": "保留当前状态，不创建生成任务。"},
+			{"label": "确认生成", "description": "创建已绑定的漫画分镜生成任务。"},
+		},
+		"confirmation": map[string]any{
+			"route": RouteComicStoryboardGenerationCreate, "project_uuid": "01990000-0000-7000-8000-000000000321", "target_uuid": "01990000-0000-7000-8000-000000000322",
+			"expected_revision": 0, "request_fingerprint": "sha256:" + strings.Repeat("a", 64), "question_id": "confirm_storyboard", "confirm_option": 1,
+		},
+	}
+	raw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question}})
+	args, err := validateToolArgumentsForProtocol("request_user_input", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
+	if err != nil {
+		t.Fatalf("nested single-question confirmation was not normalized: %v", err)
+	}
+	questions := args["questions"].([]any)
+	if _, exists := questions[0].(map[string]any)["confirmation"]; exists {
+		t.Fatalf("normalized question still contains confirmation: %+v", questions[0])
+	}
+	confirmation, ok := args["confirmation"].(map[string]any)
+	if !ok || confirmation["question_id"] != "confirm_storyboard" || confirmation["target_uuid"] != "01990000-0000-7000-8000-000000000322" {
+		t.Fatalf("unexpected top-level confirmation: %+v", args["confirmation"])
+	}
+	repairs := projectAPIV4ArgumentRepairs("request_user_input", ToolProtocolProjectAPI, ToolModeProjectAPI, string(raw), args)
+	if strings.Join(repairs, ",") != confirmationPlacementArgumentRepair {
+		t.Fatalf("argument repairs=%v", repairs)
+	}
+}
+
+func TestProjectAPIV4AmbiguousNestedConfirmationReturnsPlacementViolation(t *testing.T) {
+	confirmation := `{"route":"comic.storyboard_generation.create","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":0,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_storyboard","confirm_option":1}`
+	question := `{"header":"生成确认","id":"confirm_storyboard","question":"是否生成漫画分镜？","options":[{"label":"暂不生成 (Recommended)","description":"保留当前状态。"},{"label":"确认生成","description":"创建生成任务。"}]`
+	cases := map[string]string{
+		"top-level and nested": `{"questions":[` + question + `,"confirmation":` + confirmation + `}],"confirmation":` + confirmation + `}`,
+		"multiple questions":   `{"questions":[` + question + `,"confirmation":` + confirmation + `},` + question + `}]}`,
+		"non-object":           `{"questions":[` + question + `,"confirmation":"invalid"}]}`,
+	}
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := validateToolArgumentsForProtocol("request_user_input", raw, ToolModeProjectAPI, ToolProtocolProjectAPI)
+			violation, ok := toolValidationViolationFromError(err)
+			var agentErr *Error
+			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || !ok || violation.Path != "questions[0].confirmation" || violation.Rule != "placement" || !strings.Contains(agentErr.Details, "与 questions 同级") {
+				t.Fatalf("placement error=%v violation=%+v", err, violation)
+			}
+		})
+	}
+}
+
+func TestProjectAPIV4NestedConfirmationStillRejectsInternalFields(t *testing.T) {
+	raw := `{"questions":[{"header":"生成确认","id":"confirm_storyboard","question":"是否生成漫画分镜？","options":[{"label":"暂不生成 (Recommended)","description":"保留当前状态。"},{"label":"确认生成","description":"创建生成任务。"}],"confirmation":{"route":"comic.storyboard_generation.create","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":0,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_storyboard","confirm_option":1,"internal_id":7}}]}`
+	_, err := validateToolArgumentsForProtocol("request_user_input", raw, ToolModeProjectAPI, ToolProtocolProjectAPI)
+	var agentErr *Error
+	if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || agentErr.Message != "工具参数包含内部字段" {
+		t.Fatalf("nested internal field accepted or misclassified: %v", err)
 	}
 }
 

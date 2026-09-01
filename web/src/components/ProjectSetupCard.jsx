@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, ClipboardList, Save } from 'lucide-react'
+import { ClipboardList, Save } from 'lucide-react'
 
 import { getProjectSetup, updateProjectSetupReference } from '../api/projects.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
@@ -99,7 +99,7 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
   })
   const setup = setupQuery.data
   if (setupQuery.isError) return <LocalizedErrorMessage error={setupQuery.error} className="chat-error project-setup-card__error" />
-  if (!setup || (!setup.uuid && setup.setup_status !== 'draft')) return null
+  if (!setup || setup.setup_status !== 'draft') return null
 
   const draftValues = setup.draft_values || {}
   const fields = [
@@ -108,14 +108,14 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
     { key: 'overall_style', sourceKey: 'overall_style', label: t('chat.setup.field.overall_style'), value: draftValues.overall_style },
     ...pictureBookFields(draftValues, t),
   ]
-  const statusKey = setup.setup_status === 'ready' ? 'finalized' : setup.status
+  const statusKey = setup.status
   return (
     <section className={`project-setup-card project-setup-card--${statusKey}`} aria-labelledby="project-setup-card-title" data-project-setup-status={setup.setup_status}>
       <header>
-        <div className="project-setup-card__title"><span>{setup.setup_status === 'ready' ? <CheckCircle2 size={17} aria-hidden="true" /> : <ClipboardList size={17} aria-hidden="true" />}</span><div><p>{t('chat.setup.eyebrow')}</p><h3 id="project-setup-card-title">{t('chat.setup.title')}</h3></div></div>
+        <div className="project-setup-card__title"><span><ClipboardList size={17} aria-hidden="true" /></span><div><p>{t('chat.setup.eyebrow')}</p><h3 id="project-setup-card-title">{t('chat.setup.title')}</h3></div></div>
         <span className="project-setup-card__status">{t(`chat.setup.status.${statusKey}`)}</span>
       </header>
-      <p className="project-setup-card__hint">{t(setup.setup_status === 'ready' ? 'chat.setup.finalized_hint' : 'chat.setup.draft_hint')}</p>
+      <p className="project-setup-card__hint">{t('chat.setup.draft_hint')}</p>
       <div className="project-setup-card__fields">
         {fields.map((field) => {
           const source = setup.field_sources?.[field.sourceKey] || ''
@@ -123,8 +123,8 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
         })}
       </div>
       {setup.reference_plan?.items?.length ? <section className="project-setup-card__references" aria-labelledby="project-setup-reference-title">
-        <header><div><strong id="project-setup-reference-title">{t('chat.setup.reference.title_section')}</strong><p>{t(setup.setup_status === 'ready' ? 'chat.setup.reference.frozen' : 'chat.setup.reference.hint')}</p></div><span>{setup.reference_plan.items.filter((item) => item.include_in_yolo).length}/{setup.reference_plan.items.length}</span></header>
-        <div>{setup.reference_plan.items.map((reference) => <SetupReferenceItem key={reference.uuid} projectUuid={projectUuid} revision={setup.revision} reference={reference} editable={setup.setup_status === 'draft'} />)}</div>
+        <header><div><strong id="project-setup-reference-title">{t('chat.setup.reference.title_section')}</strong><p>{t('chat.setup.reference.hint')}</p></div><span>{setup.reference_plan.items.filter((item) => item.include_in_yolo).length}/{setup.reference_plan.items.length}</span></header>
+        <div>{setup.reference_plan.items.map((reference) => <SetupReferenceItem key={reference.uuid} projectUuid={projectUuid} revision={setup.revision} reference={reference} editable />)}</div>
       </section> : null}
       {setup.missing_information?.length ? <div className="project-setup-card__missing"><strong>{t('chat.setup.missing')}</strong><ul>{setup.missing_information.map((field) => <li key={field}>{t(missingCopy[field] || 'chat.setup.field.unknown')}</li>)}</ul></div> : null}
       <footer><span>{t('chat.setup.revision', { revision: setup.revision })}</span><span>{t('chat.setup.directory_hint')}</span></footer>

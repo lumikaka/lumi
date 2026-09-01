@@ -64,11 +64,11 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 ## Project Chat 用户输入协议
 
-新 Run 冻结 `project_api_v4`。活动 `request_user_input` 顶层只接受 `questions` 和可选 Lumi `confirmation`：一次 1–3 题，每题使用唯一 snake_case 逻辑 id、最多 12 字符 header、2–3 个互斥选项、非空说明，且只有第一项 label 以精确的 ` (Recommended)` 结尾。模型不得生成 Other；ChatArea 为每题提供自由输入。该工具必须是模型当次响应中的唯一 Tool Call。
+新 Run 冻结 `project_api_v4`。模型调用 `request_user_input` 只用于确实缺少的信息或关键选择：一次 1–3 题，每题使用唯一 snake_case 逻辑 id、最多 12 字符 header、2–3 个互斥选项、非空说明，且只有第一项 label 以精确的 ` (Recommended)` 结尾。模型不得生成 Other；ChatArea 为每题提供自由输入。该工具必须是模型当次响应中的唯一 Tool Call。活动 schema 仍保留顶层 Lumi `confirmation`，用于运行时生成的危险确认和升级前已持久化请求的恢复；兼容读取只对“唯一问题、顶层无 confirmation、唯一 question 内含 object confirmation”的无歧义旧形状提升到顶层并记录 `confirmation.placement`，双份确认、多问题确认或其他歧义形状仍失败关闭。
 
 `chat_user_input_requests.schema_version` 区分 `codex_questions_v1` 和 `legacy_choice_v1`，`request_json` 是请求唯一事实源。服务端为选项生成公开 UUIDv7；浏览器按 question id 提交一个选项 UUID 或 Other，后端校验所属关系和完整性，再向原 Tool call 写入 `{answers:{question_id:{answers:[label_or_text]}}}`，将同一 Run 排队恢复。请求创建、回答、Tool Result 和 Resume 均以 SQLite 状态为事实；`chat:user_input_*` WebSocket 消息只触发 Query 失效和 REST 重读，不增加轮询。
 
-危险确认在 v4 中必须只含一个问题，`confirmation.question_id` 与该问题匹配，route、project、target、revision 和请求 fingerprint 完整绑定。第一项是安全推荐项，`confirm_option` 只能指向后续明确危险选项；只有选择该服务端 UUID 才授权，安全项和 Other 均不授权。冻结的 `project_api_v3`、`project_api_v2` 继续按旧单题单选/多选与确认语义恢复，`legacy_typed_tools` 继续走隔离恢复，均不会套用 v4 schema。
+危险 `request_api` 返回 `agent_tool_confirmation_required` 时，v4 运行时在持久化 Tool Result 的同一 SQLite 事务内，根据原 execution 重新计算 route、project、target、revision 和请求 fingerprint，创建固定的单问题、双选项 `request_user_input` intent；随后主循环直接消费该 intent 并进入 `waiting_for_input`，不会再次请求模型。第一项固定为安全推荐项，第二项才是 `confirm_option`；只有选择该服务端 UUID 才会创建一次具有确定性幂等键的原请求 replay，安全项、Other 和取消均不执行。冻结的 `project_api_v3`、`project_api_v2` 继续按旧单题单选/多选与模型确认语义恢复，`legacy_typed_tools` 继续走隔离恢复，均不会套用 v4 自动确认。
 
 ## Chat 与 Workflow 诊断读取
 

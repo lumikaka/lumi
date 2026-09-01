@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  activeProjectChatUserInputRequest,
   captureChatScrollAnchor,
   chatComposerMode,
   chatThreadCountLabel,
@@ -264,6 +265,18 @@ test('Codex-style user input projection keeps per-question selected and Other an
   assert.deepEqual(projected.selectedOptionUuids, ['style-2'])
   assert.equal(projected.questions[0].selectedOptionUuid, 'style-2')
   assert.equal(projected.questions[1].otherText, '12 页')
+})
+
+test('active user input request follows the active turn and otherwise uses the latest pending request', () => {
+  const requests = [
+    { uuid: 'answered', status: 'resumed', turn_uuid: 'turn-a' },
+    { uuid: 'older-pending', status: 'pending', turn_uuid: 'turn-b' },
+    { uuid: 'latest-pending', status: 'pending', turn_uuid: 'turn-c' },
+  ]
+
+  assert.equal(activeProjectChatUserInputRequest(requests, { uuid: 'turn-b' })?.uuid, 'older-pending')
+  assert.equal(activeProjectChatUserInputRequest(requests, { uuid: 'missing' })?.uuid, 'latest-pending')
+  assert.equal(activeProjectChatUserInputRequest([{ uuid: 'done', status: 'resumed' }]), null)
 })
 
 test('terminal tool summary is placed before the final response after steering messages', () => {

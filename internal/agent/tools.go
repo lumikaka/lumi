@@ -44,7 +44,9 @@ type toolExecutionRecord struct {
 
 const (
 	maxToolValidationRepairs             = 2
+	confirmationPlacementArgumentRepair  = "confirmation.placement"
 	confirmationQuestionIDArgumentRepair = "confirmation.question_id"
+	requestAPIEmptyBodyArgumentRepair    = "request_api.empty_request_body"
 )
 
 func toolDefinitions() []map[string]any {
@@ -59,11 +61,11 @@ func projectAPISharedToolDefinitions() []map[string]any {
 		return map[string]any{"type": "string", "description": description}
 	}
 	return []map[string]any{
-		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract. Never put confirmation in query or request_body. After a bound request_user_input is confirmed, the runtime executes the original request automatically; do not replay it.", "parameters": object(map[string]any{
+		{"name": "request_api", "description": "Call any server-registered API route under the current /api/v1/projects/{project_uuid} scope in-process. Reviewed routes retain stricter schemas and optimized domain dispatch; other routes use the application router and its public API contract. For a dangerous route, submit the complete request once: the runtime persists and displays the confirmation itself, pauses this run, and replays the exact request only after confirmation. Do not call request_user_input for that error and do not replay request_api yourself.", "parameters": object(map[string]any{
 			"url":             stringField("Canonical relative /api/v1/projects/{current_project_uuid}/... path"),
 			"method":          map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}},
-			"query":           map[string]any{"type": "object", "additionalProperties": true, "description": "Optional route-specific typed query object; never append a query string to url."},
-			"request_body":    map[string]any{"type": "object", "additionalProperties": true},
+			"query":           map[string]any{"type": "object", "additionalProperties": true, "description": "Optional route-specific typed query object; omit this field when the route contract defines no query, and do not send an empty object."},
+			"request_body":    map[string]any{"type": "object", "additionalProperties": true, "description": "Optional route-specific JSON body; omit this field when the route contract defines no request body, and send an empty object only when the contract explicitly requires one."},
 			"response_filter": map[string]any{"type": "string", "minLength": 1, "maxLength": 2048, "description": "Required safe projection beginning with .data. Select only the fields needed for the current step; use .data only when the complete compact response is necessary."},
 		}, "url", "method", "response_filter")},
 		{"name": "read_agent_doc", "description": "Read a registered Agent Overview, reusable capability Guide, or Project API contract. Start with /api/v1/agent-docs/overview.md to discover capabilities and routes.", "parameters": object(map[string]any{
@@ -96,12 +98,14 @@ func projectAPIV4RequestUserInputDefinition() map[string]any {
 		"question": stringField("Single-sentence question shown to the user.", 1, 4000),
 		"options":  map[string]any{"type": "array", "minItems": 2, "maxItems": 3, "items": option},
 	}, "header", "id", "question", "options")
-	return map[string]any{"name": "request_user_input", "description": "Pause this run and ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. For a dangerous Agent API route, include confirmation bound to its exact question and request fingerprint. If the user selects the bound option, the runtime executes the original request automatically; never copy confirmation into request_api or replay the request yourself.", "parameters": object(map[string]any{
-		"questions": map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question},
-		"confirmation": object(map[string]any{
-			"route": stringField("Dangerous global Agent API route ID.", 1, 160), "project_uuid": stringField("Current public project UUIDv7.", 36, 36), "target_uuid": stringField("Concrete target resource UUIDv7.", 36, 36),
-			"expected_revision": integerField("Freshly read target revision."), "request_fingerprint": stringField("Exact sha256 fingerprint returned by request_api.", 71, 71), "question_id": map[string]any{"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]{0,63}$"}, "confirm_option": integerField("Zero-based confirming option index; index zero is reserved for the safe recommended option."),
-		}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "question_id", "confirm_option"),
+	confirmation := object(map[string]any{
+		"route": stringField("Dangerous global Agent API route ID.", 1, 160), "project_uuid": stringField("Current public project UUIDv7.", 36, 36), "target_uuid": stringField("Concrete target resource UUIDv7.", 36, 36),
+		"expected_revision": integerField("Freshly read target revision."), "request_fingerprint": stringField("Exact sha256 fingerprint returned by request_api.", 71, 71), "question_id": map[string]any{"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]{0,63}$"}, "confirm_option": integerField("Zero-based confirming option index; index zero is reserved for the safe recommended option."),
+	}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "question_id", "confirm_option")
+	confirmation["description"] = "Runtime-managed dangerous-action binding retained for durable recovery compatibility. It is a top-level sibling of questions; do not author this field in a model tool call."
+	return map[string]any{"name": "request_user_input", "description": "Pause this run only when a material user choice or required fact is genuinely missing. Ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. Dangerous request_api confirmations are generated, persisted, and resumed by the runtime; do not ask them with this tool or author confirmation. The runtime-managed confirmation is never inside questions[].", "parameters": object(map[string]any{
+		"questions":    map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question, "description": "Question items contain only header, id, question, and options; confirmation is never nested here."},
+		"confirmation": confirmation,
 	}, "questions")}
 }
 
@@ -137,6 +141,12 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 	}
 	if name == "request_api" {
 		if err := rejectRequestAPIConfirmationPlacement(args); err != nil {
+			return nil, err
+		}
+	}
+	if name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3 && normalizedToolMode(mode) == ToolModeProjectAPI {
+		normalizeProjectAPIV4ConfirmationPlacement(args)
+		if err := rejectProjectAPIV4ConfirmationPlacement(args); err != nil {
 			return nil, err
 		}
 	}
@@ -429,6 +439,62 @@ func validatePublicArgumentsAt(value any, key string, path []string, allowQuesti
 
 var requestUserInputQuestionIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
+// normalizeProjectAPIV4ConfirmationPlacement repairs only the unambiguous
+// single-question shape produced by some providers. The canonical public
+// contract remains a top-level confirmation sibling of questions. All fields
+// still pass the normal public, schema, and dangerous-binding validation after
+// this move.
+func normalizeProjectAPIV4ConfirmationPlacement(args map[string]any) bool {
+	if _, exists := args["confirmation"]; exists {
+		return false
+	}
+	values, ok := args["questions"].([]any)
+	if !ok || len(values) != 1 {
+		return false
+	}
+	question, ok := values[0].(map[string]any)
+	if !ok {
+		return false
+	}
+	confirmation, ok := question["confirmation"].(map[string]any)
+	if !ok {
+		return false
+	}
+	delete(question, "confirmation")
+	args["confirmation"] = confirmation
+	return true
+}
+
+func rejectProjectAPIV4ConfirmationPlacement(args map[string]any) error {
+	values, ok := args["questions"].([]any)
+	if !ok {
+		return nil
+	}
+	_, hasTopLevel := args["confirmation"]
+	for index, value := range values {
+		question, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, exists := question["confirmation"]; !exists {
+			continue
+		}
+		path := fmt.Sprintf("questions[%d].confirmation", index)
+		details := path + " 位置无效；confirmation 必须是 request_user_input 顶层字段，并与 questions 同级。"
+		if hasTopLevel {
+			details = path + " 与顶层 confirmation 同时存在，无法安全确定绑定；只保留与 questions 同级的顶层 confirmation。"
+		} else if len(values) != 1 {
+			details = path + " 不能用于多问题请求；危险 confirmation 只允许绑定唯一问题，并且必须与 questions 同级。"
+		}
+		return toolValidationError(
+			"危险操作确认位置无效",
+			details,
+			toolValidationViolation{Path: path, Rule: "placement", ExpectedType: "top-level request_user_input.confirmation object"},
+		)
+	}
+	return nil
+}
+
 // A dangerous v4 confirmation can only bind one question, so question_id is a
 // redundant model-authored key rather than part of the security identity. Keep
 // every security-bearing field strict, but canonicalize a non-empty mismatched
@@ -458,22 +524,46 @@ func normalizeProjectAPIV4ConfirmationQuestionID(args map[string]any) bool {
 	return true
 }
 
-func projectAPIV4ConfirmationQuestionIDWasNormalized(name, protocol, mode, raw string, normalized map[string]any) bool {
+func projectAPIV4ArgumentRepairs(name, protocol, mode, raw string, normalized map[string]any) []string {
 	if name != "request_user_input" || protocol == ToolProtocolProjectV2 || protocol == ToolProtocolProjectV3 || normalizedToolMode(mode) != ToolModeProjectAPI {
-		return false
+		return nil
 	}
 	var original map[string]any
 	if json.Unmarshal([]byte(raw), &original) != nil {
-		return false
+		return nil
 	}
+	repairs := make([]string, 0, 2)
 	originalConfirmation, originalOK := original["confirmation"].(map[string]any)
+	if !originalOK {
+		if values, ok := original["questions"].([]any); ok && len(values) == 1 {
+			if question, ok := values[0].(map[string]any); ok {
+				originalConfirmation, originalOK = question["confirmation"].(map[string]any)
+				if originalOK {
+					repairs = append(repairs, confirmationPlacementArgumentRepair)
+				}
+			}
+		}
+	}
 	normalizedConfirmation, normalizedOK := normalized["confirmation"].(map[string]any)
 	if !originalOK || !normalizedOK {
-		return false
+		return repairs
 	}
 	originalID, originalOK := originalConfirmation["question_id"].(string)
 	normalizedID, normalizedOK := normalizedConfirmation["question_id"].(string)
-	return originalOK && normalizedOK && originalID != normalizedID
+	if originalOK && normalizedOK && originalID != normalizedID {
+		repairs = append(repairs, confirmationQuestionIDArgumentRepair)
+	}
+	return repairs
+}
+
+func addArgumentRepairMetadata(metadata map[string]any, repairs []string) {
+	if len(repairs) == 0 {
+		return
+	}
+	metadata["argument_repaired"] = repairs[0]
+	if len(repairs) > 1 {
+		metadata["argument_repairs"] = append([]string(nil), repairs...)
+	}
 }
 
 func validateProjectAPIV4UserInputArguments(args map[string]any) error {
@@ -543,7 +633,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return existing, nil, false, err
 	}
-	questionIDRepaired := projectAPIV4ConfirmationQuestionIDWasNormalized(name, tc.ToolProtocol, tc.ToolMode, raw, args)
+	argumentRepairs := projectAPIV4ArgumentRepairs(name, tc.ToolProtocol, tc.ToolMode, raw, args)
 	if !toolAllowedForThreadMode(name, tc.Thread, tc.ToolMode) {
 		return existing, nil, false, domainError(CodeToolNotAllowed, "工具不适用于当前 Run", "当前冻结的 Tool Mode 无法使用该工具。", nil)
 	}
@@ -558,6 +648,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 		if err != nil {
 			return existing, nil, false, err
 		}
+		argumentRepairs = append(argumentRepairs, apiRequest.ArgumentRepairs...)
 	} else if name == "read_agent_doc" {
 		if _, err := service.readAgentDoc(tc, args); err != nil {
 			return existing, nil, false, err
@@ -620,9 +711,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	}
 	now := service.now().UTC()
 	metadata := map[string]any{"purpose": name, "action": action, "target_uuid": targetUUID, "provider_call_id": providerCallID}
-	if questionIDRepaired {
-		metadata["argument_repaired"] = confirmationQuestionIDArgumentRepair
-	}
+	addArgumentRepairMetadata(metadata, argumentRepairs)
 	if isUUIDv7(tc.RequestUUID) {
 		metadata["request_uuid"] = tc.RequestUUID
 		metadata["request_ordinal"] = tc.RequestOrdinal
@@ -643,9 +732,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 		return existing, nil, false, err
 	}
 	toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": name, "route_id": routeID, "action": action, "method": method, "path": path, "target_uuid": targetUUID}
-	if questionIDRepaired {
-		toolEvent["argument_repaired"] = confirmationQuestionIDArgumentRepair
-	}
+	addArgumentRepairMetadata(toolEvent, argumentRepairs)
 	if isUUIDv7(tc.RequestUUID) {
 		toolEvent["request_uuid"] = tc.RequestUUID
 		toolEvent["request_ordinal"] = tc.RequestOrdinal
@@ -1088,6 +1175,10 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 	if _, err := appendEventTx(ctx, tx, &thread, &tc.Run.ID, "tool_result", toolResultEvent, now); err != nil {
 		return err
 	}
+	confirmationIntent, confirmationCreated, err := service.enqueueRuntimeDangerousConfirmationTx(ctx, tx, &thread, tc, execution, result, now)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
 		return err
 	}
@@ -1095,6 +1186,14 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 		return err
 	}
 	service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_result", map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": execution.ToolCallUUID, "tool_name": execution.ToolName, "route_id": execution.RouteID, "action": execution.Action, "method": execution.Method, "path": execution.Path, "target_uuid": execution.TargetUUID, "status": "completed"})
+	if confirmationCreated {
+		service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{
+			"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID,
+			"tool_call_uuid": confirmationIntent.ToolCallUUID, "tool_name": confirmationIntent.ToolName,
+			"action": confirmationIntent.Action, "target_uuid": confirmationIntent.TargetUUID,
+			"status": "in_progress", "runtime_generated": true, "confirmation_source_execution_uuid": execution.UUID,
+		})
+	}
 	return nil
 }
 

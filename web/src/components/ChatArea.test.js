@@ -77,12 +77,20 @@ test('terminal turns collapse paired tool activity while keeping raw diagnostics
   assert.match(messagesSource, /'chat\.activity\.tool_running': \['正在调用 \{tool_name\}…', 'Calling \{tool_name\}…'\]/)
 })
 
-test('answered user input collapses in place while pending input stays interactive', () => {
-  assert.match(source, /function UserInputCard[\s\S]*?projectChatUserInput\(request\)[\s\S]*?presentation\.mode !== 'pending'[\s\S]*?<UserInputHistory/)
-  assert.match(source, /function PendingUserInputCard[\s\S]*?<form className="chat-input-request"[\s\S]*?presentation\.questions\.map[\s\S]*?selected_option_uuid[\s\S]*?onRespond\(request\.uuid/)
+test('pending user input replaces the composer while answered input stays in conversation history', () => {
+  assert.match(source, /function UserInputCard[\s\S]*?presentation\.mode !== 'pending'[\s\S]*?<UserInputHistory[\s\S]*?placement !== 'composer'[\s\S]*?<PendingUserInputCard/)
+  assert.match(source, /function PendingUserInputCard[\s\S]*?questionIndex[\s\S]*?<form className="chat-input-request chat-input-request--composer"/)
+  assert.match(source, /chat-input-request__navigation[\s\S]*?chat\.input\.previous_question[\s\S]*?chat\.input\.question_position[\s\S]*?chat\.input\.next_question[\s\S]*?chat\.input\.close/)
+  assert.match(source, /chat-input-request__option[\s\S]*?aria-pressed=\{selected\}[\s\S]*?chooseOption\(option\.uuid\)[\s\S]*?chat-input-request__option-number[\s\S]*?<ArrowRight/)
+  assert.match(source, /function userInputResponsePayload[\s\S]*?selected_option_uuid[\s\S]*?other_text[\s\S]*?onRespond\(request\.uuid, userInputResponsePayload/)
+  assert.match(source, /const pendingInputRequest = activeProjectChatUserInputRequest\(requests, activeTurn\)/)
+  assert.match(source, /chat-composer-shell--request[\s\S]*?pendingInputRequest[\s\S]*?<UserInputCard placement="composer"[\s\S]*?: <ChatComposer/)
+  assert.doesNotMatch(source, /requests\.filter\(\(request\) => request\.status === 'pending'/)
   assert.match(source, /function UserInputHistory[\s\S]*?<details className="chat-input-history">[\s\S]*?presentation\.questions\.map[\s\S]*?chat\.input\.final_answer/)
   assert.match(source, /function OptionCopy[\s\S]*? \(Recommended\)[\s\S]*?chat-input-request__recommended/)
+  assert.match(stylesSource, /\.chat-input-request__option[\s\S]*?\[aria-pressed="true"\][\s\S]*?\[aria-pressed="true"\]:hover/)
   assert.match(source, /chat-message--user-input-incomplete/)
+  assert.match(messagesSource, /'chat\.input\.skip': \['跳过', 'Skip'\]/)
   assert.match(messagesSource, /'chat\.input\.answered_summary': \['已选择：\{answer\}', 'Selected: \{answer\}'\]/)
   assert.match(messagesSource, /'chat\.input\.answered_question_count': \['已完成 \{count\} 个问题', 'Answered \{count\} questions'\]/)
   assert.match(messagesSource, /'chat\.input\.incomplete_summary': \['未完成选择', 'Choice not completed'\]/)
@@ -160,4 +168,13 @@ test('thread detail replaces raw runtime events with a real Trajectory link', ()
   assert.match(source, /<div className="chat-detail-actions">[\s\S]*?chat-detail__trajectory-link[\s\S]*?<CollapseButton overlay=\{overlay\} onToggle=\{toggleExpanded\}/)
   assert.match(source, /chat-detail__trajectory-link[\s\S]*?<RouteIcon size=\{15\} aria-hidden="true" \/>[\s\S]*?<\/a>/)
   assert.doesNotMatch(source, /trajectory\.thread\.button/)
+})
+
+test('thread list rows are single hoverable targets without secondary actions', () => {
+  const threadList = source.match(/function ThreadList[\s\S]*?\n}\n\nfunction NewThreadDraft/)?.[0] || ''
+  const threadRowStyles = stylesSource.match(/\.chat-thread-row\n[\s\S]*?\n\.chat-thread-row--new/)?.[0] || ''
+  assert.ok(threadList)
+  assert.ok(threadRowStyles)
+  assert.doesNotMatch(threadList, /chat-thread__trajectory-link|chat-thread__menu-button|chat-thread__menu/)
+  assert.match(threadRowStyles, /&:hover,[\s\S]*?&:focus-within[\s\S]*?background: \$color-surface/)
 })

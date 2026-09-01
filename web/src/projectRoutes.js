@@ -27,6 +27,7 @@ export function projectPreviewRoute(projectUuid, chapterUuid, search = '') {
 
 export function projectRouteRequiresExpert(pathname = '', projectUuid = '') {
   const route = projectRelativePath(pathname, projectUuid)
+  if (/^threads\/[^/]+\/trajectory$/.test(route)) return false
   return /^(?:prompts|assets|threads)(?:\/|$)/.test(route)
 }
 

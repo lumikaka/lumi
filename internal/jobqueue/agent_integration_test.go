@@ -85,41 +85,6 @@ func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.C
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "章节 Workflow 未完成，我已读取结构化终态并向用户说明。"}, FinishReason: "stop"}, nil
 		}
 	}
-	for index := len(request.Messages) - 1; index >= 0; index-- {
-		var envelope struct {
-			Error struct {
-				Code    string `json:"code"`
-				Details string `json:"details"`
-			} `json:"error"`
-		}
-		if json.Unmarshal([]byte(request.Messages[index].Content), &envelope) != nil || envelope.Error.Code != agent.CodeToolConfirmation {
-			continue
-		}
-		var persisted map[string]any
-		if json.Unmarshal([]byte(envelope.Error.Details), &persisted) != nil {
-			break
-		}
-		confirmation := map[string]any{
-			"route":               persisted["route"],
-			"project_uuid":        persisted["project_uuid"],
-			"target_uuid":         persisted["target_uuid"],
-			"expected_revision":   persisted["expected_revision"],
-			"request_fingerprint": persisted["request_fingerprint"],
-			"question_id":         "generate_storyboard",
-			"confirm_option":      1,
-		}
-		arguments, _ := json.Marshal(map[string]any{
-			"questions": []map[string]any{{
-				"header": "生成确认", "id": "generate_storyboard", "question": "是否创建漫画分镜规划任务？",
-				"options": []map[string]any{
-					{"label": "暂不生成 (Recommended)", "description": "保留当前章节，不创建任务。"},
-					{"label": "确认生成", "description": "在当前对话中等待分镜任务完成。"},
-				},
-			}},
-			"confirmation": confirmation,
-		})
-		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "confirm-storyboard-workflow", Name: "request_user_input", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
-	}
 	last := ""
 	if len(request.Messages) > 0 {
 		last = request.Messages[len(request.Messages)-1].Content
@@ -664,7 +629,7 @@ func TestConfirmedChatToolComicStoryboardWaitsInCurrentThreadAndResumes(t *testi
 		t.Fatalf("storyboard confirmation requests=%+v err=%v", inputRequests, err)
 	}
 	confirmed, err := env.agents.RespondUserInput(env.ctx, env.project.UUID, thread.UUID, inputRequests[0].UUID, agent.UserInputResponse{
-		Answers: map[string]agent.UserInputAnswer{"generate_storyboard": {SelectedOptionUUID: inputRequests[0].Questions[0].Options[1].UUID}},
+		Answers: map[string]agent.UserInputAnswer{inputRequests[0].Questions[0].ID: {SelectedOptionUUID: inputRequests[0].Questions[0].Options[1].UUID}},
 	})
 	if err != nil || (confirmed.Status != "resuming" && confirmed.Status != "resumed") {
 		t.Fatalf("storyboard confirmation=%+v err=%v", confirmed, err)

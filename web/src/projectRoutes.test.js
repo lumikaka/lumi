@@ -69,9 +69,11 @@ test('resource selection moves from expert query state into the canonical path',
 })
 
 test('expert-only routes force an expert surface while shared utilities honor the selected mode', () => {
-  for (const route of ['prompts', 'assets', 'threads/thread/trajectory']) {
+  for (const route of ['prompts', 'assets']) {
     assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/${route}`, projectUuid), true, route)
   }
+  assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/threads/thread/trajectory`, projectUuid), false)
+  assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/threads/thread`, projectUuid), true)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/llm-logs`, projectUuid), false)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/exports`, projectUuid), false)
   assert.equal(projectRouteRequiresExpert(`/projects/${projectUuid}/settings`, projectUuid), false)

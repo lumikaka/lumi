@@ -25,6 +25,7 @@ import { useI18n } from '../i18n/useI18n.js'
 import { PROJECT_DASHBOARD_MODE_EXPERT } from '../projectDashboardMode.js'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import { OverviewExportsPanel } from './ProjectOverviewPanels.jsx'
+import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import {
   SimpleBookView,
   SimpleBooksPage,
@@ -74,8 +75,9 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     : referenceSections[0]
   const chatReference = simpleProjectChatReference(routeState, { asset: referenceAssetQuery.data, chapter: referenceChapterQuery.data, section: referenceSection })
   const project = projectQuery.data
-  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book' }[routeState.key] || 'simple.shell.page.home')
-  const chatOpen = compact ? chatOverlayOpen : !chatCollapsed
+  const trajectoryView = routeState.key === 'trajectory'
+  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book', trajectory: 'trajectory.title' }[routeState.key] || 'simple.shell.page.home')
+  const chatOpen = !trajectoryView && (compact ? chatOverlayOpen : !chatCollapsed)
   const pageEditorActive = project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
   useProjectRealtimeSync(projectUuid)
@@ -94,10 +96,14 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   }, [])
 
   useEffect(() => {
-    if (!hasChatControl(location.search)) return
+    if (trajectoryView || !hasChatControl(location.search)) return
     if (compact) setChatOverlayOpen(true)
     else setChatCollapsed(false)
-  }, [compact, location.search])
+  }, [compact, location.search, trajectoryView])
+
+  useEffect(() => {
+    if (trajectoryView) setChatOverlayOpen(false)
+  }, [trajectoryView])
 
   useEffect(() => {
     if (!chatOverlayOpen) return undefined
@@ -134,12 +140,13 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
         projectUuid={projectUuid}
         search={location.search}
         chatOpen={chatOpen}
+        hideChat={trajectoryView}
         onToggleChat={toggleChat}
         onSwitchWorkspaceMode={() => selectMode(PROJECT_DASHBOARD_MODE_EXPERT)}
         onOpenNavigation={() => setMobileNavigationOpen(true)}
       />
-      <div className={`simple-project-workbench${!compact && chatCollapsed ? ' is-chat-collapsed' : ''}`}>
-        <section className={`simple-project-content${pageEditorActive ? ' simple-project-content--page-editor' : ''}`} aria-label={t('projects.workspace')}>
+      <div className={`simple-project-workbench${trajectoryView ? ' simple-project-workbench--solo' : !compact && chatCollapsed ? ' is-chat-collapsed' : ''}`}>
+        <section className={`simple-project-content${pageEditorActive ? ' simple-project-content--page-editor' : ''}${trajectoryView ? ' simple-project-content--trajectory' : ''}`} aria-label={t('projects.workspace')}>
           {project?.setup_status === 'draft' ? <DraftProjectWorkspace /> : (
             <Routes>
               <Route index element={<SimpleHomePage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
@@ -153,18 +160,19 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
               <Route path="chapters/:chapterUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/preview" element={<SimpleBookView projectUuid={projectUuid} />} />
+              <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
               <Route path="*" element={<SimpleNotFound projectUuid={projectUuid} />} />
             </Routes>
           )}
         </section>
-        {!compact ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!chatCollapsed} onToggle={() => setChatCollapsed((value) => !value)} newThreadReference={chatReference} /> : null}
+        {!compact && !trajectoryView ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!chatCollapsed} onToggle={() => setChatCollapsed((value) => !value)} newThreadReference={chatReference} /> : null}
       </div>
-      {compact && chatOverlayOpen ? <div className="simple-project-overlay" role="dialog" aria-modal="true" aria-label={t('chat.project')}><button className="simple-project-overlay__backdrop" type="button" aria-label={t('simple.shell.close_chat')} onClick={() => setChatOverlayOpen(false)} /><div className="simple-project-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded overlay onToggle={() => setChatOverlayOpen(false)} newThreadReference={chatReference} /></div></div> : null}
+      {compact && !trajectoryView && chatOverlayOpen ? <div className="simple-project-overlay" role="dialog" aria-modal="true" aria-label={t('chat.project')}><button className="simple-project-overlay__backdrop" type="button" aria-label={t('simple.shell.close_chat')} onClick={() => setChatOverlayOpen(false)} /><div className="simple-project-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded overlay onToggle={() => setChatOverlayOpen(false)} newThreadReference={chatReference} /></div></div> : null}
     </main>
   )
 }
 
-function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen, onToggleChat, onSwitchWorkspaceMode, onOpenNavigation }) {
+function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen, hideChat = false, onToggleChat, onSwitchWorkspaceMode, onOpenNavigation }) {
   const { t } = useI18n()
   const menuId = useId()
   const menuRef = useRef(null)
@@ -218,9 +226,9 @@ function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen
         <span>{pageTitle}</span>
       </div>
       <div className="simple-project-topbar__actions">
-        <button type="button" aria-label={t(chatOpen ? 'simple.shell.close_chat' : 'simple.shell.open_chat')} aria-expanded={chatOpen} onClick={onToggleChat}>
+        {!hideChat ? <button type="button" aria-label={t(chatOpen ? 'simple.shell.close_chat' : 'simple.shell.open_chat')} aria-expanded={chatOpen} onClick={onToggleChat}>
           <MessageCircle size={16} strokeWidth={1.6} aria-hidden="true" />
-        </button>
+        </button> : null}
         <div className="simple-project-topbar__more" ref={menuRef}>
           <button
             ref={triggerRef}

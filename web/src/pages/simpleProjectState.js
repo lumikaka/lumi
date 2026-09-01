@@ -1,5 +1,18 @@
 import { comicBodyPageNumber, comicPageRole } from './comicPageRoles.js'
 
+const SIMPLE_PROJECT_SETTINGS_TABS = new Set(['summary', 'profile', 'prompts'])
+
+export function normalizedSimpleProjectSettingsTab(value) {
+  return SIMPLE_PROJECT_SETTINGS_TABS.has(value) ? value : 'summary'
+}
+
+export function patchSimpleProjectSettingsSearch(search = '', tab = '') {
+  const next = new URLSearchParams(search)
+  if (SIMPLE_PROJECT_SETTINGS_TABS.has(tab)) next.set('tab', tab)
+  else next.delete('tab')
+  return next
+}
+
 export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   const base = `/projects/${encodeURIComponent(projectUuid || '')}`
   const route = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, '') : ''
@@ -9,6 +22,8 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   if (route === 'llm-logs') return { key: 'llm_logs', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'exports') return { key: 'exports', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'premise') return { key: 'settings', assetUuid: '', chapterUuid: '', sectionUuid: '' }
+  const trajectory = route.match(/^threads\/([^/]+)\/trajectory$/)
+  if (trajectory) return { key: 'trajectory', assetUuid: '', chapterUuid: '', sectionUuid: '', threadUuid: decodeSegment(trajectory[1]) }
   const setting = route.match(/^premise\/assets\/([^/]+)$/)
   if (setting) return { key: 'setting', assetUuid: decodeSegment(setting[1]), chapterUuid: '', sectionUuid: '' }
   if (route === 'chapters') return { key: 'books', assetUuid: '', chapterUuid: '', sectionUuid: '' }
@@ -88,6 +103,25 @@ export function simpleStoryExcerpt(markdown = '', limit = 220) {
   return `${copy.slice(0, Math.max(0, limit)).trimEnd()}…`
 }
 
+export function storyboardQuickEditSections(markdown = '') {
+  return storyboardSectionRanges(markdown).map(({ label, contentStart, contentEnd }) => ({
+    label,
+    content: String(markdown || '').slice(contentStart, contentEnd),
+  }))
+}
+
+export function updateStoryboardQuickEditSection(markdown = '', index, content = '') {
+  const source = String(markdown || '')
+  const sections = storyboardSectionRanges(source)
+  const section = sections[index]
+  if (!section) return source
+  const newline = source.includes('\r\n') ? '\r\n' : '\n'
+  const insertingIntoEmptyBody = section.contentStart === section.contentEnd
+  const insertionPrefix = insertingIntoEmptyBody && section.bodyStart === section.headingEnd ? newline : ''
+  const insertionSuffix = insertingIntoEmptyBody && section.bodyStart === section.bodyEnd && index < sections.length - 1 ? newline : ''
+  return `${source.slice(0, section.contentStart)}${insertionPrefix}${content}${insertionSuffix}${source.slice(section.contentEnd)}`
+}
+
 export function firstReadySimpleImage(sections = []) {
   return orderedSimplePages(sections).find((section) => section.current_image?.asset?.status === 'ready' && section.current_image.asset.content_url)?.current_image?.asset || null
 }
@@ -114,6 +148,29 @@ function readyReference(resourceType, resourceUuid, title, imageUuid = '') {
 
 function pageRoleOrder(role) {
   return { front_cover: 0, body: 1, back_cover: 2 }[role] ?? 1
+}
+
+function storyboardSectionRanges(markdown = '') {
+  const source = String(markdown || '')
+  const headings = [...source.matchAll(/^##[\t ]+(.+?)[\t ]*\r?$/gm)]
+  return headings.map((heading, index) => {
+    const rawHeadingEnd = heading.index + heading[0].length
+    const headingEnd = rawHeadingEnd - (heading[0].endsWith('\r') ? 1 : 0)
+    const bodyStart = rawHeadingEnd + (source[rawHeadingEnd] === '\n' ? 1 : 0)
+    const bodyEnd = headings[index + 1]?.index ?? source.length
+    const body = source.slice(bodyStart, bodyEnd)
+    const leadingBlankLines = body.match(/^(?:[\t ]*\r?\n)+/)?.[0].length || 0
+    const trailingBlankLines = body.match(/(?:\r?\n[\t ]*)+$/)?.[0].length || 0
+    const bodyOnlyContainsWhitespace = !body.trim()
+    return {
+      label: heading[1].trim(),
+      headingEnd,
+      bodyStart,
+      bodyEnd,
+      contentStart: bodyOnlyContainsWhitespace ? bodyStart : bodyStart + leadingBlankLines,
+      contentEnd: bodyOnlyContainsWhitespace ? bodyStart : bodyEnd - trailingBlankLines,
+    }
+  })
 }
 
 function inlineMarkdownText(value) {

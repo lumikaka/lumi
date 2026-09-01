@@ -603,25 +603,6 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		"request_body":    map[string]any{"expected_revision": float64(2)},
 		"response_filter": ".data | {uuid,setup_status,status,revision,final_picture_book}",
 	}
-	finalizationRequest, err := parseAgentAPIRequest(toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI}, finalization)
-	if err != nil {
-		t.Fatal(err)
-	}
-	confirmation := map[string]any{
-		"questions": []map[string]any{{
-			"header": "创建确认", "id": bootstrapYoloConfirmationQuestionID,
-			"question": "是否定稿当前设置并立即启动首章与首个正文页图片的 YOLO（条漫不创建封面）？",
-			"options": []map[string]any{
-				{"label": "继续修改 (Recommended)", "description": "保留草稿，不定稿也不启动。"},
-				{"label": "定稿并启动 YOLO", "description": "定稿后启动固定范围的 YOLO。"},
-			},
-		}},
-		"confirmation": map[string]any{
-			"route": RouteProjectSetupFinalize, "project_uuid": harness.project.UUID, "target_uuid": harness.project.UUID,
-			"expected_revision": float64(2), "request_fingerprint": agentRequestFingerprint(finalizationRequest),
-			"question_id": bootstrapYoloConfirmationQuestionID, "confirm_option": float64(1),
-		},
-	}
 	setupGet := map[string]any{
 		"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup",
 		"response_filter": ".data | {uuid,setup_status,status,revision,final_picture_book}",
@@ -642,15 +623,10 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		case 2:
 			return toolCall("setup-finalize", "request_api", finalization), nil
 		case 3:
-			if !messagesContain(request.Messages, CodeToolConfirmation) {
-				t.Fatal("finalization confirmation error was not returned to the model")
-			}
-			return toolCall("confirm-and-yolo", "request_user_input", confirmation), nil
-		case 4:
 			return toolCall("setup-ready-get", "request_api", setupGet), nil
-		case 5:
+		case 4:
 			return toolCall("bootstrap-yolo", "request_api", yoloCreate), nil
-		case 6:
+		case 5:
 			var terminal struct {
 				Success bool `json:"success"`
 				Data    struct {
@@ -680,6 +656,9 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 
 	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
 		t.Fatalf("bootstrap did not pause for confirmation: %v", err)
+	}
+	if harness.model.calls != 2 {
+		t.Fatalf("runtime confirmation made an extra model call: calls=%d", harness.model.calls)
 	}
 	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, bootstrap.Thread.UUID)
 	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || requests[0].Questions[0].ID != bootstrapYoloConfirmationQuestionID {

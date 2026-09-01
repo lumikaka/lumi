@@ -327,6 +327,16 @@ export function projectChatUserInput(request = {}) {
   }
 }
 
+export function activeProjectChatUserInputRequest(requests = [], activeTurn = null) {
+  const pending = requests.filter((request) => request?.status === 'pending')
+  if (!pending.length) return null
+  if (activeTurn?.uuid) {
+    const activeRequest = pending.find((request) => request.turn_uuid === activeTurn.uuid)
+    if (activeRequest) return activeRequest
+  }
+  return pending.at(-1) || null
+}
+
 function projectCodexUserInputQuestion(question = {}, answerValue) {
   const answer = parseObject(answerValue)
   const options = Array.isArray(question.options) ? question.options : []

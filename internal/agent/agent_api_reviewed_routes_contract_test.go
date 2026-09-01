@@ -71,6 +71,28 @@ func TestReviewedAgentAPIRoutesIncludeDeletionOverlays(t *testing.T) {
 	}
 }
 
+func TestRuntimeDangerousConfirmationPresentationIsCanonicalAndLocalized(t *testing.T) {
+	route, ok := agentAPIRouteByID(RouteChapterPermanentDelete)
+	if !ok {
+		t.Fatal("missing permanent-delete route")
+	}
+	zhID, zh := runtimeDangerousConfirmationPresentation(route, "zh-Hans")
+	enID, en := runtimeDangerousConfirmationPresentation(route, "en")
+	if zhID != runtimeDangerousConfirmationQuestionID || enID != runtimeDangerousConfirmationQuestionID ||
+		zh.Header != "操作确认" || !strings.Contains(zh.Question, route.Action) || zh.SafeLabel != "暂不执行 (Recommended)" || zh.ConfirmLabel != "确认执行" ||
+		en.Header != "Confirm" || en.SafeLabel != "Do not proceed (Recommended)" || en.ConfirmLabel != "Proceed" {
+		t.Fatalf("localized runtime confirmations zh=%+v en=%+v", zh, en)
+	}
+	setupRoute, ok := agentAPIRouteByID(RouteProjectSetupFinalize)
+	if !ok {
+		t.Fatal("missing setup-finalization route")
+	}
+	setupID, setup := runtimeDangerousConfirmationPresentation(setupRoute, "en")
+	if setupID != bootstrapYoloConfirmationQuestionID || setup.SafeLabel != "Keep editing (Recommended)" || setup.ConfirmLabel != "Finalize and start YOLO" {
+		t.Fatalf("localized setup confirmation=%+v id=%q", setup, setupID)
+	}
+}
+
 func TestReviewedQueryRevisionRouteRejectsMissingQuery(t *testing.T) {
 	projectUUID := mustAgentUUID(t)
 	chapterUUID := mustAgentUUID(t)
@@ -329,31 +351,12 @@ func TestQueryRevisionDangerousConfirmationAutoReplayEndToEnd(t *testing.T) {
 	}
 	fingerprint := agentRequestFingerprint(request)
 	requestJSON, _ := json.Marshal(requestArguments)
-	confirmationJSON, _ := json.Marshal(map[string]any{
-		"questions": []map[string]any{{
-			"header": "永久删除", "id": "delete_chapter", "question": "是否永久删除这个章节？",
-			"options": []map[string]any{
-				{"label": "保留章节 (Recommended)", "description": "不执行永久删除。"},
-				{"label": "确认永久删除", "description": "永久删除已绑定版本的章节。"},
-			},
-		}},
-		"confirmation": map[string]any{
-			"route": RouteChapterPermanentDelete, "project_uuid": harness.project.UUID, "target_uuid": chapterUUID,
-			"expected_revision": float64(7), "request_fingerprint": fingerprint,
-			"question_id": "delete_chapter", "confirm_option": float64(1),
-		},
-	})
 	var replayProviderID, replayPublicCallUUID string
 	harness.model.respond = func(call int, modelRequest llm.ChatRequest) (llm.ChatResponse, error) {
 		switch call {
 		case 1:
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "chapter-permanent-unconfirmed", Name: "request_api", Arguments: string(requestJSON)}}}, FinishReason: "tool_calls"}, nil
 		case 2:
-			if !messagesContain(modelRequest.Messages, CodeToolConfirmation) || !messagesContain(modelRequest.Messages, fingerprint) || !messagesContain(modelRequest.Messages, `expected_revision`) || !messagesContain(modelRequest.Messages, `7`) {
-				t.Fatalf("query confirmation source was not preserved in context: %+v", modelRequest.Messages)
-			}
-			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "chapter-permanent-confirm", Name: "request_user_input", Arguments: string(confirmationJSON)}}}, FinishReason: "tool_calls"}, nil
-		case 3:
 			if !messagesContain(modelRequest.Messages, `"success":true`) || !messagesContain(modelRequest.Messages, `"data":null`) {
 				t.Fatalf("null auto-replay result missing from resume context: %+v", modelRequest.Messages)
 			}
@@ -399,11 +402,33 @@ func TestQueryRevisionDangerousConfirmationAutoReplayEndToEnd(t *testing.T) {
 		t.Fatalf("dangerous query route executed before confirmation: %d", dispatcherCalls)
 	}
 	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, thread.UUID)
-	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || len(requests[0].Questions[0].Options) != 2 {
+	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || requests[0].Questions[0].ID != runtimeDangerousConfirmationQuestionID || len(requests[0].Questions[0].Options) != 2 || requests[0].Questions[0].Options[0].Label != "暂不执行 (Recommended)" || requests[0].Questions[0].Options[1].Label != "确认执行" {
 		t.Fatalf("confirmation requests=%+v err=%v", requests, err)
 	}
+	harness.model.mu.Lock()
+	modelCallsBeforeConfirmation := harness.model.calls
+	harness.model.mu.Unlock()
+	if modelCallsBeforeConfirmation != 1 {
+		t.Fatalf("runtime confirmation unexpectedly required another model call: calls=%d", modelCallsBeforeConfirmation)
+	}
+	var runtimeConfirmation struct {
+		UUID          string `gorm:"column:uuid"`
+		ArgumentsJSON string `gorm:"column:arguments_json"`
+		ToolCallUUID  string `gorm:"column:tool_call_uuid"`
+	}
+	if err := harness.store.DB().Table("agent_tool_executions").Select("uuid,arguments_json,tool_call_uuid").Where("tool_name='request_user_input' AND json_extract(arguments_json,'$.__runtime_generated_confirmation')=1").Take(&runtimeConfirmation).Error; err != nil {
+		t.Fatal(err)
+	}
+	var runtimeArguments map[string]any
+	if json.Unmarshal([]byte(runtimeConfirmation.ArgumentsJSON), &runtimeArguments) != nil {
+		t.Fatalf("invalid runtime confirmation arguments=%s", runtimeConfirmation.ArgumentsJSON)
+	}
+	runtimeBinding, _ := runtimeArguments["confirmation"].(map[string]any)
+	if stringArg(runtimeBinding, "route") != RouteChapterPermanentDelete || stringArg(runtimeBinding, "request_fingerprint") != fingerprint || intArg(runtimeBinding, "expected_revision") != 7 || stringArg(runtimeBinding, "question_id") != runtimeDangerousConfirmationQuestionID || intArg(runtimeBinding, "confirm_option") != 1 || !isUUIDv7(runtimeConfirmation.UUID) || !isUUIDv7(runtimeConfirmation.ToolCallUUID) {
+		t.Fatalf("runtime confirmation binding=%+v execution=%+v", runtimeBinding, runtimeConfirmation)
+	}
 	confirmationResponse := UserInputResponse{Answers: map[string]UserInputAnswer{
-		"delete_chapter": {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID},
+		runtimeDangerousConfirmationQuestionID: {SelectedOptionUUID: requests[0].Questions[0].Options[1].UUID},
 	}}
 	confirmed, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, confirmationResponse)
 	if err != nil {
@@ -416,7 +441,7 @@ func TestQueryRevisionDangerousConfirmationAutoReplayEndToEnd(t *testing.T) {
 		t.Fatalf("immediate duplicate confirmation response=%+v err=%v", repeated, err)
 	}
 	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
-		"delete_chapter": {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
+		runtimeDangerousConfirmationQuestionID: {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
 	}}); err == nil || errorCode(err) != CodeStateConflict {
 		t.Fatalf("different answer during resuming was accepted: %v", err)
 	}

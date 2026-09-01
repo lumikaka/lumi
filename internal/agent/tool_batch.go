@@ -15,23 +15,23 @@ import (
 // tool call. A complete model response is prepared before any intent is
 // inserted, so an invalid sibling can never leave a valid write behind.
 type preparedToolIntent struct {
-	Call               llm.ToolCall
-	Key                string
-	Args               map[string]any
-	APIRequest         agentAPIRequest
-	Existing           toolExecutionRecord
-	PersistedResult    json.RawMessage
-	Completed          bool
-	New                bool
-	QuestionIDRepaired bool
-	PublicCallUUID     string
-	ExecutionUUID      string
-	TargetUUID         string
-	RouteID            string
-	Action             string
-	Method             string
-	Path               string
-	EncodedArguments   string
+	Call             llm.ToolCall
+	Key              string
+	Args             map[string]any
+	APIRequest       agentAPIRequest
+	Existing         toolExecutionRecord
+	PersistedResult  json.RawMessage
+	Completed        bool
+	New              bool
+	ArgumentRepairs  []string
+	PublicCallUUID   string
+	ExecutionUUID    string
+	TargetUUID       string
+	RouteID          string
+	Action           string
+	Method           string
+	Path             string
+	EncodedArguments string
 }
 
 func (service *Service) prepareToolIntentBatch(ctx context.Context, store *project.Store, tc toolContext, calls []llm.ToolCall) ([]preparedToolIntent, llm.ToolCall, error) {
@@ -72,7 +72,7 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 		return intent, validationErr
 	}
 	intent.Args = args
-	intent.QuestionIDRepaired = projectAPIV4ConfirmationQuestionIDWasNormalized(call.Name, tc.ToolProtocol, tc.ToolMode, call.Arguments, args)
+	intent.ArgumentRepairs = projectAPIV4ArgumentRepairs(call.Name, tc.ToolProtocol, tc.ToolMode, call.Arguments, args)
 	if found {
 		if matchErr := validatePersistedToolCallPair(existing, call, args); matchErr != nil {
 			return intent, matchErr
@@ -97,6 +97,7 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 		if err != nil {
 			return intent, err
 		}
+		intent.ArgumentRepairs = append(intent.ArgumentRepairs, intent.APIRequest.ArgumentRepairs...)
 	} else if call.Name == "read_agent_doc" {
 		if _, err := service.readAgentDoc(tc, args); err != nil {
 			return intent, err
@@ -264,9 +265,7 @@ func (service *Service) persistPreparedToolIntentBatch(ctx context.Context, stor
 			continue
 		}
 		metadata := map[string]any{"purpose": intent.Call.Name, "action": intent.Action, "target_uuid": intent.TargetUUID, "provider_call_id": intent.Call.ID}
-		if intent.QuestionIDRepaired {
-			metadata["argument_repaired"] = confirmationQuestionIDArgumentRepair
-		}
+		addArgumentRepairMetadata(metadata, intent.ArgumentRepairs)
 		if isUUIDv7(tc.RequestUUID) {
 			metadata["request_uuid"], metadata["request_ordinal"] = tc.RequestUUID, tc.RequestOrdinal
 		}
@@ -287,9 +286,7 @@ func (service *Service) persistPreparedToolIntentBatch(ctx context.Context, stor
 		}
 		intent.Existing = toolExecutionRecord{ID: id, ThreadID: tc.Thread.ID, RunID: tc.Run.ID, TurnID: tc.Turn.ID, ItemID: item.ID, UUID: intent.ExecutionUUID, ToolCallUUID: intent.PublicCallUUID, ToolName: intent.Call.Name, TargetUUID: intent.TargetUUID, ArgumentsJSON: intent.EncodedArguments, IdempotencyKey: intent.Key, RouteID: intent.RouteID, Action: intent.Action, Method: intent.Method, Path: intent.Path, State: "intent", CreatedAt: now, UpdatedAt: now}
 		toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": intent.PublicCallUUID, "tool_name": intent.Call.Name, "route_id": intent.RouteID, "action": intent.Action, "method": intent.Method, "path": intent.Path, "target_uuid": intent.TargetUUID}
-		if intent.QuestionIDRepaired {
-			toolEvent["argument_repaired"] = confirmationQuestionIDArgumentRepair
-		}
+		addArgumentRepairMetadata(toolEvent, intent.ArgumentRepairs)
 		if isUUIDv7(tc.RequestUUID) {
 			toolEvent["request_uuid"], toolEvent["request_ordinal"] = tc.RequestUUID, tc.RequestOrdinal
 		}

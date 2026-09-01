@@ -7,13 +7,21 @@ const ledger = readFileSync(new URL('./TrajectoryLedger.jsx', import.meta.url), 
 const inspector = readFileSync(new URL('./TrajectoryInspector.jsx', import.meta.url), 'utf8')
 const stats = readFileSync(new URL('./TrajectoryStats.jsx', import.meta.url), 'utf8')
 const workspace = readFileSync(new URL('../StoryWorkspacePage.jsx', import.meta.url), 'utf8')
+const simpleWorkspace = readFileSync(new URL('../SimpleProjectWorkspace.jsx', import.meta.url), 'utf8')
 const chatArea = readFileSync(new URL('../../components/ChatArea.jsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../../styles/trajectory.sass', import.meta.url), 'utf8')
+const simpleStyles = readFileSync(new URL('../../styles/simple-project.sass', import.meta.url), 'utf8')
 
-test('trajectory registers a direct project URL and hides ChatArea at that route', () => {
+test('trajectory registers one shared project URL and only the mode-specific topbar changes', () => {
   assert.match(workspace, /threads\/:threadUuid\/trajectory["']\s+element=\{<ThreadTrajectoryPage/)
   assert.match(workspace, /hideChat=\{chapterPreview \|\| trajectoryView\}/)
   assert.match(workspace, /!trajectoryView \? <WorkspaceGroupTabs/)
+  assert.match(simpleWorkspace, /import ThreadTrajectoryPage from '\.\/trajectory\/ThreadTrajectoryPage\.jsx'/)
+  assert.match(simpleWorkspace, /trajectoryView = routeState\.key === 'trajectory'/)
+  assert.match(simpleWorkspace, /threads\/:threadUuid\/trajectory["']\s+element=\{<ThreadTrajectoryPage/)
+  assert.match(simpleWorkspace, /hideChat=\{trajectoryView\}/)
+  assert.match(simpleWorkspace, /!compact && !trajectoryView \? <ChatArea/)
+  assert.match(simpleStyles, /simple-project-workbench--solo[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/)
 })
 
 test('direct item_uuid selection loads an anchored page and restores ledger selection', () => {
@@ -44,13 +52,11 @@ test('Tool summary exposes highlighted Payload and Response without raw HTML exe
   assert.doesNotMatch(inspector, /dangerouslySetInnerHTML/)
 })
 
-test('each ChatArea Thread exposes a safe real trajectory href in a new tab', () => {
+test('ChatArea Thread detail exposes a safe real trajectory href in a new tab', () => {
   assert.match(chatArea, /function threadTrajectoryHref[\s\S]*?`\/projects\/\$\{encodeURIComponent\(projectUuid\)\}\/threads\/\$\{encodeURIComponent\(threadUuid\)\}\/trajectory`/)
-  assert.match(chatArea, /href=\{threadTrajectoryHref\(projectUuid, thread\.uuid\)\}/)
   assert.match(chatArea, /href=\{threadTrajectoryHref\(projectUuid, selectedThread\.uuid\)\}/)
   assert.match(chatArea, /target="_blank"/)
   assert.match(chatArea, /rel="noopener noreferrer"/)
-  assert.match(chatArea, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/)
 })
 
 test('trajectory selected controls retain a later combined hover rule', () => {

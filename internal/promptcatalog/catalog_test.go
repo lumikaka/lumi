@@ -179,13 +179,16 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 5 ||
+				if len(definition.PreviousDefaultValues) != 7 ||
 					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
-					(!strings.Contains(definition.PreviousDefaultValues[0], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[0], "立即结束当前 Turn")) ||
-					strings.Contains(definition.PreviousDefaultValues[1], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[1], "bootstrap 首个 Turn") ||
-					!strings.Contains(definition.PreviousDefaultValues[1], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[2], "ui_ref") ||
-					(!strings.Contains(definition.PreviousDefaultValues[3], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[3], "确认选项索引")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[4], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[4], "流程或来源约束不确定")) {
+					(!strings.Contains(definition.PreviousDefaultValues[0], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[0], "顶层字段，与 questions 同级")) ||
+					strings.Contains(definition.PreviousDefaultValues[0], "agent_tool_confirmation_required") ||
+					strings.Contains(definition.PreviousDefaultValues[1], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[1], "顶层字段，与 questions 同级") ||
+					(!strings.Contains(definition.PreviousDefaultValues[2], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[2], "立即结束当前 Turn")) ||
+					strings.Contains(definition.PreviousDefaultValues[3], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[3], "bootstrap 首个 Turn") ||
+					!strings.Contains(definition.PreviousDefaultValues[3], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[4], "ui_ref") ||
+					(!strings.Contains(definition.PreviousDefaultValues[5], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[5], "确认选项索引")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[6], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[6], "流程或来源约束不确定")) {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -296,8 +299,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "3c01704dcfa597167e81436df8b23191850aa34331e6ee099049a4334b873d29",
-		LanguageEnglish: "b129e9136c9376fbeda9f3059aec912d6ca5f40589e7f94ac9ffdf200da340b0",
+		LanguageChinese: "da84a7fe5b18f8589713a13ab1b446db3b817b9cf8d7ad5fd1209926c9fbed0b",
+		LanguageEnglish: "d5c8cae429bb55e59112bd73794f2a2ce3cdda952c6593f14354d5ead67de609",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

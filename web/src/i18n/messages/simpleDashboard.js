@@ -220,7 +220,7 @@ export const simpleDashboard = defineMessages({
   'simple.book.reader': ['全书阅读器', 'Full-book reader'],
   'simple.book.open_page': ['打开{page}', 'Open {page}'],
   'simple.project.edit': ['编辑项目资料', 'Edit project details'],
-  'simple.project.configuration_description': ['管理项目资料、生成语言与工作区模式。', 'Manage project details, generation language, and workspace mode.'],
+  'simple.project.configuration_description': ['在一个页面中管理项目摘要、剧情简介与生成提示词。', 'Manage the project summary, story profile, and generation prompts in one place.'],
   'simple.project.immutable_hint': ['绘本形式与页面比例在项目初始化后不可修改。', 'Picture-book format and page ratio cannot be changed after project initialization.'],
   'simple.task.status': ['{status} · {progress}%', '{status} · {progress}%'],
 })

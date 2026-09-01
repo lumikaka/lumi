@@ -3,18 +3,41 @@ import test from 'node:test'
 
 import {
   firstReadySimpleImage,
+  normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
+  patchSimpleProjectSettingsSearch,
   simplePageCounts,
   simpleProjectChatReference,
   simpleProjectRouteState,
   simpleStoryExcerpt,
   storyDocumentBlocks,
+  storyboardQuickEditSections,
+  updateStoryboardQuickEditSection,
 } from './simpleProjectState.js'
 
 const projectUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff810'
 const chapterUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff811'
 const sectionUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff812'
 const assetUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff813'
+const threadUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff814'
+
+test('simple project settings tabs normalize and preserve unrelated query state', () => {
+  assert.equal(normalizedSimpleProjectSettingsTab('summary'), 'summary')
+  assert.equal(normalizedSimpleProjectSettingsTab('profile'), 'profile')
+  assert.equal(normalizedSimpleProjectSettingsTab('prompts'), 'prompts')
+  assert.equal(normalizedSimpleProjectSettingsTab('unknown'), 'summary')
+  assert.equal(normalizedSimpleProjectSettingsTab(null), 'summary')
+
+  const selected = patchSimpleProjectSettingsSearch('?chat_thread_uuid=thread&workspace_mode=simple&tab=unknown', 'profile')
+  assert.equal(selected.get('tab'), 'profile')
+  assert.equal(selected.get('chat_thread_uuid'), 'thread')
+  assert.equal(selected.get('workspace_mode'), 'simple')
+
+  const clean = patchSimpleProjectSettingsSearch(selected)
+  assert.equal(clean.has('tab'), false)
+  assert.equal(clean.get('chat_thread_uuid'), 'thread')
+  assert.equal(clean.get('workspace_mode'), 'simple')
+})
 
 test('simple dashboard deep links parse into stable public-resource route state', () => {
   const base = `/projects/${projectUuid}`
@@ -26,6 +49,7 @@ test('simple dashboard deep links parse into stable public-resource route state'
   assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}`, projectUuid), { key: 'pages', assetUuid: '', chapterUuid, sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}/sections/${sectionUuid}`, projectUuid), { key: 'page', assetUuid: '', chapterUuid, sectionUuid })
   assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}/preview`, projectUuid), { key: 'book', assetUuid: '', chapterUuid, sectionUuid: '' })
+  assert.deepEqual(simpleProjectRouteState(`${base}/threads/${threadUuid}/trajectory`, projectUuid), { key: 'trajectory', assetUuid: '', chapterUuid: '', sectionUuid: '', threadUuid })
   assert.equal(simpleProjectRouteState(`${base}/unknown`, projectUuid).key, 'not_found')
 })
 
@@ -97,4 +121,22 @@ test('story display turns persisted Markdown into safe readable blocks and excer
     { type: 'paragraph', text: '它听见溪水。' },
   ])
   assert.equal(simpleStoryExcerpt(markdown, 12), '第一章 月光下的 小狐狸…')
+})
+
+test('storyboard quick edit extracts each level-two heading and updates only its body', () => {
+  const markdown = '封面备注\n\n## 画面构图\n\n**主体**：太平洋。\n\n## 关键细节\n\n- 房门关闭\n- 海面平静\n\n### 补充\n保留在同一段\n\n## 旁白文字\n旁白：「没有人再见过她。」'
+  assert.deepEqual(storyboardQuickEditSections(markdown), [
+    { label: '画面构图', content: '**主体**：太平洋。' },
+    { label: '关键细节', content: '- 房门关闭\n- 海面平静\n\n### 补充\n保留在同一段' },
+    { label: '旁白文字', content: '旁白：「没有人再见过她。」' },
+  ])
+
+  const updated = updateStoryboardQuickEditSection(markdown, 1, '- 房门已经关闭\n- 海面更加辽阔')
+  assert.equal(updated, '封面备注\n\n## 画面构图\n\n**主体**：太平洋。\n\n## 关键细节\n\n- 房门已经关闭\n- 海面更加辽阔\n\n## 旁白文字\n旁白：「没有人再见过她。」')
+  assert.equal(updateStoryboardQuickEditSection(markdown, 9, '不会写入'), markdown)
+
+  const windowsMarkdown = '## Shot\r\nOld\r\n\r\n## Voice\r\nQuiet'
+  assert.equal(updateStoryboardQuickEditSection(windowsMarkdown, 0, 'New'), '## Shot\r\nNew\r\n\r\n## Voice\r\nQuiet')
+
+  assert.equal(updateStoryboardQuickEditSection('## Empty\n## Next\nValue', 0, 'Added'), '## Empty\nAdded\n## Next\nValue')
 })

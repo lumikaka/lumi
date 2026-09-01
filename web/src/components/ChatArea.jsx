@@ -3,14 +3,15 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
+  ArrowRight,
   Bot,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   GripVertical,
   ImagePlus,
-  MoreHorizontal,
   Route as RouteIcon,
   PanelRightClose,
   PanelRightOpen,
@@ -50,6 +51,7 @@ import {
 } from '../api/chat.js'
 import { createAssetUpload, finalizeAssetUpload } from '../api/assets.js'
 import {
+  activeProjectChatUserInputRequest,
   captureChatScrollAnchor,
   chatComposerMode,
   chatThreadCountLabel,
@@ -156,104 +158,173 @@ function AttachmentPicker({ disabled, onFiles }) {
   )
 }
 
-function UserInputCard({ request, pending, onRespond, onCancel }) {
+function UserInputCard({ request, placement = 'history', pending, onRespond, onCancel }) {
   const presentation = projectChatUserInput(request)
-  if (presentation.mode !== 'pending') {
-    return <UserInputHistory presentation={presentation} />
-  }
+  if (presentation.mode !== 'pending') return <UserInputHistory presentation={presentation} />
+  if (placement !== 'composer') return null
   return <PendingUserInputCard request={request} presentation={presentation} pending={pending} onRespond={onRespond} onCancel={onCancel} />
+}
+
+function initialUserInputAnswers(presentation) {
+  return Object.fromEntries(presentation.questions.map((question) => [question.id, {
+    otherText: question.otherText,
+    selectedOptionUuids: [...question.selectedOptionUuids],
+  }]))
+}
+
+function userInputQuestionComplete(answers, question) {
+  const answer = answers[question.id]
+  return Boolean(answer?.selectedOptionUuids?.length || answer?.otherText?.trim())
+}
+
+function userInputAnswersComplete(answers, presentation) {
+  return presentation.questions.every((question) => userInputQuestionComplete(answers, question))
+}
+
+function userInputResponsePayload(request, presentation, answers) {
+  const codexRequest = request.schema_version === 'codex_questions_v1' || (Array.isArray(request.questions) && request.questions.length > 0)
+  if (codexRequest) {
+    return { answers: Object.fromEntries(presentation.questions.map((question) => {
+      const answer = answers[question.id] || { otherText: '', selectedOptionUuids: [] }
+      return [question.id, { selected_option_uuid: answer.selectedOptionUuids[0] || '', other_text: answer.otherText.trim() }]
+    })) }
+  }
+  const answer = answers.legacy_question || { otherText: '', selectedOptionUuids: [] }
+  return { selected_option_uuids: answer.selectedOptionUuids, other_text: answer.otherText.trim() }
 }
 
 function PendingUserInputCard({ request, presentation, pending, onRespond, onCancel }) {
   const { t } = useI18n()
-  const initialAnswers = Object.fromEntries(presentation.questions.map((question) => [question.id, {
-    otherText: question.otherText,
-    selectedOptionUuids: question.selectedOptionUuids,
-  }]))
-  const initialKey = JSON.stringify(initialAnswers)
+  const initialKey = JSON.stringify(initialUserInputAnswers(presentation))
   const [answers, setAnswers] = useState(() => JSON.parse(initialKey))
+  const [questionIndex, setQuestionIndex] = useState(0)
   const codexRequest = request.schema_version === 'codex_questions_v1' || (Array.isArray(request.questions) && request.questions.length > 0)
+  const question = presentation.questions[questionIndex] || presentation.questions[0]
+  const answer = answers[question.id] || { otherText: '', selectedOptionUuids: [] }
+  const multiple = !codexRequest && question.inputType === 'multiple_choice'
+  const complete = userInputAnswersComplete(answers, presentation)
 
   useEffect(() => {
     setAnswers(JSON.parse(initialKey))
+    setQuestionIndex(0)
   }, [request.uuid, initialKey])
 
-  const toggle = (question, uuid) => {
-    setAnswers((current) => {
-      const answer = current[question.id] || { otherText: '', selectedOptionUuids: [] }
-      const multiple = !codexRequest && question.inputType === 'multiple_choice'
-      const selectedOptionUuids = multiple
-        ? answer.selectedOptionUuids.includes(uuid) ? answer.selectedOptionUuids.filter((item) => item !== uuid) : [...answer.selectedOptionUuids, uuid]
-        : [uuid]
-      return { ...current, [question.id]: { otherText: multiple ? answer.otherText : '', selectedOptionUuids } }
+  const submitAnswers = (nextAnswers = answers) => {
+    if (pending || !userInputAnswersComplete(nextAnswers, presentation)) return
+    onRespond(request.uuid, userInputResponsePayload(request, presentation, nextAnswers))
+  }
+
+  const advanceOrSubmit = (nextAnswers) => {
+    if (userInputAnswersComplete(nextAnswers, presentation)) {
+      submitAnswers(nextAnswers)
+      return
+    }
+    const laterQuestion = presentation.questions.findIndex((candidate, index) => index > questionIndex && !userInputQuestionComplete(nextAnswers, candidate))
+    const nextQuestion = laterQuestion >= 0
+      ? laterQuestion
+      : presentation.questions.findIndex((candidate) => !userInputQuestionComplete(nextAnswers, candidate))
+    if (nextQuestion >= 0) setQuestionIndex(nextQuestion)
+  }
+
+  const chooseOption = (optionUuid) => {
+    if (pending) return
+    const selectedOptionUuids = multiple
+      ? answer.selectedOptionUuids.includes(optionUuid)
+        ? answer.selectedOptionUuids.filter((uuid) => uuid !== optionUuid)
+        : [...answer.selectedOptionUuids, optionUuid]
+      : [optionUuid]
+    const nextAnswers = {
+      ...answers,
+      [question.id]: { otherText: multiple ? answer.otherText : '', selectedOptionUuids },
+    }
+    setAnswers(nextAnswers)
+    if (!multiple) advanceOrSubmit(nextAnswers)
+  }
+
+  const updateOtherText = (value) => {
+    setAnswers({
+      ...answers,
+      [question.id]: {
+        otherText: value,
+        selectedOptionUuids: multiple ? answer.selectedOptionUuids : [],
+      },
     })
   }
-  const updateOtherText = (question, value) => {
-    setAnswers((current) => {
-      const answer = current[question.id] || { otherText: '', selectedOptionUuids: [] }
-      const multiple = !codexRequest && question.inputType === 'multiple_choice'
-      return { ...current, [question.id]: { otherText: value, selectedOptionUuids: !multiple && value.trim() ? [] : answer.selectedOptionUuids } }
-    })
+
+  const commitOther = () => {
+    const otherText = answer.otherText.trim()
+    if (pending || !otherText) return
+    const nextAnswers = {
+      ...answers,
+      [question.id]: {
+        otherText,
+        selectedOptionUuids: multiple ? answer.selectedOptionUuids : [],
+      },
+    }
+    setAnswers(nextAnswers)
+    if (multiple) submitAnswers(nextAnswers)
+    else advanceOrSubmit(nextAnswers)
   }
-  const complete = presentation.questions.every((question) => {
-    const answer = answers[question.id]
-    return Boolean(answer?.selectedOptionUuids?.length || answer?.otherText?.trim())
-  })
+
+  const questionTitleId = `chat-input-question-${request.uuid}-${question.id}`
   return (
-    <article className="chat-message chat-message--assistant chat-message--user-input">
-      <form className="chat-input-request" onSubmit={(event) => {
+    <form className="chat-input-request chat-input-request--composer" aria-busy={pending} aria-labelledby={questionTitleId} onSubmit={(event) => {
         event.preventDefault()
-        if (codexRequest) {
-          onRespond(request.uuid, { answers: Object.fromEntries(presentation.questions.map((question) => {
-            const answer = answers[question.id] || { otherText: '', selectedOptionUuids: [] }
-            return [question.id, { selected_option_uuid: answer.selectedOptionUuids[0] || '', other_text: answer.otherText.trim() }]
-          })) })
-          return
-        }
-        const answer = answers.legacy_question || { otherText: '', selectedOptionUuids: [] }
-        onRespond(request.uuid, { selected_option_uuids: answer.selectedOptionUuids, other_text: answer.otherText.trim() })
+        if (multiple) submitAnswers()
       }}>
-        <span className="chat-message__type"><Bot size={13} aria-hidden="true" />Lumi Agent</span>
-        <div className="chat-input-request__questions">
-          {presentation.questions.map((question, questionIndex) => {
-            const answer = answers[question.id] || { otherText: '', selectedOptionUuids: [] }
-            const multiple = !codexRequest && question.inputType === 'multiple_choice'
+      <header className="chat-input-request__header">
+        <strong id={questionTitleId}>{question.question}</strong>
+        <div className="chat-input-request__navigation">
+          {presentation.questions.length > 1 ? (
+            <>
+              <button type="button" disabled={pending || questionIndex === 0} onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} aria-label={t('chat.input.previous_question')}><ChevronLeft size={14} aria-hidden="true" /></button>
+              <span>{t('chat.input.question_position', { current: questionIndex + 1, total: presentation.questions.length })}</span>
+              <button type="button" disabled={pending || questionIndex === presentation.questions.length - 1} onClick={() => setQuestionIndex((index) => Math.min(presentation.questions.length - 1, index + 1))} aria-label={t('chat.input.next_question')}><ChevronRight size={14} aria-hidden="true" /></button>
+            </>
+          ) : null}
+          <button type="button" disabled={pending} onClick={() => onCancel(request.uuid)} aria-label={t('chat.input.close')}><X size={14} aria-hidden="true" /></button>
+        </div>
+      </header>
+      <section className="chat-input-request__question" aria-label={question.header || question.question}>
+        <div className="chat-input-request__options" role="group">
+          {question.options.map((option, optionIndex) => {
+            const selected = answer.selectedOptionUuids.includes(option.uuid)
             return (
-              <fieldset className="chat-input-request__question" key={question.id}>
-                <legend>
-                  {question.header ? <span>{question.header}</span> : null}
-                  <strong>{question.question}</strong>
-                </legend>
-                <div className="chat-input-request__options">
-                  {question.options.map((option) => (
-                    <label className="chat-input-request__option" key={option.uuid}>
-                      <input
-                        checked={answer.selectedOptionUuids.includes(option.uuid)}
-                        disabled={pending}
-                        name={`chat-input-${request.uuid}-${question.id}`}
-                        onChange={() => toggle(question, option.uuid)}
-                        type={multiple ? 'checkbox' : 'radio'}
-                        value={option.uuid}
-                      />
-                      <OptionCopy option={option} recommendedText={t('chat.input.recommended')} />
-                    </label>
-                  ))}
-                </div>
-                <label className="chat-input-request__other">
-                  <span>{t('chat.input.other')}</span>
-                  <input disabled={pending} name={`chat-input-${request.uuid}-${question.id}-other`} value={answer.otherText} onChange={(event) => updateOtherText(question, event.target.value)} placeholder={t('chat.input.other_placeholder')} />
-                </label>
-                {presentation.questions.length > 1 ? <small className="chat-input-request__position">{t('chat.input.question_position', { current: questionIndex + 1, total: presentation.questions.length })}</small> : null}
-              </fieldset>
+              <button className={`chat-input-request__option${selected ? ' is-selected' : ''}`} type="button" aria-pressed={selected} disabled={pending} key={option.uuid} onClick={() => chooseOption(option.uuid)}>
+                <span className="chat-input-request__option-number" aria-hidden="true">{optionIndex + 1}</span>
+                <OptionCopy option={option} recommendedText={t('chat.input.recommended')} />
+                <ArrowRight className="chat-input-request__option-arrow" size={15} aria-hidden="true" />
+              </button>
             )
           })}
         </div>
-        <footer>
-          <button type="submit" disabled={pending || !complete}>{t(pending ? 'chat.input.submitting' : 'common.action.submit')}</button>
-          <button type="button" className="button-quiet" disabled={pending} onClick={() => onCancel(request.uuid)}>{t('chat.input.cancel_turn')}</button>
-        </footer>
-      </form>
-    </article>
+      </section>
+      <footer className="chat-input-request__footer">
+        <div className="chat-input-request__other">
+          <span aria-hidden="true"><Pencil size={13} /></span>
+          <input
+            disabled={pending}
+            maxLength="4000"
+            name={`chat-input-${request.uuid}-${question.id}-other`}
+            value={answer.otherText}
+            onChange={(event) => updateOtherText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.nativeEvent?.isComposing) return
+              event.preventDefault()
+              commitOther()
+            }}
+            aria-label={t('chat.input.other')}
+            placeholder={t('chat.input.other_placeholder')}
+          />
+          {answer.otherText.trim() ? <button type="button" disabled={pending} onClick={commitOther} aria-label={t('chat.input.submit_other')}><ArrowRight size={14} aria-hidden="true" /></button> : null}
+        </div>
+        <div className="chat-input-request__actions">
+          {pending ? <span role="status">{t('chat.input.submitting')}</span> : null}
+          {multiple ? <button type="submit" disabled={pending || !complete}>{t('common.action.submit')}</button> : null}
+          <button type="button" className="button-quiet" disabled={pending} onClick={() => onCancel(request.uuid)}>{t('chat.input.skip')}</button>
+        </div>
+      </footer>
+    </form>
   )
 }
 
@@ -774,10 +845,9 @@ function ChatComposer({ projectUuid, pictureBook, activeTurn, draft, pending, ab
   )
 }
 
-function ThreadList({ projectUuid, pictureBook, threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
+function ThreadList({ pictureBook, threads, workflows, total, loading, loadingMore, hasMore, error, overlay, onToggle, onNewThread, onOpenThread, onLoadMore }) {
   const { t } = useI18n()
   const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
-  const [openMenuUuid, setOpenMenuUuid] = useState('')
   const listRef = useRef(null)
   const sentinelRef = useRef(null)
   const isAutoLoadingRef = useRef(false)
@@ -787,18 +857,6 @@ function ThreadList({ projectUuid, pictureBook, threads, workflows, total, loadi
   useEffect(() => {
     if (!loadingMore) isAutoLoadingRef.current = false
   }, [loadingMore])
-
-  useEffect(() => {
-    if (!openMenuUuid) return undefined
-    const closeOutside = (event) => { if (!listRef.current?.contains(event.target)) setOpenMenuUuid('') }
-    const closeOnEscape = (event) => { if (event.key === 'Escape') setOpenMenuUuid('') }
-    document.addEventListener('pointerdown', closeOutside)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOutside)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [openMenuUuid])
 
   useEffect(() => {
     if (!hasMore || loadingMore || loading || typeof IntersectionObserver === 'undefined') return undefined
@@ -828,22 +886,11 @@ function ThreadList({ projectUuid, pictureBook, threads, workflows, total, loadi
         {error ? <LocalizedErrorMessage error={error} compact /> : null}
         {!loading && !error && !threads.length ? <p className="chat-empty">{t('chat.thread.empty')}</p> : null}
         {threads.map((thread) => (
-          <div className={`chat-thread-row ${openMenuUuid === thread.uuid ? 'is-menu-open' : ''}`} key={thread.uuid}>
+          <div className="chat-thread-row" key={thread.uuid}>
             <button className="chat-thread" type="button" onClick={() => onOpenThread(thread.uuid)}>
               <span className="chat-thread__title">{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term)}</span>
               <span className="chat-thread__meta">{ACTIVE_CHAT_STATUSES.has(thread.status) ? <i aria-hidden="true" /> : null}<span>{threadStatusCopy[thread.status] ? t(threadStatusCopy[thread.status]) : t('common.status.unknown_with_code', { code: thread.status })}</span></span>
             </button>
-            <a
-              className="chat-thread__trajectory-link"
-              href={threadTrajectoryHref(projectUuid, thread.uuid)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })}
-              title={t('trajectory.thread.open', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })}
-              onClick={(event) => event.stopPropagation()}
-            ><RouteIcon size={15} aria-hidden="true" /></a>
-            <button className="chat-thread__menu-button" type="button" aria-label={t('chat.thread.actions', { title: threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term) })} aria-expanded={openMenuUuid === thread.uuid} onClick={(event) => { event.stopPropagation(); setOpenMenuUuid((current) => current === thread.uuid ? '' : thread.uuid) }}><MoreHorizontal size={16} /></button>
-            {openMenuUuid === thread.uuid ? <div className="chat-thread__menu" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); onOpenThread(thread.uuid) }}>{t('chat.thread.open')}</button><button type="button" role="menuitem" onClick={() => { setOpenMenuUuid(''); copyText(thread.uuid) }}>{t('chat.thread.copy_uuid')}</button></div> : null}
           </div>
         ))}
         {hasMore || loadingMore ? <div className="chat-thread-list__sentinel" ref={sentinelRef}><button type="button" className="button-quiet" disabled={!hasMore || loadingMore} onClick={onLoadMore}>{t(loadingMore ? 'chat.thread.loading_more' : 'chat.thread.load_more')}</button></div> : null}
@@ -1133,13 +1180,13 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   const turns = turnsQuery.data?.items || []
   const requests = requestsQuery.data?.items || []
   const followUps = followUpsQuery.data?.items || []
-	const turnGroups = useMemo(() => groupChatItemsByTurn(items, turns).map((group) => ({
+  const turnGroups = useMemo(() => groupChatItemsByTurn(items, turns).map((group) => ({
 		...group,
 		workflows: inlineWorkflowsByTurn.get(group.uuid) || [],
 	})), [inlineWorkflowsByTurn, items, turns])
   const requestByItemUuid = useMemo(() => new Map(requests.map((request) => [request.item_uuid, request])), [requests])
-  const inlineRequestUuids = useMemo(() => new Set(items.map((item) => requestByItemUuid.get(item.uuid)?.uuid).filter(Boolean)), [items, requestByItemUuid])
 	const activeTurn = turns.find((item) => ['queued', 'in_progress', 'waiting_for_input', 'waiting_for_workflow'].includes(item.status)) || null
+  const pendingInputRequest = activeProjectChatUserInputRequest(requests, activeTurn)
   const messagesRef = useRef(null)
   const scrollAnchorRef = useRef(null)
   const isLoadingEarlierRef = useRef(false)
@@ -1264,7 +1311,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   }
 
   if (!selectedThreadUuid) {
-    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList projectUuid={projectUuid} pictureBook={pictureBook} threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><ThreadList pictureBook={pictureBook} threads={threads} workflows={workflows} total={threadTotal} loading={threadsQuery.isLoading} loadingMore={threadsQuery.isFetchingNextPage} hasMore={threadsQuery.hasNextPage} error={threadsQuery.error} overlay={overlay} onToggle={toggleExpanded} onNewThread={startNewThread} onOpenThread={chooseThread} onLoadMore={() => threadsQuery.fetchNextPage()} /></aside>
   }
 
   return (
@@ -1297,11 +1344,12 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
 			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
-            {requests.filter((request) => request.status === 'pending' && !inlineRequestUuids.has(request.uuid)).map((request) => <UserInputCard key={request.uuid} request={request} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />)}
           </div>
-          <div className="chat-composer-shell">
+          <div className={`chat-composer-shell${pendingInputRequest ? ' chat-composer-shell--request' : ''}`}>
             <FollowUpQueue projectUuid={projectUuid} pictureBook={pictureBook} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
-            <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />
+            {pendingInputRequest
+              ? <UserInputCard placement="composer" request={pendingInputRequest} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />
+              : <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />}
           </div>
         </div>
       </div>
@@ -1339,11 +1387,6 @@ function currentProjectAPIActivityKey(content) {
   } catch {
     return null
   }
-}
-
-function copyText(value) {
-  if (!value || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return
-  navigator.clipboard.writeText(value).catch(() => {})
 }
 
 function releaseAttachmentPreview(attachment) {

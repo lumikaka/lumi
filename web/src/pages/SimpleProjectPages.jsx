@@ -76,11 +76,9 @@ import {
   trashChapter,
   updateChapter,
   updateStoryProfile,
-  updateStoryProject,
 } from '../api/story.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
-import ProjectDashboardModeSetting from '../components/ProjectDashboardModeSetting.jsx'
 import { projectRoute } from '../projectRoutes.js'
 import {
   COMIC_PAGE_ROLES,
@@ -92,11 +90,18 @@ import {
   reorderedComicBodyUuids,
 } from './comicPageRoles.js'
 import { pictureBookFormatKey, pictureBookRatio } from './pictureBookProfile.js'
+import { OverviewSummaryPanel } from './ProjectOverviewPanels.jsx'
+import { PromptPanel, StoryProfilePanel } from './ProjectOverviewContentPanels.jsx'
+import { premiseAssetTitleFromFile } from './productionWorkspaceState.js'
 import {
   firstReadySimpleImage,
+  normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
+  patchSimpleProjectSettingsSearch,
   simpleStoryExcerpt,
   storyDocumentBlocks,
+  storyboardQuickEditSections,
+  updateStoryboardQuickEditSection,
 } from './simpleProjectState.js'
 
 const ACTIVE_TASK_STATUSES = new Set(['queued', 'running', 'waiting_for_input'])
@@ -106,6 +111,15 @@ const SIMPLE_FRESH_IMAGE_MS = 2400
 const SIMPLE_PAGE_CONTEXT_MENU_MARGIN = 8
 const SIMPLE_PAGE_CONTEXT_MENU_WIDTH = 132
 const SIMPLE_PAGE_CONTEXT_MENU_HEIGHT = 46
+const SIMPLE_PROJECT_SETTINGS_ITEMS = Object.freeze([
+  { key: 'summary', labelKey: 'projects.tab.summary' },
+  { key: 'profile', labelKey: 'projects.tab.profile' },
+  { key: 'prompts', labelKey: 'projects.tab.prompts' },
+])
+
+function isEditableTarget(target) {
+  return target instanceof Element && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+}
 
 export function SimpleHomePage({ project, projectUuid, projectQuery }) {
   const { t } = useI18n()
@@ -157,83 +171,49 @@ export function SimpleHomePage({ project, projectUuid, projectQuery }) {
 
 export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }) {
   const { t } = useI18n()
-  const location = useLocation()
-  const queryClient = useQueryClient()
-  const initialValues = projectConfigurationValues(project)
-  const baselineRef = useRef(initialValues)
-  const [name, setName] = useState(initialValues.name)
-  const [description, setDescription] = useState(initialValues.description)
-  const [language, setLanguage] = useState(initialValues.language)
-  const [feedback, setFeedback] = useState(null)
-
-  useEffect(() => {
-    if (!project) return
-    const previous = baselineRef.current
-    const next = projectConfigurationValues(project)
-    setName((current) => !previous || current === previous.name ? next.name : current)
-    setDescription((current) => !previous || current === previous.description ? next.description : current)
-    setLanguage((current) => !previous || current === previous.language ? next.language : current)
-    baselineRef.current = next
-  }, [project?.description, project?.generation_language, project?.name, project?.revision])
-
-  const configurationDirty = Boolean(project) && (
-    name !== (project.name || '')
-    || description !== (project.description || '')
-    || language !== (project.generation_language || 'zh-Hans')
-  )
-  const saveProject = useMutation({
-    mutationFn: () => updateStoryProject(projectUuid, {
-      name: name.trim(),
-      description: description.trim(),
-      generation_language: language,
-      expected_revision: project.revision,
-    }),
-    onMutate: () => setFeedback(null),
-    onSuccess: (updated) => {
-      const next = projectConfigurationValues(updated)
-      baselineRef.current = next
-      setName(next.name)
-      setDescription(next.description)
-      setLanguage(next.language)
-      queryClient.setQueryData(['story-project', projectUuid], updated)
-      void queryClient.invalidateQueries({ queryKey: ['recent-projects'] })
-      setFeedback({ kind: 'success', message: t('simple.feedback.saved') })
-    },
-    onError: (mutationError) => {
-      setFeedback({ kind: 'error', error: mutationError })
-      void projectQuery.refetch()
-    },
-  })
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const activeTab = normalizedSimpleProjectSettingsTab(searchParams.get('tab'))
+  const cleanSearch = patchSimpleProjectSettingsSearch(searchParams)
+  const tabRoute = (tab) => projectRoute(projectUuid, 'settings', patchSimpleProjectSettingsSearch(searchParams, tab))
+  const selectTab = (tab) => navigate({ ...tabRoute(tab), hash: '' })
+  const resolveSummaryRoute = (route) => route === 'story'
+    ? tabRoute('profile')
+    : projectRoute(projectUuid, route, cleanSearch)
 
   if (projectQuery.isLoading && !project) return <SimpleLoading message={t('simple.loading.project')} />
   return (
     <div className="simple-project-page simple-project-settings-page">
-      <SimplePageHeading title={t('projects.configuration')} description={t('simple.project.configuration_description')} backTo={projectRoute(projectUuid, '', location.search)} />
+      <SimplePageHeading title={t('projects.configuration')} description={t('simple.project.configuration_description')} backTo={projectRoute(projectUuid, '', cleanSearch)} />
       <SimpleError error={!project ? projectQuery.error : null} onRetry={() => projectQuery.refetch()} />
-      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
       {project ? (
         <section className="simple-project-settings-card">
-          <form className="simple-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || saveProject.isPending) return; saveProject.mutate() }}>
-            <label>{t('common.label.name')}<input autoFocus required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
-            <label>{t('common.label.description')}<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-            <label>{t('simple.home.language')}<select value={language} onChange={(event) => setLanguage(event.target.value)}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
-            <label>{t('simple.home.format')}<input value={project.picture_book ? t(pictureBookFormatKey(project.picture_book.format)) : '—'} disabled /></label>
-            <p className="simple-form__hint">{t('simple.project.immutable_hint')}</p>
-            <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={saveProject.isPending} />
-            <div className="simple-form__actions"><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, '', location.search)}>{t('simple.shell.page.home')}</Link><button className="simple-button" type="submit" disabled={saveProject.isPending || !name.trim()}>{t(saveProject.isPending ? 'common.status.saving' : 'common.action.save')}</button></div>
-          </form>
+          <aside className="simple-project-settings-sidebar">
+            <nav className="simple-project-settings-nav" role="tablist" aria-label={t('projects.overview_navigation')}>
+              {SIMPLE_PROJECT_SETTINGS_ITEMS.map((item) => (
+                <button
+                  type="button"
+                  role="tab"
+                  id={`overview-tab-${item.key}`}
+                  aria-controls={`overview-panel-${item.key}`}
+                  aria-selected={activeTab === item.key}
+                  key={item.key}
+                  onClick={() => selectTab(item.key)}
+                >
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </nav>
+          </aside>
+          <div className="simple-project-settings-content">
+            {activeTab === 'summary' ? <OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} resolveRoute={resolveSummaryRoute} /> : null}
+            {activeTab === 'profile' ? <StoryProfilePanel projectUuid={projectUuid} pictureBook={project.picture_book} /> : null}
+            {activeTab === 'prompts' ? <PromptPanel projectUuid={projectUuid} pictureBook={project.picture_book} /> : null}
+          </div>
         </section>
       ) : null}
     </div>
   )
-}
-
-function projectConfigurationValues(project) {
-  return {
-    name: project?.name || '',
-    description: project?.description || '',
-    language: project?.generation_language || 'zh-Hans',
-  }
 }
 
 export function SimpleStoryPage({ project, projectUuid }) {
@@ -354,10 +334,19 @@ export function SimpleSettingsPage({ projectUuid }) {
   })
   const trash = useMutation({ mutationFn: (asset) => trashPremiseAsset(projectUuid, asset.uuid, asset.revision), onSuccess: () => { refresh(); setDeleteAsset(null); setFeedback({ kind: 'success', message: t('simple.settings.trashed') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const restore = useMutation({ mutationFn: (asset) => restorePremiseAsset(projectUuid, asset.uuid, asset.revision), onSuccess: () => { refresh(); setFeedback({ kind: 'success', message: t('simple.settings.restored') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
+  const handleSettingsPaste = (event) => {
+    if (isEditableTarget(event.target)) return
+    const file = Array.from(event.clipboardData?.files || []).find((item) => item.type.startsWith('image/'))
+    if (!file) return
+    event.preventDefault()
+    setDraft({ ...emptyAssetDraft(), file, title: premiseAssetTitleFromFile(file, t('premise.assets.untitled')) })
+    setCreating(true)
+    setFeedback(null)
+  }
   if (selectedQuery.isLoading) return <SimpleLoading message={t('simple.loading.settings')} />
   const assets = selectedQuery.data?.items || []
   return (
-    <div className="simple-project-page simple-settings-page">
+    <div className="simple-project-page simple-settings-page" onPaste={handleSettingsPaste}>
       <SimplePageHeading title={t('simple.settings.title')} description={t('simple.settings.description_manage')} backTo={projectRoute(projectUuid, '', location.search)} actions={<button className="simple-button" type="button" onClick={() => { setDraft(emptyAssetDraft()); setCreating(true); setFeedback(null) }}><Plus size={15} aria-hidden="true" />{t('simple.settings.add')}</button>} />
       <div className="simple-segmented" role="group" aria-label={t('simple.settings.filter')}><button type="button" aria-pressed={!showTrash} onClick={() => setShowTrash(false)}>{t('simple.settings.active')}</button><button type="button" aria-pressed={showTrash} onClick={() => setShowTrash(true)}>{t('simple.settings.trash')}</button></div>
       <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
@@ -438,7 +427,7 @@ export function SimpleSettingDetailPage({ projectUuid }) {
           <section><span>{t('simple.setting.summary')}</span><p data-user-content>{asset.summary || t('simple.setting.no_summary')}</p></section>
           <section><span>{t('simple.setting.tags')}</span>{asset.tags?.length ? <div className="simple-tag-list">{asset.tags.map((tag) => <i key={tag} data-user-content>{tag}</i>)}</div> : <p>{t('common.label.none')}</p>}</section>
           <dl><div><dt>{t('common.label.type')}</dt><dd>{assetTypeLabel(t, asset.asset_type)}</dd></div><div><dt>{t('simple.story.current_version')}</dt><dd>v{asset.current_variant?.version_no || '—'}</dd></div><div><dt>{t('common.label.source')}</dt><dd>{asset.current_variant ? sourceTypeLabel(t, asset.current_variant.source_type) : '—'}</dd></div><div><dt>{t('common.label.revision')}</dt><dd>r{asset.revision}</dd></div></dl>
-          {!asset.deleted_at ? <button className="simple-danger-action" type="button" onClick={() => setConfirmTrash(true)}><Trash2 size={14} aria-hidden="true" />{t('simple.action.trash')}</button> : null}
+          {!asset.deleted_at ? <button className="simple-button simple-button--danger-secondary simple-danger-action" type="button" onClick={() => setConfirmTrash(true)}><Trash2 size={14} aria-hidden="true" />{t('simple.action.trash')}</button> : null}
         </article>
       </div>
       {!asset.deleted_at ? <section className="simple-generation-card"><header><div><h2>{t('simple.setting.generate_title')}</h2><p>{t('simple.setting.generate_body')}</p></div>{task ? <SimpleTaskStatus task={task} /> : null}</header><div><input value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={t('simple.setting.generate_placeholder')} /><button type="button" disabled={!asset.current_variant || taskActive || generate.isPending} onClick={() => generate.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.setting.generate')}</button></div></section> : null}
@@ -616,6 +605,7 @@ export function SimplePageView({ project, projectUuid }) {
   const refsDirty = Boolean(section) && JSON.stringify(selectedRefs) !== JSON.stringify((section.premise_assets || []).map((item) => item.asset_uuid))
   const invalidEmptyText = Boolean(section?.current_storyboard?.content_md) && !text.trim()
   const createRoles = project?.picture_book?.format === 'vertical_strip' ? ['body'] : COMIC_PAGE_ROLES
+  const storyboardFields = storyboardQuickEditSections(text)
 
   useEffect(() => {
     if (!section) return
@@ -1063,7 +1053,20 @@ export function SimplePageView({ project, projectUuid }) {
             {taskActive ? <SimpleTaskStatus task={task} /> : null}
             <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(generate.isPending ? 'simple.page.generation_starting' : section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
           </div>
-          <section className="simple-page-content-card"><h2>{t('simple.page.content')}</h2><label><span>{t('simple.page.text')}</span><textarea value={text} onChange={(event) => setText(event.target.value)} /></label><label><span>{t('simple.page.visual_direction')}</span><textarea value={direction} onChange={(event) => setDirection(event.target.value)} /></label></section>
+          <section className="simple-page-content-card">
+            <h2>{t('simple.page.content')}</h2>
+            {storyboardFields.length ? storyboardFields.map((field, fieldIndex) => (
+              <label key={`${fieldIndex}-${field.label}`}>
+                <span data-user-content>{field.label}</span>
+                <textarea value={field.content} onChange={(event) => setText((current) => updateStoryboardQuickEditSection(current, fieldIndex, event.target.value))} />
+              </label>
+            )) : (
+              <label>
+                <span>{t('simple.page.text')}</span>
+                <textarea value={text} onChange={(event) => setText(event.target.value)} />
+              </label>
+            )}
+          </section>
           <section className="simple-page-references"><header><div><h2>{t('simple.page.references')}</h2><p>{t('simple.page.references_body')}</p></div><button type="button" disabled={!refsDirty || save.isPending || invalidEmptyText} onClick={() => save.mutate()}>{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></header><div>{(assetsQuery.data?.items || []).filter((asset) => asset.current_variant).map((asset) => <label className={selectedRefs.includes(asset.uuid) ? 'is-selected' : ''} key={asset.uuid}><input type="checkbox" checked={selectedRefs.includes(asset.uuid)} disabled={!selectedRefs.includes(asset.uuid) && selectedRefs.length >= 12} onChange={(event) => setSelectedRefs((current) => event.target.checked ? [...current, asset.uuid] : current.filter((uuid) => uuid !== asset.uuid))} /><SimpleImage asset={asset.current_variant?.asset} alt="" /><span><strong data-user-content>{asset.title}</strong><small>{assetTypeLabel(t, asset.asset_type)}</small></span></label>)}</div></section>
           <section className="simple-version-list"><header><div><h2>{t('simple.page.text_versions')}</h2></div><span>{storyboardsQuery.data?.items?.length || 0}</span></header><div>{(storyboardsQuery.data?.items || []).map((variant) => <article className={variant.uuid === section.current_storyboard?.uuid ? 'is-current' : ''} key={variant.uuid}><div><strong>v{variant.version_no}</strong><span data-user-content>{simpleStoryExcerpt(variant.content_md, 90)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_storyboard?.uuid || chooseStoryboard.isPending} onClick={() => chooseStoryboard.mutate(variant)}>{variant.uuid === section.current_storyboard?.uuid ? t('simple.version.current') : t('common.action.restore')}</button></article>)}</div></section>
           <nav className="simple-page-stepper" aria-label={t('simple.shell.page.pages')}>{previous ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(previous.uuid)}`, location.search)}><ChevronLeft size={15} aria-hidden="true" />{t('simple.page.previous')}</Link> : <span />}{next ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(next.uuid)}`, location.search)}>{t('simple.page.next')}<ChevronRight size={15} aria-hidden="true" /></Link> : null}</nav>

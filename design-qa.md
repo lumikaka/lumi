@@ -94,6 +94,54 @@ final result: passed
 
 ---
 
+## Simple setting detail danger-secondary button — current QA
+
+### Comparison target
+
+- Source visual truth: `/Users/qingyang/.codex/visualizations/2026/09/01/01a05be4-5055-7991-9f94-074c89113799/simple-danger-action-audit/08-generate-button-reference.png`, supplied as the canonical Lumi button geometry, plus `/Users/qingyang/.codex/visualizations/2026/09/01/01a05be4-5055-7991-9f94-074c89113799/simple-danger-action-audit/09-trash-button-reference.png` for the original broken state.
+- Browser-rendered default implementation: `/Users/qingyang/.codex/visualizations/2026/09/01/01a05be4-5055-7991-9f94-074c89113799/simple-danger-action-audit/10-implementation-default.png`.
+- Browser-rendered hover implementation: `/Users/qingyang/.codex/visualizations/2026/09/01/01a05be4-5055-7991-9f94-074c89113799/simple-danger-action-audit/11-implementation-hover.png`.
+- Browser-rendered keyboard-focus implementation: `/Users/qingyang/.codex/visualizations/2026/09/01/01a05be4-5055-7991-9f94-074c89113799/simple-danger-action-audit/12-implementation-focus.png`.
+- Viewport and density: implementation `1280 × 720` CSS px and `1280 × 720` output px at device scale factor 1. The supplied source crop is `276 × 186` output px; its visible `190 × 76` button normalizes to the live source button's measured `95 × 38` CSS geometry. The longer danger label renders at `106 × 38` CSS px.
+- State: Simplified Chinese, active premise asset, idle default, pointer hover, and keyboard `:focus-visible`.
+
+### Required fidelity surfaces
+
+- Fonts and typography: passed. Both actions use the existing Inter / Noto Sans SC / PingFang SC stack at `12px`, weight `600`, and a `12px` button line height.
+- Spacing and layout rhythm: passed. The danger action now shares the source's `38px` height, `12px` horizontal padding, `6px` icon gap, `1px` border, and `6px` radius. Content width and `justify-self: start` remove the unintended full-column stretch.
+- Colors and visual tokens: passed. Default state uses `$color-danger`, `$color-danger-muted`, and a 35% danger border; hover and focus use the solid danger surface with white text. The existing green application focus outline remains visible outside the red button.
+- Image quality and asset fidelity: passed for this control. No raster imagery was introduced. The existing Lucide `Trash2` icon remains at 14px and no custom SVG, CSS drawing, placeholder, or substitute asset was added.
+- Copy and content: passed. `移入回收站` and its recoverable-action confirmation copy are unchanged.
+- Responsive behavior: passed for the supplied desktop target. The control is content-sized and remains non-stretched when the existing detail grid collapses; no separate narrow-screen visual target was supplied.
+- Interaction and accessibility: passed. The native button keeps its accessible text, opens the existing confirmation dialog, supports cancellation without mutation, exposes a clear keyboard focus ring, and has a 38px target height.
+
+### Full-view and focused comparison evidence
+
+- Full-view comparison: the component-only source reference and browser-rendered implementation were opened together in the same comparison input. The implementation also shows the danger and generate actions together in their real page context.
+- A separate focused implementation crop was not required because the source is already a component-only crop, both buttons are legible in the 1280 × 720 implementation capture, and browser-computed geometry confirms the exact height, padding, gap, radius, typography, border, and state colors.
+
+### Comparison history
+
+1. The original danger action rendered as a `270 × 27` stretched native control with a 2px outset border, gray browser background, and zero radius.
+2. The detail action was composed with the shared `.simple-button` geometry and a scoped `.simple-button--danger-secondary` semantic variant; its grid item was changed to content width.
+3. Post-fix default, hover, and keyboard-focus captures found no actionable P0, P1, or P2 mismatch. The trigger continues to open the existing confirmation dialog without changing project facts until explicit confirmation.
+
+### Findings
+
+No actionable P0, P1, or P2 differences remain. No P3 follow-up is required for the requested button scope.
+
+### Verification
+
+- Primary interactions tested: default, hover, keyboard focus, confirmation-dialog open, and cancellation.
+- Browser console: no warnings or errors.
+- Focused frontend regression: passed, 25 tests.
+- Full frontend suite: passed, 341 tests.
+- Frontend production build: passed; the existing large-chunk advisory remains informational.
+
+final result: passed
+
+---
+
 ## Simple page illustration actions and candidate dialog — current QA
 
 ### Comparison target
@@ -269,5 +317,63 @@ No actionable P0, P1, or P2 findings remain. No P3 follow-up is required for the
 - Clean browser tab console: no warnings or errors.
 - Frontend unit suite: passed, 325 tests.
 - Frontend production build: passed.
+
+final result: passed
+
+---
+
+## Request User Input — current QA
+
+- Source visual truth: `/var/folders/bh/q3rhh5290rxft20rp4691vz80000gn/T/codex-clipboard-45deffba-98c6-4825-870f-cc70dfc37e70.png`
+- Browser-rendered implementation: `/Users/qingyang/.codex/visualizations/2026/09/01/01a05bd5-f46b-7022-8826-b17fa6e7e54b/request-user-input-card.png`
+- Browser viewport: `1280 × 720` CSS px; Lumi ChatArea width `330px`; rendered card `313 × 264` CSS px.
+- Pixels and density: source `762 × 322`; implementation `313 × 264`; browser `deviceScaleFactor: 1`. The card was compared responsively at Lumi's real fixed ChatArea width rather than resampling the wider Codex source.
+- State: Simplified Chinese, pending Codex-style request, question 1 of 3, first option hovered, composer hidden.
+
+### Findings
+
+- No actionable P0, P1, or P2 differences remain.
+- The source keeps its question title on one line at 762px. Lumi wraps the title to two lines at 313px while preserving the same hierarchy and keeping all controls visible; this is an expected responsive constraint rather than design drift.
+- Lumi uses a generic localized Other placeholder because `request_user_input` can ask arbitrary questions. The source's question-specific ChatGPT placeholder is not reusable product copy.
+
+### Required Fidelity Surfaces
+
+- Fonts and typography: Lumi's existing Inter / Noto Sans SC / system stack retains the source's compact semibold question and option labels, readable secondary descriptions, and neutral metadata hierarchy. No clipping or truncation was observed.
+- Spacing and layout rhythm: rounded outer card, compact header controls, numbered option rows, hover affordance, inline Other row, and trailing Skip action follow the source composition. The rendered card has no horizontal or vertical overflow.
+- Colors and visual tokens: the implementation uses Lumi surface, border, muted, and accent tokens. The hover state remains neutral like the source; selected state uses the established Lumi accent.
+- Image quality and asset fidelity: the target contains no raster imagery. Existing Lucide icons supply the chevrons, close, pencil, and forward affordances; no placeholder, CSS-drawn, or ad hoc SVG assets were introduced.
+- Copy and content: question, options, descriptions, recommendation label, position, Other, and Skip are present. Chinese and English interface strings are registered in the shared message bundle.
+
+### Interaction Evidence
+
+- A pending request rendered in the composer shell with `composerCount: 0`.
+- Previous and next controls changed the visible question and position indicator.
+- Choosing an option advanced to the next unanswered question.
+- Enter on a non-empty Other answer advanced to the next unanswered question.
+- Completing all three answers submitted the Codex question-id payload; the REST reread removed the pending card and restored the composer.
+- Skip submitted cancellation; the REST reread removed the pending card and restored the composer.
+- The browser console contained no warnings or errors during the checked flow.
+- API responses were intercepted only for this browser QA fixture; no project database facts were changed, and the browser was restored to live local data afterward.
+
+### Full-view and Focused Comparison Evidence
+
+- Full-view comparison: the complete source card and complete browser-rendered Lumi card were opened together in the same comparison input at the same question and hover state.
+- Focused region comparison was not needed because the component-only captures make all typography, controls, icons, spacing, and copy directly readable.
+
+### Comparison History
+
+- Pass 1: normalized the implementation to the source's first-option hover state. No P0/P1/P2 mismatch was found, so no visual code fix or repeat pass was required.
+
+### Implementation Checklist
+
+- [x] Pending request replaces compose.
+- [x] Historical answered or cancelled request remains inline in the conversation.
+- [x] One-at-a-time navigation supports 1–3 Codex questions.
+- [x] Option, Other, submit, skip, loading, hover, focus, and selected states remain operable.
+- [x] Narrow ChatArea layout is overflow-free.
+
+### Follow-up Polish
+
+- No blocking follow-up polish remains.
 
 final result: passed

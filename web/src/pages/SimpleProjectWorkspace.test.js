@@ -6,6 +6,7 @@ const workspaceSource = readFileSync(new URL('./SimpleProjectWorkspace.jsx', imp
 const pagesSource = readFileSync(new URL('./SimpleProjectPages.jsx', import.meta.url), 'utf8')
 const storyWorkspaceSource = readFileSync(new URL('./StoryWorkspacePage.jsx', import.meta.url), 'utf8')
 const overviewSource = readFileSync(new URL('./ProjectOverviewPanels.jsx', import.meta.url), 'utf8')
+const overviewContentSource = readFileSync(new URL('./ProjectOverviewContentPanels.jsx', import.meta.url), 'utf8')
 const draftWorkspaceSource = readFileSync(new URL('../components/DraftProjectWorkspace.jsx', import.meta.url), 'utf8')
 const modeSettingSource = readFileSync(new URL('../components/ProjectDashboardModeSetting.jsx', import.meta.url), 'utf8')
 const expertLayoutSource = readFileSync(new URL('../components/ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
@@ -19,7 +20,7 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'ProjectDashboardModeSetting.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
@@ -40,7 +41,9 @@ test('simple mode owns its project workspace while reusing the app sidebar, Chat
   }
   assert.doesNotMatch(pagesSource, /location\.state\?\.openProjectConfiguration/)
   assert.match(workspaceSource, /<ChatArea projectUuid=\{projectUuid\}/)
-  assert.doesNotMatch(combined, /ProjectWorkspaceLayout|OverviewSummaryPanel|PremiseWorkspace|ChaptersWorkspace|ChapterWorkbenchPage/)
+  assert.match(pagesSource, /import \{ OverviewSummaryPanel \} from '\.\/ProjectOverviewPanels\.jsx'/)
+  assert.match(pagesSource, /import \{ PromptPanel, StoryProfilePanel \} from '\.\/ProjectOverviewContentPanels\.jsx'/)
+  assert.doesNotMatch(combined, /ProjectWorkspaceLayout|PremiseWorkspace|ChaptersWorkspace|ChapterWorkbenchPage/)
   assert.match(pagesSource, /useMutation/)
 })
 
@@ -75,23 +78,55 @@ test('one canonical route tree selects the simple or expert renderer from projec
   assert.match(expertLayoutSource, /forcedExpert[\s\S]*expert_page_notice/)
 })
 
-test('simple project configuration is a dedicated settings page with shared project facts', () => {
+test('simple project configuration exposes shared summary, profile, and prompt panels through URL-backed navigation', () => {
   assert.match(workspaceSource, /configuration: 'projects\.configuration'/)
   assert.match(workspaceSource, /path="settings" element=\{<SimpleProjectSettingsPage project=\{project\} projectUuid=\{projectUuid\} projectQuery=\{projectQuery\} \/>\}/)
+  assert.match(workspaceSource, /path="story" element=\{<SimpleStoryPage project=\{project\} projectUuid=\{projectUuid\} \/>\}/)
   assert.match(pagesSource, /export function SimpleProjectSettingsPage\(\{ project, projectUuid, projectQuery \}\)/)
-  assert.match(pagesSource, /projectRoute\(projectUuid, 'settings', location\.search\)/)
-  assert.match(pagesSource, /updateStoryProject\(projectUuid, \{[\s\S]*expected_revision: project\.revision/)
-  assert.match(pagesSource, /if \(!name\.trim\(\) \|\| saveProject\.isPending\) return/)
-  assert.match(pagesSource, /autoFocus required maxLength=\{120\}/)
-  assert.match(pagesSource, /queryClient\.setQueryData\(\['story-project', projectUuid\], updated\)/)
-  assert.match(pagesSource, /invalidateQueries\(\{ queryKey: \['recent-projects'\] \}\)/)
-  assert.match(pagesSource, /setFeedback\(\{ kind: 'success', message: t\('simple\.feedback\.saved'\) \}\)/)
-  assert.match(pagesSource, /onError: \(mutationError\) => \{[\s\S]*kind: 'error'[\s\S]*projectQuery\.refetch\(\)/)
-  assert.match(pagesSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
+  assert.match(pagesSource, /normalizedSimpleProjectSettingsTab\(searchParams\.get\('tab'\)\)/)
+  assert.match(pagesSource, /patchSimpleProjectSettingsSearch\(searchParams, tab\)/)
+  assert.match(pagesSource, /navigate\(\{ \.\.\.tabRoute\(tab\), hash: '' \}\)/)
+  assert.match(pagesSource, /route === 'story'[\s\S]*tabRoute\('profile'\)[\s\S]*projectRoute\(projectUuid, route, cleanSearch\)/)
+  assert.match(pagesSource, /className="simple-project-settings-nav" role="tablist"/)
+  assert.match(pagesSource, /role="tab"[\s\S]*aria-controls=\{`overview-panel-\$\{item\.key\}`\}[\s\S]*aria-selected=\{activeTab === item\.key\}/)
+  assert.match(pagesSource, /activeTab === 'summary' \? <OverviewSummaryPanel[\s\S]*resolveRoute=\{resolveSummaryRoute\}/)
+  assert.match(pagesSource, /activeTab === 'profile' \? <StoryProfilePanel/)
+  assert.match(pagesSource, /activeTab === 'prompts' \? <PromptPanel/)
+  for (const panel of ['StoryProfilePanel', 'PromptPanel']) {
+    assert.match(storyWorkspaceSource, new RegExp(`import \\{[^}]*${panel}[^}]*\\} from '\\.\\/ProjectOverviewContentPanels\\.jsx'`))
+    assert.match(overviewContentSource, new RegExp(`export function ${panel}`))
+  }
+  assert.match(overviewSource, /OverviewSummaryPanel\(\{ projectUuid, projectQuery, resolveRoute \}\)/)
+  assert.match(overviewSource, /resolveRoute\?\.\(suffix\) \|\| destination/)
   assert.match(storyWorkspaceSource, /path="settings" element=\{<Navigate replace to=\{projectRoute\(projectUuid, '', location\.search\)\} \/>\}/)
-  assert.match(styles, /\.simple-project-settings-card/)
+  assert.doesNotMatch(pagesSource, /projectConfigurationValues|saveProject/)
   assert.doesNotMatch(pagesSource, /<SimpleDialog title=\{t\('projects\.configuration'\)\}/)
   assert.doesNotMatch(pagesSource, /location\.state\?\.openProjectConfiguration/)
+})
+
+test('simple setting detail uses the shared button geometry for its danger-secondary action', () => {
+  assert.match(pagesSource, /className="simple-button simple-button--danger-secondary simple-danger-action"/)
+  const detailStyles = styles.slice(styles.indexOf('  .simple-setting-detail__copy'), styles.indexOf('  .simple-tag-list'))
+  assert.match(detailStyles, /> \.simple-danger-action[\s\S]*justify-self: start/)
+  const dangerStyles = styles.slice(styles.indexOf('  .simple-button--danger-secondary'), styles.indexOf('  .simple-feedback'))
+  assert.match(dangerStyles, /min-height: 38px[\s\S]*padding: 0 12px[\s\S]*gap: 6px/)
+  assert.match(dangerStyles, /border-color: rgba\(\$color-danger, \.35\)[\s\S]*background: \$color-danger-muted/)
+  assert.match(dangerStyles, /&:hover:not\(:disabled\),[\s\S]*&:focus-visible:not\(:disabled\)[\s\S]*background: \$color-danger/)
+})
+
+test('simple premise opens a populated creation dialog when an image is pasted outside an editor', () => {
+  const settingsSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimpleSettingsPage'),
+    pagesSource.indexOf('export function SimpleSettingDetailPage'),
+  )
+  assert.match(settingsSource, /onPaste=\{handleSettingsPaste\}/)
+  assert.match(settingsSource, /if \(isEditableTarget\(event\.target\)\) return/)
+  assert.match(settingsSource, /event\.clipboardData\?\.files/)
+  assert.match(settingsSource, /item\.type\.startsWith\('image\/'\)/)
+  assert.match(settingsSource, /event\.preventDefault\(\)/)
+  assert.match(settingsSource, /premiseAssetTitleFromFile\(file, t\('premise\.assets\.untitled'\)\)/)
+  assert.match(settingsSource, /setDraft\(\{ \.\.\.emptyAssetDraft\(\), file, title:/)
+  assert.match(settingsSource, /setCreating\(true\)/)
 })
 
 test('LLM logs reuse the complete panel in simple mode under the simple topbar', () => {
@@ -109,7 +144,7 @@ test('exports reuse the complete panel in simple mode under the simple topbar', 
 })
 
 test('project actions, project configuration, and the expert topbar expose mode switching', () => {
-  assert.match(pagesSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
+  assert.match(pagesSource, /<OverviewSummaryPanel projectUuid=\{projectUuid\} projectQuery=\{projectQuery\}/)
   assert.match(overviewSource, /<ProjectDashboardModeSetting projectUuid=\{projectUuid\} dirty=\{configurationDirty\}/)
   assert.match(pagesSource, /t\('projects\.configuration'\)/)
   assert.match(overviewSource, /t\('projects\.configuration'\)/)
@@ -245,6 +280,18 @@ test('simple page candidates use the reference action row and open the existing 
   assert.match(styles, /\.simple-illustration-actions__drafts[\s\S]*margin-right: auto[\s\S]*\[aria-expanded="true"\]:hover/)
 })
 
+test('simple page content card quick-edits storyboard bodies by level-two heading', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pageViewSource, /const storyboardFields = storyboardQuickEditSections\(text\)/)
+  assert.match(pageViewSource, /storyboardFields\.map\(\(field, fieldIndex\)/)
+  assert.match(pageViewSource, /<span data-user-content>\{field\.label\}<\/span>/)
+  assert.match(pageViewSource, /updateStoryboardQuickEditSection\(current, fieldIndex, event\.target\.value\)/)
+  assert.doesNotMatch(pageViewSource, /simple-page-content-card[\s\S]*simple\.page\.visual_direction/)
+})
+
 test('simple page current image opens an accessible large-image dialog', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
@@ -255,7 +302,10 @@ test('simple page current image opens an accessible large-image dialog', () => {
   assert.match(pageViewSource, /imagePreviewOpen \? <SimpleDialog wide title=\{t\('simple\.page\.image_preview'\)\}[\s\S]*className="simple-page-image-preview"/)
   assert.match(messages, /'simple\.page\.open_image_preview': \['查看当前画面大图', 'View current artwork full size'\]/)
   assert.match(styles, /button\.simple-page-current-image[\s\S]*cursor: zoom-in[\s\S]*&:hover,[\s\S]*&:focus-visible/)
-  assert.match(styles, /\.simple-page-image-preview[\s\S]*max-height: calc\(88dvh - 126px\)[\s\S]*object-fit: contain/)
+  const previewStyles = styles.slice(styles.indexOf('  .simple-page-image-preview'), styles.indexOf('  .simple-illustration-actions'))
+  assert.match(previewStyles, /img,[\s\S]*\.simple-image-placeholder[\s\S]*width: 100%/)
+  assert.match(previewStyles, /img[\s\S]*height: auto[\s\S]*object-fit: contain/)
+  assert.doesNotMatch(previewStyles, /max-height/)
 })
 
 test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {
@@ -271,8 +321,9 @@ test('simple per-page workspace keeps the page rail fixed while the editor and t
 })
 
 test('simple pages read and mutate the shared REST facts through TanStack Query', () => {
+  const simpleFeatureSource = `${pagesSource}\n${overviewSource}\n${overviewContentSource}`
   for (const queryFunction of ['getStoryProfile', 'getPremise', 'getPremiseAsset', 'listPremiseAssets', 'listChapters', 'getChapter', 'listComicSections']) {
-    assert.match(pagesSource, new RegExp(`queryFn: \\(\\) => ${queryFunction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\(`), queryFunction)
+    assert.match(simpleFeatureSource, new RegExp(`queryFn: \\(\\) => ${queryFunction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\(`), queryFunction)
   }
   for (const operation of [
     'updateStoryProject', 'updateStoryProfile', 'restoreStoryProfileVersion', 'regenerateStoryMD',
@@ -283,7 +334,7 @@ test('simple pages read and mutate the shared REST facts through TanStack Query'
     'createStoryboard', 'setComicSectionPremiseAssets', 'generateSectionImage', 'importSectionImage',
     'selectImageVariant', 'selectStoryboard', 'generateChapterImagesBatch',
   ]) {
-    assert.ok(pagesSource.includes(`${operation}(`), `missing native simple operation ${operation}`)
+    assert.ok(simpleFeatureSource.includes(`${operation}(`), `missing native simple operation ${operation}`)
   }
   assert.match(pagesSource, /document\.fullscreenElement/)
   assert.match(pagesSource, /requestFullscreen/)
@@ -352,6 +403,11 @@ test('simple styles leave the global sidebar untouched, stay namespaced, and ret
   assert.match(styles, /\.simple-project-topbar[\s\S]*display: flex[\s\S]*gap: 12px/)
   assert.match(styles, /\.simple-project-topbar__actions[\s\S]*> button[\s\S]*width: 34px/)
   assert.match(styles, /button\[aria-pressed="true"\]:hover/)
+  assert.match(styles, /\.simple-project-settings-card[\s\S]*grid-template-columns: 180px minmax\(0, 1fr\)/)
+  assert.match(styles, /\.simple-project-settings-nav[\s\S]*\[aria-selected="true"\][\s\S]*\[aria-selected="true"\]:hover/)
+  assert.match(styles, /container: simple-project-settings-content \/ inline-size/)
+  assert.match(styles, /@container simple-project-settings-content \(max-width: 860px\)[\s\S]*\.project-overview-grid[\s\S]*grid-template-columns: 1fr/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.simple-project-settings-card[\s\S]*grid-template-columns: 1fr[\s\S]*\.simple-project-settings-nav[\s\S]*overflow-x: auto/)
   assert.match(styles, /\.simple-page-references[\s\S]*\.is-selected:hover/)
   assert.match(styles, /&\.is-fullscreen[\s\S]*position: fixed[\s\S]*inset: 0/)
   assert.match(styles, /@media \(max-width: 1199px\)/)

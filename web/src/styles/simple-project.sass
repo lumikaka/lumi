@@ -146,6 +146,9 @@
     &.is-chat-collapsed
       grid-template-columns: minmax(0, 1fr) $chat-collapsed-width
 
+    &.simple-project-workbench--solo
+      grid-template-columns: minmax(0, 1fr)
+
   .simple-project-content
     min-width: 0
     min-height: 0
@@ -153,6 +156,9 @@
     background: #fbfbf8
 
   .simple-project-content--page-editor
+    overflow: hidden
+
+  .simple-project-content--trajectory
     overflow: hidden
 
   .simple-project-page
@@ -394,14 +400,122 @@
     gap: 8px
 
   .simple-project-settings-card
-    width: min(100%, 720px)
-    overflow: hidden
+    width: 100%
+    min-width: 0
+    display: grid
+    grid-template-columns: 180px minmax(0, 1fr)
+    align-items: stretch
     border: 1px solid $color-border
     border-radius: $radius-md
     background: $color-surface
 
-    .simple-form
-      padding: 24px
+  .simple-project-settings-sidebar
+    min-width: 0
+    border-right: 1px solid $color-border
+    border-radius: $radius-md 0 0 $radius-md
+    background: $color-surface-subtle
+
+  .simple-project-settings-nav
+    position: sticky
+    top: 18px
+    padding: 16px 12px
+    display: grid
+    gap: 5px
+
+    button
+      width: 100%
+      min-height: 40px
+      padding: 0 12px
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+      font-size: 13px
+      font-weight: $font-weight-semibold
+      text-align: left
+
+      &:hover,
+      &:focus-visible
+        border-color: rgba($color-accent, .24)
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &:focus-visible
+        outline: 2px solid rgba($color-accent, .18)
+        outline-offset: 1px
+
+      &[aria-selected="true"]
+        border-color: rgba($color-accent, .34)
+        color: #fff
+        background: $color-accent
+
+      &[aria-selected="true"]:hover,
+      &[aria-selected="true"]:focus-visible
+        border-color: $color-accent-strong
+        color: #fff
+        background: $color-accent-strong
+
+  .simple-project-settings-content
+    min-width: 0
+    padding: 18px
+    container: simple-project-settings-content / inline-size
+    background: #f7f7f3
+    border-radius: 0 $radius-md $radius-md 0
+
+    .project-overview
+      width: 100%
+      margin: 0
+
+  @container simple-project-settings-content (max-width: 860px)
+    .simple-project-settings-content
+      .project-overview-grid
+        grid-template-columns: 1fr
+
+      .overview-progress-card
+        position: static
+
+      .overview-project-facts
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+      .overview-model-setting label
+        grid-template-columns: 1fr
+        align-items: start
+
+      .prompt-catalog-editor__intro,
+      .prompt-group__header,
+      .prompt-card__header,
+      .prompt-card__meta
+        align-items: stretch
+        flex-direction: column
+
+      .prompt-group__actions,
+      .prompt-card__actions
+        width: 100%
+        justify-content: stretch
+
+        button
+          flex: 1 1 140px
+
+  @container simple-project-settings-content (max-width: 560px)
+    .simple-project-settings-content
+      .overview-project-facts,
+      .overview-progress-grid,
+      .overview-profile-facts,
+      .overview-work-links
+        grid-template-columns: 1fr
+
+      .overview-picture-book-compatibility
+        grid-template-columns: 1fr
+
+        small
+          grid-column: auto
+
+      .overview-profile-history article
+        grid-template-columns: 44px minmax(0, 1fr)
+
+        small,
+        time
+          grid-column: 2
 
   .simple-story-layout
     display: grid
@@ -478,6 +592,9 @@
   .simple-setting-detail__copy
     display: grid
     gap: 20px
+
+    > .simple-danger-action
+      justify-self: start
 
     section
       padding-bottom: 18px
@@ -1032,7 +1149,6 @@
     img,
     .simple-image-placeholder
       width: 100%
-      max-height: calc(88dvh - 126px)
 
     img
       height: auto
@@ -1287,10 +1403,24 @@
   .simple-danger-action
     color: $color-danger
 
-    &:hover,
-    &:focus-visible
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled)
       color: #8f1d14
       background: $color-danger-muted
+
+  .simple-button--danger-secondary
+    min-height: 38px
+    padding: 0 12px
+    gap: 6px
+    border-color: rgba($color-danger, .35)
+    color: $color-danger
+    background: $color-danger-muted
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled)
+      border-color: $color-danger
+      color: $color-surface
+      background: $color-danger
 
   .simple-feedback
     min-height: 44px
@@ -2031,6 +2161,7 @@
           padding: 0 8px
           border: 1px solid $color-border
           border-radius: $radius-sm
+          color: $color-text
           background: $color-surface
           font-size: $font-size-small
 
@@ -2362,6 +2493,31 @@
 
     .simple-project-page
       padding: 24px 18px 48px
+
+    .simple-project-settings-card
+      grid-template-columns: 1fr
+
+    .simple-project-settings-sidebar
+      border-right: 0
+      border-bottom: 1px solid $color-border
+      border-radius: $radius-md $radius-md 0 0
+
+    .simple-project-settings-nav
+      position: static
+      padding: 10px
+      display: flex
+      overflow-x: auto
+      scrollbar-width: thin
+
+      button
+        width: auto
+        flex: 0 0 auto
+        white-space: nowrap
+        text-align: center
+
+    .simple-project-settings-content
+      padding: 14px
+      border-radius: 0 0 $radius-md $radius-md
 
     .simple-home-hero
       grid-template-columns: 86px minmax(0, 1fr)

@@ -44,7 +44,7 @@ function generationLanguageLabel(t, value) {
   return t('common.status.unknown_with_code', { code: value || '—' })
 }
 
-export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
+export function OverviewSummaryPanel({ projectUuid, projectQuery, resolveRoute }) {
   const { formatDateTime, t } = useI18n()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -133,7 +133,7 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery }) {
   const profile = profileQuery.data
   const premise = premiseQuery.data
   const excerpt = storyExcerpt(profile?.story_md)
-  const route = (suffix) => destination(projectUuid, suffix, location.search)
+  const route = (suffix) => resolveRoute?.(suffix) || destination(projectUuid, suffix, location.search)
 
   const cancelProjectEdit = () => {
     setName(project.name || '')

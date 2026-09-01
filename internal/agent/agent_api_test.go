@@ -160,8 +160,15 @@ func TestRequestAPIRejectsUnregisteredCrossProjectAndNonCanonicalPaths(t *testin
 	if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "get", "url": validPath, "response_filter": filter}); err == nil {
 		t.Fatal("lowercase method was accepted")
 	}
-	if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": validPath, "request_body": map[string]any{}, "response_filter": filter}); err == nil {
-		t.Fatal("GET request body was accepted")
+	normalized, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": validPath, "query": map[string]any{}, "request_body": map[string]any{}, "response_filter": filter})
+	if err != nil {
+		t.Fatalf("empty request body was not normalized for a bodyless reviewed route: %v", err)
+	}
+	if normalized.HasBody || normalized.Body != nil || len(normalized.ArgumentRepairs) != 1 || normalized.ArgumentRepairs[0] != requestAPIEmptyBodyArgumentRepair {
+		t.Fatalf("normalized request=%+v", normalized)
+	}
+	if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": validPath, "request_body": map[string]any{"unexpected": true}, "response_filter": filter}); err == nil || errorCode(err) != CodeToolValidation {
+		t.Fatalf("non-empty GET request body was accepted: %v", err)
 	}
 	if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "PUT", "url": validPath, "request_body": map[string]any{"story_md": "# Story", "expected_revision": float64(0), "project_uuid": otherProjectUUID}, "response_filter": filter}); err == nil {
 		t.Fatal("project_uuid in request body was accepted")
@@ -175,6 +182,63 @@ func TestRequestAPIRejectsUnregisteredCrossProjectAndNonCanonicalPaths(t *testin
 	}
 	if err := validateAgentAPIResponse(map[string]any{"uuid": projectUUID, "internal_id": int64(9)}); err == nil || errorCode(err) != CodeToolValidation {
 		t.Fatalf("internal response id was accepted: %v", err)
+	}
+}
+
+func TestRequestAPIKeepsExplicitEmptyBodyForReviewedBodyRoute(t *testing.T) {
+	projectUUID, settingImageUUID := mustAgentUUID(t), mustAgentUUID(t)
+	tc := toolContext{ProjectUUID: projectUUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
+	request, err := parseAgentAPIRequest(tc, map[string]any{
+		"method":          "POST",
+		"url":             "/api/v1/projects/" + projectUUID + "/premise-setting-images/" + settingImageUUID + "/selections",
+		"request_body":    map[string]any{},
+		"response_filter": ".data | {uuid,revision}",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !request.HasBody || request.Body == nil || len(request.Body) != 0 || len(request.ArgumentRepairs) != 0 {
+		t.Fatalf("explicit empty body was not preserved: %+v", request)
+	}
+}
+
+func TestRequestAPIEmptyBodyNormalizationCompletesRunWithoutValidationRetry(t *testing.T) {
+	harness := newAgentHarness(t)
+	harness.model.responses = []llm.ChatResponse{
+		requestAPICallResponse(t, "read-project-with-empty-body", map[string]any{
+			"method":          "GET",
+			"url":             "/api/v1/projects/" + harness.project.UUID,
+			"query":           map[string]any{},
+			"request_body":    map[string]any{},
+			"response_filter": ".data | {uuid,name,generation_language,revision,chapter_count,updated_at}",
+		}),
+		finalResponse("已读取项目。"),
+	}
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "读取项目信息"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); err != nil {
+		t.Fatal(err)
+	}
+
+	turns, err := harness.service.ListTurns(context.Background(), harness.project.UUID, thread.UUID)
+	if err != nil || len(turns) != 1 || turns[0].Status != TurnCompleted {
+		t.Fatalf("turns=%+v err=%v", turns, err)
+	}
+	var executions, validationRetries, normalizedCalls int64
+	if err := harness.store.DB().Table("agent_tool_executions").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND tool_name='request_api' AND state='completed'", turn.UUID).Count(&executions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_items").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND item_type='tool_result' AND json_extract(metadata_json,'$.validation_repair')=1", turn.UUID).Count(&validationRetries).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_items").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND item_type='tool_call' AND json_extract(metadata_json,'$.argument_repaired')=?", turn.UUID, requestAPIEmptyBodyArgumentRepair).Count(&normalizedCalls).Error; err != nil {
+		t.Fatal(err)
+	}
+	if executions != 1 || validationRetries != 0 || normalizedCalls != 1 {
+		t.Fatalf("executions=%d validation_retries=%d normalized_calls=%d", executions, validationRetries, normalizedCalls)
 	}
 }
 

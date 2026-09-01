@@ -62,7 +62,7 @@ URL、请求 JSON、响应 JSON、Agent 工具参数及实时 payload 只允许�
 | --- | --- | --- |
 | `agent_tool_validation_failed` / `validation_failed` | method、path、字段、类型、枚举、范围或跨字段约束无效。 | 按当前 Contract 修正请求；不要猜测缺失值。 |
 | `agent_tool_not_allowed` | 路由未纳入 reviewed Contract、文档不可读或当前工具模式不允许。 | 停止调用该路由，改读索引选择已审查接口。 |
-| `agent_tool_confirmation_required` | 危险请求已冻结，等待绑定确认。 | 严格按下节确认协议提交一次 `request_user_input`。 |
+| `agent_tool_confirmation_required` | 危险请求已冻结，运行时正在等待用户确认。 | 不要再调用 `request_user_input` 或重放请求；运行时会展示并恢复确认。 |
 | `agent_state_conflict` / `*_revision_conflict` / `production_conflict` | revision、资源状态或幂等配对与当前事实冲突。 | 通过 REST 重新读取事实状态，再决定是否构造新请求。 |
 | `agent_not_found` / `*_not_found` | 公开 UUID 不存在、不属于当前项目或当前状态不可见。 | 核对项目和资源 UUID；不要改用内部 ID。 |
 | `agent_tool_result_too_large` | 工具结果超过安全上限。 | 使用领域文档推荐的窄 `response_filter`。 |
@@ -77,7 +77,7 @@ Guide 按前端创作功能组织，简要说明 API 调用顺序和用途；API
 
 ## 危险操作确认协议
 
-危险写操作必须先按 API Contract 组装最终的 `request_api`。如果返回 `agent_tool_confirmation_required`，只把错误中给出的 `route`、`project_uuid`、`target_uuid`、`expected_revision` 和 `request_fingerprint` 原样放入下一次独立的 `request_user_input.confirmation`，并绑定唯一确认问题。`confirmation` 绝不能放入 `request_api`、`query` 或 `request_body`。用户选择被绑定的确认项后，运行时会从持久化记录中自动执行原始请求；不要自行重放 `request_api`。安全选项、Other、取消、错目标、错 revision 或错 fingerprint 都不会执行操作。
+危险写操作必须先按 API Contract 组装最终参数，并只调用一次 `request_api`。如果返回 `agent_tool_confirmation_required`，运行时会在持久化该 Tool Result 的同一事务中，从原请求重新计算 `route`、`project_uuid`、`target_uuid`、`expected_revision` 和 `request_fingerprint`，生成一个固定的双选项确认卡片并立即暂停 Run；第一项始终是安全推荐项，第二项才授权执行。不要为该错误再次调用 `request_user_input`，不要自行构造 `confirmation`，也不要重放 `request_api`。用户选择确认项后，运行时只会从持久化记录自动重放一次原请求；安全项、Other 或取消只恢复对话，不会执行操作。
 
 ## API Contract 索引
 

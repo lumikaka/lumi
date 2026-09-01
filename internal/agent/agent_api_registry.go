@@ -57,15 +57,16 @@ type agentAPIRoute struct {
 }
 
 type agentAPIRequest struct {
-	Route          agentAPIRoute
-	Method, Path   string
-	Query          map[string]any
-	Body           map[string]any
-	HasBody        bool
-	UseDispatcher  bool
-	ResponseFilter string
-	Params         map[string]string
-	TargetUUID     string
+	Route           agentAPIRoute
+	Method, Path    string
+	Query           map[string]any
+	Body            map[string]any
+	HasBody         bool
+	UseDispatcher   bool
+	ResponseFilter  string
+	Params          map[string]string
+	TargetUUID      string
+	ArgumentRepairs []string
 }
 
 // agentAPIResponseField defines the allowlisted compact response surface used
@@ -398,6 +399,15 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	if params["project_uuid"] != tc.ProjectUUID {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路径越界", "url 只能包含当前 project_uuid。", nil)
 	}
+	argumentRepairs := []string(nil)
+	// Some providers materialize every optional object in the shared tool
+	// schema as {}. For a reviewed route whose contract explicitly has no body,
+	// that empty object is unambiguously equivalent to omission. Keep non-empty
+	// bodies, passthrough routes, and reviewed routes with a body schema strict.
+	if !matched.Passthrough && matched.BodySchema == nil && hasBody && len(body) == 0 {
+		body, hasBody = nil, false
+		argumentRepairs = append(argumentRepairs, requestAPIEmptyBodyArgumentRepair)
+	}
 	useDispatcher := matched.Passthrough
 	if !matched.Passthrough {
 		if shapeErr := validateReviewedAgentAPIRequestShape(*matched, query, hasQuery, body, hasBody); shapeErr != nil {
@@ -410,7 +420,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 			return agentAPIRequest{}, err
 		}
 	}
-	request := agentAPIRequest{Route: *matched, Method: method, Path: path, Query: query, Body: body, HasBody: hasBody, UseDispatcher: useDispatcher, ResponseFilter: filter, Params: params}
+	request := agentAPIRequest{Route: *matched, Method: method, Path: path, Query: query, Body: body, HasBody: hasBody, UseDispatcher: useDispatcher, ResponseFilter: filter, Params: params, ArgumentRepairs: argumentRepairs}
 	request.TargetUUID = routeTargetUUID(request, tc.Thread)
 	return request, nil
 }

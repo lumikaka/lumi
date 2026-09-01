@@ -179,33 +179,20 @@
     font-size: $font-size-small
 
 .chat-thread-row
-  position: relative
   min-width: 0
   min-height: 32px
   display: grid
-  grid-template-columns: minmax(0, 1fr) auto auto
+  grid-template-columns: minmax(0, 1fr)
   align-items: center
   border-radius: $radius-md
-
-  &:hover,
-  &:focus-within,
-  &.is-menu-open
-    background: $color-surface-muted
-
-  &:hover .chat-thread__menu-button,
-  &:focus-within .chat-thread__menu-button,
-  &.is-menu-open .chat-thread__menu-button,
-  &:hover .chat-thread__trajectory-link,
-  &:focus-within .chat-thread__trajectory-link,
-  &.is-menu-open .chat-thread__trajectory-link
-    opacity: 1
-
-.chat-thread-row--new
-  margin: 2px 0 6px
+  transition: background-color .14s ease
 
   &:hover,
   &:focus-within
-    background: $color-surface-muted
+    background: $color-surface
+
+.chat-thread-row--new
+  margin: 2px 0 6px
 
 .chat-thread
   width: 100%
@@ -269,74 +256,6 @@
     height: 6px
     border-radius: 999px
     background: $color-accent
-
-.chat-thread__menu-button,
-.chat-thread__trajectory-link
-  width: 24px
-  height: 24px
-  margin-right: 4px
-  padding: 0
-  display: inline-flex
-  align-items: center
-  justify-content: center
-  border: 1px solid transparent
-  border-radius: $radius-sm
-  color: $color-muted
-  background: transparent
-  opacity: 0
-  text-decoration: none
-
-  &:hover,
-  &:focus-visible,
-  &[aria-expanded="true"]
-    border-color: $color-border
-    color: $color-text
-    background: $color-surface
-    opacity: 1
-
-  &[aria-expanded="true"]:hover
-    border-color: rgba($color-accent, .34)
-    color: $color-accent
-    background: $color-accent-muted
-
-.chat-thread__trajectory-link
-  margin-right: 0
-
-  &:hover,
-  &:focus-visible
-    border-color: rgba($color-accent, .34)
-    color: $color-accent
-    background: $color-accent-muted
-
-.chat-thread__menu
-  position: absolute
-  top: calc(100% + 4px)
-  right: 4px
-  z-index: 20
-  width: 154px
-  padding: 4px
-  border: 1px solid $color-border
-  border-radius: $radius-md
-  background: $color-surface
-  box-shadow: 0 12px 28px rgba($color-text, .12)
-
-  button
-    width: 100%
-    min-height: 32px
-    padding: 0 9px
-    display: flex
-    align-items: center
-    border: 0
-    border-radius: $radius-sm
-    color: $color-text
-    background: transparent
-    font-size: 12px
-    font-weight: $font-weight-semibold
-    text-align: left
-
-    &:hover,
-    &:focus-visible
-      background: $color-surface-muted
 
 .chat-empty,
 .chat-muted,
@@ -419,10 +338,6 @@
     font-size: $font-size-small
     line-height: 1.4
 
-.project-setup-card--finalized
-  border-color: rgba($color-success, .28)
-  background: $color-success-muted
-
 .project-setup-card__title
   min-width: 0
   display: flex
@@ -444,9 +359,6 @@
     font-weight: $font-weight-semibold
     text-transform: uppercase
 
-.project-setup-card--finalized .project-setup-card__title > span
-  color: $color-success
-
 .project-setup-card__status
   flex: 0 0 auto
   padding: 3px 7px
@@ -455,9 +367,6 @@
   background: $color-surface
   font-size: $font-size-small
   font-weight: $font-weight-semibold
-
-.project-setup-card--finalized .project-setup-card__status
-  color: $color-success
 
 .project-setup-card__hint
   color: $color-muted
@@ -1222,100 +1131,126 @@
     white-space: pre-wrap
 
 .chat-input-request
-  margin: 0
-  width: min(100%, 600px)
-  padding: 11px
+  min-width: 0
+  width: calc(100% - 16px)
+  margin: 8px
+  padding: 10px 8px 8px
   display: grid
-  gap: 10px
-  border: 1px solid $color-border-subtle
-  border-radius: $radius-sm
-  background: $color-surface-subtle
+  gap: 5px
+  border: 1px solid $color-border
+  border-radius: $radius-lg
+  background: $color-surface
+  box-shadow: 0 3px 14px rgba($color-text, .08)
 
-  footer
-    display: flex
-    justify-content: flex-end
-    gap: 6px
+  &[aria-busy="true"]
+    opacity: .72
 
-.chat-input-request__questions
+.chat-input-request__header
+  min-width: 0
+  padding: 0 2px 3px
   display: grid
-  gap: 14px
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: start
+  gap: 8px
+
+  > strong
+    min-width: 0
+    color: $color-text
+    font-size: 13px
+    font-weight: $font-weight-semibold
+    line-height: 1.45
+    overflow-wrap: anywhere
+
+.chat-input-request__navigation
+  display: flex
+  align-items: center
+  gap: 2px
+
+  > span
+    min-width: 42px
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 28px
+    text-align: center
+    white-space: nowrap
+
+  > button
+    width: 28px
+    height: 28px
+    padding: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 0
+    border-radius: 999px
+    color: $color-muted
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+    &:focus-visible
+      outline: 2px solid rgba($color-accent, .2)
+      outline-offset: -2px
+
+    &:disabled
+      color: $color-border-strong
+      background: transparent
 
 .chat-input-request__question
   min-width: 0
-  margin: 0
-  padding: 0
-  display: grid
-  gap: 8px
-  border: 0
-
-  & + &
-    padding-top: 13px
-    border-top: 1px solid $color-border-subtle
-
-  legend
-    width: 100%
-    padding: 0
-    display: grid
-    gap: 3px
-
-    > span
-      width: fit-content
-      padding: 2px 6px
-      border-radius: 999px
-      color: $color-accent
-      background: $color-accent-muted
-      font-size: $font-size-small
-      font-weight: $font-weight-semibold
-
-    > strong
-      color: $color-text
-      font-size: 14px
-      line-height: 1.5
-
-.chat-input-request__position
-  justify-self: end
-  color: $color-muted
-  font-size: $font-size-small
 
 .chat-input-request__options
   display: grid
-  gap: 7px
+  gap: 2px
 
 .chat-input-request__option
-  padding: 8px
+  width: 100%
+  min-width: 0
+  min-height: 48px
+  padding: 6px 8px
   display: grid
-  grid-template-columns: 18px minmax(0, 1fr)
-  align-items: start
+  grid-template-columns: 28px minmax(0, 1fr) 16px
+  align-items: center
   gap: 8px
-  border: 1px solid $color-border-subtle
-  border-radius: $radius-sm
+  border: 1px solid transparent
+  border-radius: $radius-lg
   color: $color-text
-  background: $color-surface
+  background: transparent
   cursor: pointer
+  text-align: left
 
-  &:hover
-    border-color: rgba($color-accent, .34)
-    background: $color-accent-muted
+  &:hover,
+  &:focus-visible
+    border-color: $color-border-subtle
+    background: $color-surface-muted
 
-  &:has(input:checked)
+  &:focus-visible
+    outline: 2px solid rgba($color-accent, .18)
+    outline-offset: -2px
+
+  &[aria-pressed="true"]
     border-color: $color-accent
     background: $color-accent-muted
 
-  &:has(input:checked):hover
+  &[aria-pressed="true"]:hover,
+  &[aria-pressed="true"]:focus-visible
     border-color: $color-accent-strong
     background: $color-accent-muted
 
-  input
-    width: auto
-    margin-top: 2px
-    accent-color: $color-accent
-
-  > span
+  > span:nth-child(2)
     min-width: 0
     display: grid
     gap: 2px
 
   b
+    min-width: 0
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 0
     font-size: 13px
     line-height: 1.35
 
@@ -1324,20 +1259,132 @@
     font-size: 12px
     line-height: 1.35
 
-.chat-input-request__other
-  display: grid
-  gap: 5px
+  &:hover .chat-input-request__option-arrow,
+  &:focus-visible .chat-input-request__option-arrow,
+  &[aria-pressed="true"] .chat-input-request__option-arrow
+    opacity: 1
+
+.chat-input-request__option-number
+  width: 28px
+  height: 28px
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  border: 1px solid $color-border
+  border-radius: 999px
   color: $color-muted
+  background: $color-surface-muted
   font-size: 12px
-  font-weight: $font-weight-semibold
+  font-weight: $font-weight-medium
+
+.chat-input-request__option-arrow
+  color: $color-muted
+  opacity: 0
+  transition: opacity 120ms ease
+
+.chat-input-request__footer
+  min-width: 0
+  padding-top: 3px
+  display: grid
+  grid-template-columns: minmax(0, 1fr) auto
+  align-items: center
+  gap: 7px
+
+.chat-input-request__other
+  min-width: 0
+  min-height: 36px
+  display: grid
+  grid-template-columns: 28px minmax(0, 1fr) auto
+  align-items: center
+  gap: 4px
+  border-radius: $radius-lg
+
+  &:hover,
+  &:focus-within
+    background: $color-surface-muted
+
+  &:focus-within
+    box-shadow: inset 0 0 0 1px rgba($color-accent, .24)
+
+  > span
+    width: 28px
+    height: 28px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid $color-border
+    border-radius: 999px
+    color: $color-muted
+    background: $color-surface-muted
+
+  > input
+    min-width: 0
+    height: 34px
+    padding: 0 4px
+    border: 0
+    color: $color-text
+    background: transparent
+    box-shadow: none
+    font-size: 12px
+
+    &:focus
+      border: 0
+      outline: 0
+      box-shadow: none
+
+  > button
+    width: 28px
+    height: 28px
+    margin-right: 3px
+    padding: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 0
+    border-radius: 999px
+    color: $color-muted
+    background: transparent
+
+    &:hover,
+    &:focus-visible
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+.chat-input-request__actions
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 5px
+
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+    white-space: nowrap
+
+  > button
+    min-height: 30px
+    padding: 4px 8px
+    border-radius: 999px
+    font-size: 12px
+    white-space: nowrap
+
+  > .button-quiet
+    border-color: $color-border-subtle
+    color: $color-text
+    background: $color-surface
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-border
+      background: $color-surface-muted
 
 .chat-input-request__recommended
   margin-left: 6px
   padding: 1px 5px
   display: inline-block
   border-radius: 999px
-  color: $color-accent
-  background: $color-accent-muted
+  color: $color-muted
+  background: $color-surface-muted
   font-size: $font-size-small
   font-style: normal
   font-weight: $font-weight-semibold
@@ -2021,6 +2068,9 @@
 .chat-composer-shell
   min-width: 0
   border-top: 1px solid $color-border
+  background: $color-surface-muted
+
+.chat-composer-shell--request
   background: $color-surface-muted
 
 .chat-queue

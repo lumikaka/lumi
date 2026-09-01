@@ -22,11 +22,65 @@ type dangerousConfirmationBinding struct {
 	ConfirmOption      int    `json:"confirm_option"`
 }
 
-const confirmationReplayProviderCallDomain = "lumi/provider-call/v1\x00confirmation-replay\x00"
+const (
+	confirmationReplayProviderCallDomain   = "lumi/provider-call/v1\x00confirmation-replay\x00"
+	confirmationRequestProviderCallDomain  = "lumi/provider-call/v1\x00confirmation-request\x00"
+	runtimeDangerousConfirmationQuestionID = "confirm_dangerous_action"
+)
 
 func confirmationReplayProviderCallID(confirmationRequestUUID string) string {
 	digest := sha256.Sum256([]byte(confirmationReplayProviderCallDomain + confirmationRequestUUID))
 	return "call_" + hex.EncodeToString(digest[:12])
+}
+
+func confirmationRequestProviderCallID(sourceExecutionUUID string) string {
+	digest := sha256.Sum256([]byte(confirmationRequestProviderCallDomain + sourceExecutionUUID))
+	return "call_" + hex.EncodeToString(digest[:12])
+}
+
+type runtimeDangerousConfirmationCopy struct {
+	Header, Question, SafeLabel, SafeDescription, ConfirmLabel, ConfirmDescription string
+}
+
+func runtimeDangerousConfirmationPresentation(route agentAPIRoute, language string) (string, runtimeDangerousConfirmationCopy) {
+	if language == project.GenerationLanguageEnglish {
+		if route.ID == RouteProjectSetupFinalize {
+			return bootstrapYoloConfirmationQuestionID, runtimeDangerousConfirmationCopy{
+				Header:             "Setup",
+				Question:           "Finalize these project settings and authorize YOLO to start?",
+				SafeLabel:          "Keep editing (Recommended)",
+				SafeDescription:    "Keep the setup as a draft so it can still be changed.",
+				ConfirmLabel:       "Finalize and start YOLO",
+				ConfirmDescription: "Finalize the setup and authorize this turn to start the controlled YOLO workflow.",
+			}
+		}
+		return runtimeDangerousConfirmationQuestionID, runtimeDangerousConfirmationCopy{
+			Header:             "Confirm",
+			Question:           "This action may overwrite, delete, or change existing content. Continue?",
+			SafeLabel:          "Do not proceed (Recommended)",
+			SafeDescription:    "Keep the current state and do not perform this action.",
+			ConfirmLabel:       "Proceed",
+			ConfirmDescription: "Perform the action bound to the current resource version.",
+		}
+	}
+	if route.ID == RouteProjectSetupFinalize {
+		return bootstrapYoloConfirmationQuestionID, runtimeDangerousConfirmationCopy{
+			Header:             "创建确认",
+			Question:           "是否定稿当前项目设置并授权启动 YOLO？",
+			SafeLabel:          "继续修改 (Recommended)",
+			SafeDescription:    "保留草稿状态，可以继续调整项目设置。",
+			ConfirmLabel:       "定稿并启动 YOLO",
+			ConfirmDescription: "定稿当前设置，并授权本轮继续启动受控 YOLO。",
+		}
+	}
+	return runtimeDangerousConfirmationQuestionID, runtimeDangerousConfirmationCopy{
+		Header:             "操作确认",
+		Question:           "是否确认" + route.Action + "？",
+		SafeLabel:          "暂不执行 (Recommended)",
+		SafeDescription:    "保持当前状态，不执行该操作。",
+		ConfirmLabel:       "确认执行",
+		ConfirmDescription: "执行“" + route.Action + "”，并绑定当前资源版本。",
+	}
 }
 
 func validateDangerousConfirmationBinding(tc toolContext, binding dangerousConfirmationBinding, inputType string, optionCount int) (agentAPIRoute, error) {
@@ -211,6 +265,142 @@ func publicStoredToolArguments(arguments map[string]any) map[string]any {
 		}
 	}
 	return result
+}
+
+// enqueueRuntimeDangerousConfirmationTx turns a confirmation-required
+// request_api result into a canonical request_user_input intent in the same
+// transaction as that Tool Result. The model never authors the security
+// binding or option ordering for active v4 runs.
+func (service *Service) enqueueRuntimeDangerousConfirmationTx(ctx context.Context, tx *sql.Tx, thread *threadRecord, tc toolContext, source toolExecutionRecord, result json.RawMessage, now time.Time) (toolExecutionRecord, bool, error) {
+	if !usesCodexUserInputProtocol(tc) || source.ToolName != "request_api" || !confirmationRequiredToolResult(string(result)) {
+		return toolExecutionRecord{}, false, nil
+	}
+	if !isUUIDv7(source.UUID) || !isUUIDv7(source.TargetUUID) {
+		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "危险操作确认来源损坏", "request_api confirmation source 缺少公开 execution 或 target UUID。", nil)
+	}
+
+	var sourceArguments map[string]any
+	if err := json.Unmarshal([]byte(source.ArgumentsJSON), &sourceArguments); err != nil {
+		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "危险操作确认来源损坏", "无法读取 request_api confirmation source 参数。", err)
+	}
+	routeID := stringArg(sourceArguments, "__route_id")
+	route, ok := agentAPIRouteByIDFromRoutes(routeID, service.requestAPIRoutes())
+	if !ok || route.Risk != RiskDangerous || !route.RequiresConfirmation || stringArg(sourceArguments, "__target_uuid") != source.TargetUUID {
+		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "危险操作确认来源不匹配", "confirmation-required 结果必须来自已注册危险 Route 的持久化原请求。", nil)
+	}
+
+	var generationLanguage string
+	if err := tx.QueryRowContext(ctx, `SELECT generation_language FROM projects WHERE uuid=?`, tc.ProjectUUID).Scan(&generationLanguage); err != nil {
+		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "危险操作确认语言不可用", "无法读取当前项目的生成语言。", err)
+	}
+	questionID, copy := runtimeDangerousConfirmationPresentation(route, generationLanguage)
+	binding := dangerousConfirmationBinding{
+		Route:              route.ID,
+		ProjectUUID:        tc.ProjectUUID,
+		TargetUUID:         source.TargetUUID,
+		ExpectedRevision:   storedAgentAPIExpectedRevision(route, sourceArguments),
+		RequestFingerprint: storedAgentRequestFingerprint(sourceArguments),
+		QuestionID:         questionID,
+		ConfirmOption:      1,
+	}
+	questions := []UserInputQuestion{{
+		Header: copy.Header, ID: questionID, Question: copy.Question,
+		Options: []UserInputOption{
+			{Label: copy.SafeLabel, Description: copy.SafeDescription},
+			{Label: copy.ConfirmLabel, Description: copy.ConfirmDescription},
+		},
+	}}
+	if _, err := service.validateCodexDangerousConfirmationBinding(tc, binding, questions); err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+
+	publicArguments := map[string]any{
+		"questions": []map[string]any{{
+			"header": copy.Header, "id": questionID, "question": copy.Question,
+			"options": []map[string]any{
+				{"label": copy.SafeLabel, "description": copy.SafeDescription},
+				{"label": copy.ConfirmLabel, "description": copy.ConfirmDescription},
+			},
+		}},
+		"confirmation": binding,
+	}
+	publicArgumentsJSON, err := json.Marshal(publicArguments)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	normalizedArguments, err := validateToolArgumentsForProtocol("request_user_input", string(publicArgumentsJSON), tc.ToolMode, tc.ToolProtocol)
+	if err != nil {
+		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "运行时危险确认参数无效", "服务端生成的 request_user_input 未通过活动协议校验。", err)
+	}
+	publicArgumentsJSON, err = json.Marshal(normalizedArguments)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+
+	providerCallID := confirmationRequestProviderCallID(source.UUID)
+	idempotencyKey := toolCallKey(tc.Run.UUID, providerCallID, "request_user_input")
+	var existingID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM agent_tool_executions WHERE idempotency_key=?`, idempotencyKey).Scan(&existingID); err == nil {
+		return toolExecutionRecord{}, false, nil
+	} else if err != sql.ErrNoRows {
+		return toolExecutionRecord{}, false, err
+	}
+
+	publicCallUUID, err := newUUIDv7()
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	executionUUID, err := newUUIDv7()
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	storedArguments := make(map[string]any, len(normalizedArguments)+3)
+	for key, value := range normalizedArguments {
+		storedArguments[key] = value
+	}
+	storedArguments["__provider_call_id"] = providerCallID
+	storedArguments["__runtime_generated_confirmation"] = true
+	storedArguments["__confirmation_source_execution_uuid"] = source.UUID
+	storedArgumentsJSON, err := json.Marshal(storedArguments)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+
+	action := "请求危险操作确认"
+	metadata := map[string]any{
+		"purpose": "request_user_input", "action": action, "target_uuid": source.TargetUUID,
+		"provider_call_id": providerCallID, "runtime_generated": true,
+		"confirmation_route_id": route.ID, "confirmation_source_execution_uuid": source.UUID,
+	}
+	item, err := appendItemTx(ctx, tx, thread, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", string(publicArgumentsJSON), "json", "in_progress", publicCallUUID, "request_user_input", source.TargetUUID, metadata, now)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	insert, err := tx.ExecContext(ctx, `INSERT INTO agent_tool_executions(uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,tool_name,target_uuid,arguments_json,idempotency_key,state,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,'intent',?,?)`, executionUUID, tc.Thread.ID, tc.Run.ID, tc.Turn.ID, item.ID, publicCallUUID, "request_user_input", source.TargetUUID, string(storedArgumentsJSON), idempotencyKey, now, now)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	executionID, err := insert.LastInsertId()
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	event := map[string]any{
+		"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID,
+		"run_uuid": tc.Run.UUID, "tool_call_uuid": publicCallUUID, "tool_name": "request_user_input",
+		"route_id": "", "action": action, "method": "", "path": "", "target_uuid": source.TargetUUID,
+		"runtime_generated": true, "confirmation_route_id": route.ID,
+		"confirmation_source_execution_uuid": source.UUID,
+	}
+	if _, err := appendEventTx(ctx, tx, thread, &tc.Run.ID, "tool_intent", event, now); err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	return toolExecutionRecord{
+		ID: executionID, ThreadID: tc.Thread.ID, RunID: tc.Run.ID, TurnID: tc.Turn.ID, ItemID: item.ID,
+		UUID: executionUUID, ToolCallUUID: publicCallUUID, ToolName: "request_user_input", TargetUUID: source.TargetUUID,
+		ArgumentsJSON: string(storedArgumentsJSON), IdempotencyKey: idempotencyKey, State: "intent",
+		Action: action, CreatedAt: now, UpdatedAt: now,
+	}, true, nil
 }
 
 // enqueueConfirmedRequestReplayTx persists a new request_api intent instead of
