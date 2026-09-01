@@ -213,6 +213,10 @@ func (manager *Manager) CreatePremiseBreakdown(ctx context.Context, projectUUID,
 }
 
 func (manager *Manager) CreatePremiseAssetGeneration(ctx context.Context, projectUUID, resourceUUID string, input CreateProductionGenerationInput) (ProductionTask, error) {
+	return manager.createPremiseAssetGeneration(ctx, projectUUID, resourceUUID, input, true)
+}
+
+func (manager *Manager) createPremiseAssetGeneration(ctx context.Context, projectUUID, resourceUUID string, input CreateProductionGenerationInput, createVisibleWorkflow bool) (ProductionTask, error) {
 	if err := validateProductionParameters(input.Parameters); err != nil {
 		return ProductionTask{}, err
 	}
@@ -299,7 +303,16 @@ func (manager *Manager) CreatePremiseAssetGeneration(ctx context.Context, projec
 		ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType,
 		ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, Parameters: parameters,
 	}
-	return manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, nil)
+	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, _ int64, taskUUID string, _ []byte, now time.Time) error {
+		if !createVisibleWorkflow {
+			return nil
+		}
+		return createPremiseAssetWorkflowTx(ctx, tx, runtime.projectID, projectUUID, resourceUUID, taskUUID, operation, assetType, assetTitle, resolved.UUID, model, modelSource, now)
+	})
+	if err == nil && createVisibleWorkflow {
+		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
+	}
+	return task, err
 }
 
 func validPremiseAssetType(value string) bool {
@@ -640,7 +653,7 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		return createComicImageWorkflowTx(ctx, tx, runtime.projectID, projectUUID, chapterUUID, generationUUID, taskUUID, section, resolved.UUID, model, modelSource, now)
 	})
 	if err == nil && createVisibleWorkflow {
-		runtime.broadcastComicWorkflow("workflow:queued", task.UUID)
+		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
 	}
 	return task, err
 }
@@ -981,13 +994,16 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if err := cancelComicWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
+	if err := cancelPremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
+		return ProductionTask{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
 	task, err := manager.GetProductionTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcastProduction("production_task:cancelled", task)
-		runtime.broadcastComicWorkflow("workflow:cancelled", taskUUID)
+		runtime.broadcastProductionWorkflow("workflow:cancelled", taskUUID)
 	}
 	return task, err
 }
@@ -1058,13 +1074,16 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if err := queueComicWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
+	if err := queuePremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
+		return ProductionTask{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
 	task, err := manager.GetProductionTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcastProduction("production_task:queued", task)
-		runtime.broadcastComicWorkflow("workflow:queued", taskUUID)
+		runtime.broadcastProductionWorkflow("workflow:queued", taskUUID)
 	}
 	return task, err
 }

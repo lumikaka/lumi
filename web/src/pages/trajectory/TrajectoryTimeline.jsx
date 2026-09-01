@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Clock3, SquareMinus, SquarePlus } from 'lucide-react'
+import { SquareMinus, SquarePlus } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n.js'
+import { formatTrajectoryDuration } from './trajectoryStats.js'
 import {
   buildTrajectoryTimeline,
   normalizeTrajectoryRange,
   panTrajectoryView,
   trajectoryRangeSourceUuids,
+  trajectoryTimelineTicks,
   zoomTrajectoryView,
 } from './trajectoryTimeline.js'
 
 const laneMessageKeys = ['trajectory.timeline.lane.input', 'trajectory.timeline.lane.model', 'trajectory.timeline.lane.tools']
+const timelineModes = ['duration', 'time', 'actual', 'sequence']
 const kindMessageKeys = {
   model_request: 'trajectory.filter.request',
   system: 'trajectory.kind.system',
@@ -38,7 +41,25 @@ function fullView(domain) {
 }
 
 function itemTitle(item, t) {
-  return `${t(kindMessageKeys[item.kind] || 'trajectory.kind.system')} · ${item.preview || t(statusMessageKeys[item.status] || 'trajectory.status.completed')}`
+  const kind = item.activity === 'user_wait'
+    ? t('trajectory.timeline.user_wait')
+    : t(kindMessageKeys[item.kind] || 'trajectory.kind.system')
+  const duration = item.durationMs == null
+    ? ''
+    : t('trajectory.timeline.item_duration', { duration: formatTrajectoryDuration(item.durationMs) })
+  return [kind, item.preview || t(statusMessageKeys[item.status] || 'trajectory.status.completed'), duration].filter(Boolean).join(' · ')
+}
+
+function tickLabel(value, mode) {
+  if (mode === 'sequence') return `#${Math.max(1, Math.floor(value) + 1)}`
+  return formatTrajectoryDuration(Math.max(0, value), '0s')
+}
+
+function timelineSummary(model, view, mode, t) {
+  if (mode === 'sequence') return t('trajectory.timeline.summary.events', { count: model.items.length })
+  if (mode === 'duration') return t('trajectory.timeline.summary.recorded', { duration: formatTrajectoryDuration(model.recordedDurationMs, '0s') })
+  const duration = formatTrajectoryDuration(Math.max(0, view.end - view.start), '0s')
+  return t(mode === 'actual' ? 'trajectory.timeline.summary.actual' : 'trajectory.timeline.summary.compressed', { duration })
 }
 
 function clamp(value, min = 0, max = 1) {
@@ -64,10 +85,11 @@ export default function TrajectoryTimeline({
   onSelect,
 }) {
   const { t } = useI18n()
-  const [mode, setMode] = useState('sequence')
+  const [mode, setMode] = useState('duration')
   const model = useMemo(() => buildTrajectoryTimeline(entries, mode), [entries, mode])
   const [view, setView] = useState(() => fullView(model.domain))
   const [hoverFraction, setHoverFraction] = useState(null)
+  const [hoveredKey, setHoveredKey] = useState('')
   const dragRef = useRef(null)
   const trackRef = useRef(null)
   const signature = viewSignature(model.domain, mode)
@@ -138,36 +160,48 @@ export default function TrajectoryTimeline({
     } else publishRange({ start: drag.start, end })
   }
 
-  const durationActive = mode === 'duration'
   const TurnIcon = allTurnsCollapsed ? SquarePlus : SquareMinus
   const CallsIcon = allToolGroupsCollapsed ? SquarePlus : SquareMinus
   const visibleItems = model.items.filter((item) => item.start <= activeView.end && Math.max(item.start, item.end) >= activeView.start)
   const leftPercent = (value) => (value - activeView.start) / domainSize * 100
+  const ticks = trajectoryTimelineTicks(activeView, mode)
+  const hoveredItem = hoveredKey ? model.items.find((item) => item.key === hoveredKey) : null
+  const hasUserWait = model.items.some((item) => item.activity === 'user_wait')
 
   return (
     <section className="trajectory-timeline" aria-label={t('trajectory.timeline.title')}>
       <header className="trajectory-timeline__header" role="toolbar" aria-label={t('trajectory.timeline.mode')}>
-        <button
-          type="button"
-          className="trajectory-timeline__toolbar-button"
-          aria-pressed={durationActive}
-          title={t(durationActive ? 'trajectory.timeline.use_sequence' : 'trajectory.timeline.use_duration')}
-          onClick={() => selectMode(durationActive ? 'sequence' : 'duration')}
-        ><Clock3 size={12} aria-hidden="true" />{t('trajectory.timeline.duration')}</button>
-        <button
-          type="button"
-          className="trajectory-timeline__toolbar-button"
-          aria-pressed={allTurnsCollapsed}
-          title={t(allTurnsCollapsed ? 'trajectory.timeline.expand_turns' : 'trajectory.timeline.collapse_turns')}
-          onClick={onToggleAllTurns}
-        ><TurnIcon size={12} aria-hidden="true" />{t('trajectory.timeline.turns')}</button>
-        <button
-          type="button"
-          className="trajectory-timeline__toolbar-button"
-          aria-pressed={allToolGroupsCollapsed}
-          title={t(allToolGroupsCollapsed ? 'trajectory.timeline.expand_calls' : 'trajectory.timeline.collapse_calls')}
-          onClick={onToggleAllToolGroups}
-        ><CallsIcon size={12} aria-hidden="true" />{t('trajectory.timeline.calls')}</button>
+        <div className="trajectory-timeline__mode-switch" role="group" aria-label={t('trajectory.timeline.mode')}>
+          {timelineModes.map((name) => (
+            <button
+              type="button"
+              key={name}
+              aria-pressed={mode === name}
+              title={t(`trajectory.timeline.mode.${name}.description`)}
+              onClick={() => selectMode(name)}
+            >{t(`trajectory.timeline.mode.${name}`)}</button>
+          ))}
+        </div>
+        <div className="trajectory-timeline__header-actions">
+          <button
+            type="button"
+            className="trajectory-timeline__toolbar-button"
+            aria-pressed={allTurnsCollapsed}
+            title={t(allTurnsCollapsed ? 'trajectory.timeline.expand_turns' : 'trajectory.timeline.collapse_turns')}
+            onClick={onToggleAllTurns}
+          ><TurnIcon size={12} aria-hidden="true" />{t('trajectory.timeline.turns')}</button>
+          <button
+            type="button"
+            className="trajectory-timeline__toolbar-button"
+            aria-pressed={allToolGroupsCollapsed}
+            title={t(allToolGroupsCollapsed ? 'trajectory.timeline.expand_calls' : 'trajectory.timeline.collapse_calls')}
+            onClick={onToggleAllToolGroups}
+          ><CallsIcon size={12} aria-hidden="true" />{t('trajectory.timeline.calls')}</button>
+        </div>
+        {hasUserWait ? <span className="trajectory-timeline__wait-legend"><i aria-hidden="true" />{t('trajectory.timeline.user_wait')}</span> : null}
+        <output className="trajectory-timeline__readout" aria-live="polite">
+          {hoveredItem ? itemTitle(hoveredItem, t) : timelineSummary(model, activeView, mode, t)}
+        </output>
       </header>
       {model.items.length ? (
         <div className="trajectory-timeline__plot">
@@ -188,6 +222,14 @@ export default function TrajectoryTimeline({
             onKeyDown={(event) => { if (event.key === 'Escape') { setView(fullView(model.domain)); onRangeChange?.(null) } }}
           >
             {hoverFraction != null && !dragRef.current ? <span className="trajectory-timeline__hover-line" aria-hidden="true" style={{ '--trajectory-hover-left': `${hoverFraction * 100}%` }} /> : null}
+            <span className="trajectory-timeline__axis" aria-hidden="true">
+              {ticks.map((value, index) => {
+                const percent = leftPercent(value)
+                const atStartEdge = index === 0 && percent < 4
+                const atEndEdge = index === ticks.length - 1 && percent > 96
+                return <span className="trajectory-timeline__tick" data-edge-start={atStartEdge || undefined} data-edge-end={atEndEdge || undefined} key={`${mode}:${value}`} style={{ '--trajectory-tick-left': `${percent}%` }}><em>{tickLabel(value, mode)}</em></span>
+              })}
+            </span>
             {activeRange ? (
               <>
                 <span className="trajectory-timeline__selection" aria-hidden="true" style={{ '--trajectory-selection-left': `${leftPercent(activeRange.start)}%`, '--trajectory-selection-width': `${(activeRange.end - activeRange.start) / domainSize * 100}%` }} />
@@ -207,6 +249,7 @@ export default function TrajectoryTimeline({
                     type="button"
                     className={`trajectory-timeline__span trajectory-timeline__span--${item.kind}`}
                     data-status={item.status}
+                    data-activity={item.activity}
                     data-marker={!item.span || undefined}
                     data-current={current || undefined}
                     data-selected={activeRange ? itemSelected ? 'true' : 'false' : undefined}
@@ -215,6 +258,10 @@ export default function TrajectoryTimeline({
                     title={itemTitle(item, t)}
                     style={{ '--trajectory-span-left': `${leftPercent(item.start)}%`, '--trajectory-span-width': `${width}%`, '--trajectory-span-lane': item.lane }}
                     onPointerDown={(event) => event.stopPropagation()}
+                    onPointerEnter={() => setHoveredKey(item.key)}
+                    onPointerLeave={() => setHoveredKey('')}
+                    onFocus={() => setHoveredKey(item.key)}
+                    onBlur={() => setHoveredKey('')}
                     onClick={(event) => { event.stopPropagation(); onSelect?.(item) }}
                   />
                 )

@@ -18,6 +18,7 @@ import { formatTerminologyMessageKey, pictureBookProfileDetails, pictureBookRati
 
 const pendingExportStatuses = new Set(['queued', 'running'])
 const exportPageSize = 10
+const overviewSummarySections = new Set(['project', 'format', 'language', 'models', 'style'])
 
 function destination(projectUuid, route, search) {
   return workspaceRoute(projectUuid, route, search)
@@ -44,10 +45,22 @@ function generationLanguageLabel(t, value) {
   return t('common.status.unknown_with_code', { code: value || '—' })
 }
 
-export function OverviewSummaryPanel({ projectUuid, projectQuery, resolveRoute }) {
+export function OverviewSummaryPanel({
+  projectUuid,
+  projectQuery,
+  resolveRoute,
+  section = '',
+  showProgress = true,
+  panelId = 'overview-panel-summary',
+  labelledBy = 'overview-tab-summary',
+}) {
   const { formatDateTime, t } = useI18n()
   const location = useLocation()
   const queryClient = useQueryClient()
+  const focusedSection = overviewSummarySections.has(section) ? section : ''
+  const showSection = (key) => !focusedSection || focusedSection === key
+  const showProfilePreview = !focusedSection
+  const needsProfile = showProfilePreview || showProgress
   const [editingProject, setEditingProject] = useState(false)
   const [editingStyle, setEditingStyle] = useState(false)
   const [name, setName] = useState('')
@@ -55,12 +68,12 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery, resolveRoute }
   const [generationLanguage, setGenerationLanguage] = useState('zh-Hans')
   const [style, setStyle] = useState('')
   const [error, setError] = useState(null)
-  const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid], queryFn: () => getStoryProfile(projectUuid) })
-  const premiseQuery = useQuery({ queryKey: ['premise', projectUuid], queryFn: () => getPremise(projectUuid) })
+  const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid], queryFn: () => getStoryProfile(projectUuid), enabled: needsProfile })
+  const premiseQuery = useQuery({ queryKey: ['premise', projectUuid], queryFn: () => getPremise(projectUuid), enabled: showSection('style') })
   const imagePreflightQuery = useQuery({
     queryKey: ['project-image-generation-preflight', projectUuid],
     queryFn: () => preflightProjectImageGeneration(projectUuid),
-    enabled: Boolean(projectQuery.data),
+    enabled: Boolean(projectQuery.data) && showSection('format'),
     retry: false,
   })
 
@@ -150,89 +163,101 @@ export function OverviewSummaryPanel({ projectUuid, projectQuery, resolveRoute }
   )
 
   return (
-    <div className="project-overview project-overview--summary" role="tabpanel" id="overview-panel-summary" aria-labelledby="overview-tab-summary">
-      <LocalizedErrorMessage error={error || profileQuery.error || premiseQuery.error} onDismiss={error ? () => setError(null) : undefined} />
-      <div className="project-overview-grid">
+    <div className="project-overview project-overview--summary" role="tabpanel" id={panelId} aria-labelledby={labelledBy}>
+      <LocalizedErrorMessage error={error || (needsProfile ? profileQuery.error : null) || (showSection('style') ? premiseQuery.error : null)} onDismiss={error ? () => setError(null) : undefined} />
+      <div className={`project-overview-grid${showProgress ? '' : ' project-overview-grid--without-progress'}`}>
         <div className="project-overview-main">
-          <section className="overview-card overview-card--project">
-            <header className="overview-card__header">
-              <div><h1>{t('projects.overview.summary')}</h1></div>
-              {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('projects.configuration')}</button> : null}
-            </header>
-            {editingProject ? (
-              <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateProject.mutate() }}>
-                <label>{t('projects.field.name')}<input value={name} onChange={(event) => setName(event.target.value)} required maxLength="120" /></label>
-                <label>{t('projects.overview.description')}<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows="4" maxLength="2000" /></label>
-                <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={updateProject.isPending} />
-                <div className="overview-form-actions"><button type="submit" disabled={!name.trim() || updateProject.isPending}>{t(updateProject.isPending ? 'common.status.saving' : 'common.action.save')}</button><button type="button" className="button-secondary" disabled={updateProject.isPending} onClick={cancelProjectEdit}>{t('common.action.cancel')}</button></div>
+          {showSection('project') ? (
+            <section className="overview-card overview-card--project">
+              <header className="overview-card__header">
+                <div><h1>{t(focusedSection ? 'simple.project.settings_section.project' : 'projects.overview.summary')}</h1></div>
+                {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('projects.configuration')}</button> : null}
+              </header>
+              {editingProject ? (
+                <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateProject.mutate() }}>
+                  <label>{t('projects.field.name')}<input value={name} onChange={(event) => setName(event.target.value)} required maxLength="120" /></label>
+                  <label>{t('projects.overview.description')}<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows="4" maxLength="2000" /></label>
+                  <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={updateProject.isPending} />
+                  <div className="overview-form-actions"><button type="submit" disabled={!name.trim() || updateProject.isPending}>{t(updateProject.isPending ? 'common.status.saving' : 'common.action.save')}</button><button type="button" className="button-secondary" disabled={updateProject.isPending} onClick={cancelProjectEdit}>{t('common.action.cancel')}</button></div>
+                </form>
+              ) : (
+                <>
+                  {project.description ? <p className="overview-project-description">{project.description}</p> : null}
+                  <dl className="overview-project-facts">
+                    <div><dt>{term('projects.overview.active_chapters')}</dt><dd>{project.chapter_count}</dd></div>
+                    <div><dt>{t('projects.tab.trash')}</dt><dd>{project.trash_count}</dd></div>
+                    <div><dt>{t('projects.overview.revision')}</dt><dd>r{project.revision}</dd></div>
+                    <div><dt>{t('projects.overview.generation_language')}</dt><dd>{generationLanguageLabel(t, project.generation_language)}</dd></div>
+                    <div><dt>{t('projects.overview.updated')}</dt><dd>{formatDateTime(project.updated_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</dd></div>
+                  </dl>
+                </>
+              )}
+            </section>
+          ) : null}
+
+          {showSection('format') ? <PictureBookOverviewCard project={project} preflightQuery={imagePreflightQuery} /> : null}
+
+          {showProfilePreview ? (
+            <section className="overview-card">
+              <header className="overview-card__header">
+                <div><h2>{t('story.profile')}</h2></div>
+                <Link className="overview-card__action" to={route('story')}>{t(excerpt ? 'projects.overview.view_edit' : 'projects.overview.start_writing')}</Link>
+              </header>
+              {profileQuery.isLoading ? <p className="overview-card__loading">{t('story.story_file_loading')}</p> : <p className={`overview-story-copy ${excerpt ? '' : 'is-empty'}`}>{excerpt || t('story.story_file_empty')}</p>}
+              {profile ? <footer className="overview-card__meta"><span>v{profile.version_no}</span><span>{profile.projection_state === 'synced' ? t('story.file_synced') : t('story.file_state', { state: projectionStateLabel(t, profile.projection_state) })}</span></footer> : null}
+            </section>
+          ) : null}
+
+          {showSection('language') ? (
+            <section className="overview-card overview-language-card">
+              <form onSubmit={(event) => { event.preventDefault(); updateLanguage.mutate() }}>
+                <header className="overview-card__header"><div><h2>{t('projects.overview.language.title')}</h2><p>{t('projects.overview.language.body')}</p></div><button type="submit" disabled={updateLanguage.isPending || generationLanguage === project.generation_language}>{t(updateLanguage.isPending ? 'common.status.saving' : 'common.action.save')}</button></header>
+                <label>{t('projects.field.generation_language')}<select value={generationLanguage} onChange={(event) => setGenerationLanguage(event.target.value)} disabled={updateLanguage.isPending}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
               </form>
-            ) : (
-              <>
-                {project.description ? <p className="overview-project-description">{project.description}</p> : null}
-                <dl className="overview-project-facts">
-                  <div><dt>{term('projects.overview.active_chapters')}</dt><dd>{project.chapter_count}</dd></div>
-                  <div><dt>{t('projects.tab.trash')}</dt><dd>{project.trash_count}</dd></div>
-                  <div><dt>{t('projects.overview.revision')}</dt><dd>r{project.revision}</dd></div>
-                  <div><dt>{t('projects.overview.generation_language')}</dt><dd>{generationLanguageLabel(t, project.generation_language)}</dd></div>
-                  <div><dt>{t('projects.overview.updated')}</dt><dd>{formatDateTime(project.updated_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</dd></div>
-                </dl>
-              </>
-            )}
-          </section>
+            </section>
+          ) : null}
 
-          <PictureBookOverviewCard project={project} preflightQuery={imagePreflightQuery} />
+          {showSection('models') ? <ProjectModelSettingsCard projectUuid={projectUuid} /> : null}
 
-          <section className="overview-card">
-            <header className="overview-card__header">
-              <div><h2>{t('story.profile')}</h2></div>
-              <Link className="overview-card__action" to={route('story')}>{t(excerpt ? 'projects.overview.view_edit' : 'projects.overview.start_writing')}</Link>
-            </header>
-            {profileQuery.isLoading ? <p className="overview-card__loading">{t('story.story_file_loading')}</p> : <p className={`overview-story-copy ${excerpt ? '' : 'is-empty'}`}>{excerpt || t('story.story_file_empty')}</p>}
-            {profile ? <footer className="overview-card__meta"><span>v{profile.version_no}</span><span>{profile.projection_state === 'synced' ? t('story.file_synced') : t('story.file_state', { state: projectionStateLabel(t, profile.projection_state) })}</span></footer> : null}
-          </section>
+          {showSection('style') ? (
+            <section className="overview-card">
+              <header className="overview-card__header">
+                <div><h2>{t('projects.overview.style.title')}</h2></div>
+                {!editingStyle && premise ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingStyle(true)}>{t('common.action.edit')}</button> : null}
+              </header>
+              {editingStyle ? (
+                <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateStyle.mutate() }}>
+                  <label>{t('projects.overview.style.default')}<textarea value={style} onChange={(event) => setStyle(event.target.value)} rows="5" placeholder={t('projects.overview.style.placeholder')} /></label>
+                  <div className="overview-form-actions"><button type="submit" disabled={updateStyle.isPending}>{t(updateStyle.isPending ? 'common.status.saving' : 'projects.overview.style.save')}</button><button type="button" className="button-secondary" disabled={updateStyle.isPending} onClick={cancelStyleEdit}>{t('common.action.cancel')}</button></div>
+                </form>
+              ) : premiseQuery.isLoading ? <p className="overview-card__loading">{t('projects.overview.style.loading')}</p> : <p className={`overview-style-copy ${premise?.default_style ? '' : 'is-empty'}`}>{premise?.default_style || t('projects.overview.style.empty')}</p>}
+              <footer className="overview-card__meta"><Link to={route('premise')}>{t('projects.overview.premise_link')} <span aria-hidden="true">→</span></Link></footer>
+            </section>
+          ) : null}
 
-          <section className="overview-card overview-language-card">
-            <form onSubmit={(event) => { event.preventDefault(); updateLanguage.mutate() }}>
-              <header className="overview-card__header"><div><h2>{t('projects.overview.language.title')}</h2><p>{t('projects.overview.language.body')}</p></div><button type="submit" disabled={updateLanguage.isPending || generationLanguage === project.generation_language}>{t(updateLanguage.isPending ? 'common.status.saving' : 'common.action.save')}</button></header>
-              <label>{t('projects.field.generation_language')}<select value={generationLanguage} onChange={(event) => setGenerationLanguage(event.target.value)} disabled={updateLanguage.isPending}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
-            </form>
-          </section>
-
-          <ProjectModelSettingsCard projectUuid={projectUuid} />
-
-          <section className="overview-card">
-            <header className="overview-card__header">
-              <div><h2>{t('projects.overview.style.title')}</h2></div>
-              {!editingStyle && premise ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingStyle(true)}>{t('common.action.edit')}</button> : null}
-            </header>
-            {editingStyle ? (
-              <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateStyle.mutate() }}>
-                <label>{t('projects.overview.style.default')}<textarea value={style} onChange={(event) => setStyle(event.target.value)} rows="5" placeholder={t('projects.overview.style.placeholder')} /></label>
-                <div className="overview-form-actions"><button type="submit" disabled={updateStyle.isPending}>{t(updateStyle.isPending ? 'common.status.saving' : 'projects.overview.style.save')}</button><button type="button" className="button-secondary" disabled={updateStyle.isPending} onClick={cancelStyleEdit}>{t('common.action.cancel')}</button></div>
-              </form>
-            ) : premiseQuery.isLoading ? <p className="overview-card__loading">{t('projects.overview.style.loading')}</p> : <p className={`overview-style-copy ${premise?.default_style ? '' : 'is-empty'}`}>{premise?.default_style || t('projects.overview.style.empty')}</p>}
-            <footer className="overview-card__meta"><Link to={route('premise')}>{t('projects.overview.premise_link')} <span aria-hidden="true">→</span></Link></footer>
-          </section>
-
-          <section className="overview-card">
-            <header className="overview-card__header"><div><h2>{t('projects.overview.continue')}</h2></div></header>
-            <div className="overview-work-links">
-              <Link to={route('story')}><span>01</span><strong>{t('projects.overview.work.profile.title')}</strong><small>{t('projects.overview.work.profile.body')}</small></Link>
-              <Link to={route('premise')}><span>02</span><strong>{t('projects.overview.work.premise.title')}</strong><small>{t('projects.overview.work.premise.body')}</small></Link>
-              <Link to={route('chapters')}><span>03</span><strong>{term('projects.overview.work.chapters.title')}</strong><small>{term('projects.overview.work.chapters.body')}</small></Link>
-            </div>
-          </section>
+          {showSection('project') ? (
+            <section className="overview-card">
+              <header className="overview-card__header"><div><h2>{t('projects.overview.continue')}</h2></div></header>
+              <div className="overview-work-links">
+                <Link to={route('story')}><span>01</span><strong>{t('projects.overview.work.profile.title')}</strong><small>{t('projects.overview.work.profile.body')}</small></Link>
+                <Link to={route('premise')}><span>02</span><strong>{t('projects.overview.work.premise.title')}</strong><small>{t('projects.overview.work.premise.body')}</small></Link>
+                <Link to={route('chapters')}><span>03</span><strong>{term('projects.overview.work.chapters.title')}</strong><small>{term('projects.overview.work.chapters.body')}</small></Link>
+              </div>
+            </section>
+          ) : null}
         </div>
 
-        <aside className="overview-progress-card" aria-label={t('projects.overview.progress')}>
-          <header><h2>{t('projects.overview.progress')}</h2></header>
-          <div className="overview-progress-grid">
-            <article><strong>{project.chapter_count}</strong><span>{term('projects.overview.active_chapters')}</span></article>
-            <article><strong>{project.trash_count}</strong><span>{t('projects.tab.trash')}</span></article>
-            <article><strong>{profile ? `v${profile.version_no}` : '—'}</strong><span>STORY.md</span></article>
-            <article><strong>r{project.revision}</strong><span>{t('projects.overview.revision')}</span></article>
-          </div>
-        </aside>
+        {showProgress ? (
+          <aside className="overview-progress-card" aria-label={t('projects.overview.progress')}>
+            <header><h2>{t('projects.overview.progress')}</h2></header>
+            <div className="overview-progress-grid">
+              <article><strong>{project.chapter_count}</strong><span>{term('projects.overview.active_chapters')}</span></article>
+              <article><strong>{project.trash_count}</strong><span>{t('projects.tab.trash')}</span></article>
+              <article><strong>{profile ? `v${profile.version_no}` : '—'}</strong><span>STORY.md</span></article>
+              <article><strong>r{project.revision}</strong><span>{t('projects.overview.revision')}</span></article>
+            </div>
+          </aside>
+        ) : null}
       </div>
     </div>
   )

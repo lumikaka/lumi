@@ -6,6 +6,7 @@ const page = readFileSync(new URL('./ThreadTrajectoryPage.jsx', import.meta.url)
 const ledger = readFileSync(new URL('./TrajectoryLedger.jsx', import.meta.url), 'utf8')
 const inspector = readFileSync(new URL('./TrajectoryInspector.jsx', import.meta.url), 'utf8')
 const stats = readFileSync(new URL('./TrajectoryStats.jsx', import.meta.url), 'utf8')
+const timeline = readFileSync(new URL('./TrajectoryTimeline.jsx', import.meta.url), 'utf8')
 const workspace = readFileSync(new URL('../StoryWorkspacePage.jsx', import.meta.url), 'utf8')
 const simpleWorkspace = readFileSync(new URL('../SimpleProjectWorkspace.jsx', import.meta.url), 'utf8')
 const chatArea = readFileSync(new URL('../../components/ChatArea.jsx', import.meta.url), 'utf8')
@@ -22,6 +23,15 @@ test('trajectory registers one shared project URL and only the mode-specific top
   assert.match(simpleWorkspace, /hideChat=\{trajectoryView\}/)
   assert.match(simpleWorkspace, /!compact && !trajectoryView \? <ChatArea/)
   assert.match(simpleStyles, /simple-project-workbench--solo[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/)
+})
+
+test('simple topbar stacking context stays above the trajectory toolbar', () => {
+  const topbar = simpleStyles.slice(simpleStyles.indexOf('  .simple-project-topbar\n'), simpleStyles.indexOf('  .simple-project-topbar__context'))
+  const toolbar = styles.slice(styles.indexOf('.trajectory-toolbar\n'), styles.indexOf('.trajectory-toolbar__heading'))
+  const topbarZ = Number(topbar.match(/z-index:\s*(\d+)/)?.[1])
+  const toolbarZ = Number(toolbar.match(/z-index:\s*(\d+)/)?.[1])
+  assert.match(topbar, /position:\s*relative/)
+  assert.ok(topbarZ > toolbarZ, `topbar z-index ${topbarZ} must exceed trajectory toolbar z-index ${toolbarZ}`)
 })
 
 test('direct item_uuid selection loads an anchored page and restores ledger selection', () => {
@@ -64,6 +74,17 @@ test('trajectory selected controls retain a later combined hover rule', () => {
   const combined = styles.indexOf('&[aria-pressed="true"]:hover')
   assert.ok(selected >= 0)
   assert.ok(combined > selected)
+})
+
+test('timeline defaults to duration and exposes every scale with ticks and user-wait semantics', () => {
+  assert.match(timeline, /timelineModes = \['duration', 'time', 'actual', 'sequence'\]/)
+  assert.match(timeline, /useState\('duration'\)/)
+  assert.match(timeline, /trajectoryTimelineTicks\(activeView, mode\)/)
+  assert.match(timeline, /data-activity=\{item\.activity\}/)
+  assert.match(timeline, /trajectory-timeline__wait-legend/)
+  assert.match(styles, /\.trajectory-timeline__mode-switch[\s\S]*?\&\[aria-pressed="true"\]:hover/)
+  assert.match(styles, /\.trajectory-timeline__axis/)
+  assert.match(styles, /\.trajectory-timeline__span\[data-activity="user_wait"\]/)
 })
 
 test('trajectory UI exposes loaded-history search and independent collapse controls', () => {

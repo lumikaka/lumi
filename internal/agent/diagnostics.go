@@ -243,8 +243,9 @@ func (service *Service) ListWorkflowRuns(ctx context.Context, projectUUID, workf
 			}
 			if err := store.DB().WithContext(ctx).Table("workflow_steps AS steps").
 				Select(`steps.id AS step_id,CASE WHEN COALESCE(MAX(logs.attempt),0)>0 THEN MAX(logs.attempt) ELSE 1 END AS attempt`).
-				Joins("LEFT JOIN task_runs tasks ON tasks.project_id=? AND tasks.uuid=steps.task_uuid", workflow.ProjectID).
-				Joins("LEFT JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=tasks.id)").
+				Joins("LEFT JOIN task_runs story_tasks ON story_tasks.project_id=? AND story_tasks.uuid=steps.task_uuid", workflow.ProjectID).
+				Joins("LEFT JOIN production_task_runs production_tasks ON production_tasks.project_id=? AND production_tasks.uuid=steps.task_uuid", workflow.ProjectID).
+				Joins("LEFT JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=story_tasks.id) OR (logs.source_type='production' AND logs.production_task_run_id=production_tasks.id)").
 				Where("steps.id IN ?", stepIDs).Group("steps.id").Scan(&attempts).Error; err != nil {
 				return err
 			}
@@ -260,14 +261,19 @@ func (service *Service) ListWorkflowRuns(ctx context.Context, projectUUID, workf
 			}
 		}
 		if len(taskUUIDs) > 0 {
-			var tasks []struct {
+			type taskProgress struct {
 				UUID     string
 				Progress int
 			}
-			if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", workflow.ProjectID, taskUUIDs).Scan(&tasks).Error; err != nil {
+			var storyTasks []taskProgress
+			if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", workflow.ProjectID, taskUUIDs).Scan(&storyTasks).Error; err != nil {
 				return err
 			}
-			for _, task := range tasks {
+			var productionTasks []taskProgress
+			if err := store.DB().WithContext(ctx).Table("production_task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", workflow.ProjectID, taskUUIDs).Scan(&productionTasks).Error; err != nil {
+				return err
+			}
+			for _, task := range append(storyTasks, productionTasks...) {
 				progressByTask[task.UUID] = task.Progress
 			}
 		}
@@ -384,8 +390,9 @@ func (service *Service) ListWorkflowLLMLogs(ctx context.Context, projectUUID, wo
 		}
 		queryLogs := func() *gorm.DB {
 			query := store.DB().WithContext(ctx).Table("workflow_steps AS steps").
-				Joins("LEFT JOIN task_runs tasks ON tasks.project_id=? AND tasks.uuid=steps.task_uuid", workflow.ProjectID).
-				Joins("JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=tasks.id)").
+				Joins("LEFT JOIN task_runs story_tasks ON story_tasks.project_id=? AND story_tasks.uuid=steps.task_uuid", workflow.ProjectID).
+				Joins("LEFT JOIN production_task_runs production_tasks ON production_tasks.project_id=? AND production_tasks.uuid=steps.task_uuid", workflow.ProjectID).
+				Joins("JOIN llm_logs logs ON logs.workflow_step_id=steps.id OR (logs.source_type='story_generation' AND logs.task_run_id=story_tasks.id) OR (logs.source_type='production' AND logs.production_task_run_id=production_tasks.id)").
 				Where("steps.workflow_id=?", workflow.ID)
 			if workflowStepUUID != "" {
 				query = query.Where("steps.uuid=?", workflowStepUUID)

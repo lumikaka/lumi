@@ -95,6 +95,7 @@ import { PromptPanel, StoryProfilePanel } from './ProjectOverviewContentPanels.j
 import { premiseAssetTitleFromFile } from './productionWorkspaceState.js'
 import {
   firstReadySimpleImage,
+  normalizedSimpleProjectSettingsSection,
   normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
   patchSimpleProjectSettingsSearch,
@@ -112,9 +113,13 @@ const SIMPLE_PAGE_CONTEXT_MENU_MARGIN = 8
 const SIMPLE_PAGE_CONTEXT_MENU_WIDTH = 132
 const SIMPLE_PAGE_CONTEXT_MENU_HEIGHT = 46
 const SIMPLE_PROJECT_SETTINGS_ITEMS = Object.freeze([
-  { key: 'summary', labelKey: 'projects.tab.summary' },
-  { key: 'profile', labelKey: 'projects.tab.profile' },
-  { key: 'prompts', labelKey: 'projects.tab.prompts' },
+  { key: 'project', tab: 'summary', section: 'project', labelKey: 'simple.project.settings_section.project' },
+  { key: 'format', tab: 'summary', section: 'format', labelKey: 'simple.project.settings_section.format' },
+  { key: 'language', tab: 'summary', section: 'language', labelKey: 'simple.project.settings_section.language' },
+  { key: 'models', tab: 'summary', section: 'models', labelKey: 'simple.project.settings_section.models' },
+  { key: 'style', tab: 'summary', section: 'style', labelKey: 'simple.project.settings_section.style' },
+  { key: 'profile', tab: 'profile', section: '', labelKey: 'projects.tab.profile' },
+  { key: 'prompts', tab: 'prompts', section: '', labelKey: 'projects.tab.prompts' },
 ])
 
 function isEditableTarget(target) {
@@ -174,11 +179,13 @@ export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const activeTab = normalizedSimpleProjectSettingsTab(searchParams.get('tab'))
+  const activeSummarySection = normalizedSimpleProjectSettingsSection(searchParams.get('section'))
+  const activeItemKey = activeTab === 'summary' ? activeSummarySection : activeTab
   const cleanSearch = patchSimpleProjectSettingsSearch(searchParams)
-  const tabRoute = (tab) => projectRoute(projectUuid, 'settings', patchSimpleProjectSettingsSearch(searchParams, tab))
-  const selectTab = (tab) => navigate({ ...tabRoute(tab), hash: '' })
+  const settingsRoute = (tab, section = '') => projectRoute(projectUuid, 'settings', patchSimpleProjectSettingsSearch(searchParams, tab, section))
+  const selectItem = (item) => navigate({ ...settingsRoute(item.tab, item.section), hash: '' })
   const resolveSummaryRoute = (route) => route === 'story'
-    ? tabRoute('profile')
+    ? settingsRoute('profile')
     : projectRoute(projectUuid, route, cleanSearch)
 
   if (projectQuery.isLoading && !project) return <SimpleLoading message={t('simple.loading.project')} />
@@ -196,9 +203,9 @@ export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }
                   role="tab"
                   id={`overview-tab-${item.key}`}
                   aria-controls={`overview-panel-${item.key}`}
-                  aria-selected={activeTab === item.key}
+                  aria-selected={activeItemKey === item.key}
                   key={item.key}
-                  onClick={() => selectTab(item.key)}
+                  onClick={() => selectItem(item)}
                 >
                   {t(item.labelKey)}
                 </button>
@@ -206,7 +213,7 @@ export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }
             </nav>
           </aside>
           <div className="simple-project-settings-content">
-            {activeTab === 'summary' ? <OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} resolveRoute={resolveSummaryRoute} /> : null}
+            {activeTab === 'summary' ? <OverviewSummaryPanel projectUuid={projectUuid} projectQuery={projectQuery} resolveRoute={resolveSummaryRoute} section={activeSummarySection} showProgress={false} panelId={`overview-panel-${activeSummarySection}`} labelledBy={`overview-tab-${activeSummarySection}`} /> : null}
             {activeTab === 'profile' ? <StoryProfilePanel projectUuid={projectUuid} pictureBook={project.picture_book} /> : null}
             {activeTab === 'prompts' ? <PromptPanel projectUuid={projectUuid} pictureBook={project.picture_book} /> : null}
           </div>

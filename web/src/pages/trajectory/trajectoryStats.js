@@ -42,7 +42,14 @@ export function trajectoryStatsGroups(overview = {}, t) {
   }
   if (requestCount > 0) {
     const durations = [t('trajectory.stats.llm', { duration: formatTrajectoryDuration(overview.llm_duration_ms, notRecorded) })]
-    if (toolCount > 0) durations.push(t('trajectory.stats.tool', { duration: formatTrajectoryDuration(overview.tool_duration_ms, notRecorded) }))
+    if (toolCount > 0) {
+      const toolExecutionDuration = recordedNumber(overview.tool_execution_duration_ms)
+      const userWaitDuration = recordedNumber(overview.user_wait_duration_ms)
+      if (toolExecutionDuration != null || userWaitDuration != null) {
+        if (toolExecutionDuration != null) durations.push(t('trajectory.stats.tool_execution', { duration: formatTrajectoryDuration(toolExecutionDuration, notRecorded) }))
+        if (userWaitDuration != null) durations.push(t('trajectory.stats.user_wait', { duration: formatTrajectoryDuration(userWaitDuration, notRecorded) }))
+      } else durations.push(t('trajectory.stats.tool', { duration: formatTrajectoryDuration(overview.tool_duration_ms, notRecorded) }))
+    }
     groups.push(durations.join(' · '))
     const throughput = recordedNumber(overview.output_tokens_per_second)
     groups.push([

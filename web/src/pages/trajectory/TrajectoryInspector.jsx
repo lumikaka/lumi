@@ -77,6 +77,10 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
   const requestSource = selected?.sourceKind === 'model_request' ? selected.source : selected?.source
   const displayRequest = detail || requestSource || {}
   const notRecorded = t('trajectory.inspector.not_recorded')
+  const isUserWait = selected?.kind === 'tool' && selected.source?.tool_name === 'request_user_input'
+  const timingStartedAt = selected?.kind === 'tool' ? selected.startedAt : displayRequest.created_at || selected?.startedAt
+  const timingCompletedAt = selected?.kind === 'tool' ? selected.completedAt : displayRequest.completed_at || selected?.completedAt
+  const timingDuration = selected?.kind === 'tool' ? selected.durationMs : displayRequest.duration_ms ?? selected?.durationMs
   const currentPrompt = systemPrompt(detail?.request_payload)
   const previousPrompt = systemPrompt(previousQuery.data?.request_payload)
 
@@ -101,6 +105,7 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
   ]
   const toolSummaryFacts = [
     [t('trajectory.inspector.hierarchy'), `${t('trajectory.ledger.request', { number: selected.requestOrdinal || displayRequest.attempt || '—' })} › ${selected.source?.tool_name || t('trajectory.kind.tool')}`],
+    [t('trajectory.inspector.activity'), t(isUserWait ? 'trajectory.inspector.user_wait' : 'trajectory.inspector.tool_execution')],
     [t('common.label.status'), t(`trajectory.status.${selected.status || 'completed'}`)],
   ]
 
@@ -141,9 +146,9 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
         {tab === 'schema' ? <DetailValue query={requestQuery} title={t('trajectory.inspector.schema')} value={toolCatalog(detail?.request_payload, selected.source?.tool_name)} /> : null}
         {tab === 'timing' ? (
           <dl className="trajectory-inspector__facts trajectory-inspector__facts--timing">
-            <div><dt>{t('trajectory.inspector.created_at')}</dt><dd>{displayRequest.created_at || selected.startedAt ? formatDateTime(displayRequest.created_at || selected.startedAt) : notRecorded}</dd></div>
-            <div><dt>{t('trajectory.inspector.completed_at')}</dt><dd>{displayRequest.completed_at || selected.completedAt ? formatDateTime(displayRequest.completed_at || selected.completedAt) : selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded}</dd></div>
-            <div><dt>{t('trajectory.inspector.duration')}</dt><dd>{formatDuration(displayRequest.duration_ms ?? selected.durationMs, formatNumber, selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded)}</dd></div>
+            <div><dt>{t('trajectory.inspector.created_at')}</dt><dd>{timingStartedAt ? formatDateTime(timingStartedAt) : notRecorded}</dd></div>
+            <div><dt>{t('trajectory.inspector.completed_at')}</dt><dd>{timingCompletedAt ? formatDateTime(timingCompletedAt) : selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded}</dd></div>
+            <div><dt>{t(isUserWait ? 'trajectory.inspector.wait_duration' : 'trajectory.inspector.duration')}</dt><dd>{formatDuration(timingDuration, formatNumber, selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded)}</dd></div>
             <div><dt>{t('trajectory.inspector.finish_reason')}</dt><dd>{factValue(displayRequest.finish_reason, notRecorded)}</dd></div>
             <div><dt>{t('trajectory.inspector.input_tokens')}</dt><dd>{factValue(displayRequest.input_tokens, notRecorded)}</dd></div>
             <div><dt>{t('trajectory.inspector.cached_tokens')}</dt><dd>{factValue(displayRequest.cached_input_tokens, notRecorded)}</dd></div>

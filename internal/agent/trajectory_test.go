@@ -97,11 +97,17 @@ func TestTrajectoryOverviewStatsUseOnlyCompleteRecordedFacts(t *testing.T) {
 		{DurationMS: int64Pointer(1000), InputTokens: intPointer(120), CachedInputTokens: intPointer(20), OutputTokens: intPointer(14), UsageAccuracy: "recorded"},
 		{DurationMS: int64Pointer(2500), InputTokens: intPointer(160), CachedInputTokens: intPointer(0), OutputTokens: intPointer(22), UsageAccuracy: "recorded"},
 	}
-	tools := []TrajectoryTool{{DurationMS: int64Pointer(400)}, {DurationMS: int64Pointer(600)}}
+	tools := []TrajectoryTool{
+		{ToolName: "read_agent_doc", DurationMS: int64Pointer(400)},
+		{ToolName: "request_user_input", DurationMS: int64Pointer(600)},
+	}
 	overview := TrajectoryOverview{}
 	populateTrajectoryOverviewStats(&overview, requests, tools)
 	if overview.LLMDurationMS == nil || *overview.LLMDurationMS != 3500 || overview.ToolDurationMS == nil || *overview.ToolDurationMS != 1000 {
 		t.Fatalf("duration stats=%+v", overview)
+	}
+	if overview.ToolExecutionDurationMS == nil || *overview.ToolExecutionDurationMS != 400 || overview.UserWaitDurationMS == nil || *overview.UserWaitDurationMS != 600 {
+		t.Fatalf("tool duration categories=%+v", overview)
 	}
 	if overview.InputTokens == nil || *overview.InputTokens != 280 || overview.CachedInputTokens == nil || *overview.CachedInputTokens != 20 || overview.OutputTokens == nil || *overview.OutputTokens != 36 || overview.CacheHitPercent == nil || *overview.CacheHitPercent != 7 {
 		t.Fatalf("usage stats=%+v", overview)
@@ -119,6 +125,16 @@ func TestTrajectoryOverviewStatsUseOnlyCompleteRecordedFacts(t *testing.T) {
 	}
 	if overview.ToolDurationMS == nil || *overview.ToolDurationMS != 1000 {
 		t.Fatalf("independent complete tool facts should remain available: %+v", overview)
+	}
+	if overview.ToolExecutionDurationMS == nil || *overview.ToolExecutionDurationMS != 400 || overview.UserWaitDurationMS == nil || *overview.UserWaitDurationMS != 600 {
+		t.Fatalf("independent tool duration categories should remain available: %+v", overview)
+	}
+
+	tools[1].DurationMS = nil
+	overview = TrajectoryOverview{}
+	populateTrajectoryOverviewStats(&overview, requests[:1], tools)
+	if overview.ToolDurationMS != nil || overview.UserWaitDurationMS != nil || overview.ToolExecutionDurationMS == nil || *overview.ToolExecutionDurationMS != 400 {
+		t.Fatalf("partial wait timing must not erase recorded tool execution timing: %+v", overview)
 	}
 }
 

@@ -1521,6 +1521,46 @@ func TestPremiseSingleAssetAndReferencedVariantUseGoQueueAndAssetStore(t *testin
 	if len(requests) != 2 || requests[0].Size != "1024x1024" || requests[1].Size != "1024x1024" || !strings.Contains(requests[1].Prompt, "统一的 Premise 单项生成模板") || !strings.Contains(requests[1].Prompt, "保持建筑身份") || !strings.Contains(requests[1].Prompt, "项目语言：简体中文") {
 		t.Fatalf("image requests=%+v", requests)
 	}
+	agents := agent.NewService(harness.projects, harness.queue.providers, nil, harness.queue, nil)
+	threads, err := agents.ListThreads(ctx, harness.project.UUID)
+	if err != nil || len(threads) != 2 {
+		t.Fatalf("premise ChatArea threads=%+v err=%v", threads, err)
+	}
+	workflows, err := agents.ListWorkflows(ctx, harness.project.UUID)
+	if err != nil || len(workflows) != 2 {
+		t.Fatalf("premise workflows=%+v err=%v", workflows, err)
+	}
+	var variantWorkflow agent.Workflow
+	for _, workflow := range workflows {
+		for _, step := range workflow.Steps {
+			if step.TaskUUID == variantTask.UUID {
+				variantWorkflow = workflow
+			}
+		}
+	}
+	if variantWorkflow.UUID == "" || variantWorkflow.Kind != agent.WorkflowPremiseAsset || variantWorkflow.PresentationMode != string(agent.PresentationDedicatedThread) || variantWorkflow.Status != agent.WorkflowCompleted || len(variantWorkflow.Steps) != 1 || variantWorkflow.Steps[0].StepKey != agent.WorkflowStepGeneratePremiseAsset || variantWorkflow.Steps[0].Progress != 100 || variantWorkflow.Steps[0].ResourceUUID != asset.UUID {
+		t.Fatalf("variant workflow=%+v", variantWorkflow)
+	}
+	var workflowSnapshot map[string]any
+	if err := json.Unmarshal(variantWorkflow.InputSnapshot, &workflowSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if workflowSnapshot["premise_asset_uuid"] != asset.UUID || workflowSnapshot["asset_title"] != asset.Title || workflowSnapshot["asset_operation"] != "variant" || workflowSnapshot["production_task_uuid"] != variantTask.UUID {
+		t.Fatalf("variant workflow snapshot=%+v", workflowSnapshot)
+	}
+	for _, forbidden := range []string{"prompt", "style_snapshot", "provider_base_url"} {
+		if _, exists := workflowSnapshot[forbidden]; exists {
+			t.Fatalf("variant workflow snapshot exposed %s: %+v", forbidden, workflowSnapshot)
+		}
+	}
+	diagnosticRuns, err := agents.ListWorkflowRuns(ctx, harness.project.UUID, variantWorkflow.UUID, "", 20)
+	if err != nil || len(diagnosticRuns.Items) != 1 || diagnosticRuns.Items[0].TaskUUID != variantTask.UUID || diagnosticRuns.Items[0].Progress != 100 {
+		t.Fatalf("variant workflow runs=%+v err=%v", diagnosticRuns, err)
+	}
+	diagnosticLogs, err := agents.ListWorkflowLLMLogs(ctx, harness.project.UUID, variantWorkflow.UUID, variantWorkflow.Steps[0].UUID, 1, 20)
+	if err != nil || diagnosticLogs.Pagination.Total != 1 || len(diagnosticLogs.Items) != 1 || diagnosticLogs.Items[0].Scenario != KindPremiseAssetGeneration || diagnosticLogs.Items[0].Status != "completed" {
+		t.Fatalf("variant workflow logs=%+v err=%v", diagnosticLogs, err)
+	}
 }
 
 func TestComicGenerationSnapshotFreezesCurrentStoryboardAndPremiseVariants(t *testing.T) {

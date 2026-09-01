@@ -41,6 +41,7 @@ const (
 	TurnInterrupted        = "interrupted"
 
 	WorkflowYolo                     = "yolo_project_initialization"
+	WorkflowPremiseAsset             = "premise_asset_generation"
 	WorkflowComicSectionImage        = "comic_section_image_generation"
 	WorkflowComicStoryboard          = "comic_storyboard_generation"
 	WorkflowStoryChapter             = "story_chapter_generation"
@@ -48,6 +49,7 @@ const (
 	WorkflowStepComicStoryboard      = "comic_storyboard"
 	WorkflowStepStoryChapter         = "story_chapter"
 	WorkflowStepChapterBatchPlan     = "chapter_batch_plan"
+	WorkflowStepGeneratePremiseAsset = "generate_premise_asset"
 	WorkflowStepSelectReferences     = "select_reference_assets"
 	WorkflowStepSaveSectionPremise   = "save_section_premise"
 	WorkflowStepGenerateSectionImage = "generate_section_image"

@@ -78,25 +78,34 @@ test('one canonical route tree selects the simple or expert renderer from projec
   assert.match(expertLayoutSource, /forcedExpert[\s\S]*expert_page_notice/)
 })
 
-test('simple project configuration exposes shared summary, profile, and prompt panels through URL-backed navigation', () => {
+test('simple project configuration exposes card-level summary sections, profile, and prompts through URL-backed navigation', () => {
   assert.match(workspaceSource, /configuration: 'projects\.configuration'/)
   assert.match(workspaceSource, /path="settings" element=\{<SimpleProjectSettingsPage project=\{project\} projectUuid=\{projectUuid\} projectQuery=\{projectQuery\} \/>\}/)
   assert.match(workspaceSource, /path="story" element=\{<SimpleStoryPage project=\{project\} projectUuid=\{projectUuid\} \/>\}/)
   assert.match(pagesSource, /export function SimpleProjectSettingsPage\(\{ project, projectUuid, projectQuery \}\)/)
   assert.match(pagesSource, /normalizedSimpleProjectSettingsTab\(searchParams\.get\('tab'\)\)/)
-  assert.match(pagesSource, /patchSimpleProjectSettingsSearch\(searchParams, tab\)/)
-  assert.match(pagesSource, /navigate\(\{ \.\.\.tabRoute\(tab\), hash: '' \}\)/)
-  assert.match(pagesSource, /route === 'story'[\s\S]*tabRoute\('profile'\)[\s\S]*projectRoute\(projectUuid, route, cleanSearch\)/)
+  assert.match(pagesSource, /normalizedSimpleProjectSettingsSection\(searchParams\.get\('section'\)\)/)
+  assert.match(pagesSource, /patchSimpleProjectSettingsSearch\(searchParams, tab, section\)/)
+  assert.match(pagesSource, /navigate\(\{ \.\.\.settingsRoute\(item\.tab, item\.section\), hash: '' \}\)/)
+  assert.match(pagesSource, /route === 'story'[\s\S]*settingsRoute\('profile'\)[\s\S]*projectRoute\(projectUuid, route, cleanSearch\)/)
+  for (const section of ['project', 'format', 'language', 'models', 'style']) {
+    assert.match(pagesSource, new RegExp(`key: '${section}', tab: 'summary', section: '${section}'`))
+  }
   assert.match(pagesSource, /className="simple-project-settings-nav" role="tablist"/)
-  assert.match(pagesSource, /role="tab"[\s\S]*aria-controls=\{`overview-panel-\$\{item\.key\}`\}[\s\S]*aria-selected=\{activeTab === item\.key\}/)
-  assert.match(pagesSource, /activeTab === 'summary' \? <OverviewSummaryPanel[\s\S]*resolveRoute=\{resolveSummaryRoute\}/)
+  assert.match(pagesSource, /role="tab"[\s\S]*aria-controls=\{`overview-panel-\$\{item\.key\}`\}[\s\S]*aria-selected=\{activeItemKey === item\.key\}/)
+  assert.match(pagesSource, /activeTab === 'summary' \? <OverviewSummaryPanel[\s\S]*section=\{activeSummarySection\}[\s\S]*showProgress=\{false\}[\s\S]*panelId=\{`overview-panel-\$\{activeSummarySection\}`\}/)
   assert.match(pagesSource, /activeTab === 'profile' \? <StoryProfilePanel/)
   assert.match(pagesSource, /activeTab === 'prompts' \? <PromptPanel/)
   for (const panel of ['StoryProfilePanel', 'PromptPanel']) {
     assert.match(storyWorkspaceSource, new RegExp(`import \\{[^}]*${panel}[^}]*\\} from '\\.\\/ProjectOverviewContentPanels\\.jsx'`))
     assert.match(overviewContentSource, new RegExp(`export function ${panel}`))
   }
-  assert.match(overviewSource, /OverviewSummaryPanel\(\{ projectUuid, projectQuery, resolveRoute \}\)/)
+  assert.match(overviewSource, /OverviewSummaryPanel\(\{[\s\S]*section = ''[\s\S]*showProgress = true[\s\S]*panelId = 'overview-panel-summary'[\s\S]*labelledBy = 'overview-tab-summary'/)
+  for (const section of ['project', 'format', 'language', 'models', 'style']) {
+    assert.match(overviewSource, new RegExp(`showSection\\('${section}'\\)`))
+  }
+  assert.match(overviewSource, /showProfilePreview \? \([\s\S]*overview-story-copy/)
+  assert.match(overviewSource, /showProgress \? \([\s\S]*overview-progress-card[\s\S]*\) : null/)
   assert.match(overviewSource, /resolveRoute\?\.\(suffix\) \|\| destination/)
   assert.match(storyWorkspaceSource, /path="settings" element=\{<Navigate replace to=\{projectRoute\(projectUuid, '', location\.search\)\} \/>\}/)
   assert.doesNotMatch(pagesSource, /projectConfigurationValues|saveProject/)

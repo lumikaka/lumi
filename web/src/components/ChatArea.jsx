@@ -117,6 +117,7 @@ const stepCopy = {
   comic_storyboard: 'chat.workflow.step.comic_storyboard',
   story_chapter: 'chat.workflow.step.story_chapter',
   chapter_batch_plan: 'chat.workflow.step.chapter_batch_plan',
+  generate_premise_asset: 'chat.workflow.step.generate_premise_asset',
 }
 
 const MESSAGE_PAGE_LIMIT = 30

@@ -7,6 +7,7 @@ import {
   trajectoryTimelineEntries,
   trajectoryRangeSourceUuids,
   trajectoryTimelineLane,
+  trajectoryTimelineTicks,
   zoomTrajectoryView,
 } from './trajectoryTimeline.js'
 
@@ -33,6 +34,28 @@ test('only recorded duration creates spans; pending and unknown durations remain
     assert.equal(tool.start, tool.end)
   }
   assert.ok(buildTrajectoryTimeline(entries, 'actual').domain.max > buildTrajectoryTimeline(entries, 'time').domain.max)
+})
+
+test('duration mode preserves recorded proportions and identifies user waiting', () => {
+  const model = buildTrajectoryTimeline([
+    { uuid: 'r1', source_kind: 'model_request', kind: 'model_request', started_at: '2026-08-21T00:00:00Z', duration_ms: 1000 },
+    { uuid: 't1', source_kind: 'tool', kind: 'tool', preview: 'request_api', started_at: '2026-08-21T00:00:01Z', duration_ms: 200 },
+    { uuid: 'w1', source_kind: 'tool', kind: 'tool', preview: 'request_user_input', started_at: '2026-08-21T00:00:02Z', duration_ms: 4000 },
+  ], 'duration')
+  const request = model.items.find((item) => item.sourceUuid === 'r1')
+  const tool = model.items.find((item) => item.sourceUuid === 't1')
+  const wait = model.items.find((item) => item.sourceUuid === 'w1')
+  assert.equal(request.end - request.start, 1000)
+  assert.equal(tool.end - tool.start, 200)
+  assert.equal(wait.end - wait.start, 4000)
+  assert.equal(wait.activity, 'user_wait')
+  assert.equal(model.recordedDurationMs, 5200)
+  assert.equal(model.userWaitDurationMs, 4000)
+})
+
+test('timeline ticks use readable stable intervals for duration and sequence scales', () => {
+  assert.deepEqual(trajectoryTimelineTicks({ start: 0, end: 10_000 }, 'duration'), [0, 2000, 4000, 6000, 8000, 10_000])
+  assert.deepEqual(trajectoryTimelineTicks({ start: 0, end: 39 }, 'sequence'), [0, 10, 20, 30])
 })
 
 test('timeline adds real SYSTEM snapshots and avoids duplicate persisted Assistant output', () => {

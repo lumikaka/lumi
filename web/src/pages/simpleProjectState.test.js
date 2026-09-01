@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   firstReadySimpleImage,
+  normalizedSimpleProjectSettingsSection,
   normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
   patchSimpleProjectSettingsSearch,
@@ -21,20 +22,34 @@ const sectionUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff812'
 const assetUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff813'
 const threadUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff814'
 
-test('simple project settings tabs normalize and preserve unrelated query state', () => {
+test('simple project settings tabs and summary sections normalize while preserving unrelated query state', () => {
   assert.equal(normalizedSimpleProjectSettingsTab('summary'), 'summary')
   assert.equal(normalizedSimpleProjectSettingsTab('profile'), 'profile')
   assert.equal(normalizedSimpleProjectSettingsTab('prompts'), 'prompts')
   assert.equal(normalizedSimpleProjectSettingsTab('unknown'), 'summary')
   assert.equal(normalizedSimpleProjectSettingsTab(null), 'summary')
 
-  const selected = patchSimpleProjectSettingsSearch('?chat_thread_uuid=thread&workspace_mode=simple&tab=unknown', 'profile')
-  assert.equal(selected.get('tab'), 'profile')
+  assert.equal(normalizedSimpleProjectSettingsSection('project'), 'project')
+  assert.equal(normalizedSimpleProjectSettingsSection('format'), 'format')
+  assert.equal(normalizedSimpleProjectSettingsSection('language'), 'language')
+  assert.equal(normalizedSimpleProjectSettingsSection('models'), 'models')
+  assert.equal(normalizedSimpleProjectSettingsSection('style'), 'style')
+  assert.equal(normalizedSimpleProjectSettingsSection('unknown'), 'project')
+  assert.equal(normalizedSimpleProjectSettingsSection(null), 'project')
+
+  const selected = patchSimpleProjectSettingsSearch('?chat_thread_uuid=thread&workspace_mode=simple&tab=unknown', 'summary', 'models')
+  assert.equal(selected.get('tab'), 'summary')
+  assert.equal(selected.get('section'), 'models')
   assert.equal(selected.get('chat_thread_uuid'), 'thread')
   assert.equal(selected.get('workspace_mode'), 'simple')
 
-  const clean = patchSimpleProjectSettingsSearch(selected)
+  const profile = patchSimpleProjectSettingsSearch(selected, 'profile')
+  assert.equal(profile.get('tab'), 'profile')
+  assert.equal(profile.has('section'), false)
+
+  const clean = patchSimpleProjectSettingsSearch(profile)
   assert.equal(clean.has('tab'), false)
+  assert.equal(clean.has('section'), false)
   assert.equal(clean.get('chat_thread_uuid'), 'thread')
   assert.equal(clean.get('workspace_mode'), 'simple')
 })

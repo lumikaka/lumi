@@ -65,6 +65,18 @@ test('chapter workflows use prompt-aware localized titles with chapter context',
 	assert.equal(threadDisplayTitle({ title: 'internal' }, { kind: 'story_chapter_generation', presentation_mode: 'dedicated_thread', input_snapshot: { prompt_key: 'next_story_chapter', chapter_code: 'vol01.ch03' } }, t), 'chat.workflow.kind.next_story_chapter_with_code:vol01.ch03')
 })
 
+test('premise image workflows expose the referenced asset in their dedicated thread title', () => {
+  const t = (key, values = {}) => `${key}:${values.title || ''}`
+  const workflow = {
+    kind: 'premise_asset_generation',
+    presentation_mode: 'dedicated_thread',
+    input_snapshot: { asset_title: '星星姐姐' },
+  }
+  assert.equal(workflowDisplayTitle(workflow, t), 'chat.workflow.kind.premise_asset_generation_with_title:星星姐姐')
+  assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'chat.workflow.kind.premise_asset_generation_with_title:星星姐姐')
+  assert.equal(threadContextCopyKey({}, workflow), 'chat.workflow.kind.premise_asset_generation')
+})
+
 test('dedicated and inline workflows are separated and inline cards sort stably within their origin turn', () => {
 	const workflows = [
 		{ uuid: 'workflow-b', thread_uuid: 'thread-1', origin_turn_uuid: 'turn-1', presentation_mode: 'inline', created_at: '2026-08-26T00:00:02Z' },

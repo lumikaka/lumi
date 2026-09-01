@@ -2,6 +2,8 @@ import { trajectoryKey } from './trajectoryIdentity.js'
 
 export const TRAJECTORY_TIMELINE_MODES = Object.freeze(['sequence', 'duration', 'time', 'actual'])
 
+const USER_WAIT_TOOL_NAMES = new Set(['request_user_input'])
+
 export function trajectoryTimelineLane(kind) {
   if (kind === 'tool') return 2
   if (kind === 'assistant' || kind === 'model_request' || kind === 'compaction') return 1
@@ -22,6 +24,12 @@ function duration(value) {
 
 function sourceKey(entry) {
   return trajectoryKey(entry.source_kind || entry.kind || 'timeline', entry.uuid)
+}
+
+function trajectoryActivity(entry) {
+  if (entry?.kind !== 'tool') return 'execution'
+  const toolName = String(entry.tool_name || entry.preview || '').split(' · ', 1)[0].trim()
+  return USER_WAIT_TOOL_NAMES.has(toolName) ? 'user_wait' : 'execution'
 }
 
 function median(values) {
@@ -48,6 +56,7 @@ function normalizeEntries(entries = []) {
     startedAt: timestamp(entry.started_at),
     completedAt: timestamp(entry.completed_at),
     durationMs: duration(entry.duration_ms),
+    activity: trajectoryActivity(entry),
     orderingAccuracy: entry.ordering_accuracy || 'approximate',
     source: entry,
     sourceIndex: index,
@@ -71,13 +80,14 @@ function sequencePositions(entries) {
 
 function durationPositions(entries) {
   const known = entries.map((entry) => entry.durationMs).filter((value) => value != null && value > 0)
-  const markerStep = Math.max(1, median(known) * 0.08)
+  const recordedTotal = known.reduce((total, value) => total + value, 0)
+  const markerStep = Math.max(1, recordedTotal / 1000)
   let cursor = 0
   return orderEntries(entries).map((entry) => {
     const start = cursor
     const span = entry.durationMs != null
-    const end = span ? start + Math.max(entry.durationMs, markerStep * 0.15) : start
-    cursor += span ? Math.max(entry.durationMs, markerStep) : markerStep
+    const end = span ? start + entry.durationMs : start
+    cursor += span && entry.durationMs > 0 ? entry.durationMs : markerStep
     return { ...entry, start, end, span }
   })
 }
@@ -167,7 +177,39 @@ export function buildTrajectoryTimeline(entries = [], mode = 'sequence') {
   else if (normalizedMode === 'time') items = wallClockPositions(normalized, true)
   else if (normalizedMode === 'actual') items = wallClockPositions(normalized, false)
   else items = sequencePositions(normalized)
-  return { mode: normalizedMode, items, domain: timelineDomain(items), turnBoundaries: timelineTurnBoundaries(items) }
+  return {
+    mode: normalizedMode,
+    items,
+    domain: timelineDomain(items),
+    turnBoundaries: timelineTurnBoundaries(items),
+    recordedDurationMs: normalized.reduce((total, item) => total + (item.durationMs || 0), 0),
+    userWaitDurationMs: normalized.reduce((total, item) => total + (item.activity === 'user_wait' ? item.durationMs || 0 : 0), 0),
+  }
+}
+
+function niceTimelineStep(span, targetCount) {
+  const rough = Math.max(Number.EPSILON, span / Math.max(2, targetCount))
+  const power = 10 ** Math.floor(Math.log10(rough))
+  const normalized = rough / power
+  if (normalized <= 1) return power
+  if (normalized <= 2) return power * 2
+  if (normalized <= 5) return power * 5
+  return power * 10
+}
+
+export function trajectoryTimelineTicks(view, mode = 'duration', targetCount = 5) {
+  if (!view || !Number.isFinite(view.start) || !Number.isFinite(view.end) || view.end <= view.start) return []
+  const span = view.end - view.start
+  const step = mode === 'sequence'
+    ? Math.max(1, Math.ceil(niceTimelineStep(span, targetCount)))
+    : niceTimelineStep(span, targetCount)
+  const first = Math.ceil(view.start / step) * step
+  const ticks = []
+  const upperBound = mode === 'sequence' ? view.end - Number.EPSILON : view.end + step * 1e-9
+  for (let value = first; value <= upperBound && ticks.length < 20; value += step) {
+    ticks.push(Math.abs(value) < step * 1e-9 ? 0 : value)
+  }
+  return ticks
 }
 
 export function normalizeTrajectoryRange(range, domain) {

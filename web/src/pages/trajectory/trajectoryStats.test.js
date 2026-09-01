@@ -11,6 +11,8 @@ const messages = {
   'trajectory.stats.request.other': '{count} 次 Request',
   'trajectory.stats.llm': 'LLM {duration}',
   'trajectory.stats.tool': '工具调用 {duration}',
+  'trajectory.stats.tool_execution': '工具执行 {duration}',
+  'trajectory.stats.user_wait': '等待用户 {duration}',
   'trajectory.stats.ttft': '首 token 平均 {duration}',
   'trajectory.stats.throughput': '{throughput} tok/s',
   'trajectory.stats.throughput_unrecorded': '吞吐率未记录',
@@ -36,11 +38,13 @@ test('trajectory stats reproduce the compact reference grouping from recorded fa
     tool_count: 3,
     llm_duration_ms: 14_629,
     tool_duration_ms: 17_758,
+    tool_execution_duration_ms: 7_758,
+    user_wait_duration_ms: 10_000,
     cache_hit_percent: 22,
     input_tokens: 9_946,
     output_tokens: 689,
   }, t)
-  assert.equal(groups.join(' | '), '1 个 Turn · 4 次 Request | LLM 14.6s · 工具调用 17.8s | 首 token 平均 未记录 · 吞吐率未记录 | 缓存命中 22% | 输入 9.9K tok · 输出 689 tok')
+  assert.equal(groups.join(' | '), '1 个 Turn · 4 次 Request | LLM 14.6s · 工具执行 7.8s · 等待用户 10s | 首 token 平均 未记录 · 吞吐率未记录 | 缓存命中 22% | 输入 9.9K tok · 输出 689 tok')
 })
 
 test('trajectory stats keep unavailable timing and usage explicit', () => {

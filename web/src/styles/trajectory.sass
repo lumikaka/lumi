@@ -200,13 +200,85 @@
   user-select: none
 
 .trajectory-timeline__header
-  height: 32px
-  padding: 0 6px
+  height: 36px
+  min-width: 0
+  padding: 0 180px 0 8px
   display: flex
   align-items: center
   justify-content: flex-start
-  gap: 2px
+  gap: 8px
+  overflow: hidden
   border-bottom: 1px solid $color-border-subtle
+
+.trajectory-timeline__mode-switch
+  height: 24px
+  flex: none
+  display: inline-flex
+  align-items: center
+  padding: 1px
+  border: 1px solid $color-border
+  border-radius: 5px
+  background: $color-surface-muted
+
+  button
+    height: 20px
+    padding: 0 8px
+    border: 0
+    border-radius: 3px
+    color: $color-muted
+    background: transparent
+    font-size: $font-size-small
+    line-height: 1
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: rgba($color-surface, .7)
+
+    &:focus-visible
+      outline: 1px solid $color-accent
+      outline-offset: 0
+
+    &[aria-pressed="true"]
+      color: $color-text
+      background: $color-surface
+      box-shadow: 0 1px 3px rgba($color-text, .12)
+
+    &[aria-pressed="true"]:hover,
+    &[aria-pressed="true"]:focus-visible
+      color: $color-text
+      background: $color-accent-muted
+
+.trajectory-timeline__wait-legend
+  min-width: max-content
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  color: $color-muted
+  font-size: $font-size-micro
+
+  i
+    width: 14px
+    height: 8px
+    border-radius: 1px
+    background: repeating-linear-gradient(135deg, #4f9182 0 3px, #79b4a7 3px 6px)
+
+.trajectory-timeline__readout
+  min-width: 0
+  flex: 1
+  overflow: hidden
+  color: $color-muted
+  font-size: $font-size-micro
+  line-height: 1
+  text-align: center
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.trajectory-timeline__header-actions
+  flex: none
+  display: inline-flex
+  align-items: center
+  gap: 2px
 
 .trajectory-timeline__toolbar-button
   height: 20px
@@ -240,7 +312,7 @@
     background: $color-accent-muted
 
 .trajectory-timeline__plot
-  height: 50px
+  height: 66px
   display: grid
   grid-template-columns: 44px minmax(0, 1fr)
   overflow: hidden
@@ -286,13 +358,45 @@
   z-index: 2
   top: 7px
   right: 0
-  bottom: 7px
+  bottom: 23px
   left: 0
+
+.trajectory-timeline__axis
+  position: absolute
+  z-index: 0
+  inset: 0
+  overflow: hidden
+  pointer-events: none
+
+.trajectory-timeline__tick
+  position: absolute
+  top: 0
+  bottom: 16px
+  left: var(--trajectory-tick-left)
+  width: 1px
+  border-left: 1px solid rgba($color-border, .58)
+
+  em
+    position: absolute
+    bottom: -14px
+    left: 0
+    transform: translateX(-50%)
+    color: $color-muted
+    font-size: $font-size-micro
+    font-style: normal
+    line-height: 12px
+    white-space: nowrap
+
+  &[data-edge-start="true"] em
+    transform: none
+
+  &[data-edge-end="true"] em
+    transform: translateX(-100%)
 
 .trajectory-timeline__turn-boundaries
   position: absolute
   z-index: 3
-  inset: 0
+  inset: 0 0 16px
   pointer-events: none
 
 .trajectory-timeline__turn-boundary
@@ -350,6 +454,9 @@
   background: $color-warm
   opacity: 1
 
+.trajectory-timeline__span[data-activity="user_wait"]
+  background: repeating-linear-gradient(135deg, #4f9182 0 3px, #79b4a7 3px 6px)
+
 .trajectory-timeline__span--compaction
   background: #777c83
 
@@ -366,7 +473,7 @@
   position: absolute
   z-index: 4
   top: 0
-  bottom: 0
+  bottom: 16px
   left: clamp(0px, calc(var(--trajectory-hover-left) - 1px), calc(100% - 2px))
   width: 2px
   background: $color-accent
@@ -376,7 +483,7 @@
   position: absolute
   z-index: 1
   top: 0
-  bottom: 0
+  bottom: 16px
   left: var(--trajectory-selection-left)
   width: var(--trajectory-selection-width)
   min-width: 1px
@@ -388,7 +495,7 @@
   position: absolute
   z-index: 4
   top: 0
-  bottom: 0
+  bottom: 16px
   left: var(--trajectory-selection-left)
   width: var(--trajectory-selection-width)
   min-width: 1px
@@ -410,7 +517,7 @@
     right: 0
 
 .trajectory-timeline__empty
-  height: 50px
+  height: 66px
   margin: 0
   display: grid
   place-items: center
@@ -1064,6 +1171,9 @@
     transform: rotate(360deg)
 
 @media (max-width: 980px)
+  .trajectory-timeline__header
+    padding-right: 8px
+
   .trajectory-workbench
     grid-template-columns: minmax(0, 1fr)
 

@@ -32,6 +32,7 @@ export function chatThreadCountLabel(loaded, total) {
 }
 
 const workflowKindCopy = {
+  premise_asset_generation: 'chat.workflow.kind.premise_asset_generation',
   comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
   comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
   story_chapter_generation: 'chat.workflow.kind.story_chapter_generation',
@@ -40,6 +41,11 @@ const workflowKindCopy = {
 
 export function workflowDisplayTitle(workflow, t) {
   const snapshot = workflowSnapshot(workflow)
+  if (workflow?.kind === 'premise_asset_generation') {
+    return snapshot.asset_title
+      ? t('chat.workflow.kind.premise_asset_generation_with_title', { title: snapshot.asset_title })
+      : t('chat.workflow.kind.premise_asset_generation')
+  }
   if (workflow?.kind === 'story_chapter_generation') {
     const key = snapshot.prompt_key === 'next_story_chapter'
       ? 'chat.workflow.kind.next_story_chapter'
@@ -67,6 +73,7 @@ export function threadContextCopyKey(thread, workflow) {
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'premise_asset_generation') return 'chat.workflow.kind.premise_asset_generation'
   return 'chat.thread.project_context'
 }
 

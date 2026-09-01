@@ -417,14 +417,19 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 		}
 	}
 	if len(taskUUIDs) > 0 {
-		var rows []struct {
+		type taskProgress struct {
 			UUID     string
 			Progress int
 		}
-		if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&rows).Error; err != nil {
+		var storyTasks []taskProgress
+		if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&storyTasks).Error; err != nil {
 			return Workflow{}, err
 		}
-		for _, task := range rows {
+		var productionTasks []taskProgress
+		if err := store.DB().WithContext(ctx).Table("production_task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&productionTasks).Error; err != nil {
+			return Workflow{}, err
+		}
+		for _, task := range append(storyTasks, productionTasks...) {
 			progressByTask[task.UUID] = task.Progress
 		}
 	}
@@ -1779,12 +1784,12 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 	if workflow.Status == WorkflowCompleted || workflow.Status == WorkflowCancelled {
 		return workflow, nil
 	}
-	if workflow.Kind == WorkflowComicSectionImage {
-		taskUUID := comicWorkflowTaskUUID(workflow)
+	if taskKind, projected := projectedProductionWorkflowTaskKind(workflow.Kind); projected {
+		taskUUID := projectedProductionWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
-			return Workflow{}, domainError(CodeStateConflict, "图片生成 Workflow 缺少生产任务", "generate_section_image 步骤没有关联 task_uuid。", nil)
+			return Workflow{}, domainError(CodeStateConflict, "图片生成 Workflow 缺少生产任务", "Workflow 步骤没有关联 task_uuid。", nil)
 		}
-		if err := service.queue.CancelDomainTask(ctx, projectUUID, "comic_image_generation", taskUUID); err != nil {
+		if err := service.queue.CancelDomainTask(ctx, projectUUID, taskKind, taskUUID); err != nil {
 			return Workflow{}, err
 		}
 		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
@@ -1964,12 +1969,12 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 	if workflow.Status != WorkflowFailed && workflow.Status != WorkflowInterrupted && workflow.Status != WorkflowCancelled {
 		return Workflow{}, domainError(CodeStateConflict, "Workflow 当前不可重试", "仅 failed、interrupted 或 cancelled workflow 可以重试。", nil)
 	}
-	if workflow.Kind == WorkflowComicSectionImage {
-		taskUUID := comicWorkflowTaskUUID(workflow)
+	if taskKind, projected := projectedProductionWorkflowTaskKind(workflow.Kind); projected {
+		taskUUID := projectedProductionWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
-			return Workflow{}, domainError(CodeStateConflict, "图片生成 Workflow 缺少生产任务", "generate_section_image 步骤没有关联 task_uuid。", nil)
+			return Workflow{}, domainError(CodeStateConflict, "图片生成 Workflow 缺少生产任务", "Workflow 步骤没有关联 task_uuid。", nil)
 		}
-		if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, "comic_image_generation", taskUUID); taskErr != nil {
+		if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, taskKind, taskUUID); taskErr != nil {
 			return Workflow{}, taskErr
 		}
 		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
@@ -2076,9 +2081,20 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 	return result, err
 }
 
-func comicWorkflowTaskUUID(workflow Workflow) string {
+func projectedProductionWorkflowTaskKind(workflowKind string) (string, bool) {
+	switch workflowKind {
+	case WorkflowComicSectionImage:
+		return "comic_image_generation", true
+	case WorkflowPremiseAsset:
+		return "premise_asset_generation", true
+	default:
+		return "", false
+	}
+}
+
+func projectedProductionWorkflowTaskUUID(workflow Workflow) string {
 	for _, step := range workflow.Steps {
-		if step.StepKey == WorkflowStepGenerateSectionImage && step.TaskUUID != "" {
+		if step.TaskUUID != "" {
 			return step.TaskUUID
 		}
 	}

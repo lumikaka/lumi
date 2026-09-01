@@ -76,3 +76,13 @@ test('ChatArea presents chapter workflows and persisted task progress', () => {
   assert.match(chatArea, /workflowProgressPercent\(workflow\)/)
   assert.match(messages, /'chat\.workflow\.kind\.next_story_chapter': \['AI 续写', 'AI continuation'\]/)
 })
+
+test('ChatArea presents premise image workflows created by direct generation requests', () => {
+  const chatArea = readFileSync(new URL('../components/ChatArea.jsx', import.meta.url), 'utf8')
+  const presentation = readFileSync(new URL('./chatAreaPresentation.js', import.meta.url), 'utf8')
+  const messages = readFileSync(new URL('../i18n/messages/chat.js', import.meta.url), 'utf8')
+  assert.match(presentation, /premise_asset_generation: 'chat\.workflow\.kind\.premise_asset_generation'/)
+  assert.match(chatArea, /generate_premise_asset: 'chat\.workflow\.step\.generate_premise_asset'/)
+  assert.match(messages, /'chat\.workflow\.kind\.premise_asset_generation': \['设定项图片生成', 'Premise-image generation'\]/)
+  assert.match(messages, /'chat\.workflow\.step\.generate_premise_asset': \['生成设定项图片', 'Generate premise image'\]/)
+})

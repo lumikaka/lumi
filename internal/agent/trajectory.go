@@ -145,23 +145,25 @@ type TrajectoryCompaction struct {
 }
 
 type TrajectoryOverview struct {
-	TurnCount          int64                     `json:"turn_count"`
-	ItemCount          int64                     `json:"item_count"`
-	ModelRequestCount  int64                     `json:"model_request_count"`
-	ToolCount          int64                     `json:"tool_count"`
-	CompactionCount    int64                     `json:"compaction_count"`
-	ActiveTurnCount    int64                     `json:"active_turn_count"`
-	ActiveRequestCount int64                     `json:"active_request_count"`
-	ActiveToolCount    int64                     `json:"active_tool_count"`
-	LLMDurationMS      *int64                    `json:"llm_duration_ms,omitempty"`
-	ToolDurationMS     *int64                    `json:"tool_duration_ms,omitempty"`
-	AverageTTFTMS      *int64                    `json:"average_ttft_ms,omitempty"`
-	OutputTokensPerSec *float64                  `json:"output_tokens_per_second,omitempty"`
-	InputTokens        *int64                    `json:"input_tokens,omitempty"`
-	CachedInputTokens  *int64                    `json:"cached_input_tokens,omitempty"`
-	OutputTokens       *int64                    `json:"output_tokens,omitempty"`
-	CacheHitPercent    *int                      `json:"cache_hit_percent,omitempty"`
-	Timeline           []TrajectoryTimelineEntry `json:"timeline"`
+	TurnCount               int64                     `json:"turn_count"`
+	ItemCount               int64                     `json:"item_count"`
+	ModelRequestCount       int64                     `json:"model_request_count"`
+	ToolCount               int64                     `json:"tool_count"`
+	CompactionCount         int64                     `json:"compaction_count"`
+	ActiveTurnCount         int64                     `json:"active_turn_count"`
+	ActiveRequestCount      int64                     `json:"active_request_count"`
+	ActiveToolCount         int64                     `json:"active_tool_count"`
+	LLMDurationMS           *int64                    `json:"llm_duration_ms,omitempty"`
+	ToolDurationMS          *int64                    `json:"tool_duration_ms,omitempty"`
+	ToolExecutionDurationMS *int64                    `json:"tool_execution_duration_ms,omitempty"`
+	UserWaitDurationMS      *int64                    `json:"user_wait_duration_ms,omitempty"`
+	AverageTTFTMS           *int64                    `json:"average_ttft_ms,omitempty"`
+	OutputTokensPerSec      *float64                  `json:"output_tokens_per_second,omitempty"`
+	InputTokens             *int64                    `json:"input_tokens,omitempty"`
+	CachedInputTokens       *int64                    `json:"cached_input_tokens,omitempty"`
+	OutputTokens            *int64                    `json:"output_tokens,omitempty"`
+	CacheHitPercent         *int                      `json:"cache_hit_percent,omitempty"`
+	Timeline                []TrajectoryTimelineEntry `json:"timeline"`
 }
 
 type TrajectoryTimelineEntry struct {
@@ -435,17 +437,40 @@ func populateTrajectoryOverviewStats(overview *TrajectoryOverview, requests []Tr
 		}
 	}
 	if len(tools) > 0 {
-		var toolDuration int64
-		durationRecorded := true
+		var toolDuration, toolExecutionDuration, userWaitDuration int64
+		durationRecorded, toolExecutionRecorded, userWaitRecorded := true, true, true
+		var toolExecutionCount, userWaitCount int
 		for _, tool := range tools {
+			isUserWait := tool.ToolName == "request_user_input"
+			if isUserWait {
+				userWaitCount++
+			} else {
+				toolExecutionCount++
+			}
 			if tool.DurationMS == nil {
 				durationRecorded = false
-				break
+				if isUserWait {
+					userWaitRecorded = false
+				} else {
+					toolExecutionRecorded = false
+				}
+				continue
 			}
 			toolDuration += *tool.DurationMS
+			if isUserWait {
+				userWaitDuration += *tool.DurationMS
+			} else {
+				toolExecutionDuration += *tool.DurationMS
+			}
 		}
 		if durationRecorded {
 			overview.ToolDurationMS = int64Pointer(toolDuration)
+		}
+		if toolExecutionCount > 0 && toolExecutionRecorded {
+			overview.ToolExecutionDurationMS = int64Pointer(toolExecutionDuration)
+		}
+		if userWaitCount > 0 && userWaitRecorded {
+			overview.UserWaitDurationMS = int64Pointer(userWaitDuration)
 		}
 	}
 }

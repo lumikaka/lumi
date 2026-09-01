@@ -1,15 +1,22 @@
 import { comicBodyPageNumber, comicPageRole } from './comicPageRoles.js'
 
 const SIMPLE_PROJECT_SETTINGS_TABS = new Set(['summary', 'profile', 'prompts'])
+const SIMPLE_PROJECT_SETTINGS_SUMMARY_SECTIONS = new Set(['project', 'format', 'language', 'models', 'style'])
 
 export function normalizedSimpleProjectSettingsTab(value) {
   return SIMPLE_PROJECT_SETTINGS_TABS.has(value) ? value : 'summary'
 }
 
-export function patchSimpleProjectSettingsSearch(search = '', tab = '') {
+export function normalizedSimpleProjectSettingsSection(value) {
+  return SIMPLE_PROJECT_SETTINGS_SUMMARY_SECTIONS.has(value) ? value : 'project'
+}
+
+export function patchSimpleProjectSettingsSearch(search = '', tab = '', section = '') {
   const next = new URLSearchParams(search)
   if (SIMPLE_PROJECT_SETTINGS_TABS.has(tab)) next.set('tab', tab)
   else next.delete('tab')
+  if (tab === 'summary' && SIMPLE_PROJECT_SETTINGS_SUMMARY_SECTIONS.has(section)) next.set('section', section)
+  else next.delete('section')
   return next
 }
 

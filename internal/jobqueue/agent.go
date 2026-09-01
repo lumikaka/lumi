@@ -123,12 +123,12 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		task, err := manager.CreatePremiseBreakdown(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
 		return productionDomainTask(task), err
 	case KindPremiseAssetGeneration:
-		task, err := manager.CreatePremiseAssetGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{
+		task, err := manager.createPremiseAssetGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{
 			ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt,
 			AssetOperation: request.AssetOperation, AssetType: request.AssetType,
 			AssetTitle: request.AssetTitle, AssetSummary: request.AssetSummary,
 			AssetTags: request.AssetTags, IdempotencyKey: request.IdempotencyKey,
-		})
+		}, false)
 		return productionDomainTask(task), err
 	case KindComicImageGeneration:
 		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, false)

@@ -329,7 +329,7 @@ func (runtime *projectRuntime) updateComicWorkflow(ctx context.Context, taskUUID
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	runtime.broadcastComicWorkflow("workflow:step_changed", taskUUID)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", taskUUID)
 	return nil
 }
 
@@ -346,12 +346,12 @@ func appendComicWorkflowEventTx(ctx context.Context, tx *sql.Tx, workflowID int6
 	return err
 }
 
-func (runtime *projectRuntime) broadcastComicWorkflow(event, taskUUID string) {
+func (runtime *projectRuntime) broadcastProductionWorkflow(event, taskUUID string) {
 	if runtime.manager.hub == nil {
 		return
 	}
 	var workflowUUID, threadUUID, resourceUUID, status string
-	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.resource_uuid,w.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id AND s.step_key=? WHERE w.kind=? AND s.task_uuid=? LIMIT 1`, agent.WorkflowStepGenerateSectionImage, agent.WorkflowComicSectionImage, taskUUID).Scan(&workflowUUID, &threadUUID, &resourceUUID, &status)
+	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.resource_uuid,w.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE w.kind IN (?,?) AND s.task_uuid=? LIMIT 1`, agent.WorkflowComicSectionImage, agent.WorkflowPremiseAsset, taskUUID).Scan(&workflowUUID, &threadUUID, &resourceUUID, &status)
 	if err != nil {
 		return
 	}

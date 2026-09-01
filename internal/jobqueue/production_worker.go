@@ -735,6 +735,9 @@ func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record
 	if err := markComicWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := markPremiseAssetWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -745,6 +748,7 @@ func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record
 	task.StartedAt = &now
 	task.UpdatedAt = now
 	runtime.broadcastProduction("production_task:running", task)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
 	return nil
 }
 func (runtime *projectRuntime) productionProgress(ctx context.Context, record productionTaskRecord, progress int) error {
@@ -775,6 +779,7 @@ func (runtime *projectRuntime) productionProgress(ctx context.Context, record pr
 	task.Progress = progress
 	task.UpdatedAt = now
 	runtime.broadcastProduction("production_task:progress", task)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
 	return nil
 }
 func (runtime *projectRuntime) completeProduction(ctx context.Context, record productionTaskRecord) error {
@@ -798,6 +803,9 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	if err := completeComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := completePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -807,7 +815,7 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	task.CompletedAt = &now
 	task.UpdatedAt = now
 	runtime.broadcastProduction("production_task:completed", task)
-	runtime.broadcastComicWorkflow("workflow:step_changed", record.UUID)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
 	if runtime.manager.hub != nil {
 		runtime.manager.hub.Broadcast("project:"+runtime.projectUUID, "production:resource_changed", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "kind": record.Kind})
 	}
@@ -830,6 +838,9 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	if err := failComicWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
+	if err := failPremiseAssetWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -840,7 +851,7 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	task.CompletedAt = &now
 	task.UpdatedAt = now
 	runtime.broadcastProduction("production_task:failed", task)
-	runtime.broadcastComicWorkflow("workflow:failed", record.UUID)
+	runtime.broadcastProductionWorkflow("workflow:failed", record.UUID)
 	return nil
 }
 func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, record productionTaskRecord) error {
@@ -859,10 +870,13 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 	if err := cancelComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := cancelPremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	runtime.broadcastComicWorkflow("workflow:cancelled", record.UUID)
+	runtime.broadcastProductionWorkflow("workflow:cancelled", record.UUID)
 	return nil
 }
 
@@ -905,6 +919,9 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 	if err := queueComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -914,7 +931,7 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 	task.Attempt = attempt
 	task.UpdatedAt = now
 	runtime.broadcastProduction("production_task:queued", task)
-	runtime.broadcastComicWorkflow("workflow:step_changed", record.UUID)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
 	return nil
 }
 
@@ -959,6 +976,9 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		if err := queueComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return err
 		}
+		if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+			return err
+		}
 		if err := tx.Commit(); err != nil {
 			return err
 		}
@@ -968,7 +988,7 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		task.Attempt = event.Job.Attempt
 		task.UpdatedAt = now
 		runtime.broadcastProduction("production_task:queued", task)
-		runtime.broadcastComicWorkflow("workflow:step_changed", record.UUID)
+		runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
 		return nil
 	}
 	if event.Kind == river.EventKindJobCancelled {
