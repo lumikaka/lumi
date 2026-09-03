@@ -112,7 +112,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 	key := strings.TrimSpace(input.IdempotencyKey)
 	creationSessionUUID := strings.TrimSpace(input.CreationSessionUUID)
 	if len(key) < 8 || len(key) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) || (creationSessionUUID != "" && !isUUIDv7(creationSessionUUID)) {
-		return Workflow{}, domainError(CodeValidation, "Yolo 参数无效", "idempotency_key 需要 8 到 160 字符。", nil)
+		return Workflow{}, domainError(CodeValidation, "自动生成参数无效", "idempotency_key 需要 8 到 160 字符。", nil)
 	}
 	invocation, err := normalizeYoloInvocation(input.Invocation)
 	if err != nil {
@@ -151,7 +151,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		}
 		outputSize, err := picturebook.ResolveImageSize(pictureBook, imageResolved.ProviderType, imageModel)
 		if err != nil {
-			return domainError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；Yolo 尚未创建。", err)
+			return domainError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；自动生成流程尚未创建。", err)
 		}
 		selectionResolved, selectionModel, selectionModelSource, err := service.resolveProjectModel(ctx, store, modelsettings.SectionPremiseSelection, modelsettings.KindText, input.ProviderUUID, "")
 		if err != nil {
@@ -197,7 +197,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 			if err != nil {
 				return err
 			}
-			threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, pid, "Yolo · "+title, resolved.UUID, model, modelSource, now, now)
+			threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, pid, "自动生成 · "+title, resolved.UUID, model, modelSource, now, now)
 			if err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 			}
 			threadID, threadUUID = inlineOwner.ThreadID, inlineOwner.ThreadUUID
 		default:
-			return domainError(CodeValidation, "YOLO 展示模式无效", "YOLO 只能创建独立或内联 Workflow。", nil)
+			return domainError(CodeValidation, "自动生成展示模式无效", "自动生成流程只能创建独立或内联 Workflow。", nil)
 		}
 		workflowUUID, err := newUUIDv7()
 		if err != nil {
@@ -259,7 +259,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 			}
 		} else {
 			thread := threadRecord{ID: threadID, UUID: threadUUID, ProjectID: pid, NextItemSequence: 1, NextEventSequence: 1}
-			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "Yolo 快速创作已启动。进度会持久保存，关闭应用后仍可恢复。", "text", "completed", "", "", workflowUUID, map[string]any{"workflow_uuid": workflowUUID}, now); err != nil {
+			if _, err := appendItemTx(ctx, tx, &thread, nil, nil, "assistant_message", "assistant", "自动生成已开始。进度会持久保存，关闭应用后仍可恢复。", "text", "completed", "", "", workflowUUID, map[string]any{"workflow_uuid": workflowUUID}, now); err != nil {
 				return err
 			}
 			if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=? WHERE id=?`, thread.NextItemSequence, threadID); err != nil {
@@ -568,7 +568,7 @@ func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *proj
 func (service *Service) runYoloStep(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (map[string]any, bool, error) {
 	var snapshot yoloSnapshot
 	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5 && snapshot.Version != 6) || snapshot.ProjectUUID != store.ProjectUUID() {
-		return nil, false, domainError(CodeStateConflict, "Yolo 输入快照损坏", "workflow 无法安全恢复。", err)
+		return nil, false, domainError(CodeStateConflict, "自动生成输入快照损坏", "workflow 无法安全恢复。", err)
 	}
 	if snapshot.ImageProviderUUID == "" {
 		snapshot.ImageProviderUUID, snapshot.ImageModel = snapshot.ProviderUUID, snapshot.Model
@@ -596,7 +596,7 @@ func (service *Service) runYoloStep(ctx context.Context, store *project.Store, w
 	case "first_section_image":
 		return service.runYoloFirstImage(ctx, store, workflow, step, snapshot)
 	default:
-		return nil, false, domainError(CodeStateConflict, "未知 Yolo step", "step_key 不受支持。", nil)
+		return nil, false, domainError(CodeStateConflict, "未知自动生成步骤", "step_key 不受支持。", nil)
 	}
 }
 
@@ -833,7 +833,7 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 	}
 	bodySections, frontCover := yoloSectionsByRole(sections)
 	if len(bodySections) > 6 {
-		return nil, false, domainError(CodeStateConflict, "Comic Section 数量冲突", "Yolo 不会覆盖已有的 6 个以上 Section。", nil)
+		return nil, false, domainError(CodeStateConflict, "Comic Section 数量冲突", "自动生成流程不会覆盖已有的 6 个以上 Section。", nil)
 	}
 	if len(bodySections) == 0 {
 		profile, err := story.NewService(store).GetStoryProfile(ctx)
@@ -886,16 +886,16 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 		bodySections, frontCover = yoloSectionsByRole(sections)
 	}
 	if len(bodySections) == 0 {
-		return nil, false, domainError(CodeStateConflict, "正文页面缺失", "Yolo 页面规划完成后没有 body Section。", nil)
+		return nil, false, domainError(CodeStateConflict, "正文页面缺失", "自动页面规划完成后没有 body Section。", nil)
 	}
 	for _, section := range bodySections {
 		if section.CurrentStoryboard == nil {
-			return nil, false, domainError(CodeStateConflict, "Storyboard 缺失", "每个 Yolo Section 必须有 current storyboard。", nil)
+			return nil, false, domainError(CodeStateConflict, "Storyboard 缺失", "自动生成的每个 Section 必须有 current storyboard。", nil)
 		}
 	}
 	if snapshot.Version >= 5 {
 		if snapshot.PictureBook == nil {
-			return nil, false, domainError(CodeStateConflict, "Yolo 绘本快照缺失", "v5 workflow 无法判断是否需要封面。", nil)
+			return nil, false, domainError(CodeStateConflict, "自动生成绘本快照缺失", "v5 workflow 无法判断是否需要封面。", nil)
 		}
 		if snapshot.PictureBook.Format != project.PictureBookVertical {
 			frontCover, err = service.ensureYoloFrontCover(ctx, store, workflow, step, snapshot, chapter, bodySections[0], frontCover)
@@ -1087,7 +1087,7 @@ func (service *Service) runYoloLegacyFirstImage(ctx context.Context, store *proj
 
 func (service *Service) runYoloInitialPageImages(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot) (map[string]any, bool, error) {
 	if snapshot.PictureBook == nil {
-		return nil, false, domainError(CodeStateConflict, "Yolo 绘本快照缺失", "v5 workflow 无法判断初始页面范围。", nil)
+		return nil, false, domainError(CodeStateConflict, "自动生成绘本快照缺失", "v5 workflow 无法判断初始页面范围。", nil)
 	}
 	chapterUUID, err := service.workflowOutputUUID(ctx, store, workflow.ID, "comic_sections", "chapter_uuid")
 	if err != nil {
@@ -1103,7 +1103,7 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 		return nil, false, err
 	}
 	if body.PageRole != production.PageRoleBody {
-		return nil, false, domainError(CodeStateConflict, "Yolo 正文页角色冲突", "body_section_uuid 没有引用 body 页面。", nil)
+		return nil, false, domainError(CodeStateConflict, "自动生成正文页角色冲突", "body_section_uuid 没有引用 body 页面。", nil)
 	}
 	targets := []production.ComicSection{body}
 	var cover production.ComicSection
@@ -1117,7 +1117,7 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 			return nil, false, err
 		}
 		if cover.PageRole != production.PageRoleFrontCover {
-			return nil, false, domainError(CodeStateConflict, "Yolo 封面角色冲突", "cover_section_uuid 没有引用 front_cover 页面。", nil)
+			return nil, false, domainError(CodeStateConflict, "自动生成封面角色冲突", "cover_section_uuid 没有引用 front_cover 页面。", nil)
 		}
 		targets = []production.ComicSection{cover, body}
 	}
@@ -1127,7 +1127,7 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 			continue
 		}
 		if section.CurrentStoryboard == nil {
-			return nil, false, domainError(CodeStateConflict, "页面 Storyboard 缺失", "Yolo 初始页面必须有 current storyboard 才能生成图片。", nil)
+			return nil, false, domainError(CodeStateConflict, "页面 Storyboard 缺失", "自动生成的初始页面必须有 current storyboard 才能生成图片。", nil)
 		}
 		missing = append(missing, section.UUID)
 	}
@@ -1241,7 +1241,7 @@ func (service *Service) checkpointWorkflowStepOutput(ctx context.Context, store 
 		return result.Error
 	}
 	if result.RowsAffected != 1 {
-		return domainError(CodeCancelled, "Yolo 步骤已取消", "workflow step 已不再 active，未保存迟到的中间结果。", errWorkflowTransitionInactive)
+		return domainError(CodeCancelled, "自动生成步骤已取消", "workflow step 已不再 active，未保存迟到的中间结果。", errWorkflowTransitionInactive)
 	}
 	return nil
 }
@@ -1321,7 +1321,7 @@ func (service *Service) ensureWorkflowDomainTaskBatch(ctx context.Context, store
 		if result.Error != nil {
 			return DomainTaskBatch{}, result.Error
 		}
-		return DomainTaskBatch{}, domainError(CodeCancelled, "Yolo 步骤已取消", "批量任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
+		return DomainTaskBatch{}, domainError(CodeCancelled, "自动生成步骤已取消", "批量任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
 	}
 	if batchErr != nil {
 		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
@@ -1454,7 +1454,7 @@ func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *pro
 		if result.Error != nil {
 			return DomainTask{}, result.Error
 		}
-		return DomainTask{}, domainError(CodeCancelled, "Yolo 步骤已取消", "任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
+		return DomainTask{}, domainError(CodeCancelled, "自动生成步骤已取消", "任务创建后 workflow step 已不再 active，已撤销仍在运行的任务。", nil)
 	}
 	return task, nil
 }
@@ -1609,7 +1609,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			return err
 		}
 		if rows != 1 {
-			return domainError(CodeStateConflict, "Yolo 完成状态冲突", "workflow 已不再 running，未提交步骤结果。", nil)
+			return domainError(CodeStateConflict, "自动生成完成状态冲突", "workflow 已不再 running，未提交步骤结果。", nil)
 		}
 		if workflow.ThreadID != nil {
 			var threadType string
@@ -1654,7 +1654,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			return err
 		}
 		if rows != 1 {
-			return domainError(CodeStateConflict, "Yolo 下一步骤状态冲突", "下一个 workflow step 已不再 pending，未重复入队。", nil)
+			return domainError(CodeStateConflict, "自动生成下一步骤状态冲突", "下一个 workflow step 已不再 pending，未重复入队。", nil)
 		}
 		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: next.UUID, ThreadUUID: threadUUID})
 		if err != nil {
@@ -1672,7 +1672,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 			return err
 		}
 		if rows != 1 {
-			return domainError(CodeStateConflict, "Yolo Workflow 状态冲突", "workflow 已不再 running，未推进下一步骤。", nil)
+			return domainError(CodeStateConflict, "自动生成 Workflow 状态冲突", "workflow 已不再 running，未推进下一步骤。", nil)
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -1693,28 +1693,28 @@ func yoloCompletionMessage(output map[string]any) (string, error) {
 		bodyUUID, _ = output["section_uuid"].(string)
 	}
 	if !isCanonicalUUIDv7(chapterUUID) || !isCanonicalUUIDv7(bodyUUID) {
-		return "", domainError(CodeStateConflict, "Yolo 完成资源无效", "最终步骤没有返回规范的 Chapter 与 Section UUIDv7。", nil)
+		return "", domainError(CodeStateConflict, "自动生成完成资源无效", "最终步骤没有返回规范的 Chapter 与 Section UUIDv7。", nil)
 	}
 	if coverUUID, _ := output["cover_section_uuid"].(string); coverUUID != "" {
 		if !isCanonicalUUIDv7(coverUUID) {
-			return "", domainError(CodeStateConflict, "Yolo 封面资源无效", "最终步骤没有返回规范的封面 Section UUIDv7。", nil)
+			return "", domainError(CodeStateConflict, "自动生成封面资源无效", "最终步骤没有返回规范的封面 Section UUIDv7。", nil)
 		}
 		return fmt.Sprintf(
-			"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[页面脚本](@project/chapters/%s)、[封面](@project/chapters/%s/sections/%s)和[正文第一页](@project/chapters/%s/sections/%s)均已就绪。",
+			"自动生成已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[页面脚本](@project/chapters/%s)、[封面](@project/chapters/%s/sections/%s)和[正文第一页](@project/chapters/%s/sections/%s)均已就绪。",
 			chapterUUID, chapterUUID, chapterUUID, coverUUID, chapterUUID, bodyUUID,
 		), nil
 	}
 	if bodyImageUUID, _ := output["body_image_variant_uuid"].(string); bodyImageUUID != "" {
 		if !isCanonicalUUIDv7(bodyImageUUID) {
-			return "", domainError(CodeStateConflict, "Yolo 正文页图片无效", "最终步骤没有返回规范的正文 Image Variant UUIDv7。", nil)
+			return "", domainError(CodeStateConflict, "自动生成正文页图片无效", "最终步骤没有返回规范的正文 Image Variant UUIDv7。", nil)
 		}
 		return fmt.Sprintf(
-			"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[画面段落](@project/chapters/%s)和[首个画面段落](@project/chapters/%s/sections/%s)均已就绪。",
+			"自动生成已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[画面段落](@project/chapters/%s)和[首个画面段落](@project/chapters/%s/sections/%s)均已就绪。",
 			chapterUUID, chapterUUID, chapterUUID, bodyUUID,
 		), nil
 	}
 	return fmt.Sprintf(
-		"Yolo 快速创作已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[Comic Sections](@project/chapters/%s)和[首图](@project/chapters/%s/sections/%s)均已就绪。",
+		"自动生成已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)、[Premise](@project/premise)、[Comic Sections](@project/chapters/%s)和[首图](@project/chapters/%s/sections/%s)均已就绪。",
 		chapterUUID,
 		chapterUUID,
 		chapterUUID,
@@ -1734,7 +1734,7 @@ func publicOutputResource(output map[string]any) string {
 func (service *Service) failWorkflowStep(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, threadUUID string, cause error) error {
 	code, message := errorCode(cause), safeMessage(cause)
 	if code == CodeProvider {
-		message = "Yolo 步骤执行失败。"
+		message = "自动生成步骤执行失败。"
 	}
 	now := service.now().UTC()
 	transitioned := false

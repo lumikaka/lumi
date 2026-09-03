@@ -4,7 +4,6 @@ import { ArrowUp, Check, ChevronDown, FolderOpen, Link, MoreHorizontal, Papercli
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppPageShell from '../components/AppPageShell.jsx'
-import CreationReferenceEditor from '../components/CreationReferenceEditor.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PictureBookProfileFields from '../components/PictureBookProfileFields.jsx'
 import ProjectActionsMenu from '../components/ProjectActionsMenu.jsx'
@@ -78,17 +77,7 @@ function creationReferenceFileInput(reference) {
     original_filename: reference.filename,
     mime_type: reference.mimeType,
     byte_size: reference.byteSize,
-    reference_role: reference.referenceRole || 'auto',
-    title: reference.planTitle || creationReferenceDefaultTitle(reference.filename),
-    instruction: reference.instruction || '',
-    include_in_yolo: reference.includeInYolo !== false,
   }
-}
-
-function creationReferenceDefaultTitle(filename = '') {
-  const trimmed = filename.trim()
-  const dot = trimmed.lastIndexOf('.')
-  return dot > 0 ? trimmed.slice(0, dot) : trimmed
 }
 
 function creationReferenceManifest(references) {
@@ -109,11 +98,6 @@ function creationReferencesFromCheckpoint(checkpoint) {
     filename: reference.original_filename,
     mimeType: reference.mime_type,
     byteSize: reference.byte_size,
-    referenceRole: reference.reference_role || 'auto',
-    planTitle: reference.title || creationReferenceDefaultTitle(reference.original_filename),
-    instruction: reference.instruction || '',
-    includeInYolo: reference.include_in_yolo !== false,
-    planSource: reference.plan_source || 'system_default',
     status: 'missing', error: null, file: null, previewUrl: '',
   }))
 }
@@ -139,11 +123,6 @@ function mergeCreationSessionReferences(current, session) {
       filename: reference.original_filename,
       mimeType: reference.mime_type,
       byteSize: reference.byte_size,
-      referenceRole: reference.reference_role || existing?.referenceRole || 'auto',
-      planTitle: reference.title || existing?.planTitle || creationReferenceDefaultTitle(reference.original_filename),
-      instruction: reference.instruction ?? existing?.instruction ?? '',
-      includeInYolo: reference.include_in_yolo ?? existing?.includeInYolo ?? true,
-      planSource: reference.plan_source || existing?.planSource || 'system_default',
       status: ready ? 'ready' : reference.status === 'failed' ? 'error' : existing?.file ? existing.status === 'uploading' ? 'uploading' : 'selected' : 'missing',
       previewUrl: ready ? '' : existing?.previewUrl || '',
       error: reference.error_code ? { code: reference.error_code } : existing?.error || null,
@@ -305,10 +284,6 @@ export default function HomePage() {
         original_filename: reference.original_filename,
         mime_type: reference.mime_type,
         byte_size: reference.byte_size,
-        reference_role: reference.reference_role || 'auto',
-        title: reference.title || creationReferenceDefaultTitle(reference.original_filename),
-        instruction: reference.instruction || '',
-        include_in_yolo: reference.include_in_yolo !== false,
       }))
       : null
     const nextCheckpoint = { ...(checkpoint || creationCheckpoint || {}), sessionUuid: session.uuid, ...(serverReferenceFiles ? { referenceFiles: serverReferenceFiles } : {}) }
@@ -551,7 +526,6 @@ export default function HomePage() {
         position: creationReferences.length + index + 1,
         resource_type: 'file', resource_uuid: '', image_file_uuid: '', image_available: false,
         title: filename, filename, mimeType: file.type.toLowerCase(), byteSize: file.size,
-        referenceRole: 'auto', planTitle: creationReferenceDefaultTitle(filename), instruction: '', includeInYolo: true, planSource: 'system_default',
         status: 'selected', error: null, file,
         previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
       }
@@ -571,16 +545,6 @@ export default function HomePage() {
       if (serverManifestLocked) return current.map((reference) => reference.localId === localId ? { ...reference, file: null, previewUrl: '', status: 'missing', error: null } : reference)
       return current.filter((reference) => reference.localId !== localId).map((reference, index) => ({ ...reference, position: index + 1 }))
     })
-  }
-  const updateCreationReferencePlan = (localId, patch) => {
-    if (creationPending || creationCheckpoint?.sessionUuid) return
-    setCreationReferences((current) => current.map((reference) => reference.localId === localId ? { ...reference, ...patch } : reference))
-    if (creationCheckpoint) {
-      const nextReferences = creationReferences.map((reference) => reference.localId === localId ? { ...reference, ...patch } : reference)
-      const nextCheckpoint = { ...creationCheckpoint, referenceFiles: creationReferenceManifest(nextReferences) }
-      setCreationCheckpoint(nextCheckpoint)
-      saveCreationCheckpoint(nextCheckpoint)
-    }
   }
   const handleCreationReferencePaste = (event) => {
     const selected = selectProjectChatClipboardImages(event.clipboardData, creationReferences.filter((reference) => reference.status === 'ready' || reference.file).length)
@@ -693,7 +657,6 @@ export default function HomePage() {
               {creationReferences.length ? <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span> : null}
             </div>
             <ReferenceStrip projectUuid={selectedCreationProject?.uuid || creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && (selectedCreationProject ? true : reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file)))} compact />
-            {!selectedCreationProject ? <CreationReferenceEditor projectUuid={creationSession?.project_uuid || ''} references={creationReferences} disabled={creationPending || Boolean(creationCheckpoint?.sessionUuid)} onChange={updateCreationReferencePlan} /> : null}
             <LocalizedErrorMessage error={creationReferenceError} className="project-creation-composer__reference-error" compact onDismiss={() => setCreationReferenceError(null)} />
             {creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0 ? <p className="project-creation-composer__reference-notice" role="status">{t('projects.conversation.reference.reselect', { count: missingCreationReferenceFiles })}</p> : null}
             <div className="project-creation-composer__footer">

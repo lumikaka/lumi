@@ -32,20 +32,21 @@ const (
 	StatusFailed               = "failed"
 	StatusCancelled            = "cancelled"
 
-	CodeInvalidInput        = "project_creation_invalid"
-	CodeIdempotencyConflict = "project_creation_idempotency_conflict"
-	CodeNotFound            = "project_creation_session_not_found"
-	CodeReferenceNotFound   = "project_creation_reference_not_found"
-	CodeReferenceNotReady   = "project_creation_reference_not_ready"
-	MaxReferenceFiles       = 16
-	MaxReferenceFileBytes   = int64(32 << 20)
-	ReferenceRoleAuto       = "auto"
-	ReferenceRoleCharacter  = "character"
-	ReferenceRoleScene      = "scene"
-	ReferenceRoleProp       = "prop"
-	ReferenceRoleStyle      = "style"
-	PlanSourceSystemDefault = "system_default"
-	PlanSourceUserConfirmed = "user_confirmed"
+	CodeInvalidInput           = "project_creation_invalid"
+	CodeIdempotencyConflict    = "project_creation_idempotency_conflict"
+	CodeNotFound               = "project_creation_session_not_found"
+	CodeReferenceNotFound      = "project_creation_reference_not_found"
+	CodeReferenceNotReady      = "project_creation_reference_not_ready"
+	CodeReferenceSystemManaged = "project_setup_reference_system_managed"
+	MaxReferenceFiles          = 16
+	MaxReferenceFileBytes      = int64(32 << 20)
+	ReferenceRoleAuto          = "auto"
+	ReferenceRoleCharacter     = "character"
+	ReferenceRoleScene         = "scene"
+	ReferenceRoleProp          = "prop"
+	ReferenceRoleStyle         = "style"
+	PlanSourceSystemDefault    = "system_default"
+	PlanSourceUserConfirmed    = "user_confirmed"
 )
 
 type Error struct {
@@ -154,12 +155,11 @@ func validateCreateInput(inputText, idempotencyKey string) (string, string, erro
 	return inputText, idempotencyKey, nil
 }
 
-func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, error) {
+func normalizeReferenceFileMetadata(values []ReferenceFileInput) ([]ReferenceFileInput, error) {
 	if len(values) > MaxReferenceFiles {
 		return nil, &Error{Code: CodeInvalidInput, Message: "参考图过多", Details: "首页首条消息最多携带 16 张参考图。"}
 	}
 	allowedMIME := map[string]bool{"image/png": true, "image/jpeg": true, "image/webp": true}
-	allowedRoles := map[string]bool{ReferenceRoleAuto: true, ReferenceRoleCharacter: true, ReferenceRoleScene: true, ReferenceRoleProp: true, ReferenceRoleStyle: true}
 	result := make([]ReferenceFileInput, 0, len(values))
 	for _, value := range values {
 		value.OriginalFilename = strings.TrimSpace(value.OriginalFilename)
@@ -173,32 +173,47 @@ func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, 
 		if value.ByteSize <= 0 || value.ByteSize > MaxReferenceFileBytes {
 			return nil, &Error{Code: CodeInvalidInput, Message: "参考图大小无效", Details: "每张参考图必须大于 0 字节且不超过 32 MiB。"}
 		}
-		defaultTitle := strings.TrimSpace(strings.TrimSuffix(filepath.Base(value.OriginalFilename), filepath.Ext(value.OriginalFilename)))
-		if defaultTitle == "" {
-			defaultTitle = value.OriginalFilename
+		result = append(result, value)
+	}
+	return result, nil
+}
+
+func systemManagedReferenceTitle(filename string) string {
+	title := strings.TrimSpace(strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
+	if title == "" {
+		title = strings.TrimSpace(filename)
+	}
+	runes := []rune(title)
+	if len(runes) > 160 {
+		runes = runes[:160]
+	}
+	return string(runes)
+}
+
+func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, error) {
+	values, err := normalizeReferenceFileMetadata(values)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ReferenceFileInput, 0, len(values))
+	for _, value := range values {
+		defaultTitle := systemManagedReferenceTitle(value.OriginalFilename)
+		providedRole := strings.ToLower(strings.TrimSpace(value.ReferenceRole))
+		providedTitle := strings.TrimSpace(value.Title)
+		providedInstruction := strings.TrimSpace(value.Instruction)
+		if (providedRole != "" && providedRole != ReferenceRoleAuto) ||
+			(providedTitle != "" && providedTitle != defaultTitle) ||
+			providedInstruction != "" ||
+			(value.IncludeInYolo != nil && !*value.IncludeInYolo) {
+			return nil, &Error{
+				Code: CodeReferenceSystemManaged, Message: "视觉参考由系统自动管理",
+				Details: "创建请求只需提交 original_filename、mime_type 和 byte_size；参考图将自动用于画面生成。",
+			}
 		}
-		value.ReferenceRole = strings.ToLower(strings.TrimSpace(value.ReferenceRole))
-		if value.ReferenceRole == "" {
-			value.ReferenceRole = ReferenceRoleAuto
-		}
-		if !allowedRoles[value.ReferenceRole] {
-			return nil, &Error{Code: CodeInvalidInput, Message: "参考图用途无效", Details: "reference_role 只支持 auto、character、scene、prop 或 style。"}
-		}
-		value.Title = strings.TrimSpace(value.Title)
-		if value.Title == "" {
-			value.Title = defaultTitle
-		}
-		value.Instruction = strings.TrimSpace(value.Instruction)
-		if !utf8.ValidString(value.Title) || strings.ContainsRune(value.Title, 0) || len([]rune(value.Title)) > 160 {
-			return nil, &Error{Code: CodeInvalidInput, Message: "参考图标题无效", Details: "title 必须是 1 到 160 个有效字符。"}
-		}
-		if !utf8.ValidString(value.Instruction) || strings.ContainsRune(value.Instruction, 0) || len([]rune(value.Instruction)) > 2000 {
-			return nil, &Error{Code: CodeInvalidInput, Message: "参考图说明无效", Details: "instruction 最多允许 2000 个有效字符。"}
-		}
+		value.ReferenceRole = ReferenceRoleAuto
+		value.Title = defaultTitle
+		value.Instruction = ""
 		include := true
-		if value.IncludeInYolo != nil {
-			include = *value.IncludeInYolo
-		}
 		value.IncludeInYolo = &include
 		result = append(result, value)
 	}
@@ -206,14 +221,7 @@ func validateReferenceFiles(values []ReferenceFileInput) ([]ReferenceFileInput, 
 }
 
 func referencePlanSource(input ReferenceFileInput) string {
-	defaultTitle := strings.TrimSpace(strings.TrimSuffix(filepath.Base(input.OriginalFilename), filepath.Ext(input.OriginalFilename)))
-	if defaultTitle == "" {
-		defaultTitle = input.OriginalFilename
-	}
-	if input.ReferenceRole == ReferenceRoleAuto && input.Title == defaultTitle && input.Instruction == "" && input.IncludeInYolo != nil && *input.IncludeInYolo {
-		return PlanSourceSystemDefault
-	}
-	return PlanSourceUserConfirmed
+	return PlanSourceSystemDefault
 }
 
 func initialLanguage(input string) string {
@@ -238,6 +246,19 @@ func referenceManifestMatches(records []appstore.ProjectCreationReference, input
 	return true
 }
 
+func referenceMetadataMatches(records []appstore.ProjectCreationReference, inputs []ReferenceFileInput) bool {
+	if len(records) != len(inputs) {
+		return false
+	}
+	for index, record := range records {
+		input := inputs[index]
+		if record.Position != index+1 || record.OriginalFilename != input.OriginalFilename || record.DeclaredMIMEType != input.MIMEType || record.DeclaredByteSize != input.ByteSize {
+			return false
+		}
+	}
+	return true
+}
+
 func (service *Service) publicSession(ctx context.Context, record appstore.ProjectCreationSession) (Session, error) {
 	projectUUID := ""
 	if record.RecentProjectID != nil {
@@ -251,7 +272,7 @@ func (service *Service) publicSession(ctx context.Context, record appstore.Proje
 	for _, item := range records {
 		title := strings.TrimSpace(item.Title)
 		if title == "" {
-			title = strings.TrimSpace(strings.TrimSuffix(filepath.Base(item.OriginalFilename), filepath.Ext(item.OriginalFilename)))
+			title = systemManagedReferenceTitle(item.OriginalFilename)
 		}
 		reference := Reference{UUID: item.UUID, Position: item.Position, OriginalFilename: item.OriginalFilename, MIMEType: item.DeclaredMIMEType, ByteSize: item.DeclaredByteSize, ReferenceRole: item.ReferenceRole, Title: title, Instruction: item.Instruction, IncludeInYolo: item.IncludeInYolo, PlanSource: item.PlanSource, Status: item.Status, ErrorCode: item.ErrorCode}
 		if item.Status == "ready" {
@@ -291,6 +312,27 @@ func (service *Service) Create(ctx context.Context, inputText, idempotencyKey st
 func (service *Service) CreateWithReferences(ctx context.Context, inputText, idempotencyKey string, referenceFiles []ReferenceFileInput) (Session, error) {
 	inputText, idempotencyKey, err := validateCreateInput(inputText, idempotencyKey)
 	if err != nil {
+		return Session{}, err
+	}
+	metadata, err := normalizeReferenceFileMetadata(referenceFiles)
+	if err != nil {
+		return Session{}, err
+	}
+	existing, err := service.app.ProjectCreationSessionByIdempotencyKey(ctx, idempotencyKey)
+	if err == nil {
+		storedReferences, loadErr := service.app.ProjectCreationReferences(ctx, existing.ID)
+		if loadErr != nil {
+			return Session{}, loadErr
+		}
+		if existing.InputText != inputText || !referenceMetadataMatches(storedReferences, metadata) {
+			return Session{}, &Error{Code: CodeIdempotencyConflict, Message: "幂等键已用于另一份创建输入", Details: "请为不同的首页文字或参考图清单生成新的 idempotency_key。"}
+		}
+		// Existing sessions, including pre-upgrade custom plans, resume from
+		// their durable facts. Incoming plan fields are ignored and can never
+		// rewrite those records.
+		return service.Resume(ctx, existing.UUID)
+	}
+	if !errors.Is(err, appstore.ErrProjectCreationSessionNotFound) {
 		return Session{}, err
 	}
 	referenceFiles, err = validateReferenceFiles(referenceFiles)

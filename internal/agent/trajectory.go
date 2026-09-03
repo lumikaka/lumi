@@ -811,6 +811,9 @@ func trajectoryToolArguments(raw, metadataRaw string) (json.RawMessage, string, 
 	if requestOrdinal == 0 {
 		requestOrdinal = metadataInt(metadataRaw, "request_ordinal")
 	}
+	// Dangerous confirmation bindings are runtime-only security state. They
+	// never belong in public trajectory payloads or reconstructed model calls.
+	stripJSONField(value, "confirmation")
 	for key := range value {
 		if strings.HasPrefix(key, "__") {
 			delete(value, key)

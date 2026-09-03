@@ -12,7 +12,6 @@ import {
   preflightImageGeneration,
   preflightProjectImageGeneration,
 	selectProjectDirectory,
-	updateProjectSetupReference,
 	uploadProjectCreationReference,
 } from './projects.js'
 
@@ -87,7 +86,6 @@ test('project creation sessions declare and upload ordered reference files', asy
   t.mock.method(globalThis, 'fetch', async () => success({ uuid: '019-session', references: [] }))
   const referenceFiles = [{
     original_filename: 'moon.png', mime_type: 'image/png', byte_size: 12,
-    reference_role: 'style', title: 'Moonlight palette', instruction: 'Use only the cool colors', include_in_yolo: false,
   }]
   await createProjectCreationSession({ inputText: 'Moon story', idempotencyKey: 'home-project-reference', referenceFiles })
   const file = new File(['image'], 'moon.png', { type: 'image/png' })
@@ -98,25 +96,4 @@ test('project creation sessions declare and upload ordered reference files', asy
   assert.equal(calls[1][1].method, 'POST')
   assert.equal(calls[1][1].headers['Content-Type'], undefined)
   assert.equal(calls[1][1].body.get('file'), file)
-})
-
-test('project setup reference updates use revisioned public resources', async (t) => {
-  t.mock.method(globalThis, 'fetch', async () => success({ revision: 5, reference_plan: { items: [] } }))
-  await updateProjectSetupReference('019-project', '019-reference', {
-    expected_revision: 4,
-    reference_role: 'character',
-    title: 'Moon fox',
-    instruction: 'Keep the red scarf',
-    include_in_yolo: true,
-  })
-  const [path, options] = globalThis.fetch.mock.calls[0].arguments
-  assert.equal(path, '/api/v1/projects/019-project/project-setup/references/019-reference')
-  assert.equal(options.method, 'PATCH')
-  assert.deepEqual(JSON.parse(options.body), {
-    expected_revision: 4,
-    reference_role: 'character',
-    title: 'Moon fox',
-    instruction: 'Keep the red scarf',
-    include_in_yolo: true,
-  })
 })

@@ -20,30 +20,33 @@ const (
 	legacyAgentInputRuleEN       = "- When a material choice is missing or a risky action needs confirmation, call request_user_input by itself; never batch it with another tool call. Copy route, project_uuid, target_uuid, expected_revision, and request_fingerprint exactly from the request_api confirmation error, then bind the confirming-option index."
 	currentAgentUIRefRuleZH      = "- 成功的 request_api Tool Result 包含 ui_ref 时，最终答复第一次自然提及该次变更的资源时必须使用 `[自然语言名称](ui_ref.href)`，并逐字复制 href。每个资源最多链接一次；不得自行构造、猜测或修改 `@project` 引用，也不得另列“打开……”链接。没有 ui_ref 或操作未成功时不要创建项目引用。"
 	currentAgentUIRefRuleEN      = "- When a successful request_api Tool Result contains ui_ref, use `[natural-language name](ui_ref.href)` the first time the final answer naturally mentions that changed resource, copying the href verbatim. Link each resource at most once; never construct, guess, or alter an `@project` reference, and never add a separate “Open …” link. Do not create a project reference when ui_ref is absent or the operation did not succeed."
-	currentAgentBootstrapRuleZH  = "- 首页创建会话的 bootstrap 首个 Turn 定稿后不得手工生产，只能按初始化 Guide 启动受控 YOLO；YOLO 会在当前 Turn 内以内联 Workflow 等待，期间不得轮询或手工模拟步骤，终态 Tool Result 恢复同一 Run 后再输出一次最终说明。"
-	previousAgentBootstrapRuleZH = "- 首页创建会话的 bootstrap 首个 Turn 定稿后不得手工生产，只能按初始化 Guide 启动受控 YOLO；Workflow 创建成功后使用返回的 ui_ref 并立即结束当前 Turn。"
-	currentAgentBootstrapRuleEN  = "- After setup finalization, the first bootstrap Turn created from the home-page flow must not produce resources manually; it may only start the controlled YOLO flow described by the initialization Guide. That YOLO waits inline inside the current Turn. Do not poll or simulate its steps; produce one final response only after its terminal Tool Result resumes the same Run."
-	previousAgentBootstrapRuleEN = "- After setup finalization, the first bootstrap Turn created from the home-page flow must not produce resources manually; it may only start the controlled YOLO flow described by the initialization Guide. Once the Workflow is created, use its returned ui_ref and end the current Turn immediately."
+	currentAgentBootstrapRuleZH  = "- 首页创建会话的 bootstrap 在 Setup 完整后，由运行时生成定稿确认，并在确认成功后直接启动自动生成 Workflow；Agent 不得自行调用 finalization、构造确认或调用 Workflow 创建 route。该 Workflow 会在来源 Turn 内以内联方式等待，期间不得轮询或手工模拟步骤，终态 Tool Result 恢复 Run 后再输出一次最终说明。"
+	previousAgentBootstrapRuleZH = "- 首页创建会话的 bootstrap 首个 Turn 定稿后不得手工生产，只能按初始化 Guide 启动受控 YOLO；YOLO 会在当前 Turn 内以内联 Workflow 等待，期间不得轮询或手工模拟步骤，终态 Tool Result 恢复同一 Run 后再输出一次最终说明。"
+	olderAgentBootstrapRuleZH    = "- 首页创建会话的 bootstrap 首个 Turn 定稿后不得手工生产，只能按初始化 Guide 启动受控 YOLO；Workflow 创建成功后使用返回的 ui_ref 并立即结束当前 Turn。"
+	currentAgentBootstrapRuleEN  = "- Once bootstrap Setup is complete, the runtime creates the finalization confirmation and starts the automatic-generation Workflow directly after confirmation succeeds. The Agent must not call finalization, author confirmation, or call the Workflow creation route. That Workflow waits inline inside its source Turn. Do not poll or simulate its steps; produce one final response only after its terminal Tool Result resumes the Run."
+	previousAgentBootstrapRuleEN = "- After setup finalization, the first bootstrap Turn created from the home-page flow must not produce resources manually; it may only start the controlled YOLO flow described by the initialization Guide. That YOLO waits inline inside the current Turn. Do not poll or simulate its steps; produce one final response only after its terminal Tool Result resumes the same Run."
+	olderAgentBootstrapRuleEN    = "- After setup finalization, the first bootstrap Turn created from the home-page flow must not produce resources manually; it may only start the controlled YOLO flow described by the initialization Guide. Once the Workflow is created, use its returned ui_ref and end the current Turn immediately."
 )
 
 func previousAgentBaseDefaults(value, language string) []string {
 	currentGuide, previousGuide := currentAgentGuideRuleZH, previousAgentGuideRuleZH
 	currentInput, previousInput, olderInput, legacyInput := currentAgentInputRuleZH, previousAgentInputRuleZH, olderAgentInputRuleZH, legacyAgentInputRuleZH
 	currentUIRef := currentAgentUIRefRuleZH
-	currentBootstrap, previousBootstrap := currentAgentBootstrapRuleZH, previousAgentBootstrapRuleZH
+	currentBootstrap, previousBootstrap, olderBootstrap := currentAgentBootstrapRuleZH, previousAgentBootstrapRuleZH, olderAgentBootstrapRuleZH
 	if language == LanguageEnglish {
 		currentGuide, previousGuide = currentAgentGuideRuleEN, previousAgentGuideRuleEN
 		currentInput, previousInput, olderInput, legacyInput = currentAgentInputRuleEN, previousAgentInputRuleEN, olderAgentInputRuleEN, legacyAgentInputRuleEN
 		currentUIRef = currentAgentUIRefRuleEN
-		currentBootstrap, previousBootstrap = currentAgentBootstrapRuleEN, previousAgentBootstrapRuleEN
+		currentBootstrap, previousBootstrap, olderBootstrap = currentAgentBootstrapRuleEN, previousAgentBootstrapRuleEN, olderAgentBootstrapRuleEN
 	}
-	previousInputRule := strings.Replace(value, currentInput, previousInput, 1)
+	previousBootstrapRule := strings.Replace(value, currentBootstrap, previousBootstrap, 1)
+	previousInputRule := strings.Replace(previousBootstrapRule, currentInput, previousInput, 1)
 	olderInputRule := strings.Replace(previousInputRule, previousInput, olderInput, 1)
-	legacyBootstrap := strings.Replace(olderInputRule, currentBootstrap, previousBootstrap, 1)
-	withoutBootstrap := strings.Replace(legacyBootstrap, previousBootstrap+"\n", "", 1)
+	legacyBootstrap := strings.Replace(olderInputRule, previousBootstrap, olderBootstrap, 1)
+	withoutBootstrap := strings.Replace(legacyBootstrap, olderBootstrap+"\n", "", 1)
 	previousUIRef := strings.Replace(withoutBootstrap, currentUIRef+"\n", "", 1)
 	legacyInputRule := strings.Replace(previousUIRef, olderInput, legacyInput, 1)
-	return []string{previousInputRule, olderInputRule, legacyBootstrap, withoutBootstrap, previousUIRef, legacyInputRule, strings.Replace(legacyInputRule, currentGuide, previousGuide, 1)}
+	return []string{previousBootstrapRule, previousInputRule, olderInputRule, legacyBootstrap, withoutBootstrap, previousUIRef, legacyInputRule, strings.Replace(legacyInputRule, currentGuide, previousGuide, 1)}
 }
 
 func agentDefinitions(language string) []Definition {

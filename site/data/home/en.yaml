@@ -97,7 +97,7 @@ modes:
   description: Both paths end in the same editable workspace. There is no locked, one-click final book.
   items:
     - badge: Fast start
-      title: YOLO quick creation
+      title: Quick generation
       body: Enter a minimal story idea and let Lumi prepare the story, profile, references, storyboard, and first image before you refine them.
       best_for: Best for families and creators who want to see the shape of a story quickly
     - badge: Detailed control

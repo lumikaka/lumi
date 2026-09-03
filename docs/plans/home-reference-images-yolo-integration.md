@@ -17,7 +17,7 @@ plan_state: finished
 
 ### 目标结果
 
-用户在首页创建项目时附带的图片，可以被明确标记为人物、场景、道具、画风或自动参考。项目确认并启动 YOLO 后，系统冻结本次引用计划，把图片实际送入 Premise 设定图生成，并将来源文件复用为 Premise Assets，供封面、第一页和后续重生成继续选择。
+用户在首页创建项目时附带的图片，由系统统一标记为自动参考并按附件顺序参与画面生成。项目确认并开始自动生成后，系统冻结本次引用事实，把图片实际送入 Premise 设定图生成，并将来源文件复用为 Premise Assets，供封面、第一页和后续重生成继续选择。
 
 验收时必须能证明：
 
@@ -31,7 +31,7 @@ plan_state: finished
 
 ### 产品语义
 
-首页每张图片新增一份可选的引用计划：
+引用计划字段保留为内部生产与历史恢复事实；新建图片的值全部由系统托管，不是用户可选参数：
 
 | 字段 | 含义 | 默认值 |
 | --- | --- | --- |
@@ -49,14 +49,14 @@ plan_state: finished
 - `style`：只参考线条、色彩、纹理和光照，不复制主体与构图。
 - `auto`：作为通用视觉灵感，由设定生成与后续 Premise 选择共同判断。
 
-引用图只直接影响视觉设定与图片生成，不自动改写故事情节。用户若希望图片内容影响故事，仍需在故事描述或 `instruction` 中明确表达。
+引用图只直接影响视觉设定与图片生成，不自动改写故事情节。用户若希望图片内容影响故事，仍需在发送前的故事描述中明确表达。
 
 ### 首版流程
 
-1. 用户在首页选择图片；系统给出无阻塞默认计划，用户可按需展开编辑。
+1. 用户在首页选择图片；系统静默应用无阻塞默认计划，Composer 只显示普通附件条。
 2. 创建会话保存文件清单与引用计划；刷新、恢复、重选项目时保持一致。
 3. 项目激活时把文件绑定和引用计划一起写入 Project DB，不复制对象存储内容。
-4. Project Setup 卡片显示缩略图、角色、标题和是否参与 YOLO。项目仍是草稿时可修改；任何修改都增加 Setup revision。
+4. Project Setup 卡片只读显示缩略图和自动使用说明，不再让用户维护参考计划。
 5. 用户确认创建方案后，Agent 只能通过可信的创建会话上下文启动 YOLO，不能自行提交任意文件 UUID。
 6. YOLO v6 在创建时从 Project DB 加载并冻结完整引用计划；被排除的项目也保留在快照审计信息中，但 Worker 只消费 included 项。
 7. `premise` 步骤先把 included 文件注册为来源型 Premise Assets，再合成一张确定性的带标签参考板。
@@ -68,7 +68,7 @@ plan_state: finished
 按以下顺序提交，保证每一阶段都能独立迁移和回滚：
 
 1. 数据模型、迁移、读取 DTO 与旧数据默认值。
-2. 首页创建 manifest、恢复逻辑与 Project Setup 编辑接口。
+2. 首页 metadata-only 创建 manifest、恢复逻辑与 Project Setup 只读展示。
 3. Agent 合约、确认摘要和 YOLO v6 快照。
 4. Premise 来源 Asset 导入、引用板与图片任务接入。
 5. 后续 Section 引用选择增强、错误体验、文档与完整回归。
@@ -93,8 +93,8 @@ plan_state: finished
 - `instruction` 最多 2000 个 Unicode 字符。
 - 沿用现有约束，只接受 PNG、JPEG 与 WebP；非图片继续返回 `project_creation_invalid`，不把它们混入创建 reference manifest。
 - 创建会话最多 16 张图片（无论 included 与否）；数量验证在写会话与恢复时都执行。
-- `plan_source` 不接受客户端直接赋值：全部计划字段等于默认值时由服务端写 `system_default`；只要角色、标题、instruction 或 include 明确偏离默认值，就写 `user_confirmed`。
-- 创建请求幂等比较包含以上计划字段，避免同一幂等键悄悄改变语义。
+- `plan_source` 不接受客户端直接赋值；新建项固定写 `system_default`，任何非默认计划写入返回 `project_setup_reference_system_managed`。
+- 新 Session 的创建请求只接受文件元数据；既有 Session 幂等比较仅匹配原文与有序文件元数据，不改写历史计划。
 
 ### Project DB：项目事实状态
 
@@ -108,7 +108,7 @@ plan_state: finished
 
 该迁移同样重建表并完整恢复现有 unique/index/foreign-key 约束，down migration 也需要保留原有行和顺序。
 
-项目激活后的 Project DB 是引用计划的事实来源；App DB 仅用于创建恢复与跨库绑定。重复执行绑定时只校验不可变身份：项目、创建会话、位置和文件，不用 App DB 的旧值覆盖用户已在 Setup 中修改的计划。
+项目激活后的 Project DB 是引用计划的事实来源；App DB 仅用于创建恢复与跨库绑定。重复执行绑定时只校验不可变身份：项目、创建会话、位置和文件，不用 App DB 或新请求的计划字段覆盖 Project DB 历史事实。
 
 ### Premise Asset 映射
 
@@ -181,15 +181,11 @@ YOLO 快照从 v5 升至 v6，新增：
 {
   "original_filename": "fox.png",
   "mime_type": "image/png",
-  "byte_size": 123456,
-  "reference_role": "character",
-  "title": "小狐狸",
-  "instruction": "保留红围巾",
-  "include_in_yolo": true
+  "byte_size": 123456
 }
 ```
 
-响应中的 reference 额外返回服务端派生的 `plan_source`。保持现有 REST 路径与统一响应信封；旧客户端不传新字段时使用服务端默认值，不得依赖前端补默认值才能成功，也不得接受客户端伪造来源。
+服务端固定派生 `reference_role=auto`、文件名标题、空 instruction、`include_in_yolo=true` 和 `plan_source=system_default`。响应中的 reference 返回这些事实字段。保持现有 REST 路径与统一响应信封；兼容旧客户端提交完全相同的默认字段，但新的非默认计划写入返回 `project_setup_reference_system_managed`。
 
 ### Project Setup 读取
 
@@ -218,30 +214,13 @@ YOLO 快照从 v5 升至 v6，新增：
 
 响应不得包含内部 ID、磁盘路径和永久绕过鉴权的对象 URL。缩略图复用现有 Files 媒体读取入口。
 
-### Project Setup 编辑
+### Project Setup 兼容边界
 
 新增资源化端点：
 
 `PATCH /api/v1/projects/:project_uuid/project-setup/references/:reference_uuid`
 
-请求：
-
-```json
-{
-  "expected_revision": 4,
-  "reference_role": "style",
-  "title": "水彩画风",
-  "instruction": "只参考笔触与配色",
-  "include_in_yolo": true
-}
-```
-
-- 字段均可选，但至少提供一项计划变更。
-- 只允许 `setup_status=draft` 且引用必须属于当前项目；draft record 为 `draft`、`pending_confirmation` 或 `failed` 时均可修改并恢复到 `draft`，只有 finalized/ready 不可变。
-- 比较 `expected_revision`，成功后增加 revision、恢复 draft 状态并清除旧 setup error，再返回完整 `SetupState`，不包 `{ item }`；旧危险操作确认会因 revision 不匹配而自然失效。
-- 使用现有统一失败信封；revision 冲突与 ready 锁定返回稳定业务错误码。
-- 写入成功后经 `/api/v1/ws` 发送 setup 变更提示；前端失效 TanStack Query 后 REST 重读事实状态，不增加 HTTP 轮询。
-- 浏览器直改把该项 `plan_source` 标为 `user_confirmed`；Agent in-process route 通过可信调用上下文标为 `agent_proposed`，客户端不能自行伪造来源。Setup finalization 在同一事务中把最终计划统一标记为 `user_confirmed`。
+端点保留一个兼容版本，但任何请求都返回统一失败信封和稳定错误码 `project_setup_reference_system_managed`。它不修改 reference、Setup revision 或 `plan_source`，也不再出现在当前 Agent Route Registry 中。已有数据库自定义值继续作为历史事实读取和生产，不做迁移。
 
 ### Agent 工具边界
 
@@ -254,34 +233,32 @@ YOLO 快照从 v5 升至 v6，新增：
 
 ### 确认摘要
 
-Agent 的 Project Setup route registry、strict schema、projector、API doc 与确认文案加入“视觉参考”段落，逐项列出标题、角色、是否采用和 instruction。任何引用计划修改都会增加 revision，使旧 finalization fingerprint/确认绑定失效；用户必须基于新 revision 再次确认后才能创建 YOLO。
+Agent 的 Project Setup projector、API doc 与确认文案只展示视觉参考数量和自动使用说明；当前 Route Registry 不提供参考计划 PATCH。finalization 仍绑定最新 Setup revision，用户确认后才会创建自动生成 Workflow。
 
-Agent 只能说明“已收到图片及用途”，不得声称已经看过图片像素。首版不要求 Agent 自动分类图片；只有用户文字与现有角色明显冲突时，才允许合并为一次澄清提问。
+Agent 只能说明“已附带图片并将自动用于视觉生成”，不得逐项询问用途或声称已经看过图片像素。
 
 ## ui
 
 ### 首页 Composer
 
-- 只在“新建项目”模式的附件区显示专用 `CreationReferenceEditor`，不要改变通用 Chat `ReferenceStrip` 的语义。
-- 图片添加后默认 `include_in_yolo=true`、`reference_role=auto`、标题为文件名；默认值无需阻塞用户创建。
-- 每项支持缩略图、包含开关、角色下拉、标题和 instruction；高级字段默认折叠。
+- “新建项目”和已有项目模式都只显示通用 Chat `ReferenceStrip`，上传后不要求用户再选择用途或是否参与。
+- 图片添加后静默使用 `include_in_yolo=true`、`reference_role=auto`、标题为文件名；默认值无需阻塞用户创建。
+- 用途、标题、instruction 与是否参与等计划字段不向用户开放；需要改变图片时必须在发送前移除。
 - 非图片继续沿用当前“仅支持图片”的选择拒绝与错误提示，不引入第二种创建附件语义。
-- sessionStorage 创建 checkpoint 保存完整计划；恢复后以服务端创建会话响应校准。
+- sessionStorage 创建 checkpoint 只保存有序文件元数据；恢复后以服务端创建会话响应校准。
 - 在已有项目中使用首页 Composer 时维持普通 Chat 上传路径，不提交创建引用计划。
 
-文案从“上传灵感”调整为明确承诺边界，例如：“参考图会用于建立人物、场景或画风设定；故事情节仍以你的文字为准。”
+文案明确承诺边界：“已附带 N 张视觉参考，将自动用于画面生成；故事情节仍以你的文字为准。”
 
 ### Project Setup 卡片
 
-- 在确认按钮前展示“视觉参考”区域，显示缩略图、角色标签、标题、instruction 和是否参与 YOLO。
-- Draft 状态可以原位编辑；保存时携带当前 revision，成功后依赖 Query invalidation + REST 重读。
-- Ready/运行中状态只读，并显示“已冻结到本次生成”。
+- 在确认按钮前展示“视觉参考”区域，只读显示缩略图和“已附带 N 张视觉参考，将自动用于画面生成”。
+- Draft、Ready 和运行中状态均不提供角色、标题、instruction、参与状态或保存控件。
 - YOLO premise 步骤失败时显示具体参考图错误和“重试当前步骤”，不建议用户重新创建整个项目。
-- 所有 include/role 控件提供 label、键盘操作、focus-visible 和 `aria-pressed`/selected 状态；组合 hover 规则写在基础状态之后，避免选中态吞掉 hover 反馈。
 
 ### 国际化与可观察状态
 
-- 补齐简体中文和项目已有其他 locale 的角色、帮助、校验、失败和冻结文案。
+- 补齐简体中文和英文的自动使用、校验与失败文案，用户可见文案不出现内部 YOLO 术语。
 - Web 不从本地附件状态推断 YOLO 是否使用了图片；只展示 REST 返回的 Setup/Yolo snapshot 派生状态。
 - WS 只传公开 UUIDv7 与变更提示，不发送内部 ID 或整张计划 payload。
 
@@ -358,9 +335,9 @@ Agent 只能说明“已收到图片及用途”，不得声称已经看过图�
 
 - App/Project migration up/down、CHECK 约束和旧行默认值。
 - 创建 manifest 校验、幂等冲突、checkpoint/recovery 和非图片拒绝。
-- 跨库绑定只复制初始计划，重复绑定不覆盖 Project DB 编辑。
-- Setup reference PATCH：归属校验、revision 冲突、ready 锁定、统一 JSON 信封、仅公开 UUID。
-- Agent schema/guide/projector：确认摘要包含计划，Agent 无法注入任意 file UUID。
+- 跨库绑定只复制系统默认计划，重复绑定不覆盖 Project DB 历史事实。
+- Setup reference PATCH：所有写入统一返回 `project_setup_reference_system_managed`，且不改变 revision。
+- Agent schema/guide/projector：确认摘要只包含数量与自动使用说明，Agent 无法注入任意 file UUID。
 - YOLO v6 快照冻结、included/excluded、直接 UI 无引用，以及 v1-v5 恢复测试。
 - 来源 Premise Asset：共享同一 file ID、角色映射、标题碰撞、归档恢复、重试不重复。
 - 有来源 Asset 时仍运行 setting breakdown；同名命中不覆盖来源 current variant。
@@ -372,11 +349,10 @@ Agent 只能说明“已收到图片及用途”，不得声称已经看过图�
 
 ### 前端测试
 
-- 新项目 manifest 与 sessionStorage checkpoint 保存完整引用计划；刷新恢复不丢字段。
-- 默认值、角色切换、排除、标题/instruction 校验和非图片拒绝状态。
+- 新项目 manifest 与 sessionStorage checkpoint 只保存文件元数据；刷新恢复不要求补计划字段。
+- 附件添加、发送前移除、metadata-only 默认值和非图片拒绝状态。
 - 已选项目的普通 Chat Composer 行为不受影响。
-- Setup 卡片携带 revision 编辑，成功后 invalidation，冲突后展示服务端事实状态。
-- Ready 状态只读、失败重试入口、键盘与可访问性状态。
+- Setup 卡片只有只读缩略图与自动使用说明，不存在参考参数控件和保存请求。
 - 简体中文与其他 locale 文案键完整，现有首页创建流程快照/交互测试更新。
 
 ### 验证命令
@@ -395,10 +371,10 @@ pnpm --dir web build
 
 ### 发布与观测
 
-- 先上线向后兼容的 DB/读接口，再上线写入新 manifest 的 Web，最后启用 YOLO v6 消费。
-- 统计 `included_reference_count`、role 分布、board compose latency、供应商引用失败率、Premise retry 率和来源 Asset 命中率；指标不得带文件名或 instruction。
+- 后端与 Web 资源原子构建并重启同一 Lumi 进程，避免旧协议二进制继续接收新 Web manifest。
+- 统计 `included_reference_count`、board compose latency、供应商引用失败率、Premise retry 率和来源 Asset 命中率；指标不得带文件名或 instruction。
 - 事件审计至少覆盖 `creation_references_frozen`、`asset_created_from_project_reference`、`creation_references_composed`、`breakdown_matched_project_reference`。
-- 人工 smoke case：同一故事分别用“无参考图”“人物图”“画风图”“人物+场景+画风”生成，核对快照、请求日志和最终视觉差异。
+- 人工 smoke case：同一故事分别用“无参考图”“单张图”“多张图”生成，核对附件顺序、快照、请求日志和最终视觉差异。
 
 ### 非目标
 
@@ -416,4 +392,4 @@ pnpm --dir web build
 - `docs/prds/workflows/`：YOLO v6 快照、premise 引用处理、失败与重试语义。
 - `docs/prds/premise_assets/`：来源型 Asset、角色映射、breakdown 冲突保护与 Section 候选元数据。
 - `docs/prds/files/`：共享 file ownership、`premise_reference_board` purpose、GC 保留规则。
-- `site/` 对应用户文档：参考图角色、只影响视觉不自动改写故事、失败重试说明。
+- `site/` 对应用户文档：附件自动用于视觉生成、只影响视觉不自动改写故事、失败重试说明。

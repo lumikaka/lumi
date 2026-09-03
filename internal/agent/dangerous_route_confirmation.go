@@ -38,6 +38,11 @@ func confirmationRequestProviderCallID(sourceExecutionUUID string) string {
 	return "call_" + hex.EncodeToString(digest[:12])
 }
 
+func supportsRuntimeDangerousConfirmation(tc toolContext) bool {
+	mode := normalizedToolMode(tc.ToolMode)
+	return mode == ToolModeProjectAPI || mode == ToolModeLegacyTyped
+}
+
 type runtimeDangerousConfirmationCopy struct {
 	Header, Question, SafeLabel, SafeDescription, ConfirmLabel, ConfirmDescription string
 }
@@ -47,11 +52,11 @@ func runtimeDangerousConfirmationPresentation(route agentAPIRoute, language stri
 		if route.ID == RouteProjectSetupFinalize {
 			return bootstrapYoloConfirmationQuestionID, runtimeDangerousConfirmationCopy{
 				Header:             "Setup",
-				Question:           "Finalize these project settings and authorize YOLO to start?",
+				Question:           "Finalize these project settings and start automatic generation?",
 				SafeLabel:          "Keep editing (Recommended)",
 				SafeDescription:    "Keep the setup as a draft so it can still be changed.",
-				ConfirmLabel:       "Finalize and start YOLO",
-				ConfirmDescription: "Finalize the setup and authorize this turn to start the controlled YOLO workflow.",
+				ConfirmLabel:       "Finalize and start generation",
+				ConfirmDescription: "Finalize the setup and start the automatic generation flow.",
 			}
 		}
 		return runtimeDangerousConfirmationQuestionID, runtimeDangerousConfirmationCopy{
@@ -66,11 +71,11 @@ func runtimeDangerousConfirmationPresentation(route agentAPIRoute, language stri
 	if route.ID == RouteProjectSetupFinalize {
 		return bootstrapYoloConfirmationQuestionID, runtimeDangerousConfirmationCopy{
 			Header:             "创建确认",
-			Question:           "是否定稿当前项目设置并授权启动 YOLO？",
+			Question:           "是否定稿当前项目设置并开始自动生成？",
 			SafeLabel:          "继续修改 (Recommended)",
 			SafeDescription:    "保留草稿状态，可以继续调整项目设置。",
-			ConfirmLabel:       "定稿并启动 YOLO",
-			ConfirmDescription: "定稿当前设置，并授权本轮继续启动受控 YOLO。",
+			ConfirmLabel:       "定稿并开始生成",
+			ConfirmDescription: "定稿当前设置，并开始自动生成流程。",
 		}
 	}
 	return runtimeDangerousConfirmationQuestionID, runtimeDangerousConfirmationCopy{
@@ -201,13 +206,28 @@ type dangerousConfirmationSourceExecution struct {
 }
 
 func dangerousConfirmationFromArguments(raw string) (*dangerousConfirmationBinding, error) {
-	var arguments struct {
-		Confirmation *dangerousConfirmationBinding `json:"confirmation"`
-	}
+	var arguments map[string]any
 	if err := json.Unmarshal([]byte(raw), &arguments); err != nil {
 		return nil, domainError(CodeStateConflict, "危险操作确认参数损坏", "无法读取持久化的 confirmation。", err)
 	}
-	return arguments.Confirmation, nil
+	// Historical v4 records may contain the old, unambiguous single-question
+	// nesting mistake. Repair it only while reading persisted state; live model
+	// arguments never pass through this compatibility path.
+	if _, exists := arguments["confirmation"]; !exists {
+		normalizeProjectAPIV4ConfirmationPlacement(arguments)
+	}
+	if rawConfirmation, exists := arguments["confirmation"]; exists {
+		encoded, err := json.Marshal(rawConfirmation)
+		if err != nil {
+			return nil, domainError(CodeStateConflict, "危险操作确认参数损坏", "无法读取持久化的 confirmation。", err)
+		}
+		var binding dangerousConfirmationBinding
+		if err := json.Unmarshal(encoded, &binding); err != nil {
+			return nil, domainError(CodeStateConflict, "危险操作确认参数损坏", "无法读取持久化的 confirmation。", err)
+		}
+		return &binding, nil
+	}
+	return nil, nil
 }
 
 func confirmationRequiredToolResult(raw string) bool {
@@ -257,6 +277,184 @@ func (service *Service) findDangerousConfirmationSourceTx(ctx context.Context, t
 	)
 }
 
+// ensureRuntimeDangerousConfirmationSourceTx enforces the durable trust
+// boundary for every persisted confirmation. New records already carry both
+// markers. Verified pre-upgrade records are backfilled here so frozen runs can
+// resume without trusting or re-exposing a model-authored binding.
+func (service *Service) ensureRuntimeDangerousConfirmationSourceTx(ctx context.Context, tx *sql.Tx, runID int64, executionID, itemID int64, projectUUID, expectedSourceUUID, rawArguments string, binding dangerousConfirmationBinding) (dangerousConfirmationSourceExecution, error) {
+	var arguments map[string]any
+	if err := json.Unmarshal([]byte(rawArguments), &arguments); err != nil {
+		return dangerousConfirmationSourceExecution{}, domainError(CodeStateConflict, "危险操作确认参数损坏", "无法读取持久化的 confirmation 参数。", err)
+	}
+	runtimeGenerated := boolArg(arguments, "__runtime_generated_confirmation")
+	markedSourceUUID := stringArg(arguments, "__confirmation_source_execution_uuid")
+	if expectedSourceUUID != "" && markedSourceUUID != "" && markedSourceUUID != expectedSourceUUID {
+		return dangerousConfirmationSourceExecution{}, domainError(CodeStateConflict, "危险操作确认来源不匹配", "持久化 confirmation 的来源 Execution UUID 不一致。", nil)
+	}
+	requiredSourceUUID := expectedSourceUUID
+	if requiredSourceUUID == "" && markedSourceUUID != "" {
+		requiredSourceUUID = markedSourceUUID
+	}
+	if runtimeGenerated && !isUUIDv7(requiredSourceUUID) {
+		return dangerousConfirmationSourceExecution{}, domainError(CodeStateConflict, "危险操作确认来源损坏", "运行时 confirmation 必须携带有效的来源 Execution UUID。", nil)
+	}
+	source, err := service.findDangerousConfirmationSourceTx(ctx, tx, runID, executionID, projectUUID, requiredSourceUUID, binding)
+	if err != nil {
+		return dangerousConfirmationSourceExecution{}, err
+	}
+	if itemID > 0 {
+		publicArguments, cloneErr := json.Marshal(arguments)
+		if cloneErr != nil {
+			return dangerousConfirmationSourceExecution{}, cloneErr
+		}
+		var publicValue map[string]any
+		if cloneErr := json.Unmarshal(publicArguments, &publicValue); cloneErr != nil {
+			return dangerousConfirmationSourceExecution{}, cloneErr
+		}
+		stripJSONField(publicValue, "confirmation")
+		for key := range publicValue {
+			if strings.HasPrefix(key, "__") {
+				delete(publicValue, key)
+			}
+		}
+		publicArguments, cloneErr = json.Marshal(publicValue)
+		if cloneErr != nil {
+			return dangerousConfirmationSourceExecution{}, cloneErr
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_items SET content=?,metadata_json=json_set(COALESCE(metadata_json,'{}'),'$.runtime_generated',json('true'),'$.confirmation_source_execution_uuid',?) WHERE id=?`, string(publicArguments), source.UUID, itemID); err != nil {
+			return dangerousConfirmationSourceExecution{}, err
+		}
+	}
+	if runtimeGenerated && markedSourceUUID == source.UUID {
+		return source, nil
+	}
+	arguments["__runtime_generated_confirmation"] = true
+	arguments["__confirmation_source_execution_uuid"] = source.UUID
+	encoded, err := json.Marshal(arguments)
+	if err != nil {
+		return dangerousConfirmationSourceExecution{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET arguments_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`, string(encoded), executionID); err != nil {
+		return dangerousConfirmationSourceExecution{}, err
+	}
+	return source, nil
+}
+
+// recoverRuntimeDangerousConfirmation repairs a pre-upgrade gap before the
+// next model request. It adopts only historically persisted confirmations
+// whose complete binding matches a real source execution; otherwise it creates
+// the canonical protocol-specific intent with a deterministic key.
+func (service *Service) recoverRuntimeDangerousConfirmation(ctx context.Context, store *project.Store, tc toolContext) (toolExecutionRecord, bool, error) {
+	if !supportsRuntimeDangerousConfirmation(tc) {
+		return toolExecutionRecord{}, false, nil
+	}
+	sqlDB, err := store.DB().DB()
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	defer tx.Rollback()
+	thread, err := lockThreadSQL(ctx, tx, tc.Thread.ProjectID, tc.Thread.UUID)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id,thread_id,run_id,turn_id,item_id,uuid,tool_call_uuid,tool_name,target_uuid,arguments_json,idempotency_key,state,result_json,created_at,updated_at
+		FROM agent_tool_executions
+		WHERE run_id=? AND tool_name='request_api' AND state='completed' AND result_json IS NOT NULL
+		  AND json_extract(result_json,'$.error.code')=?
+		ORDER BY id`, tc.Run.ID, CodeToolConfirmation)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	var sources []toolExecutionRecord
+	for rows.Next() {
+		var source toolExecutionRecord
+		if err := rows.Scan(&source.ID, &source.ThreadID, &source.RunID, &source.TurnID, &source.ItemID, &source.UUID, &source.ToolCallUUID, &source.ToolName, &source.TargetUUID, &source.ArgumentsJSON, &source.IdempotencyKey, &source.State, &source.ResultJSON, &source.CreatedAt, &source.UpdatedAt); err != nil {
+			rows.Close()
+			return toolExecutionRecord{}, false, err
+		}
+		sources = append(sources, source)
+	}
+	if err := rows.Close(); err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	for _, source := range sources {
+		var handled int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_tool_executions
+			WHERE run_id=? AND tool_name='request_user_input'
+			  AND json_extract(arguments_json,'$.__runtime_generated_confirmation')=1
+			  AND json_extract(arguments_json,'$.__confirmation_source_execution_uuid')=?`, tc.Run.ID, source.UUID).Scan(&handled); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		if handled > 0 {
+			continue
+		}
+
+		confirmationRows, err := tx.QueryContext(ctx, `SELECT id,item_id,arguments_json FROM agent_tool_executions WHERE run_id=? AND id>? AND tool_name='request_user_input' ORDER BY id`, tc.Run.ID, source.ID)
+		if err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		type historicalConfirmation struct {
+			executionID, itemID int64
+			argumentsJSON       string
+		}
+		var historical []historicalConfirmation
+		for confirmationRows.Next() {
+			var candidate historicalConfirmation
+			if err := confirmationRows.Scan(&candidate.executionID, &candidate.itemID, &candidate.argumentsJSON); err != nil {
+				confirmationRows.Close()
+				return toolExecutionRecord{}, false, err
+			}
+			historical = append(historical, candidate)
+		}
+		if err := confirmationRows.Close(); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		historicalHandled := false
+		for _, candidate := range historical {
+			binding, bindingErr := dangerousConfirmationFromArguments(candidate.argumentsJSON)
+			if bindingErr != nil || binding == nil {
+				continue
+			}
+			if recoveredSource, recoverErr := service.ensureRuntimeDangerousConfirmationSourceTx(ctx, tx, tc.Run.ID, candidate.executionID, candidate.itemID, tc.ProjectUUID, source.UUID, candidate.argumentsJSON, *binding); recoverErr == nil && recoveredSource.UUID == source.UUID {
+				historicalHandled = true
+				break
+			}
+		}
+		if historicalHandled {
+			continue
+		}
+		intent, created, err := service.enqueueRuntimeDangerousConfirmationTx(ctx, tx, &thread, tc, source, json.RawMessage(*source.ResultJSON), service.now().UTC())
+		if err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		if !created {
+			continue
+		}
+		now := service.now().UTC()
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		if err := tx.Commit(); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		service.broadcastThread(tc.ProjectUUID, tc.Thread.UUID, "chat:tool_call", map[string]any{
+			"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID,
+			"tool_call_uuid": intent.ToolCallUUID, "tool_name": intent.ToolName, "action": intent.Action,
+			"target_uuid": intent.TargetUUID, "status": "in_progress", "runtime_generated": true,
+			"confirmation_source_execution_uuid": source.UUID,
+		})
+		return intent, true, nil
+	}
+	if err := tx.Commit(); err != nil {
+		return toolExecutionRecord{}, false, err
+	}
+	return toolExecutionRecord{}, false, nil
+}
+
 func publicStoredToolArguments(arguments map[string]any) map[string]any {
 	result := make(map[string]any, len(arguments))
 	for key, value := range arguments {
@@ -267,12 +465,26 @@ func publicStoredToolArguments(arguments map[string]any) map[string]any {
 	return result
 }
 
+func stripJSONField(value any, field string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		delete(typed, field)
+		for _, child := range typed {
+			stripJSONField(child, field)
+		}
+	case []any:
+		for _, child := range typed {
+			stripJSONField(child, field)
+		}
+	}
+}
+
 // enqueueRuntimeDangerousConfirmationTx turns a confirmation-required
 // request_api result into a canonical request_user_input intent in the same
 // transaction as that Tool Result. The model never authors the security
-// binding or option ordering for active v4 runs.
+// binding or option ordering for any supported Project API protocol.
 func (service *Service) enqueueRuntimeDangerousConfirmationTx(ctx context.Context, tx *sql.Tx, thread *threadRecord, tc toolContext, source toolExecutionRecord, result json.RawMessage, now time.Time) (toolExecutionRecord, bool, error) {
-	if !usesCodexUserInputProtocol(tc) || source.ToolName != "request_api" || !confirmationRequiredToolResult(string(result)) {
+	if !supportsRuntimeDangerousConfirmation(tc) || source.ToolName != "request_api" || !confirmationRequiredToolResult(string(result)) {
 		return toolExecutionRecord{}, false, nil
 	}
 	if !isUUIDv7(source.UUID) || !isUUIDv7(source.TargetUUID) {
@@ -300,39 +512,44 @@ func (service *Service) enqueueRuntimeDangerousConfirmationTx(ctx context.Contex
 		TargetUUID:         source.TargetUUID,
 		ExpectedRevision:   storedAgentAPIExpectedRevision(route, sourceArguments),
 		RequestFingerprint: storedAgentRequestFingerprint(sourceArguments),
-		QuestionID:         questionID,
 		ConfirmOption:      1,
 	}
-	questions := []UserInputQuestion{{
-		Header: copy.Header, ID: questionID, Question: copy.Question,
-		Options: []UserInputOption{
-			{Label: copy.SafeLabel, Description: copy.SafeDescription},
-			{Label: copy.ConfirmLabel, Description: copy.ConfirmDescription},
-		},
-	}}
-	if _, err := service.validateCodexDangerousConfirmationBinding(tc, binding, questions); err != nil {
-		return toolExecutionRecord{}, false, err
-	}
-
-	publicArguments := map[string]any{
-		"questions": []map[string]any{{
-			"header": copy.Header, "id": questionID, "question": copy.Question,
+	publicArguments := map[string]any{}
+	if usesCodexUserInputProtocol(tc) {
+		binding.QuestionID = questionID
+		questions := []UserInputQuestion{{
+			Header: copy.Header, ID: questionID, Question: copy.Question,
+			Options: []UserInputOption{
+				{Label: copy.SafeLabel, Description: copy.SafeDescription},
+				{Label: copy.ConfirmLabel, Description: copy.ConfirmDescription},
+			},
+		}}
+		if _, err := service.validateCodexDangerousConfirmationBinding(tc, binding, questions); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		publicArguments = map[string]any{
+			"questions": []map[string]any{{
+				"header": copy.Header, "id": questionID, "question": copy.Question,
+				"options": []map[string]any{
+					{"label": copy.SafeLabel, "description": copy.SafeDescription},
+					{"label": copy.ConfirmLabel, "description": copy.ConfirmDescription},
+				},
+			}},
+		}
+	} else {
+		if _, err := service.validateDangerousConfirmationBinding(tc, binding, "single_choice", 2); err != nil {
+			return toolExecutionRecord{}, false, err
+		}
+		publicArguments = map[string]any{
+			"input_type": "single_choice",
+			"question":   copy.Question,
 			"options": []map[string]any{
 				{"label": copy.SafeLabel, "description": copy.SafeDescription},
 				{"label": copy.ConfirmLabel, "description": copy.ConfirmDescription},
 			},
-		}},
-		"confirmation": binding,
+		}
 	}
 	publicArgumentsJSON, err := json.Marshal(publicArguments)
-	if err != nil {
-		return toolExecutionRecord{}, false, err
-	}
-	normalizedArguments, err := validateToolArgumentsForProtocol("request_user_input", string(publicArgumentsJSON), tc.ToolMode, tc.ToolProtocol)
-	if err != nil {
-		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "运行时危险确认参数无效", "服务端生成的 request_user_input 未通过活动协议校验。", err)
-	}
-	publicArgumentsJSON, err = json.Marshal(normalizedArguments)
 	if err != nil {
 		return toolExecutionRecord{}, false, err
 	}
@@ -354,10 +571,11 @@ func (service *Service) enqueueRuntimeDangerousConfirmationTx(ctx context.Contex
 	if err != nil {
 		return toolExecutionRecord{}, false, err
 	}
-	storedArguments := make(map[string]any, len(normalizedArguments)+3)
-	for key, value := range normalizedArguments {
+	storedArguments := make(map[string]any, len(publicArguments)+4)
+	for key, value := range publicArguments {
 		storedArguments[key] = value
 	}
+	storedArguments["confirmation"] = binding
 	storedArguments["__provider_call_id"] = providerCallID
 	storedArguments["__runtime_generated_confirmation"] = true
 	storedArguments["__confirmation_source_execution_uuid"] = source.UUID
@@ -568,9 +786,9 @@ func (service *Service) repairPendingConfirmationReplayProviderID(ctx context.Co
 }
 
 func (service *Service) prepareConfirmedRequestReplayTx(ctx context.Context, tx *sql.Tx, thread *threadRecord, row userInputRow, responseJSON string, now time.Time) (toolExecutionRecord, bool, error) {
-	var confirmationExecutionID int64
+	var confirmationExecutionID, confirmationItemID int64
 	var confirmationArguments string
-	if err := tx.QueryRowContext(ctx, `SELECT id,arguments_json FROM agent_tool_executions WHERE run_id=? AND tool_call_uuid=? AND tool_name='request_user_input'`, row.RunID, row.ToolCallUUID).Scan(&confirmationExecutionID, &confirmationArguments); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT id,item_id,arguments_json FROM agent_tool_executions WHERE run_id=? AND tool_call_uuid=? AND tool_name='request_user_input'`, row.RunID, row.ToolCallUUID).Scan(&confirmationExecutionID, &confirmationItemID, &confirmationArguments); err != nil {
 		return toolExecutionRecord{}, false, err
 	}
 	binding, err := dangerousConfirmationFromArguments(confirmationArguments)
@@ -580,22 +798,17 @@ func (service *Service) prepareConfirmedRequestReplayTx(ctx context.Context, tx 
 	if binding == nil {
 		return toolExecutionRecord{}, false, nil
 	}
+	markedSourceUUID := metadataString(row.ItemMetadataJSON, "confirmation_source_execution_uuid")
+	source, err := service.ensureRuntimeDangerousConfirmationSourceTx(ctx, tx, row.RunID, confirmationExecutionID, confirmationItemID, row.ProjectUUID, markedSourceUUID, confirmationArguments, *binding)
+	if err != nil {
+		return toolExecutionRecord{}, false, err
+	}
 	confirmed, err := dangerousConfirmationSelected(row.SchemaVersion, row.RequestJSON, responseJSON, *binding)
 	if err != nil {
 		return toolExecutionRecord{}, false, domainError(CodeStateConflict, "危险操作确认回答损坏", "无法验证持久化的确认回答。", err)
 	}
 	if !confirmed {
 		return toolExecutionRecord{}, false, nil
-	}
-	sourceUUID := metadataString(row.ItemMetadataJSON, "confirmation_source_execution_uuid")
-	source, err := service.findDangerousConfirmationSourceTx(ctx, tx, row.RunID, confirmationExecutionID, row.ProjectUUID, sourceUUID, *binding)
-	if err != nil {
-		return toolExecutionRecord{}, false, err
-	}
-	if sourceUUID == "" {
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_items SET metadata_json=json_set(metadata_json,'$.confirmation_source_execution_uuid',?) WHERE id=?`, source.UUID, row.ItemID); err != nil {
-			return toolExecutionRecord{}, false, err
-		}
 	}
 	return service.enqueueConfirmedRequestReplayTx(ctx, tx, thread, row, source, now)
 }
@@ -619,13 +832,14 @@ func hasMatchingDangerousConfirmation(ctx context.Context, store *project.Store,
 	expectedRevision := agentAPIRequestExpectedRevision(request)
 	expectedFingerprint := agentRequestFingerprint(request)
 	for _, row := range rows {
-		var arguments struct {
-			Confirmation *dangerousConfirmationBinding `json:"confirmation"`
-		}
-		if json.Unmarshal([]byte(row.ArgumentsJSON), &arguments) != nil || arguments.Confirmation == nil {
+		var arguments map[string]any
+		if json.Unmarshal([]byte(row.ArgumentsJSON), &arguments) != nil || !boolArg(arguments, "__runtime_generated_confirmation") || !isUUIDv7(stringArg(arguments, "__confirmation_source_execution_uuid")) {
 			continue
 		}
-		binding := arguments.Confirmation
+		binding, bindingErr := dangerousConfirmationFromArguments(row.ArgumentsJSON)
+		if bindingErr != nil || binding == nil {
+			continue
+		}
 		if binding.Route != request.Route.ID || binding.ProjectUUID != tc.ProjectUUID || binding.TargetUUID != request.TargetUUID || binding.ExpectedRevision != expectedRevision || binding.RequestFingerprint != expectedFingerprint {
 			continue
 		}

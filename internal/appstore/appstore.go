@@ -304,6 +304,18 @@ func (store *Store) ProjectCreationSession(ctx context.Context, sessionUUID stri
 	return session, nil
 }
 
+func (store *Store) ProjectCreationSessionByIdempotencyKey(ctx context.Context, idempotencyKey string) (ProjectCreationSession, error) {
+	var session ProjectCreationSession
+	result := store.db.WithContext(ctx).Where("idempotency_key = ?", idempotencyKey).Limit(1).Find(&session)
+	if result.Error != nil {
+		return ProjectCreationSession{}, fmt.Errorf("read project creation session by idempotency key: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return ProjectCreationSession{}, ErrProjectCreationSessionNotFound
+	}
+	return session, nil
+}
+
 func (store *Store) ResumableProjectCreationSessions(ctx context.Context) ([]ProjectCreationSession, error) {
 	var sessions []ProjectCreationSession
 	err := store.db.WithContext(ctx).

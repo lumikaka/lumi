@@ -289,7 +289,8 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	imagePrompt := style + "；月亮邮局地点设计；纯白、无纹理背景；只出现一个完整主体；主体居中并留有安全边距；无环境场景、文字、边框、拼贴、多视图；孤立地点设计。"
+	imagePrompt := "月亮邮局地点设计；纯白、无纹理背景；只出现一个完整主体；主体居中并留有安全边距；无环境场景、文字、边框、拼贴、多视图；孤立地点设计。"
+	effectiveImagePrompt := composeImageGenPrompt(imageOperationGenerate, imagePrompt, style)
 	harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
 		wantTools := []string{"request_api", "read_agent_doc", "image_gen", "request_user_input"}
 		if got := definitionNames(request.Tools); strings.Join(got, ",") != strings.Join(wantTools, ",") {
@@ -305,17 +306,14 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 		}
 		switch call {
 		case 1:
-			arguments, _ := json.Marshal(map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/premise", "response_filter": ".data | {default_style}"})
-			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "premise-read", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
-		case 2:
-			if !messagesContain(request.Messages, style) {
-				t.Fatalf("premise default_style was not read before listing assets: %+v", request.Messages)
+			if messagesContain(request.Messages, style) {
+				t.Fatalf("default_style leaked into the text-model context: %+v", request.Messages)
 			}
 			arguments, _ := json.Marshal(map[string]any{"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets", "response_filter": ".data.items[] | {uuid,asset_type,title}"})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "asset-list", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
-		case 3:
+		case 2:
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "asset-image", Name: "image_gen", Arguments: `{"prompt":` + mustJSONText(t, imagePrompt) + `,"size":"512x512","reference_uuids":[]}`}}}, FinishReason: "tool_calls"}, nil
-		case 4:
+		case 3:
 			fileUUID := toolResultFileUUID(t, request.Messages)
 			arguments, _ := json.Marshal(map[string]any{
 				"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets",
@@ -336,18 +334,55 @@ func TestPremiseAssetGenerationProjectAPIModeCreatesAssetAfterImage(t *testing.T
 	imageClient.mu.Lock()
 	requests := append([]imagegen.Request(nil), imageClient.requests...)
 	imageClient.mu.Unlock()
-	if len(requests) != 1 || requests[0].Size != "512x512" || requests[0].Prompt != imagePrompt || len(requests[0].Images) != 0 {
+	if len(requests) != 1 || requests[0].Size != "512x512" || requests[0].Prompt != effectiveImagePrompt || len(requests[0].Images) != 0 {
 		t.Fatalf("image requests=%+v", requests)
 	}
 	var routeCalls int64
-	if err := harness.store.DB().Table("agent_tool_executions").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND tool_name='request_api'", turn.UUID).Count(&routeCalls).Error; err != nil || routeCalls != 3 {
+	if err := harness.store.DB().Table("agent_tool_executions").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?) AND tool_name='request_api'", turn.UUID).Count(&routeCalls).Error; err != nil || routeCalls != 2 {
 		t.Fatalf("request_api calls=%d err=%v", routeCalls, err)
+	}
+}
+
+func TestProjectAPIImageGenOptionsAndDefaultSizes(t *testing.T) {
+	tc := toolContext{ToolProtocol: ToolProtocolProjectAPI}
+	operation, useDefaultStyle, err := imageGenOptions(tc, map[string]any{})
+	if err != nil || operation != imageOperationGenerate || !useDefaultStyle {
+		t.Fatalf("default options operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
+	}
+	operation, useDefaultStyle, err = imageGenOptions(tc, map[string]any{"operation": "restyle", "use_default_style": false})
+	if err != nil || operation != imageOperationRestyle || useDefaultStyle {
+		t.Fatalf("explicit options operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
+	}
+	if _, _, err := imageGenOptions(tc, map[string]any{"operation": "unknown"}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("invalid operation error=%v", err)
+	}
+	if _, _, err := imageGenOptions(tc, map[string]any{"use_default_style": "yes"}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("invalid use_default_style error=%v", err)
+	}
+	for _, testCase := range []struct {
+		operation     string
+		width, height int
+		want          string
+	}{
+		{imageOperationGenerate, 600, 900, "1536x1024"},
+		{imageOperationRestyle, 900, 600, "1536x1024"},
+		{imageOperationRestyle, 600, 900, "1024x1536"},
+		{imageOperationEdit, 800, 800, "1024x1024"},
+		{imageOperationEdit, 0, 0, "1536x1024"},
+	} {
+		if got := defaultImageGenSize(testCase.operation, testCase.width, testCase.height); got != testCase.want {
+			t.Errorf("defaultImageGenSize(%q,%d,%d)=%q want=%q", testCase.operation, testCase.width, testCase.height, got, testCase.want)
+		}
 	}
 }
 
 func TestProjectAPIImageGenSelectsCurrentTurnReferencesInArgumentOrder(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()
+	premise, err := production.NewService(harness.store, nil).GetPremise(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	firstBytes := agentTestColorPNG(t, color.RGBA{R: 220, A: 255})
 	secondBytes := agentTestColorPNG(t, color.RGBA{G: 220, A: 255})
 	explicitBytes := agentTestColorPNG(t, color.RGBA{B: 220, A: 255})
@@ -416,6 +451,44 @@ func TestProjectAPIImageGenSelectsCurrentTurnReferencesInArgumentOrder(t *testin
 	imageClient.mu.Unlock()
 	if len(requests) != 2 || requests[1].Size != "1024x1024" {
 		t.Fatalf("generic image_gen size was not preserved: %+v", requests)
+	}
+	restyleExecution := toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}
+	restyled, err := harness.service.executeImageGenTool(ctx, harness.store, tc, restyleExecution, map[string]any{
+		"operation": "restyle", "prompt": "只转换渲染方式", "reference_uuids": []any{firstFile},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	customExecution := toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}
+	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, customExecution, map[string]any{
+		"prompt": "黑白纪实摄影", "reference_uuids": []string{}, "use_default_style": false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{
+		"operation": "edit", "prompt": "移除背景物件", "reference_uuids": []string{},
+	}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("edit without Reference error=%v", err)
+	}
+	imageClient.mu.Lock()
+	requests = append([]imagegen.Request(nil), imageClient.requests...)
+	imageClient.mu.Unlock()
+	if len(requests) != 4 {
+		t.Fatalf("image request count=%d requests=%+v", len(requests), requests)
+	}
+	if requests[2].Size != "1024x1024" || !strings.Contains(requests[2].Prompt, premise.DefaultStyle) || !strings.Contains(requests[2].Prompt, "禁止新增人物") {
+		t.Fatalf("restyle request=%+v", requests[2])
+	}
+	if strings.Contains(requests[3].Prompt, premise.DefaultStyle) || !strings.Contains(requests[3].Prompt, "黑白纪实摄影") {
+		t.Fatalf("custom-style request=%+v", requests[3])
+	}
+	generated, err := files.NewService(harness.store, nil).GetAsset(ctx, stringArg(restyled, "file_uuid"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, _ := generated.Metadata.(map[string]any)
+	if metadata["operation"] != imageOperationRestyle || metadata["use_default_style"] != true || metadata["default_style_snapshot"] != premise.DefaultStyle {
+		t.Fatalf("restyle metadata=%+v", metadata)
 	}
 }
 

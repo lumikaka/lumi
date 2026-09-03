@@ -87,11 +87,11 @@ projects ──< actors
 - `original_filename` — TEXT NOT NULL，首次提交清单中的文件名
 - `declared_mime_type` — `image/png|image/jpeg|image/webp`
 - `declared_byte_size` — INTEGER NOT NULL，1–33,554,432 字节
-- `reference_role` — `auto|character|scene|prop|style`，默认 `auto`
-- `title` — TEXT NOT NULL，最多 160 个 Unicode 字符；空旧值在读取时由文件名去扩展名派生
-- `instruction` — TEXT NOT NULL，最多 2000 个 Unicode 字符
-- `include_in_yolo` — INTEGER NOT NULL，`0|1`，默认 `1`
-- `plan_source` — `system_default|agent_proposed|user_confirmed`；创建 Session 只写默认或用户确认来源
+- `reference_role` — `auto|character|scene|prop|style`；新建项固定为 `auto`，其他值仅为历史兼容事实
+- `title` — TEXT NOT NULL，最多 160 个 Unicode 字符；新建项使用文件名去扩展名标题，空旧值在读取时同样派生
+- `instruction` — TEXT NOT NULL，最多 2000 个 Unicode 字符；新建项固定为空
+- `include_in_yolo` — INTEGER NOT NULL，`0|1`；新建项固定为 `1`，历史排除值保留
+- `plan_source` — `system_default|agent_proposed|user_confirmed`；新建项固定为 `system_default`，其他值仅为历史兼容事实
 - `status` — `pending|uploading|ready|failed`
 - `error_code` / 生命周期时间 — 单图上传错误和恢复排序事实
 
@@ -99,7 +99,7 @@ projects ──< actors
 
 - `(project_creation_session_id, status, position)` — 恢复未完成图片并保持用户顺序
 
-只有 `ready` Reference 的公开投影包含 `file_uuid`；响应同时返回服务端规范化后的引用计划与 `plan_source`。Upload UUID 和两个数据库的内部 ID 均不对外返回。相同创建幂等键必须同时匹配完整有序计划，不能在重试时静默改变图片用途。
+只有 `ready` Reference 的公开投影包含 `file_uuid`；响应继续返回持久化计划字段与 `plan_source` 供生产和历史恢复，不表示客户端可编辑。Upload UUID 和两个数据库的内部 ID 均不对外返回。相同创建幂等键匹配原文与有序 `original_filename|mime_type|byte_size` 元数据；既有 Session 重试时不改写历史图片用途。
 
 **主要相关 Feature：**
 
@@ -116,6 +116,7 @@ projects ──< actors
 - `revision` — 从 1 开始的乐观锁版本
 - `original_input` — TEXT NOT NULL，逐字保存的首页原始需求
 - `project_name` / `generation_language` / `overall_style` — 可空草稿资料
+- `generation_brief` — 可空、1–4000 字符的 revisioned 自动生成 Brief；新建与历史迁移默认由修剪后的 `original_input` 回填
 - `format` / `aspect_ratio_mode` / `aspect_width` / `aspect_height` — 可空草稿绘本形式与规范比例
 - `large_image_minimal_text` / `interaction_mode` / `comic_layout` — 由绘本形式约束的可空草稿专属设置
 - `field_sources_json` / `missing_fields_json` — 合法 JSON object/array，记录 `system_default|agent_proposed|user_confirmed` 和缺失项
@@ -141,7 +142,7 @@ projects ──< actors
 - `thread_id` / `turn_id` — INTEGER NOT NULL UNIQUE FK → `chat_threads.id` / `chat_turns.id`
 - `created_at` — DATETIME NOT NULL
 
-`turn_id` 仅标记首页创建的第一个 Turn。运行时据此恢复进程内 bootstrap 权限边界，`creation_session_uuid` 同时派生受控 YOLO 的服务端幂等键；后续 Turn 不沿用该标记。
+`turn_id` 仅标记首页创建的第一个 Turn，作为 origin bootstrap 身份；`thread_id` 提供恢复 lineage，但不让后续 Turn 自动继承普通生产权限。用户明确请求继续/重试时，运行时可以结合 lineage、精确 confirmation request UUID 和持久化 replay 证据恢复未完成初始化。`creation_session_uuid` 同时派生受控 YOLO 的服务端幂等键。
 
 **主要相关 Feature：**
 
@@ -158,7 +159,7 @@ projects ──< actors
 - `reference_uuid` — TEXT NOT NULL UNIQUE，关联应用库公开 Reference UUIDv7
 - `position` — INTEGER NOT NULL，1–16；`(creation_session_uuid, position)` 唯一
 - `file_id` — INTEGER NOT NULL UNIQUE FK → `files.id`，`ON DELETE RESTRICT`
-- `reference_role` / `title` / `instruction` / `include_in_yolo` / `plan_source` — Project Setup 中的事实计划；约束与应用库清单一致
+- `reference_role` / `title` / `instruction` / `include_in_yolo` / `plan_source` — 供生产快照与历史恢复的事实计划；新建绑定使用系统托管默认，约束与应用库清单一致
 - `premise_asset_id` — INTEGER NULL FK → `premise_assets.id`，`ON DELETE SET NULL`；一个来源 Asset 最多绑定一个创建参考图
 - `imported_at` — DATETIME NULL，最近一次幂等导入或恢复时间
 - `created_at` / `updated_at` — DATETIME NOT NULL
@@ -168,7 +169,7 @@ projects ──< actors
 - `(project_id, creation_session_uuid, position)` — 按项目和 Session 恢复有序绑定
 - `premise_asset_id IS NOT NULL` — partial unique index，避免一个来源 Asset 被多个创建 binding 复用
 
-重复跨库绑定只校验项目、Session、位置与 File 的不可变身份，不会用应用库旧计划覆盖用户已在 Project Setup 中修改的事实。
+重复跨库绑定只校验项目、Session、位置与 File 的不可变身份，不用应用库或新请求的计划字段覆盖已持久化事实。原参考 PATCH 兼容端点一律返回 `project_setup_reference_system_managed`，不增加 Setup revision。
 
 **主要相关 Feature：**
 
@@ -205,8 +206,8 @@ projects ──< actors
 2. 对话式创建在应用库单事务持久化 Session 和有序参考图清单，再按检查点建立 `draft` 项目与 Setup Draft。
 3. 每张参考图使用预分配 Upload/File UUIDv7 重试；项目库单事务完成 File finalize、独立 binding UUID 与初始计划绑定，应用库随后标记 `ready`。启动 reconciliation 以项目绑定为事实校准跨库崩溃窗口。
 4. 全部参考图 ready 后，普通 Chat bootstrap 在项目库单事务创建首个 Thread/Turn/Run/User Item/Job，并把 File References 按清单顺序挂到首个 User Item；无参考图时直接进入该步骤。
-5. 草稿期对任一引用计划的更新使用 Setup `expected_revision`；成功后增加 revision、恢复可确认状态并清除旧错误。定稿事务把最终计划统一标记为 `user_confirmed`。
-6. 用户明确选择“定稿并启动 YOLO”后，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
-7. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline existing YOLO Workflow 和唯一 await；YOLO v6 按位置冻结完整计划，被排除项留在审计快照但不进入 Premise 或图片输入。等待终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
+5. 参考计划是系统托管的只读事实；草稿期不提供用途、标题、instruction 或 included 修改，定稿也不改写 `plan_source` 或历史值。
+6. Agent 提交 finalization 原请求后，运行时持久化并展示“定稿并开始生成”确认卡。用户明确确认后，运行时恰好重放一次原请求，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
+7. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline `yolo_project_initialization` Workflow 和唯一 await；快照按位置冻结持久化计划。新参考全部进入 Premise 与图片输入；历史排除项仍留在审计快照且不进入生产。等待终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 8. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
 9. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。

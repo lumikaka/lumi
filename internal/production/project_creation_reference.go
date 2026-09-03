@@ -63,7 +63,7 @@ func loadProjectCreationReferenceBinding(ctx context.Context, tx *gorm.DB, proje
 		Joins("JOIN files ON files.id=refs.file_id").Joins("JOIN file_objects AS objects ON objects.id=files.file_object_id").
 		Where("refs.project_id=? AND refs.uuid=? AND files.uuid=?", projectID, reference.ReferenceUUID, reference.FileUUID).Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return row, domainError(CodeValidation, "创建参考图不存在", "YOLO 快照中的 reference_uuid/file_uuid 不属于当前项目。", err)
+		return row, domainError(CodeValidation, "创建参考图不存在", "自动生成快照中的 reference_uuid/file_uuid 不属于当前项目。", err)
 	}
 	return row, err
 }

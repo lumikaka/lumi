@@ -154,13 +154,14 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 	if size := strings.TrimSpace(input.Size); size != "" {
 		parameters["size"] = strings.ReplaceAll(size, "x", "*")
 	}
-	messageContent := []any{map[string]any{"text": input.Prompt}}
+	messageContent := make([]any, 0, len(input.Images)+1)
 	for _, image := range input.Images {
 		if len(image.Data) == 0 || len(image.Data) > maxImageBytes || (image.MIMEType != "image/png" && image.MIMEType != "image/jpeg" && image.MIMEType != "image/webp") {
 			return Response{}, &Error{Code: "image_invalid_input", SafeMessage: "参考图片为空、过大或格式不受支持。"}
 		}
 		messageContent = append(messageContent, map[string]any{"image": "data:" + image.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)})
 	}
+	messageContent = append(messageContent, map[string]any{"text": input.Prompt})
 	payload := map[string]any{
 		"model": input.Model,
 		"input": map[string]any{"messages": []any{map[string]any{

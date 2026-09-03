@@ -29,7 +29,7 @@
 
 ### 草稿设置门禁
 
-首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。每张图都有 `auto|character|scene|prop|style` 用途、标题、补充说明和是否参与 YOLO 的显式计划；参考图只影响视觉设定与图片生成，不根据像素自动改写故事。参考图在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后可按创建 Session 的完整清单与计划续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题，并以稳定确认项同时说明“定稿并启动 YOLO”。用户明确选择后，定稿事务冻结最终引用计划、写入唯一正式绘本规格并把项目切换为 `ready`；同一 bootstrap Turn 只能幂等启动 existing YOLO，其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
+首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。附带图片即表示按顺序自动用于画面生成：发送前用户只能移除图片，不选择用途、标题、说明或参与状态。服务端为新引用固定写入 `auto`、文件名标题、空说明、`include_in_yolo=true` 和 `system_default`；参考图只影响视觉设定与图片生成，不根据像素自动改写故事。图片在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后按创建 Session 的有序文件元数据续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题；它提交完整 finalization 请求后，运行时根据已持久化的原请求生成“定稿并开始生成”确认卡。只有用户选中确认项，运行时才恰好重放一次原请求并把项目切换为 `ready`；同一 bootstrap Turn 随后只能幂等启动自动生成 Workflow，其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。历史自定义或排除记录保持原事实，不迁移也不被定稿改写。
 
 ## Feature 列表
 
@@ -47,8 +47,8 @@
 |---|---|
 | 绘本 / 章节 | `chapters.project_id` 归属项目；Chapter 正文生成可读取项目总纲和 Prompt，最近项目卡片按 Chapter 边界选择封面或正文候选。 |
 | 对话线程 | 创建 Saga 在草稿项目中恰好一次建立普通 `conversation` Thread、首个 Turn/Run 和原始用户 Item，并把已就绪参考图按清单顺序冻结为 Item Reference；Agent 通过受控 Setup API 推进唯一的 Setup Draft。 |
-| 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可在原 Turn 内启动并等待服务端绑定幂等键的 inline existing YOLO，后续 ready Turn 才开放普通业务编排。 |
+| 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可在原 Turn 内启动并等待服务端绑定幂等键的 inline 自动生成 Workflow（内部 kind 为 `yolo_project_initialization`），后续 ready Turn 才开放普通业务编排。 |
 | AI 运行时 | `project_model_settings` 以项目为边界保存模型覆盖。 |
-| Premise 资产 | 定稿后 YOLO 把 included 创建参考图注册为来源型 Premise Asset；Project Setup 只维护创建计划，不承担后续资产版本管理。 |
-| 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；included 图还会复用同一 File 建立 Premise Asset，不复制对象内容。 |
+| Premise 资产 | 自动生成 Workflow 把新建的系统托管参考图全部注册为来源型 Premise Asset；历史排除记录仍保持排除。Project Setup 只读展示创建事实，不承担后续资产版本管理。 |
+| 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；参与自动生成的图复用同一 File 建立 Premise Asset，不复制对象内容。 |
 | 所有项目域 | URL、JSON、前端状态和实时 payload 都使用项目 UUIDv7。 |

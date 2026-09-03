@@ -37,6 +37,7 @@ type updateProjectSetupDraftRequest struct {
 	ProjectName        *string                   `json:"project_name"`
 	GenerationLanguage *string                   `json:"generation_language"`
 	OverallStyle       *string                   `json:"overall_style"`
+	GenerationBrief    *string                   `json:"generation_brief"`
 	PictureBook        *project.PictureBookInput `json:"picture_book"`
 }
 
@@ -51,7 +52,8 @@ func (handler *ProjectSetupHandler) Update(c echo.Context) error {
 		state, err = store.UpdateProjectSetupDraft(c.Request().Context(), project.SetupDraftPatchInput{
 			ExpectedRevision: request.ExpectedRevision, ProjectName: request.ProjectName,
 			GenerationLanguage: request.GenerationLanguage, OverallStyle: request.OverallStyle,
-			PictureBook: request.PictureBook,
+			GenerationBrief: request.GenerationBrief,
+			PictureBook:     request.PictureBook,
 		})
 		return err
 	})

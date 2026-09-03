@@ -37,9 +37,8 @@ func legacyRecoveryToolDefinitions() []map[string]any {
 		{"name": "get_comic_section", "description": "Recover persisted comic section read.", "parameters": object(map[string]any{"chapter_uuid": stringField("Public chapter UUIDv7"), "section_uuid": stringField("Public section UUIDv7")}, "chapter_uuid", "section_uuid")},
 		{"name": "update_comic_storyboard", "description": "Recover persisted storyboard update.", "parameters": object(map[string]any{"chapter_uuid": stringField("Public chapter UUIDv7"), "section_uuid": stringField("Public section UUIDv7"), "content_md": stringField("Complete storyboard Markdown"), "expected_revision": integerField("Current section revision")}, "chapter_uuid", "section_uuid", "content_md", "expected_revision")},
 		{"name": "start_generation", "description": "Recover persisted domain generation.", "parameters": object(map[string]any{"kind": map[string]any{"type": "string", "enum": []string{"story_chapter_generation", "premise_setting_generation", "premise_asset_breakdown", "comic_image_generation"}}, "resource_uuid": stringField("Public target UUIDv7"), "chapter_uuid": stringField("Public chapter UUIDv7"), "model": stringField("Model"), "prompt": stringField("Generation prompt"), "premise_asset_uuids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}, "kind", "resource_uuid", "prompt")},
-		{"name": "request_user_input", "description": "Recover a persisted bounded user-input request.", "parameters": object(map[string]any{
+		{"name": "request_user_input", "description": "Recover a persisted bounded ordinary user-input request. Dangerous confirmations are generated and replayed internally by the runtime; never author a confirmation field.", "parameters": object(map[string]any{
 			"input_type": map[string]any{"type": "string", "enum": []string{"single_choice", "multiple_choice"}}, "question": stringField("Question"), "options": map[string]any{"type": "array", "minItems": 2, "maxItems": 8, "items": object(map[string]any{"label": stringField("Label"), "description": stringField("Description")}, "label")},
-			"confirmation": object(map[string]any{"route": stringField("Route ID"), "project_uuid": stringField("Project UUIDv7"), "target_uuid": stringField("Target UUIDv7"), "expected_revision": integerField("Revision"), "request_fingerprint": stringField("Request fingerprint"), "confirm_option": integerField("Confirming option")}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "confirm_option"),
 		}, "input_type", "question", "options")},
 	}
 }
@@ -54,9 +53,9 @@ func legacyToolDefinitionByName(name string) map[string]any {
 }
 
 // legacyProjectAPIRequestUserInputDefinition is shared by the frozen v2/v3
-// Project API protocols. The legacy typed recovery catalog contains the same
-// argument contract, but keeping this named boundary prevents active schema
-// changes from silently altering persisted runs.
+// Project API protocols. Its ordinary single-question shape stays frozen;
+// dangerous confirmation bindings are runtime-only and intentionally absent
+// from every model-visible schema.
 func legacyProjectAPIRequestUserInputDefinition() map[string]any {
 	return legacyToolDefinitionByName("request_user_input")
 }

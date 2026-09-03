@@ -99,6 +99,7 @@ func projectSetupDraftUpdateBodySchema() map[string]any {
 		"project_name":        apiLimitedString("初始化草稿中的项目名称。", 120),
 		"generation_language": apiEnum("生成语言。", "zh-Hans", "en"),
 		"overall_style":       apiLimitedString("初始化草稿中的整体画风。", 12000),
+		"generation_brief":    apiLimitedString("基于原始需求、用户补充和明确展示建议整理的生成 Brief。", 4000),
 		"picture_book":        setupPictureBook,
 	}, "expected_revision")
 }
@@ -109,7 +110,7 @@ func projectSetupReferenceUpdateBodySchema() map[string]any {
 		"reference_role":    apiEnum("参考图用途。", "auto", "character", "scene", "prop", "style"),
 		"title":             apiLimitedString("参考图可读标题。", 160),
 		"instruction":       apiLimitedString("参考图的使用说明。", 2000),
-		"include_in_yolo":   apiBoolean("是否让该图参与本次 YOLO 视觉生成。"),
+		"include_in_yolo":   apiBoolean("是否让该图参与本次自动视觉生成。"),
 	}, "expected_revision")
 }
 
@@ -174,7 +175,7 @@ func phase3AgentAPIRoutes() []agentAPIRoute {
 		"max_section_count": apiBoundedInteger("最大 Section 数。", 1, 48),
 	}, "prompt")
 	return normalizeAgentAPIRoutes([]agentAPIRoute{
-		{ID: RouteYoloWorkflowCreate, Action: "启动受控 YOLO 项目初始化", Method: "POST", PathTemplate: project + "/workflows", Handler: RouteYoloWorkflowCreate, Projector: "workflow", DocPath: workflowDocPath, BodySchema: apiObject(map[string]any{"story_prompt": apiLimitedString("基于原始需求、用户补充和已展示建议整理的 YOLO 故事 Brief。", 4000), "model": apiLimitedString("可选文本模型覆盖。", 512)}, "story_prompt"), RecommendedResponseFilter: ".data | {uuid,thread_uuid,presentation_mode,kind,title,status,current_step_key,steps}", Async: true, StrictSchema: true, Risk: RiskWrite},
+		{ID: RouteYoloWorkflowCreate, Action: "启动受控自动生成项目初始化", Method: "POST", PathTemplate: project + "/workflows", Handler: RouteYoloWorkflowCreate, Projector: "workflow", DocPath: workflowDocPath, BodySchema: apiObject(map[string]any{"story_prompt": apiLimitedString("基于原始需求、用户补充和已展示建议整理的生成故事 Brief。", 4000), "model": apiLimitedString("可选文本模型覆盖。", 512)}, "story_prompt"), RecommendedResponseFilter: ".data | {uuid,thread_uuid,presentation_mode,kind,title,status,current_step_key,steps}", Async: true, StrictSchema: true, Risk: RiskWrite},
 		{ID: RouteProjectGet, Action: "读取项目公开信息", Method: "GET", PathTemplate: project, Handler: RouteProjectGet, Projector: "project", DocPath: projectDocPath, ReadOnly: true, Risk: RiskLow},
 		{ID: RouteProjectUpdate, Action: "更新项目元数据", Method: "PATCH", PathTemplate: project, Handler: RouteProjectUpdate, Projector: "project", DocPath: projectDocPath, BodySchema: apiObject(map[string]any{"name": apiLimitedString("项目名称。", 120), "description": apiLimitedString("项目简介。", 2000), "generation_language": apiEnum("生成语言。", "zh-Hans", "en"), "expected_revision": apiBoundedInteger("最新 revision。", 0, 1<<31-1)}, "name", "description", "expected_revision"), ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteChapterCreate, Action: "创建章节", Method: "POST", PathTemplate: project + "/chapters", Handler: RouteChapterCreate, Projector: "chapter", DocPath: chapterDocPath, BodySchema: apiObject(map[string]any{"chapter_code": apiLimitedString("章节业务编号。", 64), "title": apiLimitedString("章节标题。", 255), "content": apiLimitedString("可选初始正文。", 3000000), "content_format": apiEnum("正文格式。", "txt", "md")}, "chapter_code", "title"), Risk: RiskWrite},

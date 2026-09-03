@@ -24,9 +24,13 @@ func seedReadyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc
 	requestUUID := mustAgentUUID(t)
 	safeOptionUUID := mustAgentUUID(t)
 	confirmOptionUUID := mustAgentUUID(t)
+	expectedRevision := int64(1)
+	if setup, err := harness.store.ProjectSetup(ctx); err == nil && setup.Revision > 0 {
+		expectedRevision = setup.Revision
+	}
 	binding := dangerousConfirmationBinding{
 		Route: RouteProjectSetupFinalize, ProjectUUID: tc.ProjectUUID, TargetUUID: tc.ProjectUUID,
-		ExpectedRevision: 1, RequestFingerprint: "sha256:" + strings.Repeat("a", 64),
+		ExpectedRevision: expectedRevision, RequestFingerprint: "sha256:" + strings.Repeat("a", 64),
 		QuestionID: bootstrapYoloConfirmationQuestionID, ConfirmOption: 1,
 	}
 	requestJSON, _ := json.Marshal(map[string]any{"questions": []map[string]any{{
@@ -123,9 +127,9 @@ func makeHarnessProjectDraft(t *testing.T, harness *agentHarness, setupUUID, ori
 		t.Fatal(err)
 	}
 	if err := db.Exec(`INSERT INTO project_setup_drafts(
-		uuid,project_id,status,revision,original_input,generation_language,field_sources_json,missing_fields_json,
+		uuid,project_id,status,revision,original_input,generation_language,generation_brief,field_sources_json,missing_fields_json,
 		error_code,error_message,created_at,updated_at
-	) VALUES(?,?,'draft',1,?,'zh-Hans','{"generation_language":"system_default"}','["project_name","overall_style","picture_book.format"]','','',?,?)`, setupUUID, projectID, originalInput, now, now).Error; err != nil {
+	) VALUES(?,?,'draft',1,?,'zh-Hans',?,'{"generation_language":"system_default","generation_brief":"system_default"}','["project_name","overall_style","picture_book.format"]','','',?,?)`, setupUUID, projectID, originalInput, strings.TrimSpace(originalInput), now, now).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := harness.store.RefreshProject(context.Background()); err != nil {
@@ -151,6 +155,7 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 				ProjectName        *string                   `json:"project_name"`
 				GenerationLanguage *string                   `json:"generation_language"`
 				OverallStyle       *string                   `json:"overall_style"`
+				GenerationBrief    *string                   `json:"generation_brief"`
 				PictureBook        *project.PictureBookInput `json:"picture_book"`
 			}
 			if decodeErr := json.Unmarshal(encoded, &request); decodeErr != nil {
@@ -159,7 +164,8 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 			state, err = harness.store.UpdateProjectSetupDraft(ctx, project.SetupDraftPatchInput{
 				ExpectedRevision: request.ExpectedRevision, ProjectName: request.ProjectName,
 				GenerationLanguage: request.GenerationLanguage, OverallStyle: request.OverallStyle,
-				PictureBook: request.PictureBook,
+				GenerationBrief: request.GenerationBrief,
+				PictureBook:     request.PictureBook,
 			})
 		case input.Method == "POST" && strings.HasSuffix(input.Path, "/project-setup-finalizations"):
 			state, err = harness.store.FinalizeProjectSetup(ctx, intArg(input.Body, "expected_revision"))
@@ -594,23 +600,9 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		"method": "PATCH", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup",
 		"request_body": map[string]any{
 			"expected_revision": float64(1), "project_name": "月光邮差", "generation_language": "zh-Hans",
-			"overall_style": "温暖透明水彩，柔和月光", "picture_book": map[string]any{"format": "vertical_strip"},
+			"overall_style": "温暖透明水彩，柔和月光", "generation_brief": "原始需求：小狐狸给月亮送信；温暖水彩，面向儿童，温暖结局。", "picture_book": map[string]any{"format": "vertical_strip"},
 		},
 		"response_filter": ".data | {uuid,setup_status,status,revision,draft_values,field_sources,missing_information}",
-	}
-	finalization := map[string]any{
-		"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup-finalizations",
-		"request_body":    map[string]any{"expected_revision": float64(2)},
-		"response_filter": ".data | {uuid,setup_status,status,revision,final_picture_book}",
-	}
-	setupGet := map[string]any{
-		"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup",
-		"response_filter": ".data | {uuid,setup_status,status,revision,final_picture_book}",
-	}
-	yoloCreate := map[string]any{
-		"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/workflows",
-		"request_body":    map[string]any{"story_prompt": "原始需求：小狐狸给月亮送信；温暖水彩，面向儿童，温暖结局。"},
-		"response_filter": ".data | {uuid,thread_uuid,presentation_mode,kind,title,status,current_step_key,steps}",
 	}
 	toolCall := func(id, name string, arguments map[string]any) llm.ChatResponse {
 		encoded, _ := json.Marshal(arguments)
@@ -621,12 +613,6 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		case 1:
 			return toolCall("setup-patch", "request_api", setupPatch), nil
 		case 2:
-			return toolCall("setup-finalize", "request_api", finalization), nil
-		case 3:
-			return toolCall("setup-ready-get", "request_api", setupGet), nil
-		case 4:
-			return toolCall("bootstrap-yolo", "request_api", yoloCreate), nil
-		case 5:
 			var terminal struct {
 				Success bool `json:"success"`
 				Data    struct {
@@ -657,7 +643,7 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
 		t.Fatalf("bootstrap did not pause for confirmation: %v", err)
 	}
-	if harness.model.calls != 2 {
+	if harness.model.calls != 1 {
 		t.Fatalf("runtime confirmation made an extra model call: calls=%d", harness.model.calls)
 	}
 	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, bootstrap.Thread.UUID)
@@ -665,13 +651,25 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		t.Fatalf("confirmation requests=%+v err=%v", requests, err)
 	}
 	confirmOptionUUID := requests[0].Questions[0].Options[1].UUID
-	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+	confirmationResponse := UserInputResponse{Answers: map[string]UserInputAnswer{
 		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: confirmOptionUUID},
-	}}); err != nil {
-		t.Fatal(err)
+	}}
+	if answered, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, confirmationResponse); err != nil || answered.Status != "resuming" {
+		t.Fatalf("confirmation answer=%+v err=%v", answered, err)
+	}
+	if repeated, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, confirmationResponse); err != nil || repeated.Status != "resuming" {
+		t.Fatalf("idempotent confirmation answer=%+v err=%v", repeated, err)
+	}
+	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
+	}}); errorCode(err) != CodeStateConflict {
+		t.Fatalf("different duplicate confirmation error=%v", err)
 	}
 	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatResume); !errors.Is(err, ErrWaitingWorkflow) {
 		t.Fatalf("bootstrap did not wait for inline Yolo: %v", err)
+	}
+	if harness.model.calls != 1 {
+		t.Fatalf("runtime workflow startup made an extra model call: calls=%d", harness.model.calls)
 	}
 	if harness.store.SetupStatus() != project.SetupStatusReady {
 		t.Fatalf("setup status=%s", harness.store.SetupStatus())
@@ -704,6 +702,24 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	if err := harness.store.DB().Table("workflows").Select("idempotency_key").Where("kind=?", WorkflowYolo).Take(&idempotencyKey).Error; err != nil || idempotencyKey != bootstrapYoloIdempotencyPrefix+creationSessionUUID {
 		t.Fatalf("idempotency_key=%q err=%v", idempotencyKey, err)
 	}
+	var inputSnapshot string
+	if err := harness.store.DB().Table("workflows").Select("input_snapshot").Where("kind=?", WorkflowYolo).Take(&inputSnapshot).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(inputSnapshot), &snapshot); err != nil || snapshot.StoryPrompt != setupPatch["request_body"].(map[string]any)["generation_brief"] || snapshot.CreationSessionUUID != creationSessionUUID {
+		t.Fatalf("runtime workflow snapshot=%+v err=%v", snapshot, err)
+	}
+	var runtimeFinalizations, runtimeStarts int64
+	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='finalize' AND json_extract(arguments_json,'$.__confirmation_auto_replay') IS NULL", bootstrap.Turn.UUID, RouteProjectSetupFinalize).Count(&runtimeFinalizations).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='start_generation' AND json_extract(arguments_json,'$.__bootstrap_confirmation_request_uuid')=?", bootstrap.Turn.UUID, RouteYoloWorkflowCreate, requests[0].UUID).Count(&runtimeStarts).Error; err != nil {
+		t.Fatal(err)
+	}
+	if runtimeFinalizations != 1 || runtimeStarts != 1 {
+		t.Fatalf("runtime bootstrap intents finalization=%d workflow=%d", runtimeFinalizations, runtimeStarts)
+	}
 	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, items[0].UUID); err != nil {
 		t.Fatal(err)
 	}
@@ -713,5 +729,149 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	turns, err := harness.service.ListTurns(ctx, harness.project.UUID, bootstrap.Thread.UUID)
 	if err != nil || len(turns) != 1 || turns[0].Status != TurnCompleted {
 		t.Fatalf("resumed bootstrap Turn=%+v err=%v", turns, err)
+	}
+}
+
+func TestBootstrapExplicitLaterTurnRecoversAuthorizedWorkflowWithoutModelCall(t *testing.T) {
+	harness := newAgentHarness(t, finalResponse("不应在启动 Workflow 前调用模型。"))
+	ctx := context.Background()
+	thread := harness.createThread(t)
+	firstTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "创建一本月光邮差绘本"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstContext, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, firstTurn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setupUUID := mustAgentUUID(t)
+	makeHarnessProjectDraft(t, harness, setupUUID, "创建一本月光邮差绘本")
+	name, language := "月光邮差", "zh-Hans"
+	style, brief := "温暖透明水彩", "小狐狸穿过夜色森林，把一封信送给月亮。"
+	updated, err := harness.store.UpdateProjectSetupDraft(ctx, project.SetupDraftPatchInput{
+		ExpectedRevision: 1, ProjectName: &name, GenerationLanguage: &language,
+		OverallStyle: &style, GenerationBrief: &brief,
+		PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical},
+	})
+	if err != nil || updated.Status != project.SetupDraftStatusPendingConfirmation {
+		t.Fatalf("updated setup=%+v err=%v", updated, err)
+	}
+	if _, err := harness.store.FinalizeProjectSetup(ctx, updated.Revision); err != nil {
+		t.Fatal(err)
+	}
+	creationSessionUUID := mustAgentUUID(t)
+	firstContext = seedReadyBootstrapYoloAuthorization(t, harness, firstContext, creationSessionUUID)
+	now := time.Now().UTC()
+	if err := harness.store.DB().Table("chat_runs").Where("id=?", firstContext.Run.ID).Updates(map[string]any{"status": TurnCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_turns").Where("id=?", firstContext.Turn.ID).Updates(map[string]any{"status": TurnCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	secondTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "继续开始生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondContext, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, secondTurn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondContext.BootstrapCreationSessionUUID != "" || secondContext.BootstrapLineageCreationSessionUUID != creationSessionUUID {
+		t.Fatalf("later-turn bootstrap context=%+v", secondContext)
+	}
+	authorizedContext := secondContext
+	authorizedContext.BootstrapCreationSessionUUID = creationSessionUUID
+	evidence, authorized, err := bootstrapYoloAuthorizationEvidence(ctx, harness.store, authorizedContext, true)
+	if err != nil || !authorized {
+		t.Fatalf("later-turn confirmation evidence=%+v authorized=%v err=%v", evidence, authorized, err)
+	}
+	executeErr := harness.execute(t, thread.UUID, secondTurn.UUID, JobChatTurn)
+	if !errors.Is(executeErr, ErrWaitingWorkflow) {
+		var workflowCount, executionCount int64
+		var executionState, executionError, executionMessage, executionArguments string
+		_ = harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&workflowCount).Error
+		_ = harness.store.DB().Table("agent_tool_executions").Where("run_id=?", secondContext.Run.ID).Count(&executionCount).Error
+		_ = harness.store.DB().Table("agent_tool_executions").Select("state,error_code,error_message,arguments_json").Where("run_id=?", secondContext.Run.ID).Row().Scan(&executionState, &executionError, &executionMessage, &executionArguments)
+		t.Fatalf("later bootstrap recovery did not wait for workflow: err=%v model_calls=%d workflows=%d executions=%d explicit=%v input=%q execution=%s/%s/%s args=%s", executeErr, harness.model.calls, workflowCount, executionCount, bootstrapExplicitRecoveryRequest(secondContext.Turn.InputText), secondContext.Turn.InputText, executionState, executionError, executionMessage, executionArguments)
+	}
+	if harness.model.calls != 0 {
+		t.Fatalf("later bootstrap recovery called model %d times", harness.model.calls)
+	}
+	var count int64
+	var idempotencyKey, snapshotJSON string
+	if err := harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&count).Error; err != nil || count != 1 {
+		t.Fatalf("recovered workflows=%d err=%v", count, err)
+	}
+	if err := harness.store.DB().Table("workflows").Select("idempotency_key,input_snapshot").Where("kind=?", WorkflowYolo).Row().Scan(&idempotencyKey, &snapshotJSON); err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(snapshotJSON), &snapshot); err != nil || idempotencyKey != bootstrapYoloIdempotencyPrefix+creationSessionUUID || snapshot.StoryPrompt != brief || snapshot.CreationSessionUUID != creationSessionUUID {
+		t.Fatalf("recovered workflow key=%q snapshot=%+v err=%v", idempotencyKey, snapshot, err)
+	}
+}
+
+func TestBootstrapExplicitLaterTurnRecoversPendingSetupConfirmationAndWorkflow(t *testing.T) {
+	harness := newAgentHarness(t, finalResponse("不应在恢复初始化状态机时调用模型。"))
+	installProjectSetupDispatcherForTest(t, harness)
+	ctx := context.Background()
+	setupUUID, creationSessionUUID := mustAgentUUID(t), mustAgentUUID(t)
+	makeHarnessProjectDraft(t, harness, setupUUID, "创建一本小狐狸给月亮送信的绘本")
+	bootstrap, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, "创建一本小狐狸给月亮送信的绘本", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, language := "月光邮差", "zh-Hans"
+	style, brief := "温暖透明水彩", "小狐狸穿过夜色森林，把一封信送给月亮。"
+	updated, err := harness.store.UpdateProjectSetupDraft(ctx, project.SetupDraftPatchInput{
+		ExpectedRevision: 1, ProjectName: &name, GenerationLanguage: &language,
+		OverallStyle: &style, GenerationBrief: &brief,
+		PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical},
+	})
+	if err != nil || updated.Status != project.SetupDraftStatusPendingConfirmation {
+		t.Fatalf("pending setup=%+v err=%v", updated, err)
+	}
+	now := time.Now().UTC()
+	if err := harness.store.DB().Table("chat_runs").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", bootstrap.Turn.UUID).Updates(map[string]any{"status": TurnCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("chat_turns").Where("uuid=?", bootstrap.Turn.UUID).Updates(map[string]any{"status": TurnCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	recoveryTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, bootstrap.Thread.UUID, CreateTurnInput{InputText: "继续"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, bootstrap.Thread.UUID, recoveryTurn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
+		t.Fatalf("pending setup recovery did not wait for confirmation: %v", err)
+	}
+	if harness.model.calls != 0 {
+		t.Fatalf("pending setup recovery called model %d times", harness.model.calls)
+	}
+	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, bootstrap.Thread.UUID)
+	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || requests[0].Questions[0].ID != bootstrapYoloConfirmationQuestionID {
+		t.Fatalf("recovered setup confirmation=%+v err=%v", requests, err)
+	}
+	confirmOptionUUID := requests[0].Questions[0].Options[1].UUID
+	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
+		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: confirmOptionUUID},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, bootstrap.Thread.UUID, recoveryTurn.UUID, JobChatResume); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("confirmed setup recovery did not wait for workflow: %v", err)
+	}
+	if harness.model.calls != 0 || harness.store.SetupStatus() != project.SetupStatusReady {
+		t.Fatalf("recovered setup model_calls=%d setup_status=%s", harness.model.calls, harness.store.SetupStatus())
+	}
+	var count int64
+	var idempotencyKey string
+	if err := harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&count).Error; err != nil || count != 1 {
+		t.Fatalf("recovered workflow count=%d err=%v", count, err)
+	}
+	if err := harness.store.DB().Table("workflows").Select("idempotency_key").Where("kind=?", WorkflowYolo).Take(&idempotencyKey).Error; err != nil || idempotencyKey != bootstrapYoloIdempotencyPrefix+creationSessionUUID {
+		t.Fatalf("recovered workflow idempotency_key=%q err=%v", idempotencyKey, err)
 	}
 }

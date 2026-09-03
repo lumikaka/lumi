@@ -16,6 +16,7 @@ export const ERROR_CODE_KEYS = Object.freeze({
   invalid_picture_book_profile: 'errors.code.invalid_picture_book_profile',
   picture_book_profile_immutable: 'errors.code.picture_book_profile_immutable',
   invalid_overall_style: 'errors.code.invalid_overall_style',
+  project_setup_reference_system_managed: 'errors.code.project_setup_reference_system_managed',
   image_aspect_ratio_unsupported: 'errors.code.image_aspect_ratio_unsupported',
   recent_projects_unavailable: 'errors.code.recent_projects_unavailable',
   directory_picker_busy: 'errors.code.directory_picker_busy',

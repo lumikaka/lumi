@@ -466,17 +466,18 @@ func TestGuidesAreConciseAndReferenceRegisteredAPIContracts(t *testing.T) {
 	}
 }
 
-func TestBootstrapInitializationGuideDefinesControlledYoloBoundary(t *testing.T) {
+func TestBootstrapInitializationGuideDefinesAutomaticGenerationBoundary(t *testing.T) {
 	guide, err := renderAgentDoc(agentDocBasePath + "/guides/初始化新项目.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, required := range []string{
 		workflowDocPath,
-		bootstrapYoloConfirmationQuestionID,
 		"Setup Draft",
 		"不得创建、选择或切换 Candidate",
 		"1～3 个相互关联的问题",
+		"运行时会直接生成并展示唯一确认卡片",
+		"定稿并开始生成",
 		"vol01.ch01",
 		"默认生成封面和第一个正文页的成品图",
 		"vertical_strip",
@@ -756,6 +757,33 @@ func TestRequestAPIRequiresNarrowResponseFilterForNewCalls(t *testing.T) {
 				t.Errorf("route %s recommends undocumented field %s in %q", route.ID, field.SourceKey, filter)
 			}
 		}
+	}
+}
+
+func TestProjectAPIImageGenDefinitionDefaultsProjectStyle(t *testing.T) {
+	var parameters map[string]any
+	for _, definition := range toolDefinitions() {
+		if definition["name"] == "image_gen" {
+			parameters, _ = definition["parameters"].(map[string]any)
+			break
+		}
+	}
+	if parameters == nil {
+		t.Fatal("image_gen definition missing")
+	}
+	properties, _ := parameters["properties"].(map[string]any)
+	operation, _ := properties["operation"].(map[string]any)
+	useDefaultStyle, _ := properties["use_default_style"].(map[string]any)
+	if operation["default"] != imageOperationGenerate || useDefaultStyle["default"] != true {
+		t.Fatalf("image_gen defaults operation=%+v use_default_style=%+v", operation, useDefaultStyle)
+	}
+	valid := `{"prompt":"只转换画风","reference_uuids":[],"operation":"restyle","use_default_style":false}`
+	if _, err := validateToolArgumentsForProtocol("image_gen", valid, ToolModeProjectAPI, ToolProtocolProjectAPI); err != nil {
+		t.Fatalf("valid image_gen options rejected: %v", err)
+	}
+	invalid := `{"prompt":"生成图片","reference_uuids":[],"operation":"unknown"}`
+	if _, err := validateToolArgumentsForProtocol("image_gen", invalid, ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
+		t.Fatalf("invalid image_gen operation error=%v", err)
 	}
 }
 

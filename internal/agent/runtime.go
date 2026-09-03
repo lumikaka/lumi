@@ -79,6 +79,11 @@ runLoop:
 		if cancelled {
 			return service.cancelRun(context.WithoutCancel(ctx), store, tc)
 		}
+		if _, recovered, err := service.recoverRuntimeDangerousConfirmation(ctx, store, tc); err != nil {
+			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
+		} else if recovered {
+			continue
+		}
 		if pending, ok, err := service.pendingTool(ctx, store, tc.Run.ID); err != nil {
 			return err
 		} else if ok {
@@ -118,6 +123,11 @@ runLoop:
 			return err
 		}
 		tc.Run = currentRun
+		if progressed, reconcileErr := service.reconcileBootstrapLifecycle(ctx, store, tc); reconcileErr != nil {
+			return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, reconcileErr)
+		} else if progressed {
+			continue
+		}
 		if lastContextThrough > 0 {
 			if steered, err := service.hasSteeringAfter(ctx, store, tc.Run.ID, lastContextThrough); err != nil {
 				return err
@@ -533,6 +543,13 @@ func (service *Service) loadToolContext(ctx context.Context, store *project.Stor
 		Where("project_id=? AND turn_id=?", pid, turn.ID).
 		Limit(1).
 		Scan(&tc.BootstrapCreationSessionUUID).Error; err != nil {
+		return toolContext{}, err
+	}
+	if err := store.DB().WithContext(ctx).Table("project_creation_bootstraps").
+		Select("creation_session_uuid").
+		Where("project_id=? AND thread_id=?", pid, thread.ID).
+		Limit(1).
+		Scan(&tc.BootstrapLineageCreationSessionUUID).Error; err != nil {
 		return toolContext{}, err
 	}
 	return tc, nil

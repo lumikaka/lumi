@@ -26,8 +26,8 @@ func TestPhase3RouteContractsAreCompleteAndSecure(t *testing.T) {
 		Thread:      threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject},
 	}
 	routes := phase3AgentAPIRoutes()
-	if len(routes) != 57 || len(agentAPIRoutes()) != 84 {
-		t.Fatalf("phase3 routes=%d total=%d want=57/84", len(routes), len(agentAPIRoutes()))
+	if len(routes) != 57 || len(agentAPIRoutes()) != 83 {
+		t.Fatalf("phase3 routes=%d total=%d want=57/83", len(routes), len(agentAPIRoutes()))
 	}
 	seenIDs := map[string]bool{}
 	seenMethodPaths := map[string]bool{}

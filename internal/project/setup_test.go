@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,10 +57,10 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if initial.UUID != setupUUID || initial.Revision != 1 || initial.OriginalInput != originalInput || initial.FieldSources["generation_language"] != SetupSourceSystemDefault {
+	if initial.UUID != setupUUID || initial.Revision != 1 || initial.OriginalInput != originalInput || initial.FieldSources["generation_language"] != SetupSourceSystemDefault || initial.FieldSources["generation_brief"] != SetupSourceSystemDefault {
 		t.Fatalf("initial setup=%+v", initial)
 	}
-	if initial.DraftValues.GenerationLanguage != GenerationLanguageSimplifiedChinese {
+	if initial.DraftValues.GenerationLanguage != GenerationLanguageSimplifiedChinese || initial.DraftValues.GenerationBrief != strings.TrimSpace(originalInput) {
 		t.Fatalf("initial draft values=%+v", initial.DraftValues)
 	}
 	if _, err := store.FinalizeProjectSetup(ctx, initial.Revision); errorCode(err) != CodeProjectSetupInvalid {
@@ -75,10 +76,11 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	}
 	store = openStoreForTest(t, manager, projectUUID)
 	projectName, overallStyle := "月亮信使", "透明水彩、柔和月光、纸张颗粒"
+	generationBrief := "小狐狸穿过夜色森林，把一封信送给月亮，并带回温暖的回信。"
 	profileInput := &PictureBookInput{Format: PictureBookClassic}
 	updated, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{
 		ExpectedRevision: initial.Revision, ProjectName: &projectName,
-		OverallStyle: &overallStyle, PictureBook: profileInput,
+		OverallStyle: &overallStyle, GenerationBrief: &generationBrief, PictureBook: profileInput,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -86,10 +88,10 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	if updated.Revision != 2 || updated.Status != SetupDraftStatusPendingConfirmation || len(updated.MissingInformation) != 0 {
 		t.Fatalf("updated setup=%+v", updated)
 	}
-	if updated.DraftValues.ProjectName != projectName || updated.DraftValues.OverallStyle != overallStyle || updated.DraftValues.PictureBook == nil {
+	if updated.DraftValues.ProjectName != projectName || updated.DraftValues.OverallStyle != overallStyle || updated.DraftValues.GenerationBrief != generationBrief || updated.DraftValues.PictureBook == nil {
 		t.Fatalf("updated draft values=%+v", updated.DraftValues)
 	}
-	if updated.FieldSources["project_name"] != SetupSourceAgentProposed || updated.FieldSources["aspect_ratio"] != SetupSourceSystemDefault {
+	if updated.FieldSources["project_name"] != SetupSourceAgentProposed || updated.FieldSources["generation_brief"] != SetupSourceAgentProposed || updated.FieldSources["aspect_ratio"] != SetupSourceSystemDefault {
 		t.Fatalf("sources=%+v", updated.FieldSources)
 	}
 	if _, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: initial.Revision, ProjectName: &projectName}); errorCode(err) != CodeProjectSetupConflict {
@@ -102,6 +104,9 @@ func TestDraftProjectSetupLifecycleIsRecoverableCanonicalAndImmutable(t *testing
 	}
 	if finalized.SetupStatus != SetupStatusReady || finalized.Status != SetupDraftStatusFinalized || finalized.FinalPictureBook == nil {
 		t.Fatalf("finalized=%+v", finalized)
+	}
+	if finalized.DraftValues.GenerationBrief != generationBrief || finalized.FieldSources["generation_brief"] != SetupSourceUserConfirmed {
+		t.Fatalf("finalized generation brief=%q sources=%+v", finalized.DraftValues.GenerationBrief, finalized.FieldSources)
 	}
 	wantProfile, err := NormalizePictureBookInput(profileInput)
 	if err != nil || !reflect.DeepEqual(*finalized.FinalPictureBook, wantProfile) {
@@ -177,38 +182,31 @@ func TestProjectSetupReferencePlanIsRevisionedAndFreezesAtFinalization(t *testin
 	if reference.UUID != bindingUUID || reference.FileUUID != fileUUID || reference.Title != "fox" || reference.ReferenceRole != "auto" || !reference.IncludeInYolo || reference.PlanSource != SetupSourceSystemDefault || reference.ThumbnailURL == "" {
 		t.Fatalf("initial reference=%+v", reference)
 	}
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision}); errorCode(err) != CodeProjectSetupInvalid {
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
 		t.Fatalf("empty reference update error=%v", err)
 	}
 	foreignTitle := "Foreign"
-	if _, err := store.UpdateProjectSetupReference(ctx, setupTestUUID(t), SetupReferencePatchInput{ExpectedRevision: initial.Revision, Title: &foreignTitle}); errorCode(err) != CodeProjectSetupInvalid {
+	if _, err := store.UpdateProjectSetupReference(ctx, setupTestUUID(t), SetupReferencePatchInput{ExpectedRevision: initial.Revision, Title: &foreignTitle}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
 		t.Fatalf("foreign reference update error=%v", err)
 	}
 	role, title, instruction, included := "style", "Watercolor fox", "Use only the brushwork and palette", false
-	updated, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{
 		ExpectedRevision: initial.Revision, ReferenceRole: &role, Title: &title, Instruction: &instruction,
 		IncludeInYolo: &included, Source: SetupSourceAgentProposed,
-	})
-	if err != nil || updated.Revision != initial.Revision+1 || len(updated.ReferencePlan.Items) != 1 {
-		t.Fatalf("updated setup=%+v err=%v", updated, err)
-	}
-	if got := updated.ReferencePlan.Items[0]; got.ReferenceRole != role || got.Title != title || got.Instruction != instruction || got.IncludeInYolo || got.PlanSource != SetupSourceAgentProposed {
-		t.Fatalf("updated reference=%+v", got)
-	}
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision, IncludeInYolo: &included}); errorCode(err) != CodeProjectSetupConflict {
-		t.Fatalf("stale reference update error=%v", err)
+	}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
+		t.Fatalf("custom reference update error=%v", err)
 	}
 
 	projectName, overallStyle := "Moon Fox", "Soft transparent watercolor"
-	completedDraft, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: updated.Revision, ProjectName: &projectName, OverallStyle: &overallStyle, PictureBook: &PictureBookInput{Format: PictureBookClassic}})
+	completedDraft, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: initial.Revision, ProjectName: &projectName, OverallStyle: &overallStyle, PictureBook: &PictureBookInput{Format: PictureBookClassic}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	finalized, err := store.FinalizeProjectSetup(ctx, completedDraft.Revision)
-	if err != nil || finalized.SetupStatus != SetupStatusReady || finalized.ReferencePlan.Items[0].PlanSource != SetupSourceUserConfirmed {
+	if err != nil || finalized.SetupStatus != SetupStatusReady || finalized.ReferencePlan.Items[0].PlanSource != SetupSourceSystemDefault {
 		t.Fatalf("finalized setup=%+v err=%v", finalized, err)
 	}
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: finalized.Revision, IncludeInYolo: &included}); errorCode(err) != CodePictureBookImmutable {
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: finalized.Revision, IncludeInYolo: &included}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
 		t.Fatalf("ready reference update error=%v", err)
 	}
 }

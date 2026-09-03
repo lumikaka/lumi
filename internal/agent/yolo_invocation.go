@@ -30,7 +30,7 @@ func normalizeYoloInvocation(invocation DomainInvocationContext) (DomainInvocati
 			}
 		}
 	default:
-		return invocation, domainError(CodeValidation, "YOLO 调用来源无效", "YOLO 只能由 direct_ui 或 chat_tool 创建。", nil)
+		return invocation, domainError(CodeValidation, "自动生成调用来源无效", "自动生成流程只能由 direct_ui 或 chat_tool 创建。", nil)
 	}
 	return invocation, nil
 }

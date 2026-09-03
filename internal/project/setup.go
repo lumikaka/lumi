@@ -27,7 +27,7 @@ const (
 )
 
 var setupDraftFields = []string{
-	"project_name", "generation_language", "overall_style", "format", "aspect_ratio",
+	"project_name", "generation_language", "overall_style", "generation_brief", "format", "aspect_ratio",
 	"large_image_minimal_text", "interaction_mode", "comic_layout",
 }
 
@@ -47,6 +47,7 @@ type setupDraftRecord struct {
 	ProjectName           *string
 	GenerationLanguage    *string
 	OverallStyle          *string
+	GenerationBrief       *string
 	Format                *string
 	AspectRatioMode       *string
 	AspectWidth           *int
@@ -71,6 +72,7 @@ type SetupDraftValues struct {
 	ProjectName        string              `json:"project_name,omitempty"`
 	GenerationLanguage string              `json:"generation_language,omitempty"`
 	OverallStyle       string              `json:"overall_style,omitempty"`
+	GenerationBrief    string              `json:"generation_brief,omitempty"`
 	PictureBook        *PictureBookProfile `json:"picture_book,omitempty"`
 }
 
@@ -124,6 +126,7 @@ type SetupDraftPatchInput struct {
 	ProjectName        *string
 	GenerationLanguage *string
 	OverallStyle       *string
+	GenerationBrief    *string
 	PictureBook        *PictureBookInput
 }
 
@@ -136,11 +139,13 @@ func createSetupDraftRecord(tx *gorm.DB, projectID int64, input SetupDraftInitia
 	if !valid {
 		language = DefaultGenerationLanguage
 	}
-	sources, _ := json.Marshal(map[string]string{"generation_language": SetupSourceSystemDefault})
+	briefRunes := []rune(strings.TrimSpace(original))
+	brief := string(briefRunes[:min(len(briefRunes), 4000)])
+	sources, _ := json.Marshal(map[string]string{"generation_language": SetupSourceSystemDefault, "generation_brief": SetupSourceSystemDefault})
 	missing, _ := json.Marshal([]string{"project_name", "overall_style", "picture_book.format"})
 	record := setupDraftRecord{
 		UUID: input.UUID, ProjectID: projectID, Status: SetupDraftStatusDraft, Revision: 1,
-		OriginalInput: original, GenerationLanguage: &language,
+		OriginalInput: original, GenerationLanguage: &language, GenerationBrief: &brief,
 		FieldSourcesJSON: string(sources), MissingFieldsJSON: string(missing), CreatedAt: now, UpdatedAt: now,
 	}
 	return tx.Create(&record).Error
@@ -196,6 +201,9 @@ func setupState(projectRecord Project, record *setupDraftRecord, profile *Pictur
 	}
 	if record.OverallStyle != nil {
 		state.DraftValues.OverallStyle = *record.OverallStyle
+	}
+	if record.GenerationBrief != nil {
+		state.DraftValues.GenerationBrief = *record.GenerationBrief
 	}
 	return state
 }
@@ -267,87 +275,12 @@ func (store *Store) setupReferences(ctx context.Context, projectID int64, projec
 }
 
 func (store *Store) UpdateProjectSetupReference(ctx context.Context, referenceUUID string, input SetupReferencePatchInput) (SetupState, error) {
-	if !isUUIDv7(strings.TrimSpace(referenceUUID)) || input.ExpectedRevision < 1 {
-		return SetupState{}, projectError(CodeProjectSetupConflict, "项目设置版本冲突", "reference_uuid 与 expected_revision 必须有效。", nil)
-	}
-	if input.ReferenceRole == nil && input.Title == nil && input.Instruction == nil && input.IncludeInYolo == nil {
-		return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图计划没有变化", "至少提供一个参考图计划字段。", nil)
-	}
-	source := strings.TrimSpace(input.Source)
-	if source == "" {
-		source = SetupSourceUserConfirmed
-	}
-	if source != SetupSourceAgentProposed && source != SetupSourceUserConfirmed {
-		return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图来源无效", "计划来源只能由可信调用方设置。", nil)
-	}
-	updates := map[string]any{"plan_source": source}
-	if input.ReferenceRole != nil {
-		role := strings.ToLower(strings.TrimSpace(*input.ReferenceRole))
-		if role != "auto" && role != "character" && role != "scene" && role != "prop" && role != "style" {
-			return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图用途无效", "reference_role 只支持 auto、character、scene、prop 或 style。", nil)
-		}
-		updates["reference_role"] = role
-	}
-	if input.Title != nil {
-		title, err := validateSetupText(*input.Title, 160, "title")
-		if err != nil {
-			return SetupState{}, err
-		}
-		updates["title"] = title
-	}
-	if input.Instruction != nil {
-		instruction := strings.TrimSpace(*input.Instruction)
-		if !utf8.ValidString(instruction) || strings.ContainsRune(instruction, 0) || len([]rune(instruction)) > 2000 {
-			return SetupState{}, projectError(CodeProjectSetupInvalid, "参考图说明无效", "instruction 最多允许 2000 个有效字符。", nil)
-		}
-		updates["instruction"] = instruction
-	}
-	if input.IncludeInYolo != nil {
-		updates["include_in_yolo"] = *input.IncludeInYolo
-	}
-	now := time.Now().UTC()
-	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var projectRecord Project
-		if err := tx.Where("uuid=?", store.ProjectUUID()).First(&projectRecord).Error; err != nil {
-			return err
-		}
-		if projectRecord.SetupStatus != SetupStatusDraft {
-			return projectError(CodePictureBookImmutable, "项目设置已经定稿", "ready 项目的参考图计划不可修改。", nil)
-		}
-		var record setupDraftRecord
-		if err := tx.Where("project_id=?", projectRecord.ID).First(&record).Error; err != nil {
-			return err
-		}
-		if record.Status == SetupDraftStatusFinalized || record.Revision != input.ExpectedRevision {
-			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
-		}
-		updates["updated_at"] = now
-		result := tx.Table("project_creation_reference_files").Where("project_id=? AND uuid=?", projectRecord.ID, referenceUUID).Updates(updates)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return projectError(CodeProjectSetupInvalid, "参考图不存在", "reference_uuid 不属于当前项目。", nil)
-		}
-		status := SetupDraftStatusDraft
-		if len(setupMissing(record)) == 0 {
-			status = SetupDraftStatusPendingConfirmation
-		}
-		result = tx.Model(&setupDraftRecord{}).Where("id=? AND revision=?", record.ID, input.ExpectedRevision).Updates(map[string]any{
-			"status": status, "revision": gorm.Expr("revision + 1"), "error_code": "", "error_message": "", "updated_at": now,
-		})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
-		}
-		return nil
-	})
-	if err != nil {
-		return SetupState{}, err
-	}
-	return store.ProjectSetup(ctx)
+	return SetupState{}, projectError(
+		CodeProjectSetupReferenceSystemManaged,
+		"视觉参考由系统自动管理",
+		"参考图会按附件顺序自动用于画面生成；该兼容端点不再接受计划修改。",
+		nil,
+	)
 }
 
 func validateSetupText(value string, maximum int, field string) (string, error) {
@@ -368,6 +301,9 @@ func setupMissing(record setupDraftRecord) []string {
 	}
 	if record.OverallStyle == nil || strings.TrimSpace(*record.OverallStyle) == "" {
 		missing = append(missing, "overall_style")
+	}
+	if record.GenerationBrief == nil || strings.TrimSpace(*record.GenerationBrief) == "" {
+		missing = append(missing, "generation_brief")
 	}
 	if setupRecordPictureBook(record) == nil {
 		missing = append(missing, "picture_book.format")
@@ -417,6 +353,13 @@ func (store *Store) UpdateProjectSetupDraft(ctx context.Context, input SetupDraf
 				return err
 			}
 			record.OverallStyle, sources["overall_style"], changed = &value, SetupSourceAgentProposed, true
+		}
+		if input.GenerationBrief != nil {
+			value, err := validateSetupText(*input.GenerationBrief, 4000, "generation_brief")
+			if err != nil {
+				return err
+			}
+			record.GenerationBrief, sources["generation_brief"], changed = &value, SetupSourceAgentProposed, true
 		}
 		if input.PictureBook != nil {
 			if strings.TrimSpace(input.PictureBook.Format) == "" {
@@ -472,7 +415,7 @@ func (store *Store) UpdateProjectSetupDraft(ctx context.Context, input SetupDraf
 		}
 		result := tx.Model(&setupDraftRecord{}).Where("id = ? AND revision = ?", record.ID, input.ExpectedRevision).Updates(map[string]any{
 			"status": status, "revision": gorm.Expr("revision + 1"), "project_name": record.ProjectName,
-			"generation_language": record.GenerationLanguage, "overall_style": record.OverallStyle, "format": record.Format,
+			"generation_language": record.GenerationLanguage, "overall_style": record.OverallStyle, "generation_brief": record.GenerationBrief, "format": record.Format,
 			"aspect_ratio_mode": record.AspectRatioMode, "aspect_width": record.AspectWidth, "aspect_height": record.AspectHeight,
 			"large_image_minimal_text": record.LargeImageMinimalText, "interaction_mode": record.InteractionMode, "comic_layout": record.ComicLayout,
 			"field_sources_json": string(sourcesJSON), "missing_fields_json": string(missingJSON), "error_code": "", "error_message": "", "updated_at": now,
@@ -565,9 +508,6 @@ func (store *Store) FinalizeProjectSetup(ctx context.Context, expectedRevision i
 		}
 		sourcesJSON, _ := json.Marshal(sources)
 		finalizedRevision := record.Revision
-		if err := tx.Table("project_creation_reference_files").Where("project_id=?", projectRecord.ID).Updates(map[string]any{"plan_source": SetupSourceUserConfirmed, "updated_at": now}).Error; err != nil {
-			return err
-		}
 		return tx.Model(&setupDraftRecord{}).Where("id = ? AND revision = ?", record.ID, expectedRevision).Updates(map[string]any{
 			"status": SetupDraftStatusFinalized, "field_sources_json": string(sourcesJSON), "missing_fields_json": "[]",
 			"finalized_revision": finalizedRevision, "finalized_at": now, "updated_at": now,

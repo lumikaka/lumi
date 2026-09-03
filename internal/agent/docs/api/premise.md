@@ -44,7 +44,7 @@
 {
   "method": "GET",
   "url": "/api/v1/projects/<project_uuid>/premise",
-  "response_filter": ".data | {uuid,default_style,current_source,current_setting_image,revision}"
+  "response_filter": ".data | {uuid,default_style,revision}"
 }
 ```
 

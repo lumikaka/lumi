@@ -1,18 +1,18 @@
 ---
 title: Create your first picture book
-description: Choose YOLO quick creation or a manual project and move from a story spark into an editable Lumi workspace.
+description: Choose Quick generation or a manual project and move from a story spark into an editable Lumi workspace.
 translationKey: first-picture-book
 slug: first-picture-book
 docs_group: create
 weight: 30
-keywords: [create project, YOLO, manual creation, story idea, project folder]
+keywords: [create project, quick generation, manual creation, story idea, project folder]
 ---
 
-After provider verification, Lumi opens the project home. Use YOLO quick creation for a complete first shape or begin with an empty project. Both paths end in the same editable workspace.
+After provider verification, Lumi opens the project home. Use Quick generation for a complete first shape or begin with an empty project. Both paths end in the same editable workspace.
 
-## Start with YOLO quick creation
+## Start with Quick generation
 
-1. Select “YOLO quick creation” on the project home.
+1. Select “Quick generation” on the project home.
 2. Enter a project name and generation language, then choose a parent folder. Lumi creates a separate project folder inside it.
 3. Describe the smallest useful story idea. Include the protagonist, goal, obstacle, and ending change when possible—for example: “A young fox who fears the dark must cross the forest alone to deliver a letter that is already very late.”
 4. Submit and let the workflow run. Lumi progressively creates the Story, story profile, premise content, comic sections, and a first image.

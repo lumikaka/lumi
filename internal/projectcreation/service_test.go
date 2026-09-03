@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -191,16 +193,15 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 	projects := &creationProjectsFake{app: app}
 	agents := &creationAgentsFake{threadUUID: creationTestUUID(t), turnUUID: creationTestUUID(t)}
 	service := NewService(app, projects, agents)
-	excluded := false
 	references := []ReferenceFileInput{
-		{OriginalFilename: "first.png", MIMEType: "image/png", ByteSize: 123, ReferenceRole: "character", Title: "Little Fox", Instruction: "Keep the red scarf", IncludeInYolo: &excluded},
+		{OriginalFilename: "first.png", MIMEType: "image/png", ByteSize: 123},
 		{OriginalFilename: "second.webp", MIMEType: "IMAGE/WEBP", ByteSize: 456},
 	}
 	session, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
 	if err != nil || session.Status != StatusFailed || len(session.References) != 2 {
 		t.Fatalf("session=%+v err=%v", session, err)
 	}
-	if session.References[0].Position != 1 || session.References[0].MIMEType != "image/png" || session.References[0].FileUUID != "" || session.References[0].ReferenceRole != "character" || session.References[0].Title != "Little Fox" || session.References[0].Instruction != "Keep the red scarf" || session.References[0].IncludeInYolo || session.References[0].PlanSource != PlanSourceUserConfirmed || session.References[1].Position != 2 || session.References[1].MIMEType != "image/webp" || session.References[1].ReferenceRole != "auto" || session.References[1].Title != "second" || !session.References[1].IncludeInYolo || session.References[1].PlanSource != PlanSourceSystemDefault {
+	if session.References[0].Position != 1 || session.References[0].MIMEType != "image/png" || session.References[0].FileUUID != "" || session.References[0].ReferenceRole != "auto" || session.References[0].Title != "first" || session.References[0].Instruction != "" || !session.References[0].IncludeInYolo || session.References[0].PlanSource != PlanSourceSystemDefault || session.References[1].Position != 2 || session.References[1].MIMEType != "image/webp" || session.References[1].ReferenceRole != "auto" || session.References[1].Title != "second" || !session.References[1].IncludeInYolo || session.References[1].PlanSource != PlanSourceSystemDefault {
 		t.Fatalf("references=%+v", session.References)
 	}
 	replayed, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", references)
@@ -208,7 +209,7 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 		t.Fatalf("replayed=%+v err=%v", replayed, err)
 	}
 	changed := append([]ReferenceFileInput(nil), references...)
-	changed[1].ReferenceRole = "style"
+	changed[1].ByteSize++
 	if _, err := service.CreateWithReferences(ctx, "Create from two references", "home-reference-manifest", changed); err == nil {
 		t.Fatal("idempotency key accepted another ordered reference manifest")
 	} else {
@@ -228,6 +229,65 @@ func TestCreationSessionPersistsAndMatchesOrderedReferenceManifest(t *testing.T)
 		if !errors.As(err, &creationErr) || creationErr.Code != CodeInvalidInput {
 			t.Fatalf("reference limit error=%v", err)
 		}
+	}
+}
+
+func TestCreationSessionRejectsClientManagedReferencePlans(t *testing.T) {
+	ctx := context.Background()
+	service := NewService(creationTestApp(t), &creationProjectsFake{}, &creationAgentsFake{})
+	excluded := false
+	cases := []ReferenceFileInput{
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, ReferenceRole: "style"},
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, Title: "Custom title"},
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, Instruction: "Only use the palette"},
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, IncludeInYolo: &excluded},
+	}
+	for index, reference := range cases {
+		_, err := service.CreateWithReferences(ctx, "Create from a reference", fmt.Sprintf("system-managed-reference-%d", index), []ReferenceFileInput{reference})
+		var creationErr *Error
+		if !errors.As(err, &creationErr) || creationErr.Code != CodeReferenceSystemManaged {
+			t.Fatalf("case %d error=%v", index, err)
+		}
+	}
+	include := true
+	if normalized, err := validateReferenceFiles([]ReferenceFileInput{{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, ReferenceRole: "auto", Title: "fox", IncludeInYolo: &include}}); err != nil || normalized[0].ReferenceRole != "auto" || normalized[0].Title != "fox" || !*normalized[0].IncludeInYolo {
+		t.Fatalf("legacy defaults were not normalized: values=%+v err=%v", normalized, err)
+	}
+	longFilename := strings.Repeat("图", 200) + ".png"
+	if normalized, err := validateReferenceFiles([]ReferenceFileInput{{OriginalFilename: longFilename, MIMEType: "image/png", ByteSize: 123}}); err != nil || len([]rune(normalized[0].Title)) != 160 {
+		t.Fatalf("system-managed title was not safely bounded: values=%+v err=%v", normalized, err)
+	}
+}
+
+func TestExistingCustomReferenceSessionResumesWithoutRewritingHistoricalPlan(t *testing.T) {
+	ctx := context.Background()
+	app := creationTestApp(t)
+	now := time.Now().UTC()
+	sessionRecord, created, err := app.CreateOrGetProjectCreationSession(ctx, appstore.ProjectCreationSession{
+		UUID: creationTestUUID(t), IdempotencyKey: "historical-custom-reference", InputText: "Create from the historical session",
+		Status: StatusActive, PlannedProjectUUID: creationTestUUID(t), CreatedAt: now, UpdatedAt: now,
+	}, []appstore.ProjectCreationReference{{
+		UUID: creationTestUUID(t), Position: 1, UploadUUID: creationTestUUID(t), FileUUID: creationTestUUID(t),
+		OriginalFilename: "fox.png", DeclaredMIMEType: "image/png", DeclaredByteSize: 123,
+		ReferenceRole: ReferenceRoleStyle, Title: "Historical watercolor", Instruction: "Keep only the palette",
+		IncludeInYolo: false, PlanSource: PlanSourceUserConfirmed, Status: "ready", CreatedAt: now, UpdatedAt: now,
+	}})
+	if err != nil || !created {
+		t.Fatalf("seed session=%+v created=%v err=%v", sessionRecord, created, err)
+	}
+	service := NewService(app, &creationProjectsFake{}, &creationAgentsFake{})
+	for _, reference := range []ReferenceFileInput{
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123},
+		{OriginalFilename: "fox.png", MIMEType: "image/png", ByteSize: 123, ReferenceRole: ReferenceRoleCharacter, Title: "Attempted rewrite"},
+	} {
+		resumed, err := service.CreateWithReferences(ctx, sessionRecord.InputText, sessionRecord.IdempotencyKey, []ReferenceFileInput{reference})
+		if err != nil || resumed.UUID != sessionRecord.UUID || resumed.Status != StatusActive {
+			t.Fatalf("resumed=%+v err=%v", resumed, err)
+		}
+	}
+	stored, err := app.ProjectCreationReferences(ctx, sessionRecord.ID)
+	if err != nil || len(stored) != 1 || stored[0].ReferenceRole != ReferenceRoleStyle || stored[0].Title != "Historical watercolor" || stored[0].Instruction != "Keep only the palette" || stored[0].IncludeInYolo || stored[0].PlanSource != PlanSourceUserConfirmed {
+		t.Fatalf("historical plan changed: references=%+v err=%v", stored, err)
 	}
 }
 

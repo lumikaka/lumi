@@ -24,6 +24,7 @@ const (
 
 	CodeBootstrapProductionRequiresYolo = "bootstrap_production_requires_yolo"
 	CodeBootstrapYoloNotAuthorized      = "bootstrap_yolo_not_authorized"
+	CodeBootstrapGenerationBriefMissing = "bootstrap_generation_brief_missing"
 
 	CodeReferenceLimit       = "chat_reference_limit_exceeded"
 	CodeReferenceInvalidType = "chat_reference_invalid_type"

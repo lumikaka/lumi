@@ -201,7 +201,10 @@ export function groupChatItemsByTurn(items = [], turns = []) {
 
 const terminalChatTurnStatuses = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const toolItemTypes = new Set(['tool_call', 'tool_result'])
-const safelyRecoverableToolErrorCodes = new Set(['agent_tool_validation_failed'])
+const safelyRecoverableToolErrorCodes = new Set([
+  'agent_tool_confirmation_required',
+  'agent_tool_validation_failed',
+])
 
 export function projectChatTurnActivity(turn, items = [], { historyMayBePartial = false } = {}) {
   const conversationItems = []

@@ -1510,7 +1510,7 @@ func ensureSnapshotRestoreIdle(ctx context.Context, tx *gorm.DB, stateID int64, 
 		return err
 	}
 	if activeCount > 0 {
-		return domainError(CodeSnapshotBusy, "章节正在生成，无法恢复快照", "请等待 Yolo、章节正文、漫画脚本或页面图片生成任务结束后再恢复。", nil)
+		return domainError(CodeSnapshotBusy, "章节正在生成，无法恢复快照", "请等待自动生成、章节正文、漫画脚本或页面图片生成任务结束后再恢复。", nil)
 	}
 	return nil
 }

@@ -64,7 +64,7 @@ test('project page presents creation, open, relocation and forget dialogs', () =
   assert.doesNotMatch(source, /安全关闭|closeCurrentProject/)
 })
 
-test('new project dialogs prefer YOLO creation every time they open', () => {
+test('new project dialogs prefer quick generation every time they open', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
   assert.match(source, /const \[createMode, setCreateMode\] = useState\('yolo'\)/)
@@ -76,7 +76,7 @@ test('new project dialogs prefer YOLO creation every time they open', () => {
   assert.match(source, /await preflightImageGeneration\(pictureBook\)[\s\S]*await createProject/)
 })
 
-test('YOLO creation prioritizes its name and story idea and validates on submit', () => {
+test('quick generation prioritizes its name and story idea and validates on submit', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   const priorityFields = source.match(/<div className="project-create-priority-fields">([\s\S]*?)<\/div>\n          <div className="project-dialog-field">/)
   assert.ok(priorityFields)
@@ -124,19 +124,13 @@ test('home conversation composer preserves input, retry identity, and public nav
 test('home conversation composer carries recoverable image references into the first turn', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
   const api = readFileSync(new URL('../api/projects.js', import.meta.url), 'utf8')
-  const editor = readFileSync(new URL('../components/CreationReferenceEditor.jsx', import.meta.url), 'utf8')
   assert.match(source, /accept="image\/png,image\/jpeg,image\/webp"/)
   assert.match(source, /selectProjectChatImageFiles/)
   assert.match(source, /selectProjectChatClipboardImages/)
   assert.match(source, /<ReferenceStrip projectUuid=/)
-  assert.match(source, /!selectedCreationProject \? <CreationReferenceEditor/)
-  for (const field of ['reference_role', 'title', 'instruction', 'include_in_yolo']) assert.match(source, new RegExp(field))
-  assert.match(source, /creationReferencesFromCheckpoint[\s\S]*referenceRole: reference\.reference_role[\s\S]*planTitle: reference\.title[\s\S]*instruction: reference\.instruction[\s\S]*includeInYolo: reference\.include_in_yolo/)
-  assert.match(source, /serverReferenceFiles[\s\S]*reference_role: reference\.reference_role[\s\S]*include_in_yolo: reference\.include_in_yolo/)
-  assert.match(editor, /const referenceRoles = \['auto', 'character', 'scene', 'prop', 'style'\]/)
-  assert.match(editor, /aria-pressed=\{included\}/)
-  assert.match(editor, /maxLength="160"/)
-  assert.match(editor, /maxLength="2000"/)
+  assert.doesNotMatch(source, /CreationReferenceEditor/)
+  for (const field of ['reference_role', 'planTitle', 'instruction', 'include_in_yolo', 'includeInYolo', 'planSource']) assert.doesNotMatch(source, new RegExp(field))
+  assert.match(source, /function creationReferenceFileInput\(reference\)[\s\S]*original_filename: reference\.filename[\s\S]*mime_type: reference\.mimeType[\s\S]*byte_size: reference\.byteSize/)
   assert.match(source, /referenceFiles: checkpoint\.referenceFiles/)
   assert.match(source, /uploadProjectCreationReference\(session\.uuid, reference\.uuid, local\.file\)/)
   assert.match(source, /if \(session\.status === 'active'\) return session[\s\S]*if \(firstUploadError\) \{[\s\S]*getProjectCreationSession\(session\.uuid\)/)

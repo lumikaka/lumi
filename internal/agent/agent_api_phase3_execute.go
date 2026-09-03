@@ -21,10 +21,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 	chapterUUID, sectionUUID := request.Params["chapter_uuid"], request.Params["section_uuid"]
 	switch request.Route.Handler {
 	case RouteYoloWorkflowCreate:
-		if !isBootstrapToolContext(tc) {
-			return nil, true, bootstrapYoloNotAuthorizedError()
-		}
-		authorized, err := bootstrapYoloAuthorized(ctx, store, tc)
+		authorized, err := bootstrapYoloAuthorizedForExecution(ctx, store, tc, execution)
 		if err != nil {
 			return nil, true, err
 		}
@@ -35,10 +32,16 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		if err != nil {
 			return nil, true, err
 		}
+		creationSessionUUID := strings.TrimSpace(tc.BootstrapCreationSessionUUID)
+		if runtimeGenerated, _, runtimeSessionUUID := runtimeGeneratedBootstrapIntent(execution); runtimeGenerated {
+			// Authorization above has already bound this internal marker to the
+			// durable bootstrap lineage and exact confirmation request.
+			creationSessionUUID = runtimeSessionUUID
+		}
 		workflow, err := service.CreateYoloWorkflow(ctx, tc.ProjectUUID, CreateYoloInput{
 			Title: projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
-			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + tc.BootstrapCreationSessionUUID,
-			Invocation: chatToolInvocationContext(tc, execution), CreationSessionUUID: tc.BootstrapCreationSessionUUID,
+			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + creationSessionUUID,
+			Invocation: chatToolInvocationContext(tc, execution), CreationSessionUUID: creationSessionUUID,
 		})
 		if err != nil {
 			return nil, true, err

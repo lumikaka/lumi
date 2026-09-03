@@ -21,15 +21,16 @@ import (
 )
 
 type toolContext struct {
-	ProjectUUID                  string
-	BootstrapCreationSessionUUID string
-	Thread                       threadRecord
-	Turn                         turnRecord
-	Run                          runRecord
-	ToolMode                     string
-	ToolProtocol                 string
-	RequestUUID                  string
-	RequestOrdinal               int
+	ProjectUUID                         string
+	BootstrapCreationSessionUUID        string
+	BootstrapLineageCreationSessionUUID string
+	Thread                              threadRecord
+	Turn                                turnRecord
+	Run                                 runRecord
+	ToolMode                            string
+	ToolProtocol                        string
+	RequestUUID                         string
+	RequestOrdinal                      int
 }
 
 type toolExecutionRecord struct {
@@ -43,10 +44,8 @@ type toolExecutionRecord struct {
 }
 
 const (
-	maxToolValidationRepairs             = 2
-	confirmationPlacementArgumentRepair  = "confirmation.placement"
-	confirmationQuestionIDArgumentRepair = "confirmation.question_id"
-	requestAPIEmptyBodyArgumentRepair    = "request_api.empty_request_body"
+	maxToolValidationRepairs          = 2
+	requestAPIEmptyBodyArgumentRepair = "request_api.empty_request_body"
 )
 
 func toolDefinitions() []map[string]any {
@@ -71,9 +70,11 @@ func projectAPISharedToolDefinitions() []map[string]any {
 		{"name": "read_agent_doc", "description": "Read a registered Agent Overview, reusable capability Guide, or Project API contract. Start with /api/v1/agent-docs/overview.md to discover capabilities and routes.", "parameters": object(map[string]any{
 			"path": stringField("Registered /api/v1/agent-docs/...md path"),
 		}, "path")},
-		{"name": "image_gen", "description": "Generate a project-scoped image synchronously. Select zero to four image-capable References from the current Turn by their resource_uuid; the backend resolves their frozen images in the supplied order.", "parameters": object(map[string]any{
-			"prompt": stringField("Detailed image generation prompt"), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
-			"size": map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
+		{"name": "image_gen", "description": "Generate or edit a project-scoped image synchronously. The current project's default_style is applied automatically unless use_default_style is false; do not fetch or repeat default_style in prompt. Use operation=restyle when only the rendering style should change. Select zero to four image-capable References from the current Turn by their resource_uuid; the backend resolves their frozen images in the supplied order.", "parameters": object(map[string]any{
+			"prompt": stringField("Image content or edit instruction. Do not repeat the project's default_style when use_default_style is true."), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
+			"operation":         map[string]any{"type": "string", "enum": []string{"generate", "edit", "restyle"}, "default": "generate", "description": "Image operation. edit and restyle require at least one selected Reference."},
+			"use_default_style": map[string]any{"type": "boolean", "default": true, "description": "Apply the current project's default_style. Defaults to true; set false only when the user explicitly requests another style or asks to ignore the project style."},
+			"size":              map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}, "description": "Optional output size. When omitted, edit/restyle follows the first Reference aspect ratio and generate uses 1536x1024."}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
 		}, "prompt", "reference_uuids")},
 	}
 }
@@ -85,9 +86,6 @@ func projectAPIV4RequestUserInputDefinition() map[string]any {
 	stringField := func(description string, minimum, maximum int) map[string]any {
 		return map[string]any{"type": "string", "description": description, "minLength": minimum, "maxLength": maximum}
 	}
-	integerField := func(description string) map[string]any {
-		return map[string]any{"type": "integer", "description": description}
-	}
 	option := object(map[string]any{
 		"label":       stringField("User-facing label of 1–5 words. The first option must end with ` (Recommended)`.", 1, 160),
 		"description": stringField("One short sentence explaining the impact or tradeoff.", 1, 1000),
@@ -98,14 +96,8 @@ func projectAPIV4RequestUserInputDefinition() map[string]any {
 		"question": stringField("Single-sentence question shown to the user.", 1, 4000),
 		"options":  map[string]any{"type": "array", "minItems": 2, "maxItems": 3, "items": option},
 	}, "header", "id", "question", "options")
-	confirmation := object(map[string]any{
-		"route": stringField("Dangerous global Agent API route ID.", 1, 160), "project_uuid": stringField("Current public project UUIDv7.", 36, 36), "target_uuid": stringField("Concrete target resource UUIDv7.", 36, 36),
-		"expected_revision": integerField("Freshly read target revision."), "request_fingerprint": stringField("Exact sha256 fingerprint returned by request_api.", 71, 71), "question_id": map[string]any{"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]{0,63}$"}, "confirm_option": integerField("Zero-based confirming option index; index zero is reserved for the safe recommended option."),
-	}, "route", "project_uuid", "target_uuid", "expected_revision", "request_fingerprint", "question_id", "confirm_option")
-	confirmation["description"] = "Runtime-managed dangerous-action binding retained for durable recovery compatibility. It is a top-level sibling of questions; do not author this field in a model tool call."
-	return map[string]any{"name": "request_user_input", "description": "Pause this run only when a material user choice or required fact is genuinely missing. Ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. Dangerous request_api confirmations are generated, persisted, and resumed by the runtime; do not ask them with this tool or author confirmation. The runtime-managed confirmation is never inside questions[].", "parameters": object(map[string]any{
-		"questions":    map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question, "description": "Question items contain only header, id, question, and options; confirmation is never nested here."},
-		"confirmation": confirmation,
+	return map[string]any{"name": "request_user_input", "description": "Pause this run only when a material user choice or required fact is genuinely missing. Ask one to three short questions. Each question is mutually exclusive: put the recommended option first and suffix its label with ` (Recommended)`. Do not add an Other option; the client provides free-form Other automatically. Prefer one question and group questions only when they are directly related. Dangerous request_api confirmations are generated, persisted, and resumed by the runtime; do not ask them with this tool or author confirmation.", "parameters": object(map[string]any{
+		"questions": map[string]any{"type": "array", "minItems": 1, "maxItems": 3, "items": question, "description": "Question items contain only header, id, question, and options."},
 	}, "questions")}
 }
 
@@ -144,17 +136,16 @@ func validateToolArgumentsForProtocol(name string, raw string, mode, protocol st
 			return nil, err
 		}
 	}
-	if name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3 && normalizedToolMode(mode) == ToolModeProjectAPI {
-		normalizeProjectAPIV4ConfirmationPlacement(args)
-		if err := rejectProjectAPIV4ConfirmationPlacement(args); err != nil {
-			return nil, err
-		}
+	if name == "request_user_input" && containsJSONField(args, "confirmation") {
+		return nil, domainError(
+			CodeToolValidation,
+			"危险操作确认由运行时管理",
+			"request_user_input 只接受普通问题；confirmation 由运行时根据已持久化的原始 request_api 请求生成，模型不得构造或嵌套该字段。",
+			nil,
+		)
 	}
 	if err := validatePublicToolArguments(name, protocol, args); err != nil {
 		return nil, err
-	}
-	if name == "request_user_input" && protocol != ToolProtocolProjectV2 && protocol != ToolProtocolProjectV3 && normalizedToolMode(mode) == ToolModeProjectAPI {
-		normalizeProjectAPIV4ConfirmationQuestionID(args)
 	}
 	properties, _ := parameters["properties"].(map[string]any)
 	for key, value := range args {
@@ -216,7 +207,7 @@ func requestAPIConfirmationPlacementError() error {
 	return domainError(
 		CodeToolValidation,
 		"request_api 不接受 confirmation",
-		"confirmation 只能传给 request_user_input；用户确认后运行时会自动执行原请求，不要在 request_api、query 或 request_body 中携带 confirmation，也不要自行重放 request_api。",
+		"confirmation 由运行时根据已持久化的原请求生成；模型不得在 request_api、request_user_input、query 或 request_body 中构造该字段，也不得自行重放 request_api。",
 		nil,
 	)
 }
@@ -439,11 +430,9 @@ func validatePublicArgumentsAt(value any, key string, path []string, allowQuesti
 
 var requestUserInputQuestionIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
-// normalizeProjectAPIV4ConfirmationPlacement repairs only the unambiguous
-// single-question shape produced by some providers. The canonical public
-// contract remains a top-level confirmation sibling of questions. All fields
-// still pass the normal public, schema, and dangerous-binding validation after
-// this move.
+// normalizeProjectAPIV4ConfirmationPlacement exists only for reading
+// pre-upgrade persisted records that used the old single-question nesting.
+// Live model arguments are rejected before persistence and never call it.
 func normalizeProjectAPIV4ConfirmationPlacement(args map[string]any) bool {
 	if _, exists := args["confirmation"]; exists {
 		return false
@@ -463,97 +452,6 @@ func normalizeProjectAPIV4ConfirmationPlacement(args map[string]any) bool {
 	delete(question, "confirmation")
 	args["confirmation"] = confirmation
 	return true
-}
-
-func rejectProjectAPIV4ConfirmationPlacement(args map[string]any) error {
-	values, ok := args["questions"].([]any)
-	if !ok {
-		return nil
-	}
-	_, hasTopLevel := args["confirmation"]
-	for index, value := range values {
-		question, ok := value.(map[string]any)
-		if !ok {
-			continue
-		}
-		if _, exists := question["confirmation"]; !exists {
-			continue
-		}
-		path := fmt.Sprintf("questions[%d].confirmation", index)
-		details := path + " 位置无效；confirmation 必须是 request_user_input 顶层字段，并与 questions 同级。"
-		if hasTopLevel {
-			details = path + " 与顶层 confirmation 同时存在，无法安全确定绑定；只保留与 questions 同级的顶层 confirmation。"
-		} else if len(values) != 1 {
-			details = path + " 不能用于多问题请求；危险 confirmation 只允许绑定唯一问题，并且必须与 questions 同级。"
-		}
-		return toolValidationError(
-			"危险操作确认位置无效",
-			details,
-			toolValidationViolation{Path: path, Rule: "placement", ExpectedType: "top-level request_user_input.confirmation object"},
-		)
-	}
-	return nil
-}
-
-// A dangerous v4 confirmation can only bind one question, so question_id is a
-// redundant model-authored key rather than part of the security identity. Keep
-// every security-bearing field strict, but canonicalize a non-empty mismatched
-// question_id to the sole valid question key before schema validation.
-func normalizeProjectAPIV4ConfirmationQuestionID(args map[string]any) bool {
-	values, ok := args["questions"].([]any)
-	if !ok || len(values) != 1 {
-		return false
-	}
-	question, ok := values[0].(map[string]any)
-	if !ok {
-		return false
-	}
-	questionID := strings.TrimSpace(stringArg(question, "id"))
-	if !requestUserInputQuestionIDPattern.MatchString(questionID) {
-		return false
-	}
-	confirmation, ok := args["confirmation"].(map[string]any)
-	if !ok {
-		return false
-	}
-	providedID, ok := confirmation["question_id"].(string)
-	if !ok || strings.TrimSpace(providedID) == "" || providedID == questionID {
-		return false
-	}
-	confirmation["question_id"] = questionID
-	return true
-}
-
-func projectAPIV4ArgumentRepairs(name, protocol, mode, raw string, normalized map[string]any) []string {
-	if name != "request_user_input" || protocol == ToolProtocolProjectV2 || protocol == ToolProtocolProjectV3 || normalizedToolMode(mode) != ToolModeProjectAPI {
-		return nil
-	}
-	var original map[string]any
-	if json.Unmarshal([]byte(raw), &original) != nil {
-		return nil
-	}
-	repairs := make([]string, 0, 2)
-	originalConfirmation, originalOK := original["confirmation"].(map[string]any)
-	if !originalOK {
-		if values, ok := original["questions"].([]any); ok && len(values) == 1 {
-			if question, ok := values[0].(map[string]any); ok {
-				originalConfirmation, originalOK = question["confirmation"].(map[string]any)
-				if originalOK {
-					repairs = append(repairs, confirmationPlacementArgumentRepair)
-				}
-			}
-		}
-	}
-	normalizedConfirmation, normalizedOK := normalized["confirmation"].(map[string]any)
-	if !originalOK || !normalizedOK {
-		return repairs
-	}
-	originalID, originalOK := originalConfirmation["question_id"].(string)
-	normalizedID, normalizedOK := normalizedConfirmation["question_id"].(string)
-	if originalOK && normalizedOK && originalID != normalizedID {
-		repairs = append(repairs, confirmationQuestionIDArgumentRepair)
-	}
-	return repairs
 }
 
 func addArgumentRepairMetadata(metadata map[string]any, repairs []string) {
@@ -592,22 +490,6 @@ func validateProjectAPIV4UserInputArguments(args map[string]any) error {
 			}
 		}
 	}
-	if raw, exists := args["confirmation"]; exists {
-		confirmation, _ := raw.(map[string]any)
-		questionID := strings.TrimSpace(stringArg(confirmation, "question_id"))
-		if len(values) != 1 || questionID == "" {
-			return domainError(CodeToolValidation, "危险操作确认问题无效", "confirmation 只允许绑定单问题请求，并且必须提供 question_id。", nil)
-		}
-		question, _ := values[0].(map[string]any)
-		if questionID != strings.TrimSpace(stringArg(question, "id")) {
-			return domainError(CodeToolValidation, "危险操作确认问题不匹配", "confirmation.question_id 必须匹配唯一问题的 id。", nil)
-		}
-		options, _ := question["options"].([]any)
-		confirmOption := int(intArg(confirmation, "confirm_option"))
-		if confirmOption <= 0 || confirmOption >= len(options) {
-			return domainError(CodeToolValidation, "危险操作确认选项无效", "confirmation.confirm_option 必须绑定非首项的有效选项；首项保留为安全推荐项。", nil)
-		}
-	}
 	return nil
 }
 
@@ -633,7 +515,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return existing, nil, false, err
 	}
-	argumentRepairs := projectAPIV4ArgumentRepairs(name, tc.ToolProtocol, tc.ToolMode, raw, args)
+	argumentRepairs := []string{}
 	if !toolAllowedForThreadMode(name, tc.Thread, tc.ToolMode) {
 		return existing, nil, false, domainError(CodeToolNotAllowed, "工具不适用于当前 Run", "当前冻结的 Tool Mode 无法使用该工具。", nil)
 	}
@@ -1219,6 +1101,13 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 	if err != nil {
 		return UserInputRequest{}, err
 	}
+	var confirmationSource dangerousConfirmationSourceExecution
+	if prepared.Confirmation != nil {
+		confirmationSource, err = service.ensureRuntimeDangerousConfirmationSourceTx(ctx, tx, tc.Run.ID, execution.ID, execution.ItemID, tc.ProjectUUID, "", execution.ArgumentsJSON, *prepared.Confirmation)
+		if err != nil {
+			return UserInputRequest{}, err
+		}
+	}
 	var existing userInputRow
 	err = tx.QueryRowContext(ctx, `SELECT q.id,q.thread_id,q.run_id,q.turn_id,q.item_id,q.uuid,q.tool_call_uuid,q.schema_version,q.request_json,q.response_json,q.status,q.answered_at,q.resumed_at,q.cancelled_at,q.created_at,q.updated_at,r.uuid,t.uuid,i.uuid,i.metadata_json FROM chat_user_input_requests q JOIN chat_runs r ON r.id=q.run_id JOIN chat_turns t ON t.id=q.turn_id JOIN chat_items i ON i.id=q.item_id WHERE q.run_id=? AND q.tool_call_uuid=?`, tc.Run.ID, execution.ToolCallUUID).Scan(&existing.ID, &existing.ThreadID, &existing.RunID, &existing.TurnID, &existing.ItemID, &existing.UUID, &existing.ToolCallUUID, &existing.SchemaVersion, &existing.RequestJSON, &existing.ResponseJSON, &existing.Status, &existing.AnsweredAt, &existing.ResumedAt, &existing.CancelledAt, &existing.CreatedAt, &existing.UpdatedAt, &existing.RunUUID, &existing.TurnUUID, &existing.ItemUUID, &existing.ItemMetadataJSON)
 	if err == nil {
@@ -1227,13 +1116,6 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return UserInputRequest{}, err
-	}
-	var confirmationSource dangerousConfirmationSourceExecution
-	if prepared.Confirmation != nil {
-		confirmationSource, err = service.findDangerousConfirmationSourceTx(ctx, tx, tc.Run.ID, execution.ID, tc.ProjectUUID, "", *prepared.Confirmation)
-		if err != nil {
-			return UserInputRequest{}, err
-		}
 	}
 	now := service.now().UTC()
 	contentObject := map[string]any{"request_uuid": requestUUID, "schema_version": prepared.SchemaVersion}

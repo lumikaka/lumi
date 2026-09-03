@@ -7,6 +7,7 @@ import (
 	"image/gif"
 	"image/png"
 	"io"
+	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,14 +15,18 @@ import (
 	"lumi/internal/files"
 	"lumi/internal/imagegen"
 	"lumi/internal/llmlog"
+	"lumi/internal/production"
 	"lumi/internal/project"
 
 	"gorm.io/gorm"
 )
 
 const (
-	imageToolTimeout      = 10 * time.Minute
-	maxImageGenReferences = 4
+	imageToolTimeout       = 10 * time.Minute
+	maxImageGenReferences  = 4
+	imageOperationGenerate = "generate"
+	imageOperationEdit     = "edit"
+	imageOperationRestyle  = "restyle"
 )
 
 func (service *Service) executeImageGenTool(ctx context.Context, store *project.Store, tc toolContext, execution toolExecutionRecord, args map[string]any) (map[string]any, error) {
@@ -34,14 +39,15 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if service.image == nil {
 		return nil, domainError(CodeStateConflict, "图片生成服务不可用", "Image client 尚未初始化。", nil)
 	}
-	prompt, err := validateText(stringArg(args, "prompt"), 64<<10, "图片 Prompt")
+	userPrompt, err := validateText(stringArg(args, "prompt"), 64<<10, "图片 Prompt")
+	if err != nil {
+		return nil, err
+	}
+	operation, useDefaultStyle, err := imageGenOptions(tc, args)
 	if err != nil {
 		return nil, err
 	}
 	size := stringArg(args, "size")
-	if size == "" {
-		size = "1536x1024"
-	}
 	quality := stringArg(args, "quality")
 	if quality == "" {
 		quality = "medium"
@@ -75,9 +81,13 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err != nil {
 		return nil, err
 	}
+	if (operation == imageOperationEdit || operation == imageOperationRestyle) && len(selectedReferences) == 0 {
+		return nil, domainError(CodeToolValidation, "图片编辑缺少 Reference", "image_gen 的 edit 和 restyle 操作至少需要选择一张当前 Turn Reference。", nil)
+	}
 	inputs := make([]imagegen.ImageInput, 0, len(selectedReferences))
 	fileService := files.NewService(store, service.hub)
-	for _, reference := range selectedReferences {
+	firstReferenceWidth, firstReferenceHeight := 0, 0
+	for index, reference := range selectedReferences {
 		content, err := fileService.OpenContent(ctx, reference.FileUUID)
 		if err != nil {
 			return nil, domainError(CodeToolValidation, "Reference 图片不可用", "所选 Reference 的冻结图片当前无法读取。", err)
@@ -95,7 +105,29 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		if err != nil {
 			return nil, domainError(CodeToolValidation, "参考图片格式不受支持", "image_gen 只接受 PNG、JPEG、WebP 或可解码的 GIF 图片。", err)
 		}
+		if index == 0 && content.Asset.Width != nil && content.Asset.Height != nil {
+			firstReferenceWidth, firstReferenceHeight = *content.Asset.Width, *content.Asset.Height
+		}
 		inputs = append(inputs, imagegen.ImageInput{MIMEType: mimeType, Data: data})
+	}
+	if size == "" {
+		size = defaultImageGenSize(operation, firstReferenceWidth, firstReferenceHeight)
+	}
+	defaultStyle := ""
+	if useDefaultStyle {
+		premise, premiseErr := production.NewService(store, service.hub).GetPremise(ctx)
+		if premiseErr != nil {
+			return nil, premiseErr
+		}
+		defaultStyle = strings.TrimSpace(premise.DefaultStyle)
+	}
+	effectivePrompt := userPrompt
+	if tc.ToolProtocol == ToolProtocolProjectAPI {
+		effectivePrompt = composeImageGenPrompt(operation, userPrompt, defaultStyle)
+	}
+	prompt, err := validateText(effectivePrompt, 64<<10, "图片 Prompt")
+	if err != nil {
+		return nil, err
 	}
 	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
 	if err != nil {
@@ -151,7 +183,10 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		referenceTypes = append(referenceTypes, reference.ResourceType)
 		resolvedFileUUIDs = append(resolvedFileUUIDs, reference.FileUUID)
 	}
-	metadata := map[string]any{"source": "project_chat_image_gen", "tool_execution_uuid": execution.UUID, "chat_thread_uuid": tc.Thread.UUID, "chat_run_uuid": tc.Run.UUID, "reference_uuids": referenceUUIDs, "reference_types": referenceTypes, "resolved_file_uuids": resolvedFileUUIDs, "revised_prompt": llmlog.Summarize(response.RevisedPrompt, 1000)}
+	metadata := map[string]any{"source": "project_chat_image_gen", "tool_execution_uuid": execution.UUID, "chat_thread_uuid": tc.Thread.UUID, "chat_run_uuid": tc.Run.UUID, "operation": operation, "use_default_style": useDefaultStyle, "reference_uuids": referenceUUIDs, "reference_types": referenceTypes, "resolved_file_uuids": resolvedFileUUIDs, "revised_prompt": llmlog.Summarize(response.RevisedPrompt, 1000)}
+	if defaultStyle != "" {
+		metadata["default_style_snapshot"] = llmlog.Summarize(defaultStyle, 1000)
+	}
 	asset, err := fileService.CommitReader(ctx, files.CommitInput{Purpose: purpose, OriginalFilename: filename, DisplayName: filename, SourceType: "generated", Metadata: metadata, Reader: bytes.NewReader(generatedBytes)})
 	if err != nil {
 		return nil, err
@@ -161,6 +196,74 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		result["reference_file_uuids"] = resolvedFileUUIDs
 	}
 	return result, nil
+}
+
+func imageGenOptions(tc toolContext, args map[string]any) (string, bool, error) {
+	operation := imageOperationGenerate
+	useDefaultStyle := false
+	if tc.ToolProtocol != ToolProtocolProjectAPI {
+		return operation, useDefaultStyle, nil
+	}
+	if requested := stringArg(args, "operation"); requested != "" {
+		operation = requested
+	}
+	switch operation {
+	case imageOperationGenerate, imageOperationEdit, imageOperationRestyle:
+	default:
+		return "", false, domainError(CodeToolValidation, "图片操作无效", "image_gen.operation 只接受 generate、edit 或 restyle。", nil)
+	}
+	useDefaultStyle = true
+	if value, exists := args["use_default_style"]; exists {
+		selected, ok := value.(bool)
+		if !ok {
+			return "", false, domainError(CodeToolValidation, "默认画风参数无效", "image_gen.use_default_style 必须是 boolean。", nil)
+		}
+		useDefaultStyle = selected
+	}
+	return operation, useDefaultStyle, nil
+}
+
+func composeImageGenPrompt(operation, userPrompt, defaultStyle string) string {
+	parts := []string{"<operation>\n" + imageOperationInstruction(operation) + "\n</operation>"}
+	if strings.TrimSpace(defaultStyle) != "" {
+		parts = append(parts, "<project_default_style>\n以下内容只用于决定线条、色彩、材质、光照和渲染方式，不得从中引入人物、场景、物件或构图：\n"+strings.TrimSpace(defaultStyle)+"\n</project_default_style>")
+	}
+	parts = append(parts, "<user_instruction>\n"+strings.TrimSpace(userPrompt)+"\n</user_instruction>")
+	return strings.Join(parts, "\n\n")
+}
+
+func imageOperationInstruction(operation string) string {
+	switch operation {
+	case imageOperationEdit:
+		return "基于第一张参考图进行编辑。只修改用户明确要求改变的内容；保留未要求修改的主体数量、身份特征、姿势、服装、道具、构图、镜头角度、裁切范围、背景空间关系和画面比例。其余参考图只能作为补充视觉依据。"
+	case imageOperationRestyle:
+		return "以第一张参考图作为唯一的内容和构图来源。保留主体数量、身份特征、姿势、服装、道具、镜头角度、裁切范围、背景空间关系和画面比例，只改变渲染风格。其余参考图只能辅助风格或细节，不得替换第一张图的内容与构图。禁止新增人物、文字、标题、标签、卡片、分栏和设定板布局。"
+	default:
+		return "生成一张新的项目图片。"
+	}
+}
+
+func defaultImageGenSize(operation string, width, height int) string {
+	if operation != imageOperationEdit && operation != imageOperationRestyle {
+		return "1536x1024"
+	}
+	if width <= 0 || height <= 0 {
+		return "1536x1024"
+	}
+	ratio := float64(width) / float64(height)
+	candidates := []struct {
+		size  string
+		ratio float64
+	}{{"1024x1024", 1}, {"1024x1536", 2.0 / 3.0}, {"1536x1024", 3.0 / 2.0}}
+	best := candidates[0]
+	bestDistance := math.Abs(math.Log(ratio / best.ratio))
+	for _, candidate := range candidates[1:] {
+		distance := math.Abs(math.Log(ratio / candidate.ratio))
+		if distance < bestDistance {
+			best, bestDistance = candidate, distance
+		}
+	}
+	return best.size
 }
 
 func normalizeImageGenBytes(data []byte, mimeType string) ([]byte, string, error) {

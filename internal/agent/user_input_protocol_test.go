@@ -14,16 +14,18 @@ import (
 
 const validCodexUserInputArguments = `{"questions":[{"header":"画面风格","id":"art_style","question":"这次画面应采用哪种整体风格？","options":[{"label":"温暖手绘 (Recommended)","description":"延续绘本现有的柔和质感和亲切氛围。"},{"label":"电影写实","description":"强化真实光影、景深和镜头感。"}]}]}`
 
-func TestProjectAPIV4RequestUserInputDefinitionKeepsConfirmationTopLevel(t *testing.T) {
+func TestProjectAPIV4RequestUserInputDefinitionExcludesConfirmation(t *testing.T) {
 	definition := projectAPIV4RequestUserInputDefinition()
 	parameters := definition["parameters"].(map[string]any)
 	properties := parameters["properties"].(map[string]any)
 	questions := properties["questions"].(map[string]any)
 	question := questions["items"].(map[string]any)
 	questionProperties := question["properties"].(map[string]any)
-	confirmation := properties["confirmation"].(map[string]any)
-	if _, nested := questionProperties["confirmation"]; nested || !strings.Contains(stringArg(confirmation, "description"), "top-level sibling") || !strings.Contains(definition["description"].(string), "never inside questions[]") {
-		t.Fatalf("request_user_input confirmation placement is ambiguous: definition=%+v", definition)
+	if _, topLevel := properties["confirmation"]; topLevel {
+		t.Fatalf("model-visible request_user_input still exposes confirmation: definition=%+v", definition)
+	}
+	if _, nested := questionProperties["confirmation"]; nested || !strings.Contains(definition["description"].(string), "generated, persisted, and resumed by the runtime") {
+		t.Fatalf("request_user_input runtime ownership is ambiguous: definition=%+v", definition)
 	}
 }
 
@@ -74,83 +76,12 @@ func TestProjectAPIV4RequestUserInputSchemaAndRuntimeValidation(t *testing.T) {
 	}
 }
 
-func TestProjectAPIV4SingleQuestionConfirmationNormalizesQuestionID(t *testing.T) {
-	question := map[string]any{
-		"header":   "生成确认",
-		"id":       "confirm_storyboard",
-		"question": "是否生成漫画分镜？",
-		"options": []map[string]any{
-			{"label": "暂不生成 (Recommended)", "description": "保留当前状态，不创建生成任务。"},
-			{"label": "确认生成", "description": "创建已绑定的漫画分镜生成任务。"},
-		},
-	}
-	confirmation := map[string]any{
-		"route":               RouteComicStoryboardGenerationCreate,
-		"project_uuid":        "01990000-0000-7000-8000-000000000321",
-		"target_uuid":         "01990000-0000-7000-8000-000000000322",
-		"expected_revision":   0,
-		"request_fingerprint": "sha256:" + strings.Repeat("a", 64),
-		"question_id":         "confirm_comic_storyboard_gen",
-		"confirm_option":      1,
-	}
-	raw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question}, "confirmation": confirmation})
-	args, err := validateToolArgumentsForProtocol("request_user_input", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
-	if err != nil {
-		t.Fatalf("single-question confirmation was not normalized: %v", err)
-	}
-	normalized := args["confirmation"].(map[string]any)
-	if normalized["question_id"] != "confirm_storyboard" || normalized["request_fingerprint"] != confirmation["request_fingerprint"] || normalized["target_uuid"] != confirmation["target_uuid"] {
-		t.Fatalf("unexpected normalized confirmation: %+v", normalized)
-	}
-
-	second := map[string]any{
-		"header": "范围确认", "id": "confirm_scope", "question": "生成全部内容吗？",
-		"options": []map[string]any{
-			{"label": "仅当前章节 (Recommended)", "description": "只处理当前章节。"},
-			{"label": "全部章节", "description": "处理项目中的全部章节。"},
-		},
-	}
-	multiRaw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question, second}, "confirmation": confirmation})
-	if _, err := validateToolArgumentsForProtocol("request_user_input", string(multiRaw), ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
-		t.Fatalf("multi-question confirmation unexpectedly normalized: %v", err)
-	}
-}
-
-func TestProjectAPIV4SingleQuestionNestedConfirmationIsNormalized(t *testing.T) {
-	question := map[string]any{
-		"header": "生成确认", "id": "confirm_storyboard", "question": "是否生成漫画分镜？",
-		"options": []map[string]any{
-			{"label": "暂不生成 (Recommended)", "description": "保留当前状态，不创建生成任务。"},
-			{"label": "确认生成", "description": "创建已绑定的漫画分镜生成任务。"},
-		},
-		"confirmation": map[string]any{
-			"route": RouteComicStoryboardGenerationCreate, "project_uuid": "01990000-0000-7000-8000-000000000321", "target_uuid": "01990000-0000-7000-8000-000000000322",
-			"expected_revision": 0, "request_fingerprint": "sha256:" + strings.Repeat("a", 64), "question_id": "confirm_storyboard", "confirm_option": 1,
-		},
-	}
-	raw, _ := json.Marshal(map[string]any{"questions": []map[string]any{question}})
-	args, err := validateToolArgumentsForProtocol("request_user_input", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
-	if err != nil {
-		t.Fatalf("nested single-question confirmation was not normalized: %v", err)
-	}
-	questions := args["questions"].([]any)
-	if _, exists := questions[0].(map[string]any)["confirmation"]; exists {
-		t.Fatalf("normalized question still contains confirmation: %+v", questions[0])
-	}
-	confirmation, ok := args["confirmation"].(map[string]any)
-	if !ok || confirmation["question_id"] != "confirm_storyboard" || confirmation["target_uuid"] != "01990000-0000-7000-8000-000000000322" {
-		t.Fatalf("unexpected top-level confirmation: %+v", args["confirmation"])
-	}
-	repairs := projectAPIV4ArgumentRepairs("request_user_input", ToolProtocolProjectAPI, ToolModeProjectAPI, string(raw), args)
-	if strings.Join(repairs, ",") != confirmationPlacementArgumentRepair {
-		t.Fatalf("argument repairs=%v", repairs)
-	}
-}
-
-func TestProjectAPIV4AmbiguousNestedConfirmationReturnsPlacementViolation(t *testing.T) {
+func TestProjectAPIV4RejectsEveryModelAuthoredConfirmationPlacement(t *testing.T) {
 	confirmation := `{"route":"comic.storyboard_generation.create","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":0,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_storyboard","confirm_option":1}`
 	question := `{"header":"生成确认","id":"confirm_storyboard","question":"是否生成漫画分镜？","options":[{"label":"暂不生成 (Recommended)","description":"保留当前状态。"},{"label":"确认生成","description":"创建生成任务。"}]`
 	cases := map[string]string{
+		"top-level":            `{"questions":[` + question + `}],"confirmation":` + confirmation + `}`,
+		"single nested":        `{"questions":[` + question + `,"confirmation":` + confirmation + `}]}`,
 		"top-level and nested": `{"questions":[` + question + `,"confirmation":` + confirmation + `}],"confirmation":` + confirmation + `}`,
 		"multiple questions":   `{"questions":[` + question + `,"confirmation":` + confirmation + `},` + question + `}]}`,
 		"non-object":           `{"questions":[` + question + `,"confirmation":"invalid"}]}`,
@@ -158,33 +89,97 @@ func TestProjectAPIV4AmbiguousNestedConfirmationReturnsPlacementViolation(t *tes
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
 			_, err := validateToolArgumentsForProtocol("request_user_input", raw, ToolModeProjectAPI, ToolProtocolProjectAPI)
-			violation, ok := toolValidationViolationFromError(err)
 			var agentErr *Error
-			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || !ok || violation.Path != "questions[0].confirmation" || violation.Rule != "placement" || !strings.Contains(agentErr.Details, "与 questions 同级") {
-				t.Fatalf("placement error=%v violation=%+v", err, violation)
+			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || agentErr.Message != "危险操作确认由运行时管理" || !strings.Contains(agentErr.Details, "模型不得构造") {
+				t.Fatalf("placement error=%v", err)
 			}
 		})
 	}
 }
 
-func TestProjectAPIV4NestedConfirmationStillRejectsInternalFields(t *testing.T) {
-	raw := `{"questions":[{"header":"生成确认","id":"confirm_storyboard","question":"是否生成漫画分镜？","options":[{"label":"暂不生成 (Recommended)","description":"保留当前状态。"},{"label":"确认生成","description":"创建生成任务。"}],"confirmation":{"route":"comic.storyboard_generation.create","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":0,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_storyboard","confirm_option":1,"internal_id":7}}]}`
-	_, err := validateToolArgumentsForProtocol("request_user_input", raw, ToolModeProjectAPI, ToolProtocolProjectAPI)
-	var agentErr *Error
-	if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || agentErr.Message != "工具参数包含内部字段" {
-		t.Fatalf("nested internal field accepted or misclassified: %v", err)
+func TestNestedModelConfirmationNeverPersistsToolIntent(t *testing.T) {
+	nested := `{"questions":[{"header":"创建确认","id":"confirm_setup","question":"是否定稿并开始生成？","options":[{"label":"继续修改 (Recommended)","description":"保留当前草稿。"},{"label":"定稿并开始生成","description":"定稿并开始自动生成流程。"}],"confirmation":{"route":"project_setup.finalize","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":1,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_setup","confirm_option":1}}]}`
+	harness := newAgentHarness(t,
+		llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "nested-confirmation", Name: "request_user_input", Arguments: nested}}}, FinishReason: "tool_calls"},
+		finalResponse("已停止等待无效的模型确认。"),
+	)
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(context.Background(), harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "继续"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatTurn); err != nil {
+		t.Fatal(err)
+	}
+	var executions int64
+	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND tool_name='request_user_input'", turn.UUID).Count(&executions).Error; err != nil || executions != 0 {
+		t.Fatalf("nested confirmation created %d execution intents: %v", executions, err)
+	}
+	requests, err := harness.service.ListUserInputRequests(context.Background(), harness.project.UUID, thread.UUID)
+	if err != nil || len(requests) != 0 {
+		t.Fatalf("nested confirmation created user input requests=%+v err=%v", requests, err)
+	}
+}
+
+func TestPersistedNestedConfirmationIsReadOnlyCompatibilityState(t *testing.T) {
+	raw := `{"questions":[{"header":"创建确认","id":"confirm_setup","question":"是否定稿并开始生成？","options":[{"label":"继续修改 (Recommended)","description":"保留当前草稿。"},{"label":"定稿并开始生成","description":"定稿并开始自动生成流程。"}],"confirmation":{"route":"project_setup.finalize","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":1,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","question_id":"confirm_setup","confirm_option":1}}]}`
+	binding, err := dangerousConfirmationFromArguments(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if binding == nil || binding.Route != RouteProjectSetupFinalize || binding.QuestionID != "confirm_setup" || binding.ConfirmOption != 1 {
+		t.Fatalf("historical nested confirmation was not recovered: %+v", binding)
+	}
+
+	var publicValue map[string]any
+	if err := json.Unmarshal([]byte(raw), &publicValue); err != nil {
+		t.Fatal(err)
+	}
+	stripJSONField(publicValue, "confirmation")
+	if encoded, _ := json.Marshal(publicValue); strings.Contains(string(encoded), `"confirmation"`) {
+		t.Fatalf("historical confirmation leaked into public arguments: %s", encoded)
+	}
+	if _, err := validateToolArgumentsForProtocol("request_user_input", raw, ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
+		t.Fatalf("historical repair path accepted live model arguments: %v", err)
 	}
 }
 
 func TestProjectAPIRequestUserInputDefinitionsAreFrozenByProtocol(t *testing.T) {
 	legacy := `{"input_type":"single_choice","question":"继续吗？","options":[{"label":"继续"},{"label":"取消"}]}`
+	legacyConfirmation := `{"input_type":"single_choice","question":"继续吗？","options":[{"label":"取消"},{"label":"继续"}],"confirmation":{"route":"project_setup.finalize","project_uuid":"01990000-0000-7000-8000-000000000321","target_uuid":"01990000-0000-7000-8000-000000000322","expected_revision":1,"request_fingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","confirm_option":1}}`
 	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {
+		definitions := toolDefinitionsForProtocol(ToolModeProjectAPI, protocol)
+		var definition map[string]any
+		for _, candidate := range definitions {
+			if candidate["name"] == "request_user_input" {
+				definition = candidate
+				break
+			}
+		}
+		if definition == nil {
+			t.Fatalf("%s lost request_user_input", protocol)
+		}
+		properties := definition["parameters"].(map[string]any)["properties"].(map[string]any)
+		if _, exposed := properties["confirmation"]; exposed || !strings.Contains(definition["description"].(string), "generated and replayed internally by the runtime") {
+			t.Fatalf("%s still exposes a model-authored confirmation contract: %+v", protocol, definition)
+		}
 		if _, err := validateToolArgumentsForProtocol("request_user_input", legacy, ToolModeProjectAPI, protocol); err != nil {
 			t.Fatalf("%s rejected frozen request: %v", protocol, err)
 		}
 		if _, err := validateToolArgumentsForProtocol("request_user_input", validCodexUserInputArguments, ToolModeProjectAPI, protocol); errorCode(err) != CodeToolValidation {
 			t.Fatalf("%s accepted v4 request: %v", protocol, err)
 		}
+		if _, err := validateToolArgumentsForProtocol("request_user_input", legacyConfirmation, ToolModeProjectAPI, protocol); errorCode(err) != CodeToolValidation {
+			t.Fatalf("%s accepted model-authored confirmation: %v", protocol, err)
+		}
+	}
+	legacyDefinition := legacyToolDefinitionByName("request_user_input")
+	if legacyDefinition == nil {
+		t.Fatal("legacy recovery protocol lost request_user_input")
+	}
+	legacyProperties := legacyDefinition["parameters"].(map[string]any)["properties"].(map[string]any)
+	if _, exposed := legacyProperties["confirmation"]; exposed || !strings.Contains(legacyDefinition["description"].(string), "generated and replayed internally by the runtime") {
+		t.Fatalf("legacy recovery still exposes a model-authored confirmation contract: %+v", legacyDefinition)
 	}
 	if _, err := validateToolArgumentsForProtocol("request_user_input", legacy, ToolModeProjectAPI, ToolProtocolProjectAPI); errorCode(err) != CodeToolValidation {
 		t.Fatalf("v4 accepted legacy request: %v", err)
@@ -223,7 +218,7 @@ func TestRequestAPIRejectsConfirmationPlacement(t *testing.T) {
 			raw, _ := json.Marshal(arguments)
 			_, err := validateToolArgumentsForProtocol("request_api", string(raw), ToolModeProjectAPI, ToolProtocolProjectAPI)
 			var agentErr *Error
-			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || !strings.Contains(agentErr.Details, "运行时会自动执行原请求") {
+			if !errors.As(err, &agentErr) || agentErr.Code != CodeToolValidation || agentErr.Message != "request_api 不接受 confirmation" || !strings.Contains(agentErr.Details, "运行时根据已持久化的原请求生成") {
 				t.Fatalf("%s confirmation placement error=%v", name, err)
 			}
 		})
@@ -266,7 +261,7 @@ func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
 	for _, protocol := range []string{ToolProtocolProjectV2, ToolProtocolProjectV3} {
 		t.Run(protocol, func(t *testing.T) {
 			harness := newAgentHarness(t)
-			harness.service.turnBudget.MaxModelRequests = 3
+			harness.service.turnBudget.MaxModelRequests = 2
 			ctx := context.Background()
 			asset, thread := createAssetReferenceMigrationFixture(t, harness)
 			turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "这个设定项似乎没用了，应该怎么处理？", MaxSteps: 2})
@@ -282,29 +277,12 @@ func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
 				"request_body":    map[string]any{"expected_revision": float64(asset.Revision)},
 				"response_filter": ".data | {uuid,deleted_at}",
 			}
-			request, err := parseAgentAPIRequest(toolContext{ProjectUUID: harness.project.UUID, ToolMode: ToolModeProjectAPI, ToolProtocol: protocol}, requestArguments)
-			if err != nil {
-				t.Fatal(err)
-			}
 			requestJSON, _ := json.Marshal(requestArguments)
-			confirmationJSON, _ := json.Marshal(map[string]any{
-				"input_type": "single_choice", "question": "是否将当前设定项移入回收站？",
-				"options": []map[string]any{{"label": "保留设定项", "description": "不执行删除。"}, {"label": "确认移入回收站", "description": "执行已绑定的删除操作。"}},
-				"confirmation": map[string]any{
-					"route": RoutePremiseAssetDelete, "project_uuid": harness.project.UUID, "target_uuid": asset.UUID,
-					"expected_revision": asset.Revision, "request_fingerprint": agentRequestFingerprint(request), "confirm_option": 1,
-				},
-			})
 			harness.model.respond = func(call int, modelRequest llm.ChatRequest) (llm.ChatResponse, error) {
 				switch call {
 				case 1:
 					return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "legacy-danger", Name: "request_api", Arguments: string(requestJSON)}}}, FinishReason: "tool_calls"}, nil
 				case 2:
-					if !messagesContain(modelRequest.Messages, CodeToolConfirmation) {
-						t.Fatalf("%s confirmation error missing from context", protocol)
-					}
-					return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "legacy-confirm", Name: "request_user_input", Arguments: string(confirmationJSON)}}}, FinishReason: "tool_calls"}, nil
-				case 3:
 					if len(modelRequest.Tools) != 0 {
 						t.Fatalf("%s finalization exposed tools: %v", protocol, definitionNames(modelRequest.Tools))
 					}
@@ -320,8 +298,19 @@ func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
 			if err != nil || len(requests) != 1 || requests[0].SchemaVersion != userInputSchemaLegacyChoice {
 				t.Fatalf("%s requests=%+v err=%v", protocol, requests, err)
 			}
+			var requestItemContentBefore string
+			if err := harness.store.DB().Table("chat_items").Select("content").Where("uuid=?", requests[0].ItemUUID).Scan(&requestItemContentBefore).Error; err != nil {
+				t.Fatal(err)
+			}
 			if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, thread.UUID, requests[0].UUID, UserInputResponse{SelectedOptionUUIDs: []string{requests[0].Options[1].UUID}}); err != nil {
 				t.Fatal(err)
+			}
+			var requestItemContentAfter string
+			if err := harness.store.DB().Table("chat_items").Select("content").Where("uuid=?", requests[0].ItemUUID).Scan(&requestItemContentAfter).Error; err != nil {
+				t.Fatal(err)
+			}
+			if requestItemContentAfter != requestItemContentBefore {
+				t.Fatalf("%s confirmation response rewrote the user-input card: before=%s after=%s", protocol, requestItemContentBefore, requestItemContentAfter)
 			}
 			if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
 				t.Fatal(err)
@@ -333,6 +322,90 @@ func TestPersistedV2AndV3DangerousConfirmationsAutoReplay(t *testing.T) {
 			var replayCount int64
 			if err := harness.store.DB().Table("agent_tool_executions").Where("json_extract(arguments_json,'$.__confirmation_auto_replay')=1").Count(&replayCount).Error; err != nil || replayCount != 1 {
 				t.Fatalf("%s replay count=%d err=%v", protocol, replayCount, err)
+			}
+			if harness.model.calls != 2 {
+				t.Fatalf("%s model calls=%d want exactly 2 (request + post-replay finalization)", protocol, harness.model.calls)
+			}
+		})
+	}
+}
+
+func TestConfirmationRequiredResultRecoveryBuildsOneRuntimeIntentForEverySupportedProtocol(t *testing.T) {
+	cases := []struct {
+		name, mode, protocol string
+	}{
+		{name: ToolProtocolProjectAPI, mode: ToolModeProjectAPI, protocol: ToolProtocolProjectAPI},
+		{name: ToolProtocolProjectV3, mode: ToolModeProjectAPI, protocol: ToolProtocolProjectV3},
+		{name: ToolProtocolProjectV2, mode: ToolModeProjectAPI, protocol: ToolProtocolProjectV2},
+		{name: "legacy_typed_recovery", mode: ToolModeLegacyTyped},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			harness := newAgentHarness(t)
+			ctx := context.Background()
+			thread := harness.createThread(t)
+			turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "恢复升级前的危险操作确认"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := harness.service.claimRun(ctx, harness.store, &tc); err != nil {
+				t.Fatal(err)
+			}
+			sourceContext := tc
+			sourceContext.ToolMode, sourceContext.ToolProtocol = ToolModeProjectAPI, ToolProtocolProjectAPI
+			tc.ToolMode, tc.ToolProtocol = testCase.mode, testCase.protocol
+			arguments, _ := json.Marshal(map[string]any{
+				"method": "POST",
+				"url":    "/api/v1/projects/" + harness.project.UUID + "/project-setup-finalizations",
+				"request_body": map[string]any{
+					"expected_revision": float64(1),
+				},
+				"response_filter": ".data | {project_uuid,setup_status,status,revision}",
+			})
+			source, _, completed, err := harness.service.persistToolIntent(ctx, harness.store, sourceContext, "pre-upgrade-confirmation:"+testCase.name, "request_api", string(arguments))
+			if err != nil || completed {
+				t.Fatalf("persist source=%+v completed=%v err=%v", source, completed, err)
+			}
+			result, err := harness.service.executeTool(ctx, harness.store, sourceContext, source)
+			if err != nil || !confirmationRequiredToolResult(string(result)) {
+				t.Fatalf("confirmation result=%s err=%v", result, err)
+			}
+
+			// Simulate the exact upgrade gap: the request_api result is durable,
+			// but the old process stopped before it could create a confirmation.
+			if err := harness.store.DB().Model(&toolExecutionRecord{}).Where("id=?", source.ID).Updates(map[string]any{
+				"state": "completed", "result_json": string(result),
+			}).Error; err != nil {
+				t.Fatal(err)
+			}
+			intent, recovered, err := harness.service.recoverRuntimeDangerousConfirmation(ctx, harness.store, tc)
+			if err != nil || !recovered || intent.ToolName != "request_user_input" {
+				t.Fatalf("recovered=%v intent=%+v err=%v", recovered, intent, err)
+			}
+			request, err := harness.service.createUserInputRequest(ctx, harness.store, tc, intent)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantSchema := userInputSchemaLegacyChoice
+			if testCase.protocol == ToolProtocolProjectAPI {
+				wantSchema = userInputSchemaCodexQuestions
+			}
+			if request.SchemaVersion != wantSchema {
+				t.Fatalf("schema=%s want=%s request=%+v", request.SchemaVersion, wantSchema, request)
+			}
+			if duplicate, recoveredAgain, err := harness.service.recoverRuntimeDangerousConfirmation(ctx, harness.store, tc); err != nil || recoveredAgain || duplicate.ID != 0 {
+				t.Fatalf("duplicate recovery=%v intent=%+v err=%v", recoveredAgain, duplicate, err)
+			}
+			var intentCount int64
+			if err := harness.store.DB().Table("agent_tool_executions").Where(
+				"run_id=? AND tool_name='request_user_input' AND json_extract(arguments_json,'$.__runtime_generated_confirmation')=1 AND json_extract(arguments_json,'$.__confirmation_source_execution_uuid')=?",
+				tc.Run.ID, source.UUID,
+			).Count(&intentCount).Error; err != nil || intentCount != 1 {
+				t.Fatalf("runtime confirmation count=%d err=%v", intentCount, err)
 			}
 		})
 	}

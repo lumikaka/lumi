@@ -2,10 +2,14 @@ package httpapi
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"lumi/internal/project"
+
+	"github.com/labstack/echo/v4"
 )
 
 func TestProjectSetupChangedPayloadContainsOnlyPublicResyncHints(t *testing.T) {
@@ -35,9 +39,10 @@ func TestProjectSetupStateJSONUsesDraftValues(t *testing.T) {
 		SetupStatus: project.SetupStatusDraft,
 		Status:      project.SetupDraftStatusPendingConfirmation,
 		Revision:    3,
-		DraftValues: project.SetupDraftValues{ProjectName: "Setup Draft"},
+		DraftValues: project.SetupDraftValues{ProjectName: "Setup Draft", GenerationBrief: "A fox delivers a letter to the moon."},
 		FieldSources: map[string]string{
-			"project_name": project.SetupSourceAgentProposed,
+			"project_name":     project.SetupSourceAgentProposed,
+			"generation_brief": project.SetupSourceAgentProposed,
 		},
 		MissingInformation: []string{},
 		ReferencePlan: project.SetupReferencePlan{Items: []project.SetupReference{{
@@ -51,7 +56,7 @@ func TestProjectSetupStateJSONUsesDraftValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	value := string(encoded)
-	if !strings.Contains(value, `"draft_values":{"project_name":"Setup Draft"}`) {
+	if !strings.Contains(value, `"draft_values":{"project_name":"Setup Draft","generation_brief":"A fox delivers a letter to the moon."}`) {
 		t.Fatalf("response missing draft_values: %s", value)
 	}
 	if strings.Contains(value, `"candidate"`) {
@@ -66,5 +71,23 @@ func TestProjectSetupStateJSONUsesDraftValues(t *testing.T) {
 		if strings.Contains(value, forbidden) {
 			t.Fatalf("response leaked %q: %s", forbidden, value)
 		}
+	}
+}
+
+func TestProjectSetupReferenceSystemManagedUsesStableFailureEnvelope(t *testing.T) {
+	e := echo.New()
+	recorder := httptest.NewRecorder()
+	ctx := e.NewContext(httptest.NewRequest(http.MethodPatch, "/api/v1/projects/project/project-setup/references/reference", strings.NewReader(`{"expected_revision":1,"include_in_yolo":false}`)), recorder)
+	ErrorHandler(ProjectAPIError(&project.Error{
+		Code: project.CodeProjectSetupReferenceSystemManaged, Message: "视觉参考由系统自动管理",
+		Details: "参考图会按附件顺序自动用于画面生成；该兼容端点不再接受计划修改。",
+	}), ctx)
+
+	var response Envelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity || response.Success || response.Data != nil || response.Error == nil || response.Error.Code != project.CodeProjectSetupReferenceSystemManaged {
+		t.Fatalf("status=%d response=%+v", recorder.Code, response)
 	}
 }

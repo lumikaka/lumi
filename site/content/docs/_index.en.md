@@ -14,7 +14,7 @@ Current desktop builds support Apple Silicon Macs and Windows x64. AI writing an
 
 1. Install Lumi and pass the first-launch system prompts.
 2. Connect a provider and confirm that Lumi reports a verified connection.
-3. Use YOLO quick creation to make an editable first draft.
+3. Use Quick generation to make an editable first draft.
 4. Learn the story, premise, storyboard, image-candidate, and export workspaces.
 5. Finish with local projects and troubleshooting, then establish your own backup routine.
 

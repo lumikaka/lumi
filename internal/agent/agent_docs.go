@@ -66,14 +66,14 @@ func agentAPIDocDefinitions() []agentAPIDocDefinition {
 		{Path: storyDocPath, Description: "Story Profile、版本、导入与投影。"},
 		{Path: storyboardDocPath, Description: "Storyboard variant、全量更新与选择。"},
 		{Path: taskDocPath, Description: "Story 与 Production 任务的状态、事件、取消和重试。"},
-		{Path: workflowDocPath, Description: "YOLO Workflow 的受控启动、异步展示与停止边界。"},
+		{Path: workflowDocPath, Description: "自动生成 Workflow 的受控启动、异步展示与停止边界。"},
 	}
 }
 
 func agentGuideDefinitions() []agentGuideDefinition {
 	return []agentGuideDefinition{
 		{
-			Description:   "从首页一句话初始化 draft 项目，补齐 Setup Draft 与 YOLO Brief，并在用户确认后定稿和启动受控 YOLO。",
+			Description:   "从首页一句话初始化 draft 项目，补齐 Setup Draft 与生成 Brief，并在用户确认后定稿和开始自动生成。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "当前项目 setup_status 为 draft；保留用户原始输入并使用最新设置 revision。",
 			Path:          agentDocBasePath + "/guides/初始化新项目.md",

@@ -32,6 +32,8 @@ type preparedToolIntent struct {
 	Method           string
 	Path             string
 	EncodedArguments string
+	RuntimeGenerated bool
+	RuntimeMetadata  map[string]any
 }
 
 func (service *Service) prepareToolIntentBatch(ctx context.Context, store *project.Store, tc toolContext, calls []llm.ToolCall) ([]preparedToolIntent, llm.ToolCall, error) {
@@ -72,7 +74,6 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 		return intent, validationErr
 	}
 	intent.Args = args
-	intent.ArgumentRepairs = projectAPIV4ArgumentRepairs(call.Name, tc.ToolProtocol, tc.ToolMode, call.Arguments, args)
 	if found {
 		if matchErr := validatePersistedToolCallPair(existing, call, args); matchErr != nil {
 			return intent, matchErr
@@ -265,6 +266,12 @@ func (service *Service) persistPreparedToolIntentBatch(ctx context.Context, stor
 			continue
 		}
 		metadata := map[string]any{"purpose": intent.Call.Name, "action": intent.Action, "target_uuid": intent.TargetUUID, "provider_call_id": intent.Call.ID}
+		for key, value := range intent.RuntimeMetadata {
+			metadata[key] = value
+		}
+		if intent.RuntimeGenerated {
+			metadata["runtime_generated"] = true
+		}
 		addArgumentRepairMetadata(metadata, intent.ArgumentRepairs)
 		if isUUIDv7(tc.RequestUUID) {
 			metadata["request_uuid"], metadata["request_ordinal"] = tc.RequestUUID, tc.RequestOrdinal
@@ -286,6 +293,12 @@ func (service *Service) persistPreparedToolIntentBatch(ctx context.Context, stor
 		}
 		intent.Existing = toolExecutionRecord{ID: id, ThreadID: tc.Thread.ID, RunID: tc.Run.ID, TurnID: tc.Turn.ID, ItemID: item.ID, UUID: intent.ExecutionUUID, ToolCallUUID: intent.PublicCallUUID, ToolName: intent.Call.Name, TargetUUID: intent.TargetUUID, ArgumentsJSON: intent.EncodedArguments, IdempotencyKey: intent.Key, RouteID: intent.RouteID, Action: intent.Action, Method: intent.Method, Path: intent.Path, State: "intent", CreatedAt: now, UpdatedAt: now}
 		toolEvent := map[string]any{"project_uuid": tc.ProjectUUID, "thread_uuid": tc.Thread.UUID, "turn_uuid": tc.Turn.UUID, "run_uuid": tc.Run.UUID, "tool_call_uuid": intent.PublicCallUUID, "tool_name": intent.Call.Name, "route_id": intent.RouteID, "action": intent.Action, "method": intent.Method, "path": intent.Path, "target_uuid": intent.TargetUUID}
+		for key, value := range intent.RuntimeMetadata {
+			toolEvent[key] = value
+		}
+		if intent.RuntimeGenerated {
+			toolEvent["runtime_generated"] = true
+		}
 		addArgumentRepairMetadata(toolEvent, intent.ArgumentRepairs)
 		if isUUIDv7(tc.RequestUUID) {
 			toolEvent["request_uuid"], toolEvent["request_ordinal"] = tc.RequestUUID, tc.RequestOrdinal

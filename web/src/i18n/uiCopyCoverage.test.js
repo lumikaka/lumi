@@ -31,7 +31,6 @@ const STATIC_ALLOWLIST = new Set([
   'target_uuid:',
   'UUID',
   'URL',
-  'YOLO',
   'ZIP',
   'md',
   'r',
@@ -43,6 +42,13 @@ test('user interface source has no unregistered hard-coded copy', () => {
   const files = [join(SOURCE_ROOT, 'App.jsx'), ...sourceFiles(join(SOURCE_ROOT, 'components')), ...sourceFiles(join(SOURCE_ROOT, 'pages'))]
   const violations = files.flatMap(scanFile)
   assert.deepEqual(violations, [], `Hard-coded user interface copy must use t(key):\n${violations.join('\n')}`)
+})
+
+test('user-visible copy does not expose the internal YOLO term', () => {
+  const interfaceFiles = [...sourceFiles(join(SOURCE_ROOT, 'components')), ...sourceFiles(join(SOURCE_ROOT, 'pages'))]
+  const messageFiles = sourceFiles(join(SOURCE_ROOT, 'i18n', 'messages'))
+  const violations = [...interfaceFiles.flatMap(scanVisibleTerm), ...messageFiles.flatMap(scanMessageTerms)]
+  assert.deepEqual(violations, [])
 })
 
 function sourceFiles(directory) {
@@ -87,6 +93,43 @@ function scanFile(path) {
     if (!isTranslatableCopy(normalized)) return
     violations.push(`${relativeName(path)}:${node.loc?.start.line || 1} ${kind}: ${JSON.stringify(normalized)}`)
   }
+}
+
+function scanVisibleTerm(path) {
+  const source = readFileSync(path, 'utf8')
+  const ast = parse(source, { sourceType: 'module', plugins: ['jsx'], errorRecovery: false })
+  const violations = []
+  walk(ast, [], (node, ancestors) => {
+    if (node.type === 'JSXText') add(node.value, node)
+    if (node.type === 'JSXAttribute' && VISIBLE_ATTRIBUTES.has(node.name?.name) && node.value?.type === 'StringLiteral') add(node.value.value, node.value)
+    if ((node.type === 'StringLiteral' || node.type === 'TemplateLiteral') && isDirectVisibleExpression(node, ancestors)) {
+      add(node.type === 'StringLiteral' ? node.value : node.quasis.map((part) => part.value.cooked).join(' '), node)
+    }
+    if (node.type === 'CallExpression' && isDialogCall(node.callee)) {
+      const argument = node.arguments[0]
+      if (argument?.type === 'StringLiteral') add(argument.value, argument)
+      if (argument?.type === 'TemplateLiteral') add(argument.quasis.map((part) => part.value.cooked).join(' '), argument)
+    }
+    if (node.type === 'ObjectProperty' && COPY_PROPERTIES.has(propertyName(node.key)) && node.value?.type === 'StringLiteral') add(node.value.value, node.value)
+  })
+  return violations
+
+  function add(value, node) {
+    if (/\bYOLO\b/i.test(String(value || ''))) violations.push(`${relativeName(path)}:${node.loc?.start.line || 1}`)
+  }
+}
+
+function scanMessageTerms(path) {
+  const source = readFileSync(path, 'utf8')
+  const ast = parse(source, { sourceType: 'module', errorRecovery: false })
+  const violations = []
+  walk(ast, [], (node) => {
+    if (node.type !== 'ObjectProperty' || node.value?.type !== 'ArrayExpression') return
+    for (const item of node.value.elements || []) {
+      if (item?.type === 'StringLiteral' && /\bYOLO\b/i.test(item.value)) violations.push(`${relativeName(path)}:${item.loc?.start.line || 1}`)
+    }
+  })
+  return violations
 }
 
 function isResponsiveIconButton(node) {

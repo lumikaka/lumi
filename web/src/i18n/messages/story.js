@@ -97,7 +97,7 @@ export const story = defineMessages({
   'story.prompts.group.agent': ['Agent 提示词', 'Agent prompts'],
   'story.prompts.group.agent.description': ['项目助手、场景约束与对话摘要使用的包装提示词。', 'Wrapper prompts used by the project assistant, scoped scenes, and conversation summaries.'],
   'story.prompts.group.runtime': ['Runtime 提示词', 'Runtime prompts'],
-  'story.prompts.group.runtime.description': ['跨 Story、Premise、Chapter、Agent 与 Yolo 共用的运行时生成片段。', 'Runtime generation fragments shared across Story, Premise, Chapter, Agent, and Yolo.'],
+  'story.prompts.group.runtime.description': ['跨 Story、Premise、Chapter、Agent 与自动生成共用的运行时生成片段。', 'Runtime generation fragments shared across Story, Premise, Chapter, Agent, and automatic generation.'],
   'story.prompts.default': ['默认', 'Default'],
   'story.prompts.modified': ['已修改', 'Modified'],
   'story.prompts.type.template': ['直接生效', 'Direct'],

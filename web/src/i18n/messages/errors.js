@@ -72,5 +72,6 @@ export const errors = defineMessages({
   'errors.code.project_creation_failed': ['草稿项目创建暂时失败，可以使用同一输入安全重试。', 'Draft project creation failed temporarily. You can safely retry with the same input.'],
   'errors.code.project_setup_incomplete': ['项目设置尚未定稿，请先在 ChatArea 中确认绘本规格。', 'Project setup is not finalized. Confirm the picture-book setup in ChatArea first.'],
   'errors.code.project_setup_revision_conflict': ['初始化草稿已更新，请重新读取后再修改或定稿。', 'The setup draft changed. Reread it before updating or finalizing.'],
+  'errors.code.project_setup_reference_system_managed': ['视觉参考由系统自动管理；请在发送前移除不需要的图片。', 'Visual references are managed automatically. Remove unwanted images before sending.'],
   'errors.code.invalid_project_setup': ['初始化草稿不完整或无效，请检查待确认设置。', 'The setup draft is incomplete or invalid. Review the pending settings.'],
 })

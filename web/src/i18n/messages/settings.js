@@ -37,7 +37,7 @@ export const settings = defineMessages({
 	'settings.llm_logs.select_project': ['选择要查看的项目', 'Select a project'],
   'settings.llm_logs.no_project_body': ['进入一个项目后即可查看该项目的 LLM 调用日志。', 'Open a project to review its LLM call logs.'],
   'settings.llm_logs.view_projects': ['查看项目列表', 'View projects'],
-  'settings.llm_logs.panel_description': ['统一展示故事、聊天、Yolo、Premise 与漫画的文本和图片调用。', 'Shows text and image calls from Story, Chat, Yolo, Premise, and Comic workflows.'],
+  'settings.llm_logs.panel_description': ['统一展示故事、聊天、自动生成、Premise 与漫画的文本和图片调用。', 'Shows text and image calls from Story, Chat, automatic generation, Premise, and Comic workflows.'],
   'settings.provider.eyebrow': ['AI 模型服务商', 'AI PROVIDERS'],
   'settings.provider.onboarding_title': ['连接 AI 模型服务', 'Connect an AI model service'],
   'settings.provider.title': ['AI 模型服务', 'AI model services'],

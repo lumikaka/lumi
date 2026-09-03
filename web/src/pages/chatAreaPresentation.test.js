@@ -186,6 +186,20 @@ test('completed turns hide safely recovered validation failures from tool activi
   assert.equal(activity.issueCount, 0)
 })
 
+test('completed turns hide resolved dangerous-operation confirmation from tool activity', () => {
+  const activity = projectChatTurnActivity({ status: 'completed' }, [
+    { uuid: 'confirmation-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-confirmation', tool_name: 'request_api', status: 'completed' },
+    { uuid: 'confirmation-result', sequence: 2, item_type: 'tool_result', tool_call_uuid: 'tool-confirmation', tool_name: 'request_api', status: 'completed', content: '{"success":false,"error":{"code":"agent_tool_confirmation_required"}}' },
+    { uuid: 'confirmation-request', sequence: 3, item_type: 'user_input_request', tool_name: 'request_user_input', status: 'completed' },
+    { uuid: 'replay-call', sequence: 4, item_type: 'tool_call', tool_call_uuid: 'tool-replay', tool_name: 'request_api', status: 'completed' },
+    { uuid: 'replay-result', sequence: 5, item_type: 'tool_result', tool_call_uuid: 'tool-replay', tool_name: 'request_api', status: 'completed', content: '{"success":true,"data":null}' },
+    { uuid: 'assistant', sequence: 6, item_type: 'assistant_message', role: 'assistant' },
+  ])
+
+  assert.deepEqual(activity.tools.map((tool) => tool.key), ['tool-replay'])
+  assert.equal(activity.issueCount, 0)
+})
+
 test('completed turns retain failures that are unsafe or have no observed recovery', () => {
   const unsafe = projectChatTurnActivity({ status: 'completed' }, [
     { uuid: 'failed-call', sequence: 1, item_type: 'tool_call', tool_call_uuid: 'tool-1', tool_name: 'request_api', status: 'failed' },

@@ -35,7 +35,11 @@ Story、Chat、Production 与 Workflow 的文本/图片调用统一投影到项�
 
 ### Project Chat Prompt 协议
 
-新 Chat Run 使用 `project_api_v4`。System Prompt 含静态 Agent 规则、API Overview、当前 `project_uuid` 和每次模型循环重新读取的公开 `setup_status`；生成语言等其他可变事实由 Agent 按需通过 Project API 读取。`draft` 时只有必要只读能力、`request_user_input`、文档与 Project Setup routes 可执行，其他写操作、Workflow、生产和 image 工具在执行层返回 `project_setup_incomplete`；同一 Run 定稿后下一次工具执行会看到 `ready`。若当前 Turn 是首页 bootstrap 首轮，ready 后只有 GET、finalization 恢复和当前 Run 已明确确认的 YOLO reviewed route 可执行，其他生产写入返回 `bootstrap_production_requires_yolo`，缺少授权事实的 YOLO 返回 `bootstrap_yolo_not_authorized`。该 route 以内联 await 释放 worker，Workflow 终态再恢复同一 Run；模型不得轮询、模拟步骤或失败后创建第二个 Workflow。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。v4 将 `request_user_input` 冻结为 1–3 个互斥单选问题和按 question id 返回的回答；v3/v2 与 legacy typed Run 只按各自历史 schema 恢复。
+新 Chat Run 使用 `project_api_v4`。System Prompt 含静态 Agent 规则、API Overview、当前 `project_uuid` 和每次模型循环重新读取的公开 `setup_status`；生成语言等其他可变事实由 Agent 按需通过 Project API 读取。`draft` 时只有必要只读能力、普通 `request_user_input`、文档与 Project Setup 读取/更新/定稿 routes 可执行，参考计划 PATCH 不在 Agent Registry 中；其他写操作、Workflow、生产和 image 工具在执行层返回 `project_setup_incomplete`。bootstrap Setup 进入 `pending_confirmation` 后，运行时 reconciler 在下一次 LLM 请求前生成 finalization Tool Intent；确认 replay 成功后，它又在下一次 LLM 请求前从 revisioned `generation_brief` 生成 Workflow Tool Intent。因此模型不能用普通文本提前结束初始化，也不再负责调用 finalization 或 Workflow route。Workflow 以内联 await 释放 worker，终态再恢复同一 Run；模型不得轮询、模拟步骤或失败后创建第二个 Workflow。当前 Turn 的 Reference 快照作为明确标记的不可信 User Message 数据注入，历史 Turn 不重新注入 Reference。
+
+bootstrap 身份分为只属于首个 Turn 的 origin 与属于原 conversation Thread 的 lineage。后续普通 Turn 不继承 bootstrap 生产权限；只有用户明确请求继续或重试生成时，reconciler 才可用 lineage 恢复升级前的待确认 Setup 或已成功 finalization。恢复创建的 Workflow Intent 必须同时绑定内部 runtime marker、原 confirmation request UUID 和 creation session UUID，执行层再从 SQLite 证据重新校验。这些字段不在模型 schema 中。
+
+v4 模型可见的 `request_user_input` 只包含 1–3 个互斥单选 `questions`，不包含 `confirmation`。危险 `request_api` 首次返回 `agent_tool_confirmation_required` 后，运行时在同一持久化流程中生成绑定来源 Tool Execution UUID、路由、目标、revision 和 fingerprint 的内部确认意图并暂停 Run。用户确认后只从持久化原请求创建唯一 replay；安全项、Other 和取消不执行。v3/v2 与 legacy typed Run 继续使用各自冻结的展示 schema，但内部绑定同样由运行时生成；恢复扫描会为升级前已持久化但缺失确认意图的结果幂等补建。
 
 ## Feature 列表
 

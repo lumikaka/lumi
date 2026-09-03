@@ -217,7 +217,7 @@ func TestBailianReferenceImagesAreFrozenDataURLContent(t *testing.T) {
 				t.Fatal(err)
 			}
 			content := payload.Input.Messages[0].Content
-			if len(content) != 2 || content[0]["text"] != "redraw" || content[1]["image"] != "data:image/png;base64,"+base64.StdEncoding.EncodeToString(reference) {
+			if len(content) != 2 || content[0]["image"] != "data:image/png;base64,"+base64.StdEncoding.EncodeToString(reference) || content[1]["text"] != "redraw" {
 				t.Fatalf("Bailian reference content=%+v", content)
 			}
 			return response(200, `{"output":{"choices":[{"message":{"content":[{"image":"https://cdn.example.test/result.png"}]}}]}}`), nil

@@ -52,7 +52,7 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 ## Project Chat 同步生图
 
-`premise_asset_generation` 与 `asset_reference` 聊天 scene 使用受控 `image_gen` 工具。该工具沿用当前 Agent run 固化的 Provider UUID，并在执行时解析当前 Provider 的默认图片模型；默认尺寸为 `1536x1024`、质量为 `medium`，单次调用最长 10 分钟并继承 turn 取消信号。图片调用日志关联 chat thread/run，只保存脱敏请求结构与响应摘要，不保存 API key、Authorization header 或图片 Base64。
+`premise_asset_generation` 与 `asset_reference` 聊天 scene 使用受控 `image_gen` 工具。该工具沿用当前 Agent run 固化的 Provider UUID，并在执行时解析当前 Provider 的默认图片模型；当前 `project_api_v4` 调用默认从 Premise 事实状态读取并注入 `default_style`，只有用户明确要求另一种画风时才传 `use_default_style=false`。`operation` 区分 `generate|edit|restyle`；未显式指定尺寸时，`edit|restyle` 按首张参考图选择最接近的横、竖或方形尺寸，`generate` 默认 `1536x1024`。默认质量为 `medium`，单次调用最长 10 分钟并继承 turn 取消信号。图片调用日志关联 chat thread/run，只保存脱敏请求结构与响应摘要，不保存 API key、Authorization header 或图片 Base64。
 
 图片附件以 `project_chatbot_reference` purpose 上传并写入 Asset Store。数据库用 bigint 外键关联 chat item/follow-up、file 与暂存 upload，REST/WS 只返回 UUIDv7 和受控 `content_url`。普通 turn 不跨轮继承附件；Follow-up 附件创建后固定；没有新附件的 Steering 继承当前 turn 最近一组附件。文本模型只收到附件会自动传给 `image_gen` 的提示，实际图片字节不会进入文本上下文。
 
