@@ -721,7 +721,7 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 		return err
 	}
 	if queuedFollowUps > 0 {
-		items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.ID, tc.Turn.QueueSequence)
+		items, err := loadContextItems(ctx, store, tc.Thread.ID, tc.Turn.QueueSequence)
 		if err != nil {
 			return err
 		}

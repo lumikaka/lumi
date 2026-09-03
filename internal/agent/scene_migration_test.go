@@ -438,7 +438,7 @@ func TestProjectAPIImageGenSelectsCurrentTurnReferencesInArgumentOrder(t *testin
 		t.Fatalf("ordered image inputs=%+v", requests)
 	}
 	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "越界参考", "reference_uuids": []any{explicitFile.UUID}}); err == nil {
-		t.Fatal("image_gen accepted a File that was not a current Turn Reference")
+		t.Fatal("image_gen accepted a File that never appeared in the current Thread")
 	}
 	if _, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{"prompt": "旧参数", "reference_file_uuids": []any{firstFile}}); errorCode(err) != CodeToolValidation {
 		t.Fatalf("new Turn accepted the project_api_v2 image argument: %v", err)
@@ -489,6 +489,120 @@ func TestProjectAPIImageGenSelectsCurrentTurnReferencesInArgumentOrder(t *testin
 	metadata, _ := generated.Metadata.(map[string]any)
 	if metadata["operation"] != imageOperationRestyle || metadata["use_default_style"] != true || metadata["default_style_snapshot"] != premise.DefaultStyle {
 		t.Fatalf("restyle metadata=%+v", metadata)
+	}
+}
+
+func TestProjectAPIImageGenReusesLatestHistoricalReferenceFromSameThread(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	productionService := production.NewService(harness.store, nil)
+	firstBytes := agentTestColorPNG(t, color.RGBA{R: 210, A: 255})
+	latestBytes := agentTestColorPNG(t, color.RGBA{G: 210, A: 255})
+	styleBytes := agentTestColorPNG(t, color.RGBA{B: 210, A: 255})
+	firstUpload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "first-target.png", Reader: bytes.NewReader(firstBytes)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err := productionService.ImportPremiseAsset(ctx, production.CreateAssetInput{UploadUUID: firstUpload.UUID, AssetType: production.AssetCharacter, Title: "历史目标"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "历史 Reference", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "先使用初始目标", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: asset.UUID}}}); err != nil {
+		t.Fatal(err)
+	}
+	latestUpload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "latest-target.png", Reader: bytes.NewReader(latestBytes)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err = productionService.ImportPremiseAssetVariant(ctx, asset.UUID, latestUpload.UUID, nil, asset.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	latestVariantUUID, latestFileUUID := asset.CurrentVariant.UUID, asset.CurrentVariant.Asset.UUID
+	latestTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "继续使用更新后的目标", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: asset.UUID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	style := createChatReferenceFile(t, harness.store, "style.png", styleBytes)
+	currentTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "按新参考图调整风格", References: []ReferenceInput{{ResourceType: ReferenceTypeFile, ResourceUUID: style.UUID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, currentTurn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode, tc.ToolProtocol = ToolModeProjectAPI, ToolProtocolProjectAPI
+	messages, _, _, err := harness.service.buildContext(ctx, harness.store, tc, llmToolDefinitionsForContext(tc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !messagesContain(messages, "available_historical_image_references") || !messagesContain(messages, asset.UUID) || !messagesContain(messages, latestTurn.UUID) || !messagesContain(messages, latestVariantUUID) {
+		t.Fatalf("latest historical Reference manifest missing: %+v", messages)
+	}
+	imageClient := &imageClientFake{response: imagegen.Response{Bytes: agentTestPNG(t), MIMEType: "image/png"}}
+	harness.service.WithImageClient(imageClient)
+	result, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{
+		"operation": "restyle", "prompt": "保留目标内容，只采用第二张图的风格", "reference_uuids": []any{asset.UUID, style.UUID}, "use_default_style": false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["operation"] != imageOperationRestyle || result["use_default_style"] != false {
+		t.Fatalf("image result omitted operation semantics: %+v", result)
+	}
+	if got := result["resolved_file_uuids"].([]string); len(got) != 2 || got[0] != latestFileUUID || got[1] != style.UUID {
+		t.Fatalf("resolved historical files=%v", got)
+	}
+	imageClient.mu.Lock()
+	requests := append([]imagegen.Request(nil), imageClient.requests...)
+	imageClient.mu.Unlock()
+	if len(requests) != 1 || len(requests[0].Images) != 2 || !bytes.Equal(requests[0].Images[0].Data, latestBytes) || !bytes.Equal(requests[0].Images[1].Data, styleBytes) {
+		t.Fatalf("historical/current image order=%+v", requests)
+	}
+	currentBytes := agentTestColorPNG(t, color.RGBA{R: 180, B: 180, A: 255})
+	currentUpload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "current-target.png", Reader: bytes.NewReader(currentBytes)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err = productionService.ImportPremiseAssetVariant(ctx, asset.UUID, currentUpload.UUID, nil, asset.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentAssetFileUUID := asset.CurrentVariant.Asset.UUID
+	overrideTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "本轮重新引用目标", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: asset.UUID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overrideTC, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, overrideTurn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overrideTC.ToolMode, overrideTC.ToolProtocol = ToolModeProjectAPI, ToolProtocolProjectAPI
+	overrideReferences, err := harness.service.resolveImageReferences(ctx, harness.store, overrideTC, []string{asset.UUID})
+	if err != nil || len(overrideReferences) != 1 || overrideReferences[0].FileUUID != currentAssetFileUUID {
+		t.Fatalf("current Turn did not override historical snapshot: refs=%+v err=%v", overrideReferences, err)
+	}
+
+	otherFile := createChatReferenceFile(t, harness.store, "other-thread.png", agentTestColorPNG(t, color.RGBA{R: 120, B: 120, A: 255}))
+	otherThread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "其他 Thread", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.service.CreateTurn(ctx, harness.project.UUID, otherThread.UUID, CreateTurnInput{InputText: "仅在其他 Thread 出现", References: []ReferenceInput{{ResourceType: ReferenceTypeFile, ResourceUUID: otherFile.UUID}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.service.resolveImageReferences(ctx, harness.store, tc, []string{otherFile.UUID}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("cross-Thread Reference error=%v", err)
+	}
+	legacyTC := tc
+	legacyTC.ToolProtocol = ToolProtocolProjectV3
+	if _, err := harness.service.resolveImageReferences(ctx, harness.store, legacyTC, []string{asset.UUID}); errorCode(err) != CodeToolValidation {
+		t.Fatalf("frozen v3 protocol accepted historical Reference: %v", err)
 	}
 }
 
@@ -596,7 +710,7 @@ func TestProjectAssistantReadsGuideAndAPIContractBeforeCreatingAsset(t *testing.
 			arguments, _ := json.Marshal(map[string]any{"path": guidePath})
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "read-create-guide", Name: "read_agent_doc", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 		case 2:
-			if !messagesContain(request.Messages, "不能直接充当新资产文件") || !messagesContain(request.Messages, "当前 Turn Reference") {
+			if !messagesContain(request.Messages, "不能直接充当新资产文件") || !messagesContain(request.Messages, "当前 Thread") {
 				t.Fatalf("create Guide was not returned before API Contract: %+v", request.Messages)
 			}
 			arguments, _ := json.Marshal(map[string]any{"path": premiseAssetDocPath})

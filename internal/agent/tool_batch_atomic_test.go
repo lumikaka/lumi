@@ -544,11 +544,11 @@ func TestCommittedToolCallBatchRecoversAndExecutesInProviderOrder(t *testing.T) 
 		t.Fatalf("incomplete=%d err=%v", incomplete, err)
 	}
 
-	items, err := loadContextItems(context.Background(), harness.store, tc.Thread.ID, tc.Turn.ID, tc.Turn.QueueSequence)
+	items, err := loadContextItems(context.Background(), harness.store, tc.Thread.ID, tc.Turn.QueueSequence)
 	if err != nil {
 		t.Fatal(err)
 	}
-	messages := contextMessages(items, "", tc.Turn.ID, contextPromptSet{})
+	messages := contextMessages(items, "", tc.Turn.ID, contextPromptSet{}, historicalImageReferenceManifest{})
 	batchIndex := -1
 	for index, message := range messages {
 		if len(message.ToolCalls) == 2 {

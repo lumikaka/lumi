@@ -5,7 +5,7 @@
 
 ## 结论
 
-新 Run 统一使用 `project_api_v4` / `project_api_tools`，共享 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input` 四个工具，并可调用服务端当前注册的全部项目 API Route。原有显式 Agent Route 继续作为经过审查的安全与性能覆盖层。Thread 不再以 Scene 或 subject 决定工具权限；当前 Turn 的多资源 Reference 提供图片与业务上下文。
+新 Run 统一使用 `project_api_v4` / `project_api_tools`，共享 `request_api`、`read_agent_doc`、`image_gen`、`request_user_input` 四个工具，并可调用服务端当前注册的全部项目 API Route。原有显式 Agent Route 继续作为经过审查的安全与性能覆盖层。Thread 不再以 Scene 或 subject 决定工具权限；当前 Turn 的多资源 Reference 提供图片与业务上下文，`image_gen` 还可继续选择同一 Thread 中最近的历史冻结图片 Reference。
 
 `request_api` 不访问 Lumi 的 localhost 或任意外部 URL。可用 Route 从 Echo 的 `/api/v1/projects/:project_uuid/...` 注册结果自动装配：已审查 Route 优先使用领域服务分发；其余 Route 或超出旧覆盖层 schema 的合法参数通过进程内 Echo handler 执行。
 
@@ -56,7 +56,7 @@ Guide 已按前端创作功能重组为 14 份中文文档。每份内容保持�
 - `file_uuid`：当前会话 `image_gen` 新返回、用途与当前上下文匹配且尚未消费的文件。
 - `upload_uuid`：当前项目 ready 且尚未消费的上传。
 
-已有设定项的 `current_variant.asset.uuid`、当前消息附件或其他项目文件不能直接充当 `file_uuid`；已有项目图片只能先作为当前 Turn Reference 传给 `image_gen.reference_uuids`，再提交新输出。
+已有设定项的 `current_variant.asset.uuid`、当前消息附件或其他项目文件不能直接充当 `file_uuid`；已有项目图片只能先作为当前 Thread 中出现过的冻结 Reference 传给 `image_gen.reference_uuids`，再提交新输出。当前 Turn 的同一资源优先，否则使用最近的历史冻结快照。
 
 后端先按当前项目和 UUID 查询文件，再依次校验会话、绑定上下文、kind/purpose 和消费状态：
 

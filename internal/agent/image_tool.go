@@ -56,7 +56,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	legacyV2 := tc.ToolProtocol == ToolProtocolProjectV2 || normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped
 	if !legacyV2 {
 		if _, exists := args["reference_file_uuids"]; exists {
-			return nil, domainError(CodeToolValidation, "image_gen 参数已过期", "新 Turn 只能通过必填 reference_uuids 选择当前 Turn Reference。", nil)
+			return nil, domainError(CodeToolValidation, "image_gen 参数已过期", "新协议只能通过必填 reference_uuids 选择当前 Thread 中出现过的 Reference。", nil)
 		}
 		if _, exists := args["reference_uuids"]; !exists {
 			return nil, domainError(CodeToolValidation, "image_gen 缺少 Reference 选择", "reference_uuids 为必填数组；不使用参考图时传空数组。", nil)
@@ -66,6 +66,10 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		return nil, err
 	} else if found {
 		result := imageToolResult(existing, metadataStringSlice(existing.Metadata, "reference_uuids"), metadataStringSlice(existing.Metadata, "resolved_file_uuids"), metadataText(existing.Metadata, "revised_prompt"))
+		if tc.ToolProtocol == ToolProtocolProjectAPI {
+			result["operation"] = metadataText(existing.Metadata, "operation")
+			result["use_default_style"] = metadataBool(existing.Metadata, "use_default_style")
+		}
 		if legacyV2 {
 			result["reference_file_uuids"] = metadataStringSlice(existing.Metadata, "resolved_file_uuids")
 		}
@@ -82,7 +86,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		return nil, err
 	}
 	if (operation == imageOperationEdit || operation == imageOperationRestyle) && len(selectedReferences) == 0 {
-		return nil, domainError(CodeToolValidation, "图片编辑缺少 Reference", "image_gen 的 edit 和 restyle 操作至少需要选择一张当前 Turn Reference。", nil)
+		return nil, domainError(CodeToolValidation, "图片编辑缺少 Reference", "image_gen 的 edit 和 restyle 操作至少需要选择一张当前 Thread 中出现过的图片 Reference。", nil)
 	}
 	inputs := make([]imagegen.ImageInput, 0, len(selectedReferences))
 	fileService := files.NewService(store, service.hub)
@@ -192,6 +196,10 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		return nil, err
 	}
 	result := imageToolResult(asset, referenceUUIDs, resolvedFileUUIDs, response.RevisedPrompt)
+	if tc.ToolProtocol == ToolProtocolProjectAPI {
+		result["operation"] = operation
+		result["use_default_style"] = useDefaultStyle
+	}
 	if legacyV2 {
 		result["reference_file_uuids"] = resolvedFileUUIDs
 	}
@@ -310,7 +318,7 @@ func (service *Service) resolveImageReferences(ctx context.Context, store *proje
 	for _, resourceUUID := range selected {
 		resourceUUID = strings.TrimSpace(resourceUUID)
 		if !isUUIDv7(resourceUUID) {
-			return nil, domainError(CodeToolValidation, "Reference UUID 无效", "reference_uuids 只能包含当前 Turn Reference 的 UUIDv7。", nil)
+			return nil, domainError(CodeToolValidation, "Reference UUID 无效", "reference_uuids 只能包含当前 Thread 中出现过的 Reference UUIDv7。", nil)
 		}
 		if seen[resourceUUID] {
 			return nil, domainError(CodeToolValidation, "Reference 选择重复", "reference_uuids 不能包含重复项。", nil)
@@ -324,15 +332,26 @@ func (service *Service) resolveImageReferences(ctx context.Context, store *proje
 			DeletedAt    *time.Time
 			ObjectState  string
 		}
-		err := store.DB().WithContext(ctx).Table("chat_context_references AS refs").
+		query := store.DB().WithContext(ctx).Table("chat_context_references AS refs").
 			Select("refs.resource_uuid,refs.resource_type,refs.image_file_id,COALESCE(files.uuid,'') AS file_uuid,files.deleted_at,COALESCE(objects.state,'') AS object_state").
 			Joins("JOIN chat_items AS items ON items.id=refs.chat_item_id").
 			Joins("LEFT JOIN files ON files.id=refs.image_file_id").
-			Joins("LEFT JOIN file_objects AS objects ON objects.id=files.file_object_id").
-			Where("items.turn_id=? AND items.item_type='user_message' AND refs.resource_uuid=?", tc.Turn.ID, resourceUUID).
-			Order("items.sequence DESC,refs.position DESC,refs.id DESC").Limit(1).Take(&row).Error
+			Joins("LEFT JOIN file_objects AS objects ON objects.id=files.file_object_id")
+		missingTitle := "Reference 不在当前 Turn"
+		missingDetails := "reference_uuids 不能选择历史、未知或其他 Turn 的 Reference。"
+		if tc.ToolProtocol == ToolProtocolProjectAPI {
+			query = query.Joins("JOIN chat_turns AS turns ON turns.id=items.turn_id").
+				Where("items.thread_id=? AND turns.queue_sequence<=? AND items.item_type='user_message' AND refs.resource_uuid=?", tc.Thread.ID, tc.Turn.QueueSequence, resourceUUID).
+				Order("items.sequence DESC,refs.position DESC,refs.id DESC")
+			missingTitle = "Reference 不在当前 Thread"
+			missingDetails = "reference_uuids 只能选择当前 Thread 内截至本次调用前出现过的 Reference。"
+		} else {
+			query = query.Where("items.turn_id=? AND items.item_type='user_message' AND refs.resource_uuid=?", tc.Turn.ID, resourceUUID).
+				Order("items.sequence DESC,refs.position DESC,refs.id DESC")
+		}
+		err := query.Limit(1).Take(&row).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domainError(CodeToolValidation, "Reference 不在当前 Turn", "reference_uuids 不能选择历史、未知或其他 Turn 的 Reference。", err)
+			return nil, domainError(CodeToolValidation, missingTitle, missingDetails, err)
 		}
 		if err != nil {
 			return nil, err
@@ -458,6 +477,12 @@ func metadataText(value any, key string) string {
 	metadata, _ := value.(map[string]any)
 	text, _ := metadata[key].(string)
 	return text
+}
+
+func metadataBool(value any, key string) bool {
+	metadata, _ := value.(map[string]any)
+	selected, _ := metadata[key].(bool)
+	return selected
 }
 
 func metadataStringSlice(value any, key string) []string {

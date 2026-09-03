@@ -634,7 +634,7 @@ func TestConfirmationReplayProviderCallIDIsStableAndContextCanonical(t *testing.
 		{itemRecord: itemRecord{ItemType: "tool_call", ToolName: "request_api", RemoteItemUUID: normalCallUUID, Content: `{}`, MetadataJSON: string(normalMetadata)}},
 		{itemRecord: itemRecord{ItemType: "tool_result", ToolName: "request_api", RemoteItemUUID: normalCallUUID, Content: `{"success":true,"data":{}}`, MetadataJSON: string(normalMetadata)}},
 	}
-	messages := contextMessages(items, "", int64(0), contextPromptSet{})
+	messages := contextMessages(items, "", int64(0), contextPromptSet{}, historicalImageReferenceManifest{})
 	var replayCallID, replayResultID, normalProviderCallID, normalResultID string
 	var replayCallSynthetic, replayResultSynthetic, normalCallSynthetic, normalResultSynthetic bool
 	for _, message := range messages {

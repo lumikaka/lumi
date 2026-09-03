@@ -10,6 +10,8 @@ const (
 	previousAgentGuideRuleZH     = "- 先识别用户目标对应的能力。流程或来源约束不确定时，用 read_agent_doc 读取推荐 Guide；method、path、字段或响应不确定时，读取对应 API Contract。避免重复读取文档或进行无必要调用。"
 	currentAgentGuideRuleEN      = "- First identify the capability that matches the user's goal. When the user asks to perform a creative function in the capability index, you must first use read_agent_doc to read its Guide, then read each relevant API Contract before that API is first called, and only then use request_api. Do not skip this order even when familiar with the workflow or API, and do not reread documents already read."
 	previousAgentGuideRuleEN     = "- First identify the capability that matches the user's goal. When a workflow or source constraint is uncertain, use read_agent_doc to read a recommended Guide; when a method, path, field, or response is uncertain, read the relevant API Contract. Avoid repeated documentation reads and unnecessary calls."
+	currentAgentReferenceRuleZH  = "- `image_gen.reference_uuids` 可选择当前 Thread 内截至本次调用前出现过且具有冻结图片的 Reference；当前 Turn 的同一资源优先，否则使用最近的历史冻结快照。不得选择其他 Thread 或未知 Reference。`edit`/`restyle` 的第一张 Reference 必须是内容来源；缺少必要内容 Reference 或 Reference 校验失败时，不得改用 `generate`、不得写回目标资源，应请求用户补充必要信息或如实说明。"
+	currentAgentReferenceRuleEN  = "- image_gen.reference_uuids may select image-capable References that appeared in the current Thread before this call. The same resource in the current Turn wins; otherwise use its most recent historical frozen snapshot. Never select a Reference from another Thread or an unknown Reference. The first Reference for edit/restyle must be the content source. If a required content Reference is missing or rejected, never fall back to generate and never write the result to the target resource; request the missing information or report the failure accurately."
 	currentAgentInputRuleZH      = "- 只有需要用户做关键选择或信息确实不足时，才单独调用 request_user_input；它不得与其他 Tool Call 同批出现。优先只问 1 个问题，只有问题直接相关时才在一次调用中组合 2–3 个；每题提供 2–3 个互斥选项，第一项是推荐项且 label 必须以精确的 ` (Recommended)` 结尾，其他项不得使用该后缀。不要创建 Other 选项，客户端会自动提供自由输入。危险 API 应按最终参数直接调用一次 request_api；需要确认时，运行时会根据持久化的原请求生成确认卡片并暂停。不要为 `agent_tool_confirmation_required` 再调用 request_user_input，不要自行构造 confirmation，也不要重放 request_api；用户确认后运行时只会自动重放一次原请求，选择安全项或取消则不会执行。"
 	previousAgentInputRuleZH     = "- 只有需要用户做关键选择、信息确实不足或危险操作需要确认时，才单独调用 request_user_input；它不得与其他 Tool Call 同批出现。优先只问 1 个问题，只有问题直接相关时才在一次调用中组合 2–3 个；每题提供 2–3 个互斥选项，第一项是推荐项且 label 必须以精确的 ` (Recommended)` 结尾，其他项不得使用该后缀。不要创建 Other 选项，客户端会自动提供自由输入。危险 API 的 confirmation 必须原样使用 request_api 确认错误返回的 route、project_uuid、target_uuid、expected_revision 和 request_fingerprint，只能绑定唯一 question_id；第一项必须是安全推荐项，confirm_option 绑定非首项的明确危险操作。confirmation 必须是 request_user_input 的顶层字段，与 questions 同级，绝不能放入 questions[]、request_api、query 或 request_body；用户选择确认项后运行时会自动执行持久化的原请求，不要自行重放 request_api。"
 	olderAgentInputRuleZH        = "- 只有需要用户做关键选择、信息确实不足或危险操作需要确认时，才单独调用 request_user_input；它不得与其他 Tool Call 同批出现。优先只问 1 个问题，只有问题直接相关时才在一次调用中组合 2–3 个；每题提供 2–3 个互斥选项，第一项是推荐项且 label 必须以精确的 ` (Recommended)` 结尾，其他项不得使用该后缀。不要创建 Other 选项，客户端会自动提供自由输入。危险 API 的 confirmation 必须原样使用 request_api 确认错误返回的 route、project_uuid、target_uuid、expected_revision 和 request_fingerprint，只能绑定唯一 question_id；第一项必须是安全推荐项，confirm_option 绑定非首项的明确危险操作。confirmation 只能属于 request_user_input，绝不能放入 request_api、query 或 request_body；用户选择确认项后运行时会自动执行持久化的原请求，不要自行重放 request_api。"
@@ -33,20 +35,23 @@ func previousAgentBaseDefaults(value, language string) []string {
 	currentInput, previousInput, olderInput, legacyInput := currentAgentInputRuleZH, previousAgentInputRuleZH, olderAgentInputRuleZH, legacyAgentInputRuleZH
 	currentUIRef := currentAgentUIRefRuleZH
 	currentBootstrap, previousBootstrap, olderBootstrap := currentAgentBootstrapRuleZH, previousAgentBootstrapRuleZH, olderAgentBootstrapRuleZH
+	currentReference := currentAgentReferenceRuleZH
 	if language == LanguageEnglish {
 		currentGuide, previousGuide = currentAgentGuideRuleEN, previousAgentGuideRuleEN
 		currentInput, previousInput, olderInput, legacyInput = currentAgentInputRuleEN, previousAgentInputRuleEN, olderAgentInputRuleEN, legacyAgentInputRuleEN
 		currentUIRef = currentAgentUIRefRuleEN
 		currentBootstrap, previousBootstrap, olderBootstrap = currentAgentBootstrapRuleEN, previousAgentBootstrapRuleEN, olderAgentBootstrapRuleEN
+		currentReference = currentAgentReferenceRuleEN
 	}
-	previousBootstrapRule := strings.Replace(value, currentBootstrap, previousBootstrap, 1)
+	previousReferenceRule := strings.Replace(value, currentReference+"\n", "", 1)
+	previousBootstrapRule := strings.Replace(previousReferenceRule, currentBootstrap, previousBootstrap, 1)
 	previousInputRule := strings.Replace(previousBootstrapRule, currentInput, previousInput, 1)
 	olderInputRule := strings.Replace(previousInputRule, previousInput, olderInput, 1)
 	legacyBootstrap := strings.Replace(olderInputRule, previousBootstrap, olderBootstrap, 1)
 	withoutBootstrap := strings.Replace(legacyBootstrap, olderBootstrap+"\n", "", 1)
 	previousUIRef := strings.Replace(withoutBootstrap, currentUIRef+"\n", "", 1)
 	legacyInputRule := strings.Replace(previousUIRef, olderInput, legacyInput, 1)
-	return []string{previousBootstrapRule, previousInputRule, olderInputRule, legacyBootstrap, withoutBootstrap, previousUIRef, legacyInputRule, strings.Replace(legacyInputRule, currentGuide, previousGuide, 1)}
+	return []string{previousReferenceRule, previousBootstrapRule, previousInputRule, olderInputRule, legacyBootstrap, withoutBootstrap, previousUIRef, legacyInputRule, strings.Replace(legacyInputRule, currentGuide, previousGuide, 1)}
 }
 
 func agentDefinitions(language string) []Definition {

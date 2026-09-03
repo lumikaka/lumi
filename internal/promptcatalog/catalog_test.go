@@ -179,17 +179,18 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 8 ||
+				if len(definition.PreviousDefaultValues) != 9 ||
 					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
-					(!strings.Contains(definition.PreviousDefaultValues[0], "controlled YOLO flow") && !strings.Contains(definition.PreviousDefaultValues[0], "受控 YOLO")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[1], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[1], "顶层字段，与 questions 同级")) ||
-					strings.Contains(definition.PreviousDefaultValues[1], "agent_tool_confirmation_required") ||
-					strings.Contains(definition.PreviousDefaultValues[2], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[2], "顶层字段，与 questions 同级") ||
-					(!strings.Contains(definition.PreviousDefaultValues[3], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[3], "立即结束当前 Turn")) ||
-					strings.Contains(definition.PreviousDefaultValues[4], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[4], "bootstrap 首个 Turn") ||
-					!strings.Contains(definition.PreviousDefaultValues[4], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[5], "ui_ref") ||
-					(!strings.Contains(definition.PreviousDefaultValues[6], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[6], "确认选项索引")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[7], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[7], "流程或来源约束不确定")) {
+					strings.Contains(definition.PreviousDefaultValues[0], "most recent historical frozen snapshot") || strings.Contains(definition.PreviousDefaultValues[0], "最近的历史冻结快照") ||
+					(!strings.Contains(definition.PreviousDefaultValues[1], "controlled YOLO flow") && !strings.Contains(definition.PreviousDefaultValues[1], "受控 YOLO")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[2], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[2], "顶层字段，与 questions 同级")) ||
+					strings.Contains(definition.PreviousDefaultValues[2], "agent_tool_confirmation_required") ||
+					strings.Contains(definition.PreviousDefaultValues[3], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[3], "顶层字段，与 questions 同级") ||
+					(!strings.Contains(definition.PreviousDefaultValues[4], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[4], "立即结束当前 Turn")) ||
+					strings.Contains(definition.PreviousDefaultValues[5], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[5], "bootstrap 首个 Turn") ||
+					!strings.Contains(definition.PreviousDefaultValues[5], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[6], "ui_ref") ||
+					(!strings.Contains(definition.PreviousDefaultValues[7], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[7], "确认选项索引")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[8], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[8], "流程或来源约束不确定")) {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -300,8 +301,8 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "96236e74e4454ecc735b0111ffabc45940a654e4bfa39f5f5a554f22f2097151",
-		LanguageEnglish: "ca16e647af19f844b9cf2ed566fc24aabfd8f93c8d2f7cc9ddd3a82143590f8f",
+		LanguageChinese: "d10a6684e010e809958dc43633e9bd1a08c7389e896e6f829d495da8687db17a",
+		LanguageEnglish: "fff7fbe229de2a0b59f6b6ead9b013443d784207a46493f1b083cb301e7d07ca",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

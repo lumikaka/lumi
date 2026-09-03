@@ -301,7 +301,7 @@ func TestContextMessagesKeepAllReadAgentDocResults(t *testing.T) {
 		{itemRecord: itemRecord{Sequence: 1, ItemType: "tool_result", Role: "tool", ToolName: "read_agent_doc", Content: first, MetadataJSON: `{"provider_call_id":"first-doc"}`}},
 		{itemRecord: itemRecord{Sequence: 2, ItemType: "tool_result", Role: "tool", ToolName: "read_agent_doc", Content: second, MetadataJSON: `{"provider_call_id":"second-doc"}`}},
 	}
-	messages := contextMessages(items, "", int64(0), contextPromptSet{Assistant: "BASE", APIOverview: "OVERVIEW", ProjectUUID: mustAgentUUID(t), ToolProtocol: ToolProtocolProjectAPI})
+	messages := contextMessages(items, "", int64(0), contextPromptSet{Assistant: "BASE", APIOverview: "OVERVIEW", ProjectUUID: mustAgentUUID(t), ToolProtocol: ToolProtocolProjectAPI}, historicalImageReferenceManifest{})
 	if len(messages) != 3 || messages[1].Content != first || messages[2].Content != second {
 		t.Fatalf("read_agent_doc results were not preserved: %+v", messages)
 	}

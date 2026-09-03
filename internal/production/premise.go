@@ -721,7 +721,7 @@ func (service *Service) CreatePremiseAssetFromFile(ctx context.Context, input Cr
 			return notFound(err, "生成图片文件不存在")
 		}
 		if file.ChatThreadUUID != chatThreadUUID {
-			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前 Thread 的 image_gen 新输出；已有项目图片只能先作为当前 Turn Reference 使用。", nil)
+			return domainError(CodeValidation, "生成图片来源会话无效", "file_uuid 必须是当前 Thread 的 image_gen 新输出；已有项目图片只能先作为当前 Thread 中出现过的冻结 Reference 使用。", nil)
 		}
 		if sourceAssetUUID != "" && file.Purpose != "project_chat_image_generation" && file.PremiseAssetUUID != sourceAssetUUID {
 			return domainError(CodeValidation, "旧图片输出来源不匹配", "兼容恢复的派生写回要求图片来源与 source_premise_asset_uuid 匹配。", nil)
