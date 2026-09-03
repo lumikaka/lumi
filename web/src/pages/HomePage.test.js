@@ -28,12 +28,14 @@ test('project covers preserve backend content versions and retain the empty fall
 
 test('recent projects render picture-book covers with secondary details in the more menu', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  const menuSource = readFileSync(new URL('../components/ProjectActionsMenu.jsx', import.meta.url), 'utf8')
   const styles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
   assert.match(source, /className="project-card-grid" role="list"/)
   assert.match(source, /className=\{`project-card \$\{onActivate/)
   assert.match(source, /className=\{`project-card__cover \$\{project\.cover_image_url/)
   assert.match(source, /src=\{projectCoverSource\(project\)\}/)
-  assert.match(source, /project-index-menu__path/)
+  assert.match(source, /<ProjectActionsMenu actions=\{actions\}/)
+  assert.match(menuSource, /project-index-menu__path/)
   assert.doesNotMatch(source, /project-index-table/)
   assert.match(styles, /\.project-card-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
   assert.match(styles, /\.project-card__cover\n[\s\S]*?  aspect-ratio: 4 \/ 3[\s\S]*?\n  img\n    width: 100%\n    height: 100%\n    min-height: 0\n    display: block\n    object-fit: contain/)
@@ -42,6 +44,7 @@ test('recent projects render picture-book covers with secondary details in the m
 
 test('project page presents creation, open, relocation and forget dialogs', () => {
   const source = readFileSync(new URL('./HomePage.jsx', import.meta.url), 'utf8')
+  const menuSource = readFileSync(new URL('../components/ProjectActionsMenu.jsx', import.meta.url), 'utf8')
   for (const dialog of ["dialog === 'create'", "dialog === 'open'", "dialog === 'relocate'", "dialog === 'forget'"]) {
     assert.match(source, new RegExp(dialog.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
@@ -57,7 +60,7 @@ test('project page presents creation, open, relocation and forget dialogs', () =
   assert.match(source, /selectDirectoryMutation\.mutate\(existingPath\)/)
   assert.match(source, /projects\.open\.choose_folder/)
   assert.match(source, /revealDirectoryMutation\.mutate\(project\.root_path\)/)
-  assert.match(source, /projects\.action\.reveal/)
+  assert.match(menuSource, /projects\.action\.reveal/)
   assert.doesNotMatch(source, /安全关闭|closeCurrentProject/)
 })
 

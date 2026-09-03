@@ -157,6 +157,7 @@
     white-space: nowrap
 
 .global-sidebar__add-project
+  position: relative
   flex: 0 0 auto
   width: 34px
   height: 34px
@@ -168,9 +169,22 @@
   color: #747970
   background: transparent
 
+  &::before
+    content: ''
+    position: absolute
+    inset: 3px
+    border-radius: $radius-sm
+    background: transparent
+
+  svg
+    position: relative
+
   &:hover,
   &:focus-visible
     color: $color-text
+
+  &:hover::before,
+  &:focus-visible::before
     background: rgba($color-surface, .62)
 
 .global-sidebar__project-creator-anchor
@@ -282,7 +296,48 @@
   scrollbar-width: thin
 
 .global-sidebar__project
+  position: relative
   min-height: 38px
+  cursor: grab
+  touch-action: pan-y
+  user-select: none
+  -webkit-user-drag: none
+  transition: opacity 120ms ease, transform 120ms ease
+
+  &:active
+    cursor: grabbing
+
+  &.is-dragging
+    opacity: .42
+
+  &.is-drop-before::before,
+  &.is-drop-after::after
+    position: absolute
+    z-index: 1
+    right: 10px
+    left: 10px
+    height: 2px
+    border-radius: 999px
+    background: $color-accent
+    box-shadow: 0 0 0 1px rgba($color-sidebar, .72)
+    content: ''
+
+  &.is-drop-before::before
+    top: -1px
+
+  &.is-drop-after::after
+    bottom: -1px
+
+.global-sidebar__reorder-assistive
+  position: absolute
+  width: 1px
+  height: 1px
+  padding: 0
+  margin: -1px
+  overflow: hidden
+  clip: rect(0, 0, 0, 0)
+  white-space: nowrap
+  border: 0
 
 .global-sidebar__project-mark
   --project-tone: #{$color-muted}
@@ -316,6 +371,13 @@
   flex: 0 0 auto
   padding-top: 10px
   border-top: 1px solid rgba($color-border-strong, .72)
+
+.global-sidebar__project-action-error
+  position: fixed
+  z-index: 100
+  right: 16px
+  bottom: 16px
+  width: min(380px, calc(100vw - 32px))
 
 .global-sidebar__collapse
   color: $color-text

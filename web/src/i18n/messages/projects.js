@@ -45,6 +45,8 @@ export const projects = defineMessages({
   'projects.sidebar_creator.source_folder': ['源文件夹', 'Source folder'],
   'projects.sidebar_creator.choose_folder': ['选择文件夹', 'Choose folder'],
   'projects.sidebar_creator.open': ['打开', 'Open'],
+  'projects.sidebar.reorder_hint': ['拖动项目调整顺序，或按 Alt+上/下方向键移动', 'Drag to reorder projects, or press Alt+Up/Down'],
+  'projects.sidebar.reordered': ['已将“{name}”移动到第 {position} 项，共 {total} 项', 'Moved “{name}” to position {position} of {total}'],
   'projects.action.enter': ['进入项目', 'Enter project'],
   'projects.action.reveal': ['打开位置', 'Open location'],
   'projects.action.enter_workspace': ['进入工作台', 'Enter workspace'],

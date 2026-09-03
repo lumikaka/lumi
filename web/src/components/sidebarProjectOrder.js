@@ -25,6 +25,18 @@ export function orderSidebarProjects(projects, projectOrder) {
   return (projectOrder || []).map((uuid) => projectsByUuid.get(uuid)).filter(Boolean)
 }
 
+export function reorderSidebarProjectOrder(projectOrder, draggedUuid, targetUuid, placement = 'before') {
+  if (!Array.isArray(projectOrder) || draggedUuid === targetUuid || !['before', 'after'].includes(placement)) return projectOrder
+  if (!projectOrder.includes(draggedUuid) || !projectOrder.includes(targetUuid)) return projectOrder
+
+  const nextOrder = projectOrder.filter((uuid) => uuid !== draggedUuid)
+  const targetIndex = nextOrder.indexOf(targetUuid)
+  nextOrder.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, draggedUuid)
+
+  if (sameOrder(projectOrder, nextOrder)) return projectOrder
+  return nextOrder
+}
+
 function uniqueProjectUuids(projects) {
   const seen = new Set()
   const uuids = []

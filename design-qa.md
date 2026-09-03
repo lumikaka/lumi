@@ -94,6 +94,60 @@ final result: passed
 
 ---
 
+## Current artwork reference images — current QA
+
+### Comparison target
+
+- Source visual truth: `/Users/qingyang/.codex/visualizations/2026/09/02/01a0603a-d3bc-7dd1-b8f6-db2e9ceef255/reference-region-audit/02-expert-reference-tab.png`.
+- Focused source region: `/Users/qingyang/.codex/visualizations/2026/09/02/01a0603a-d3bc-7dd1-b8f6-db2e9ceef255/reference-region-audit/05-source-expert-reference-region.png`.
+- Browser-rendered implementation: `/Users/qingyang/.codex/visualizations/2026/09/02/01a0603a-d3bc-7dd1-b8f6-db2e9ceef255/reference-region-audit/08-implemented-page-override-hidden.png`.
+- Focused implementation region: `/Users/qingyang/.codex/visualizations/2026/09/02/01a0603a-d3bc-7dd1-b8f6-db2e9ceef255/reference-region-audit/09-implemented-current-artwork-references-hidden.png`.
+- Side-by-side comparison input: `/Users/qingyang/.codex/visualizations/2026/09/02/01a0603a-d3bc-7dd1-b8f6-db2e9ceef255/reference-region-audit/10-reference-comparison-hidden.png` (expert reference left, simple-mode implementation right).
+- Viewport: `1280 × 720` CSS px at `deviceScaleFactor: 1` for both full-view captures.
+- Pixels and density: full captures are `1280 × 720`; source focus is `336 × 414`; implementation focus is `512 × 472`. For the combined focused comparison, the source was proportionally normalized to the same 472px height and placed beside the unscaled implementation.
+- State: source is the expert-mode `参考图` tab for a generated picture-book page; implementation is simple-mode page 12 with current artwork v1. Project data differs intentionally. The comparison target is the reference evidence component, not the surrounding expert workspace.
+
+### Findings
+
+- No actionable P0, P1, or P2 differences remain.
+- The implementation adds the explicit title `当前画稿引用的图片`. The future-generation override entry and dialog are intentionally hidden for the current release, leaving this region as immutable evidence for the selected artwork version.
+
+### Required Fidelity Surfaces
+
+- Fonts and typography: passed. The implementation uses Lumi's existing Chinese UI stack and preserves the expert panel's hierarchy of heading, metadata pills, selected-setting pills, and muted explanation copy. Text is readable with no clipping or unintended truncation.
+- Spacing and layout rhythm: passed. The simple-mode card follows the existing 18px card padding and border/radius tokens, gives the reference board a full-width contained frame, and keeps metadata and rationale directly below it. The wider region is an expected consequence of the simple editor column rather than fidelity drift.
+- Colors and visual tokens: passed. Surface, subtle background, border, muted text, and green accent chips reuse the shared Lumi tokens visible in the source panel.
+- Image quality and asset fidelity: passed. The implementation renders the persisted `current_image.section_premise.asset` directly with `object-fit: contain`; it does not rebuild, approximate, or substitute the reference board. The live image shows the two actually referenced settings at their stored 792 × 420 resolution.
+- Copy and content: passed. The panel names the current artwork version, displays the stored filename and dimensions, lists `星星姐姐` and `太阳先生`, and shows the persisted automatic-selection rationale. Empty and no-current-artwork states explain why no board is available.
+- Interaction and accessibility: passed. The visible region is read-only, the reference board has version-specific alternative text, selected-setting chips have an accessible group label, and no hidden override control remains focusable or operable.
+
+### Full-view and Focused Comparison Evidence
+
+- Full-view evidence: both the expert source and simple-mode implementation were captured at the same 1280 × 720 viewport. Their surrounding workspaces differ by product mode and project data, so no false pixel-level judgment was applied outside the requested reference region.
+- Focused evidence: source and implementation reference components were normalized to the same 471px comparison height and opened together in one side-by-side image. Image board, dimension/filename metadata, setting pills, rationale, border treatment, and hierarchy are all directly readable.
+
+### Comparison History
+
+1. The first browser-rendered comparison found no actionable P0/P1/P2 mismatch. The new panel exposed the same persisted reference evidence as expert mode while adapting it to the wider simple-mode column, so no post-comparison visual fix or repeat pass was required.
+
+### Implementation Checklist
+
+- [x] Primary region reads the selected artwork version's persisted `section_premise` evidence.
+- [x] Reference board, dimensions, filename, selected settings, and selection reason render together.
+- [x] Imported, legacy, no-reference, and no-current-artwork states have explicit empty copy.
+- [x] Future-generation reference override UI is hidden while its underlying data and generation behavior remain unchanged.
+- [x] Browser console checked with zero errors.
+- [x] Focused page contract tests passed: 29/29.
+- [x] Frontend production build passed.
+
+### Follow-up Polish
+
+- No blocking follow-up polish remains for the requested scope.
+
+final result: passed
+
+---
+
 ## Simple setting detail danger-secondary button — current QA
 
 ### Comparison target

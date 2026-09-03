@@ -7,6 +7,7 @@ import AppPageShell from '../components/AppPageShell.jsx'
 import CreationReferenceEditor from '../components/CreationReferenceEditor.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PictureBookProfileFields from '../components/PictureBookProfileFields.jsx'
+import ProjectActionsMenu from '../components/ProjectActionsMenu.jsx'
 import { ReferenceStrip } from '../components/ChatReferences.jsx'
 import { projectStatusCopy } from '../components/RecentProjectsView.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
@@ -812,13 +813,7 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       </div>
       <div className="project-index-more" ref={menuRef} onClick={(event) => event.stopPropagation()}>
         <button className="project-index-more-button" type="button" aria-label={t('projects.row.more_label', { name: project.name })} aria-expanded={menuOpen} onClick={onToggleMenu}><MoreHorizontal size={18} /></button>
-        {menuOpen ? <div className="project-index-menu" role="menu">
-          <div className="project-index-menu__path"><span>{t('projects.index.column.path')}</span><code data-no-i18n>{project.root_path}</code></div>
-          {actions.includes('enter') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onEnter}>{t('projects.action.enter')}</button> : null}
-          {actions.includes('reveal') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onReveal}>{t('projects.action.reveal')}</button> : null}
-          {actions.includes('relocate') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onRelocate}>{t('projects.action.relocate')}</button> : null}
-          {actions.includes('forget') ? <><span className="project-index-menu__separator" role="separator" /><button className="project-index-menu__item project-index-menu__item--danger" type="button" role="menuitem" onClick={onForget}>{t('projects.action.forget')}</button></> : null}
-        </div> : null}
+        {menuOpen ? <ProjectActionsMenu actions={actions} project={project} t={t} onEnter={onEnter} onReveal={onReveal} onRelocate={onRelocate} onForget={onForget} /> : null}
       </div>
     </article>
   )

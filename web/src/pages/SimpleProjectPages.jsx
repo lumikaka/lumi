@@ -12,6 +12,7 @@ import {
   GripVertical,
   History,
   Images,
+  Layers3,
   Maximize2,
   Minimize2,
   MoreHorizontal,
@@ -19,6 +20,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Search,
   Shapes,
   Sparkles,
   Trash2,
@@ -80,6 +82,7 @@ import {
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import { projectRoute } from '../projectRoutes.js'
+import MarkdownEditor from '../components/MarkdownEditor.jsx'
 import {
   COMIC_PAGE_ROLES,
   comicBodyReorderUuids,
@@ -579,9 +582,9 @@ export function SimplePageView({ project, projectUuid }) {
   const pageItemMenuReturnFocusRef = useRef(null)
   const pageDragRef = useRef(null)
   const pageDragClickSuppressed = useRef(false)
+  const scriptEditorRef = useRef(null)
   const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid], queryFn: () => getChapter(projectUuid, chapterUuid) })
   const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid], queryFn: () => listComicSections(projectUuid, chapterUuid) })
-  const assetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid, { state: 'active' }) })
   const sections = orderedSimplePages(sectionsQuery.data?.items || [])
   const sectionUuid = routeSectionUuid || sections[0]?.uuid || ''
   const storyboardsQuery = useQuery({ queryKey: ['comic-storyboards', projectUuid, chapterUuid, sectionUuid], queryFn: () => listStoryboards(projectUuid, chapterUuid, sectionUuid), enabled: Boolean(sectionUuid) })
@@ -603,11 +606,13 @@ export function SimplePageView({ project, projectUuid }) {
   const [deletingPage, setDeletingPage] = useState(null)
   const [imageCandidatesOpen, setImageCandidatesOpen] = useState(false)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [scriptEditorOpen, setScriptEditorOpen] = useState(false)
   const [pageDrag, setPageDrag] = useState(null)
   const [freshImageTask, setFreshImageTask] = useState('')
   const taskStateRef = useRef(null)
   const task = (tasksQuery.data?.items || []).find((item) => item.kind === 'comic_image_generation' && item.resource_uuid === sectionUuid)
   const taskActive = Boolean(task && ACTIVE_TASK_STATUSES.has(task.status))
+  const scriptDirty = Boolean(section) && text.trim() !== (section.current_storyboard?.content_md || '')
   const dirty = Boolean(section) && (title.trim() !== (section.title || '') || text.trim() !== (section.current_storyboard?.content_md || '') || direction.trim() !== (section.description_md || '') || role !== comicPageRole(section))
   const refsDirty = Boolean(section) && JSON.stringify(selectedRefs) !== JSON.stringify((section.premise_assets || []).map((item) => item.asset_uuid))
   const invalidEmptyText = Boolean(section?.current_storyboard?.content_md) && !text.trim()
@@ -627,7 +632,14 @@ export function SimplePageView({ project, projectUuid }) {
     taskStateRef.current = null
     setFreshImageTask('')
     setImagePreviewOpen(false)
+    setScriptEditorOpen(false)
   }, [sectionUuid])
+
+  useEffect(() => {
+    if (!scriptEditorOpen) return undefined
+    const frame = window.requestAnimationFrame(() => scriptEditorRef.current?.focus())
+    return () => window.cancelAnimationFrame(frame)
+  }, [scriptEditorOpen])
 
   useEffect(() => {
     if (!task?.uuid) return
@@ -788,6 +800,11 @@ export function SimplePageView({ project, projectUuid }) {
     onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback(null) },
     onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() },
   })
+  const saveScript = useMutation({
+    mutationFn: () => createStoryboard(projectUuid, chapterUuid, sectionUuid, { content_md: text.trim(), source_type: 'manual', expected_revision: section.revision }),
+    onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.script_saved') }) },
+    onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() },
+  })
   const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: '', premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: async () => { setFeedback(null); await queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const importImage = useMutation({ mutationFn: async () => { const upload = await createAssetUpload(projectUuid, { purpose: 'comic_section_image', displayName: section.title || sectionUuid, file: imageFile }); return importSectionImage(projectUuid, chapterUuid, sectionUuid, { upload_uuid: upload.uuid, expected_revision: section.revision }) }, onSuccess: (updated) => { setImageFile(null); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_imported') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { setImageCandidatesOpen(false); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
@@ -931,6 +948,12 @@ export function SimplePageView({ project, projectUuid }) {
   const imageVariants = imagesQuery.data?.items || []
   const currentImageAsset = section.current_image?.asset
   const currentImageReady = currentImageAsset?.status === 'ready' && Boolean(currentImageAsset.content_url)
+  const currentArtworkPremise = section.current_image?.section_premise
+  const currentArtworkReferenceAsset = currentArtworkPremise?.asset
+  const currentArtworkReferenceTitles = currentArtworkPremise?.selected_titles?.length
+    ? currentArtworkPremise.selected_titles
+    : (currentArtworkPremise?.selected_assets || []).map((asset) => asset.title).filter(Boolean)
+  const currentArtworkReferenceReady = currentArtworkReferenceAsset?.status === 'ready' && Boolean(currentArtworkReferenceAsset.content_url)
   const bodyPageCount = sections.filter((item) => comicPageRole(item) === 'body').length
   const pageItemMenuPage = pageItemMenu ? sections.find((item) => item.uuid === pageItemMenu.sectionUuid) : null
   const pageItemMenuLabel = pageItemMenuPage ? comicPageLabel(t, sections, pageItemMenuPage) : ''
@@ -939,7 +962,7 @@ export function SimplePageView({ project, projectUuid }) {
     <div className="simple-project-page simple-page-view">
       <div className="simple-page-view__toolbar"><Link to={projectRoute(projectUuid, '', location.search)}><ArrowLeft size={15} aria-hidden="true" />{t('simple.shell.page.home')}</Link><div><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div></div>
       <SimpleFeedback feedback={feedback} floating autoDismiss onDismiss={() => setFeedback(null)} />
-      <SimpleError error={chapterQuery.error || sectionsQuery.error || assetsQuery.error || storyboardsQuery.error || imagesQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); assetsQuery.refetch(); storyboardsQuery.refetch(); imagesQuery.refetch(); tasksQuery.refetch() }} />
+      <SimpleError error={chapterQuery.error || sectionsQuery.error || storyboardsQuery.error || imagesQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); storyboardsQuery.refetch(); imagesQuery.refetch(); tasksQuery.refetch() }} />
       <div className="simple-page-editor-layout">
         <aside className="simple-page-rail" aria-label={t('simple.pages.title')}>
           <header className="simple-page-rail__header">
@@ -1061,7 +1084,22 @@ export function SimplePageView({ project, projectUuid }) {
             <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(generate.isPending ? 'simple.page.generation_starting' : section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
           </div>
           <section className="simple-page-content-card">
-            <h2>{t('simple.page.content')}</h2>
+            <header className="simple-page-content-card__header">
+              <h2>{t('simple.page.content')}</h2>
+              <div className="simple-page-content-card__actions">
+                <Link
+                  className="simple-page-content-card__reference"
+                  to={{ pathname: location.pathname, search: chatSearch }}
+                  aria-label={t('simple.page.reference_content')}
+                  title={t('simple.page.reference_content')}
+                >
+                  @
+                </Link>
+                <button type="button" className="simple-page-content-card__edit" aria-label={t('simple.page.edit_script')} title={t('simple.page.edit_script')} onClick={() => setScriptEditorOpen(true)}>
+                  <Pencil size={14} aria-hidden="true" />
+                </button>
+              </div>
+            </header>
             {storyboardFields.length ? storyboardFields.map((field, fieldIndex) => (
               <label key={`${fieldIndex}-${field.label}`}>
                 <span data-user-content>{field.label}</span>
@@ -1074,14 +1112,57 @@ export function SimplePageView({ project, projectUuid }) {
               </label>
             )}
           </section>
-          <section className="simple-page-references"><header><div><h2>{t('simple.page.references')}</h2><p>{t('simple.page.references_body')}</p></div><button type="button" disabled={!refsDirty || save.isPending || invalidEmptyText} onClick={() => save.mutate()}>{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></header><div>{(assetsQuery.data?.items || []).filter((asset) => asset.current_variant).map((asset) => <label className={selectedRefs.includes(asset.uuid) ? 'is-selected' : ''} key={asset.uuid}><input type="checkbox" checked={selectedRefs.includes(asset.uuid)} disabled={!selectedRefs.includes(asset.uuid) && selectedRefs.length >= 12} onChange={(event) => setSelectedRefs((current) => event.target.checked ? [...current, asset.uuid] : current.filter((uuid) => uuid !== asset.uuid))} /><SimpleImage asset={asset.current_variant?.asset} alt="" /><span><strong data-user-content>{asset.title}</strong><small>{assetTypeLabel(t, asset.asset_type)}</small></span></label>)}</div></section>
-          <section className="simple-version-list"><header><div><h2>{t('simple.page.text_versions')}</h2></div><span>{storyboardsQuery.data?.items?.length || 0}</span></header><div>{(storyboardsQuery.data?.items || []).map((variant) => <article className={variant.uuid === section.current_storyboard?.uuid ? 'is-current' : ''} key={variant.uuid}><div><strong>v{variant.version_no}</strong><span data-user-content>{simpleStoryExcerpt(variant.content_md, 90)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_storyboard?.uuid || chooseStoryboard.isPending} onClick={() => chooseStoryboard.mutate(variant)}>{variant.uuid === section.current_storyboard?.uuid ? t('simple.version.current') : t('common.action.restore')}</button></article>)}</div></section>
+          <section className="simple-page-artwork-references">
+            <header>
+              <div>
+                <h2>{t('simple.page.current_artwork_references')}</h2>
+                <p>{section.current_image ? t('simple.page.current_artwork_references_body', { version: section.current_image.version_no }) : t('simple.page.current_artwork_references_pending')}</p>
+              </div>
+            </header>
+            {currentArtworkReferenceReady ? (
+              <figure className="simple-page-artwork-references__figure">
+                <div className="simple-page-artwork-references__image">
+                  <SimpleImage asset={currentArtworkReferenceAsset} alt={t('simple.page.current_artwork_references_alt', { version: section.current_image.version_no })} />
+                </div>
+                <figcaption>
+                  <div className="simple-page-artwork-references__metadata">
+                    {currentArtworkReferenceAsset.width && currentArtworkReferenceAsset.height ? <span data-machine-value>{currentArtworkReferenceAsset.width}×{currentArtworkReferenceAsset.height}</span> : null}
+                    {currentArtworkReferenceAsset.original_filename ? <span data-user-content>{currentArtworkReferenceAsset.original_filename}</span> : null}
+                  </div>
+                  {currentArtworkReferenceTitles.length ? <div className="simple-page-artwork-references__titles" aria-label={t('simple.page.current_artwork_references_selected')}>{currentArtworkReferenceTitles.map((title) => <span data-user-content key={title}>{title}</span>)}</div> : null}
+                  {currentArtworkPremise.selection_reason ? <p data-user-content>{currentArtworkPremise.selection_reason}</p> : null}
+                </figcaption>
+              </figure>
+            ) : (
+              <div className="simple-page-artwork-references__empty">
+                <Layers3 size={28} strokeWidth={1.5} aria-hidden="true" />
+                <strong>{t(section.current_image ? 'simple.page.current_artwork_references_empty' : 'simple.page.current_artwork_references_pending_title')}</strong>
+                <p>{t(section.current_image ? 'simple.page.current_artwork_references_empty_body' : 'simple.page.current_artwork_references_pending')}</p>
+              </div>
+            )}
+          </section>
           <nav className="simple-page-stepper" aria-label={t('simple.shell.page.pages')}>{previous ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(previous.uuid)}`, location.search)}><ChevronLeft size={15} aria-hidden="true" />{t('simple.page.previous')}</Link> : <span />}{next ? <Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(next.uuid)}`, location.search)}>{t('simple.page.next')}<ChevronRight size={15} aria-hidden="true" /></Link> : null}</nav>
         </main>
       </div>
       {pageItemMenu && pageItemMenuPage ? <div ref={pageItemMenuRef} className="simple-page-rail__menu simple-page-rail__item-menu" role="menu" aria-label={t('simple.pages.page_actions', { page: pageItemMenuLabel })} style={{ left: pageItemMenu.left, top: pageItemMenu.top }}><button className="simple-page-rail__menu-action is-danger" type="button" role="menuitem" aria-label={t('simple.pages.delete_page', { page: pageItemMenuLabel })} disabled={pageItemMenuKeepsRequiredBody || trashPage.isPending || save.isPending} title={pageItemMenuKeepsRequiredBody ? t('simple.pages.keep_body') : undefined} onClick={() => { setPageItemMenu(null); setDeletingPage(pageItemMenuPage) }}><Trash2 size={14} aria-hidden="true" /><span>{t('common.action.delete')}</span></button></div> : null}
       {pageTrashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setPageTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
       {deletingPage ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deletingPage) })} pending={trashPage.isPending} onCancel={() => setDeletingPage(null)} onConfirm={() => trashPage.mutate(deletingPage)} /> : null}
+      {scriptEditorOpen ? <SimpleDialog wide title={t('simple.page.script_editor_title')} onClose={() => !saveScript.isPending && !chooseStoryboard.isPending && setScriptEditorOpen(false)}><div className="simple-page-script-dialog">
+        <section className="simple-page-script-dialog__workspace">
+          <header><div><strong data-user-content>{section.title || label}</strong><small role="status">{scriptDirty ? t('simple.page.script_unsaved') : section.current_storyboard ? t('simple.page.script_current_version', { version: section.current_storyboard.version_no }) : t('simple.page.no_text')}</small></div><div><button type="button" className="simple-button simple-button--secondary" disabled={saveScript.isPending || chooseStoryboard.isPending} onClick={() => scriptEditorRef.current?.openSearchPanel()}><Search size={14} aria-hidden="true" />{t('simple.page.script_search')}</button><button type="button" className="simple-button" disabled={!scriptDirty || !text.trim() || saveScript.isPending || chooseStoryboard.isPending} onClick={() => saveScript.mutate()}><Save size={14} aria-hidden="true" />{t(saveScript.isPending ? 'common.status.saving' : 'common.action.save')}</button></div></header>
+          <MarkdownEditor ref={scriptEditorRef} className="simple-page-script-dialog__markdown storyboard-code-editor" value={text} onChange={setText} disabled={saveScript.isPending || chooseStoryboard.isPending} enableSearch placeholderText={t('comic.storyboard.placeholder')} ariaLabel={t('simple.page.script_editor_title')} />
+        </section>
+        <aside className="simple-page-script-dialog__versions" aria-label={t('simple.page.script_versions')}>
+          <header><h3>{t('simple.page.script_versions')}</h3><span>{storyboardsQuery.data?.items?.length || 0}</span></header>
+          {storyboardsQuery.isLoading ? <p role="status">{t('common.loading')}</p> : null}
+          <div>{(storyboardsQuery.data?.items || []).map((variant) => {
+            const current = variant.uuid === section.current_storyboard?.uuid
+            return <button type="button" className={current ? 'is-current' : ''} aria-pressed={current} disabled={current || scriptDirty || saveScript.isPending || chooseStoryboard.isPending} title={scriptDirty && !current ? t('simple.page.script_switch_blocked') : undefined} onClick={() => chooseStoryboard.mutate(variant)} key={variant.uuid}><span><strong>v{variant.version_no}</strong><small>{sourceTypeLabel(t, variant.source_type)}</small></span><span data-user-content>{simpleStoryExcerpt(variant.content_md, 96)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time><em>{t(current ? 'simple.version.current' : 'simple.version.use')}</em></button>
+          })}</div>
+          {!storyboardsQuery.isLoading && !(storyboardsQuery.data?.items || []).length ? <p>{t('simple.page.no_text')}</p> : null}
+          {scriptDirty ? <p>{t('simple.page.script_switch_blocked')}</p> : null}
+        </aside>
+      </div></SimpleDialog> : null}
       {imagePreviewOpen ? <SimpleDialog wide title={t('simple.page.image_preview')} onClose={() => setImagePreviewOpen(false)}><div className="simple-page-image-preview"><SimpleImage asset={currentImageAsset} alt={section.title || label} /></div></SimpleDialog> : null}
       {imageCandidatesOpen ? <SimpleDialog title={t('simple.page.image_candidates')} onClose={() => !importImage.isPending && !chooseImage.isPending && setImageCandidatesOpen(false)}><div className="simple-page-candidates-dialog"><header><p>{t('simple.page.image_candidates_body')}</p><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" disabled={importImage.isPending} onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{imageVariants.map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /><footer><div><strong>v{variant.version_no}</strong><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending || importImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></div></SimpleDialog> : null}
     </div>

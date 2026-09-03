@@ -20,7 +20,7 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'MarkdownEditor.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
@@ -301,6 +301,55 @@ test('simple page content card quick-edits storyboard bodies by level-two headin
   assert.doesNotMatch(pageViewSource, /simple-page-content-card[\s\S]*simple\.page\.visual_direction/)
 })
 
+test('simple page content card can open a new Agent thread with the page reference', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  const contentCardSource = pageViewSource.slice(
+    pageViewSource.indexOf('className="simple-page-content-card"'),
+    pageViewSource.indexOf('className="simple-page-artwork-references"'),
+  )
+  assert.match(contentCardSource, /className="simple-page-content-card__header"/)
+  assert.match(contentCardSource, /className="simple-page-content-card__reference"[\s\S]*search: chatSearch[\s\S]*simple\.page\.reference_content[\s\S]*@/)
+  assert.match(styles, /\.simple-page-content-card__header[\s\S]*justify-content: space-between/)
+  assert.match(styles, /\.simple-page-content-card__reference[\s\S]*width: 30px[\s\S]*&:hover,[\s\S]*&:focus-visible/)
+})
+
+test('simple page shows the images actually referenced by the current artwork without a future-reference override', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pageViewSource, /currentArtworkPremise = section\.current_image\?\.section_premise/)
+  assert.match(pageViewSource, /className="simple-page-artwork-references"[\s\S]*simple\.page\.current_artwork_references/)
+  assert.match(pageViewSource, /currentArtworkReferenceAsset[\s\S]*currentArtworkReferenceTitles[\s\S]*currentArtworkPremise\.selection_reason/)
+  assert.match(pageViewSource, /className="simple-page-artwork-references__figure"[\s\S]*<SimpleImage asset=\{currentArtworkReferenceAsset\}/)
+  assert.doesNotMatch(pageViewSource, /simple\.page\.references_override|referenceSettingsOpen|simple-page-reference-settings/)
+  assert.match(styles, /\.simple-page-artwork-references__image[\s\S]*object-fit: contain/)
+  assert.match(styles, /\.simple-page-artwork-references__titles[\s\S]*background: \$color-accent-muted/)
+})
+
+test('simple page content card opens a full Markdown script editor with version selection', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pagesSource, /import MarkdownEditor from '\.\.\/components\/MarkdownEditor\.jsx'/)
+  assert.match(pageViewSource, /const \[scriptEditorOpen, setScriptEditorOpen\] = useState\(false\)/)
+  assert.match(pageViewSource, /className="simple-page-content-card__edit"[\s\S]*setScriptEditorOpen\(true\)/)
+  assert.match(pageViewSource, /scriptEditorOpen \? <SimpleDialog wide title=\{t\('simple\.page\.script_editor_title'\)\}/)
+  assert.match(pageViewSource, /<MarkdownEditor ref=\{scriptEditorRef\} className="simple-page-script-dialog__markdown storyboard-code-editor"[\s\S]*onChange=\{setText\}[\s\S]*enableSearch/)
+  assert.match(pageViewSource, /className="simple-page-script-dialog__versions"[\s\S]*storyboardsQuery\.data\?\.items[\s\S]*chooseStoryboard\.mutate\(variant\)/)
+  assert.doesNotMatch(pageViewSource, /simple\.page\.text_versions/)
+  assert.match(pageViewSource, /const saveScript = useMutation\(\{[\s\S]*createStoryboard\(projectUuid, chapterUuid, sectionUuid,[\s\S]*source_type: 'manual'/)
+  assert.match(styles, /\.simple-page-script-dialog[\s\S]*grid-template-columns: minmax\(0, 1fr\) 260px/)
+  assert.match(styles, /\.simple-page-script-dialog[\s\S]*height: min\(68dvh, 640px\)/)
+  assert.match(styles, /\.simple-page-script-dialog__markdown[\s\S]*height: 100%[\s\S]*overflow: hidden/)
+  assert.match(styles, /\.simple-page-script-dialog__versions[\s\S]*\[aria-pressed="true"\]:hover/)
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.simple-page-script-dialog[\s\S]*grid-template-columns: 1fr/)
+})
+
 test('simple page current image opens an accessible large-image dialog', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
@@ -417,7 +466,6 @@ test('simple styles leave the global sidebar untouched, stay namespaced, and ret
   assert.match(styles, /container: simple-project-settings-content \/ inline-size/)
   assert.match(styles, /@container simple-project-settings-content \(max-width: 860px\)[\s\S]*\.project-overview-grid[\s\S]*grid-template-columns: 1fr/)
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.simple-project-settings-card[\s\S]*grid-template-columns: 1fr[\s\S]*\.simple-project-settings-nav[\s\S]*overflow-x: auto/)
-  assert.match(styles, /\.simple-page-references[\s\S]*\.is-selected:hover/)
   assert.match(styles, /&\.is-fullscreen[\s\S]*position: fixed[\s\S]*inset: 0/)
   assert.match(styles, /@media \(max-width: 1199px\)/)
   assert.match(styles, /@media \(max-width: 760px\)/)

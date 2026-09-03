@@ -1238,6 +1238,197 @@
       word-break: break-word
       background: $color-surface-subtle
 
+  .simple-page-content-card__header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+  .simple-page-content-card__actions
+    display: flex
+    align-items: center
+    gap: 6px
+
+  .simple-page-content-card__reference,
+  .simple-page-content-card__edit
+    width: 30px
+    height: 30px
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: 18px
+    font-weight: $font-weight-semibold
+    line-height: 1
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-page-script-dialog
+    min-width: 0
+    height: min(68dvh, 640px)
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 260px
+    overflow: hidden
+
+  .simple-page-script-dialog__workspace
+    min-width: 0
+    min-height: 0
+    padding: 18px
+    display: grid
+    grid-template-rows: auto minmax(0, 1fr)
+    gap: 12px
+
+    > header
+      min-width: 0
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+
+      > div
+        min-width: 0
+        display: flex
+        align-items: center
+        gap: 8px
+
+        &:first-child
+          display: grid
+          gap: 3px
+
+        &:last-child
+          flex: 0 0 auto
+
+      strong
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+      button
+        min-height: 32px
+        display: inline-flex
+        align-items: center
+        gap: 5px
+
+  .simple-page-script-dialog__markdown
+    min-width: 0
+    min-height: 0
+    height: 100%
+    overflow: hidden
+
+  .simple-page-script-dialog__versions
+    min-width: 0
+    min-height: 0
+    padding: 16px
+    display: grid
+    grid-template-rows: auto minmax(0, 1fr) auto
+    gap: 10px
+    border-left: 1px solid $color-border
+    background: $color-surface-subtle
+
+    > header
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 8px
+
+      h3
+        margin: 0
+        font-size: 14px
+
+      span
+        color: $color-muted
+        font-size: $font-size-small
+
+    > div
+      min-height: 0
+      overflow-y: auto
+      display: grid
+      align-content: start
+      gap: 8px
+
+      > button
+        min-width: 0
+        padding: 10px
+        display: grid
+        grid-template-columns: minmax(0, 1fr) auto
+        gap: 6px 8px
+        text-align: left
+        border: 1px solid $color-border
+        border-radius: $radius-sm
+        color: $color-text
+        background: $color-surface
+
+        &:hover,
+        &:focus-visible
+          border-color: $color-accent
+          background: $color-accent-muted
+
+        &[aria-pressed="true"]
+          border-color: $color-accent
+          background: $color-accent-muted
+
+        &[aria-pressed="true"]:hover,
+        &[aria-pressed="true"]:focus-visible
+          border-color: $color-accent-strong
+          background: $color-accent-muted
+
+        &:disabled:not([aria-pressed="true"])
+          opacity: .55
+
+        > span:first-child
+          min-width: 0
+          display: flex
+          align-items: center
+          gap: 6px
+
+        strong
+          font-size: 13px
+
+        small,
+        time,
+        em
+          color: $color-muted
+          font-size: $font-size-micro
+          font-style: normal
+
+        > span:nth-child(2)
+          grid-column: 1 / -1
+          overflow: hidden
+          display: -webkit-box
+          color: $color-muted
+          font-size: $font-size-small
+          line-height: 1.55
+          -webkit-box-orient: vertical
+          -webkit-line-clamp: 3
+
+        time
+          min-width: 0
+          overflow: hidden
+          text-overflow: ellipsis
+          white-space: nowrap
+
+        em
+          color: $color-accent-strong
+          font-weight: $font-weight-semibold
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.5
+
   .simple-page-stepper
     margin-top: 18px
     display: flex
@@ -1601,7 +1792,7 @@
   .simple-generation-card,
   .simple-version-list,
   .simple-version-gallery,
-  .simple-page-references
+  .simple-page-artwork-references
     margin-top: 22px
     padding: 18px
     border: 1px solid $color-border
@@ -2209,67 +2400,84 @@
       line-height: 1.65
       resize: vertical
 
-  .simple-page-references > div
+  .simple-page-artwork-references__figure
+    margin: 0
     display: grid
-    grid-template-columns: repeat(3, minmax(0, 1fr))
-    gap: 8px
+    gap: 12px
 
-    label
-      min-width: 0
-      min-height: 58px
-      padding: 7px
-      display: grid
-      grid-template-columns: auto 42px minmax(0, 1fr)
-      align-items: center
-      gap: 7px
-      border: 1px solid $color-border
-      border-radius: $radius-sm
-      background: $color-surface
-      cursor: pointer
-
-      &:hover,
-      &:focus-within
-        border-color: $color-accent
-        background: $color-surface-subtle
-
-      &.is-selected
-        border-color: $color-accent
-        background: $color-accent-muted
-
-      &.is-selected:hover,
-      &.is-selected:focus-within
-        border-color: $color-accent-strong
-        background: rgba($color-accent, .16)
-
-      > img,
-      > .simple-image-placeholder
-        width: 42px
-        height: 42px
-        border-radius: 5px
-        object-fit: contain
-
-      > span
-        min-width: 0
-        display: grid
-
-      strong,
-      small
-        overflow: hidden
-        text-overflow: ellipsis
-        white-space: nowrap
-
-      small
-        color: $color-muted
-        font-size: $font-size-micro
-
-  .simple-page-references > header > button
-    min-height: 32px
-    padding: 0 10px
-    border: 1px solid $color-accent
+  .simple-page-artwork-references__image
+    min-height: 160px
+    overflow: hidden
+    display: grid
+    place-items: center
+    border: 1px solid $color-border-subtle
     border-radius: $radius-sm
-    color: #fff
-    background: $color-accent
-    font-size: $font-size-small
+    background: $color-surface-subtle
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      max-height: 360px
+
+    > img
+      display: block
+      object-fit: contain
+
+  .simple-page-artwork-references__figure figcaption
+    display: grid
+    gap: 10px
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.65
+
+  .simple-page-artwork-references__metadata,
+  .simple-page-artwork-references__titles
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+    > span
+      min-width: 0
+      padding: 4px 8px
+      overflow: hidden
+      border-radius: 999px
+      text-overflow: ellipsis
+      white-space: nowrap
+      font-size: $font-size-micro
+
+  .simple-page-artwork-references__metadata > span
+    color: $color-muted
+    background: $color-surface-muted
+
+  .simple-page-artwork-references__titles > span
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+  .simple-page-artwork-references__empty
+    min-height: 180px
+    padding: 28px
+    display: grid
+    place-items: center
+    align-content: center
+    gap: 8px
+    border: 1px dashed $color-border
+    border-radius: $radius-sm
+    color: $color-muted
+    text-align: center
+    background: $color-surface-subtle
+
+    strong
+      color: $color-text
+      font-size: 14px
+
+    p
+      max-width: 400px
+      margin: 0
+      font-size: $font-size-small
+      line-height: 1.6
 
   .simple-book-reader
     min-height: 300px
@@ -2343,13 +2551,33 @@
 
   @media (max-width: 900px)
     .simple-version-gallery > div:last-child,
-    .simple-candidate-grid,
-    .simple-page-references > div
+    .simple-candidate-grid
       grid-template-columns: repeat(2, minmax(0, 1fr))
 
   @media (max-width: 760px)
     .simple-dialog
       padding: 10px
+
+    .simple-page-script-dialog
+      height: auto
+      grid-template-columns: 1fr
+
+    .simple-page-script-dialog__workspace
+      height: 58dvh
+      min-height: 0
+      padding: 14px
+
+      > header
+        align-items: stretch
+        flex-direction: column
+
+        > div:last-child
+          flex-wrap: wrap
+
+    .simple-page-script-dialog__versions
+      max-height: 300px
+      border-top: 1px solid $color-border
+      border-left: 0
 
     .simple-conflict,
     .simple-story-generation > div,
@@ -2361,9 +2589,12 @@
 
     .simple-version-gallery > div:last-child,
     .simple-candidate-grid,
-    .simple-page-references > div,
     .simple-page-meta-form
       grid-template-columns: 1fr
+
+    .simple-page-artwork-references > header
+      align-items: stretch
+      flex-direction: column
 
     .simple-version-list article,
     .simple-version-list article > div

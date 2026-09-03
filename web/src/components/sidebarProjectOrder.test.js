@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { mergeSidebarProjectOrder, orderSidebarProjects } from './sidebarProjectOrder.js'
+import { mergeSidebarProjectOrder, orderSidebarProjects, reorderSidebarProjectOrder } from './sidebarProjectOrder.js'
 
 const projects = (...uuids) => uuids.map((uuid) => ({ uuid, name: uuid.toUpperCase() }))
 
@@ -24,4 +24,18 @@ test('sidebar project order survives the empty loading state', () => {
 
   assert.strictEqual(mergeSidebarProjectOrder(previousOrder, []), previousOrder)
   assert.deepEqual(orderSidebarProjects([], previousOrder), [])
+})
+
+test('sidebar projects can move before or after another project', () => {
+  assert.deepEqual(reorderSidebarProjectOrder(['a', 'b', 'c', 'd'], 'd', 'b', 'before'), ['a', 'd', 'b', 'c'])
+  assert.deepEqual(reorderSidebarProjectOrder(['a', 'b', 'c', 'd'], 'a', 'c', 'after'), ['b', 'c', 'a', 'd'])
+})
+
+test('sidebar project reorder preserves the existing array for no-op moves', () => {
+  const order = ['a', 'b', 'c']
+
+  assert.strictEqual(reorderSidebarProjectOrder(order, 'a', 'a'), order)
+  assert.strictEqual(reorderSidebarProjectOrder(order, 'missing', 'b'), order)
+  assert.strictEqual(reorderSidebarProjectOrder(order, 'a', 'missing'), order)
+  assert.strictEqual(reorderSidebarProjectOrder(order, 'a', 'b', 'before'), order)
 })
