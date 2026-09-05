@@ -46,6 +46,10 @@ export async function getProjectSetup(projectUuid) {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/project-setup`)
 }
 
+export async function previewProjectDirectoryName(projectUuid, name) {
+  return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/directory-name-preview?name=${encodeURIComponent(name)}`)
+}
+
 export async function preflightImageGeneration(pictureBook) {
   return apiRequest('/api/v1/image-generation-preflights', jsonRequest('POST', { picture_book: pictureBook }))
 }

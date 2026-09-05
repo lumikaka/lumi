@@ -71,7 +71,7 @@ test('production, asset and LLM events invalidate exact and aggregate queries', 
   assert.deepEqual(keyNames(asset), ['asset-scans', 'asset-maintenance-tasks', 'assets'])
 
   const llm = projectRealtimeInvalidation(projectUuid, 'llm_log:changed', { log_uuid: 'log-uuid' })
-  assert.deepEqual(keyNames(llm), ['project-llm-logs', 'project-llm-log', 'workflow-llm-logs'])
+  assert.deepEqual(keyNames(llm), ['project-llm-logs', 'project-llm-cost-summary', 'project-llm-cost-backfills', 'project-llm-log', 'workflow-llm-logs'])
   assert.ok(llm.queryKeys.some((key) => key[0] === 'project-llm-log' && key[2] === 'log-uuid'))
   assert.ok(!keyNames(llm).includes('workflow-runs'))
   assert.ok(!keyNames(llm).includes('workflow-events'))

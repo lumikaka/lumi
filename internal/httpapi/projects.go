@@ -22,6 +22,14 @@ func NewProjectHandler(manager *project.Manager) *ProjectHandler {
 	return &ProjectHandler{manager: manager}
 }
 
+func (handler *ProjectHandler) DirectoryNamePreview(c echo.Context) error {
+	preview, err := handler.manager.PreviewDirectoryName(c.Request().Context(), c.Param("project_uuid"), c.QueryParam("name"))
+	if err != nil {
+		return projectAPIError(err)
+	}
+	return Success(c, http.StatusOK, preview)
+}
+
 type ProjectDefaultsHandler struct {
 	resolveParentPath    func() (string, error)
 	resolveOverallStyles func() map[string]string

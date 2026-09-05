@@ -152,5 +152,5 @@ plan_state: finished
 - 不改变现有 YOLO 的六个步骤、1～6 个 Comic Sections、Premise Setting Image 或首图策略。
 - 不让聊天 Agent 手工模拟 Story、Premise、Section 和图片生成步骤。
 - 不给应用库创建会话增加 Workflow 外键，不引入跨数据库事务。
-- 不自动重命名项目目录，不改变正式绘本规格不可修改的约束。
+- 本初始化计划不承担目录重命名实现；后续目录命名规则见 `docs/project-storage.md`。正式绘本规格仍不可修改。
 - 不在用户未明确确认时启动 YOLO，不使用 HTTP 定时轮询同步 Workflow 状态。

@@ -8,6 +8,7 @@ import (
 
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
+	"lumi/internal/pricing"
 	"lumi/internal/providerdiag"
 )
 
@@ -91,9 +92,10 @@ type imageInputSnapshot struct {
 }
 
 type imageResponseSnapshot struct {
-	MIMEType      string `json:"mime_type"`
-	ByteSize      int    `json:"byte_size"`
-	RevisedPrompt string `json:"revised_prompt,omitempty"`
+	BillingUsage  pricing.Usage `json:"billing_usage"`
+	MIMEType      string        `json:"mime_type"`
+	ByteSize      int           `json:"byte_size"`
+	RevisedPrompt string        `json:"revised_prompt,omitempty"`
 }
 
 func EncodeTextRequest(input llm.Request) (json.RawMessage, error) {
@@ -180,7 +182,7 @@ func EncodeImageRequest(input imagegen.Request) (json.RawMessage, error) {
 }
 
 func EncodeImageResponse(input imagegen.Response, apiKey string) (json.RawMessage, error) {
-	return encodeSnapshot(imageResponseSnapshot{MIMEType: input.MIMEType, ByteSize: len(input.Bytes), RevisedPrompt: input.RevisedPrompt}, apiKey)
+	return encodeSnapshot(imageResponseSnapshot{BillingUsage: input.Usage, MIMEType: input.MIMEType, ByteSize: len(input.Bytes), RevisedPrompt: input.RevisedPrompt}, apiKey)
 }
 
 func encodeSnapshot(value any, apiKey string) (json.RawMessage, error) {

@@ -5,6 +5,7 @@ export default function ProjectActionsMenu({
   onEnter,
   onForget,
   onRelocate,
+  onRename,
   onReveal,
   project,
   style,
@@ -23,6 +24,7 @@ export default function ProjectActionsMenu({
       </div>
       {actions.includes('enter') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onEnter}>{t('projects.action.enter')}</button> : null}
       {actions.includes('reveal') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onReveal}>{t('projects.action.reveal')}</button> : null}
+      {actions.includes('rename') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onRename}>{t('projects.action.rename')}</button> : null}
       {actions.includes('relocate') ? <button className="project-index-menu__item" type="button" role="menuitem" onClick={onRelocate}>{t('projects.action.relocate')}</button> : null}
       {actions.includes('forget') ? <><span className="project-index-menu__separator" role="separator" /><button className="project-index-menu__item project-index-menu__item--danger" type="button" role="menuitem" onClick={onForget}>{t('projects.action.forget')}</button></> : null}
     </div>

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"lumi/internal/appstore"
+	"lumi/internal/pricing"
 	"lumi/internal/sitesettings"
 
 	"github.com/google/uuid"
@@ -88,13 +89,21 @@ type CreateInput struct {
 }
 
 type Service struct {
+	prices     *pricing.Service
 	settings   *sitesettings.Service
 	now        func() time.Time
 	identityMu sync.Mutex
 }
 
 func NewService(app *appstore.Store, keys sitesettings.MasterKeyStore) *Service {
-	return &Service{settings: sitesettings.NewService(app, keys), now: time.Now}
+	return &Service{settings: sitesettings.NewService(app, keys), prices: pricing.NewService(app.DB()), now: time.Now}
+}
+
+func (service *Service) Prices() *pricing.Service {
+	if service == nil {
+		return nil
+	}
+	return service.prices
 }
 
 func (service *Service) Settings() *sitesettings.Service { return service.settings }

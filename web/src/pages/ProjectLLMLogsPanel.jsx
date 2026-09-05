@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { getProjectLLMLog, listProjectLLMLogs } from '../api/ai.js'
+import LLMCostPanel, { CostValue, CostDetails } from './LLMCostPanel.jsx'
+import { dateBoundary, localDateInput } from './pricingState.js'
 import LumiDialog from '../components/LumiDialog.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
@@ -23,6 +25,8 @@ const emptyFilters = Object.freeze({
   status: '',
   requestType: '',
   keyword: '',
+  from: '',
+  to: '',
 })
 
 function formatDuration(value, formatNumber) {
@@ -213,6 +217,7 @@ function LLMLogDetailDialog({ projectUuid, log, onClose }) {
               </article>
             )}
           </div>
+          <CostDetails log={displayLog} />
           <p className="overview-llm-cost-note">{t('settings.llm_logs.cost_note')}</p>
         </div>
       </LumiDialog>
@@ -256,6 +261,7 @@ export default function ProjectLLMLogsPanel({ projectUuid, scope = '', title, de
       <LocalizedErrorMessage error={logsQuery.error} />
       <section className="overview-card overview-llm-panel">
         <header className="overview-card__header"><div><h1>{title || t('settings.llm_logs.project_title')}</h1><p>{description || t('settings.llm_logs.panel_description')}</p></div><span>{formatCount('common.count.items', pagination.total)}</span></header>
+        <LLMCostPanel key={projectUuid} projectUuid={projectUuid} filters={{ scope, ...filters }} />
         <form className="overview-llm-filters" aria-label={t('settings.llm_logs.filters')} aria-busy={logsQuery.isFetching} onSubmit={(event) => { event.preventDefault(); updateFilter('keyword', keywordDraft.trim()) }}>
           <label className="overview-llm-filter overview-llm-filter--keyword"><span>{t('settings.llm_logs.filter.keyword')}</span><input type="search" value={keywordDraft} onChange={(event) => setKeywordDraft(event.target.value)} placeholder={t('settings.llm_logs.filter.keyword_placeholder')} /></label>
           <label className="overview-llm-filter"><span>{t('settings.provider')}</span><select value={filters.providerUuid} onChange={(event) => updateFilter('providerUuid', event.target.value)}><option value="">{t('common.label.all')}</option>{filterGroups.providers.map((provider) => <option key={provider.uuid} value={provider.uuid}>{provider.type || t('settings.llm_logs.provider_unknown')} · {provider.uuid.slice(0, 13)}</option>)}</select></label>
@@ -264,14 +270,16 @@ export default function ProjectLLMLogsPanel({ projectUuid, scope = '', title, de
           <label className="overview-llm-filter"><span>{t('settings.llm_logs.scenario')}</span><select value={filters.scenario} onChange={(event) => updateFilter('scenario', event.target.value)}><option value="">{t('common.label.all')}</option>{filterGroups.scenarios.map((value) => <option key={value} value={value}>{scenarioLabel(t, { scenario: value })}</option>)}</select></label>
           <label className="overview-llm-filter"><span>{t('common.label.status')}</span><select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}><option value="">{t('common.label.all')}</option>{filterGroups.statuses.map((value) => <option key={value} value={value}>{statusLabel(t, value)}</option>)}</select></label>
           <label className="overview-llm-filter"><span>{t('common.label.type')}</span><select value={filters.requestType} onChange={(event) => updateFilter('requestType', event.target.value)}><option value="">{t('common.label.all')}</option>{filterGroups.request_types.map((value) => <option key={value} value={value}>{requestTypeLabel(t, value)}</option>)}</select></label>
+          <label className="overview-llm-filter"><span>{t('pricing.from')}</span><input type="date" onChange={(e) => updateFilter('from', dateBoundary(e.target.value))} value={localDateInput(filters.from)} /></label>
+          <label className="overview-llm-filter"><span>{t('pricing.to')}</span><input type="date" onChange={(e) => updateFilter('to', dateBoundary(e.target.value, true))} value={localDateInput(filters.to, true)} /></label>
           <div className="overview-llm-filter-actions"><button type="submit" disabled={logsQuery.isFetching}>{t('common.action.search')}</button><button type="button" className="button-secondary" disabled={logsQuery.isFetching || (Object.values(filters).every((value) => !value) && !keywordDraft)} onClick={resetFilters}>{t('settings.llm_logs.filter.reset')}</button></div>
         </form>
         <div className="overview-llm-table-wrap">
           <table className="overview-llm-table">
-            <thead><tr><th>{t('settings.llm_logs.time')}</th><th>{t('settings.llm_logs.model_provider')}</th><th>{t('settings.llm_logs.scenario')}</th><th>{t('settings.llm_logs.input')}</th><th>{t('settings.llm_logs.output')}</th><th>{t('settings.llm_logs.duration')}</th><th>{t('common.label.status')}</th></tr></thead>
+            <thead><tr><th>{t('settings.llm_logs.time')}</th><th>{t('settings.llm_logs.model_provider')}</th><th>{t('settings.llm_logs.scenario')}</th><th>{t('settings.llm_logs.input')}</th><th>{t('settings.llm_logs.output')}</th><th>{t('settings.llm_logs.duration')}</th><th>{t('common.label.status')}</th><th>{t('pricing.estimate')}</th></tr></thead>
             <tbody>
-              {logsQuery.isLoading ? <tr><td colSpan="7"><p className="overview-card__loading">{t('settings.llm_logs.loading')}</p></td></tr> : null}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 ? <tr><td colSpan="7"><p className="overview-llm-empty">{t('settings.llm_logs.empty')}</p></td></tr> : null}
+              {logsQuery.isLoading ? <tr><td colSpan="8"><p className="overview-card__loading">{t('settings.llm_logs.loading')}</p></td></tr> : null}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 ? <tr><td colSpan="8"><p className="overview-llm-empty">{t('settings.llm_logs.empty')}</p></td></tr> : null}
               {!logsQuery.isLoading ? logs.map((log) => (
                 <tr key={log.uuid} role="button" tabIndex="0" onClick={() => openLog(log)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openLog(log) } }}>
                   <td><time dateTime={log.created_at}>{formatDateTime(log.created_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time></td>
@@ -281,6 +289,7 @@ export default function ProjectLLMLogsPanel({ projectUuid, scope = '', title, de
                   <td><strong>{tokenValue(log, log.output_tokens, formatNumber)}{log.request_type === 'image' ? '' : ` ${t('settings.llm_logs.token_unit')}`}</strong><small>{t('settings.llm_logs.characters_short')}: {metricValue(log, log.output_characters, formatNumber)}</small><small>{t('settings.llm_logs.speed_short')}: {metricValue(log, log.output_tokens_per_second, formatNumber, { maximumFractionDigits: 2 })} {t('settings.llm_logs.tokens_per_second_unit')} · {metricValue(log, log.output_characters_per_second, formatNumber, { maximumFractionDigits: 2 })} {t('settings.llm_logs.characters_per_second_unit')}</small></td>
                   <td>{formatDuration(log.duration_ms, formatNumber)}</td>
                   <td><span className={`overview-llm-status overview-llm-status--${log.status}`}>{statusLabel(t, log.status)}</span></td>
+                  <td><CostValue log={log} /></td>
                 </tr>
               )) : null}
             </tbody>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import ModelPricesPanel from './ModelPricesPanel.jsx'
 import AppPageShell from '../components/AppPageShell.jsx'
 import { checkProvider, getSiteSettings, listProviders, resetSiteSettings, updateSiteSettings } from '../api/ai.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
@@ -222,6 +223,7 @@ export default function ProviderSettingsPage({ onboarding = false }) {
             {sortedItems.map((item) => <ProviderListItem key={item.uuid} provider={item} onOpen={() => setSelectedProviderType(item.provider_type)} />)}
           </div>
         </section>
+        {!onboarding ? <ModelPricesPanel providers={items} /> : null}
       </div>
       {selectedProvider && settingsQuery.data ? <ProviderDialog provider={selectedProvider} settings={settingsQuery.data} onboarding={onboarding} onClose={() => setSelectedProviderType(null)} onActivated={onActivated} /> : null}
     </AppPageShell>

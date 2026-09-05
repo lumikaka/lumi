@@ -9,6 +9,7 @@ export function useSiteSettingsRealtime() {
   useEffect(() => {
     const channel = getRealtimeSocket().channel('system')
     const invalidateSiteSettings = () => {
+      queryClient.invalidateQueries({ queryKey: ['model-prices'] })
       queryClient.invalidateQueries({ queryKey: ['site-settings'] })
       queryClient.invalidateQueries({ queryKey: ['providers'] })
       queryClient.invalidateQueries({ queryKey: ['active-provider'] })
@@ -32,6 +33,7 @@ export function useSiteSettingsRealtime() {
     }
     const cleanups = [
       channel.on('site_settings:updated', invalidateSiteSettings),
+      channel.on('model_price:changed', invalidateSiteSettings),
       channel.on('open_project:changed', invalidateProjectLifecycle),
       channel.on('project_creation_session:changed', invalidateProjectCreation),
       channel.on('phx_joined', invalidateAll),

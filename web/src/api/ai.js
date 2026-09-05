@@ -59,6 +59,8 @@ export function listProjectLLMLogs(projectUuid, {
   status = '',
   requestType = '',
   keyword = '',
+  from = '',
+  to = '',
 } = {}) {
   const query = new URLSearchParams({ page: String(page), per_page: String(perPage) })
   if (scope) query.set('scope', scope)
@@ -69,6 +71,8 @@ export function listProjectLLMLogs(projectUuid, {
   if (status) query.set('status', status)
   if (requestType) query.set('request_type', requestType)
   if (keyword) query.set('keyword', keyword)
+  if (from) query.set('from', from)
+  if (to) query.set('to', to)
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/llm-logs?${query}`)
 }
 

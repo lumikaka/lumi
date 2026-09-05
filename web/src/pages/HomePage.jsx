@@ -7,6 +7,7 @@ import AppPageShell from '../components/AppPageShell.jsx'
 import LumiDialog from '../components/LumiDialog.jsx'
 import PictureBookProfileFields from '../components/PictureBookProfileFields.jsx'
 import ProjectActionsMenu from '../components/ProjectActionsMenu.jsx'
+import ProjectRenameDialog from '../components/ProjectRenameDialog.jsx'
 import { ReferenceStrip } from '../components/ChatReferences.jsx'
 import { projectStatusCopy } from '../components/RecentProjectsView.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
@@ -691,6 +692,7 @@ export default function HomePage() {
                 onEnter={() => { setOpenMenuUuid(''); enterProject(project) }}
                 onReveal={() => { setOpenMenuUuid(''); revealDirectoryMutation.mutate(project.root_path) }}
                 onRelocate={() => { setTargetProject(project); setRelocatePath(project.root_path || ''); setDialog('relocate'); setOpenMenuUuid('') }}
+                onRename={() => { setTargetProject(project); setDialog('rename'); setOpenMenuUuid('') }}
                 onForget={() => { setTargetProject(project); setDialog('forget'); setOpenMenuUuid('') }}
                 locale={locale}
                 t={t}
@@ -739,6 +741,7 @@ export default function HomePage() {
 
       {dialog === 'open' ? <Modal title={t('projects.dialog.open.title')} description={t('projects.dialog.open.description')} dismissDisabled={pending} onClose={closeDialog}><form className="project-dialog-form" onSubmit={(event) => { event.preventDefault(); openPathMutation.mutate(existingPath) }}><div className="project-dialog-field"><label htmlFor="existing-project-root">{t('projects.field.root_path')}</label><div className="project-path-picker"><input id="existing-project-root" value={existingPath} onChange={(event) => setExistingPath(event.target.value)} placeholder={t('projects.field.root_path_placeholder')} required autoFocus /><button className="button-secondary" type="button" disabled={pending} onClick={() => selectDirectoryMutation.mutate(existingPath)}><FolderOpen size={16} aria-hidden="true" />{t(selectDirectoryMutation.isPending ? 'projects.open.choosing_folder' : 'projects.open.choose_folder')}</button></div></div><p className="project-dialog-hint">{t('projects.open.path_hint')}</p><div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={pending} onClick={closeDialog}>{t('common.action.cancel')}</button><button type="submit" disabled={pending || !existingPath.trim()}>{t(openPathMutation.isPending ? 'projects.open.validating' : 'projects.open.validate_enter')}</button></div></form></Modal> : null}
 
+      {dialog === 'rename' && targetProject ? <ProjectRenameDialog project={targetProject} onClose={closeDialog} /> : null}
       {dialog === 'relocate' && targetProject ? <Modal title={t('projects.dialog.relocate.title')} description={targetProject.name} dismissDisabled={relocateMutation.isPending} onClose={closeDialog}><form className="project-dialog-form" onSubmit={(event) => { event.preventDefault(); relocateMutation.mutate({ uuid: targetProject.uuid, rootPath: relocatePath }) }}><label>{t('projects.field.new_root_path')}<input value={relocatePath} onChange={(event) => setRelocatePath(event.target.value)} placeholder={t('projects.field.root_path_placeholder')} required autoFocus /></label><p className="project-dialog-hint">{t('projects.relocate.hint')}</p><div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={relocateMutation.isPending} onClick={closeDialog}>{t('common.action.cancel')}</button><button type="submit" disabled={relocateMutation.isPending || !relocatePath.trim()}>{t(relocateMutation.isPending ? 'projects.open.validating' : 'projects.relocate.validate_update')}</button></div></form></Modal> : null}
 
       {dialog === 'forget' && targetProject ? <Modal title={t('projects.dialog.forget.title')} description={targetProject.name} dismissDisabled={forgetMutation.isPending} onClose={closeDialog}><p className="project-dialog-hint">{t('projects.forget.hint')}</p><div className="lumi-dialog__actions"><button className="button-secondary" type="button" disabled={forgetMutation.isPending} onClick={closeDialog}>{t('common.action.cancel')}</button><button className="button-danger" type="button" disabled={forgetMutation.isPending} onClick={() => forgetMutation.mutate(targetProject.uuid)}>{t(forgetMutation.isPending ? 'projects.forget.removing' : 'projects.forget.confirm')}</button></div></Modal> : null}
@@ -746,7 +749,7 @@ export default function HomePage() {
   )
 }
 
-export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onReveal, onRelocate, onForget, locale, t }) {
+export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, onReveal, onRelocate, onRename, onForget, locale, t }) {
   const actions = projectRowActions(project)
   const primaryAction = projectRowPrimaryAction(project)
   const onActivate = primaryAction === 'enter' ? onEnter : undefined
@@ -762,6 +765,7 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       tabIndex={onActivate ? 0 : undefined}
       aria-label={onActivate ? t('projects.row.enter_label', { name: project.name }) : undefined}
       onClick={onActivate}
+      onContextMenu={(event) => { event.preventDefault(); if (!menuOpen) onToggleMenu(event) }}
       onKeyDown={activateOnKeyDown}
     >
       <div className={`project-card__cover ${project.cover_image_url ? '' : 'is-empty'}`}>
@@ -776,7 +780,7 @@ export function ProjectRow({ project, menuOpen, menuRef, onToggleMenu, onEnter, 
       </div>
       <div className="project-index-more" ref={menuRef} onClick={(event) => event.stopPropagation()}>
         <button className="project-index-more-button" type="button" aria-label={t('projects.row.more_label', { name: project.name })} aria-expanded={menuOpen} onClick={onToggleMenu}><MoreHorizontal size={18} /></button>
-        {menuOpen ? <ProjectActionsMenu actions={actions} project={project} t={t} onEnter={onEnter} onReveal={onReveal} onRelocate={onRelocate} onForget={onForget} /> : null}
+        {menuOpen ? <ProjectActionsMenu actions={actions} project={project} t={t} onEnter={onEnter} onReveal={onReveal} onRelocate={onRelocate} onRename={onRename} onForget={onForget} /> : null}
       </div>
     </article>
   )

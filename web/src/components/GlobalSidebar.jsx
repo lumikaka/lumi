@@ -23,6 +23,7 @@ import { useI18n } from '../i18n/useI18n.js'
 import { projectRowActions } from '../pages/projectIndexState.js'
 import LumiDialog from './LumiDialog.jsx'
 import ProjectActionsMenu from './ProjectActionsMenu.jsx'
+import ProjectRenameDialog from './ProjectRenameDialog.jsx'
 import ProjectSearchDialog from './ProjectSearchDialog.jsx'
 import SidebarProjectCreator from './SidebarProjectCreator.jsx'
 import { projectContextMenuPosition } from './projectContextMenuPosition.js'
@@ -556,10 +557,12 @@ export default function GlobalSidebar({
             revealDirectoryMutation.mutate(projectContextMenu.project.root_path)
           }}
           onRelocate={() => openProjectActionDialog('relocate', projectContextMenu.project)}
+          onRename={() => openProjectActionDialog('rename', projectContextMenu.project)}
           onForget={() => openProjectActionDialog('forget', projectContextMenu.project)}
         />,
         document.body,
       ) : null}
+      {projectActionDialog === 'rename' && projectActionTarget ? <ProjectRenameDialog project={projectActionTarget} onClose={closeProjectActionDialog} /> : null}
       {projectActionDialog === 'relocate' && projectActionTarget ? (
         <LumiDialog aria-labelledby={projectActionDialogTitleId} dismissDisabled={relocateMutation.isPending} onClose={closeProjectActionDialog}>
           <header className="lumi-dialog__header">

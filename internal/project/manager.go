@@ -76,13 +76,14 @@ type ProjectActivity struct {
 }
 
 type Manager struct {
-	mu        sync.Mutex
-	app       *appstore.Store
-	projects  map[string]*projectEntry
-	runtime   Runtime
-	openHooks []OpenHook
-	lifecycle LifecycleHook
-	now       func() time.Time
+	mu          sync.Mutex
+	directoryMu sync.Mutex
+	app         *appstore.Store
+	projects    map[string]*projectEntry
+	runtime     Runtime
+	openHooks   []OpenHook
+	lifecycle   LifecycleHook
+	now         func() time.Time
 }
 
 type Summary struct {
@@ -205,14 +206,27 @@ func (manager *Manager) WithCurrentStore(ctx context.Context, projectUUID string
 }
 
 func (manager *Manager) SyncProjectName(ctx context.Context, projectUUID string) error {
+	manager.directoryMu.Lock()
+	defer manager.directoryMu.Unlock()
 	var name string
+	var ready bool
 	if err := manager.WithStore(ctx, projectUUID, func(store *Store) error {
 		name = store.ProjectName()
+		ready = store.SetupStatus() == SetupStatusReady
 		return nil
 	}); err != nil {
 		return err
 	}
-	return manager.app.UpdateProjectName(ctx, projectUUID, name, manager.now().UTC())
+	if err := manager.app.UpdateProjectName(ctx, projectUUID, name, manager.now().UTC()); err != nil {
+		return err
+	}
+	if ready {
+		if err := manager.app.QueueDraftDirectoryName(ctx, projectUUID, name); err != nil {
+			return err
+		}
+	}
+	manager.notifyLifecycle(projectUUID, true)
+	return nil
 }
 
 // SyncCurrentProjectName is retained for internal source compatibility.
@@ -570,6 +584,11 @@ func (manager *Manager) CreateDraftAt(ctx context.Context, input DraftCreateInpu
 		committed = retained
 		return Summary{}, openErr
 	}
+	if err := manager.app.EnableDraftDirectoryNaming(ctx, input.ProjectUUID); err != nil {
+		openErr, retained := manager.failOpening(ctx, entry, store, err)
+		committed = retained
+		return Summary{}, openErr
+	}
 	manager.finishOpening(entry, store, nil)
 	manager.notifyLifecycle(input.ProjectUUID, true)
 	committed = true
@@ -587,7 +606,11 @@ func (manager *Manager) OpenRecent(ctx context.Context, projectUUID string) (Sum
 		}
 		return Summary{}, err
 	}
-	return manager.open(ctx, ExplicitExistingDirectory(recent.RootPath), projectUUID)
+	root, err := manager.recoverRenamedDirectory(ctx, recent)
+	if err != nil {
+		return Summary{}, err
+	}
+	return manager.open(ctx, ExplicitExistingDirectory(root), projectUUID)
 }
 
 func (manager *Manager) OpenSelected(ctx context.Context, selector ExistingDirectorySelector) (Summary, error) {
@@ -682,6 +705,13 @@ func (manager *Manager) openPrepared(ctx context.Context, root string, header He
 	}
 	manager.finishOpening(entry, store, nil)
 	manager.notifyLifecycle(header.UUID, true)
+	// Recover only opted-in drafts whose first finalization committed before
+	// the process could update the local directory-naming intent.
+	if store.SetupStatus() == SetupStatusReady {
+		if err := manager.app.QueueDraftDirectoryName(ctx, header.UUID, store.ProjectName()); err != nil {
+			return Summary{}, err
+		}
+	}
 	return summaryForStore(store, now), nil
 }
 

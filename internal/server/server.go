@@ -65,6 +65,9 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	modelClient := llm.NewOpenAICompatibleClient(nil)
 	imageClient := imagegen.NewOpenAICompatibleClient(nil)
 	providerService := provider.NewService(appStore, sitesettings.NewOSMasterKeyStore())
+	if err := providerService.Prices().Seed(context.Background()); err != nil {
+		slog.Warn("model price catalog unavailable", "error", err)
+	}
 	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient)
 	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient)
 	projectCreationService := projectcreation.NewService(appStore, projects, agentService, realtimeHub)
@@ -103,6 +106,14 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	filesHandler := httpapi.NewFilesHandler(projects, realtimeHub, taskManager)
 	agentHandler := httpapi.NewAgentHandler(agentService)
 	projectSetupHandler := httpapi.NewProjectSetupHandler(projects, realtimeHub)
+	priceHandler := httpapi.NewModelPriceHandler(providerService, projects, realtimeHub)
+	api.GET("/model-prices", priceHandler.Index)
+	api.POST("/model-prices", priceHandler.Create)
+	api.DELETE("/model-prices/:price_uuid", priceHandler.Delete)
+	api.GET("/projects/:project_uuid/llm-cost-summary", priceHandler.Summary)
+	api.GET("/projects/:project_uuid/llm-cost-backfills", priceHandler.Backfills)
+	api.POST("/projects/:project_uuid/llm-cost-backfills", priceHandler.Preview)
+	api.POST("/projects/:project_uuid/llm-cost-backfills/:backfill_uuid/applications", priceHandler.Apply)
 	api.GET("/providers", providerHandler.Index)
 	api.GET("/providers/active", providerHandler.Active)
 	api.GET("/providers/:provider_uuid", providerHandler.Show)
@@ -127,6 +138,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.PATCH("/recent-projects/:project_uuid", recentProjectHandler.Update)
 	api.DELETE("/recent-projects/:project_uuid", recentProjectHandler.Delete)
 	api.GET("/projects/:project_uuid", storyHandler.ShowProject)
+	api.GET("/projects/:project_uuid/directory-name-preview", projectHandler.DirectoryNamePreview)
 	api.GET("/projects/:project_uuid/project-setup", projectSetupHandler.Show)
 	api.PATCH("/projects/:project_uuid/project-setup", projectSetupHandler.Update)
 	api.PATCH("/projects/:project_uuid/project-setup/references/:reference_uuid", projectSetupHandler.UpdateReference)
@@ -371,6 +383,9 @@ func projectRequestLease(projects *project.Manager) echo.MiddlewareFunc {
 }
 
 func draftProjectRequestAllowed(method, path string) bool {
+	if method == http.MethodPost && (path == "/api/v1/projects/:project_uuid/llm-cost-backfills" || path == "/api/v1/projects/:project_uuid/llm-cost-backfills/:backfill_uuid/applications") {
+		return true
+	}
 	if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
 		return true
 	}

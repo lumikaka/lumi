@@ -12,6 +12,7 @@ import (
 
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
+	"lumi/internal/pricing"
 	"lumi/internal/project"
 	"lumi/internal/providerdiag"
 
@@ -33,6 +34,8 @@ type EventPublisher interface {
 }
 
 type StartInput struct {
+	Prices              *pricing.Service
+	Endpoint            string
 	ProjectID           int64
 	TaskRunID           int64
 	ProductionTaskRunID int64
@@ -61,6 +64,7 @@ type Handle struct {
 }
 
 type FinishInput struct {
+	BillingUsage      pricing.Usage
 	Status            string
 	OutputSummary     string
 	InputTokens       int
@@ -80,6 +84,12 @@ func Begin(ctx context.Context, store *project.Store, events EventPublisher, inp
 		return Handle{}, err
 	}
 	now := time.Now().UTC()
+	var spec struct {
+		Size    string `json:"size"`
+		Quality string `json:"quality"`
+	}
+	_ = json.Unmarshal(input.RequestPayload, &spec)
+	price := input.Prices.Freeze(ctx, pricing.Context{ProviderUUID: input.ProviderUUID, ProviderType: input.ProviderType, Model: input.Model, Region: pricing.RegionFromURL(input.Endpoint), RequestType: input.RequestType, Size: spec.Size, Quality: spec.Quality})
 	sqlDB, err := store.DB().DB()
 	if err != nil {
 		return Handle{}, err
@@ -96,11 +106,11 @@ func Begin(ctx context.Context, store *project.Store, events EventPublisher, inp
 	result, err := tx.ExecContext(ctx, `INSERT INTO llm_logs(
 		uuid,project_id,task_run_id,production_task_run_id,agent_thread_id,agent_run_id,
 		chat_thread_id,chat_run_id,workflow_id,workflow_step_id,
-		source_type,scenario,request_type,attempt,provider_uuid,provider_type,model,status,input_summary,input_characters,request_payload,created_at
-	) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?)`,
+		source_type,scenario,request_type,attempt,provider_uuid,provider_type,model,status,input_summary,input_characters,request_payload,created_at,price_snapshot,cost_status,cost_reason
+	) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?,?,'pending','')`,
 		value.String(), input.ProjectID, nullableID(input.TaskRunID), nullableID(input.ProductionTaskRunID), nullableID(input.AgentThreadID), nullableID(input.AgentRunID),
 		nullableID(input.ChatThreadID), nullableID(input.ChatRunID), nullableID(input.WorkflowID), nullableID(input.WorkflowStepID),
-		input.SourceType, input.Scenario, input.RequestType, input.Attempt, input.ProviderUUID, input.ProviderType, input.Model, Summarize(input.InputSummary, 1000), inputCharacters, string(input.RequestPayload), now)
+		input.SourceType, input.Scenario, input.RequestType, input.Attempt, input.ProviderUUID, input.ProviderType, input.Model, Summarize(input.InputSummary, 1000), inputCharacters, string(input.RequestPayload), now, pricing.JSON(price))
 	if err != nil {
 		return Handle{}, err
 	}
@@ -160,12 +170,19 @@ func FinishAtomic(ctx context.Context, store *project.Store, events EventPublish
 		return err
 	}
 	defer tx.Rollback()
+	var priceJSON sql.NullString
+	if err := tx.QueryRowContext(ctx, "SELECT price_snapshot FROM llm_logs WHERE id=? AND status='pending'", handle.ID).Scan(&priceJSON); err != nil {
+		return fmt.Errorf("AI call log %s is not pending: %w", handle.UUID, err)
+	}
+	var price pricing.Snapshot
+	_ = json.Unmarshal([]byte(priceJSON.String), &price)
+	estimate := pricing.Calculate(price, input.BillingUsage)
 	result, err := tx.ExecContext(ctx, `UPDATE llm_logs SET
 		status=?,output_summary=?,input_tokens=?,cached_input_tokens=?,output_tokens=?,output_characters=?,duration_ms=?,finish_reason=?,
-		error_code=?,error_message=?,http_status=?,provider_error_code=?,provider_request_id=?,response=?,completed_at=?
+		error_code=?,error_message=?,http_status=?,provider_error_code=?,provider_request_id=?,response=?,completed_at=?,billing_usage=?,cost_status=?,cost_reason=?,cost_origin='runtime',cost_currency=?,cost_nanos=?,cost_breakdown=?
 		WHERE id=? AND status='pending'`,
 		status, Summarize(input.OutputSummary, 1000), input.InputTokens, nullableInt(input.CachedInputTokens), input.OutputTokens, outputCharacters, time.Since(handle.StartedAt).Milliseconds(), providerdiag.RedactPreview(input.FinishReason, "", 255),
-		errorCode, Summarize(errorMessage, 2000), diagnostic.HTTPStatus, diagnostic.ProviderCode, diagnostic.RequestID, nullableJSON(input.Response), time.Now().UTC(), handle.ID)
+		errorCode, Summarize(errorMessage, 2000), diagnostic.HTTPStatus, diagnostic.ProviderCode, diagnostic.RequestID, nullableJSON(input.Response), time.Now().UTC(), pricing.JSON(input.BillingUsage), estimate.Status, estimate.Reason, estimate.Currency, estimate.Nanos, pricing.JSON(estimate.Lines), handle.ID)
 	if err != nil {
 		return err
 	}

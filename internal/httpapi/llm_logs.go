@@ -20,7 +20,7 @@ func NewLLMLogHandler(manager *project.Manager) *LLMLogHandler {
 }
 
 func (handler *LLMLogHandler) Index(c echo.Context) error {
-	filter := llmlog.Filter{
+	filter := llmlog.Filter{From: c.QueryParam("from"), To: c.QueryParam("to"),
 		Scope:        strings.ToLower(strings.TrimSpace(c.QueryParam("scope"))),
 		ProviderUUID: c.QueryParam("provider_uuid"),
 		ProviderType: c.QueryParam("provider_type"),

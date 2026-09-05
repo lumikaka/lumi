@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/pricing"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
 )
@@ -59,6 +60,7 @@ type ImageInput struct {
 	Data     []byte
 }
 type Response struct {
+	Usage                   pricing.Usage
 	Bytes                   []byte
 	MIMEType, RevisedPrompt string
 }
@@ -132,15 +134,19 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		diagnostic := providerdiag.ReadHTTPError(response, input.APIKey)
 		return Response{}, classify(fmt.Errorf("Cloudflare returned HTTP %d", response.StatusCode), response.StatusCode, diagnostic)
 	}
-	var envelope struct {
-		Output []struct {
-			Type          string `json:"type"`
-			Result        string `json:"result"`
-			RevisedPrompt string `json:"revised_prompt"`
-		} `json:"output"`
-	}
+	var envelope responsesEnvelope
 	if err := json.NewDecoder(io.LimitReader(response.Body, 96<<20)).Decode(&envelope); err != nil {
 		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 返回了无法解析的图片响应。", Retryable: true, Cause: err}
+	}
+	result := Response{Usage: envelope.billingUsage(input)}
+	var count int64
+	for _, item := range envelope.Output {
+		if item.Type == "image_generation_call" && strings.TrimSpace(item.Result) != "" {
+			count++
+		}
+	}
+	if count > 0 {
+		result.Usage.OutputImages = pricing.Int(count)
 	}
 	for _, item := range envelope.Output {
 		if item.Type != "image_generation_call" || strings.TrimSpace(item.Result) == "" {
@@ -148,15 +154,15 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		}
 		imageBytes, err := base64.StdEncoding.DecodeString(item.Result)
 		if err != nil || len(imageBytes) == 0 || len(imageBytes) > maxImageBytes {
-			return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 图片内容无效。", Cause: err}
+			return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 图片内容无效。", Cause: err}
 		}
 		mimeType := http.DetectContentType(imageBytes)
 		if mimeType != "image/png" && mimeType != "image/jpeg" && mimeType != "image/webp" {
-			return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 返回的内容不是支持的图片。"}
+			return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 返回的内容不是支持的图片。"}
 		}
-		return Response{Bytes: imageBytes, MIMEType: mimeType, RevisedPrompt: item.RevisedPrompt}, nil
+		return Response{Bytes: imageBytes, MIMEType: mimeType, RevisedPrompt: item.RevisedPrompt, Usage: result.Usage}, nil
 	}
-	return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 未返回 image_generation_call。", Retryable: true}
+	return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 未返回 image_generation_call。", Retryable: true}
 }
 
 func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input Request) (Response, error) {
@@ -199,6 +205,13 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 		return Response{}, classify(fmt.Errorf("Bailian returned HTTP %d", response.StatusCode), response.StatusCode, diagnostic)
 	}
 	var envelope struct {
+		Usage struct {
+			InputImageCount  *int64 `json:"input_image_count"`
+			OutputImageCount *int64 `json:"output_image_count"`
+			OutputImageType  string `json:"output_image_type"`
+			OutputWidth      int    `json:"output_width"`
+			OutputHeight     int    `json:"output_height"`
+		} `json:"usage"`
 		Output struct {
 			Choices []struct {
 				Message struct {
@@ -209,7 +222,7 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 			} `json:"choices"`
 		} `json:"output"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&envelope); err != nil || len(envelope.Output.Choices) == 0 || len(envelope.Output.Choices[0].Message.Content) == 0 {
+	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&envelope); err != nil {
 		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "百炼未返回可用图片。", Retryable: true, Cause: err}
 	}
 	imageURL := ""
@@ -224,21 +237,48 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 			break
 		}
 	}
+	var generated int64
+	for _, choice := range envelope.Output.Choices {
+		for _, content := range choice.Message.Content {
+			if strings.TrimSpace(content.Image) != "" {
+				generated++
+			}
+		}
+	}
+	result := Response{Usage: pricing.Usage{InputImages: pricing.Int(int64(len(input.Images))), OutputImages: pricing.Int(generated), Size: input.Size, Quality: input.Quality}}
+	if envelope.Usage.InputImageCount != nil {
+		result.Usage.InputImages = envelope.Usage.InputImageCount
+	}
+	if envelope.Usage.OutputImageCount != nil {
+		result.Usage.OutputImages = envelope.Usage.OutputImageCount
+	}
+	switch envelope.Usage.OutputImageType {
+	case "qima_output_1k":
+		result.Usage.Resolution = "1k"
+	case "qima_output_2k":
+		result.Usage.Resolution = "2k"
+	}
+	if envelope.Usage.OutputWidth > 0 && envelope.Usage.OutputHeight > 0 {
+		result.Usage.Size = fmt.Sprintf("%dx%d", envelope.Usage.OutputWidth, envelope.Usage.OutputHeight)
+	}
 	if strings.TrimSpace(imageURL) == "" {
-		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "百炼未返回图片 URL。"}
+		if envelope.Usage.OutputImageCount == nil {
+			result.Usage.OutputImages = nil
+		}
+		return result, &Error{Code: "image_invalid_response", SafeMessage: "百炼未返回图片 URL。", Retryable: len(envelope.Output.Choices) == 0 || len(envelope.Output.Choices[0].Message.Content) == 0}
 	}
 	content, err := client.download(ctx, imageURL)
 	if err != nil {
-		return Response{}, err
+		return result, err
 	}
 	if len(content) == 0 || len(content) > maxImageBytes {
-		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "百炼图片为空或超过 64MB。"}
+		return result, &Error{Code: "image_invalid_response", SafeMessage: "百炼图片为空或超过 64MB。"}
 	}
 	mime := http.DetectContentType(content)
 	if mime != "image/png" && mime != "image/jpeg" && mime != "image/gif" && mime != "image/webp" {
-		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "百炼返回的内容不是支持的图片。"}
+		return result, &Error{Code: "image_invalid_response", SafeMessage: "百炼返回的内容不是支持的图片。"}
 	}
-	return Response{Bytes: content, MIMEType: mime}, nil
+	return Response{Bytes: content, MIMEType: mime, Usage: result.Usage}, nil
 }
 
 func (client *OpenAICompatibleClient) download(ctx context.Context, raw string) ([]byte, error) {
@@ -327,3 +367,5 @@ func classify(err error, status int, diagnostics ...providerdiag.Details) error 
 	}
 	return &Error{Code: "image_provider_error", SafeMessage: "图片 Provider 拒绝了请求。", Cause: err, Diagnostic: diagnostic}
 }
+
+func (r Response) BillingUsage() pricing.Usage { return r.Usage }

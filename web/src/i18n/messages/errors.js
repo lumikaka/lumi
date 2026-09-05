@@ -1,6 +1,10 @@
 import { defineMessages } from './defineMessages.js'
 
 export const errors = defineMessages({
+  "errors.code.model_price_invalid": ["计价配置或筛选无效，请检查价格档位、地域和所需用量。", "Invalid pricing or filters. Check tiers, region, and required usage."],
+  "errors.code.model_price_conflict": ["价格已被更新，请刷新后重试。", "The price was updated. Refresh and try again."],
+  "errors.code.model_price_not_found": ["计价资源不存在。", "The pricing resource does not exist."],
+  "errors.code.model_price_unavailable": ["本地费用估算暂不可用。", "Local cost estimates are temporarily unavailable."],
   'errors.title': ['操作失败', 'Operation failed'],
   'errors.generic': ['操作暂时无法完成，请稍后重试。', 'The operation could not be completed. Please try again.'],
   'errors.network': ['无法连接 Lumi 服务，请检查服务状态后重试。', 'Could not connect to the Lumi service. Check its status and try again.'],

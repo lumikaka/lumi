@@ -1,0 +1,167 @@
+@use '../styles/design-tokens' as *
+
+.pricing-panel, .pricing-summary
+  border: 1px solid rgba(128, 128, 128, .25)
+  border-radius: 12px
+  padding: 18px
+  margin-block: 16px
+  min-width: 0
+
+.pricing-actions
+  display: flex
+  flex-wrap: wrap
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  margin-block: 12px
+  h2
+    font-size: 1.05rem
+    margin: 0
+
+.pricing-note
+  font-size: .85rem
+  opacity: .78
+  line-height: 1.7
+
+.pricing-table-wrap
+  overflow-x: auto
+  margin-block: 12px
+
+.pricing-table
+  width: 100%
+  border-collapse: collapse
+  font-size: .85rem
+  td, th
+    padding: 10px
+    text-align: left
+    vertical-align: top
+    border-bottom: 1px solid rgba(128, 128, 128, .18)
+  small
+    display: block
+    margin-top: 4px
+    opacity: .75
+    overflow-wrap: anywhere
+
+.lumi-dialog.pricing-dialog
+  width: min(1000px, calc(100vw - 32px))
+  max-height: calc(100dvh - 48px)
+  overflow-y: auto
+  > :not(header)
+    margin-inline: 18px
+  > form
+    padding-block: 18px
+  > :last-child
+    margin-bottom: 18px
+
+.pricing-fields
+  display: grid
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
+  gap: 12px
+  label
+    display: flex
+    flex-direction: column
+    gap: 6px
+    font-size: .85rem
+  input, select
+    min-width: 0
+    width: 100%
+
+.pricing-rate
+  border: 1px solid rgba(128, 128, 128, .25)
+  border-radius: 8px
+  padding: 12px
+  margin-block: 12px
+  min-width: 0
+
+.pricing-totals
+  display: flex
+  flex-wrap: wrap
+  gap: 20px
+  font-variant-numeric: tabular-nums
+  font-size: 1.25rem
+
+.pricing-price-options
+  max-height: 320px
+  overflow: auto
+  display: grid
+  gap: 8px
+  padding: 3px
+  scrollbar-gutter: stable
+
+.pricing-price-option
+  display: grid
+  grid-template-columns: 18px minmax(0, 1fr)
+  align-items: start
+  gap: 12px
+  padding: 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-md
+  color: $color-text
+  background: $color-surface
+  cursor: pointer
+  transition: background 120ms ease, border-color 120ms ease
+
+  // Checkbox controls must not inherit the full-width text input layout.
+  > input[type="checkbox"]
+    width: 18px
+    height: 18px
+    min-width: 18px
+    padding: 0
+    margin: 1px 0 0
+    accent-color: $color-accent
+    cursor: inherit
+
+  &:hover
+    border-color: $color-border-strong
+    background: $color-surface-subtle
+
+  &:has(input:checked)
+    border-color: $color-accent
+    background: $color-accent-muted
+
+  &:has(input:checked):hover
+    border-color: $color-accent-strong
+    background: rgba($color-accent, .14)
+
+  &:has(input:disabled)
+    cursor: not-allowed
+    opacity: .65
+
+.pricing-price-option__content
+  min-width: 0
+  overflow-wrap: anywhere
+  line-height: $line-height-body
+  small
+    display: block
+    margin-top: 4px
+    color: $color-muted
+    font-size: $font-size-small
+
+.pricing-price-option__heading
+  display: flex
+  flex-wrap: wrap
+  align-items: baseline
+  gap: 4px 12px
+  font-size: $font-size-body
+  > span
+    color: $color-muted
+    font-size: $font-size-small
+
+.pricing-preview
+  padding: 14px
+  margin-block: 12px
+  border-radius: 8px
+  background: rgba(128, 128, 128, .08)
+
+.pricing-panel details, .pricing-summary details
+  margin-block: 8px
+  summary
+    cursor: pointer
+
+.project-overview--llm-logs .overview-llm-filter-actions
+  grid-column: 1 / -1
+  justify-content: flex-end
+  flex-wrap: wrap
+  > button
+    flex: 0 0 auto
+    white-space: nowrap

@@ -1,0 +1,11 @@
+DROP TABLE llm_cost_backfill_items;
+DROP TABLE llm_cost_backfills;
+DROP INDEX llm_logs_cost_index;
+ALTER TABLE llm_logs DROP COLUMN cost_breakdown;
+ALTER TABLE llm_logs DROP COLUMN cost_nanos;
+ALTER TABLE llm_logs DROP COLUMN cost_currency;
+ALTER TABLE llm_logs DROP COLUMN cost_origin;
+ALTER TABLE llm_logs DROP COLUMN cost_reason;
+ALTER TABLE llm_logs DROP COLUMN cost_status;
+ALTER TABLE llm_logs DROP COLUMN billing_usage;
+ALTER TABLE llm_logs DROP COLUMN price_snapshot;

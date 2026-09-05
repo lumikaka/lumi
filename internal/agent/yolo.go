@@ -1509,7 +1509,7 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 	if err != nil {
 		return err
 	}
-	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
+	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{Prices: service.providers.Prices(), Endpoint: request.BaseURL,
 		ProjectID: workflow.ProjectID, WorkflowID: workflow.ID, WorkflowStepID: step.ID,
 		SourceType: llmlog.SourceWorkflow, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: int(previous) + 1,
 		ProviderUUID: snapshot.ProviderUUID, ProviderType: resolved.ProviderType, Model: snapshot.Model, InputSummary: userPrompt,
@@ -1523,7 +1523,7 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 	if err == nil {
 		responsePayload, err = llmlog.EncodeChatResponse(response, request.APIKey)
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{BillingUsage: response.BillingUsage(),
 		OutputSummary: response.Message.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
 		FinishReason: response.FinishReason, Response: responsePayload, Err: err,
 	})

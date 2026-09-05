@@ -1,6 +1,6 @@
 export function projectRowActions(project) {
-	if (project.open) return ['enter', 'reveal', 'forget']
-  if (project.available) return ['enter', 'reveal', 'relocate', 'forget']
+	if (project.open) return ['enter', 'reveal', 'rename', 'forget']
+  if (project.available) return ['enter', 'reveal', 'rename', 'relocate', 'forget']
   return ['relocate', 'forget']
 }
 

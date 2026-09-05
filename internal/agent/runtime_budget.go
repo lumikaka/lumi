@@ -80,7 +80,7 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 		return llm.ChatResponse{}, err
 	}
 	tc.Run.ModelRequestCount = requestOrdinal
-	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{
+	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{Prices: service.providers.Prices(), Endpoint: request.BaseURL,
 		ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID,
 		SourceType: llmlog.SourceProjectChat, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: requestOrdinal,
 		ProviderUUID: tc.Run.ProviderUUID, ProviderType: resolved.ProviderType, Model: tc.Run.Model,
@@ -137,7 +137,7 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 	}
 	usageFallbackBytes := saturatingAddInt64(int64(requestBytes), responseBytes)
 	tokenUnits := modelUsageTokenUnits(response.Usage, usageFallbackBytes)
-	finishErr := llmlog.FinishAtomic(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{
+	finishErr := llmlog.FinishAtomic(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{BillingUsage: response.BillingUsage(),
 		OutputSummary: outputSummary, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
 		FinishReason: providerdiag.RedactPreview(response.FinishReason, request.APIKey, 255), Response: responsePayload, Err: loggedErr,
 	}, func(finishCtx context.Context, tx *sql.Tx) error {

@@ -1,6 +1,11 @@
 import { defineMessages } from './defineMessages.js'
 
 export const projects = defineMessages({
+  'projects.action.rename': ['重命名项目', 'Rename project'],
+  'projects.rename.directory': ['同时重命名项目文件夹', 'Also rename the project folder'],
+  'projects.rename.path_preview': ['新路径（重名时自动编号）', 'New path (numbered if already taken)'],
+  'projects.rename.preview_loading': ['正在计算新路径…', 'Calculating the new path…'],
+  'projects.rename.directory_hint': ['如有任务正在运行，文件夹将在任务结束后重命名。保存时若路径已被占用，将继续编号。', 'If tasks are running, the folder will be renamed after they finish. If the path is taken when saved, the next number will be used.'],
   'projects.title': ['项目', 'Projects'],
   'projects.all': ['所有项目', 'All projects'],
 	'projects.current': ['当前项目', 'Current project'],
@@ -326,7 +331,7 @@ export const projects = defineMessages({
   'projects.conversation.label': ['你的第一句话', 'Your first message'],
   'projects.conversation.placeholder': ['描述一个故事、上传灵感，或者请 Lumi 帮你继续创作……', 'Describe a story, add inspiration, or ask Lumi to keep creating…'],
   'projects.conversation.required': ['请先描述你想创作的项目。', 'Describe the project you want to create.'],
-  'projects.conversation.path_hint': ['使用系统默认项目目录；显示名称稍后可在对话中确定，本地文件夹不会随之改名。', 'Uses the system default project folder. The display name can be decided in chat; the local folder will not be renamed.'],
+  'projects.conversation.path_hint': ['使用系统默认项目目录；首次定稿后，草稿文件夹会按项目名称自动命名。', 'Uses the system default project folder. The draft folder is automatically named after the project when setup is finalized.'],
   'projects.conversation.submit': ['创建草稿并开始对话', 'Create draft and start chatting'],
   'projects.conversation.send': ['发送', 'Send'],
   'projects.conversation.unlinked': ['未关联绘本', 'No picture book linked'],
@@ -347,5 +352,5 @@ export const projects = defineMessages({
   'projects.draft.eyebrow': ['项目初始化', 'PROJECT SETUP'],
   'projects.draft.title': ['在 ChatArea 中完成项目设置', 'Complete setup in ChatArea'],
   'projects.draft.body': ['你的第一条消息已经保存在普通项目会话中。Agent 会先整理初始化草稿，只在关键歧义处提问，并在你明确确认前保持项目为草稿。', 'Your first message is saved in a normal project thread. The agent prepares a setup draft, asks only about material ambiguity, and keeps the project as a draft until you explicitly confirm.'],
-  'projects.draft.directory_hint': ['项目显示名称与本地草稿文件夹名可以不同；本功能不会移动或重命名已打开目录。', 'The project display name may differ from its local draft folder; this flow never moves or renames the open folder.'],
+  'projects.draft.directory_hint': ['系统创建的草稿首次定稿后，文件夹会按项目名称自动命名；正在运行的任务结束后生效。', 'After a system-created draft is first finalized, its folder is named after the project once running tasks finish.'],
 })

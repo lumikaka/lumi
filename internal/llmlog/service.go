@@ -18,6 +18,11 @@ var (
 )
 
 type Log struct {
+	CostStatus                string     `json:"cost_status"`
+	CostReason                string     `json:"cost_reason"`
+	CostOrigin                string     `json:"cost_origin"`
+	CostCurrency              string     `json:"cost_currency"`
+	CostAmount                *string    `json:"cost_amount"`
 	UUID                      string     `json:"uuid"`
 	SourceType                string     `json:"source_type"`
 	Scenario                  string     `json:"scenario"`
@@ -54,12 +59,14 @@ type Log struct {
 }
 
 type Detail struct {
+	CostDetails json.RawMessage `json:"cost_details"`
 	Log
 	RequestPayload json.RawMessage `json:"request_payload"`
 	Response       json.RawMessage `json:"response"`
 }
 
 type detailRow struct {
+	CostDetails sql.NullString `gorm:"column:cost_details"`
 	Log
 	RequestPayload sql.NullString `gorm:"column:request_payload"`
 	Response       sql.NullString `gorm:"column:response"`
@@ -73,14 +80,16 @@ type Pagination struct {
 }
 
 type Filter struct {
-	Scope        string
-	ProviderUUID string
-	ProviderType string
-	Model        string
-	Scenario     string
-	Status       string
-	RequestType  string
-	Keyword      string
+	From         string `json:"from"`
+	To           string `json:"to"`
+	Scope        string `json:"scope"`
+	ProviderUUID string `json:"provider_uuid"`
+	ProviderType string `json:"provider_type"`
+	Model        string `json:"model"`
+	Scenario     string `json:"scenario"`
+	Status       string `json:"status"`
+	RequestType  string `json:"request_type"`
+	Keyword      string `json:"keyword"`
 }
 
 type ProviderFilterOption struct {
@@ -108,6 +117,8 @@ func NewService(store *project.Store) *Service {
 const unifiedLogsSQL = `
 SELECT
   logs.uuid AS uuid,
+  logs.cost_status, logs.cost_reason, logs.cost_origin, logs.cost_currency, logs.cost_nanos,
+  CASE WHEN logs.cost_nanos IS NOT NULL THEN printf('%d.%09d', logs.cost_nanos / 1000000000, logs.cost_nanos % 1000000000) ELSE NULL END AS cost_amount,
   logs.source_type AS source_type,
   logs.scenario AS scenario,
 	CASE
@@ -220,6 +231,20 @@ func normalizeFilter(filter Filter) Filter {
 }
 
 func validateFilter(filter Filter) error {
+	for _, value := range []string{filter.From, filter.To} {
+		if value != "" {
+			if _, err := time.Parse(time.RFC3339Nano, value); err != nil {
+				return fmt.Errorf("%w: dates must be RFC3339", ErrInvalidFilter)
+			}
+		}
+	}
+	if filter.From != "" && filter.To != "" {
+		a, _ := time.Parse(time.RFC3339Nano, filter.From)
+		b, _ := time.Parse(time.RFC3339Nano, filter.To)
+		if !a.Before(b) {
+			return ErrInvalidFilter
+		}
+	}
 	if filter.Scope != "" && filter.Scope != "project" && filter.Scope != "premise" {
 		return fmt.Errorf("%w: scope must be project or premise", ErrInvalidFilter)
 	}
@@ -254,6 +279,16 @@ func filterWhere(filter Filter) (string, []any) {
 	add("scenario", filter.Scenario)
 	add("status", filter.Status)
 	add("request_type", filter.RequestType)
+	if filter.From != "" {
+		value, _ := time.Parse(time.RFC3339Nano, filter.From)
+		clauses = append(clauses, "created_at >= ?")
+		args = append(args, value.UTC())
+	}
+	if filter.To != "" {
+		value, _ := time.Parse(time.RFC3339Nano, filter.To)
+		clauses = append(clauses, "created_at < ?")
+		args = append(args, value.UTC())
+	}
 	if filter.Keyword != "" {
 		needle := "%" + escapeLike(strings.ToLower(filter.Keyword)) + "%"
 		clauses = append(clauses, `(lower(input_summary) LIKE ? ESCAPE '\' OR lower(output_summary) LIKE ? ESCAPE '\' OR lower(model) LIKE ? ESCAPE '\' OR lower(scenario) LIKE ? ESCAPE '\' OR lower(error_code) LIKE ? ESCAPE '\' OR lower(provider_request_id) LIKE ? ESCAPE '\')`)
@@ -312,7 +347,8 @@ func (service *Service) Get(ctx context.Context, logUUID string) (Detail, error)
 	if err := service.store.DB().WithContext(ctx).Model(&project.Project{}).Where("uuid = ?", service.store.ProjectUUID()).Pluck("id", &projectID).Error; err != nil {
 		return Detail{}, err
 	}
-	query := `SELECT summary.*, raw.request_payload, raw.response
+	query := `SELECT summary.*, raw.request_payload, raw.response,
+ json_object('price_snapshot',json(raw.price_snapshot),'usage',json(raw.billing_usage),'lines',json(raw.cost_breakdown)) AS cost_details
 FROM (` + unifiedLogsSQL + `) AS summary
 JOIN llm_logs AS raw ON raw.uuid = summary.uuid
 WHERE summary.uuid = ?
@@ -333,7 +369,7 @@ LIMIT 1`
 	if err != nil {
 		return Detail{}, fmt.Errorf("decode LLM log response: %w", err)
 	}
-	return Detail{Log: row.Log, RequestPayload: requestPayload, Response: response}, nil
+	return Detail{Log: row.Log, RequestPayload: requestPayload, Response: response, CostDetails: json.RawMessage(row.CostDetails.String)}, nil
 }
 
 func decodeNullableJSON(value sql.NullString) (json.RawMessage, error) {

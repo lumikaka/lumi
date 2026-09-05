@@ -12,6 +12,7 @@ import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import { projectionStateLabel } from '../i18n/labels.js'
 import ComicExportDialog from '../components/ComicExportDialog.jsx'
 import ProjectDashboardModeSetting from '../components/ProjectDashboardModeSetting.jsx'
+import ProjectDirectoryRenameOption, { useProjectDirectoryPreview } from '../components/ProjectDirectoryRenameOption.jsx'
 import ProjectModelSettingsCard from '../components/ProjectModelSettingsCard.jsx'
 import { comicExportDialogRequest } from './comicExportState.js'
 import { formatTerminologyMessageKey, pictureBookProfileDetails, pictureBookRatio } from './pictureBookProfile.js'
@@ -64,6 +65,8 @@ export function OverviewSummaryPanel({
   const [editingProject, setEditingProject] = useState(false)
   const [editingStyle, setEditingStyle] = useState(false)
   const [name, setName] = useState('')
+  const [renameDirectory, setRenameDirectory] = useState(false)
+  const directoryPreview = useProjectDirectoryPreview(projectUuid, name, editingProject && renameDirectory)
   const [description, setDescription] = useState('')
   const [generationLanguage, setGenerationLanguage] = useState('zh-Hans')
   const [style, setStyle] = useState('')
@@ -95,6 +98,7 @@ export function OverviewSummaryPanel({
   const updateProject = useMutation({
     mutationFn: () => updateStoryProject(projectUuid, {
       name,
+      rename_directory: renameDirectory,
       description,
       generation_language: projectQuery.data.generation_language,
       expected_revision: projectQuery.data.revision,
@@ -105,6 +109,7 @@ export function OverviewSummaryPanel({
 		queryClient.invalidateQueries({ queryKey: projectQueryKeys.openProjects() })
 		queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
       setEditingProject(false)
+      setRenameDirectory(false)
       setError(null)
     },
     onError: setError,
@@ -152,13 +157,14 @@ export function OverviewSummaryPanel({
     setName(project.name || '')
     setDescription(project.description || '')
     setEditingProject(false)
+    setRenameDirectory(false)
   }
   const cancelStyleEdit = () => {
     setStyle(premise?.default_style || '')
     setEditingStyle(false)
   }
   const configurationDirty = Boolean(project) && (
-    name !== (project.name || '')
+    renameDirectory || name !== (project.name || '')
     || description !== (project.description || '')
   )
 
@@ -174,11 +180,12 @@ export function OverviewSummaryPanel({
                 {!editingProject ? <button type="button" className="button-quiet overview-card__action" onClick={() => setEditingProject(true)}>{t('projects.configuration')}</button> : null}
               </header>
               {editingProject ? (
-                <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); updateProject.mutate() }}>
+                <form className="overview-edit-form" onSubmit={(event) => { event.preventDefault(); if (!renameDirectory || (directoryPreview.data && !directoryPreview.isFetching && !directoryPreview.error)) updateProject.mutate() }}>
                   <label>{t('projects.field.name')}<input value={name} onChange={(event) => setName(event.target.value)} required maxLength="120" /></label>
+                  <ProjectDirectoryRenameOption checked={renameDirectory} onChange={setRenameDirectory} preview={directoryPreview} disabled={updateProject.isPending} />
                   <label>{t('projects.overview.description')}<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows="4" maxLength="2000" /></label>
                   <ProjectDashboardModeSetting projectUuid={projectUuid} dirty={configurationDirty} disabled={updateProject.isPending} />
-                  <div className="overview-form-actions"><button type="submit" disabled={!name.trim() || updateProject.isPending}>{t(updateProject.isPending ? 'common.status.saving' : 'common.action.save')}</button><button type="button" className="button-secondary" disabled={updateProject.isPending} onClick={cancelProjectEdit}>{t('common.action.cancel')}</button></div>
+                  <div className="overview-form-actions"><button type="submit" disabled={!name.trim() || updateProject.isPending || (renameDirectory && (!directoryPreview.data || directoryPreview.isFetching || directoryPreview.error))}>{t(updateProject.isPending ? 'common.status.saving' : 'common.action.save')}</button><button type="button" className="button-secondary" disabled={updateProject.isPending} onClick={cancelProjectEdit}>{t('common.action.cancel')}</button></div>
                 </form>
               ) : (
                 <>

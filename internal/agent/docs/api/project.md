@@ -51,6 +51,7 @@
 | --- | --- | --- | --- | --- |
 | `project_uuid` | path | string(UUIDv7) | 是 | 当前项目的公开 UUIDv7。 |
 | `name` | body | string | 是 | 完整项目名称；去除首尾空白后须为 1–120 个字符。 |
+| `rename_directory` | body | boolean | 否 | 用户明确要求时传 `true`，同时按名称重命名项目文件夹；默认保留目录。运行中的任务结束后执行，重名时自动编号。 |
 | `description` | body | string | 是 | 完整项目简介；最多 2,000 个字符，可为空字符串。 |
 | `generation_language` | body | string | 否 | 生成语言枚举：`zh-Hans`、`en`；省略时保持原值。 |
 | `expected_revision` | body | integer | 是 | 刚读取到的 `data.revision`；范围 0–2,147,483,647。 |

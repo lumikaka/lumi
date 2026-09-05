@@ -51,6 +51,12 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		value, err := storyService.GetProject(ctx)
 		return value, true, err
 	case RouteProjectUpdate:
+		renameDirectory, hasRenameDirectory := args["rename_directory"].(bool)
+		if renameDirectory && service.projects != nil {
+			if _, err := service.projects.PreviewDirectoryName(ctx, tc.ProjectUUID, stringArg(args, "name")); err != nil {
+				return nil, true, err
+			}
+		}
 		language, hasLanguage := args["generation_language"].(string)
 		var languagePointer *string
 		if hasLanguage {
@@ -62,6 +68,9 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		})
 		if err == nil && service.projects != nil {
 			err = service.projects.SyncProjectName(ctx, tc.ProjectUUID)
+			if err == nil && hasRenameDirectory {
+				err = service.projects.SetDirectoryRename(ctx, tc.ProjectUUID, value.Name, renameDirectory)
+			}
 		}
 		return value, true, err
 	case RouteProjectSetupReferenceUpdate:

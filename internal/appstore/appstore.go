@@ -19,13 +19,15 @@ var ErrProjectCreationSessionNotFound = errors.New("project creation session not
 var ErrProjectCreationReferenceNotFound = errors.New("project creation reference not found")
 
 type RecentProject struct {
-	ID           int64 `gorm:"primaryKey;autoIncrement" json:"-"`
-	UUID         string
-	Name         string
-	RootPath     string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	LastOpenedAt time.Time
+	ID                   int64 `gorm:"primaryKey;autoIncrement" json:"-"`
+	UUID                 string
+	Name                 string
+	RootPath             string
+	AutoNameDirectory    bool
+	PendingDirectoryName string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	LastOpenedAt         time.Time
 }
 
 func (RecentProject) TableName() string { return "recent_projects" }
@@ -154,9 +156,14 @@ func (store *Store) RecordProject(ctx context.Context, projectUUID, name, rootPa
 			}
 			return nil
 		}
-		if err := tx.Model(&existing).Updates(map[string]any{
+		updates := map[string]any{
 			"name": name, "root_path": rootPath, "updated_at": openedAt, "last_opened_at": openedAt,
-		}).Error; err != nil {
+		}
+		if existing.RootPath != rootPath {
+			updates["auto_name_directory"] = false
+			updates["pending_directory_name"] = ""
+		}
+		if err := tx.Model(&existing).Updates(updates).Error; err != nil {
 			return fmt.Errorf("update recent project: %w", err)
 		}
 		return nil
@@ -166,6 +173,7 @@ func (store *Store) RecordProject(ctx context.Context, projectUUID, name, rootPa
 func (store *Store) RelocateProject(ctx context.Context, projectUUID, rootPath string, updatedAt time.Time) error {
 	result := store.db.WithContext(ctx).Model(&RecentProject{}).Where("uuid = ?", projectUUID).Updates(map[string]any{
 		"root_path": rootPath, "updated_at": updatedAt, "last_opened_at": updatedAt,
+		"auto_name_directory": false, "pending_directory_name": "",
 	})
 	if result.Error != nil {
 		return fmt.Errorf("relocate recent project: %w", result.Error)

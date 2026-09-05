@@ -1139,3 +1139,25 @@
 @media (hover: none)
   .project-index-more-button
     opacity: 1
+
+.project-directory-rename
+  display: grid
+  gap: 8px
+  min-width: 0
+
+  .project-directory-rename__toggle
+    display: flex
+    flex-direction: row
+    align-items: center
+    gap: 8px
+
+    input[type="checkbox"]
+      width: 16px
+      min-width: 16px
+      height: 16px
+      margin: 0
+
+  &__path
+    display: block
+    overflow-wrap: anywhere
+    font-size: 12px

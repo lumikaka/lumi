@@ -83,7 +83,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		if logErr != nil {
 			return runtime.handleWorkError(ctx, record, logErr, job.Attempt, job.MaxAttempts)
 		}
-		logHandle, logErr := llmlog.Begin(workCtx, runtime.store, runtime.manager.hub, llmlog.StartInput{
+		logHandle, logErr := llmlog.Begin(workCtx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
 			ProjectID: runtime.projectID, TaskRunID: record.ID, AgentThreadID: agentThreadID, AgentRunID: agentRunID,
 			SourceType: llmlog.SourceStoryGeneration, Scenario: record.Kind, RequestType: llmlog.RequestText, Attempt: job.Attempt,
 			ProviderUUID: snapshot.ProviderUUID, ProviderType: snapshot.ProviderType, Model: snapshot.Model, InputSummary: snapshot.Prompt,
@@ -106,7 +106,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 				err = logErr
 			}
 		}
-		finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, logHandle, llmlog.FinishInput{
+		finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, logHandle, llmlog.FinishInput{BillingUsage: response.BillingUsage(),
 			OutputSummary: response.Content, InputTokens: response.Usage.InputTokens, CachedInputTokens: response.Usage.CachedInputTokens, OutputTokens: response.Usage.OutputTokens,
 			FinishReason: response.FinishReason, Response: responsePayload, Err: err,
 		})

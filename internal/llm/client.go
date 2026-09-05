@@ -73,6 +73,8 @@ type ImageInput struct {
 }
 
 type Usage struct {
+	InputKnown        bool `json:"input_known"`
+	OutputKnown       bool `json:"output_known"`
 	InputTokens       int  `json:"input_tokens"`
 	CachedInputTokens *int `json:"cached_input_tokens,omitempty"`
 	OutputTokens      int  `json:"output_tokens"`
@@ -362,13 +364,7 @@ const (
 
 type chatCompletionResponseEnvelope struct {
 	Choices []chatCompletionResponseChoice `json:"choices"`
-	Usage   struct {
-		PromptTokens        int `json:"prompt_tokens"`
-		CompletionTokens    int `json:"completion_tokens"`
-		PromptTokensDetails *struct {
-			CachedTokens int `json:"cached_tokens"`
-		} `json:"prompt_tokens_details"`
-	} `json:"usage"`
+	Usage   wireUsage                      `json:"usage"`
 }
 
 type chatCompletionResponseChoice struct {
@@ -413,11 +409,7 @@ func decodeStrictChatCompletion(body []byte) (chatCompletionResponseEnvelope, bo
 }
 
 func partialChatResponse(envelope chatCompletionResponseEnvelope) ChatResponse {
-	partial := ChatResponse{Usage: Usage{
-		InputTokens:       envelope.Usage.PromptTokens,
-		CachedInputTokens: cachedTokens(envelope.Usage.PromptTokensDetails),
-		OutputTokens:      envelope.Usage.CompletionTokens,
-	}}
+	partial := ChatResponse{Usage: envelope.Usage.normalized()}
 	if len(envelope.Choices) > 0 {
 		partial.FinishReason = envelope.Choices[0].FinishReason
 		if content, ok := optionalJSONString(envelope.Choices[0].Message.Content); ok {
@@ -538,23 +530,7 @@ type completionEnvelope struct {
 		} `json:"message"`
 		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
-	Usage struct {
-		PromptTokens        int `json:"prompt_tokens"`
-		CompletionTokens    int `json:"completion_tokens"`
-		PromptTokensDetails *struct {
-			CachedTokens int `json:"cached_tokens"`
-		} `json:"prompt_tokens_details"`
-	} `json:"usage"`
-}
-
-func cachedTokens(details *struct {
-	CachedTokens int `json:"cached_tokens"`
-}) *int {
-	if details == nil {
-		return nil
-	}
-	value := details.CachedTokens
-	return &value
+	Usage wireUsage `json:"usage"`
 }
 
 func readStream(ctx context.Context, reader io.Reader, onDelta func(string) error) (Response, error) {
@@ -565,7 +541,7 @@ func readStream(ctx context.Context, reader io.Reader, onDelta func(string) erro
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
-			return Response{}, classify(ctx.Err(), 0)
+			return result, classify(ctx.Err(), 0)
 		default:
 		}
 		line := strings.TrimSpace(scanner.Text())
@@ -578,23 +554,27 @@ func readStream(ctx context.Context, reader io.Reader, onDelta func(string) erro
 		}
 		var event completionEnvelope
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
-			return Response{}, &Error{Code: CodeProviderResponse, SafeMessage: "Provider 返回了无法解析的流式响应。", Retryable: true, Cause: err}
+			return result, &Error{Code: CodeProviderResponse, SafeMessage: "Provider 返回了无法解析的流式响应。", Retryable: true, Cause: err}
 		}
-		if event.Usage.PromptTokens > 0 {
-			result.Usage.InputTokens = event.Usage.PromptTokens
+		normalized := event.Usage.normalized()
+		if normalized.InputKnown {
+			result.Usage.InputTokens = normalized.InputTokens
+			result.Usage.InputKnown = true
 		}
-		if event.Usage.CompletionTokens > 0 {
-			result.Usage.OutputTokens = event.Usage.CompletionTokens
+		if normalized.OutputKnown {
+			result.Usage.OutputTokens = normalized.OutputTokens
+			result.Usage.OutputKnown = true
 		}
-		if event.Usage.PromptTokensDetails != nil {
-			result.Usage.CachedInputTokens = cachedTokens(event.Usage.PromptTokensDetails)
+		if normalized.CachedInputTokens != nil {
+			result.Usage.CachedInputTokens = normalized.CachedInputTokens
 		}
+
 		for _, choice := range event.Choices {
 			if choice.Delta.Content != "" {
 				content.WriteString(choice.Delta.Content)
 				if onDelta != nil {
 					if err := onDelta(choice.Delta.Content); err != nil {
-						return Response{}, err
+						return result, err
 					}
 				}
 			}
@@ -604,11 +584,11 @@ func readStream(ctx context.Context, reader io.Reader, onDelta func(string) erro
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return Response{}, classify(err, 0)
+		return result, classify(err, 0)
 	}
 	result.Content = strings.TrimSpace(content.String())
 	if result.Content == "" {
-		return Response{}, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用正文。"}
+		return result, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用正文。"}
 	}
 	return result, nil
 }
@@ -619,16 +599,18 @@ func readJSON(reader io.Reader, onDelta func(string) error) (Response, error) {
 	if err := decoder.Decode(&envelope); err != nil {
 		return Response{}, &Error{Code: CodeProviderResponse, SafeMessage: "Provider 返回了无法解析的响应。", Retryable: true, Cause: err}
 	}
+	result := Response{Usage: envelope.Usage.normalized()}
 	if len(envelope.Choices) == 0 || strings.TrimSpace(envelope.Choices[0].Message.Content) == "" {
-		return Response{}, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用正文。"}
+		return result, &Error{Code: CodeInvalidContent, SafeMessage: "Provider 未返回可用正文。"}
 	}
-	content := strings.TrimSpace(envelope.Choices[0].Message.Content)
+	result.Content = strings.TrimSpace(envelope.Choices[0].Message.Content)
+	result.FinishReason = envelope.Choices[0].FinishReason
 	if onDelta != nil {
-		if err := onDelta(content); err != nil {
-			return Response{}, err
+		if err := onDelta(result.Content); err != nil {
+			return result, err
 		}
 	}
-	return Response{Content: content, Usage: Usage{InputTokens: envelope.Usage.PromptTokens, CachedInputTokens: cachedTokens(envelope.Usage.PromptTokensDetails), OutputTokens: envelope.Usage.CompletionTokens}, FinishReason: envelope.Choices[0].FinishReason}, nil
+	return result, nil
 }
 
 func classify(err error, status int, diagnostics ...providerdiag.Details) error {

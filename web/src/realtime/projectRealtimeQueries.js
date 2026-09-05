@@ -98,6 +98,8 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     add('assets')
   } else if (event === 'llm_log:changed') {
     add('project-llm-logs')
+    add('project-llm-cost-summary')
+    add('project-llm-cost-backfills')
     if (payload.log_uuid) add('project-llm-log', payload.log_uuid)
     else add('project-llm-log')
     add('workflow-llm-logs')

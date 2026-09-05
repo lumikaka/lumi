@@ -96,6 +96,7 @@ func (handler *StoryHandler) ShowProject(c echo.Context) error {
 
 type updateStoryProjectRequest struct {
 	Name               string          `json:"name"`
+	RenameDirectory    *bool           `json:"rename_directory"`
 	Description        string          `json:"description"`
 	GenerationLanguage *string         `json:"generation_language"`
 	ExpectedRevision   *int64          `json:"expected_revision"`
@@ -114,6 +115,11 @@ func (handler *StoryHandler) UpdateProject(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	if request.RenameDirectory != nil && *request.RenameDirectory {
+		if _, err := handler.manager.PreviewDirectoryName(c.Request().Context(), c.Param("project_uuid"), request.Name); err != nil {
+			return ProjectAPIError(err)
+		}
+	}
 	var detail story.ProjectDetail
 	if err := handler.withService(c, func(service *story.Service) error {
 		var operationErr error
@@ -124,6 +130,11 @@ func (handler *StoryHandler) UpdateProject(c echo.Context) error {
 	}
 	if err := handler.manager.SyncProjectName(c.Request().Context(), c.Param("project_uuid")); err != nil {
 		return NewError(http.StatusInternalServerError, "project_index_update_failed", "项目信息已保存，但最近项目索引更新失败", "重新打开项目时会按项目数据库修复名称。", err)
+	}
+	if request.RenameDirectory != nil {
+		if err := handler.manager.SetDirectoryRename(c.Request().Context(), c.Param("project_uuid"), detail.Name, *request.RenameDirectory); err != nil {
+			return ProjectAPIError(err)
+		}
 	}
 	return Success(c, http.StatusOK, detail)
 }

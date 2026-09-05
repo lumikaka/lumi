@@ -57,6 +57,11 @@ func (controller *projectLifecycleController) run(ctx context.Context, interval 
 }
 
 func (controller *projectLifecycleController) evaluate(ctx context.Context) error {
+	if naming, ok := controller.projects.(interface{ ApplyPendingDirectoryRenames(context.Context) error }); ok {
+		if err := naming.ApplyPendingDirectoryRenames(ctx); err != nil {
+			slog.Warn("project directory rename deferred", "error", err)
+		}
+	}
 	now := controller.now()
 	openUUIDs := controller.projects.OpenProjectUUIDs()
 	openSet := make(map[string]struct{}, len(openUUIDs))

@@ -9,8 +9,8 @@ test('unavailable local projects stay recoverable without an open action', () =>
 })
 
 test('active and recent project rows expose the correct local actions', () => {
-	assert.deepEqual(projectRowActions({ open: true, available: true }), ['enter', 'reveal', 'forget'])
-	assert.deepEqual(projectRowActions({ open: false, available: true, status: 'recent' }), ['enter', 'reveal', 'relocate', 'forget'])
+	assert.deepEqual(projectRowActions({ open: true, available: true }), ['enter', 'reveal', 'rename', 'forget'])
+	assert.deepEqual(projectRowActions({ open: false, available: true, status: 'recent' }), ['enter', 'reveal', 'rename', 'relocate', 'forget'])
 })
 
 test('project rows use the available action that enters the workspace', () => {
