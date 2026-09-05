@@ -179,6 +179,11 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
+				if len(definition.PreviousDefaultValues) != 13 {
+					t.Fatalf("%s Agent base previous defaults=%d want=13", language, len(definition.PreviousDefaultValues))
+				}
+				// The newest snapshot precedes the read-back error clarification.
+				previousDefaults := definition.PreviousDefaultValues[1:]
 				targetRuleMark, writeRuleMark, previousImageRuleMark := "编辑目标还是参考来源", "只是中间结果", "没有用户反馈或可验证的工具错误时"
 				if language == LanguageEnglish {
 					targetRuleMark, writeRuleMark, previousImageRuleMark = "edit target or only a reference source", "only an intermediate result", "Do not regenerate or write back again based only on a guess"
@@ -186,22 +191,21 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				if !strings.Contains(definition.DefaultValue, targetRuleMark) ||
 					!strings.Contains(definition.DefaultValue, writeRuleMark) ||
 					strings.Contains(definition.DefaultValue, previousImageRuleMark) ||
-					len(definition.PreviousDefaultValues) != 12 ||
-					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
-					!strings.Contains(definition.PreviousDefaultValues[0], targetRuleMark) || !strings.Contains(definition.PreviousDefaultValues[0], writeRuleMark) ||
-					!strings.Contains(definition.PreviousDefaultValues[1], previousImageRuleMark) ||
-					strings.Contains(definition.PreviousDefaultValues[1], targetRuleMark) || strings.Contains(definition.PreviousDefaultValues[1], writeRuleMark) ||
-					strings.Contains(definition.PreviousDefaultValues[2], "success proves only") || strings.Contains(definition.PreviousDefaultValues[2], "成功只证明图片文件") ||
-					strings.Contains(definition.PreviousDefaultValues[3], "most recent historical frozen snapshot") || strings.Contains(definition.PreviousDefaultValues[3], "最近的历史冻结快照") ||
-					(!strings.Contains(definition.PreviousDefaultValues[4], "controlled YOLO flow") && !strings.Contains(definition.PreviousDefaultValues[4], "受控 YOLO")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[5], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[5], "顶层字段，与 questions 同级")) ||
-					strings.Contains(definition.PreviousDefaultValues[5], "agent_tool_confirmation_required") ||
-					strings.Contains(definition.PreviousDefaultValues[6], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[6], "顶层字段，与 questions 同级") ||
-					(!strings.Contains(definition.PreviousDefaultValues[7], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[7], "立即结束当前 Turn")) ||
-					strings.Contains(definition.PreviousDefaultValues[8], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[8], "bootstrap 首个 Turn") ||
-					!strings.Contains(definition.PreviousDefaultValues[8], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[9], "ui_ref") ||
-					(!strings.Contains(definition.PreviousDefaultValues[10], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[10], "确认选项索引")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[11], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[11], "流程或来源约束不确定")) {
+					previousDefaults[0] == definition.DefaultValue ||
+					!strings.Contains(previousDefaults[0], targetRuleMark) || !strings.Contains(previousDefaults[0], writeRuleMark) ||
+					!strings.Contains(previousDefaults[1], previousImageRuleMark) ||
+					strings.Contains(previousDefaults[1], targetRuleMark) || strings.Contains(previousDefaults[1], writeRuleMark) ||
+					strings.Contains(previousDefaults[2], "success proves only") || strings.Contains(previousDefaults[2], "成功只证明图片文件") ||
+					strings.Contains(previousDefaults[3], "most recent historical frozen snapshot") || strings.Contains(previousDefaults[3], "最近的历史冻结快照") ||
+					(!strings.Contains(previousDefaults[4], "controlled YOLO flow") && !strings.Contains(previousDefaults[4], "受控 YOLO")) ||
+					(!strings.Contains(previousDefaults[5], "top-level request_user_input field") && !strings.Contains(previousDefaults[5], "顶层字段，与 questions 同级")) ||
+					strings.Contains(previousDefaults[5], "agent_tool_confirmation_required") ||
+					strings.Contains(previousDefaults[6], "top-level request_user_input field") || strings.Contains(previousDefaults[6], "顶层字段，与 questions 同级") ||
+					(!strings.Contains(previousDefaults[7], "end the current Turn immediately") && !strings.Contains(previousDefaults[7], "立即结束当前 Turn")) ||
+					strings.Contains(previousDefaults[8], "bootstrap first Turn") || strings.Contains(previousDefaults[8], "bootstrap 首个 Turn") ||
+					!strings.Contains(previousDefaults[8], "ui_ref") || strings.Contains(previousDefaults[9], "ui_ref") ||
+					(!strings.Contains(previousDefaults[10], "confirming-option index") && !strings.Contains(previousDefaults[10], "确认选项索引")) ||
+					(!strings.Contains(previousDefaults[11], "workflow or source constraint is uncertain") && !strings.Contains(previousDefaults[11], "流程或来源约束不确定")) {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -362,8 +366,8 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "9437c04db50b0f4d5a13aad86c34ed5e8170a7506c662c9186f12c6d20830811",
-		LanguageEnglish: "649dc84bf3e4ab6dd10a3388536068c5237dcaf954a9442570b20236aa3ad2ab",
+		LanguageChinese: "3435ac0c94de0326ce4d2efb7cd8da54dfbde6fbb43dd33da42c6586c1109a55",
+		LanguageEnglish: "ee0067434aae8ce6142ea8a3ce76d5c3667931c64b3957db8304b145bb3dd049",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
@@ -379,7 +383,7 @@ func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 		}
 		got := hex.EncodeToString(hasher.Sum(nil))
 		if got != expected[language] {
-			t.Fatalf("vertical strip %s prompt suite SHA-256=%s", language, got)
+			t.Errorf("vertical strip %s prompt suite SHA-256=%s", language, got)
 		}
 	}
 }
