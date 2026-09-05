@@ -878,6 +878,58 @@ func TestChatGeneratedVariantRevisionConflictKeepsFileRetryable(t *testing.T) {
 	}
 }
 
+func TestChatGeneratedEditWritebackRejectsDifferentPremiseAssetSource(t *testing.T) {
+	h := newProductionHarness(t)
+	ctx := context.Background()
+	target, err := h.service.ImportPremiseAsset(ctx, CreateAssetInput{UploadUUID: upload(t, h.service, "premise_asset", imageBytes(t, 21)), AssetType: AssetCharacter, Title: "Target"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := h.service.ImportPremiseAsset(ctx, CreateAssetInput{UploadUUID: upload(t, h.service, "premise_asset", imageBytes(t, 22)), AssetType: AssetReference, Title: "Style source"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chatThreadUUID, _ := newUUIDv7()
+	generatedFile := func(operation, sourceUUID string, seed uint8) files.Asset {
+		t.Helper()
+		generatedUpload, err := h.service.Files().CreateUpload(ctx, files.CreateUploadInput{
+			Purpose: "project_chat_image_generation", OriginalFilename: "generated.png",
+			Metadata: map[string]any{
+				"chat_thread_uuid": chatThreadUUID, "operation": operation,
+				"reference_uuids": []string{sourceUUID}, "reference_types": []string{"premise_asset"},
+			},
+			Reader: bytes.NewReader(imageBytes(t, seed)),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := h.service.Files().FinalizeUpload(ctx, generatedUpload.UUID, "project_chat_image_generation")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return file
+	}
+
+	mismatched := generatedFile("restyle", other.UUID, 23)
+	if _, err := h.service.UpdatePremiseAssetFromFile(ctx, target.UUID, UpdateAssetInput{
+		FileUUID: mismatched.UUID, ToolExecutionUUID: mustUUID(t), ChatThreadUUID: chatThreadUUID, ExpectedRevision: target.Revision,
+	}); !productionErrorIs(err, CodeImageSourceMismatch) {
+		t.Fatalf("mismatched writeback error=%v", err)
+	}
+	variants, err := h.service.ListAssetVariants(ctx, target.UUID)
+	if err != nil || len(variants) != 1 {
+		t.Fatalf("mismatched writeback changed target variants=%+v err=%v", variants, err)
+	}
+
+	matching := generatedFile("edit", target.UUID, 24)
+	updated, err := h.service.UpdatePremiseAssetFromFile(ctx, target.UUID, UpdateAssetInput{
+		FileUUID: matching.UUID, ToolExecutionUUID: mustUUID(t), ChatThreadUUID: chatThreadUUID, ExpectedRevision: target.Revision,
+	})
+	if err != nil || updated.CurrentVariant == nil || updated.CurrentVariant.Asset.UUID != matching.UUID {
+		t.Fatalf("matching writeback=%+v err=%v", updated, err)
+	}
+}
+
 func TestPremiseSourceIgnoreRestoreUsesRevisionAndBlocksActiveWork(t *testing.T) {
 	h := newProductionHarness(t)
 	ctx := context.Background()

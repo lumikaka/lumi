@@ -70,10 +70,10 @@ func projectAPISharedToolDefinitions() []map[string]any {
 		{"name": "read_agent_doc", "description": "Read a registered Agent Overview, reusable capability Guide, or Project API contract. Start with /api/v1/agent-docs/overview.md to discover capabilities and routes.", "parameters": object(map[string]any{
 			"path": stringField("Registered /api/v1/agent-docs/...md path"),
 		}, "path")},
-		{"name": "image_gen", "description": "Generate or edit a project-scoped image synchronously. The current project's default_style is applied automatically unless use_default_style is false; do not fetch or repeat default_style in prompt. Use operation=restyle when only the rendering style should change. Select zero to four image-capable References that appeared in the current Thread by their resource_uuid; the current Turn wins, otherwise the backend resolves the most recent historical frozen image. Preserve the requested operation: if a required edit/restyle content Reference is unavailable or rejected, do not fall back to generate.", "parameters": object(map[string]any{
+		{"name": "image_gen", "description": "Generate or edit a project-scoped image synchronously. generate/restyle apply the current project's default_style by default; edit preserves the source style by default. Do not fetch or repeat default_style in prompt. Use operation=restyle only when the rendering style should change; use edit for content or background changes. Select zero to four image-capable References that appeared in the current Thread by their resource_uuid; the current Turn wins, otherwise the backend resolves the most recent historical frozen image, including a successful image writeback. Preserve the requested operation: if a required edit/restyle content Reference is unavailable or rejected, do not fall back to generate. Success proves that a file was generated, not that its pixels satisfy the request; do not retry solely on an unsupported visual guess.", "parameters": object(map[string]any{
 			"prompt": stringField("Image content or edit instruction. Do not repeat the project's default_style when use_default_style is true."), "reference_uuids": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{"type": "string"}},
 			"operation":         map[string]any{"type": "string", "enum": []string{"generate", "edit", "restyle"}, "default": "generate", "description": "Image operation. edit and restyle require at least one selected Thread Reference; the first Reference is their content source."},
-			"use_default_style": map[string]any{"type": "boolean", "default": true, "description": "Apply the current project's default_style. Defaults to true; set false only when the user explicitly requests another style or asks to ignore the project style."},
+			"use_default_style": map[string]any{"type": "boolean", "description": "Apply the current project's default_style. Defaults to false for edit and true for generate/restyle; set it explicitly only when the requested style semantics require an override."},
 			"size":              map[string]any{"type": "string", "enum": []string{"512x512", "1024x1024", "1024x1536", "1536x1024"}, "description": "Optional output size. When omitted, edit/restyle follows the first Reference aspect ratio and generate uses 1536x1024."}, "quality": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}}, "filename": stringField("Optional output filename"),
 		}, "prompt", "reference_uuids")},
 	}
@@ -1041,6 +1041,13 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 	}
 	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_result", "tool", string(result), "json", "completed", execution.ToolCallUUID, execution.ToolName, execution.TargetUUID, metadata, now)
 	if err != nil {
+		return err
+	}
+	writebackReferences, err := toolResultWritebackReferencesTx(ctx, tx, tc.Thread.ProjectID, execution, executionArgs, result)
+	if err != nil {
+		return err
+	}
+	if err := attachItemReferencesTx(ctx, tx, item.ID, writebackReferences, now); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE agent_tool_executions SET state='completed',result_json=?,completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=?`, string(result), now, now, execution.ID); err != nil {

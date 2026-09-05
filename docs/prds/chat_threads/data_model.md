@@ -46,11 +46,11 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 ## 表：chat_context_references
 
-用户输入或排队追问的统一冻结 Reference。
+用户输入、排队追问或服务端确认成功的图片写回 Tool Result 所拥有的统一冻结 Reference。用户和模型都不能直接为 Tool Result 构造 Reference。
 
 - `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅供内部主键和 JOIN
 - `chat_item_id` / `follow_up_id` — 可空 INTEGER FK，必须且只能设置一个 owner；owner 删除时级联
-- `position` — INTEGER NOT NULL，owner 内 `1–16`，保持用户输入顺序
+- `position` — INTEGER NOT NULL；用户输入/追问 owner 内为 `1–16` 并保持输入顺序，图片写回 Tool Result 固定为 `1`
 - `resource_type` — TEXT NOT NULL，`file|premise_asset|chapter|comic_section`
 - `resource_uuid` — TEXT NOT NULL，冻结的公开资源 UUIDv7
 - `snapshot_json` — TEXT NOT NULL，不超过 8 KiB 的合法紧凑 JSON；包含 `truncated_fields`
@@ -79,7 +79,7 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 ## 数据生命周期
 
-1. 普通首次发送创建通用 Thread 和首个 Turn；首页项目创建则在同一项目库事务额外写入唯一 bootstrap、首个 User Item、Run 和队列 Job。bootstrap 的 `turn_id` 仅授权该 Turn 在定稿后幂等启动 existing YOLO，后续 Turn 不继承。Reference 在用户输入落库前校验并冻结到 User Item。
+1. 普通首次发送创建通用 Thread 和首个 Turn；首页项目创建则在同一项目库事务额外写入唯一 bootstrap、首个 User Item、Run 和队列 Job。bootstrap 的 `turn_id` 仅授权该 Turn 在定稿后幂等启动 existing YOLO，后续 Turn 不继承。Reference 在用户输入落库前校验并冻结到 User Item；成功用 `image_gen` File 创建或更新 Premise Asset 时，更新后快照与对应 Tool Result 在同一 Chat 事务写入。
 2. 执行创建 Run、Item、工具和用户输入记录，事件只追加；当前 Turn 的 Steering 可追加自己的 Reference。
 3. Follow-up 保存自己的 Reference，可原子替换、提升为 Turn、立即引导或逻辑删除。
 4. 目标资源删除后保留 `resource_uuid` 与快照；冻结图片继续保护对应 File/Object，直到 Reference owner 删除。

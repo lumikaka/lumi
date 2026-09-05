@@ -123,6 +123,7 @@
 - 任务会基于当前 Story Profile、已有 active Chapter 与下一组可用章节编号规划新章节。
 - 任务成功时会创建多个 Chapter；这是危险操作，创建任务前需要确认。
 - 接口只创建异步 Task，并使用 Tool Execution 幂等键。
+- Chat Agent 调用会等待内联 Workflow 终态；恢复后的 Tool Result 使用 `data.workflow_uuid`、`data.task_uuid`、`data.resource_uuid`、`data.status` 和成功时的 `data.result`（包含 `chapter_uuids`、`project_uuid`）。请求中的 `response_filter` 仍按上面的 Task 创建响应校验。
 
 ## `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/generations`
 

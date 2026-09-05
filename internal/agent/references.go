@@ -34,6 +34,20 @@ type referenceRow struct {
 	ImageReady   bool
 }
 
+type premiseAssetReferenceRow struct {
+	ID                 int64
+	ProjectID          int64
+	UUID               string
+	AssetType          string
+	Title              string
+	Summary            string
+	Revision           int64
+	DeletedAt          *time.Time
+	CurrentVariantUUID string
+	CurrentFileID      *int64
+	CurrentFileUUID    string
+}
+
 func normalizeReferenceInputs(values []ReferenceInput) ([]ReferenceInput, error) {
 	if len(values) > MaxContextReferences {
 		return nil, domainError(CodeReferenceLimit, "Reference 过多", "每条用户输入最多携带 16 个 Reference。", nil)
@@ -178,19 +192,7 @@ func resolveFileReference(ctx context.Context, store *project.Store, projectID i
 }
 
 func resolvePremiseAssetReference(ctx context.Context, store *project.Store, projectID int64, resourceUUID string) (storedContextReference, error) {
-	var row struct {
-		ID                 int64
-		ProjectID          int64
-		UUID               string
-		AssetType          string
-		Title              string
-		Summary            string
-		Revision           int64
-		DeletedAt          *time.Time
-		CurrentVariantUUID string
-		CurrentFileID      *int64
-		CurrentFileUUID    string
-	}
+	var row premiseAssetReferenceRow
 	err := store.DB().WithContext(ctx).Table("premise_assets AS assets").
 		Select("assets.id,assets.project_id,assets.uuid,assets.asset_type,assets.title,assets.summary,assets.revision,assets.deleted_at,COALESCE(variants.uuid,'') AS current_variant_uuid,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN files.id ELSE NULL END AS current_file_id,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN COALESCE(files.uuid,'') ELSE '' END AS current_file_uuid").
 		Joins("LEFT JOIN premise_asset_variants AS variants ON variants.id=assets.current_variant_id").
@@ -213,6 +215,56 @@ func resolvePremiseAssetReference(ctx context.Context, store *project.Store, pro
 	if err := store.DB().WithContext(ctx).Table("premise_asset_tags").Where("premise_asset_id=?", row.ID).Order("tag").Pluck("tag", &tags).Error; err != nil {
 		return storedContextReference{}, err
 	}
+	return buildPremiseAssetReference(row, tags)
+}
+
+func resolvePremiseAssetReferenceTx(ctx context.Context, tx *sql.Tx, projectID int64, resourceUUID string) (storedContextReference, error) {
+	var row premiseAssetReferenceRow
+	var currentFileID sql.NullInt64
+	err := tx.QueryRowContext(ctx, `SELECT assets.id,assets.project_id,assets.uuid,assets.asset_type,assets.title,assets.summary,assets.revision,assets.deleted_at,COALESCE(variants.uuid,''),CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN files.id ELSE NULL END,CASE WHEN files.deleted_at IS NULL AND objects.state='ready' THEN COALESCE(files.uuid,'') ELSE '' END
+		FROM premise_assets AS assets
+		LEFT JOIN premise_asset_variants AS variants ON variants.id=assets.current_variant_id
+		LEFT JOIN files ON files.id=variants.file_id
+		LEFT JOIN file_objects AS objects ON objects.id=files.file_object_id
+		WHERE assets.uuid=? LIMIT 1`, resourceUUID).Scan(
+		&row.ID, &row.ProjectID, &row.UUID, &row.AssetType, &row.Title, &row.Summary, &row.Revision, &row.DeletedAt,
+		&row.CurrentVariantUUID, &currentFileID, &row.CurrentFileUUID,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return storedContextReference{}, referenceNotFound(resourceUUID)
+	}
+	if err != nil {
+		return storedContextReference{}, err
+	}
+	if currentFileID.Valid {
+		row.CurrentFileID = nullableSQLInt64(currentFileID)
+	}
+	if row.ProjectID != projectID {
+		return storedContextReference{}, domainError(CodeReferenceProject, "Reference 不属于当前项目", "不能跨项目引用设定项。", nil)
+	}
+	if row.DeletedAt != nil {
+		return storedContextReference{}, referenceNotFound(resourceUUID)
+	}
+	tagRows, err := tx.QueryContext(ctx, `SELECT tag FROM premise_asset_tags WHERE premise_asset_id=? ORDER BY tag`, row.ID)
+	if err != nil {
+		return storedContextReference{}, err
+	}
+	defer tagRows.Close()
+	tags := []string{}
+	for tagRows.Next() {
+		var tag string
+		if err := tagRows.Scan(&tag); err != nil {
+			return storedContextReference{}, err
+		}
+		tags = append(tags, tag)
+	}
+	if err := tagRows.Err(); err != nil {
+		return storedContextReference{}, err
+	}
+	return buildPremiseAssetReference(row, tags)
+}
+
+func buildPremiseAssetReference(row premiseAssetReferenceRow, tags []string) (storedContextReference, error) {
 	tags, tagsTruncated := compactReferenceTags(tags)
 	snapshot := map[string]any{
 		"resource_type": ReferenceTypePremiseAsset, "resource_uuid": row.UUID, "status": "available",
@@ -383,6 +435,59 @@ func firstNonEmpty(values ...string) string {
 
 func attachItemReferencesTx(ctx context.Context, tx *sql.Tx, itemID int64, references []storedContextReference, now time.Time) error {
 	return attachReferencesTx(ctx, tx, &itemID, nil, references, now)
+}
+
+func toolResultWritebackReferencesTx(ctx context.Context, tx *sql.Tx, projectID int64, execution toolExecutionRecord, args map[string]any, result json.RawMessage) ([]storedContextReference, error) {
+	var envelope struct {
+		Success bool              `json:"success"`
+		Data    json.RawMessage   `json:"data"`
+		UIRef   *agentUIReference `json:"ui_ref"`
+	}
+	if json.Unmarshal(result, &envelope) != nil || !envelope.Success {
+		return nil, nil
+	}
+	body, _ := args["request_body"].(map[string]any)
+	writtenFileUUID := stringArg(body, "file_uuid")
+	if writtenFileUUID == "" {
+		return nil, nil
+	}
+	assetUUID := ""
+	switch execution.RouteID {
+	case RoutePremiseAssetUpdate:
+		assetUUID = execution.TargetUUID
+	case RoutePremiseAssetCreate:
+		if envelope.UIRef != nil {
+			assetUUID = strings.TrimPrefix(envelope.UIRef.Href, projectReferencePrefix+"/premise/assets/")
+		}
+		if !isCanonicalUUIDv7(assetUUID) {
+			var data struct {
+				UUID string `json:"uuid"`
+			}
+			_ = json.Unmarshal(envelope.Data, &data)
+			assetUUID = data.UUID
+		}
+	default:
+		return nil, nil
+	}
+	if !isCanonicalUUIDv7(assetUUID) {
+		return nil, nil
+	}
+	reference, err := resolvePremiseAssetReferenceTx(ctx, tx, projectID, assetUUID)
+	if err != nil {
+		if errorCode(err) == CodeReferenceNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var snapshot struct {
+		CurrentFileUUID string `json:"current_file_uuid"`
+	}
+	if json.Unmarshal([]byte(reference.SnapshotJSON), &snapshot) != nil || snapshot.CurrentFileUUID != writtenFileUUID || reference.ImageFileID == nil {
+		// A newer concurrent write may already have replaced the image. Do not
+		// misattribute that later state to this Tool Result.
+		return nil, nil
+	}
+	return []storedContextReference{reference}, nil
 }
 
 func attachFollowUpReferencesTx(ctx context.Context, tx *sql.Tx, followUpID int64, references []storedContextReference, now time.Time) error {

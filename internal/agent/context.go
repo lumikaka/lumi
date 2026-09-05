@@ -314,7 +314,7 @@ func loadContextItems(ctx context.Context, store *project.Store, threadID, throu
 		Select("refs.chat_item_id,refs.resource_type,refs.resource_uuid,refs.position,refs.snapshot_json,(refs.image_file_id IS NOT NULL AND EXISTS (SELECT 1 FROM files f JOIN file_objects o ON o.id=f.file_object_id WHERE f.id=refs.image_file_id AND f.deleted_at IS NULL AND o.state='ready')) AS image_available").
 		Joins("JOIN chat_items AS items ON items.id=refs.chat_item_id").
 		Joins("JOIN chat_turns AS turns ON turns.id=items.turn_id").
-		Where("items.thread_id=? AND items.item_type='user_message' AND turns.queue_sequence<=?", threadID, throughTurnSequence).
+		Where("items.thread_id=? AND items.item_type IN ? AND turns.queue_sequence<=?", threadID, []string{"user_message", "tool_result"}, throughTurnSequence).
 		Order("items.sequence,refs.position,refs.id").Scan(&referenceRows).Error; err != nil {
 		return nil, err
 	}
@@ -337,9 +337,7 @@ func loadContextItems(ctx context.Context, store *project.Store, threadID, throu
 		if record.RunID != nil {
 			item.RunUUID = runUUIDs[*record.RunID]
 		}
-		if record.ItemType == "user_message" {
-			item.References = referencesByItem[record.ID]
-		}
+		item.References = referencesByItem[record.ID]
 		items = append(items, item)
 	}
 	sort.SliceStable(items, func(left, right int) bool {
@@ -474,11 +472,13 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 		if item.TurnID == nil || *item.TurnID != currentTurnID {
 			continue
 		}
-		if item.ItemType == "user_message" && item.Sequence > latestCurrentUserSequence {
-			latestCurrentUserSequence = item.Sequence
-		}
-		for _, reference := range item.References {
-			latestReferenceSequence[reference.ResourceUUID] = item.Sequence
+		if item.ItemType == "user_message" {
+			if item.Sequence > latestCurrentUserSequence {
+				latestCurrentUserSequence = item.Sequence
+			}
+			for _, reference := range item.References {
+				latestReferenceSequence[reference.ResourceUUID] = item.Sequence
+			}
 		}
 	}
 	for itemIndex := 0; itemIndex < len(items); itemIndex++ {
@@ -539,7 +539,7 @@ func buildHistoricalImageReferenceManifest(items []contextItem, currentTurnID in
 	current := map[string]bool{}
 	latest := map[string]historicalImageReference{}
 	for _, item := range items {
-		if item.ItemType != "user_message" || item.TurnID == nil {
+		if (item.ItemType != "user_message" && item.ItemType != "tool_result") || item.TurnID == nil {
 			continue
 		}
 		for _, reference := range item.References {

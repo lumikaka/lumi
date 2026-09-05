@@ -52,7 +52,7 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 ## Project Chat 同步生图
 
-`premise_asset_generation` 与 `asset_reference` 聊天 scene 使用受控 `image_gen` 工具。该工具沿用当前 Agent run 固化的 Provider UUID，并在执行时解析当前 Provider 的默认图片模型；当前 `project_api_v4` 调用默认从 Premise 事实状态读取并注入 `default_style`，只有用户明确要求另一种画风时才传 `use_default_style=false`。`operation` 区分 `generate|edit|restyle`；未显式指定尺寸时，`edit|restyle` 按首张参考图选择最接近的横、竖或方形尺寸，`generate` 默认 `1536x1024`。默认质量为 `medium`，单次调用最长 10 分钟并继承 turn 取消信号。图片调用日志关联 chat thread/run，只保存脱敏请求结构与响应摘要，不保存 API key、Authorization header 或图片 Base64。
+`premise_asset_generation` 与 `asset_reference` 聊天 scene 使用受控 `image_gen` 工具。该工具沿用当前 Agent run 固化的 Provider UUID，并在执行时解析当前 Provider 的默认图片模型；当前 `project_api_v4` 中，`generate`/`restyle` 默认从 Premise 事实状态读取并注入 `default_style`，`edit` 默认关闭它以保留来源画风，显式 `use_default_style` 可覆盖。`operation` 区分 `generate|edit|restyle`；未显式指定尺寸时，`edit|restyle` 按首张参考图选择最接近的横、竖或方形尺寸，`generate` 默认 `1536x1024`。默认质量为 `medium`，单次调用最长 10 分钟并继承 turn 取消信号。图片调用日志关联 chat thread/run，只保存脱敏请求结构与响应摘要，不保存 API key、Authorization header 或图片 Base64。
 
 图片附件以 `project_chatbot_reference` purpose 上传并写入 Asset Store。数据库用 bigint 外键关联 chat item/follow-up、file 与暂存 upload，REST/WS 只返回 UUIDv7 和受控 `content_url`。普通 turn 不跨轮继承附件；Follow-up 附件创建后固定；没有新附件的 Steering 继承当前 turn 最近一组附件。文本模型只收到附件会自动传给 `image_gen` 的提示，实际图片字节不会进入文本上下文。
 
@@ -60,7 +60,7 @@ Asset Store 的全量 reconcile、完整性扫描、缩略图批量重建、暂�
 
 聊天链路在同一 Agent turn 内同步完成写入，不会创建 `production_task_runs`。`premise_asset_generation` 和 `asset_reference` 均使用全局 `request_api`；图片 Scene 额外暴露 `image_gen`，通过项目 Route GET 当前事实后选择 PATCH 当前项、POST 派生新项，或经全局危险确认后 DELETE 软删除。`request_api` 以 Echo 当前注册的 `/api/v1/projects/{project_uuid}/...` Route 为可用范围：命中已审查覆盖层时直接分发领域服务，超出覆盖层字段或仅存在于真实 REST API 的 Route 则调用进程内应用路由，不访问 localhost 或外部网络。所有调用仍校验当前项目 UUID、公开参数和统一响应信封；未配置风险策略的写 Route 默认要求用户确认。
 
-引用场景生成文件先持久化到 Asset Store，并绑定当前 project、chat thread、来源 premise asset、用途和 `tool_execution_uuid`。POST 只消费当前引用线程尚未使用的 `project_chat_asset_reference_image`，事件保存公开来源设定项 UUID 和工具执行 UUID；PATCH 图片、POST 和 DELETE 均可在领域提交后安全重放。revision 冲突保留生成文件，Agent 必须重新 GET 最新 revision 后重试。设定项进入回收站后，新 turn、读取、生图与后续写操作都会被拒绝；升级前已持久化的 typed-tool execution 仍可恢复完成。
+引用场景生成文件先持久化到 Asset Store，并绑定当前 project、chat thread、操作、来源 Reference UUID/类型、实际 File UUID 和 `tool_execution_uuid`。用新生成 File 创建或更新 Premise Asset 后，更新后的冻结 Reference 与对应 Tool Result 在同一 Chat 事务提交，后续同 Thread 选择该资源 UUID 会解析到新图。`edit`/`restyle` 的首张 Reference 若明确是另一 Premise Asset，写回目标会以稳定来源不匹配错误拒绝；缺少新元数据的兼容文件不受影响。PATCH 图片、POST 和 DELETE 均可在领域提交后安全重放。revision 冲突保留生成文件，Agent 必须重新 GET 最新 revision 后重试。设定项进入回收站后，新 turn、读取、生图与后续写操作都会被拒绝；升级前已持久化的 typed-tool execution 仍可恢复完成。
 
 ## Project Chat 用户输入协议
 

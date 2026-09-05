@@ -220,7 +220,7 @@ func imageGenOptions(tc toolContext, args map[string]any) (string, bool, error) 
 	default:
 		return "", false, domainError(CodeToolValidation, "图片操作无效", "image_gen.operation 只接受 generate、edit 或 restyle。", nil)
 	}
-	useDefaultStyle = true
+	useDefaultStyle = operation != imageOperationEdit
 	if value, exists := args["use_default_style"]; exists {
 		selected, ok := value.(bool)
 		if !ok {
@@ -341,7 +341,7 @@ func (service *Service) resolveImageReferences(ctx context.Context, store *proje
 		missingDetails := "reference_uuids 不能选择历史、未知或其他 Turn 的 Reference。"
 		if tc.ToolProtocol == ToolProtocolProjectAPI {
 			query = query.Joins("JOIN chat_turns AS turns ON turns.id=items.turn_id").
-				Where("items.thread_id=? AND turns.queue_sequence<=? AND items.item_type='user_message' AND refs.resource_uuid=?", tc.Thread.ID, tc.Turn.QueueSequence, resourceUUID).
+				Where("items.thread_id=? AND turns.queue_sequence<=? AND items.item_type IN ? AND refs.resource_uuid=?", tc.Thread.ID, tc.Turn.QueueSequence, []string{"user_message", "tool_result"}, resourceUUID).
 				Order("items.sequence DESC,refs.position DESC,refs.id DESC")
 			missingTitle = "Reference 不在当前 Thread"
 			missingDetails = "reference_uuids 只能选择当前 Thread 内截至本次调用前出现过的 Reference。"

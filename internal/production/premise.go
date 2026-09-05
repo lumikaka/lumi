@@ -655,24 +655,47 @@ type projectChatImageFile struct {
 	Purpose            string
 	ChatThreadUUID     string
 	PremiseAssetUUID   string
+	Operation          string
 	ReferenceUUIDsJSON string
+	ReferenceTypesJSON string
 }
 
 func loadProjectChatImageFile(tx *gorm.DB, projectID int64, fileUUID string) (projectChatImageFile, error) {
 	var file projectChatImageFile
 	err := tx.Table("files").
-		Select("id,kind,purpose,COALESCE(json_extract(metadata_json,'$.chat_thread_uuid'),'') AS chat_thread_uuid,COALESCE(json_extract(metadata_json,'$.premise_asset_uuid'),'') AS premise_asset_uuid,COALESCE(json_extract(metadata_json,'$.reference_uuids'),'[]') AS reference_uuids_json").
+		Select("id,kind,purpose,COALESCE(json_extract(metadata_json,'$.chat_thread_uuid'),'') AS chat_thread_uuid,COALESCE(json_extract(metadata_json,'$.premise_asset_uuid'),'') AS premise_asset_uuid,COALESCE(json_extract(metadata_json,'$.operation'),'') AS operation,COALESCE(json_extract(metadata_json,'$.reference_uuids'),'[]') AS reference_uuids_json,COALESCE(json_extract(metadata_json,'$.reference_types'),'[]') AS reference_types_json").
 		Where("project_id=? AND uuid=? AND deleted_at IS NULL", projectID, fileUUID).
 		Take(&file).Error
 	return file, err
 }
 
 func projectChatReferenceUUIDs(raw string) []string {
+	return projectChatStringValues(raw)
+}
+
+func projectChatStringValues(raw string) []string {
 	result := []string{}
 	if json.Unmarshal([]byte(raw), &result) != nil {
 		return []string{}
 	}
 	return result
+}
+
+func validatePremiseAssetImageWritebackSource(file projectChatImageFile, targetAssetUUID string) error {
+	if file.Purpose != "project_chat_image_generation" || (file.Operation != "edit" && file.Operation != "restyle") {
+		return nil
+	}
+	referenceUUIDs := projectChatReferenceUUIDs(file.ReferenceUUIDsJSON)
+	referenceTypes := projectChatStringValues(file.ReferenceTypesJSON)
+	if len(referenceUUIDs) == 0 || len(referenceTypes) == 0 || referenceTypes[0] != "premise_asset" || referenceUUIDs[0] == targetAssetUUID {
+		return nil
+	}
+	return domainError(
+		CodeImageSourceMismatch,
+		"图片内容来源与写回目标不一致",
+		"edit/restyle 的第一张 Premise Asset Reference 必须与要更新的 Premise Asset 相同。",
+		nil,
+	)
 }
 
 // CreatePremiseAssetFromFile binds an already durable chat-generated image to
@@ -1214,6 +1237,9 @@ func (service *Service) UpdatePremiseAssetFromFile(ctx context.Context, assetUUI
 		}
 		if file.Kind != "image" || (file.Purpose != "project_chat_image_generation" && file.Purpose != "project_chat_asset_reference_image") {
 			return domainError(CodeValidation, "生成图片用途无效", "设定项替换只能使用当前 Thread 的 image_gen 生成图片。", nil)
+		}
+		if err := validatePremiseAssetImageWritebackSource(file, assetUUID); err != nil {
+			return err
 		}
 		var used int64
 		if err := tx.Model(&assetVariantRecord{}).Where("file_id=?", file.ID).Count(&used).Error; err != nil {

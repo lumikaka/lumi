@@ -774,7 +774,7 @@ func TestProjectAPIImageGenDefinitionDefaultsProjectStyle(t *testing.T) {
 	properties, _ := parameters["properties"].(map[string]any)
 	operation, _ := properties["operation"].(map[string]any)
 	useDefaultStyle, _ := properties["use_default_style"].(map[string]any)
-	if operation["default"] != imageOperationGenerate || useDefaultStyle["default"] != true {
+	if operation["default"] != imageOperationGenerate || useDefaultStyle["default"] != nil || !strings.Contains(stringArg(useDefaultStyle, "description"), "Defaults to false for edit") {
 		t.Fatalf("image_gen defaults operation=%+v use_default_style=%+v", operation, useDefaultStyle)
 	}
 	valid := `{"prompt":"只转换画风","reference_uuids":[],"operation":"restyle","use_default_style":false}`

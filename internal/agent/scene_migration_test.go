@@ -349,6 +349,14 @@ func TestProjectAPIImageGenOptionsAndDefaultSizes(t *testing.T) {
 	if err != nil || operation != imageOperationGenerate || !useDefaultStyle {
 		t.Fatalf("default options operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
 	}
+	operation, useDefaultStyle, err = imageGenOptions(tc, map[string]any{"operation": "edit"})
+	if err != nil || operation != imageOperationEdit || useDefaultStyle {
+		t.Fatalf("edit defaults operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
+	}
+	operation, useDefaultStyle, err = imageGenOptions(tc, map[string]any{"operation": "restyle"})
+	if err != nil || operation != imageOperationRestyle || !useDefaultStyle {
+		t.Fatalf("restyle defaults operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
+	}
 	operation, useDefaultStyle, err = imageGenOptions(tc, map[string]any{"operation": "restyle", "use_default_style": false})
 	if err != nil || operation != imageOperationRestyle || useDefaultStyle {
 		t.Fatalf("explicit options operation=%q use_default_style=%v err=%v", operation, useDefaultStyle, err)
@@ -603,6 +611,96 @@ func TestProjectAPIImageGenReusesLatestHistoricalReferenceFromSameThread(t *test
 	legacyTC.ToolProtocol = ToolProtocolProjectV3
 	if _, err := harness.service.resolveImageReferences(ctx, harness.store, legacyTC, []string{asset.UUID}); errorCode(err) != CodeToolValidation {
 		t.Fatalf("frozen v3 protocol accepted historical Reference: %v", err)
+	}
+}
+
+func TestPremiseAssetImageWritebackPersistsLatestToolResultReference(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	productionService := production.NewService(harness.store, nil)
+	originalBytes := agentTestColorPNG(t, color.RGBA{R: 210, A: 255})
+	updatedBytes := agentTestColorPNG(t, color.RGBA{G: 210, A: 255})
+	upload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "original.png", Reader: bytes.NewReader(originalBytes)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err := productionService.ImportPremiseAsset(ctx, production.CreateAssetInput{UploadUUID: upload.UUID, AssetType: production.AssetCharacter, Title: "连续编辑目标"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread, err := harness.service.CreateThread(ctx, harness.project.UUID, CreateThreadInput{Title: "写回 Reference", ProviderUUID: harness.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "调整角色背景", References: []ReferenceInput{{ResourceType: ReferenceTypePremiseAsset, ResourceUUID: asset.UUID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.service.claimRun(ctx, harness.store, &tc); err != nil {
+		t.Fatal(err)
+	}
+	tc.ToolMode, tc.ToolProtocol = ToolModeProjectAPI, ToolProtocolProjectAPI
+	imageClient := &imageClientFake{response: imagegen.Response{Bytes: updatedBytes, MIMEType: "image/png"}}
+	harness.service.WithImageClient(imageClient)
+	generated, err := harness.service.executeImageGenTool(ctx, harness.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t), ToolName: "image_gen"}, map[string]any{
+		"operation": "edit", "prompt": "只移除背景杂物", "reference_uuids": []any{asset.UUID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileUUID := stringArg(generated, "file_uuid")
+	arguments, _ := json.Marshal(map[string]any{
+		"method": "PATCH", "url": "/api/v1/projects/" + harness.project.UUID + "/premise-assets/" + asset.UUID,
+		"request_body":    map[string]any{"file_uuid": fileUUID, "expected_revision": asset.Revision},
+		"response_filter": ".data | {uuid,revision}",
+	})
+	execution, replay, completed, err := harness.service.persistToolIntent(ctx, harness.store, tc, "writeback-reference", "request_api", string(arguments))
+	if err != nil || completed || replay != nil {
+		t.Fatalf("writeback intent=%+v completed=%v replay=%s err=%v", execution, completed, replay, err)
+	}
+	result, err := harness.service.executeTool(ctx, harness.store, tc, execution)
+	if err != nil || !strings.Contains(string(result), `"success":true`) {
+		t.Fatalf("writeback result=%s err=%v", result, err)
+	}
+	if err := harness.service.persistToolResult(ctx, harness.store, tc, execution, result); err != nil {
+		t.Fatal(err)
+	}
+
+	var reference struct {
+		ResourceUUID string
+		SnapshotJSON string
+		ImageFileID  int64
+	}
+	if err := harness.store.DB().Table("chat_context_references AS refs").
+		Select("refs.resource_uuid,refs.snapshot_json,refs.image_file_id").
+		Joins("JOIN chat_items AS items ON items.id=refs.chat_item_id").
+		Where("items.item_type='tool_result' AND items.remote_item_uuid=?", execution.ToolCallUUID).
+		Take(&reference).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot struct {
+		Revision        int64  `json:"revision"`
+		CurrentFileUUID string `json:"current_file_uuid"`
+	}
+	if err := json.Unmarshal([]byte(reference.SnapshotJSON), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if reference.ResourceUUID != asset.UUID || reference.ImageFileID == 0 || snapshot.CurrentFileUUID != fileUUID || snapshot.Revision != asset.Revision+1 {
+		t.Fatalf("writeback Reference=%+v snapshot=%+v", reference, snapshot)
+	}
+	resolved, err := harness.service.resolveImageReferences(ctx, harness.store, tc, []string{asset.UUID})
+	if err != nil || len(resolved) != 1 || resolved[0].FileUUID != fileUUID {
+		t.Fatalf("latest resolved Reference=%+v err=%v", resolved, err)
+	}
+	imageClient.mu.Lock()
+	requests := append([]imagegen.Request(nil), imageClient.requests...)
+	imageClient.mu.Unlock()
+	if len(requests) != 1 || strings.Contains(requests[0].Prompt, "<project_default_style>") {
+		t.Fatalf("edit unexpectedly applied default style: %+v", requests)
 	}
 }
 

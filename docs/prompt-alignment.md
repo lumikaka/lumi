@@ -52,7 +52,7 @@
 - Story/selection 使用 Cloudflare AI Gateway `/ai/v1/chat/completions`；Base URL 由 Account ID 固定派生，不接受任意 OpenAI-compatible 服务地址。
 - Cloudflare 图片生成无论是否包含参考图，均调用 `/ai/v1/responses` 的 `image_generation` tool；参考图以冻结的 `input_image` data URL 发送。Aliyun Bailian adapter 继续把冻结图片编码为 message content data URL。
 - 图片与引用文件在任务创建时冻结公开 file UUID，worker 从本地 Asset Store 读取实际字节。API key 只在执行时从全局 secret store 解析，从不进入项目库或公开 payload。
-- Project Chat 的两个图片 scene 不进入 River 生产队列：当前设定图、当前消息附件与显式引用按固定顺序解析，`image_gen` 同步写入 Asset Store；随后统一通过 `request_api` 调用当前服务端项目 API。命中审查覆盖层时直接分发领域服务，其他真实项目 Route 通过进程内应用路由执行；可更新当前项、派生创建或经确认软删除。所有新 Run 都使用 Project API Prompt/Tool；升级前已持久化的旧 typed-tool execution 仅由隔离 recovery-only 适配器恢复。
+- Project Chat 的两个图片 scene 不进入 River 生产队列：当前设定图、当前消息附件与显式引用按固定顺序解析，`image_gen` 同步写入 Asset Store；随后统一通过 `request_api` 调用当前服务端项目 API。成功用生成 File 创建或更新设定资产后，服务端把更新后的冻结 Reference 原子附加到对应 Tool Result，后续同 Thread 解析优先使用它；`edit` 默认不叠加项目画风，`generate`/`restyle` 默认叠加。以另一 Premise Asset 为首张内容 Reference 的 `edit`/`restyle` 结果不得写入当前目标资产。命中审查覆盖层时直接分发领域服务，其他真实项目 Route 通过进程内应用路由执行；可更新当前项、派生创建或经确认软删除。所有新 Run 都使用 Project API Prompt/Tool；升级前已持久化的旧 typed-tool execution 仅由隔离 recovery-only 适配器恢复。
 - Comic moment 分布在任务创建时冻结为 `[2,3,1,2,3,1]`，避免 River 重试改变最终请求，使单机 durable task 具有确定性。
 
 ## 验证索引

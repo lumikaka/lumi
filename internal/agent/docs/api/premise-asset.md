@@ -139,6 +139,7 @@
 
 - 已有项目图片、现有 variant 的 Asset UUID 或其他 Thread 的 File 不可作为 `file_uuid`。
 - 成功消费同一图片来源的重放是幂等恢复，不得创建第二个逻辑 Asset。
+- 使用新生成 File 成功创建后，对应 Tool Result 会保存新资产的冻结 Reference，供同一 Thread 后续生图继续选择。
 
 ## `PATCH /api/v1/projects/{project_uuid}/premise-assets/{premise_asset_uuid}`
 
@@ -188,6 +189,8 @@
 ### 接口约束
 
 - 使用乐观并发；冲突后重新 GET，再基于最新 revision 修改。
+- `file_uuid` 来自 `edit`/`restyle` 且第一张 Reference 是 Premise Asset 时，该 Reference 必须就是 path 中的目标资产；不能把以其他设定资产为内容来源的结果写入当前目标。
+- 成功写入 `file_uuid` 后，对应 Tool Result 会保存更新后资产的冻结 Reference；同一 Thread 后续按资产 UUID 选择时会解析到该图片。
 - 只提交 `expected_revision` 且状态未变化时可作为幂等读取返回当前对象。
 
 ## `DELETE /api/v1/projects/{project_uuid}/premise-assets/{premise_asset_uuid}`

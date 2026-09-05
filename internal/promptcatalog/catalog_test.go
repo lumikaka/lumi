@@ -179,18 +179,19 @@ func TestAgentPromptDefinitionsUseEmbeddedCurrentDefaults(t *testing.T) {
 				t.Fatalf("%s Agent prompt %s does not use the embedded default", language, key)
 			}
 			if key == "base" {
-				if len(definition.PreviousDefaultValues) != 9 ||
+				if len(definition.PreviousDefaultValues) != 10 ||
 					definition.PreviousDefaultValues[0] == definition.DefaultValue ||
-					strings.Contains(definition.PreviousDefaultValues[0], "most recent historical frozen snapshot") || strings.Contains(definition.PreviousDefaultValues[0], "最近的历史冻结快照") ||
-					(!strings.Contains(definition.PreviousDefaultValues[1], "controlled YOLO flow") && !strings.Contains(definition.PreviousDefaultValues[1], "受控 YOLO")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[2], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[2], "顶层字段，与 questions 同级")) ||
-					strings.Contains(definition.PreviousDefaultValues[2], "agent_tool_confirmation_required") ||
-					strings.Contains(definition.PreviousDefaultValues[3], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[3], "顶层字段，与 questions 同级") ||
-					(!strings.Contains(definition.PreviousDefaultValues[4], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[4], "立即结束当前 Turn")) ||
-					strings.Contains(definition.PreviousDefaultValues[5], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[5], "bootstrap 首个 Turn") ||
-					!strings.Contains(definition.PreviousDefaultValues[5], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[6], "ui_ref") ||
-					(!strings.Contains(definition.PreviousDefaultValues[7], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[7], "确认选项索引")) ||
-					(!strings.Contains(definition.PreviousDefaultValues[8], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[8], "流程或来源约束不确定")) {
+					strings.Contains(definition.PreviousDefaultValues[0], "success proves only") || strings.Contains(definition.PreviousDefaultValues[0], "成功只证明图片文件") ||
+					strings.Contains(definition.PreviousDefaultValues[1], "most recent historical frozen snapshot") || strings.Contains(definition.PreviousDefaultValues[1], "最近的历史冻结快照") ||
+					(!strings.Contains(definition.PreviousDefaultValues[2], "controlled YOLO flow") && !strings.Contains(definition.PreviousDefaultValues[2], "受控 YOLO")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[3], "top-level request_user_input field") && !strings.Contains(definition.PreviousDefaultValues[3], "顶层字段，与 questions 同级")) ||
+					strings.Contains(definition.PreviousDefaultValues[3], "agent_tool_confirmation_required") ||
+					strings.Contains(definition.PreviousDefaultValues[4], "top-level request_user_input field") || strings.Contains(definition.PreviousDefaultValues[4], "顶层字段，与 questions 同级") ||
+					(!strings.Contains(definition.PreviousDefaultValues[5], "end the current Turn immediately") && !strings.Contains(definition.PreviousDefaultValues[5], "立即结束当前 Turn")) ||
+					strings.Contains(definition.PreviousDefaultValues[6], "bootstrap first Turn") || strings.Contains(definition.PreviousDefaultValues[6], "bootstrap 首个 Turn") ||
+					!strings.Contains(definition.PreviousDefaultValues[6], "ui_ref") || strings.Contains(definition.PreviousDefaultValues[7], "ui_ref") ||
+					(!strings.Contains(definition.PreviousDefaultValues[8], "confirming-option index") && !strings.Contains(definition.PreviousDefaultValues[8], "确认选项索引")) ||
+					(!strings.Contains(definition.PreviousDefaultValues[9], "workflow or source constraint is uncertain") && !strings.Contains(definition.PreviousDefaultValues[9], "流程或来源约束不确定")) {
 					t.Fatalf("%s Agent prompt %s previous defaults=%v", language, key, definition.PreviousDefaultValues)
 				}
 			} else if len(definition.PreviousDefaultValues) != 0 {
@@ -351,8 +352,8 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "d10a6684e010e809958dc43633e9bd1a08c7389e896e6f829d495da8687db17a",
-		LanguageEnglish: "fff7fbe229de2a0b59f6b6ead9b013443d784207a46493f1b083cb301e7d07ca",
+		LanguageChinese: "6b6f8bc8b1dbe8d292e175429bbcce80ab7142b9b93412abd00db1244c6d1069",
+		LanguageEnglish: "481bff61cc0844ea909b8c93375179ea22e1daddb779961500805bfe5ff0d152",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
