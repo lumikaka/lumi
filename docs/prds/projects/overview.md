@@ -29,14 +29,14 @@
 
 ### 草稿设置门禁
 
-首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。附带图片即表示按顺序自动用于画面生成：发送前用户只能移除图片，不选择用途、标题、说明或参与状态。服务端为新引用固定写入 `auto`、文件名标题、空说明、`include_in_yolo=true` 和 `system_default`；参考图只影响视觉设定与图片生成，不根据像素自动改写故事。图片在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后按创建 Session 的有序文件元数据续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题；它提交完整 finalization 请求后，运行时根据已持久化的原请求生成“定稿并开始生成”确认卡。只有用户选中确认项，运行时才恰好重放一次原请求并把项目切换为 `ready`；同一 bootstrap Turn 随后只能幂等启动自动生成 Workflow，其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。历史自定义或排除记录保持原事实，不迁移也不被定稿改写。
+首页的一行需求和有序可选参考图先创建 `setup_status=draft` 的真实项目和普通 Agent 对话。附带图片即表示按顺序自动用于画面生成：发送前用户只能移除图片，不选择用途、标题、说明或参与状态。服务端为新引用固定写入 `auto`、文件名标题、空说明、`include_in_yolo=true` 和 `system_default`；参考图只影响视觉设定与图片生成，不根据像素自动改写故事。图片在首轮对话前以稳定 Upload/File UUIDv7 落入项目 Asset Store，并原子挂到首个 User Item；刷新或进程重启后按创建 Session 的有序文件元数据续传。草稿只允许读取事实、继续聊天和维护 Project Setup；Story、图片、Workflow、生产与导出统一以稳定错误码拒绝。Agent 只在必要时补问影响首章的少量问题；Setup 完整后，运行时可信生成的 finalization 免确认执行并把项目切换为 `ready`，随后由同一 bootstrap Turn 幂等启动自动生成 Workflow。普通 Agent 请求和其他危险操作仍走全局确认，其他 bootstrap 生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。历史自定义或排除记录保持原事实，不迁移也不被定稿改写。
 
 ## Feature 列表
 
 | Feature | 文档 | 说明 |
 |---|---|---|
 | `本地项目生命周期` | [`features/本地项目生命周期.md`](features/本地项目生命周期.md) | 创建、打开、关闭、重定位和最近项目管理。 |
-| `对话式项目创建与设置定稿` | [`features/对话式项目创建与设置定稿.md`](features/对话式项目创建与设置定稿.md) | 从首页原始需求与可选参考图可靠创建草稿项目、首个 Agent Turn，并在确认后原子定稿。 |
+| `对话式项目创建与设置定稿` | [`features/对话式项目创建与设置定稿.md`](features/对话式项目创建与设置定稿.md) | 从首页原始需求与可选参考图可靠创建草稿项目、首个 Agent Turn，并由运行时自动定稿。 |
 | `项目资料与绘本规格` | [`features/项目资料与绘本规格.md`](features/项目资料与绘本规格.md) | 管理项目基本资料、生成语言和绘本尺寸约束。 |
 | `故事总纲版本与STORY投影` | [`features/故事总纲版本与STORY投影.md`](features/故事总纲版本与STORY投影.md) | 维护总纲版本、外部导入和安全文件投影。 |
 | `项目Prompt定制与版本恢复` | [`features/项目Prompt定制与版本恢复.md`](features/项目Prompt定制与版本恢复.md) | 覆盖内置 Prompt 并保留可恢复历史。 |

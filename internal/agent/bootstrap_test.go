@@ -13,7 +13,7 @@ import (
 	"lumi/internal/story"
 )
 
-func seedReadyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc toolContext, creationSessionUUID string) toolContext {
+func seedLegacyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc toolContext, creationSessionUUID string) toolContext {
 	t.Helper()
 	ctx := context.Background()
 	if !isUUIDv7(creationSessionUUID) {
@@ -78,6 +78,64 @@ func seedReadyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc
 		t.Fatal(err)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO agent_tool_executions(uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,tool_name,target_uuid,arguments_json,idempotency_key,state,result_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,'completed','{"success":true,"data":{}}',?,?)`, mustAgentUUID(t), tc.Thread.ID, tc.Run.ID, tc.Turn.ID, replayItem.ID, replayCallUUID, "request_api", tc.ProjectUUID, string(replayArguments), "test-replay:"+requestUUID, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	tc.Thread = thread
+	tc.BootstrapCreationSessionUUID = creationSessionUUID
+	return tc
+}
+
+func seedReadyBootstrapYoloAuthorization(t *testing.T, harness *agentHarness, tc toolContext, creationSessionUUID string) toolContext {
+	t.Helper()
+	ctx := context.Background()
+	if !isUUIDv7(creationSessionUUID) {
+		t.Fatal("creation session UUID must be UUIDv7")
+	}
+	expectedRevision := int64(1)
+	if setup, err := harness.store.ProjectSetup(ctx); err == nil && setup.Revision > 0 {
+		expectedRevision = setup.Revision
+	}
+	publicCallUUID, executionUUID := mustAgentUUID(t), mustAgentUUID(t)
+	arguments, _ := json.Marshal(map[string]any{
+		"method": "POST", "url": "/api/v1/projects/" + tc.ProjectUUID + "/project-setup-finalizations",
+		"request_body":                      map[string]any{"expected_revision": expectedRevision},
+		"response_filter":                   ".data | {uuid,project_uuid,setup_status,status,revision,draft_values,field_sources,final_picture_book,reference_plan,updated_at}",
+		"__provider_call_id":                bootstrapRuntimeProviderCallID("finalize", creationSessionUUID, "test"),
+		"__route_id":                        RouteProjectSetupFinalize,
+		"__action":                          "定稿项目初始化设置",
+		"__method":                          "POST",
+		"__path":                            "/api/v1/projects/" + tc.ProjectUUID + "/project-setup-finalizations",
+		"__target_uuid":                     tc.ProjectUUID,
+		"__runtime_generated_bootstrap":     true,
+		"__bootstrap_action":                "finalize",
+		"__bootstrap_creation_session_uuid": creationSessionUUID,
+	})
+
+	sqlDB, err := harness.store.DB().DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	now := time.Now().UTC()
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO project_creation_bootstraps(uuid,project_id,creation_session_uuid,thread_id,turn_id,created_at) VALUES(?,?,?,?,?,?)`, mustAgentUUID(t), tc.Thread.ProjectID, creationSessionUUID, tc.Thread.ID, tc.Turn.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	thread := tc.Thread
+	item, err := appendItemTx(ctx, tx, &thread, &tc.Turn.ID, &tc.Run.ID, "tool_call", "assistant", "{}", "json", "completed", publicCallUUID, "request_api", tc.ProjectUUID, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO agent_tool_executions(uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,tool_name,target_uuid,arguments_json,idempotency_key,state,result_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,'completed','{"success":true,"data":{}}',?,?)`, executionUUID, tc.Thread.ID, tc.Run.ID, tc.Turn.ID, item.ID, publicCallUUID, "request_api", tc.ProjectUUID, string(arguments), "test-runtime-finalization:"+creationSessionUUID, now, now); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, now, thread.ID); err != nil {
@@ -486,46 +544,40 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 	}
 }
 
-func TestBootstrapYoloAuthorizationRequiresExactConfirmedFinalizationEvidence(t *testing.T) {
+func TestBootstrapYoloAuthorizationRequiresExactRuntimeFinalizationEvidence(t *testing.T) {
 	tests := []struct {
 		name   string
 		mutate func(*testing.T, *agentHarness, *toolContext)
 		want   bool
 	}{
-		{name: "exact confirmed replay", want: true},
-		{name: "safe option", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			setBootstrapConfirmationAnswer(t, harness, false, false)
-		}},
-		{name: "Other text", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			setBootstrapConfirmationAnswer(t, harness, false, true)
-		}},
-		{name: "cancelled", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Table("chat_user_input_requests").Where("1=1").Updates(map[string]any{"response_json": nil, "status": "cancelled"}).Error; err != nil {
+		{name: "exact runtime finalization", want: true},
+		{name: "not runtime generated", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_remove(arguments_json,'$.__runtime_generated_bootstrap') WHERE tool_name='request_api'`).Error; err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{name: "wrong question id", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.confirmation.question_id','confirm_something_else') WHERE tool_name='request_user_input'`).Error; err != nil {
+		{name: "wrong bootstrap action", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.__bootstrap_action','start_generation') WHERE tool_name='request_api'`).Error; err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "wrong creation session", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.__bootstrap_creation_session_uuid',?) WHERE tool_name='request_api'`, mustAgentUUID(t)).Error; err != nil {
 				t.Fatal(err)
 			}
 		}},
 		{name: "wrong target", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.confirmation.target_uuid',?) WHERE tool_name='request_user_input'`, mustAgentUUID(t)).Error; err != nil {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.__target_uuid',?) WHERE tool_name='request_api'`, mustAgentUUID(t)).Error; err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{name: "request not resumed", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Table("chat_user_input_requests").Where("1=1").Update("status", "cancelled").Error; err != nil {
+		{name: "wrong route", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_set(arguments_json,'$.__route_id','project.get') WHERE tool_name='request_api'`).Error; err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{name: "replay not runtime generated", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET arguments_json=json_remove(arguments_json,'$.__confirmation_auto_replay') WHERE tool_name='request_api'`).Error; err != nil {
-				t.Fatal(err)
-			}
-		}},
-		{name: "failed finalization replay", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
-			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET result_json='{"success":false,"data":null,"error":{"code":"failed"}}' WHERE json_extract(arguments_json,'$.__confirmation_auto_replay')=1`).Error; err != nil {
+		{name: "failed runtime finalization", mutate: func(t *testing.T, harness *agentHarness, _ *toolContext) {
+			if err := harness.store.DB().Exec(`UPDATE agent_tool_executions SET result_json='{"success":false,"data":null,"error":{"code":"failed"}}' WHERE tool_name='request_api'`).Error; err != nil {
 				t.Fatal(err)
 			}
 		}},
@@ -557,35 +609,25 @@ func TestBootstrapYoloAuthorizationRequiresExactConfirmedFinalizationEvidence(t 
 	}
 }
 
-func setBootstrapConfirmationAnswer(t *testing.T, harness *agentHarness, confirm, other bool) {
-	t.Helper()
-	var requestJSON string
-	if err := harness.store.DB().Table("chat_user_input_requests").Select("request_json").Take(&requestJSON).Error; err != nil {
+func TestBootstrapYoloAuthorizationAcceptsLegacyConfirmedFinalizationEvidence(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	thread := harness.createThread(t)
+	turn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "legacy authorization evidence"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	var request struct {
-		Questions []UserInputQuestion `json:"questions"`
-	}
-	if json.Unmarshal([]byte(requestJSON), &request) != nil || len(request.Questions) != 1 || len(request.Questions[0].Options) != 2 {
-		t.Fatalf("invalid seeded request: %s", requestJSON)
-	}
-	selected := request.Questions[0].Options[0].UUID
-	otherText := ""
-	if confirm {
-		selected = request.Questions[0].Options[1].UUID
-	}
-	if other {
-		selected, otherText = "", "只定稿，不启动"
-	}
-	responseJSON, _ := json.Marshal(map[string]any{"answers": map[string]any{
-		bootstrapYoloConfirmationQuestionID: map[string]any{"selected_option_uuid": selected, "other_text": otherText},
-	}})
-	if err := harness.store.DB().Table("chat_user_input_requests").Where("1=1").Update("response_json", string(responseJSON)).Error; err != nil {
+	tc, err := harness.service.loadToolContext(ctx, harness.store, thread.UUID, turn.UUID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	tc = seedLegacyBootstrapYoloAuthorization(t, harness, tc, mustAgentUUID(t))
+	if authorized, err := bootstrapYoloAuthorized(ctx, harness.store, tc); err != nil || !authorized {
+		t.Fatalf("legacy authorization accepted=%v err=%v", authorized, err)
 	}
 }
 
-func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T) {
+func TestBootstrapAutoFinalizesAndStartsOneYoloWorkflowWithoutConfirmation(t *testing.T) {
 	harness := newAgentHarness(t)
 	installProjectSetupDispatcherForTest(t, harness)
 	ctx := context.Background()
@@ -640,36 +682,15 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 		}
 	}
 
-	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
-		t.Fatalf("bootstrap did not pause for confirmation: %v", err)
+	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("bootstrap did not continue directly into the inline workflow: %v", err)
 	}
 	if harness.model.calls != 1 {
-		t.Fatalf("runtime confirmation made an extra model call: calls=%d", harness.model.calls)
+		t.Fatalf("runtime finalization or workflow startup made an extra model call: calls=%d", harness.model.calls)
 	}
 	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, bootstrap.Thread.UUID)
-	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || requests[0].Questions[0].ID != bootstrapYoloConfirmationQuestionID {
-		t.Fatalf("confirmation requests=%+v err=%v", requests, err)
-	}
-	confirmOptionUUID := requests[0].Questions[0].Options[1].UUID
-	confirmationResponse := UserInputResponse{Answers: map[string]UserInputAnswer{
-		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: confirmOptionUUID},
-	}}
-	if answered, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, confirmationResponse); err != nil || answered.Status != "resuming" {
-		t.Fatalf("confirmation answer=%+v err=%v", answered, err)
-	}
-	if repeated, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, confirmationResponse); err != nil || repeated.Status != "resuming" {
-		t.Fatalf("idempotent confirmation answer=%+v err=%v", repeated, err)
-	}
-	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
-		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: requests[0].Questions[0].Options[0].UUID},
-	}}); errorCode(err) != CodeStateConflict {
-		t.Fatalf("different duplicate confirmation error=%v", err)
-	}
-	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatResume); !errors.Is(err, ErrWaitingWorkflow) {
-		t.Fatalf("bootstrap did not wait for inline Yolo: %v", err)
-	}
-	if harness.model.calls != 1 {
-		t.Fatalf("runtime workflow startup made an extra model call: calls=%d", harness.model.calls)
+	if err != nil || len(requests) != 0 {
+		t.Fatalf("bootstrap unexpectedly created confirmation requests=%+v err=%v", requests, err)
 	}
 	if harness.store.SetupStatus() != project.SetupStatusReady {
 		t.Fatalf("setup status=%s", harness.store.SetupStatus())
@@ -710,15 +731,23 @@ func TestBootstrapConfirmationAutoFinalizesAndStartsOneYoloWorkflow(t *testing.T
 	if err := json.Unmarshal([]byte(inputSnapshot), &snapshot); err != nil || snapshot.StoryPrompt != setupPatch["request_body"].(map[string]any)["generation_brief"] || snapshot.CreationSessionUUID != creationSessionUUID {
 		t.Fatalf("runtime workflow snapshot=%+v err=%v", snapshot, err)
 	}
-	var runtimeFinalizations, runtimeStarts int64
-	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='finalize' AND json_extract(arguments_json,'$.__confirmation_auto_replay') IS NULL", bootstrap.Turn.UUID, RouteProjectSetupFinalize).Count(&runtimeFinalizations).Error; err != nil {
+	var runtimeFinalizations, runtimeStarts, confirmationResults int64
+	var finalizationExecutionUUID string
+	finalizationQuery := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='finalize' AND json_extract(result_json,'$.success')=1", bootstrap.Turn.UUID, RouteProjectSetupFinalize)
+	if err := finalizationQuery.Count(&runtimeFinalizations).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='start_generation' AND json_extract(arguments_json,'$.__bootstrap_confirmation_request_uuid')=?", bootstrap.Turn.UUID, RouteYoloWorkflowCreate, requests[0].UUID).Count(&runtimeStarts).Error; err != nil {
+	if err := finalizationQuery.Select("uuid").Take(&finalizationExecutionUUID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if runtimeFinalizations != 1 || runtimeStarts != 1 {
-		t.Fatalf("runtime bootstrap intents finalization=%d workflow=%d", runtimeFinalizations, runtimeStarts)
+	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(arguments_json,'$.__route_id')=? AND json_extract(arguments_json,'$.__runtime_generated_bootstrap')=1 AND json_extract(arguments_json,'$.__bootstrap_action')='start_generation' AND json_extract(arguments_json,'$.__bootstrap_finalization_execution_uuid')=?", bootstrap.Turn.UUID, RouteYoloWorkflowCreate, finalizationExecutionUUID).Count(&runtimeStarts).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Table("agent_tool_executions").Where("run_id=(SELECT id FROM chat_runs WHERE turn_id=(SELECT id FROM chat_turns WHERE uuid=?)) AND json_extract(result_json,'$.error.code')=?", bootstrap.Turn.UUID, CodeToolConfirmation).Count(&confirmationResults).Error; err != nil {
+		t.Fatal(err)
+	}
+	if runtimeFinalizations != 1 || runtimeStarts != 1 || confirmationResults != 0 {
+		t.Fatalf("runtime bootstrap intents finalization=%d workflow=%d confirmation_results=%d", runtimeFinalizations, runtimeStarts, confirmationResults)
 	}
 	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, items[0].UUID); err != nil {
 		t.Fatal(err)
@@ -784,7 +813,7 @@ func TestBootstrapExplicitLaterTurnRecoversAuthorizedWorkflowWithoutModelCall(t 
 	authorizedContext.BootstrapCreationSessionUUID = creationSessionUUID
 	evidence, authorized, err := bootstrapYoloAuthorizationEvidence(ctx, harness.store, authorizedContext, true)
 	if err != nil || !authorized {
-		t.Fatalf("later-turn confirmation evidence=%+v authorized=%v err=%v", evidence, authorized, err)
+		t.Fatalf("later-turn finalization evidence=%+v authorized=%v err=%v", evidence, authorized, err)
 	}
 	executeErr := harness.execute(t, thread.UUID, secondTurn.UUID, JobChatTurn)
 	if !errors.Is(executeErr, ErrWaitingWorkflow) {
@@ -812,7 +841,7 @@ func TestBootstrapExplicitLaterTurnRecoversAuthorizedWorkflowWithoutModelCall(t 
 	}
 }
 
-func TestBootstrapExplicitLaterTurnRecoversPendingSetupConfirmationAndWorkflow(t *testing.T) {
+func TestBootstrapExplicitLaterTurnAutoFinalizesPendingSetupAndStartsWorkflow(t *testing.T) {
 	harness := newAgentHarness(t, finalResponse("不应在恢复初始化状态机时调用模型。"))
 	installProjectSetupDispatcherForTest(t, harness)
 	ctx := context.Background()
@@ -844,24 +873,15 @@ func TestBootstrapExplicitLaterTurnRecoversPendingSetupConfirmationAndWorkflow(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := harness.execute(t, bootstrap.Thread.UUID, recoveryTurn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingInput) {
-		t.Fatalf("pending setup recovery did not wait for confirmation: %v", err)
+	if err := harness.execute(t, bootstrap.Thread.UUID, recoveryTurn.UUID, JobChatTurn); !errors.Is(err, ErrWaitingWorkflow) {
+		t.Fatalf("pending setup recovery did not continue into the workflow: %v", err)
 	}
 	if harness.model.calls != 0 {
 		t.Fatalf("pending setup recovery called model %d times", harness.model.calls)
 	}
 	requests, err := harness.service.ListUserInputRequests(ctx, harness.project.UUID, bootstrap.Thread.UUID)
-	if err != nil || len(requests) != 1 || len(requests[0].Questions) != 1 || requests[0].Questions[0].ID != bootstrapYoloConfirmationQuestionID {
-		t.Fatalf("recovered setup confirmation=%+v err=%v", requests, err)
-	}
-	confirmOptionUUID := requests[0].Questions[0].Options[1].UUID
-	if _, err := harness.service.RespondUserInput(ctx, harness.project.UUID, bootstrap.Thread.UUID, requests[0].UUID, UserInputResponse{Answers: map[string]UserInputAnswer{
-		bootstrapYoloConfirmationQuestionID: {SelectedOptionUUID: confirmOptionUUID},
-	}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := harness.execute(t, bootstrap.Thread.UUID, recoveryTurn.UUID, JobChatResume); !errors.Is(err, ErrWaitingWorkflow) {
-		t.Fatalf("confirmed setup recovery did not wait for workflow: %v", err)
+	if err != nil || len(requests) != 0 {
+		t.Fatalf("recovered setup unexpectedly requested confirmation=%+v err=%v", requests, err)
 	}
 	if harness.model.calls != 0 || harness.store.SetupStatus() != project.SetupStatusReady {
 		t.Fatalf("recovered setup model_calls=%d setup_status=%s", harness.model.calls, harness.store.SetupStatus())

@@ -33,7 +33,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 			return nil, true, err
 		}
 		creationSessionUUID := strings.TrimSpace(tc.BootstrapCreationSessionUUID)
-		if runtimeGenerated, _, runtimeSessionUUID := runtimeGeneratedBootstrapIntent(execution); runtimeGenerated {
+		if runtimeGenerated, _, runtimeSessionUUID := runtimeGeneratedBootstrapWorkflowIntent(execution); runtimeGenerated {
 			// Authorization above has already bound this internal marker to the
 			// durable bootstrap lineage and exact confirmation request.
 			creationSessionUUID = runtimeSessionUUID

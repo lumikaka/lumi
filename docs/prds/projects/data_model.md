@@ -142,7 +142,7 @@ projects ──< actors
 - `thread_id` / `turn_id` — INTEGER NOT NULL UNIQUE FK → `chat_threads.id` / `chat_turns.id`
 - `created_at` — DATETIME NOT NULL
 
-`turn_id` 仅标记首页创建的第一个 Turn，作为 origin bootstrap 身份；`thread_id` 提供恢复 lineage，但不让后续 Turn 自动继承普通生产权限。用户明确请求继续/重试时，运行时可以结合 lineage、精确 confirmation request UUID 和持久化 replay 证据恢复未完成初始化。`creation_session_uuid` 同时派生受控 YOLO 的服务端幂等键。
+`turn_id` 仅标记首页创建的第一个 Turn，作为 origin bootstrap 身份；`thread_id` 提供恢复 lineage，但不让后续 Turn 自动继承普通生产权限。用户明确请求继续/重试时，运行时可以结合 lineage、精确的成功 finalization execution UUID 和持久化结果恢复未完成初始化；升级前旧 confirmation request UUID 证据仍可兼容读取。`creation_session_uuid` 同时派生受控 YOLO 的服务端幂等键。
 
 **主要相关 Feature：**
 
@@ -207,7 +207,7 @@ projects ──< actors
 3. 每张参考图使用预分配 Upload/File UUIDv7 重试；项目库单事务完成 File finalize、独立 binding UUID 与初始计划绑定，应用库随后标记 `ready`。启动 reconciliation 以项目绑定为事实校准跨库崩溃窗口。
 4. 全部参考图 ready 后，普通 Chat bootstrap 在项目库单事务创建首个 Thread/Turn/Run/User Item/Job，并把 File References 按清单顺序挂到首个 User Item；无参考图时直接进入该步骤。
 5. 参考计划是系统托管的只读事实；草稿期不提供用途、标题、instruction 或 included 修改，定稿也不改写 `plan_source` 或历史值。
-6. Agent 提交 finalization 原请求后，运行时持久化并展示“定稿并开始生成”确认卡。用户明确确认后，运行时恰好重放一次原请求，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。
+6. Setup 完整后，运行时持久化并免确认执行绑定当前 bootstrap creation session 的 finalization 请求，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。非 bootstrap 运行时请求不继承该例外。
 7. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline `yolo_project_initialization` Workflow 和唯一 await；快照按位置冻结持久化计划。新参考全部进入 Premise 与图片输入；历史排除项仍留在审计快照且不进入生产。等待终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 8. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
 9. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。

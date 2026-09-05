@@ -108,14 +108,14 @@ func (service *Service) reconcileBootstrapLifecycle(ctx context.Context, store *
 	runtimeContext := tc
 	runtimeContext.BootstrapCreationSessionUUID = creationSessionUUID
 	runtimeContext.RequestUUID, runtimeContext.RequestOrdinal = "", 0
-	providerCallID := bootstrapRuntimeProviderCallID("start_generation", creationSessionUUID, evidence.RequestUUID)
+	providerCallID := bootstrapRuntimeProviderCallID("start_generation", creationSessionUUID, evidence.EvidenceUUID)
 	return service.persistRuntimeBootstrapRequestIntent(ctx, store, runtimeContext, providerCallID, string(arguments), map[string]any{
-		"__bootstrap_action":                    "start_generation",
-		"__bootstrap_creation_session_uuid":     creationSessionUUID,
-		"__bootstrap_confirmation_request_uuid": evidence.RequestUUID,
+		"__bootstrap_action":                      "start_generation",
+		"__bootstrap_creation_session_uuid":       creationSessionUUID,
+		"__bootstrap_finalization_execution_uuid": evidence.EvidenceUUID,
 	}, map[string]any{
-		"bootstrap_action":                    "start_generation",
-		"bootstrap_confirmation_request_uuid": evidence.RequestUUID,
+		"bootstrap_action":                      "start_generation",
+		"bootstrap_finalization_execution_uuid": evidence.EvidenceUUID,
 	})
 }
 
@@ -144,7 +144,7 @@ func bootstrapYoloWorkflowExists(ctx context.Context, store *project.Store, proj
 	return count > 0, err
 }
 
-func bootstrapGenerationBrief(ctx context.Context, store *project.Store, setup project.SetupState, threadID int64, evidence bootstrapConfirmationEvidence) string {
+func bootstrapGenerationBrief(ctx context.Context, store *project.Store, setup project.SetupState, threadID int64, evidence bootstrapAuthorizationEvidence) string {
 	brief := strings.TrimSpace(setup.DraftValues.GenerationBrief)
 	if setup.FieldSources["generation_brief"] == project.SetupSourceSystemDefault {
 		if recovered := persistedBootstrapStoryPrompt(ctx, store, threadID, evidence); recovered != "" {
@@ -161,7 +161,7 @@ func bootstrapGenerationBrief(ctx context.Context, store *project.Store, setup p
 	return strings.TrimSpace(string(runes))
 }
 
-func persistedBootstrapStoryPrompt(ctx context.Context, store *project.Store, threadID int64, evidence bootstrapConfirmationEvidence) string {
+func persistedBootstrapStoryPrompt(ctx context.Context, store *project.Store, threadID int64, evidence bootstrapAuthorizationEvidence) string {
 	var rows []struct {
 		ArgumentsJSON string
 	}
