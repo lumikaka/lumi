@@ -211,7 +211,8 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		}
 		value, err := service.queue.StartDomainTaskBatch(ctx, tc.ProjectUUID, DomainTaskBatchRequest{
 			Kind: "comic_image_generation", ResourceUUIDs: stringSliceArg(args, "section_uuids"),
-			ChapterUUID: chapterUUID, IdempotencyKey: key, Invocation: chatToolInvocationContext(tc, execution),
+			ChapterUUID: chapterUUID, ProviderUUID: tc.Run.ProviderUUID, IdempotencyKey: key,
+			Invocation: chatToolInvocationContext(tc, execution),
 		})
 		return value, true, err
 	case RouteComicImageVariantList:

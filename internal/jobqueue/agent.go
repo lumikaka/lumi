@@ -169,9 +169,9 @@ func (manager *Manager) StartDomainTaskBatch(ctx context.Context, projectUUID st
 		SectionUUIDs: request.ResourceUUIDs, ProviderUUID: request.ProviderUUID, Model: request.Model,
 		SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel,
 		IdempotencyKey: request.IdempotencyKey,
-	}, false)
+	}, request.Invocation)
 	result := agent.DomainTaskBatch{
-		ChapterUUID: batch.ChapterUUID, RequestedCount: batch.RequestedCount,
+		WorkflowUUID: batch.WorkflowUUID, ChapterUUID: batch.ChapterUUID, RequestedCount: batch.RequestedCount,
 		AcceptedCount: batch.AcceptedCount, Tasks: make([]agent.DomainTask, 0, len(batch.Tasks)),
 	}
 	for _, task := range batch.Tasks {
@@ -179,6 +179,9 @@ func (manager *Manager) StartDomainTaskBatch(ctx context.Context, projectUUID st
 			UUID: task.UUID, Kind: task.Kind, ResourceUUID: task.ResourceUUID, Status: task.Status,
 			ErrorCode: task.ErrorCode, ErrorMessage: task.ErrorMessage,
 		})
+	}
+	if err == nil && request.Invocation.AwaitCompletion {
+		return result, agent.ErrWaitingWorkflow
 	}
 	return result, err
 }

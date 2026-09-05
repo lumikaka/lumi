@@ -26,6 +26,23 @@ test('chat and workflow events refresh core recovery queries without reloading L
   assert.ok(result.queryKeys.some((key) => key[0] === 'workflow-runs' && key[2] === 'workflow-uuid'))
 })
 
+test('every batch workflow lifecycle hint rereads persisted workflow facts', () => {
+  for (const event of ['workflow:queued', 'workflow:step_changed', 'workflow:completed', 'workflow:failed', 'workflow:cancelled', 'workflow:interrupted']) {
+    const result = projectRealtimeInvalidation(projectUuid, event, {
+      project_uuid: projectUuid,
+      workflow_uuid: 'workflow-uuid',
+      thread_uuid: 'thread-uuid',
+      step_uuid: 'step-uuid',
+      task_uuid: 'task-uuid',
+      resource_uuid: 'section-uuid',
+      status: event.split(':')[1],
+    })
+    assert.equal(result.invalidateAll, false, event)
+    assert.ok(result.queryKeys.some((key) => key[0] === 'workflows' && key[1] === projectUuid), event)
+    assert.ok(result.queryKeys.some((key) => key[0] === 'workflow' && key[2] === 'workflow-uuid'), event)
+  }
+})
+
 test('Model Request and compaction hints invalidate trajectory facts through REST rereads', () => {
   for (const event of ['chat:model_request_changed', 'chat:compaction_changed']) {
     const result = projectRealtimeInvalidation(projectUuid, event, { thread_uuid: 'thread-uuid' })

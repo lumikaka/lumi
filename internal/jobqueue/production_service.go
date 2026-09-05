@@ -348,10 +348,10 @@ func (manager *Manager) CreateComicImageGeneration(ctx context.Context, projectU
 }
 
 func (manager *Manager) CreateComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput) (ComicImageGenerationBatch, error) {
-	return manager.createComicImageGenerationBatch(ctx, projectUUID, chapterUUID, input, true)
+	return manager.createComicImageGenerationBatch(ctx, projectUUID, chapterUUID, input, agent.DirectUIInvocationContext())
 }
 
-func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput, createVisibleWorkflow bool) (ComicImageGenerationBatch, error) {
+func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput, invocation agent.DomainInvocationContext) (ComicImageGenerationBatch, error) {
 	result := ComicImageGenerationBatch{
 		ChapterUUID:    chapterUUID,
 		RequestedCount: len(input.SectionUUIDs),
@@ -364,6 +364,10 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	if len(input.SectionUUIDs) == 0 || len(input.SectionUUIDs) > 48 {
 		return result, taskError(CodeInvalidTask, "批量图片目标无效", "section_uuids 必须包含 1-48 个 Section UUIDv7。", nil)
 	}
+	invocation, err := normalizeDomainInvocation(invocation)
+	if err != nil {
+		return result, err
+	}
 
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
@@ -372,6 +376,37 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	if err := runtime.store.RequireReady(); err != nil {
 		return result, err
 	}
+	// Replay is resolved from the frozen Workflow graph before consulting mutable
+	// Section or model state. Once accepted, an identical idempotent request must
+	// remain replayable even if a Section is later edited or archived.
+	replaySnapshot, err := newComicImageBatchWorkflowSnapshot(projectUUID, chapterUUID, batchKey, input, invocation, nil)
+	if err != nil {
+		return result, err
+	}
+	replayTx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return result, err
+	}
+	workflowUUID, existing, found, err := loadComicImageBatchReplayTx(ctx, replayTx, runtime.projectID, replaySnapshot)
+	if err != nil {
+		_ = replayTx.Rollback()
+		return result, err
+	}
+	if found {
+		if err := replayTx.Commit(); err != nil {
+			return result, err
+		}
+		result.WorkflowUUID = workflowUUID
+		for _, row := range existing {
+			result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(row.DTO()))
+		}
+		result.AcceptedCount = len(result.Tasks)
+		return result, nil
+	}
+	if err := replayTx.Rollback(); err != nil {
+		return result, err
+	}
+
 	service := production.NewService(runtime.store, manager.hub)
 	sections, err := service.ListSections(ctx, chapterUUID)
 	if err != nil {
@@ -383,7 +418,7 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	}
 
 	seen := make(map[string]struct{}, len(input.SectionUUIDs))
-	keys := make([]string, 0, len(input.SectionUUIDs))
+	prepared := make([]preparedComicImageGeneration, 0, len(input.SectionUUIDs))
 	for _, sectionUUID := range input.SectionUUIDs {
 		if !isUUIDv7(sectionUUID) {
 			return result, taskError(CodeInvalidTask, "Section UUID 无效", "section_uuids 只能包含公开 UUIDv7。", nil)
@@ -399,58 +434,82 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 		if section.CurrentStoryboard == nil {
 			return result, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "所有目标 Section 都必须先创建或选择 storyboard 版本。", nil)
 		}
-		keys = append(keys, comicImageBatchTaskKey(batchKey, sectionUUID))
-	}
-
-	var existingRows []productionTaskRecord
-	if err := runtime.store.DB().WithContext(ctx).
-		Where("project_id=? AND kind=? AND idempotency_key IN ?", runtime.projectID, KindComicImageGeneration, keys).
-		Find(&existingRows).Error; err != nil {
-		return result, taskError(CodeTaskPersistenceFailed, "无法预检批量图片任务", "任务尚未创建。", err)
-	}
-	existingByKey := make(map[string]productionTaskRecord, len(existingRows))
-	for _, row := range existingRows {
-		existingByKey[row.IdempotencyKey] = row
-	}
-
-	var activeRows []productionTaskRecord
-	if err := runtime.store.DB().WithContext(ctx).
-		Where("project_id=? AND kind=? AND resource_uuid IN ? AND status IN ?", runtime.projectID, KindComicImageGeneration, input.SectionUUIDs, []string{StatusQueued, StatusRunning}).
-		Find(&activeRows).Error; err != nil {
-		return result, taskError(CodeTaskPersistenceFailed, "无法预检活动图片任务", "任务尚未创建。", err)
-	}
-	existingUUIDs := make(map[string]struct{}, len(existingRows))
-	for _, row := range existingRows {
-		existingUUIDs[row.UUID] = struct{}{}
-	}
-	for _, row := range activeRows {
-		if _, reusable := existingUUIDs[row.UUID]; !reusable {
-			return result, taskError(CodeTaskConflict, "Section 已有图片任务", "请等待任务 "+row.UUID+" 完成或取消后再创建批量任务。", nil)
-		}
-	}
-
-	for index, sectionUUID := range input.SectionUUIDs {
-		key := keys[index]
-		if existing, found := existingByKey[key]; found {
-			if existing.ResourceUUID != sectionUUID {
-				return result, taskError(CodeTaskPersistenceFailed, "批量图片幂等记录无效", "已有任务与目标 Section 不一致。", nil)
-			}
-			result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(existing.DTO()))
-			continue
-		}
-		task, createErr := manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
+		item, prepareErr := manager.prepareComicImageGeneration(ctx, runtime, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
 			ProviderUUID: input.ProviderUUID, Model: input.Model,
 			SelectionProviderUUID: input.SelectionProviderUUID, SelectionModel: input.SelectionModel,
 			PremiseAssetUUIDs: premiseReferenceUUIDs(sectionsByUUID[sectionUUID].PremiseAssets),
-			IdempotencyKey:    key,
-		}, createVisibleWorkflow)
+		})
+		if prepareErr != nil {
+			return result, prepareErr
+		}
+		prepared = append(prepared, item)
+	}
+
+	workflowSnapshot, err := newComicImageBatchWorkflowSnapshot(projectUUID, chapterUUID, batchKey, input, invocation, prepared)
+	if err != nil {
+		return result, err
+	}
+	now := manager.now().UTC()
+	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return result, err
+	}
+	defer tx.Rollback()
+	workflowUUID, existing, found, err = loadComicImageBatchReplayTx(ctx, tx, runtime.projectID, workflowSnapshot)
+	if err != nil {
+		return result, err
+	}
+	if found {
+		if err := tx.Commit(); err != nil {
+			return result, err
+		}
+		result.WorkflowUUID = workflowUUID
+		for _, row := range existing {
+			result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(row.DTO()))
+		}
+		result.AcceptedCount = len(result.Tasks)
+		return result, nil
+	}
+
+	records := make([]productionTaskRecord, 0, len(prepared))
+	created := make([]productionTaskRecord, 0, len(prepared))
+	for index, item := range prepared {
+		sectionUUID := input.SectionUUIDs[index]
+		record, wasCreated, createErr := manager.insertProductionTaskTx(ctx, runtime, tx, item.Snapshot, comicImageBatchTaskKey(batchKey, sectionUUID), func(tx *sql.Tx, _ int64, taskUUID string, encoded []byte, now time.Time) error {
+			generationUUID, uuidErr := newUUIDv7()
+			if uuidErr != nil {
+				return uuidErr
+			}
+			_, insertErr := tx.ExecContext(ctx, `INSERT INTO comic_image_generations(uuid,comic_section_id,task_uuid,status,input_snapshot,created_at) VALUES(?,(SELECT s.id FROM comic_sections s JOIN chapter_comic_states cs ON cs.id=s.chapter_comic_state_id JOIN chapters c ON c.id=cs.chapter_id WHERE s.uuid=? AND c.uuid=?),?,'queued',?,?)`, generationUUID, sectionUUID, chapterUUID, taskUUID, string(encoded), now)
+			return insertErr
+		}, now)
 		if createErr != nil {
-			result.AcceptedCount = len(result.Tasks)
 			return result, createErr
 		}
-		result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(task))
+		if record.ResourceUUID != sectionUUID {
+			return result, taskError(CodeTaskConflict, "批量图片幂等记录冲突", "相同幂等键已绑定到不同的有序 Section 输入。", nil)
+		}
+		records = append(records, record)
+		if wasCreated {
+			created = append(created, record)
+		}
+	}
+	workflowUUID, err = createComicImageBatchWorkflowTx(ctx, runtime, tx, workflowSnapshot, records, invocation, now)
+	if err != nil {
+		return result, err
+	}
+	if err := tx.Commit(); err != nil {
+		return result, err
+	}
+	result.WorkflowUUID = workflowUUID
+	for _, row := range records {
+		result.Tasks = append(result.Tasks, comicImageGenerationBatchTask(row.DTO()))
 	}
 	result.AcceptedCount = len(result.Tasks)
+	runtime.broadcastProductionWorkflow("workflow:queued", records[0].UUID)
+	for _, row := range created {
+		runtime.broadcastProduction("production_task:queued", row.DTO())
+	}
 	return result, nil
 }
 
@@ -510,9 +569,6 @@ func comicImageGenerationBatchTask(task ProductionTask) ComicImageGenerationBatc
 }
 
 func (manager *Manager) createComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput, createVisibleWorkflow bool) (ProductionTask, error) {
-	if err := validateProductionParameters(input.Parameters); err != nil {
-		return ProductionTask{}, err
-	}
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
 		return ProductionTask{}, err
@@ -520,42 +576,74 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 	if err := runtime.store.RequireReady(); err != nil {
 		return ProductionTask{}, err
 	}
+	prepared, err := manager.prepareComicImageGeneration(ctx, runtime, projectUUID, chapterUUID, sectionUUID, input)
+	if err != nil {
+		return ProductionTask{}, err
+	}
+	task, err := manager.createProductionTask(ctx, runtime, prepared.Snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
+		generationUUID, err := newUUIDv7()
+		if err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO comic_image_generations(uuid,comic_section_id,task_uuid,status,input_snapshot,created_at) VALUES(?,(SELECT s.id FROM comic_sections s JOIN chapter_comic_states cs ON cs.id=s.chapter_comic_state_id JOIN chapters c ON c.id=cs.chapter_id WHERE s.uuid=? AND c.uuid=?),?,'queued',?,?)`, generationUUID, sectionUUID, chapterUUID, taskUUID, string(encoded), now); err != nil {
+			return err
+		}
+		if !createVisibleWorkflow {
+			return nil
+		}
+		return createComicImageWorkflowTx(ctx, tx, runtime.projectID, projectUUID, chapterUUID, generationUUID, taskUUID, prepared.Section, prepared.Snapshot.ProviderUUID, prepared.Snapshot.Model, prepared.Snapshot.ModelSource, now)
+	})
+	if err == nil && createVisibleWorkflow {
+		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
+	}
+	return task, err
+}
+
+type preparedComicImageGeneration struct {
+	Section  production.ComicSection
+	Snapshot production.GenerationSnapshot
+}
+
+func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime *projectRuntime, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput) (preparedComicImageGeneration, error) {
+	if err := validateProductionParameters(input.Parameters); err != nil {
+		return preparedComicImageGeneration{}, err
+	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
 	if err != nil {
-		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "无法读取项目生成语言", "任务尚未创建。", err)
+		return preparedComicImageGeneration{}, taskError(CodeTaskPersistenceFailed, "无法读取项目生成语言", "任务尚未创建。", err)
 	}
 	service := production.NewService(runtime.store, manager.hub)
 	section, err := service.GetSection(ctx, chapterUUID, sectionUUID)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	if section.CurrentStoryboard == nil {
-		return ProductionTask{}, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "先创建或选择 storyboard 版本。", nil)
+		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "先创建或选择 storyboard 版本。", nil)
 	}
 	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	pictureBook, err := runtime.store.RequirePictureBookProfile()
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	outputSize, err := picturebook.ResolveImageSize(pictureBook, resolved.ProviderType, model)
 	if err != nil {
-		return ProductionTask{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。", err)
+		return preparedComicImageGeneration{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。", err)
 	}
 	profile, err := service.GetPremise(ctx)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	storyService := story.NewService(runtime.store)
 	styleSnapshot, err := effectiveProductionStyle(ctx, runtime, storyService, profile.DefaultStyle, generationLanguage)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	imageTemplate, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_image")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	beforeImagePromptKey := "before_image"
 	switch section.PageRole {
@@ -566,48 +654,48 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 	}
 	beforeImagePrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, beforeImagePromptKey)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	imageTemplate = strings.ReplaceAll(imageTemplate, "{{before_image_prompt}}", beforeImagePrompt)
 	referencePresentPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_reference_present")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	referenceAbsentPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_reference_absent")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	additionalDirectionPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_additional_direction")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	languageInstruction, err := storyService.EffectiveLanguageInstruction(ctx)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	selectionTemplate, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_premise_selection")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	if len(input.PremiseAssetUUIDs) > maxSectionPremiseAssets {
-		return ProductionTask{}, taskError(CodeInvalidTask, "Premise 引用过多", fmt.Sprintf("一次最多引用 %d 个设定资产。", maxSectionPremiseAssets), nil)
+		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Premise 引用过多", fmt.Sprintf("一次最多引用 %d 个设定资产。", maxSectionPremiseAssets), nil)
 	}
 	seenReferences := make(map[string]struct{}, len(input.PremiseAssetUUIDs))
 	premiseReferences := make([]production.PremiseAssetReference, 0, len(input.PremiseAssetUUIDs))
 	for _, uuid := range input.PremiseAssetUUIDs {
 		if _, exists := seenReferences[uuid]; exists {
-			return ProductionTask{}, taskError(CodeInvalidTask, "Premise 引用重复", "premise_asset_uuids 不得重复。", nil)
+			return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Premise 引用重复", "premise_asset_uuids 不得重复。", nil)
 		}
 		seenReferences[uuid] = struct{}{}
 		asset, err := service.GetPremiseAsset(ctx, uuid)
 		if err != nil || asset.DeletedAt != nil || asset.CurrentVariant == nil {
-			return ProductionTask{}, taskError(CodeInvalidTask, "Premise 引用无效", "只能引用 active 且有 current variant 的设定资产。", err)
+			return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Premise 引用无效", "只能引用 active 且有 current variant 的设定资产。", err)
 		}
 		premiseReferences = append(premiseReferences, premiseAssetReference(asset))
 	}
 	allAssets, err := service.ListPremiseAssets(ctx, "", "active")
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	candidates := make([]production.PremiseAssetReference, 0, len(allAssets))
 	for _, asset := range allAssets {
@@ -623,39 +711,23 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateLines(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
 	})
 	if err != nil {
-		return ProductionTask{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)
+		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)
 	}
 	selectionPrompt = promptcatalog.WithInstruction(selectionPrompt, languageInstruction)
 	selectionProvider, selectionModel, selectionModelSource, err := manager.resolveProjectModel(ctx, runtime.store, modelsettings.SectionPremiseSelection, modelsettings.KindText, input.SelectionProviderUUID, input.SelectionModel)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	prompt, err := boundedProductionPrompt(input.Prompt, section.CurrentStoryboard.ContentMD)
 	if err != nil {
-		return ProductionTask{}, err
+		return preparedComicImageGeneration{}, err
 	}
 	parameters, _ := json.Marshal(input.Parameters)
 	snapshot := production.GenerationSnapshot{Version: 5, Kind: KindComicImageGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: section.UUID, ChapterUUID: chapterUUID,
 		Prompt: prompt, PromptTemplate: imageTemplate, LanguageInstruction: languageInstruction, ReferencePresentPrompt: referencePresentPrompt, ReferenceAbsentPrompt: referenceAbsentPrompt, AdditionalDirectionPrompt: additionalDirectionPrompt, SelectionPrompt: selectionPrompt, SelectionProviderUUID: selectionProvider.UUID, SelectionBaseURL: selectionProvider.BaseURL, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource,
 		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
 		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
-	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
-		generationUUID, err := newUUIDv7()
-		if err != nil {
-			return err
-		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO comic_image_generations(uuid,comic_section_id,task_uuid,status,input_snapshot,created_at) VALUES(?,(SELECT s.id FROM comic_sections s JOIN chapter_comic_states cs ON cs.id=s.chapter_comic_state_id JOIN chapters c ON c.id=cs.chapter_id WHERE s.uuid=? AND c.uuid=?),?,'queued',?,?)`, generationUUID, sectionUUID, chapterUUID, taskUUID, string(encoded), now); err != nil {
-			return err
-		}
-		if !createVisibleWorkflow {
-			return nil
-		}
-		return createComicImageWorkflowTx(ctx, tx, runtime.projectID, projectUUID, chapterUUID, generationUUID, taskUUID, section, resolved.UUID, model, modelSource, now)
-	})
-	if err == nil && createVisibleWorkflow {
-		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
-	}
-	return task, err
+	return preparedComicImageGeneration{Section: section, Snapshot: snapshot}, nil
 }
 
 type ComicExportOperation struct {
@@ -767,67 +839,90 @@ func (manager *Manager) createProductionTask(ctx context.Context, runtime *proje
 	if idempotencyKey == "" || len(idempotencyKey) > 255 {
 		return ProductionTask{}, taskError(CodeInvalidTask, "idempotency_key 无效", "必须提供 1-255 字符的幂等键。", nil)
 	}
-	encoded, err := json.Marshal(snapshot)
-	if err != nil {
-		return ProductionTask{}, err
-	}
-	taskUUID, err := newUUIDv7()
-	if err != nil {
-		return ProductionTask{}, err
-	}
 	now := manager.now().UTC()
 	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
 	if err != nil {
 		return ProductionTask{}, err
 	}
 	defer tx.Rollback()
-	if existing, found, err := findProductionTaskTx(ctx, tx, runtime.projectID, snapshot.Kind, idempotencyKey); err != nil {
-		return ProductionTask{}, err
-	} else if found {
-		_ = tx.Commit()
-		return existing.DTO(), nil
-	}
-	var active string
-	err = tx.QueryRowContext(ctx, `SELECT uuid FROM production_task_runs WHERE project_id=? AND kind=? AND resource_uuid=? AND status IN ('queued','running') LIMIT 1`, runtime.projectID, snapshot.Kind, snapshot.ResourceUUID).Scan(&active)
-	if err == nil {
-		return ProductionTask{}, taskError(CodeTaskConflict, "资源已有生产任务", "请等待任务 "+active+" 完成或取消。", nil)
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return ProductionTask{}, err
-	}
-	result, err := tx.ExecContext(ctx, `INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,provider_uuid,model,model_source,progress,attempt,max_attempts,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?,?,?,0,0,3,?,?)`, taskUUID, runtime.projectID, snapshot.Kind, snapshot.ResourceUUID, string(encoded), idempotencyKey, snapshot.ProviderUUID, snapshot.Model, snapshot.ModelSource, now, now)
+	record, created, err := manager.insertProductionTaskTx(ctx, runtime, tx, snapshot, idempotencyKey, hook, now)
 	if err != nil {
-		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "无法持久化生产任务", "任务未创建。", err)
-	}
-	taskID, err := result.LastInsertId()
-	if err != nil {
-		return ProductionTask{}, err
-	}
-	if err := appendProductionEventTx(ctx, tx, taskID, "task_queued", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": taskUUID, "resource_uuid": snapshot.ResourceUUID, "status": StatusQueued, "progress": 0}, now); err != nil {
-		return ProductionTask{}, err
-	}
-	if hook != nil {
-		if err := hook(tx, taskID, taskUUID, encoded, now); err != nil {
-			return ProductionTask{}, err
-		}
-	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, productionArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: snapshot.Kind, ResourceUUID: snapshot.ResourceUUID}, &river.InsertOpts{Queue: QueueProduction, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
-	if err != nil {
-		return ProductionTask{}, err
-	}
-	if inserted.UniqueSkippedAsDuplicate {
-		return ProductionTask{}, taskError(CodeTaskConflict, "重复生产任务", "River 拒绝了重复任务。", nil)
-	}
-	if _, err := tx.ExecContext(ctx, "UPDATE production_task_runs SET river_job_id=? WHERE id=?", inserted.Job.ID, taskID); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
-	task, err := manager.GetProductionTask(ctx, runtime.projectUUID, taskUUID)
+	if !created {
+		return record.DTO(), nil
+	}
+	task, err := manager.GetProductionTask(ctx, runtime.projectUUID, record.UUID)
 	if err == nil {
 		runtime.broadcastProduction("production_task:queued", task)
 	}
 	return task, err
+}
+
+// insertProductionTaskTx is the transaction-scoped primitive shared by single
+// tasks and aggregate workflows. The caller owns commit and post-commit
+// broadcasts, so a batch can persist every task, generation row, Workflow and
+// River job atomically.
+func (manager *Manager) insertProductionTaskTx(ctx context.Context, runtime *projectRuntime, tx *sql.Tx, snapshot production.GenerationSnapshot, idempotencyKey string, hook productionInsertHook, now time.Time) (productionTaskRecord, bool, error) {
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if idempotencyKey == "" || len(idempotencyKey) > 255 {
+		return productionTaskRecord{}, false, taskError(CodeInvalidTask, "idempotency_key 无效", "必须提供 1-255 字符的幂等键。", nil)
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	if existing, found, err := findProductionTaskTx(ctx, tx, runtime.projectID, snapshot.Kind, idempotencyKey); err != nil {
+		return productionTaskRecord{}, false, err
+	} else if found {
+		return existing, false, nil
+	}
+	var active string
+	err = tx.QueryRowContext(ctx, `SELECT uuid FROM production_task_runs WHERE project_id=? AND kind=? AND resource_uuid=? AND status IN ('queued','running') LIMIT 1`, runtime.projectID, snapshot.Kind, snapshot.ResourceUUID).Scan(&active)
+	if err == nil {
+		return productionTaskRecord{}, false, taskError(CodeTaskConflict, "资源已有生产任务", "请等待任务 "+active+" 完成或取消。", nil)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return productionTaskRecord{}, false, err
+	}
+	taskUUID, err := newUUIDv7()
+	if err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	result, err := tx.ExecContext(ctx, `INSERT INTO production_task_runs(uuid,project_id,kind,resource_uuid,input_snapshot,status,idempotency_key,provider_uuid,model,model_source,progress,attempt,max_attempts,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?,?,?,0,0,3,?,?)`, taskUUID, runtime.projectID, snapshot.Kind, snapshot.ResourceUUID, string(encoded), idempotencyKey, snapshot.ProviderUUID, snapshot.Model, snapshot.ModelSource, now, now)
+	if err != nil {
+		return productionTaskRecord{}, false, taskError(CodeTaskPersistenceFailed, "无法持久化生产任务", "任务未创建。", err)
+	}
+	taskID, err := result.LastInsertId()
+	if err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	if err := appendProductionEventTx(ctx, tx, taskID, "task_queued", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": taskUUID, "resource_uuid": snapshot.ResourceUUID, "status": StatusQueued, "progress": 0}, now); err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	if hook != nil {
+		if err := hook(tx, taskID, taskUUID, encoded, now); err != nil {
+			return productionTaskRecord{}, false, err
+		}
+	}
+	inserted, err := runtime.client.InsertTx(ctx, tx, productionArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: snapshot.Kind, ResourceUUID: snapshot.ResourceUUID}, &river.InsertOpts{Queue: QueueProduction, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
+	if err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	if inserted.UniqueSkippedAsDuplicate {
+		return productionTaskRecord{}, false, taskError(CodeTaskConflict, "重复生产任务", "River 拒绝了重复任务。", nil)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE production_task_runs SET river_job_id=? WHERE id=?", inserted.Job.ID, taskID); err != nil {
+		return productionTaskRecord{}, false, err
+	}
+	return productionTaskRecord{
+		ID: taskID, UUID: taskUUID, ProjectID: runtime.projectID, RiverJobID: &inserted.Job.ID,
+		Kind: snapshot.Kind, ResourceUUID: snapshot.ResourceUUID, InputSnapshot: string(encoded), Status: StatusQueued,
+		IdempotencyKey: idempotencyKey, ProviderUUID: snapshot.ProviderUUID, Model: snapshot.Model, ModelSource: snapshot.ModelSource,
+		Progress: 0, Attempt: 0, MaxAttempts: 3, CreatedAt: now, UpdatedAt: now,
+	}, true, nil
 }
 
 func (manager *Manager) ListProductionTasks(ctx context.Context, projectUUID, status string, limit int) ([]ProductionTask, error) {
@@ -997,6 +1092,9 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
+		return ProductionTask{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
@@ -1075,6 +1173,9 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 		return ProductionTask{}, err
 	}
 	if err := queuePremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
+		return ProductionTask{}, err
+	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := tx.Commit(); err != nil {

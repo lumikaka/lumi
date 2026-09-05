@@ -34,6 +34,7 @@ export function chatThreadCountLabel(loaded, total) {
 const workflowKindCopy = {
   premise_asset_generation: 'chat.workflow.kind.premise_asset_generation',
   comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
+  comic_image_generation_batch: 'chat.workflow.kind.comic_image_generation_batch',
   comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
   story_chapter_generation: 'chat.workflow.kind.story_chapter_generation',
   story_chapter_batch_plan: 'chat.workflow.kind.story_chapter_batch_plan',
@@ -57,6 +58,12 @@ export function workflowDisplayTitle(workflow, t) {
       ? t('chat.workflow.kind.chapter_batch_plan_with_count', { count: snapshot.chapter_count })
       : t('chat.workflow.kind.chapter_batch_plan')
   }
+  if (workflow?.kind === 'comic_image_generation_batch') {
+    const count = Array.isArray(snapshot.sections) ? snapshot.sections.length : 0
+    return count
+      ? t('chat.workflow.kind.comic_image_generation_batch_with_count', { count })
+      : t('chat.workflow.kind.comic_image_generation_batch')
+  }
   const copyKey = workflowKindCopy[workflow?.kind]
   return copyKey ? t(copyKey) : workflow?.title || t('chat.workflow.title')
 }
@@ -73,6 +80,7 @@ export function threadContextCopyKey(thread, workflow) {
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_section_image_generation') return 'chat.workflow.kind.comic_section_image_generation'
+	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_image_generation_batch') return 'chat.workflow.kind.comic_image_generation_batch'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'premise_asset_generation') return 'chat.workflow.kind.premise_asset_generation'
   return 'chat.thread.project_context'
 }
@@ -117,6 +125,25 @@ export function workflowProgressPercent(workflow) {
     return sum + (Number.isFinite(progress) ? Math.min(100, Math.max(0, progress)) : 0)
   }, 0)
   return Math.round(total / steps.length)
+}
+
+export function comicImageBatchStepTitle(step, term) {
+  const stepKey = typeof step === 'string' ? step : step?.step_key
+  if (!stepKey?.startsWith('generate_section_image:')) return ''
+  let input = step?.input
+  if (typeof input === 'string') {
+    try {
+      input = JSON.parse(input)
+    } catch {
+      input = {}
+    }
+  }
+  if (!input || typeof input !== 'object') input = {}
+  const position = Number(input.request_position || step?.position || stepKey.split(':')[1]) || 1
+  const title = String(input.section_title || '').trim()
+  return title
+    ? term('chat.workflow.step.batch_section_image_with_title', { position, title })
+    : term('chat.workflow.step.batch_section_image', { position })
 }
 
 function workflowSnapshot(workflow) {

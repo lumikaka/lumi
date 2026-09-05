@@ -337,7 +337,7 @@
 
 ## `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-image-generation-batches`
 
-一次预检并原子创建一个 Chapter 内多个 Section 的图片生成任务。
+一次预检并原子创建一个 Chapter 内多个 Section 的图片生成任务，以及聚合这些任务的批次 Workflow。
 
 ### 请求字段
 
@@ -351,6 +351,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `data.workflow_uuid` | string(UUIDv7) | 聚合整批任务的 Workflow 公开 UUIDv7。 |
 | `data.chapter_uuid` | string(UUIDv7) | 所属 Chapter 公开 UUIDv7。 |
 | `data.requested_count` | integer | 请求的 Section 数量。 |
 | `data.accepted_count` | integer | 原子预检后成功创建或幂等命中的 Task 数量。 |
@@ -374,7 +375,7 @@
       "01970000-0000-7000-8000-000000000007"
     ]
   },
-  "response_filter": ".data | {chapter_uuid,requested_count,accepted_count,tasks:{uuid,kind,resource_uuid,status,error_code,error_message}}"
+  "response_filter": ".data | {workflow_uuid,chapter_uuid,requested_count,accepted_count,tasks:{uuid,kind,resource_uuid,status,error_code,error_message}}"
 }
 ```
 
@@ -383,4 +384,6 @@
 - 所有 Section 必须属于路径中的 active Chapter、处于 active 状态、有当前 Storyboard，且没有活动图片任务；任一项失败则整批不创建任务。
 - 服务端为每个 Section 固化当前 Storyboard、项目画风、设定引用和项目图片模型；本接口不接收 prompt、model 或 Premise 引用。
 - 输入 UUID 不得重复；创建使用批次幂等键，重放同一 intent 不得复制任务。
-- 接口只创建异步 Task；`accepted_count` 不表示图片已生成完成。
+- Chat Agent 调用会以内联 Workflow 等待整批终态；直接 UI 调用创建独立 Workflow Thread，父 Workflow Step 调用不额外展示。
+- 任一子任务失败不会停止其他任务；全部子任务终止后，批次 Workflow 才按 `failed > interrupted > cancelled > completed` 收敛。
+- `accepted_count` 不表示图片已生成完成；通过 `workflow_uuid` 在 ChatArea 查看总进度和逐 Section 状态。

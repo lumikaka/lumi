@@ -14,12 +14,13 @@ type workflowResumeState struct {
 	AwaitID, ToolExecutionID, WorkflowID                                int64
 	AwaitStatus, WorkflowUUID, WorkflowKind, WorkflowStatus, ThreadUUID string
 	CurrentStepKey, TaskUUID, ResourceUUID, OutputJSON, ErrorCode       string
+	InputSnapshot                                                       string
 	Steps                                                               []workflowResumeStep
 }
 
 type workflowResumeStep struct {
-	UUID, StepKey, Status, TaskUUID, ResourceUUID, OutputJSON, ErrorCode string
-	Position                                                             int
+	UUID, StepKey, Status, TaskUUID, ResourceUUID, OutputJSON, ErrorCode, ErrorMessage string
+	Position                                                                           int
 }
 
 type workflowTerminalStepSummary struct {
@@ -34,14 +35,14 @@ type workflowTerminalStepSummary struct {
 
 func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.Store, tc toolContext) (bool, error) {
 	var state workflowResumeState
-	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.id,w.uuid,w.kind,w.status,th.uuid,w.current_step_key,w.error_code
+	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.id,w.uuid,w.kind,w.status,th.uuid,w.current_step_key,w.error_code,w.input_snapshot
 		FROM workflow_awaits a
 		JOIN workflows w ON w.id=a.workflow_id
 		JOIN chat_threads th ON th.id=a.chat_thread_id
 		WHERE a.chat_run_id=? AND a.status IN ('ready','resuming')
 		ORDER BY a.id LIMIT 1`, tc.Run.ID).Row().Scan(
 		&state.AwaitID, &state.ToolExecutionID, &state.AwaitStatus, &state.WorkflowID, &state.WorkflowUUID,
-		&state.WorkflowKind, &state.WorkflowStatus, &state.ThreadUUID, &state.CurrentStepKey, &state.ErrorCode,
+		&state.WorkflowKind, &state.WorkflowStatus, &state.ThreadUUID, &state.CurrentStepKey, &state.ErrorCode, &state.InputSnapshot,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
@@ -52,7 +53,7 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	if state.WorkflowStatus != WorkflowCompleted && state.WorkflowStatus != WorkflowFailed && state.WorkflowStatus != WorkflowCancelled && state.WorkflowStatus != WorkflowInterrupted {
 		return false, domainError(CodeStateConflict, "Workflow 尚未终止", "Chat Resume 只能读取持久化 Workflow 终态。", nil)
 	}
-	if err := store.DB().WithContext(ctx).Raw(`SELECT uuid,step_key,position,status,COALESCE(task_uuid,''),COALESCE(resource_uuid,''),COALESCE(output_json,'{}'),COALESCE(error_code,'')
+	if err := store.DB().WithContext(ctx).Raw(`SELECT uuid,step_key,position,status,COALESCE(task_uuid,''),COALESCE(resource_uuid,''),COALESCE(output_json,'{}'),COALESCE(error_code,''),COALESCE(error_message,'')
 		FROM workflow_steps WHERE workflow_id=? ORDER BY position,id`, state.WorkflowID).Scan(&state.Steps).Error; err != nil {
 		return false, err
 	}
@@ -121,6 +122,44 @@ func workflowTerminalToolResult(state workflowResumeState) json.RawMessage {
 			"success": false,
 			"data":    data,
 			"error":   map[string]any{"code": code, "message": "异步生成未完成。", "details": ""},
+		})
+		return encoded
+	}
+	if state.WorkflowKind == WorkflowComicImageBatch {
+		var snapshot struct {
+			ChapterUUID string `json:"chapter_uuid"`
+		}
+		_ = json.Unmarshal([]byte(state.InputSnapshot), &snapshot)
+		tasks := make([]map[string]any, 0, len(state.Steps))
+		for _, step := range state.Steps {
+			task := map[string]any{
+				"uuid": publicUUIDOrEmpty(step.TaskUUID), "kind": "comic_image_generation",
+				"resource_uuid": publicUUIDOrEmpty(step.ResourceUUID), "status": step.Status,
+			}
+			if code := strings.TrimSpace(step.ErrorCode); code != "" {
+				task["error_code"] = code
+			}
+			if message := strings.TrimSpace(step.ErrorMessage); message != "" {
+				task["error_message"] = message
+			}
+			tasks = append(tasks, task)
+		}
+		data := map[string]any{
+			"workflow_uuid":   publicUUIDOrEmpty(state.WorkflowUUID),
+			"chapter_uuid":    publicUUIDOrEmpty(snapshot.ChapterUUID),
+			"requested_count": len(tasks), "accepted_count": len(tasks), "tasks": tasks,
+		}
+		if state.WorkflowStatus == WorkflowCompleted {
+			encoded, _ := json.Marshal(map[string]any{"success": true, "data": data})
+			return encoded
+		}
+		code := strings.TrimSpace(state.ErrorCode)
+		if code == "" {
+			code = "workflow_" + state.WorkflowStatus
+		}
+		encoded, _ := json.Marshal(map[string]any{
+			"success": false, "data": data,
+			"error": map[string]any{"code": code, "message": "批量图片生成未全部完成。", "details": ""},
 		})
 		return encoded
 	}

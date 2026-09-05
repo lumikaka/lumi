@@ -8,6 +8,7 @@ import {
   chatThreadCountLabel,
   chatTurnDurationMs,
   chatTurnElapsedMs,
+  comicImageBatchStepTitle,
 	dedicatedWorkflowForThread,
   groupChatItemsByTurn,
 	groupInlineWorkflowsByTurn,
@@ -75,6 +76,27 @@ test('premise image workflows expose the referenced asset in their dedicated thr
   assert.equal(workflowDisplayTitle(workflow, t), 'chat.workflow.kind.premise_asset_generation_with_title:星星姐姐')
   assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'chat.workflow.kind.premise_asset_generation_with_title:星星姐姐')
   assert.equal(threadContextCopyKey({}, workflow), 'chat.workflow.kind.premise_asset_generation')
+})
+
+test('comic image batches expose their section count, page titles and aggregate progress', () => {
+  const t = (key, values = {}) => `${key}:${values.count || values.position || ''}:${values.title || ''}`
+  const workflow = {
+    kind: 'comic_image_generation_batch',
+    presentation_mode: 'dedicated_thread',
+    input_snapshot: JSON.stringify({ sections: [{ uuid: 'section-1' }, { uuid: 'section-2' }] }),
+    steps: [
+      { step_key: 'generate_section_image:001', position: 1, status: 'completed', progress: 0, input: { request_position: 1, section_title: '封面' } },
+      { step_key: 'generate_section_image:002', position: 2, status: 'running', progress: 40, input: JSON.stringify({ request_position: 2, section_title: '月光邮局' }) },
+      { step_key: 'generate_section_image:003', position: 3, status: 'queued', progress: 0, input: {} },
+    ],
+  }
+  assert.equal(workflowDisplayTitle(workflow, t), 'chat.workflow.kind.comic_image_generation_batch_with_count:2:')
+  assert.equal(threadDisplayTitle({ title: 'internal' }, workflow, t), 'chat.workflow.kind.comic_image_generation_batch_with_count:2:')
+  assert.equal(threadContextCopyKey({}, workflow), 'chat.workflow.kind.comic_image_generation_batch')
+  assert.equal(comicImageBatchStepTitle(workflow.steps[0], t), 'chat.workflow.step.batch_section_image_with_title:1:封面')
+  assert.equal(comicImageBatchStepTitle(workflow.steps[1], t), 'chat.workflow.step.batch_section_image_with_title:2:月光邮局')
+  assert.equal(comicImageBatchStepTitle(workflow.steps[2], t), 'chat.workflow.step.batch_section_image:3:')
+  assert.equal(workflowProgressPercent(workflow), 47)
 })
 
 test('dedicated and inline workflows are separated and inline cards sort stably within their origin turn', () => {

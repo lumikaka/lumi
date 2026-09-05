@@ -326,6 +326,7 @@ type ComicImageGenerationBatchTask struct {
 }
 
 type ComicImageGenerationBatch struct {
+	WorkflowUUID   string                          `json:"workflow_uuid"`
 	ChapterUUID    string                          `json:"chapter_uuid"`
 	RequestedCount int                             `json:"requested_count"`
 	AcceptedCount  int                             `json:"accepted_count"`

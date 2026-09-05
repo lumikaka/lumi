@@ -20,6 +20,7 @@ var phase3AgentAPIResponseFields = map[string]agentAPIResponseField{
 	"uuid":                      phase3ResponseField("uuid", "string", "资源公开 UUIDv7。"),
 	"project_uuid":              phase3ResponseField("project_uuid", "string", "所属项目公开 UUIDv7。"),
 	"thread_uuid":               phase3ResponseField("thread_uuid", "string", "关联 Chat Thread 公开 UUIDv7。"),
+	"workflow_uuid":             phase3ResponseField("workflow_uuid", "string", "关联 Workflow 公开 UUIDv7。"),
 	"chapter_uuid":              phase3ResponseField("chapter_uuid", "string", "关联 Chapter 公开 UUIDv7；项目范围数据省略该字段。"),
 	"task_uuid":                 phase3ResponseField("task_uuid", "string", "关联任务公开 UUIDv7。"),
 	"source_uuid":               phase3ResponseField("source_uuid", "string", "来源资源公开 UUIDv7；不适用时省略该字段。"),

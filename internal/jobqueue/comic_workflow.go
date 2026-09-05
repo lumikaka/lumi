@@ -350,13 +350,28 @@ func (runtime *projectRuntime) broadcastProductionWorkflow(event, taskUUID strin
 	if runtime.manager.hub == nil {
 		return
 	}
-	var workflowUUID, threadUUID, resourceUUID, status string
-	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,t.uuid,s.resource_uuid,w.status FROM workflows w JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE w.kind IN (?,?) AND s.task_uuid=? LIMIT 1`, agent.WorkflowComicSectionImage, agent.WorkflowPremiseAsset, taskUUID).Scan(&workflowUUID, &threadUUID, &resourceUUID, &status)
+	var workflowUUID, threadUUID, stepUUID, resourceUUID, status, workflowKind string
+	var progress int
+	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.status,w.kind,tasks.progress FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id JOIN production_task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid WHERE w.kind IN (?,?,?) AND s.task_uuid=? LIMIT 1`, agent.WorkflowComicSectionImage, agent.WorkflowPremiseAsset, agent.WorkflowComicImageBatch, taskUUID).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &workflowKind, &progress)
 	if err != nil {
 		return
 	}
-	runtime.manager.hub.Broadcast("project:"+runtime.projectUUID, event, map[string]any{
-		"project_uuid": runtime.projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID,
-		"task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": status,
-	})
+	if workflowKind == agent.WorkflowComicImageBatch {
+		if event != "workflow:queued" {
+			switch status {
+			case agent.WorkflowCompleted, agent.WorkflowFailed, agent.WorkflowCancelled, agent.WorkflowInterrupted:
+				event = "workflow:" + status
+			default:
+				event = "workflow:step_changed"
+			}
+		}
+	}
+	payload := map[string]any{
+		"project_uuid": runtime.projectUUID, "workflow_uuid": workflowUUID, "step_uuid": stepUUID,
+		"task_uuid": taskUUID, "resource_uuid": resourceUUID, "status": status, "progress": progress,
+	}
+	if threadUUID != "" {
+		payload["thread_uuid"] = threadUUID
+	}
+	runtime.manager.hub.Broadcast("project:"+runtime.projectUUID, event, payload)
 }

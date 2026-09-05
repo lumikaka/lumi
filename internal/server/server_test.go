@@ -199,8 +199,8 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 			documentedRoutes[key] = entry.Name()
 		}
 	}
-	if len(documentedRoutes) != 84 {
-		t.Fatalf("documented unique Agent project routes=%d want=84", len(documentedRoutes))
+	if len(documentedRoutes) != 83 {
+		t.Fatalf("documented unique Agent project routes=%d want=83", len(documentedRoutes))
 	}
 	for key, doc := range documentedRoutes {
 		if !agentRouteKeys[key] {

@@ -43,6 +43,7 @@ const (
 	WorkflowYolo                     = "yolo_project_initialization"
 	WorkflowPremiseAsset             = "premise_asset_generation"
 	WorkflowComicSectionImage        = "comic_section_image_generation"
+	WorkflowComicImageBatch          = "comic_image_generation_batch"
 	WorkflowComicStoryboard          = "comic_storyboard_generation"
 	WorkflowStoryChapter             = "story_chapter_generation"
 	WorkflowStoryChapterBatchPlan    = "story_chapter_batch_plan"
@@ -225,6 +226,7 @@ type DomainTask struct {
 }
 
 type DomainTaskBatch struct {
+	WorkflowUUID   string       `json:"workflow_uuid"`
 	ChapterUUID    string       `json:"chapter_uuid"`
 	RequestedCount int          `json:"requested_count"`
 	AcceptedCount  int          `json:"accepted_count"`

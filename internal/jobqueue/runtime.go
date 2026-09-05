@@ -458,6 +458,13 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 	if err := reconcileComicImageWorkflows(ctx, db, projectID, now); err != nil {
 		return err
 	}
+	var projectUUID string
+	if err := db.QueryRowContext(ctx, `SELECT uuid FROM projects WHERE id=?`, projectID).Scan(&projectUUID); err != nil {
+		return err
+	}
+	if err := reconcileComicImageBatchWorkflows(ctx, db, projectID, projectUUID, now); err != nil {
+		return err
+	}
 	if err := reconcilePremiseAssetWorkflows(ctx, db, projectID, now); err != nil {
 		return err
 	}

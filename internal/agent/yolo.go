@@ -1784,6 +1784,42 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 	if workflow.Status == WorkflowCompleted || workflow.Status == WorkflowCancelled {
 		return workflow, nil
 	}
+	if workflow.Kind == WorkflowComicImageBatch {
+		if err := service.markComicImageBatchCancellationRequested(ctx, projectUUID, workflowUUID); err != nil {
+			return Workflow{}, err
+		}
+		var firstErr error
+		for _, step := range workflow.Steps {
+			if step.TaskUUID == "" {
+				if firstErr == nil {
+					firstErr = domainError(CodeStateConflict, "批量图片 Workflow 缺少生产任务", "Workflow Step 没有关联 task_uuid。", nil)
+				}
+				continue
+			}
+			task, taskErr := service.queue.GetDomainTask(ctx, projectUUID, "comic_image_generation", step.TaskUUID)
+			if taskErr != nil {
+				if firstErr == nil {
+					firstErr = taskErr
+				}
+				continue
+			}
+			if task.Status != WorkflowQueued && task.Status != WorkflowRunning {
+				continue
+			}
+			if taskErr := service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, "comic_image_generation", step.TaskUUID); taskErr != nil && firstErr == nil {
+				firstErr = taskErr
+			}
+		}
+		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
+		if getErr != nil {
+			return Workflow{}, getErr
+		}
+		if firstErr != nil {
+			return result, firstErr
+		}
+		service.broadcastWorkflow(projectUUID, result, "workflow:"+result.Status, "")
+		return result, nil
+	}
 	if taskKind, projected := projectedProductionWorkflowTaskKind(workflow.Kind); projected {
 		taskUUID := projectedProductionWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
@@ -1969,6 +2005,36 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 	if workflow.Status != WorkflowFailed && workflow.Status != WorkflowInterrupted && workflow.Status != WorkflowCancelled {
 		return Workflow{}, domainError(CodeStateConflict, "Workflow 当前不可重试", "仅 failed、interrupted 或 cancelled workflow 可以重试。", nil)
 	}
+	if workflow.Kind == WorkflowComicImageBatch {
+		if err := service.prepareComicImageBatchRetry(ctx, projectUUID, workflowUUID); err != nil {
+			return Workflow{}, err
+		}
+		retried := 0
+		for _, step := range workflow.Steps {
+			if step.Status == WorkflowCompleted || step.TaskUUID == "" {
+				continue
+			}
+			task, taskErr := service.queue.GetDomainTask(ctx, projectUUID, "comic_image_generation", step.TaskUUID)
+			if taskErr != nil {
+				return Workflow{}, taskErr
+			}
+			if task.Status != WorkflowFailed && task.Status != WorkflowCancelled && task.Status != WorkflowInterrupted {
+				continue
+			}
+			if _, taskErr := service.queue.RetryDomainTask(ctx, projectUUID, "comic_image_generation", step.TaskUUID); taskErr != nil {
+				return Workflow{}, taskErr
+			}
+			retried++
+		}
+		if retried == 0 {
+			return Workflow{}, domainError(CodeStateConflict, "批量图片 Workflow 没有可重试任务", "只有失败、取消或中断的子任务会被重试。", nil)
+		}
+		result, getErr := service.GetWorkflow(ctx, projectUUID, workflowUUID)
+		if getErr == nil {
+			service.broadcastWorkflow(projectUUID, result, "workflow:queued", "")
+		}
+		return result, getErr
+	}
 	if taskKind, projected := projectedProductionWorkflowTaskKind(workflow.Kind); projected {
 		taskUUID := projectedProductionWorkflowTaskUUID(workflow)
 		if taskUUID == "" {
@@ -2092,6 +2158,45 @@ func projectedProductionWorkflowTaskKind(workflowKind string) (string, bool) {
 	}
 }
 
+func (service *Service) markComicImageBatchCancellationRequested(ctx context.Context, projectUUID, workflowUUID string) error {
+	return service.withStore(ctx, projectUUID, func(store *project.Store) error {
+		now := service.now().UTC()
+		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var row workflowRecord
+			if err := tx.Where("uuid=? AND kind=?", workflowUUID, WorkflowComicImageBatch).First(&row).Error; err != nil {
+				return err
+			}
+			if row.Status != WorkflowQueued && row.Status != WorkflowRunning {
+				return nil
+			}
+			if err := tx.Model(&workflowRecord{}).Where("id=?", row.ID).Updates(map[string]any{"cancel_requested_at": now, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			return appendWorkflowEventGormTx(ctx, tx, row.ID, nil, "workflow_cancel_requested", map[string]any{
+				"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "status": row.Status,
+			}, now)
+		})
+	})
+}
+
+func (service *Service) prepareComicImageBatchRetry(ctx context.Context, projectUUID, workflowUUID string) error {
+	return service.withStore(ctx, projectUUID, func(store *project.Store) error {
+		now := service.now().UTC()
+		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var row workflowRecord
+			if err := tx.Where("uuid=? AND kind=?", workflowUUID, WorkflowComicImageBatch).First(&row).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&workflowRecord{}).Where("id=?", row.ID).Updates(map[string]any{"cancel_requested_at": nil, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			return appendWorkflowEventGormTx(ctx, tx, row.ID, nil, "workflow_retry_requested", map[string]any{
+				"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "status": WorkflowQueued,
+			}, now)
+		})
+	})
+}
+
 func projectedProductionWorkflowTaskUUID(workflow Workflow) string {
 	for _, step := range workflow.Steps {
 		if step.TaskUUID != "" {
@@ -2128,6 +2233,29 @@ func (service *Service) broadcastWorkflow(projectUUID string, workflow Workflow,
 		return
 	}
 	payload := map[string]any{"project_uuid": projectUUID, "workflow_uuid": workflow.UUID, "thread_uuid": workflow.ThreadUUID, "status": workflow.Status}
+	if workflow.Kind == WorkflowComicImageBatch {
+		var selected *WorkflowStep
+		for index := range workflow.Steps {
+			step := &workflow.Steps[index]
+			if stepUUID != "" && step.UUID == stepUUID {
+				selected = step
+				break
+			}
+			if selected == nil && step.StepKey == workflow.CurrentStepKey {
+				selected = step
+			}
+		}
+		if selected == nil && len(workflow.Steps) > 0 {
+			selected = &workflow.Steps[0]
+		}
+		if selected != nil {
+			payload["step_uuid"] = selected.UUID
+			payload["task_uuid"] = selected.TaskUUID
+			payload["resource_uuid"] = selected.ResourceUUID
+			payload["progress"] = selected.Progress
+			stepUUID = selected.UUID
+		}
+	}
 	if _, projected := projectedStoryWorkflowTaskKind(workflow.Kind); projected {
 		for _, step := range workflow.Steps {
 			if step.TaskUUID == "" {

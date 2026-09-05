@@ -748,9 +748,10 @@ func TestFailedMigrationRestoresConsistentBackup(t *testing.T) {
 	if err := manager.CloseCurrent(ctx); err != nil {
 		t.Fatal(err)
 	}
+	brokenVersion := header.SchemaVersion + 1
 	brokenFS := fstest.MapFS{
-		"20260831000035_break.up.sql":   {Data: []byte("CREATE TABLE half_written (id INTEGER); THIS IS NOT SQL;")},
-		"20260831000035_break.down.sql": {Data: []byte("DROP TABLE half_written;")},
+		fmt.Sprintf("%d_break.up.sql", brokenVersion):   {Data: []byte("CREATE TABLE half_written (id INTEGER); THIS IS NOT SQL;")},
+		fmt.Sprintf("%d_break.down.sql", brokenVersion): {Data: []byte("DROP TABLE half_written;")},
 	}
 	_, err = migrateProjectWith(ctx, created.RootPath, &header, manager.now(), func(dsn string) (migrationRunner, error) {
 		return dbmigrate.OpenWithFS(dsn, brokenFS, ".")

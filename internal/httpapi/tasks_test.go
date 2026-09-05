@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"lumi/internal/agent"
 	"lumi/internal/appstore"
 	"lumi/internal/config"
 	"lumi/internal/imagegen"
@@ -120,6 +121,7 @@ func TestComicImageBatchHandlerUsesPublicEnvelopeAndPreflightStatuses(t *testing
 		t.Fatal(err)
 	}
 	queue := jobqueue.NewManager(providers, immediateModelFake{}, nil)
+	queue.WithImageClient(immediateHTTPImageProvider{content: apiPNG(t)})
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen).WithRuntime(queue).WithOpenHook(queue.StartProject)
 	createdProject, err := projects.CreateWithInput(ctx, project.CreateInput{Name: "Batch API", PictureBook: &project.PictureBookInput{Format: project.PictureBookVertical}}, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
@@ -160,7 +162,8 @@ func TestComicImageBatchHandlerUsesPublicEnvelopeAndPreflightStatuses(t *testing
 	}
 	data := envelopeData(t, response)
 	tasks, ok := data["tasks"].([]any)
-	if !ok || data["chapter_uuid"] != chapter.UUID || data["requested_count"] != float64(2) || data["accepted_count"] != float64(2) || len(tasks) != 2 {
+	workflowUUID, workflowUUIDOK := data["workflow_uuid"].(string)
+	if !ok || !workflowUUIDOK || !productionUUIDv7(workflowUUID) || data["chapter_uuid"] != chapter.UUID || data["requested_count"] != float64(2) || data["accepted_count"] != float64(2) || len(tasks) != 2 {
 		t.Fatalf("batch data=%+v", data)
 	}
 	for index, raw := range tasks {
@@ -184,6 +187,18 @@ func TestComicImageBatchHandlerUsesPublicEnvelopeAndPreflightStatuses(t *testing
 		if !terminal {
 			t.Fatalf("batch task %s did not leave active status", taskUUID)
 		}
+	}
+	var workflowCount, threadCount, stepCount int64
+	if err := projects.WithCurrentStore(ctx, createdProject.UUID, func(store *project.Store) error {
+		if err := store.DB().Table("workflows").Where("uuid=? AND kind=?", workflowUUID, agent.WorkflowComicImageBatch).Count(&workflowCount).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("chat_threads AS threads").Joins("JOIN workflows ON workflows.thread_id=threads.id").Where("workflows.uuid=? AND threads.thread_type='workflow'", workflowUUID).Count(&threadCount).Error; err != nil {
+			return err
+		}
+		return store.DB().Table("workflow_steps AS steps").Joins("JOIN workflows ON workflows.id=steps.workflow_id").Where("workflows.uuid=?", workflowUUID).Count(&stepCount).Error
+	}); err != nil || workflowCount != 1 || threadCount != 1 || stepCount != 2 {
+		t.Fatalf("workflow=%s counts workflow=%d thread=%d steps=%d err=%v", workflowUUID, workflowCount, threadCount, stepCount, err)
 	}
 
 	invalid := requestJSON(t, e, "POST", url, map[string]any{"section_uuids": []string{sections[0].UUID, sections[0].UUID}, "idempotency_key": "http-comic-batch-duplicate"})

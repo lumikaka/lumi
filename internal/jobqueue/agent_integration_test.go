@@ -30,6 +30,7 @@ type riverAgentModel struct {
 
 type inlineWorkflowAgentModel struct {
 	projectUUID, chapterUUID string
+	sectionUUIDs             []string
 	storyStarted             chan struct{}
 	releaseStory             chan struct{}
 	storyErr                 error
@@ -98,6 +99,15 @@ func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.C
 		})
 		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-storyboard-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 	}
+	if strings.Contains(last, "发起批量图片生成") {
+		arguments, _ := json.Marshal(map[string]any{
+			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/comic-image-generation-batches",
+			"method":          "POST",
+			"request_body":    map[string]any{"section_uuids": model.sectionUUIDs},
+			"response_filter": ".data | {workflow_uuid,chapter_uuid,requested_count,accepted_count,tasks:{uuid,kind,resource_uuid,status,error_code,error_message}}",
+		})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-comic-image-batch-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+	}
 	if strings.Contains(last, "发起章节生成") {
 		arguments, _ := json.Marshal(map[string]any{
 			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/generations",
@@ -114,6 +124,7 @@ type inlineWorkflowTestEnv struct {
 	ctx      context.Context
 	projects *project.Manager
 	agents   *agent.Service
+	queue    *Manager
 	project  project.Summary
 	provider provider.Provider
 	chapter  story.Chapter
@@ -128,16 +139,23 @@ func setupInlineWorkflowTestEnv(t *testing.T, model *inlineWorkflowAgentModel) i
 		t.Fatal(err)
 	}
 	providers := provider.NewService(app, provider.NewMemorySecretStore())
-	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/inline-model", APIKey: "inline-secret"})
+	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/inline-model", DefaultImageModel: "openai/gpt-image-1.5", APIKey: "inline-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	queue := NewManager(providers, model, nil)
+	queue.WithImageClient(successfulImageProvider{content: productionPNG(t)})
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
 	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
-	created, err := projects.Create(ctx, "Inline Workflow", project.ExplicitNewProjectParent(t.TempDir()))
+	created, err := projects.CreateWithInput(ctx, project.CreateInput{
+		Name: "Inline Workflow",
+		PictureBook: &project.PictureBookInput{
+			Format:      project.PictureBookClassic,
+			AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+		},
+	}, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +170,7 @@ func setupInlineWorkflowTestEnv(t *testing.T, model *inlineWorkflowAgentModel) i
 		t.Fatal(err)
 	}
 	model.chapterUUID = chapter.UUID
-	return inlineWorkflowTestEnv{ctx: ctx, projects: projects, agents: agents, project: created, provider: configured, chapter: chapter}
+	return inlineWorkflowTestEnv{ctx: ctx, projects: projects, agents: agents, queue: queue, project: created, provider: configured, chapter: chapter}
 }
 
 func waitInlineWorkflow(t *testing.T, env inlineWorkflowTestEnv, threadUUID string) agent.Workflow {
@@ -187,8 +205,397 @@ func waitTurnStatus(t *testing.T, env inlineWorkflowTestEnv, threadUUID, status 
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatalf("thread %s did not reach %s", threadUUID, status)
+	turns, turnErr := env.agents.ListTurns(env.ctx, env.project.UUID, threadUUID)
+	items, itemErr := env.agents.ListItems(env.ctx, env.project.UUID, threadUUID, "", "", 100)
+	t.Fatalf("thread %s did not reach %s: turns=%+v turn_err=%v items=%+v item_err=%v", threadUUID, status, turns, turnErr, items.Items, itemErr)
 	return agent.Turn{}
+}
+
+func TestChatToolComicImageBatchWaitsInlineAndResumesOnce(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		service := production.NewService(store, nil)
+		for _, title := range []string{"月下启程", "送达星光"} {
+			section, err := service.CreateSection(env.ctx, env.chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + "的完整画面脚本"})
+			if err != nil {
+				return err
+			}
+			model.sectionUUIDs = append(model.sectionUUIDs, section.UUID)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "批量图片对话", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起批量图片生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTurnStatus(t, env, thread.UUID, agent.TurnWaitingForWorkflow)
+	workflow := waitInlineWorkflowKind(t, env, thread.UUID, agent.WorkflowComicImageBatch)
+	if workflow.PresentationMode != string(agent.PresentationInline) || workflow.OriginTurnUUID != turn.UUID || workflow.AwaitStatus != "waiting" || len(workflow.Steps) != 2 {
+		t.Fatalf("inline batch workflow=%+v", workflow)
+	}
+	for index, step := range workflow.Steps {
+		if step.StepKey != comicImageBatchStepKey(index+1) || step.ResourceUUID != model.sectionUUIDs[index] || !isUUIDv7(step.TaskUUID) {
+			t.Fatalf("batch step[%d]=%+v", index, step)
+		}
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		var workflowThreads, awaits int64
+		if err := store.DB().Table("chat_threads").Where("thread_type=?", agent.ThreadTypeWorkflow).Count(&workflowThreads).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflow_awaits").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Count(&awaits).Error; err != nil {
+			return err
+		}
+		if workflowThreads != 0 || awaits != 1 {
+			t.Fatalf("shadow threads=%d awaits=%d", workflowThreads, awaits)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	close(model.releaseStory)
+	waitTurnStatus(t, env, thread.UUID, agent.TurnCompleted)
+	workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+	if err != nil || workflow.Status != agent.WorkflowCompleted || workflow.AwaitStatus != "resumed" {
+		t.Fatalf("completed batch workflow=%+v err=%v", workflow, err)
+	}
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := 0
+	for _, item := range items.Items {
+		if item.ItemType != "tool_result" {
+			continue
+		}
+		results++
+		var payload struct {
+			Success bool `json:"success"`
+			Data    struct {
+				WorkflowUUID   string             `json:"workflow_uuid"`
+				ChapterUUID    string             `json:"chapter_uuid"`
+				RequestedCount int                `json:"requested_count"`
+				AcceptedCount  int                `json:"accepted_count"`
+				Tasks          []agent.DomainTask `json:"tasks"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(item.Content), &payload); err != nil || !payload.Success || payload.Data.WorkflowUUID != workflow.UUID || payload.Data.ChapterUUID != env.chapter.UUID || payload.Data.RequestedCount != 2 || payload.Data.AcceptedCount != 2 || len(payload.Data.Tasks) != 2 {
+			t.Fatalf("batch terminal tool result=%s err=%v", item.Content, err)
+		}
+	}
+	if results != 1 {
+		t.Fatalf("tool results=%d items=%+v", results, items.Items)
+	}
+}
+
+func TestChatToolComicImageBatchPartialFailureWaitsForAllTasksAndResumesOnce(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	imageProvider := &failThenBlockImageProvider{blocked: make(chan struct{}), release: make(chan struct{}), content: productionPNG(t)}
+	env.queue.WithImageClient(imageProvider)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		service := production.NewService(store, nil)
+		for _, title := range []string{"失败页", "继续完成页"} {
+			section, err := service.CreateSection(env.ctx, env.chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + "画面脚本"})
+			if err != nil {
+				return err
+			}
+			model.sectionUUIDs = append(model.sectionUUIDs, section.UUID)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "批次部分失败", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起批量图片生成"}); err != nil {
+		t.Fatal(err)
+	}
+	workflow := waitInlineWorkflowKind(t, env, thread.UUID, agent.WorkflowComicImageBatch)
+	close(model.releaseStory)
+	select {
+	case <-imageProvider.blocked:
+	case <-time.After(8 * time.Second):
+		t.Fatal("successful sibling did not remain active")
+	}
+	deadline := time.Now().Add(8 * time.Second)
+	failedTaskFound := false
+	for time.Now().Before(deadline) && !failedTaskFound {
+		for _, step := range workflow.Steps {
+			task, getErr := env.queue.GetProductionTask(env.ctx, env.project.UUID, step.TaskUUID)
+			if getErr == nil && task.Status == StatusFailed {
+				failedTaskFound = true
+				break
+			}
+		}
+		if !failedTaskFound {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+	if !failedTaskFound || err != nil || workflow.Status != agent.WorkflowRunning || workflow.AwaitStatus != "waiting" {
+		t.Fatalf("active partial failure workflow=%+v failed_task=%v err=%v", workflow, failedTaskFound, err)
+	}
+	close(imageProvider.release)
+	waitTurnStatus(t, env, thread.UUID, agent.TurnCompleted)
+	workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+	if err != nil || workflow.Status != agent.WorkflowFailed || workflow.AwaitStatus != "resumed" {
+		t.Fatalf("terminal partial failure workflow=%+v err=%v", workflow, err)
+	}
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := 0
+	for _, item := range items.Items {
+		if item.ItemType != "tool_result" {
+			continue
+		}
+		results++
+		var payload struct {
+			Success bool `json:"success"`
+			Data    struct {
+				WorkflowUUID   string             `json:"workflow_uuid"`
+				ChapterUUID    string             `json:"chapter_uuid"`
+				RequestedCount int                `json:"requested_count"`
+				AcceptedCount  int                `json:"accepted_count"`
+				Tasks          []agent.DomainTask `json:"tasks"`
+			} `json:"data"`
+			Error struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(item.Content), &payload); err != nil || payload.Success || payload.Data.WorkflowUUID != workflow.UUID || payload.Data.ChapterUUID != env.chapter.UUID || payload.Data.RequestedCount != 2 || payload.Data.AcceptedCount != 2 || len(payload.Data.Tasks) != 2 || payload.Error.Code == "" {
+			t.Fatalf("partial failure result=%s err=%v", item.Content, err)
+		}
+		var failed, completed int
+		for _, task := range payload.Data.Tasks {
+			switch task.Status {
+			case StatusFailed:
+				failed++
+			case StatusCompleted:
+				completed++
+			}
+		}
+		if failed != 1 || completed != 1 {
+			t.Fatalf("partial failure tasks=%+v", payload.Data.Tasks)
+		}
+	}
+	if results != 1 {
+		t.Fatalf("tool results=%d items=%+v", results, items.Items)
+	}
+}
+
+func TestChatToolComicImageBatchCancellationResumesOnceWithCompletedResults(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	imageProvider := &completeThenBlockImageProvider{content: productionPNG(t), blocked: make(chan struct{})}
+	env.queue.WithImageClient(imageProvider)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		service := production.NewService(store, nil)
+		for _, title := range []string{"已完成页", "待取消页"} {
+			section, err := service.CreateSection(env.ctx, env.chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + "画面脚本"})
+			if err != nil {
+				return err
+			}
+			model.sectionUUIDs = append(model.sectionUUIDs, section.UUID)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "取消批次", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起批量图片生成"}); err != nil {
+		t.Fatal(err)
+	}
+	workflow := waitInlineWorkflowKind(t, env, thread.UUID, agent.WorkflowComicImageBatch)
+	close(model.releaseStory)
+	select {
+	case <-imageProvider.blocked:
+	case <-time.After(8 * time.Second):
+		t.Fatal("cancellable sibling did not start")
+	}
+	deadline := time.Now().Add(8 * time.Second)
+	completedTaskFound := false
+	for time.Now().Before(deadline) && !completedTaskFound {
+		for _, step := range workflow.Steps {
+			task, getErr := env.queue.GetProductionTask(env.ctx, env.project.UUID, step.TaskUUID)
+			if getErr == nil && task.Status == StatusCompleted {
+				completedTaskFound = true
+				break
+			}
+		}
+		if !completedTaskFound {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if !completedTaskFound {
+		t.Fatal("completed sibling was not persisted before cancellation")
+	}
+	cancelled, err := env.agents.CancelWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+	if err != nil || cancelled.Status != agent.WorkflowCancelled {
+		t.Fatalf("cancelled workflow=%+v err=%v", cancelled, err)
+	}
+	waitTurnStatus(t, env, thread.UUID, agent.TurnCompleted)
+	workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+	if err != nil || workflow.Status != agent.WorkflowCancelled || workflow.AwaitStatus != "resumed" {
+		t.Fatalf("resumed cancelled workflow=%+v err=%v", workflow, err)
+	}
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := 0
+	for _, item := range items.Items {
+		if item.ItemType != "tool_result" {
+			continue
+		}
+		results++
+		var payload struct {
+			Success bool `json:"success"`
+			Data    struct {
+				WorkflowUUID string             `json:"workflow_uuid"`
+				Tasks        []agent.DomainTask `json:"tasks"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(item.Content), &payload); err != nil || payload.Success || payload.Data.WorkflowUUID != workflow.UUID || len(payload.Data.Tasks) != 2 {
+			t.Fatalf("cancelled batch result=%s err=%v", item.Content, err)
+		}
+		var completed, cancelledTasks int
+		for _, task := range payload.Data.Tasks {
+			switch task.Status {
+			case StatusCompleted:
+				completed++
+			case StatusCancelled:
+				cancelledTasks++
+			}
+		}
+		if completed != 1 || cancelledTasks != 1 {
+			t.Fatalf("cancelled batch tasks=%+v", payload.Data.Tasks)
+		}
+	}
+	if results != 1 {
+		t.Fatalf("tool results=%d items=%+v", results, items.Items)
+	}
+}
+
+func TestAbortWaitingChatTurnCancelsComicImageBatchWithoutResume(t *testing.T) {
+	model := newInlineWorkflowAgentModel()
+	env := setupInlineWorkflowTestEnv(t, model)
+	imageProvider := &completeThenBlockImageProvider{content: productionPNG(t), blocked: make(chan struct{})}
+	env.queue.WithImageClient(imageProvider)
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		service := production.NewService(store, nil)
+		for _, title := range []string{"中止前已完成页", "中止时生成中页"} {
+			section, err := service.CreateSection(env.ctx, env.chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + "画面脚本"})
+			if err != nil {
+				return err
+			}
+			model.sectionUUIDs = append(model.sectionUUIDs, section.UUID)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	thread, err := env.agents.CreateThread(env.ctx, env.project.UUID, agent.CreateThreadInput{Title: "中止批次父 Run", ProviderUUID: env.provider.UUID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	turn, err := env.agents.CreateTurn(env.ctx, env.project.UUID, thread.UUID, agent.CreateTurnInput{InputText: "请发起批量图片生成"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := waitInlineWorkflowKind(t, env, thread.UUID, agent.WorkflowComicImageBatch)
+	close(model.releaseStory)
+	select {
+	case <-imageProvider.blocked:
+	case <-time.After(8 * time.Second):
+		t.Fatal("cancellable sibling did not start")
+	}
+	deadline := time.Now().Add(8 * time.Second)
+	completedTaskFound := false
+	for time.Now().Before(deadline) && !completedTaskFound {
+		for _, step := range workflow.Steps {
+			task, getErr := env.queue.GetProductionTask(env.ctx, env.project.UUID, step.TaskUUID)
+			if getErr == nil && task.Status == StatusCompleted {
+				completedTaskFound = true
+				break
+			}
+		}
+		if !completedTaskFound {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if !completedTaskFound {
+		t.Fatal("completed sibling was not persisted before abort")
+	}
+	aborted, err := env.agents.Abort(env.ctx, env.project.UUID, thread.UUID)
+	if err != nil || aborted.UUID != turn.UUID || aborted.Status != agent.TurnCancelled {
+		t.Fatalf("abort=%+v err=%v", aborted, err)
+	}
+	deadline = time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		workflow, err = env.agents.GetWorkflow(env.ctx, env.project.UUID, workflow.UUID)
+		if err == nil && workflow.Status == agent.WorkflowCancelled {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if err != nil || workflow.Status != agent.WorkflowCancelled {
+		t.Fatalf("aborted batch workflow=%+v err=%v", workflow, err)
+	}
+	var completed, cancelled int
+	for _, step := range workflow.Steps {
+		task, getErr := env.queue.GetProductionTask(env.ctx, env.project.UUID, step.TaskUUID)
+		if getErr != nil {
+			t.Fatal(getErr)
+		}
+		switch task.Status {
+		case StatusCompleted:
+			completed++
+		case StatusCancelled:
+			cancelled++
+		}
+	}
+	if completed != 1 || cancelled != 1 {
+		t.Fatalf("completed=%d cancelled=%d workflow=%+v", completed, cancelled, workflow)
+	}
+	items, err := env.agents.ListItems(env.ctx, env.project.UUID, thread.UUID, "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items.Items {
+		if item.ItemType == "tool_result" || item.ItemType == "assistant_message" {
+			t.Fatalf("cancelled parent was resumed by item %+v", item)
+		}
+	}
+	if err := env.projects.WithCurrentStore(env.ctx, env.project.UUID, func(store *project.Store) error {
+		var awaitStatus, runStatus string
+		if err := store.DB().Table("workflow_awaits").Select("status").Where("workflow_id=(SELECT id FROM workflows WHERE uuid=?)", workflow.UUID).Scan(&awaitStatus).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("chat_runs").Select("status").Where("turn_id=(SELECT id FROM chat_turns WHERE uuid=?)", turn.UUID).Scan(&runStatus).Error; err != nil {
+			return err
+		}
+		if awaitStatus != "cancelled" || runStatus != agent.TurnCancelled {
+			t.Fatalf("await=%s run=%s", awaitStatus, runStatus)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestChatToolWorkflowFailureAndCancellationResumeStructuredToolResults(t *testing.T) {

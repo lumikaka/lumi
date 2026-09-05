@@ -509,11 +509,11 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 			return domainError(CodeStateConflict, "Thread 当前没有可取消的 turn", "所有 turn 已处于稳定状态。", err)
 		}
 		now := service.now().UTC()
-		awaitRows, err := tx.QueryContext(ctx, `SELECT w.kind,s.task_uuid
+		awaitRows, err := tx.QueryContext(ctx, `SELECT CASE WHEN w.kind=? THEN 'comic_image_generation' ELSE w.kind END,s.task_uuid
 			FROM workflow_awaits a
 			JOIN workflows w ON w.id=a.workflow_id
 			JOIN workflow_steps s ON s.workflow_id=w.id
-			WHERE a.chat_run_id=? AND a.status IN ('waiting','ready','resuming') AND s.task_uuid<>''`, runID)
+			WHERE a.chat_run_id=? AND a.status IN ('waiting','ready','resuming') AND s.task_uuid<>''`, WorkflowComicImageBatch, runID)
 		if err != nil {
 			return err
 		}

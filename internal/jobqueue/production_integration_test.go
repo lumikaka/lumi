@@ -415,6 +415,29 @@ type failFirstRecordingImageProvider struct {
 	content  []byte
 }
 
+type completeThenBlockImageProvider struct {
+	mu          sync.Mutex
+	requests    []imagegen.Request
+	content     []byte
+	blocked     chan struct{}
+	blockedOnce sync.Once
+}
+
+type retryFirstRecordingImageProvider struct {
+	mu       sync.Mutex
+	requests []imagegen.Request
+	content  []byte
+}
+
+type failThenBlockImageProvider struct {
+	mu          sync.Mutex
+	calls       int
+	blocked     chan struct{}
+	release     chan struct{}
+	blockedOnce sync.Once
+	content     []byte
+}
+
 func (provider *failFirstRecordingImageProvider) Generate(_ context.Context, request imagegen.Request) (imagegen.Response, error) {
 	provider.mu.Lock()
 	provider.requests = append(provider.requests, request)
@@ -430,6 +453,53 @@ func (provider *failFirstRecordingImageProvider) snapshot() []imagegen.Request {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	return append([]imagegen.Request(nil), provider.requests...)
+}
+
+func (provider *completeThenBlockImageProvider) Generate(ctx context.Context, request imagegen.Request) (imagegen.Response, error) {
+	provider.mu.Lock()
+	provider.requests = append(provider.requests, request)
+	call := len(provider.requests)
+	provider.mu.Unlock()
+	if call == 1 {
+		return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+	}
+	provider.blockedOnce.Do(func() { close(provider.blocked) })
+	<-ctx.Done()
+	return imagegen.Response{}, ctx.Err()
+}
+
+func (provider *retryFirstRecordingImageProvider) Generate(_ context.Context, request imagegen.Request) (imagegen.Response, error) {
+	provider.mu.Lock()
+	provider.requests = append(provider.requests, request)
+	call := len(provider.requests)
+	provider.mu.Unlock()
+	if call == 1 {
+		return imagegen.Response{}, &imagegen.Error{Code: "temporary_image_provider_error", SafeMessage: "图片 Provider 暂时不可用。", Retryable: true}
+	}
+	return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+}
+
+func (provider *retryFirstRecordingImageProvider) callCount() int {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return len(provider.requests)
+}
+
+func (provider *failThenBlockImageProvider) Generate(ctx context.Context, _ imagegen.Request) (imagegen.Response, error) {
+	provider.mu.Lock()
+	provider.calls++
+	call := provider.calls
+	provider.mu.Unlock()
+	if call == 1 {
+		return imagegen.Response{}, &imagegen.Error{Code: "image_provider_error", SafeMessage: "首个批次图片失败。", Retryable: false}
+	}
+	provider.blockedOnce.Do(func() { close(provider.blocked) })
+	select {
+	case <-provider.release:
+		return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+	case <-ctx.Done():
+		return imagegen.Response{}, ctx.Err()
+	}
 }
 
 func (provider *restartingImageProvider) Generate(ctx context.Context, request imagegen.Request) (imagegen.Response, error) {
@@ -536,6 +606,22 @@ func waitProductionStatus(t *testing.T, manager *Manager, projectUUID, taskUUID,
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("production task %s did not reach %s; last=%+v err=%v", taskUUID, wanted, last, err)
+	return ProductionTask{}
+}
+
+func waitProductionTerminal(t *testing.T, manager *Manager, projectUUID, taskUUID string) ProductionTask {
+	t.Helper()
+	deadline := time.Now().Add(8 * time.Second)
+	var last ProductionTask
+	var err error
+	for time.Now().Before(deadline) {
+		last, err = manager.GetProductionTask(context.Background(), projectUUID, taskUUID)
+		if err == nil && last.Status != StatusQueued && last.Status != StatusRunning {
+			return last
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("production task %s did not reach a terminal state; last=%+v err=%v", taskUUID, last, err)
 	return ProductionTask{}
 }
 
@@ -784,7 +870,7 @@ func TestComicImageGenerationCreatesVisibleWorkflowAndTracksLifecycle(t *testing
 	}
 }
 
-func TestComicImageBatchCreatesIndependentVisibleWorkflows(t *testing.T) {
+func TestComicImageBatchCreatesOneAggregateVisibleWorkflow(t *testing.T) {
 	harness := newQueueHarness(t)
 	harness.queue.WithImageClient(successfulImageProvider{content: productionPNG(t)})
 	ctx := context.Background()
@@ -812,8 +898,34 @@ func TestComicImageBatchCreatesIndependentVisibleWorkflows(t *testing.T) {
 	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
 		SectionUUIDs: requested, IdempotencyKey: "comic-visible-batch",
 	})
-	if err != nil || batch.ChapterUUID != chapter.UUID || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
+	if err != nil || !isUUIDv7(batch.WorkflowUUID) || batch.ChapterUUID != chapter.UUID || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
 		t.Fatalf("batch=%+v err=%v", batch, err)
+	}
+	agents := agent.NewService(harness.projects, harness.queue.providers, newRiverAgentModel(), harness.queue, nil)
+	workflow, err := agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || workflow.Kind != agent.WorkflowComicImageBatch || workflow.PresentationMode != string(agent.PresentationDedicatedThread) || !isUUIDv7(workflow.ThreadUUID) || len(workflow.Steps) != len(requested) {
+		t.Fatalf("batch workflow=%+v err=%v", workflow, err)
+	}
+	var workflowSnapshot comicImageBatchWorkflowSnapshot
+	if err := json.Unmarshal(workflow.InputSnapshot, &workflowSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if workflowSnapshot.ProjectUUID != harness.project.UUID || workflowSnapshot.ChapterUUID != chapter.UUID || len(workflowSnapshot.Sections) != len(requested) {
+		t.Fatalf("batch workflow snapshot=%+v", workflowSnapshot)
+	}
+	for index, step := range workflow.Steps {
+		var input struct {
+			SectionUUID     string `json:"section_uuid"`
+			SectionTitle    string `json:"section_title"`
+			RequestPosition int    `json:"request_position"`
+		}
+		if err := json.Unmarshal(step.Input, &input); err != nil {
+			t.Fatal(err)
+		}
+		expected := sections[1-index]
+		if workflowSnapshot.Sections[index].UUID != requested[index] || workflowSnapshot.Sections[index].Title != expected.Title || workflowSnapshot.Sections[index].Position != index+1 || step.StepKey != comicImageBatchStepKey(index+1) || step.TaskUUID != batch.Tasks[index].UUID || step.ResourceUUID != requested[index] || input.SectionUUID != requested[index] || input.SectionTitle != expected.Title || input.RequestPosition != index+1 {
+			t.Fatalf("batch workflow section[%d]=%+v step=%+v input=%+v", index, workflowSnapshot.Sections[index], step, input)
+		}
 	}
 	taskUUIDs := make([]string, 0, len(batch.Tasks))
 	expectedStoryboards := map[string]string{
@@ -840,26 +952,382 @@ func TestComicImageBatchCreatesIndependentVisibleWorkflows(t *testing.T) {
 	replayed, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
 		SectionUUIDs: requested, IdempotencyKey: "comic-visible-batch",
 	})
-	if err != nil || len(replayed.Tasks) != 2 || replayed.Tasks[0].UUID != taskUUIDs[0] || replayed.Tasks[1].UUID != taskUUIDs[1] {
+	if err != nil || replayed.WorkflowUUID != batch.WorkflowUUID || len(replayed.Tasks) != 2 || replayed.Tasks[0].UUID != taskUUIDs[0] || replayed.Tasks[1].UUID != taskUUIDs[1] {
 		t.Fatalf("replayed=%+v err=%v", replayed, err)
+	}
+	_, err = harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: []string{requested[1], requested[0]}, IdempotencyKey: "comic-visible-batch",
+	})
+	var driftErr *Error
+	if !errors.As(err, &driftErr) || driftErr.Code != CodeTaskConflict {
+		t.Fatalf("idempotency drift error=%v", err)
 	}
 	for _, taskUUID := range taskUUIDs {
 		waitProductionStatus(t, harness.queue, harness.project.UUID, taskUUID, StatusCompleted)
 	}
+	archivedSection, err := service.GetSection(ctx, chapter.UUID, requested[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.DeleteSection(ctx, chapter.UUID, archivedSection.UUID, archivedSection.Revision); err != nil {
+		t.Fatal(err)
+	}
+	archivedReplay, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: requested, IdempotencyKey: "comic-visible-batch",
+	})
+	if err != nil || archivedReplay.WorkflowUUID != batch.WorkflowUUID || len(archivedReplay.Tasks) != 2 || archivedReplay.Tasks[0].UUID != taskUUIDs[0] || archivedReplay.Tasks[1].UUID != taskUUIDs[1] {
+		t.Fatalf("archived replay=%+v err=%v", archivedReplay, err)
+	}
 
-	type batchCounts struct{ Workflows, Threads, Tasks int64 }
+	type batchCounts struct{ Workflows, Threads, Steps, Tasks int64 }
 	var counts batchCounts
 	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
-		return store.DB().Raw(`SELECT COUNT(DISTINCT w.id) AS workflows,COUNT(DISTINCT w.thread_id) AS threads,COUNT(DISTINCT s.task_uuid) AS tasks FROM workflows w JOIN workflow_steps s ON s.workflow_id=w.id WHERE w.kind=? AND s.task_uuid<>''`, agent.WorkflowComicSectionImage).Scan(&counts).Error
+		return store.DB().Raw(`SELECT COUNT(DISTINCT w.id) AS workflows,COUNT(DISTINCT w.thread_id) AS threads,COUNT(DISTINCT s.id) AS steps,COUNT(DISTINCT s.task_uuid) AS tasks FROM workflows w JOIN workflow_steps s ON s.workflow_id=w.id WHERE w.kind=? AND s.task_uuid<>''`, agent.WorkflowComicImageBatch).Scan(&counts).Error
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if counts.Workflows != 2 || counts.Threads != 2 || counts.Tasks != 2 || taskUUIDs[0] == taskUUIDs[1] {
+	if counts.Workflows != 1 || counts.Threads != 1 || counts.Steps != 2 || counts.Tasks != 2 || taskUUIDs[0] == taskUUIDs[1] {
 		t.Fatalf("batch task UUIDs=%v counts=%+v", taskUUIDs, counts)
+	}
+	runtime, err := harness.queue.runtimeFor(harness.project.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE workflows SET status='running',completed_at=NULL,error_code='stale',error_message='stale' WHERE uuid=?`, batch.WorkflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',completed_at=NULL,error_code='stale',error_message='stale' WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?)`, batch.WorkflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := reconcileComicImageBatchWorkflows(ctx, runtime.sqlDB, runtime.projectID, harness.project.UUID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	reconciled, err := agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || reconciled.Status != agent.WorkflowCompleted {
+		t.Fatalf("reconciled batch workflow=%+v err=%v", reconciled, err)
+	}
+	for _, step := range reconciled.Steps {
+		if step.Status != StatusCompleted || step.Progress != 100 || step.ErrorCode != "" {
+			t.Fatalf("reconciled batch step=%+v", step)
+		}
+	}
+	var reconciledCompletedAt, repeatedCompletedAt time.Time
+	var reconciledEvents, repeatedEvents int64
+	if err := runtime.sqlDB.QueryRowContext(ctx, `SELECT completed_at,(SELECT COUNT(*) FROM workflow_events WHERE workflow_id=workflows.id) FROM workflows WHERE uuid=?`, batch.WorkflowUUID).Scan(&reconciledCompletedAt, &reconciledEvents); err != nil {
+		t.Fatal(err)
+	}
+	if err := reconcileComicImageBatchWorkflows(ctx, runtime.sqlDB, runtime.projectID, harness.project.UUID, reconciledCompletedAt.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.sqlDB.QueryRowContext(ctx, `SELECT completed_at,(SELECT COUNT(*) FROM workflow_events WHERE workflow_id=workflows.id) FROM workflows WHERE uuid=?`, batch.WorkflowUUID).Scan(&repeatedCompletedAt, &repeatedEvents); err != nil {
+		t.Fatal(err)
+	}
+	if !repeatedCompletedAt.Equal(reconciledCompletedAt) || repeatedEvents != reconciledEvents {
+		t.Fatalf("no-op reconcile completion=%s/%s events=%d/%d", reconciledCompletedAt, repeatedCompletedAt, reconciledEvents, repeatedEvents)
+	}
+	cancelRequestedAt := time.Now().UTC()
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=35,cancel_requested_at=NULL,completed_at=NULL WHERE uuid=?`, taskUUIDs[1]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued',completed_at=NULL WHERE task_uuid=?`, taskUUIDs[1]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE workflows SET status='running',cancel_requested_at=?,completed_at=NULL WHERE uuid=?`, cancelRequestedAt, batch.WorkflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := reconcileComicImageBatchWorkflows(ctx, runtime.sqlDB, runtime.projectID, harness.project.UUID, cancelRequestedAt.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	reconciled, err = agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || reconciled.Status != agent.WorkflowCancelled {
+		t.Fatalf("cancel-intent reconciled workflow=%+v err=%v", reconciled, err)
+	}
+	var completed, cancelled int
+	for _, step := range reconciled.Steps {
+		switch step.Status {
+		case StatusCompleted:
+			completed++
+		case StatusCancelled:
+			cancelled++
+		}
+	}
+	if completed != 1 || cancelled != 1 {
+		t.Fatalf("cancel-intent reconciled steps=%+v", reconciled.Steps)
 	}
 }
 
-func TestAgentComicImageBatchKeepsTasksInlineWithoutVisibleWorkflows(t *testing.T) {
+func TestComicImageBatchFailureWaitsForSiblingsAndRetryOnlyFailed(t *testing.T) {
+	harness := newQueueHarness(t)
+	imageProvider := &failFirstRecordingImageProvider{content: productionPNG(t)}
+	harness.queue.WithImageClient(imageProvider)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch36")
+	sectionUUIDs := make([]string, 0, 2)
+	for _, title := range []string{"Failure continues", "Sibling completes"} {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + " storyboard"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+	}
+	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: sectionUUIDs, IdempotencyKey: "comic-batch-partial-failure",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var failedTask, completedTask ProductionTask
+	for _, item := range batch.Tasks {
+		task := waitProductionTerminal(t, harness.queue, harness.project.UUID, item.UUID)
+		switch task.Status {
+		case StatusFailed:
+			failedTask = task
+		case StatusCompleted:
+			completedTask = task
+		default:
+			t.Fatalf("unexpected terminal task=%+v", task)
+		}
+	}
+	if failedTask.UUID == "" || completedTask.UUID == "" || len(imageProvider.snapshot()) != 2 {
+		t.Fatalf("failed=%+v completed=%+v calls=%d", failedTask, completedTask, len(imageProvider.snapshot()))
+	}
+
+	agents := agent.NewService(harness.projects, harness.queue.providers, newRiverAgentModel(), harness.queue, nil)
+	failedWorkflow, err := agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || failedWorkflow.Status != agent.WorkflowFailed || len(failedWorkflow.Steps) != 2 {
+		t.Fatalf("failed workflow=%+v err=%v", failedWorkflow, err)
+	}
+	var failedSteps, completedSteps int
+	for _, step := range failedWorkflow.Steps {
+		switch step.Status {
+		case StatusFailed:
+			failedSteps++
+		case StatusCompleted:
+			completedSteps++
+			if step.Progress != 100 {
+				t.Fatalf("completed step progress=%+v", step)
+			}
+		}
+	}
+	if failedSteps != 1 || completedSteps != 1 {
+		t.Fatalf("failed workflow steps=%+v", failedWorkflow.Steps)
+	}
+
+	retried, err := agents.RetryWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || retried.UUID != batch.WorkflowUUID || (retried.Status != agent.WorkflowQueued && retried.Status != agent.WorkflowRunning) {
+		t.Fatalf("retried workflow=%+v err=%v", retried, err)
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, failedTask.UUID, StatusCompleted)
+	untouched, err := harness.queue.GetProductionTask(ctx, harness.project.UUID, completedTask.UUID)
+	if err != nil || untouched.Status != StatusCompleted || untouched.Attempt != completedTask.Attempt {
+		t.Fatalf("completed sibling was retried: before=%+v after=%+v err=%v", completedTask, untouched, err)
+	}
+	completedWorkflow, err := agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || completedWorkflow.Status != agent.WorkflowCompleted || len(imageProvider.snapshot()) != 3 {
+		t.Fatalf("completed workflow=%+v calls=%d err=%v", completedWorkflow, len(imageProvider.snapshot()), err)
+	}
+}
+
+func TestComicImageBatchRetryableAttemptNeverPublishesATerminalWorkflow(t *testing.T) {
+	harness := newQueueHarness(t)
+	imageProvider := &retryFirstRecordingImageProvider{content: productionPNG(t)}
+	harness.queue.WithImageClient(imageProvider)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch39")
+	section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Transient retry", StoryboardMD: "Transient retry storyboard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: []string{section.UUID}, IdempotencyKey: "comic-batch-transient-retry",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, batch.Tasks[0].UUID, StatusCompleted)
+	agents := agent.NewService(harness.projects, harness.queue.providers, newRiverAgentModel(), harness.queue, nil)
+	workflow, err := agents.GetWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || workflow.Status != agent.WorkflowCompleted || imageProvider.callCount() != 2 {
+		t.Fatalf("workflow=%+v calls=%d err=%v", workflow, imageProvider.callCount(), err)
+	}
+	var terminalFailures int64
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		return store.DB().Table("workflow_events AS events").Joins("JOIN workflows ON workflows.id=events.workflow_id").Where("workflows.uuid=? AND events.event_type='workflow_failed'", batch.WorkflowUUID).Count(&terminalFailures).Error
+	}); err != nil || terminalFailures != 0 {
+		t.Fatalf("transient terminal failures=%d err=%v", terminalFailures, err)
+	}
+}
+
+func TestComicImageBatchAggregateKeepsActiveWorkAndUsesTerminalPrecedence(t *testing.T) {
+	active := []comicImageBatchTaskState{
+		{StepKey: "generate_section_image:001", TaskStatus: StatusFailed, ErrorCode: "first_failed"},
+		{StepKey: "generate_section_image:002", TaskStatus: StatusRunning},
+	}
+	status, currentStep, code, _, terminal := aggregateComicImageBatchState(active)
+	if status != agent.WorkflowRunning || currentStep != "generate_section_image:002" || code != "" || terminal {
+		t.Fatalf("active aggregate status=%s step=%s code=%s terminal=%v", status, currentStep, code, terminal)
+	}
+	terminalStates := []comicImageBatchTaskState{
+		{StepKey: "generate_section_image:001", TaskStatus: StatusCancelled, ErrorCode: "cancelled_first"},
+		{StepKey: "generate_section_image:002", TaskStatus: StatusFailed, ErrorCode: "failed_first_by_order", ErrorMessage: "first failure"},
+		{StepKey: "generate_section_image:003", TaskStatus: StatusFailed, ErrorCode: "failed_second_by_order", ErrorMessage: "second failure"},
+		{StepKey: "generate_section_image:004", TaskStatus: StatusInterrupted, ErrorCode: "interrupted_last"},
+	}
+	status, currentStep, code, message, terminal := aggregateComicImageBatchState(terminalStates)
+	if status != agent.WorkflowFailed || currentStep != "generate_section_image:002" || code != "failed_first_by_order" || message != "first failure" || !terminal {
+		t.Fatalf("terminal aggregate status=%s step=%s code=%s message=%s terminal=%v", status, currentStep, code, message, terminal)
+	}
+}
+
+func TestComicImageBatchCancelPreservesCompletedSibling(t *testing.T) {
+	harness := newQueueHarness(t)
+	imageProvider := &completeThenBlockImageProvider{content: productionPNG(t), blocked: make(chan struct{})}
+	harness.queue.WithImageClient(imageProvider)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch37")
+	sectionUUIDs := make([]string, 0, 2)
+	for _, title := range []string{"Completed sibling", "Cancelled sibling"} {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + " storyboard"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+	}
+	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: sectionUUIDs, IdempotencyKey: "comic-batch-cancel",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-imageProvider.blocked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("second batch image task did not start")
+	}
+	deadline := time.Now().Add(8 * time.Second)
+	completedBeforeCancel := ""
+	for time.Now().Before(deadline) && completedBeforeCancel == "" {
+		for _, item := range batch.Tasks {
+			task, getErr := harness.queue.GetProductionTask(ctx, harness.project.UUID, item.UUID)
+			if getErr == nil && task.Status == StatusCompleted {
+				completedBeforeCancel = task.UUID
+				break
+			}
+		}
+		if completedBeforeCancel == "" {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if completedBeforeCancel == "" {
+		t.Fatal("first batch image task did not complete")
+	}
+
+	agents := agent.NewService(harness.projects, harness.queue.providers, newRiverAgentModel(), harness.queue, nil)
+	cancelled, err := agents.CancelWorkflow(ctx, harness.project.UUID, batch.WorkflowUUID)
+	if err != nil || cancelled.Status != agent.WorkflowCancelled {
+		t.Fatalf("cancelled workflow=%+v err=%v", cancelled, err)
+	}
+	var completed, cancelledCount int
+	for _, item := range batch.Tasks {
+		task := waitProductionTerminal(t, harness.queue, harness.project.UUID, item.UUID)
+		switch task.Status {
+		case StatusCompleted:
+			completed++
+			if task.UUID != completedBeforeCancel {
+				t.Fatalf("unexpected completed task=%+v", task)
+			}
+		case StatusCancelled:
+			cancelledCount++
+		default:
+			t.Fatalf("unexpected cancelled batch terminal=%+v", task)
+		}
+	}
+	if completed != 1 || cancelledCount != 1 {
+		t.Fatalf("completed=%d cancelled=%d workflow=%+v", completed, cancelledCount, cancelled)
+	}
+}
+
+func TestComicImageBatchCreationRollsBackWorkflowTasksGenerationsAndJobs(t *testing.T) {
+	harness := newQueueHarness(t)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch38")
+	sectionUUIDs := make([]string, 0, 2)
+	for _, title := range []string{"Atomic batch one", "Atomic batch two"} {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: title, StoryboardMD: title + " storyboard"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+	}
+	var riverJobsBefore int64
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		if err := store.DB().Table("river_job").Count(&riverJobsBefore).Error; err != nil {
+			return err
+		}
+		return store.DB().Exec(`CREATE TRIGGER reject_comic_image_batch_workflow BEFORE INSERT ON workflows WHEN NEW.kind='comic_image_generation_batch' BEGIN SELECT RAISE(ABORT, 'injected batch workflow failure'); END`).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: sectionUUIDs, IdempotencyKey: "comic-batch-atomic-failure",
+	})
+	if err == nil {
+		t.Fatal("expected injected batch workflow creation failure")
+	}
+	var tasks, generations, workflows, steps, riverJobsAfter int64
+	if queryErr := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		if err := store.DB().Table("production_task_runs").Where("idempotency_key IN ?", []string{
+			comicImageBatchTaskKey("comic-batch-atomic-failure", sectionUUIDs[0]),
+			comicImageBatchTaskKey("comic-batch-atomic-failure", sectionUUIDs[1]),
+		}).Count(&tasks).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("comic_image_generations").Where(
+			"comic_section_id IN (SELECT id FROM comic_sections WHERE uuid IN ?)", sectionUUIDs,
+		).Count(&generations).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicImageBatch).Count(&workflows).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Table("workflow_steps AS steps").Joins("JOIN workflows ON workflows.id=steps.workflow_id").Where("workflows.kind=?", agent.WorkflowComicImageBatch).Count(&steps).Error; err != nil {
+			return err
+		}
+		return store.DB().Table("river_job").Count(&riverJobsAfter).Error
+	}); queryErr != nil || tasks != 0 || generations != 0 || workflows != 0 || steps != 0 || riverJobsAfter != riverJobsBefore {
+		t.Fatalf("rollback tasks=%d generations=%d workflows=%d steps=%d river_jobs=%d/%d err=%v", tasks, generations, workflows, steps, riverJobsBefore, riverJobsAfter, queryErr)
+	}
+}
+
+func TestParentWorkflowComicImageBatchCreatesUnpresentedChildWorkflow(t *testing.T) {
 	harness := newQueueHarness(t)
 	harness.queue.WithImageClient(successfulImageProvider{content: productionPNG(t)})
 	ctx := context.Background()
@@ -881,20 +1349,21 @@ func TestAgentComicImageBatchKeepsTasksInlineWithoutVisibleWorkflows(t *testing.
 	}
 	batch, err := harness.queue.StartDomainTaskBatch(ctx, harness.project.UUID, agent.DomainTaskBatchRequest{
 		Kind: KindComicImageGeneration, ResourceUUIDs: sectionUUIDs, ChapterUUID: chapter.UUID, IdempotencyKey: "agent-inline-comic-batch",
+		Invocation: agent.WorkflowStepInvocationContext(""),
 	})
-	if err != nil || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
+	if err != nil || !isUUIDv7(batch.WorkflowUUID) || batch.RequestedCount != 2 || batch.AcceptedCount != 2 || len(batch.Tasks) != 2 {
 		t.Fatalf("batch=%+v err=%v", batch, err)
 	}
 	var workflows, threads int64
 	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
-		if err := store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicSectionImage).Count(&workflows).Error; err != nil {
+		if err := store.DB().Table("workflows").Where("kind=? AND thread_id IS NULL", agent.WorkflowComicImageBatch).Count(&workflows).Error; err != nil {
 			return err
 		}
 		return store.DB().Table("chat_threads").Where("thread_type=?", agent.ThreadTypeWorkflow).Count(&threads).Error
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if workflows != 0 || threads != 0 {
+	if workflows != 1 || threads != 0 {
 		t.Fatalf("workflows=%d threads=%d", workflows, threads)
 	}
 	for index, task := range batch.Tasks {

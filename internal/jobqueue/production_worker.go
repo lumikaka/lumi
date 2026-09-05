@@ -94,6 +94,10 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 			_ = runtime.cancelProductionProjection(context.WithoutCancel(ctx), record)
 			return workErr
 		}
+		if retryable && job.Attempt < job.MaxAttempts {
+			_ = runtime.retryProductionFailure(context.WithoutCancel(ctx), record, code, message, job.Attempt)
+			return workErr
+		}
 		_ = runtime.failProduction(context.WithoutCancel(ctx), record, code, message, job.Attempt)
 		if !retryable {
 			return river.JobCancel(workErr)
@@ -738,6 +742,9 @@ func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record
 	if err := markPremiseAssetWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -769,6 +776,9 @@ func (runtime *projectRuntime) productionProgress(ctx context.Context, record pr
 		return err
 	}
 	if err := appendProductionEventTx(ctx, tx, record.ID, "task_progress", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "status": StatusRunning, "progress": progress}, now); err != nil {
+		return err
+	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -806,6 +816,9 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	if err := completePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -841,6 +854,9 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	if err := failPremiseAssetWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -854,6 +870,65 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	runtime.broadcastProductionWorkflow("workflow:failed", record.UUID)
 	return nil
 }
+
+func (runtime *projectRuntime) retryProductionFailure(ctx context.Context, record productionTaskRecord, code, message string, attempt int) error {
+	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	now := runtime.manager.now().UTC()
+	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,attempt=?,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE id=? AND cancel_requested_at IS NULL AND status<>'cancelled'`, attempt, now, record.ID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return context.Canceled
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE premise_generation_steps SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status<>'completed'`, record.UUID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE comic_image_generations SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status<>'completed'`, record.UUID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE comic_exports SET status='queued',error_code='',completed_at=NULL,expires_at=NULL WHERE task_uuid=? AND status IN ('queued','running','failed')`, record.UUID); err != nil {
+		return err
+	}
+	if err := appendProductionEventTx(ctx, tx, record.ID, "retry_scheduled", map[string]any{
+		"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID,
+		"status": StatusQueued, "attempt": attempt, "error_code": code, "error_message": message,
+	}, now); err != nil {
+		return err
+	}
+	if err := queueComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
+	if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	task := record.DTO()
+	task.Status = StatusQueued
+	task.Progress = 0
+	task.Attempt = attempt
+	task.ErrorCode = ""
+	task.ErrorMessage = ""
+	task.CompletedAt = nil
+	task.UpdatedAt = now
+	runtime.broadcastProduction("production_task:queued", task)
+	runtime.broadcastProductionWorkflow("workflow:step_changed", record.UUID)
+	return nil
+}
+
 func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, record productionTaskRecord) error {
 	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
 	if err != nil {
@@ -871,6 +946,9 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 		return err
 	}
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -920,6 +998,9 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 		return err
 	}
 	if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+		return err
+	}
+	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -977,6 +1058,9 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 			return err
 		}
 		if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+			return err
+		}
+		if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {

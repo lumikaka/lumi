@@ -109,7 +109,7 @@ func TestProjectCreationReferenceFileMigrationUpAndDown(t *testing.T) {
 	if !containsTable(tableNames(t, dsn), "project_creation_reference_files") {
 		t.Fatal("project reference migration did not create its binding table")
 	}
-	if err := runner.Down(6); err != nil {
+	if err := runner.Down(7); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_creation_reference_files") {
@@ -184,7 +184,7 @@ func TestProjectCreationReferencePlanProjectMigrationPreservesLegacyRowsAndCheck
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(3); err != nil {
+	if err := runner.Down(4); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -218,7 +218,7 @@ func TestProjectCreationReferencePlanProjectMigrationPreservesLegacyRowsAndCheck
 	if _, err := db.Exec(`UPDATE project_creation_reference_files SET include_in_yolo=2 WHERE id=1`); err == nil {
 		t.Fatal("project reference plan accepted a non-boolean include flag")
 	}
-	if err := runner.Down(3); err != nil {
+	if err := runner.Down(4); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "project_creation_reference_files", "reference_role") {
@@ -260,7 +260,7 @@ func TestPremiseAssetWorkflowMigrationAddsKindAndRollsBackOnlyItsDedicatedThread
 			t.Fatalf("seed premise workflow migration: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(2); err != nil {
+	if err := runner.Down(3); err != nil {
 		t.Fatal(err)
 	}
 	var yoloWorkflows, premiseWorkflows, yoloThreads, premiseThreads, yoloSteps int
@@ -303,6 +303,136 @@ func TestPremiseAssetWorkflowMigrationAddsKindAndRollsBackOnlyItsDedicatedThread
 	}
 }
 
+func TestComicImageBatchWorkflowMigrationPreservesExistingGraphAndDropsOnlyBatchProjection(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "comic-image-batch-workflows.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		projectUUID          = "01a06a00-0000-7000-8000-000000000001"
+		providerUUID         = "01a06a00-0000-7000-8000-000000000002"
+		conversationUUID     = "01a06a00-0000-7000-8000-000000000003"
+		batchThreadUUID      = "01a06a00-0000-7000-8000-000000000004"
+		turnUUID             = "01a06a00-0000-7000-8000-000000000005"
+		runUUID              = "01a06a00-0000-7000-8000-000000000006"
+		existingItemUUID     = "01a06a00-0000-7000-8000-000000000007"
+		batchItemUUID        = "01a06a00-0000-7000-8000-000000000008"
+		existingToolUUID     = "01a06a00-0000-7000-8000-000000000009"
+		batchToolUUID        = "01a06a00-0000-7000-8000-000000000010"
+		existingToolCallUUID = "01a06a00-0000-7000-8000-000000000011"
+		batchToolCallUUID    = "01a06a00-0000-7000-8000-000000000012"
+		existingWorkflowUUID = "01a06a00-0000-7000-8000-000000000013"
+		batchWorkflowUUID    = "01a06a00-0000-7000-8000-000000000014"
+		inlineWorkflowUUID   = "01a06a00-0000-7000-8000-000000000015"
+		existingStepUUID     = "01a06a00-0000-7000-8000-000000000016"
+		batchStepUUID        = "01a06a00-0000-7000-8000-000000000017"
+		inlineStepUUID       = "01a06a00-0000-7000-8000-000000000018"
+		existingEventUUID    = "01a06a00-0000-7000-8000-000000000019"
+		existingAwaitUUID    = "01a06a00-0000-7000-8000-000000000020"
+		batchAwaitUUID       = "01a06a00-0000-7000-8000-000000000021"
+		existingLogUUID      = "01a06a00-0000-7000-8000-000000000022"
+		taskUUID             = "01a06a00-0000-7000-8000-000000000023"
+		resourceUUID         = "01a06a00-0000-7000-8000-000000000024"
+		now                  = "2026-09-04T00:00:00Z"
+	)
+	statements := []string{
+		`INSERT INTO projects(id,uuid,name,format_version,schema_version,created_at,updated_at) VALUES(1,'` + projectUUID + `','Batch workflow migration',1,37,'` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,thread_type,created_at,updated_at) VALUES(1,'` + conversationUUID + `',1,'Conversation','completed','` + providerUUID + `','model','provider_default','conversation','` + now + `','` + now + `')`,
+		`INSERT INTO chat_threads(id,uuid,project_id,title,status,provider_uuid,model,model_source,thread_type,created_at,updated_at) VALUES(2,'` + batchThreadUUID + `',1,'Batch','completed','` + providerUUID + `','model','provider_default','workflow','` + now + `','` + now + `')`,
+		`INSERT INTO chat_turns(id,uuid,thread_id,source_type,queue_sequence,input_text,status,created_at,updated_at) VALUES(1,'` + turnUUID + `',1,'prompt',1,'Generate images','completed','` + now + `','` + now + `')`,
+		`INSERT INTO chat_runs(id,uuid,thread_id,turn_id,trigger_type,status,provider_uuid,model,model_source,created_at,updated_at) VALUES(1,'` + runUUID + `',1,1,'prompt','completed','` + providerUUID + `','model','provider_default','` + now + `','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,turn_id,run_id,sequence,item_type,role,content,content_format,status,metadata_json,created_at) VALUES(1,'` + existingItemUUID + `',1,1,1,1,'tool_call','assistant','{}','json','completed','{}','` + now + `')`,
+		`INSERT INTO chat_items(id,uuid,thread_id,turn_id,run_id,sequence,item_type,role,content,content_format,status,metadata_json,created_at) VALUES(2,'` + batchItemUUID + `',1,1,1,2,'tool_call','assistant','{}','json','completed','{}','` + now + `')`,
+		`INSERT INTO agent_tool_executions(id,uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,tool_name,arguments_json,idempotency_key,state,result_json,created_at,updated_at) VALUES(1,'` + existingToolUUID + `',1,1,1,1,'` + existingToolCallUUID + `','existing_tool','{}','existing-tool-idempotency','completed','{}','` + now + `','` + now + `')`,
+		`INSERT INTO agent_tool_executions(id,uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,tool_name,arguments_json,idempotency_key,state,result_json,created_at,updated_at) VALUES(2,'` + batchToolUUID + `',1,1,1,2,'` + batchToolCallUUID + `','batch_tool','{}','batch-tool-idempotency','completed','{}','` + now + `','` + now + `')`,
+		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(1,'` + existingWorkflowUUID + `',1,1,'yolo_project_initialization','Existing','completed',1,'{}','existing-workflow','` + providerUUID + `','model','provider_default','project_initialization','` + now + `','` + now + `')`,
+		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(2,'` + batchWorkflowUUID + `',1,2,'comic_image_generation_batch','Batch dedicated','completed',1,'{}','batch-dedicated-workflow','` + providerUUID + `','model','provider_default','generate_section_image:001','` + now + `','` + now + `')`,
+		`INSERT INTO workflows(id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES(3,'` + inlineWorkflowUUID + `',1,1,'comic_image_generation_batch','Batch inline','completed',1,'{}','batch-inline-workflow','` + providerUUID + `','model','provider_default','generate_section_image:001','` + now + `','` + now + `')`,
+		`INSERT INTO workflow_steps(id,uuid,workflow_id,step_key,position,status,idempotency_key,input_json,output_json,created_at,updated_at) VALUES(1,'` + existingStepUUID + `',1,'project_initialization',1,'completed','existing-workflow-step','{}','{}','` + now + `','` + now + `')`,
+		`INSERT INTO workflow_steps(id,uuid,workflow_id,step_key,position,status,idempotency_key,task_uuid,resource_uuid,input_json,output_json,created_at,updated_at) VALUES(2,'` + batchStepUUID + `',2,'generate_section_image:001',1,'completed','batch-dedicated-step','` + taskUUID + `','` + resourceUUID + `','{}','{}','` + now + `','` + now + `')`,
+		`INSERT INTO workflow_steps(id,uuid,workflow_id,step_key,position,status,idempotency_key,task_uuid,resource_uuid,input_json,output_json,created_at,updated_at) VALUES(3,'` + inlineStepUUID + `',3,'generate_section_image:001',1,'completed','batch-inline-step','` + taskUUID + `','` + resourceUUID + `','{}','{}','` + now + `','` + now + `')`,
+		`INSERT INTO workflow_events(id,uuid,workflow_id,step_id,sequence,event_type,payload_json,created_at) VALUES(1,'` + existingEventUUID + `',1,1,1,'workflow_completed','{}','` + now + `')`,
+		`INSERT INTO workflow_awaits(id,uuid,workflow_id,chat_thread_id,chat_turn_id,chat_run_id,tool_execution_id,status,created_at,ready_at,resumed_at,updated_at) VALUES(1,'` + existingAwaitUUID + `',1,1,1,1,1,'resumed','` + now + `','` + now + `','` + now + `','` + now + `')`,
+		`INSERT INTO workflow_awaits(id,uuid,workflow_id,chat_thread_id,chat_turn_id,chat_run_id,tool_execution_id,status,created_at,ready_at,resumed_at,updated_at) VALUES(2,'` + batchAwaitUUID + `',3,1,1,1,2,'resumed','` + now + `','` + now + `','` + now + `','` + now + `')`,
+		`INSERT INTO llm_logs(id,uuid,project_id,workflow_id,workflow_step_id,source_type,scenario,request_type,attempt,provider_uuid,provider_type,model,status,created_at,completed_at,request_payload,response) VALUES(1,'` + existingLogUUID + `',1,1,1,'workflow','migration_fixture','text',1,'` + providerUUID + `','openai_compatible','model','completed','` + now + `','` + now + `','{}','{}')`,
+	}
+	for _, statement := range statements {
+		if _, err := db.Exec(statement); err != nil {
+			db.Close()
+			t.Fatalf("seed comic image batch workflow migration: %v\n%s", err, statement)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Down(1); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var existingGraph, batchGraph, conversationThread, dedicatedThread int
+	if err := db.QueryRow(`SELECT
+		(SELECT COUNT(*) FROM workflows WHERE uuid=?)+
+		(SELECT COUNT(*) FROM workflow_steps WHERE uuid=?)+
+		(SELECT COUNT(*) FROM workflow_events WHERE uuid=?)+
+		(SELECT COUNT(*) FROM workflow_awaits WHERE uuid=?)+
+		(SELECT COUNT(*) FROM llm_logs WHERE uuid=? AND workflow_id=1 AND workflow_step_id=1)`, existingWorkflowUUID, existingStepUUID, existingEventUUID, existingAwaitUUID, existingLogUUID).Scan(&existingGraph); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT
+		(SELECT COUNT(*) FROM workflows WHERE uuid IN (?,?))+
+		(SELECT COUNT(*) FROM workflow_steps WHERE uuid IN (?,?))+
+		(SELECT COUNT(*) FROM workflow_awaits WHERE uuid=?)`, batchWorkflowUUID, inlineWorkflowUUID, batchStepUUID, inlineStepUUID, batchAwaitUUID).Scan(&batchGraph); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM chat_threads WHERE uuid=? AND thread_type='conversation'`, conversationUUID).Scan(&conversationThread); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM chat_threads WHERE uuid=?`, batchThreadUUID).Scan(&dedicatedThread); err != nil {
+		t.Fatal(err)
+	}
+	if existingGraph != 5 || batchGraph != 0 || conversationThread != 1 || dedicatedThread != 0 {
+		t.Fatalf("down migration existing=%d batch=%d conversation=%d dedicated=%d", existingGraph, batchGraph, conversationThread, dedicatedThread)
+	}
+	if _, err := db.Exec(`INSERT INTO workflows(uuid,project_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES('01a06a00-0000-7000-8000-000000000025',1,'comic_image_generation_batch','Rejected','queued',1,'{}','rejected-batch-workflow','` + providerUUID + `','model','provider_default','generate_section_image:001','` + now + `','` + now + `')`); err == nil {
+		t.Fatal("down migration still accepted comic_image_generation_batch")
+	}
+	rows, err := db.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows.Next() {
+		rows.Close()
+		t.Fatal("comic image batch workflow down migration left a foreign key violation")
+	}
+	rows.Close()
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`INSERT INTO workflows(uuid,project_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,created_at,updated_at) VALUES('01a06a00-0000-7000-8000-000000000026',1,'comic_image_generation_batch','Accepted','queued',1,'{}','accepted-batch-workflow','` + providerUUID + `','model','provider_default','generate_section_image:001','` + now + `','` + now + `')`); err != nil {
+		t.Fatalf("re-up rejected comic_image_generation_batch: %v", err)
+	}
+}
+
 func TestProjectSetupGenerationBriefMigrationBackfillsAndRoundTrips(t *testing.T) {
 	dsn := "file:" + filepath.Join(t.TempDir(), "project-setup-generation-brief.sqlite") + "?_pragma=foreign_keys(1)"
 	runner, err := OpenProject(dsn)
@@ -313,7 +443,7 @@ func TestProjectSetupGenerationBriefMigrationBackfillsAndRoundTrips(t *testing.T
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -345,7 +475,7 @@ func TestProjectSetupGenerationBriefMigrationBackfillsAndRoundTrips(t *testing.T
 	if _, err := db.Exec(`UPDATE project_setup_drafts SET generation_brief='' WHERE project_id=1`); err == nil {
 		t.Fatal("generation_brief constraint accepted an empty value")
 	}
-	if err := runner.Down(1); err != nil {
+	if err := runner.Down(2); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "project_setup_drafts", "generation_brief") {
@@ -367,7 +497,7 @@ func TestComicSectionPageRoleMigrationBackfillsAndConstrainsSpecialPages(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(5); err != nil {
+	if err := runner.Down(6); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -413,7 +543,7 @@ func TestComicSectionPageRoleMigrationBackfillsAndConstrainsSpecialPages(t *test
 	if _, err := db.Exec(`DELETE FROM comic_sections WHERE page_role <> 'body'`); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(5); err != nil {
+	if err := runner.Down(6); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "comic_sections", "page_role") {
@@ -462,7 +592,7 @@ func TestComicSectionPremiseAssetSelectionMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(4); err != nil {
+	if err := runner.Down(5); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "comic_section_premise_asset_selections") {
@@ -549,7 +679,7 @@ func TestComicSectionPageRoleMigrationRejectsLossyDown(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := runner.Down(5); err == nil {
+			if err := runner.Down(6); err == nil {
 				t.Fatal("down migration accepted page-role history that the old schema cannot represent")
 			}
 			if !tableHasColumn(t, db, "comic_sections", "page_role") {
@@ -569,7 +699,7 @@ func TestProjectSetupLifecycleMigrationKeepsExistingProjectsReady(t *testing.T) 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(7); err != nil {
+	if err := runner.Down(8); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -640,7 +770,7 @@ func TestChapterChatReferenceMigrationUsesUUIDOnlyInFinalSchema(t *testing.T) {
 			t.Fatalf("chapter Reference schema missing %q: %s", required, tableSQL)
 		}
 	}
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_context_references", "chapter_id") {
@@ -664,7 +794,7 @@ func TestChapterChatReferenceMigrationPreservesUUIDWithoutChapterForeignKey(t *t
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -704,7 +834,7 @@ func TestChapterChatReferenceMigrationPreservesUUIDWithoutChapterForeignKey(t *t
 	if retainedUUID != "01990000-0000-7000-8000-000000000502" {
 		t.Fatalf("deleted Chapter reference uuid=%q", retainedUUID)
 	}
-	if err := runner.Down(8); err != nil {
+	if err := runner.Down(9); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_context_references", "chapter_id") {
@@ -748,7 +878,7 @@ func TestInlineWorkflowAwaitMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(12); err != nil {
+	if err := runner.Down(13); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -779,7 +909,7 @@ func TestLongRunningChatTurnMigrationBackfillsLegacyStepsAndRoundTrips(t *testin
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -810,7 +940,7 @@ func TestLongRunningChatTurnMigrationBackfillsLegacyStepsAndRoundTrips(t *testin
 	if requestCount != 7 || maxRequests != 256 || maxDuration != 7_200_000 || maxTokens != 1_000_000 || noProgressRounds != 2 {
 		t.Fatalf("backfilled budgets=%d/%d duration=%d tokens=%d no-progress=%d", requestCount, maxRequests, maxDuration, maxTokens, noProgressRounds)
 	}
-	if err := runner.Down(10); err != nil {
+	if err := runner.Down(11); err != nil {
 		t.Fatal(err)
 	}
 	if tableHasColumn(t, db, "chat_runs", "model_request_count") {
@@ -834,7 +964,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -878,7 +1008,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if schemaVersion != "legacy_choice_v1" || !strings.Contains(requestJSON, `"input_type":"multiple_choice"`) || !responseJSON.Valid || !strings.Contains(responseJSON.String, `"selected_option_uuids"`) || !strings.Contains(responseJSON.String, `"other_text":"自定义标签"`) || status != "answered" {
 		t.Fatalf("legacy answered multiple choice and Other were not preserved: schema=%s request=%s response=%+v status=%s", schemaVersion, requestJSON, responseJSON, status)
 	}
-	if err := runner.Down(11); err != nil {
+	if err := runner.Down(12); err != nil {
 		t.Fatal(err)
 	}
 	var inputType, question, optionsJSON string
@@ -903,7 +1033,7 @@ func TestVersionedUserInputRequestMigrationPreservesLegacyAndRejectsLossyDown(t 
 	if _, err := db.Exec(`INSERT INTO chat_user_input_requests(id,uuid,thread_id,run_id,turn_id,item_id,tool_call_uuid,schema_version,request_json,status,created_at,updated_at) VALUES(3,'01990000-0000-7000-8000-000000000317',1,1,1,3,'01990000-0000-7000-8000-000000000318','codex_questions_v1','{"questions":[]}','pending',?,?)`, now, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(11); err == nil {
+	if err := runner.Down(12); err == nil {
 		t.Fatal("down migration accepted a v4 multi-question row and would lose data")
 	}
 }
@@ -918,7 +1048,7 @@ func TestPictureBookProfileMigrationBackfillsPreProfileProjectsAndIsImmutable(t 
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(18); err != nil {
+	if err := runner.Down(19); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "project_picture_book_profiles") {
@@ -991,7 +1121,7 @@ func TestProjectModelSettingsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(20); err != nil {
+	if err := runner.Down(21); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1024,7 +1154,7 @@ func TestProjectChatContextReferenceMigrationUpAndDown(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1153,7 +1283,7 @@ func TestProjectChatContextReferenceMigrationUpAndDown(t *testing.T) {
 		t.Fatalf("legacy context = %q %q %q", legacyScope, legacyScene, legacySubject)
 	}
 
-	if err := runner.Down(13); err != nil {
+	if err := runner.Down(14); err != nil {
 		t.Fatal(err)
 	}
 	if containsTable(tableNames(t, dsn), "chat_context_references") {
@@ -1216,7 +1346,7 @@ func TestProjectChatContextReferenceDownRejectsLossyData(t *testing.T) {
 			t.Fatalf("seed protected down: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(13); err == nil {
+	if err := runner.Down(14); err == nil {
 		t.Fatal("down migration accepted five file references and would lose data")
 	}
 }
@@ -1249,7 +1379,7 @@ func TestProjectChatContextReferenceDownRejectsTurnScopedDomainReference(t *test
 			t.Fatalf("seed turn-scoped protected down: %v\n%s", err, statement)
 		}
 	}
-	if err := runner.Down(13); err == nil {
+	if err := runner.Down(14); err == nil {
 		t.Fatal("down migration accepted a domain Reference that only applies to one Turn")
 	}
 }
@@ -1265,7 +1395,7 @@ func TestAssetStoreMigrationDownRemovesSchemaCleanly(t *testing.T) {
 	}
 	// Every later project migration depends on Asset Store, so roll back
 	// through the Asset Store migration before asserting its down contract.
-	if err := runner.Down(34); err != nil {
+	if err := runner.Down(35); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -1329,7 +1459,7 @@ func TestComicSectionPremiseMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(24); err != nil {
+	if err := runner.Down(25); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1357,7 +1487,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(22); err != nil {
+	if err := runner.Down(23); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1419,7 +1549,7 @@ func TestComicImageWorkflowMigrationPreservesExistingYoloGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertGraph("up")
-	if err := runner.Down(22); err != nil {
+	if err := runner.Down(23); err != nil {
 		t.Fatal(err)
 	}
 	assertGraph("down")
@@ -1436,7 +1566,7 @@ func TestPremiseComicMigrationDownKeepsAssetStore(t *testing.T) {
 	}
 	// Roll back Prompt catalog, Premise Chat parity, project language and
 	// Chat/Yolo first, then Premise/Comic.
-	if err := runner.Down(32); err != nil {
+	if err := runner.Down(33); err != nil {
 		t.Fatal(err)
 	}
 	if err := runner.Close(); err != nil {
@@ -1466,7 +1596,7 @@ func TestPremiseChatParityMigrationPreservesExistingRowsAndForeignKeys(t *testin
 		t.Fatal(err)
 	}
 	// Roll back unified logs and Prompt catalog first, then Premise Chat parity.
-	if err := runner.Down(29); err != nil {
+	if err := runner.Down(30); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1558,7 +1688,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(27); err != nil {
+	if err := runner.Down(28); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1656,7 +1786,7 @@ func TestStoryPromptWorkflowMigrationPreservesAuditAndAgentPromptHistory(t *test
 		t.Fatal(err)
 	}
 
-	if err := runner.Down(27); err != nil {
+	if err := runner.Down(28); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1709,7 +1839,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(26); err != nil {
+	if err := runner.Down(27); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1798,7 +1928,7 @@ func TestUnifiedAICallLogMigrationPreservesStoryAndChatRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(26); err != nil {
+	if err := runner.Down(27); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1824,7 +1954,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(25); err != nil {
+	if err := runner.Down(26); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1876,7 +2006,7 @@ func TestLLMLogPayloadMigrationPreservesLegacyRowsAndJSONConstraints(t *testing.
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(25); err != nil {
+	if err := runner.Down(26); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -1903,7 +2033,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(23); err != nil {
+	if err := runner.Down(24); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -1967,7 +2097,7 @@ func TestExpandedPromptEditingMigrationCanonicalizesLegacyHistoryAndRoundTripsRu
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(23); err != nil {
+	if err := runner.Down(24); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2024,7 +2154,7 @@ func TestLLMUsageMetricsMigrationUpAndDown(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(19); err != nil {
+	if err := runner.Down(20); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2099,7 +2229,7 @@ func TestStoryChapterWorkflowMigrationPreservesExistingGraphAndDropsOnlyProjecti
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(16); err != nil {
+	if err := runner.Down(17); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2182,7 +2312,7 @@ func TestComicStoryboardWorkflowMigrationPreservesGraphAndRollsBackKind(t *testi
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(17); err != nil {
+	if err := runner.Down(18); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2244,7 +2374,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(15); err != nil {
+	if err := runner.Down(16); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -2313,7 +2443,7 @@ func TestComicExportRetentionMigrationBackfillsAndRollsBack(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(15); err != nil {
+	if err := runner.Down(16); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
@@ -2348,7 +2478,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(14); err != nil {
+	if err := runner.Down(15); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -2394,7 +2524,7 @@ func TestComicPDFExportMigrationPreservesZIPAndRollsBackPDFRows(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Down(14); err != nil {
+	if err := runner.Down(15); err != nil {
 		t.Fatal(err)
 	}
 	db, err = sql.Open("sqlite", dsn)
