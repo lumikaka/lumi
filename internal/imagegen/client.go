@@ -44,6 +44,16 @@ type Request struct {
 	Images                                                      []ImageInput
 }
 
+// PromptExtend returns the effective provider setting, or nil when unused.
+// Keep the HTTP request and its log snapshot on the same value.
+func (input Request) PromptExtend() *bool {
+	if input.ProviderType != provider.TypeAliyunBailian {
+		return nil
+	}
+	enabled := true
+	return &enabled
+}
+
 type ImageInput struct {
 	MIMEType string
 	Data     []byte
@@ -150,7 +160,7 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 }
 
 func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input Request) (Response, error) {
-	parameters := map[string]any{"prompt_extend": true, "n": 1, "watermark": false}
+	parameters := map[string]any{"prompt_extend": input.PromptExtend(), "n": 1, "watermark": false}
 	if size := strings.TrimSpace(input.Size); size != "" {
 		parameters["size"] = strings.ReplaceAll(size, "x", "*")
 	}

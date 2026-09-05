@@ -60,11 +60,23 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	imageRequest, err := EncodeImageRequest(imagegen.Request{
-		BaseURL: "https://image.example/v1", APIKey: secret, Model: "image-model", Prompt: "draw", Size: "1024x1024", Quality: "high",
+		ProviderType: "aliyun_bailian", BaseURL: "https://image.example/v1", APIKey: secret, Model: "image-model", Prompt: "draw", Size: "1024x1024", Quality: "high",
 		Images: []imagegen.ImageInput{{MIMEType: "image/jpeg", Data: []byte("reference-image-bytes")}},
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(imageRequest), `"prompt_extend":true`) {
+		t.Fatalf("Bailian request snapshot missing prompt_extend: %s", imageRequest)
+	}
+	cloudflareRequest, err := EncodeImageRequest(imagegen.Request{
+		ProviderType: "cloudflare_ai_gateway", Model: "image-model", Prompt: "draw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(cloudflareRequest), `"prompt_extend"`) {
+		t.Fatalf("Cloudflare request snapshot contains unused prompt_extend: %s", cloudflareRequest)
 	}
 	imageResponse, err := EncodeImageResponse(imagegen.Response{Bytes: []byte("generated-image-bytes"), MIMEType: "image/png", RevisedPrompt: "revised"}, secret)
 	if err != nil {

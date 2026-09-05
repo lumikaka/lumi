@@ -164,7 +164,7 @@ func TestBailianImageRequestSizeAndResponse(t *testing.T) {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}
 	parameters := generationPayload["parameters"].(map[string]any)
-	if generationPayload["model"] != "qwen-image-3.0-pro" || parameters["size"] != "1024*1536" || parameters["n"] != float64(1) {
+	if generationPayload["model"] != "qwen-image-3.0-pro" || parameters["size"] != "1024*1536" || parameters["n"] != float64(1) || parameters["prompt_extend"] != true {
 		t.Fatalf("Bailian payload=%+v", generationPayload)
 	}
 }

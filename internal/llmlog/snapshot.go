@@ -77,11 +77,12 @@ type providerResponseDiagnosticSnapshot struct {
 }
 
 type imageRequestSnapshot struct {
-	Model   string               `json:"model"`
-	Prompt  string               `json:"prompt"`
-	Size    string               `json:"size,omitempty"`
-	Quality string               `json:"quality,omitempty"`
-	Images  []imageInputSnapshot `json:"images,omitempty"`
+	Model        string               `json:"model"`
+	Prompt       string               `json:"prompt"`
+	PromptExtend *bool                `json:"prompt_extend,omitempty"`
+	Size         string               `json:"size,omitempty"`
+	Quality      string               `json:"quality,omitempty"`
+	Images       []imageInputSnapshot `json:"images,omitempty"`
 }
 
 type imageInputSnapshot struct {
@@ -174,6 +175,7 @@ func EncodeImageRequest(input imagegen.Request) (json.RawMessage, error) {
 	}
 	return encodeSnapshot(imageRequestSnapshot{
 		Model: input.Model, Prompt: input.Prompt, Size: input.Size, Quality: input.Quality, Images: images,
+		PromptExtend: input.PromptExtend(),
 	}, input.APIKey)
 }
 
