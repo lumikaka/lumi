@@ -812,11 +812,11 @@ function ChatComposer({ projectUuid, pictureBook, activeTurn, draft, pending, ab
 
   return (
     <form className="chat-composer" onSubmit={submit}>
-	  {activeTurn ? <p className="chat-composer__status">{activeTurn.status === 'waiting_for_input'
-		? t('chat.composer.waiting')
-		: activeTurn.status === 'waiting_for_workflow'
-			? t('chat.composer.waiting_for_workflow', { number: activeTurn.queue_sequence || '—' })
-			: t('chat.composer.turn_running', { number: activeTurn.queue_sequence || '—' })}</p> : null}
+      {activeTurn?.status === 'waiting_for_input'
+        ? <p className="chat-composer__status">{t('chat.composer.waiting')}</p>
+        : activeTurn?.status === 'waiting_for_workflow'
+          ? <p className="chat-composer__status">{t('chat.composer.waiting_for_workflow', { number: activeTurn.queue_sequence || '—' })}</p>
+          : null}
       <ReferenceStrip projectUuid={projectUuid} references={references} onRemove={onRemoveReference} pictureBook={pictureBook} />
       <textarea
         value={draft}

@@ -166,6 +166,12 @@ Front-cover rules:
 - Do not invent a subtitle, tagline, author name, award, or any other readable copy beyond the supplied picture-book title
 - storyboard must be markdown text without code fences`
 
+const coverStoryboardHeadingsZH = `- storyboard 必须使用 Markdown 二级标题（` + "`##`" + `）组织内容，不要使用一级标题；至少依次包含：` + "`## 画布基础设定`" + `、` + "`## 场景与光影`" + `、` + "`## 核心视觉与人物构图`" + `、` + "`## 标题排版与留白`" + `、` + "`## 细节点缀`" + `
+- 每个二级标题必须单独占一行，并把对应内容写在标题下方；禁止用粗体标签或“字段名：内容”代替二级标题`
+
+const coverStoryboardHeadingsEN = `- The storyboard must organize its content with Markdown level-two headings (` + "`##`" + `), without level-one headings, and include at least these headings in order: ` + "`## Canvas Basics`" + `, ` + "`## Setting and Lighting`" + `, ` + "`## Hero Visual and Character Composition`" + `, ` + "`## Title Layout and Whitespace`" + `, and ` + "`## Finishing Details`" + `
+- Put every level-two heading on its own line and write its content below it; do not replace headings with bold labels or ` + "`Field: content`" + ` lines`
+
 const coverBeforeImagePromptZH = `## 封面图片生成规则
 
 1. 当前输入是绘本 front cover 的完整 storyboard。生成一张可直接阅读和导出的平面最终封面图片，不是正文页。
@@ -429,10 +435,14 @@ func chapterDefinitions(language string) []Definition {
 	referencePresent := choose("本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n{{reference_titles}}", "One Section-specific setting collage image is provided. It contains the following setting items; use their labeled visual references to preserve identity and core visual features:\n{{reference_titles}}")
 	referenceAbsent := choose("本次没有可用的设定参考图。仅根据 Storyboard 与画风生成，不要声称遵循未提供的角色或场景设定。", "No setting reference images are available for this generation. Generate only from the storyboard and art style, and do not claim consistency with character or scene references that were not provided.")
 	additionalDirection := choose("## 用户补充要求\n{{guidance_prompt}}", "## Additional user direction\n{{guidance_prompt}}")
+	coverStoryboardPrevious := choose(coverStoryboardPromptZH, coverStoryboardPromptEN)
+	coverStoryboard := coverStoryboardPrevious + "\n" + choose(coverStoryboardHeadingsZH, coverStoryboardHeadingsEN)
+	coverStoryboardDefinition := meta("cover_storyboard", "绘本封面分镜", "根据绘本标题、故事和正文第一页生成封面 storyboard。", "Picture-book cover storyboard", "Generate a front-cover storyboard from the picture-book title, story, and first body page.", PromptTypeTemplate, coverStoryboard)
+	coverStoryboardDefinition.PreviousDefaultValues = []string{coverStoryboardPrevious}
 	return []Definition{
 		meta("json_system", "JSON 系统提示词", "约束漫画分集脚本生成任务只返回 JSON object。", "JSON system prompt", "Constrains comic episode script generation tasks to return only a JSON object.", PromptTypeTemplate, jsonSystemPrompt),
 		meta("comic_storyboard", "漫画分集脚本", "从章节正文或输入文本生成手机竖向条漫的 section storyboard。", "Comic episode script", "Generate section storyboards for a vertical mobile scrolling comic from chapter prose or input text.", PromptTypeTemplate, choose(comicStoryboardPromptZH, comicStoryboardPromptEN)),
-		meta("cover_storyboard", "绘本封面分镜", "根据绘本标题、故事和正文第一页生成封面 storyboard。", "Picture-book cover storyboard", "Generate a front-cover storyboard from the picture-book title, story, and first body page.", PromptTypeTemplate, choose(coverStoryboardPromptZH, coverStoryboardPromptEN)),
+		coverStoryboardDefinition,
 		meta("section_premise_selection", "Section 设定项选择", "根据当前 section storyboard 从 Premise 设定项中选择参考文件。", "Section setting asset selection", "Select reference files from Premise setting assets according to the current section storyboard.", PromptTypeTemplate, choose(settingSelectionPromptZH, settingSelectionPromptEN)),
 		meta("before_image", "Section 图片基础规则", "组合进 Section 图片模板的基础生成规则。", "Section image base rules", "Base generation rules composed into the Section image template.", PromptTypeFragment, before),
 		meta("cover_before_image", "封面图片基础规则", "生成 front cover 图片时替代正文页面基础规则。", "Front-cover image base rules", "Replace body-page base rules when generating a front-cover image.", PromptTypeFragment, choose(coverBeforeImagePromptZH, coverBeforeImagePromptEN)),

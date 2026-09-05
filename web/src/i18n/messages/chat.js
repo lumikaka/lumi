@@ -208,7 +208,6 @@ export const chat = defineMessages({
   'chat.composer.send': ['发送', 'Send'],
   'chat.composer.waiting': ['等待你的选择', 'Waiting for your choice'],
 	'chat.composer.waiting_for_workflow': ['第 {number} 轮正在等待工作流；可停止本轮或排队后续消息', 'Turn {number} is waiting for a workflow; you can stop it or queue a follow-up'],
-  'chat.composer.turn_running': ['第 {number} 轮正在执行', 'Turn {number} is running'],
   'chat.composer.follow_up_placeholder': ['排队一条后续消息…', 'Queue a follow-up message…'],
   'chat.composer.placeholder': ['给项目智能体发消息…', 'Message the project agent…'],
   'chat.composer.label': ['给项目智能体发消息', 'Message the project agent'],

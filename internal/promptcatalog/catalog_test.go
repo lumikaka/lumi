@@ -299,6 +299,56 @@ func TestPictureBookPromptOptionsAffectTheResolvedSuite(t *testing.T) {
 	}
 }
 
+func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
+	tests := []struct {
+		language      string
+		bodyHeadings  []string
+		coverHeadings []string
+	}{
+		{
+			language:      LanguageChinese,
+			bodyHeadings:  []string{"## 核心剧情目标", "## 构图与场景", "## 人物与动作", "## 光影与色彩", "## 绘入文字", "## 阅读顺序"},
+			coverHeadings: []string{"## 画布基础设定", "## 场景与光影", "## 核心视觉与人物构图", "## 标题排版与留白", "## 细节点缀"},
+		},
+		{
+			language:      LanguageEnglish,
+			bodyHeadings:  []string{"## Core Plot Goal", "## Composition and Setting", "## Characters and Actions", "## Lighting and Color", "## Visible Copy", "## Reading Order"},
+			coverHeadings: []string{"## Canvas Basics", "## Setting and Lighting", "## Hero Visual and Character Composition", "## Title Layout and Whitespace", "## Finishing Details"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.language, func(t *testing.T) {
+			options := PictureBookOptions{Format: "classic_picture_book", AspectWidth: 4, AspectHeight: 3}
+			body, ok := LookupForPictureBook(GroupChapter, "comic_storyboard", test.language, options)
+			if !ok {
+				t.Fatal("missing picture-book storyboard definition")
+			}
+			cover, ok := LookupForPictureBook(GroupChapter, "cover_storyboard", test.language, options)
+			if !ok {
+				t.Fatal("missing picture-book cover storyboard definition")
+			}
+			for _, heading := range test.bodyHeadings {
+				if !strings.Contains(body.DefaultValue, heading) {
+					t.Errorf("body prompt missing level-two heading %q", heading)
+				}
+			}
+			for _, heading := range test.coverHeadings {
+				if !strings.Contains(cover.DefaultValue, heading) {
+					t.Errorf("cover prompt missing level-two heading %q", heading)
+				}
+			}
+			for name, definition := range map[string]Definition{"body": body, "cover": cover} {
+				if len(definition.PreviousDefaultValues) != 1 {
+					t.Fatalf("%s previous defaults=%d want=1", name, len(definition.PreviousDefaultValues))
+				}
+				if strings.Contains(definition.PreviousDefaultValues[0], test.bodyHeadings[0]) || strings.Contains(definition.PreviousDefaultValues[0], test.coverHeadings[0]) {
+					t.Errorf("%s previous default unexpectedly contains new heading guidance", name)
+				}
+			}
+		})
+	}
+}
+
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
 		LanguageChinese: "d10a6684e010e809958dc43633e9bd1a08c7389e896e6f829d495da8687db17a",

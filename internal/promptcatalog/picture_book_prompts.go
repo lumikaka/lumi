@@ -179,6 +179,12 @@ Rules:
 - Text and visual behavior must obey the picture-book format directive at the beginning
 - Keep character identity, costume, props, scene space, and overall art style continuous across adjacent pages`
 
+const pictureBookStoryboardHeadingsZH = `- 每个 storyboard 必须使用 Markdown 二级标题（` + "`##`" + `）组织内容，不要使用一级标题；至少依次包含：` + "`## 核心剧情目标`" + `、` + "`## 构图与场景`" + `、` + "`## 人物与动作`" + `、` + "`## 光影与色彩`" + `、` + "`## 绘入文字`" + `、` + "`## 阅读顺序`" + `
+- 每个二级标题必须单独占一行，并把对应内容写在标题下方；禁止用粗体标签或“字段名：内容”代替二级标题`
+
+const pictureBookStoryboardHeadingsEN = `- Every storyboard must organize its content with Markdown level-two headings (` + "`##`" + `), without level-one headings, and include at least these headings in order: ` + "`## Core Plot Goal`" + `, ` + "`## Composition and Setting`" + `, ` + "`## Characters and Actions`" + `, ` + "`## Lighting and Color`" + `, ` + "`## Visible Copy`" + `, and ` + "`## Reading Order`" + `
+- Put every level-two heading on its own line and write its content below it; do not replace headings with bold labels or ` + "`Field: content`" + ` lines`
+
 const pictureBookBeforeImageZH = `{{picture_book_directive}}
 
 ## 通用页面生成规则
@@ -217,11 +223,17 @@ func DefinitionsForPictureBook(language string, options PictureBookOptions) []De
 		definition := &definitions[index]
 		switch {
 		case definition.Group == GroupChapter && definition.Key == "comic_storyboard":
-			definition.DefaultValue = strings.ReplaceAll(choosePictureBook(english, pictureBookStoryboardZH, pictureBookStoryboardEN), "{{picture_book_directive}}", directive)
+			previousDefault := strings.ReplaceAll(choosePictureBook(english, pictureBookStoryboardZH, pictureBookStoryboardEN), "{{picture_book_directive}}", directive)
+			definition.DefaultValue = strings.TrimSpace(previousDefault + "\n" + choosePictureBook(english, pictureBookStoryboardHeadingsZH, pictureBookStoryboardHeadingsEN))
+			definition.PreviousDefaultValues = append(definition.PreviousDefaultValues, previousDefault)
 			definition.Title = choosePictureBook(english, "绘本页面规划", "Picture-book page planning")
 			definition.Description = choosePictureBook(english, "从绘本正文规划完整页面。", "Plan complete pages from picture-book prose.")
 		case definition.Group == GroupChapter && definition.Key == "cover_storyboard":
-			definition.DefaultValue = strings.TrimSpace(pictureBookCoverDirective(language, options) + "\n\n" + definition.DefaultValue)
+			prefix := pictureBookCoverDirective(language, options)
+			definition.DefaultValue = strings.TrimSpace(prefix + "\n\n" + definition.DefaultValue)
+			for previousIndex := range definition.PreviousDefaultValues {
+				definition.PreviousDefaultValues[previousIndex] = strings.TrimSpace(prefix + "\n\n" + definition.PreviousDefaultValues[previousIndex])
+			}
 		case definition.Group == GroupChapter && definition.Key == "cover_before_image":
 			definition.DefaultValue = strings.TrimSpace(pictureBookCoverDirective(language, options) + "\n\n" + definition.DefaultValue)
 		case definition.Group == GroupChapter && definition.Key == "back_cover_before_image":

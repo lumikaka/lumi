@@ -161,6 +161,15 @@ test('inline workflows render inside their origin turn without replacing convers
 	assert.match(stylesSource, /\.workflow-progress--inline[\s\S]*?margin: 0/)
 })
 
+test('composer omits the generic running-turn status while retaining actionable waiting statuses', () => {
+	const composer = source.match(/function ChatComposer[\s\S]*?\n}\n\nfunction ThreadList/)?.[0] || ''
+	assert.ok(composer)
+	assert.doesNotMatch(composer, /chat\.composer\.turn_running/)
+	assert.match(composer, /activeTurn\?\.status === 'waiting_for_input'[\s\S]*?chat\.composer\.waiting/)
+	assert.match(composer, /activeTurn\?\.status === 'waiting_for_workflow'[\s\S]*?chat\.composer\.waiting_for_workflow/)
+	assert.doesNotMatch(messagesSource, /'chat\.composer\.turn_running'/)
+})
+
 test('thread detail replaces raw runtime events with a real Trajectory link', () => {
   assert.doesNotMatch(source, /ThreadEventDiagnostics|listChatEvents|\['chat-events', projectUuid, selectedThreadUuid/)
   assert.match(source, /function threadTrajectoryHref[\s\S]*?encodeURIComponent\(projectUuid\)[\s\S]*?encodeURIComponent\(threadUuid\)/)
