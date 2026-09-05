@@ -54,7 +54,7 @@ func ResolveImageSize(profile project.PictureBookProfile, providerType, model st
 			}
 		}
 	case provider.TypeAliyunBailian:
-		if model == "qwen-image-3.0" {
+		if model == provider.BailianImageModel || model == provider.BailianImageModelPro {
 			switch ratio.Mode {
 			case project.AspectLandscape:
 				return ImageSize{Width: 1536, Height: 1152}, nil

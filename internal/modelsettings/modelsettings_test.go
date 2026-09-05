@@ -162,6 +162,81 @@ func TestUnavailableAndMismatchedModelsAreSafe(t *testing.T) {
 	}
 }
 
+func TestBailianImageProSelectionAndInheritance(t *testing.T) {
+	h := newSettingsHarness(t)
+	resolver := NewResolver(h.providers)
+	view, err := resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var models []string
+	for _, option := range view.Options.ImageModels {
+		if option.ProviderUUID == h.bailian.UUID {
+			if !option.Ready || option.Active || option.Kind != KindImage {
+				t.Fatalf("ready inactive provider option=%+v", option)
+			}
+			models = append(models, option.Model)
+		}
+	}
+	if len(models) != 2 || models[0] != provider.BailianImageModel || models[1] != provider.BailianImageModelPro {
+		t.Fatalf("Bailian image models=%v", models)
+	}
+	selection := &Selection{ProviderUUID: h.bailian.UUID, Model: provider.BailianImageModelPro}
+	if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: 0, Changes: map[string]*Selection{ProjectText: selection}}); errorCode(err) != CodeInvalid {
+		t.Fatalf("image model accepted for text setting: %v", err)
+	}
+	if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: 0, Changes: map[string]*Selection{ProjectImage: selection}}); err != nil {
+		t.Fatal(err)
+	}
+	view, err = resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setting := view.Settings[ProjectImage]
+	if view.Revision != 1 || setting.OverrideStatus != "valid" || setting.Override == nil || *setting.Override != *selection || setting.Effective == nil || *setting.Effective != *selection || setting.Source != SourceProjectImageOverride {
+		t.Fatalf("saved project image setting=%+v revision=%d", setting, view.Revision)
+	}
+	resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.UUID != h.bailian.UUID || resolved.Model != selection.Model || resolved.Source != SourceProjectImageOverride {
+		t.Fatalf("resolved provider=%s model=%s source=%s err=%v", resolved.Provider.UUID, resolved.Model, resolved.Source, err)
+	}
+	if _, err := h.providers.Activate(h.ctx, provider.TypeAliyunBailian); err != nil {
+		t.Fatal(err)
+	}
+	view, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: 1, Changes: map[string]*Selection{ProjectImage: nil}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	setting = view.Settings[ProjectImage]
+	if setting.Override != nil || setting.Effective == nil || setting.Effective.ProviderUUID != h.bailian.UUID || setting.Effective.Model != provider.BailianImageModel || setting.Source != SourceGlobalDefault {
+		t.Fatalf("restored image default=%+v", setting)
+	}
+	for _, test := range []struct{ providerUUID, model, want string }{
+		{h.bailian.UUID, "", provider.BailianImageModel},
+		{"", provider.BailianImageModelPro, provider.BailianImageModelPro},
+	} {
+		resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, test.providerUUID, test.model)
+		if err != nil || resolved.Model != test.want || resolved.Provider.UUID != h.bailian.UUID || resolved.Source != SourceExplicitTask {
+			t.Fatalf("explicit model=%s source=%s err=%v", resolved.Model, resolved.Source, err)
+		}
+	}
+	if _, _, err := h.providers.Settings().Update(h.ctx, map[string]any{sitesettings.BailianAPIKeyKey: "changed-secret"}); err != nil {
+		t.Fatal(err)
+	}
+	view, err = resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, option := range view.Options.ImageModels {
+		if option.ProviderUUID == h.bailian.UUID && option.Ready {
+			t.Fatalf("unverified image model is ready: %+v", option)
+		}
+	}
+	if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{ProjectImage: selection}}); errorCode(err) != CodeInvalid {
+		t.Fatalf("unverified provider accepted: %v", err)
+	}
+}
+
 func errorCode(err error) string {
 	var domainErr *Error
 	if errors.As(err, &domainErr) {

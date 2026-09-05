@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -13,6 +14,25 @@ import (
 	"lumi/internal/config"
 	"lumi/internal/sitesettings"
 )
+
+func TestSupportedImageModelsPreservesProviderDefaults(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		item Provider
+		want []string
+	}{
+		{"bailian", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: BailianImageModel}, []string{BailianImageModel, BailianImageModelPro}},
+		{"pro default is not duplicated", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: " " + BailianImageModelPro + " "}, []string{BailianImageModelPro}},
+		{"cloudflare", Provider{ProviderType: TypeCloudflareAIGateway, DefaultImageModel: " cloud/image "}, []string{"cloud/image"}},
+		{"unconfigured cloudflare", Provider{ProviderType: TypeCloudflareAIGateway}, []string{}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := SupportedImageModels(test.item); !slices.Equal(got, test.want) {
+				t.Fatalf("image models=%v, want %v", got, test.want)
+			}
+		})
+	}
+}
 
 func TestProviderPersistsOnlyEncryptedSiteSetting(t *testing.T) {
 	t.Parallel()

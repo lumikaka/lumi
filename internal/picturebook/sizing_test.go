@@ -24,6 +24,11 @@ func TestResolveImageSizeUsesExactRegisteredCapabilities(t *testing.T) {
 		{"bailian square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeAliyunBailian, "qwen-image-3.0", ImageSize{1536, 1536}},
 		{"bailian portrait", profile(project.PictureBookClassic, project.AspectPortrait, 3, 4), provider.TypeAliyunBailian, "qwen-image-3.0", ImageSize{1152, 1536}},
 		{"bailian custom exact", profile(project.PictureBookClassic, project.AspectCustom, 5, 2), provider.TypeAliyunBailian, "qwen-image-3.0", ImageSize{1535, 614}},
+		{"bailian pro landscape", profile(project.PictureBookClassic, project.AspectLandscape, 4, 3), provider.TypeAliyunBailian, provider.BailianImageModelPro, ImageSize{1536, 1152}},
+		{"bailian pro square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeAliyunBailian, provider.BailianImageModelPro, ImageSize{1536, 1536}},
+		{"bailian pro portrait", profile(project.PictureBookClassic, project.AspectPortrait, 3, 4), provider.TypeAliyunBailian, provider.BailianImageModelPro, ImageSize{1152, 1536}},
+		{"bailian pro custom exact", profile(project.PictureBookClassic, project.AspectCustom, 5, 2), provider.TypeAliyunBailian, provider.BailianImageModelPro, ImageSize{1535, 614}},
+		{"vertical strip bailian pro", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeAliyunBailian, provider.BailianImageModelPro, ImageSize{768, 2304}},
 		{"cloudflare square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1024, 1024}},
 		{"cloudflare landscape", profile(project.PictureBookClassic, project.AspectCustom, 3, 2), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1536, 1024}},
 		{"cloudflare portrait", profile(project.PictureBookClassic, project.AspectCustom, 2, 3), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1024, 1536}},
@@ -51,7 +56,7 @@ func TestResolveImageSizeRejectsUnknownOrInexactCapabilities(t *testing.T) {
 	}{
 		{provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", profile(project.PictureBookClassic, project.AspectLandscape, 4, 3)},
 		{provider.TypeAliyunBailian, "qwen-image-2.0", profile(project.PictureBookClassic, project.AspectLandscape, 4, 3)},
-		{provider.TypeAliyunBailian, "qwen-image-3.0-pro", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
+		{provider.TypeAliyunBailian, "qwen-image-3.0-unknown", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 		{provider.TypeCloudflareAIGateway, "unknown/image-model", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 		{"unknown", "unknown", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 	} {

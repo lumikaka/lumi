@@ -22,6 +22,7 @@ const (
 	BailianTextModel          = "qwen3.7-plus"
 	BailianTextModelQwen38Max = "qwen3.8-max"
 	BailianImageModel         = "qwen-image-3.0"
+	BailianImageModelPro      = "qwen-image-3.0-pro"
 )
 
 type Provider struct {
@@ -59,6 +60,19 @@ func SupportedTextModels(item Provider) []string {
 	}
 	if item.ProviderType == TypeAliyunBailian && defaultModel != BailianTextModelQwen38Max {
 		models = append(models, BailianTextModelQwen38Max)
+	}
+	return models
+}
+
+// SupportedImageModels returns the selectable image models for a provider, with its default first.
+func SupportedImageModels(item Provider) []string {
+	models := make([]string, 0, 2)
+	defaultModel := strings.TrimSpace(item.DefaultImageModel)
+	if defaultModel != "" {
+		models = append(models, defaultModel)
+	}
+	if item.ProviderType == TypeAliyunBailian && defaultModel != BailianImageModelPro {
+		models = append(models, BailianImageModelPro)
 	}
 	return models
 }
