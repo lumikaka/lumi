@@ -187,3 +187,15 @@ test('thread list rows are single hoverable targets without secondary actions', 
   assert.doesNotMatch(threadList, /chat-thread__trajectory-link|chat-thread__menu-button|chat-thread__menu/)
   assert.match(threadRowStyles, /&:hover,[\s\S]*?&:focus-within[\s\S]*?background: \$color-surface/)
 })
+
+test('dedicated workflow threads replace chat input with a notice and explicit new conversation navigation', () => {
+  assert.match(source, /isWorkflowThread = selectedThread\?\.thread_type === 'workflow'/)
+  assert.match(source, /canAcceptChatInput = selectedThread\?\.thread_type === 'conversation'/)
+  const footer = source.slice(source.indexOf('{isWorkflowThread ? <div'))
+  assert.match(footer, /chat\.workflow\.read_only[\s\S]*?onClick=\{startNewThread\}[\s\S]*?: canAcceptChatInput \? \([\s\S]*?<FollowUpQueue[\s\S]*?<ChatComposer[\s\S]*?\) : null}/)
+  assert.doesNotMatch(footer.split(': canAcceptChatInput')[0], /ChatComposer|FollowUpQueue|AttachmentPicker|\.mutate/)
+  assert.match(source, /const send = [\s\S]*?if \(!canAcceptChatInput \|\|/)
+  const newThread = source.slice(source.indexOf('const startNewThread ='), source.indexOf('const chooseThread ='))
+  assert.doesNotMatch(newThread, /\.mutate\(|createChatTurn\(/)
+  assert.match(source, /<WorkflowProgress[\s\S]*?onCancel=[\s\S]*?onRetry=[\s\S]*?onResolveConflict=/)
+})

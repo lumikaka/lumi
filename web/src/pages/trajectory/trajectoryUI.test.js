@@ -114,8 +114,8 @@ test('trajectory uses the full solo workspace and only reserves Inspector width 
 })
 
 test('trajectory keeps a compact whole-Thread stats line at the bottom', () => {
-  assert.match(page, /<TrajectoryStats overview=\{projection\.overview\} \/>/)
-  assert.match(stats, /trajectoryStatsGroups\(overview, t\)/)
+  assert.match(page, /<TrajectoryStats overview=\{projection\.overview\} threadType=\{projection\.thread\?\.thread_type\} \/>/)
+  assert.match(stats, /trajectoryStatsGroups\(overview, t, threadType === 'workflow'\)/)
   assert.match(stats, /trajectory-stats__separator/)
   assert.match(styles, /grid-template-rows:\s*auto auto auto minmax\(0, 1fr\) auto/)
   assert.match(styles, /\.trajectory-stats[\s\S]*?text-overflow:\s*ellipsis/)

@@ -988,6 +988,8 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
+  const isWorkflowThread = selectedThread?.thread_type === 'workflow'
+  const canAcceptChatInput = selectedThread?.thread_type === 'conversation'
   const referenceBlocked = references.some((item) => item.status === 'uploading' || item.status === 'error')
   const requestedWorkflow = searchParams.get('workflow_uuid')
 	const requestedWorkflowMatch = workflows.find((item) => item.uuid === requestedWorkflow) || null
@@ -1300,7 +1302,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   }
   const send = (mode) => {
     const text = inputText.trim()
-    if (!text || composerMutation.isPending || referenceBlocked) return
+    if (!canAcceptChatInput || !text || composerMutation.isPending || referenceBlocked) return
     composerMutation.mutate({ mode, text, referenceInputs: readyProjectChatReferences(references) })
   }
 
@@ -1348,15 +1350,20 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
 			<ProjectSetupCard projectUuid={projectUuid} enabled={expanded && Boolean(selectedThreadUuid)} />
 			<WorkflowProgress projectUuid={projectUuid} pictureBook={pictureBook} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
-            {!itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
+            {!isWorkflowThread && !itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
 			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
           </div>
-          <div className={`chat-composer-shell${pendingInputRequest ? ' chat-composer-shell--request' : ''}`}>
-            <FollowUpQueue projectUuid={projectUuid} pictureBook={pictureBook} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
-            {pendingInputRequest
-              ? <UserInputCard placement="composer" request={pendingInputRequest} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />
-              : <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />}
-          </div>
+          {isWorkflowThread ? <div className="chat-composer-shell chat-workflow-notice">
+            <p className="chat-muted">{t('chat.workflow.read_only')}</p>
+            <button type="button" className="button-quiet" onClick={startNewThread}>{t('chat.thread.new')}</button>
+          </div> : canAcceptChatInput ? (
+            <div className={`chat-composer-shell${pendingInputRequest ? ' chat-composer-shell--request' : ''}`}>
+              <FollowUpQueue projectUuid={projectUuid} pictureBook={pictureBook} items={followUps} pending={followMutation.isPending} canSteer={activeTurn?.status === 'in_progress'} notice={queueNotice} onMove={(uuid, position) => followMutation.mutate({ uuid, position })} onDelete={(uuid) => followMutation.mutate({ uuid, action: 'delete' })} onEdit={(uuid, text) => followMutation.mutate({ uuid, text, action: 'edit' })} onSteer={(uuid) => followMutation.mutate({ uuid, action: 'steer' })} />
+              {pendingInputRequest
+                ? <UserInputCard placement="composer" request={pendingInputRequest} pending={inputMutation.isPending} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} />
+                : <ChatComposer projectUuid={projectUuid} pictureBook={pictureBook} activeTurn={activeTurn} draft={inputText} pending={composerMutation.isPending} abortPending={abortMutation.isPending} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSend={send} onAbort={() => abortMutation.mutate()} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} />}
+            </div>
+          ) : null}
         </div>
       </div>
     </aside>

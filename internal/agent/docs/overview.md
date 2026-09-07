@@ -60,8 +60,8 @@ URL、请求 JSON、响应 JSON、Agent 工具参数及实时 payload 只允许�
 
 | 错误码 | 含义 | 处理方式 |
 | --- | --- | --- |
-| `agent_tool_validation_failed` / `validation_failed` | method、path、字段、类型、枚举、范围或跨字段约束无效。 | 按当前 Contract 修正请求；不要猜测缺失值。 |
-| `agent_tool_not_allowed` | 路由未纳入 reviewed Contract、文档不可读或当前工具模式不允许。 | 停止调用该路由，改读索引选择已审查接口。 |
+| `agent_tool_validation_failed` / `validation_failed` | 当前项目内的路由未匹配，或 method、path、字段、类型、枚举、范围、跨字段约束无效。 | 路由未匹配时先用 `read_agent_doc` 阅读本索引和对应 API Contract，再修正 method、url 和 response_filter；其余错误按当前 Contract 修正，不要猜测缺失值。 |
+| `agent_tool_not_allowed` | 项目路径越界、文档不可读或当前工具模式不允许。 | 停止该调用，遵守当前项目与工具权限边界。 |
 | `agent_tool_confirmation_required` | 危险请求已冻结，运行时正在等待用户确认。 | 不要再调用 `request_user_input` 或重放请求；运行时会展示并恢复确认。 |
 | `agent_state_conflict` / `*_revision_conflict` / `production_conflict` | revision、资源状态或幂等配对与当前事实冲突。 | 通过 REST 重新读取事实状态，再决定是否构造新请求。 |
 | `agent_not_found` / `*_not_found` | 公开 UUID 不存在、不属于当前项目或当前状态不可见。 | 核对项目和资源 UUID；不要改用内部 ID。 |

@@ -257,6 +257,9 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 			First(&promptThread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
+		if err := requireConversationInput(promptThread); err != nil {
+			return err
+		}
 		promptSnapshot, err := service.loadContextPrompts(ctx, store, promptThread)
 		if err != nil {
 			return err
@@ -315,15 +318,26 @@ func projectIDSQL(ctx context.Context, tx *sql.Tx, projectUUID string) (int64, e
 
 func lockThreadSQL(ctx context.Context, tx *sql.Tx, projectID int64, threadUUID string) (threadRecord, error) {
 	var row threadRecord
-	err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE project_id=? AND uuid=? AND archived_at IS NULL`, projectID, threadUUID).
-		Scan(&row.ID, &row.UUID, &row.ProjectID, &row.Title, &row.Status, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.NextTurnSequence, &row.NextItemSequence, &row.NextEventSequence, &row.ArchivedAt, &row.CreatedAt, &row.UpdatedAt)
+	err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,archived_at,created_at,updated_at FROM chat_threads WHERE project_id=? AND uuid=? AND archived_at IS NULL`, projectID, threadUUID).
+		Scan(&row.ID, &row.UUID, &row.ProjectID, &row.Title, &row.Status, &row.ThreadType, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.NextTurnSequence, &row.NextItemSequence, &row.NextEventSequence, &row.ArchivedAt, &row.CreatedAt, &row.UpdatedAt)
 	if err != nil {
 		return row, notFound(err, "Chat thread 不存在")
 	}
 	return row, nil
 }
 
+// Dedicated workflow threads expose workflow controls, not conversational input.
+func requireConversationInput(thread threadRecord) error {
+	if thread.ThreadType == ThreadTypeWorkflow {
+		return domainError(CodeWorkflowThreadReadOnly, "工作流线程不接受聊天输入", "请新建对话继续处理其他内容；本页面仅支持工作流操作。", nil)
+	}
+	return nil
+}
+
 func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, text, sourceType string, followUpID int64, promptSnapshot contextPromptSet, references []storedContextReference) (turnRecord, runRecord, error) {
+	if err := requireConversationInput(*thread); err != nil {
+		return turnRecord{}, runRecord{}, err
+	}
 	now := service.now().UTC()
 	queueSequence := thread.NextTurnSequence
 	turnUUID, err := newUUIDv7()

@@ -22,6 +22,8 @@ const (
 	CodeProvider         = "agent_provider_failed"
 	CodeWorkflowNotReady = "workflow_not_ready"
 
+	CodeWorkflowThreadReadOnly = "workflow_thread_read_only"
+
 	CodeBootstrapProductionRequiresYolo = "bootstrap_production_requires_yolo"
 	CodeBootstrapYoloNotAuthorized      = "bootstrap_yolo_not_authorized"
 	CodeBootstrapGenerationBriefMissing = "bootstrap_generation_brief_missing"

@@ -12,7 +12,7 @@ export function tokenizeTrajectoryQuery(query) {
   return [...new Set(normalizeSearchText(query).split(/\s+/u).filter(Boolean))]
 }
 
-export function buildTrajectorySearchDocument(row) {
+export function buildTrajectorySearchDocument(row, { workflowTitle } = {}) {
   if (!row) return ''
   const source = row.source || row.turn || {}
   const values = [
@@ -36,6 +36,20 @@ export function buildTrajectorySearchDocument(row) {
     row.input,
     row.output,
     source.tool_name,
+    source.title,
+    source.kind,
+    row.kind === 'workflow' ? workflowTitle?.(source) : '',
+    workflowTitle ? source.workflow_origins?.map(workflowTitle) : '',
+    source.current_step_key,
+    source.model,
+    source.provider_type,
+    source.source_type,
+    source.workflow_origins,
+    source.request_type,
+    source.scenario,
+    source.attempt,
+    source.input_summary,
+    source.output_summary,
     source.arguments,
     source.result,
     source.error_code,
@@ -64,10 +78,10 @@ function detailSearchText(detail) {
   ].map(machineText).join('\n'))
 }
 
-export function reconcileTrajectorySearchIndex(current = new Map(), rows = []) {
+export function reconcileTrajectorySearchIndex(current = new Map(), rows = [], options = {}) {
   const next = new Map()
   for (const row of rows) {
-    const base = buildTrajectorySearchDocument(row)
+    const base = buildTrajectorySearchDocument(row, options)
     const existing = current.get(row.key)
     const requestUuid = row.sourceKind === 'model_request' ? row.sourceUuid : row.requestUuid || ''
     if (existing?.base === base && existing.requestUuid === requestUuid) {

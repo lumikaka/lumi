@@ -108,10 +108,7 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		if err != nil {
 			return storyDomainTask(task), err
 		}
-		if request.Invocation.AwaitCompletion {
-			return storyDomainTask(task), agent.ErrWaitingWorkflow
-		}
-		return storyDomainTask(task), nil
+		return manager.awaitStoryDomainTask(ctx, projectUUID, task, request.Invocation)
 	case KindPremiseSettingGeneration:
 		references := make([]production.GenerationReferenceFile, 0, len(request.ReferenceFiles))
 		for _, reference := range request.ReferenceFiles {
@@ -146,10 +143,7 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		if err != nil {
 			return storyDomainTask(task), err
 		}
-		if request.Invocation.AwaitCompletion {
-			return storyDomainTask(task), agent.ErrWaitingWorkflow
-		}
-		return storyDomainTask(task), nil
+		return manager.awaitStoryDomainTask(ctx, projectUUID, task, request.Invocation)
 	case KindComicExport:
 		operation, err := manager.CreateComicExport(ctx, projectUUID, CreateExportInput{
 			Scope: request.Scope, ChapterUUID: request.ChapterUUID, Format: request.Format,

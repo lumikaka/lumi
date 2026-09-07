@@ -12,7 +12,7 @@ export const simpleDashboard = defineMessages({
   'simple.shell.open_chat': ['打开项目 Agent', 'Open project Agent'],
   'simple.shell.close_chat': ['关闭项目 Agent', 'Close project Agent'],
   'simple.shell.more_project_actions': ['更多项目操作', 'More project actions'],
-  'simple.shell.switch_workspace_mode': ['工作区模式切换', 'Switch workspace mode'],
+  'simple.shell.switch_workspace_mode': ['切换为专家模式', 'Switch to expert mode'],
   'simple.shell.page.home': ['项目主页', 'Project home'],
   'simple.shell.page.story': ['完整故事', 'Full story'],
   'simple.shell.page.settings': ['设定', 'Premise'],

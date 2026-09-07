@@ -78,7 +78,7 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 	if strings.Contains(string(cloudflareRequest), `"prompt_extend"`) {
 		t.Fatalf("Cloudflare request snapshot contains unused prompt_extend: %s", cloudflareRequest)
 	}
-	imageResponse, err := EncodeImageResponse(imagegen.Response{Bytes: []byte("generated-image-bytes"), MIMEType: "image/png", RevisedPrompt: "revised"}, secret)
+	imageResponse, err := EncodeImageResponse(imagegen.Response{Bytes: []byte("generated-image-bytes"), MIMEType: "image/png", RevisedPrompt: "revised", RewriteStatus: "REWRITE_SUCCESS"}, secret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 			t.Fatalf("safe snapshots leaked %q: %s", forbidden, joined)
 		}
 	}
-	for _, expected := range []string{`"tool_calls"`, `"input_tokens":11`, `"output_tokens":7`, `"finish_reason":"tool_calls"`, `"mime_type":"image/jpeg"`, `"byte_size":21`, `"mime_type":"image/png"`, `"byte_size":21`, `"revised_prompt":"revised"`} {
+	for _, expected := range []string{`"tool_calls"`, `"input_tokens":11`, `"output_tokens":7`, `"finish_reason":"tool_calls"`, `"mime_type":"image/jpeg"`, `"byte_size":21`, `"mime_type":"image/png"`, `"byte_size":21`, `"revised_prompt":"revised"`, `"rewrite_status":"REWRITE_SUCCESS"`} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("safe snapshots missing %q: %s", expected, joined)
 		}

@@ -260,7 +260,7 @@ func TestRequestAPIRoutesAndSubjectsAreSceneIndependent(t *testing.T) {
 				t.Fatalf("thread rejected global route %v: %v", input, err)
 			}
 		}
-		if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": base + "/not-registered", "response_filter": ".data | {uuid}"}); err == nil || errorCode(err) != CodeToolNotAllowed {
+		if _, err := parseAgentAPIRequest(tc, map[string]any{"method": "GET", "url": base + "/not-registered", "response_filter": ".data | {uuid}"}); err == nil || errorCode(err) != CodeToolValidation {
 			t.Fatalf("thread accepted unregistered route: %v", err)
 		}
 	}

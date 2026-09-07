@@ -65,6 +65,9 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&thread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
+		if err := requireConversationInput(thread); err != nil {
+			return err
+		}
 		references, err := service.resolveContextReferences(ctx, store, thread.ProjectID, input.References)
 		if err != nil {
 			return err
@@ -135,6 +138,9 @@ func (service *Service) UpdateFollowUp(ctx context.Context, projectUUID, threadU
 		var thread threadRecord
 		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&thread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
+		}
+		if err := requireConversationInput(thread); err != nil {
+			return err
 		}
 		var replacement []storedContextReference
 		if input.References != nil {
@@ -295,6 +301,9 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		if err := store.DB().WithContext(ctx).Where("project_id=? AND uuid=? AND archived_at IS NULL", pid, threadUUID).First(&promptThread).Error; err != nil {
 			return notFound(err, "Chat thread 不存在")
 		}
+		if err := requireConversationInput(promptThread); err != nil {
+			return err
+		}
 		references, err := service.resolveContextReferences(ctx, store, promptThread.ProjectID, input.References)
 		if err != nil {
 			return err
@@ -375,6 +384,9 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 		defer tx.Rollback()
 		thread, err := lockThreadSQL(ctx, tx, pid, threadUUID)
 		if err != nil {
+			return err
+		}
+		if err := requireConversationInput(thread); err != nil {
 			return err
 		}
 		var followUp followUpRecord

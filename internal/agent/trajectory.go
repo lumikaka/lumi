@@ -23,6 +23,7 @@ type TrajectoryPage struct {
 	Turns            []TrajectoryTurn         `json:"turns"`
 	Items            []TrajectorySourceItem   `json:"items"`
 	Tools            []TrajectoryTool         `json:"tools"`
+	Workflows        []TrajectoryWorkflow     `json:"workflows"`
 	ModelRequests    []TrajectoryModelRequest `json:"model_requests"`
 	Compactions      []TrajectoryCompaction   `json:"compactions"`
 	CursorPagination CursorPagination         `json:"cursor_pagination"`
@@ -94,42 +95,67 @@ type TrajectoryTool struct {
 }
 
 type TrajectoryModelRequest struct {
-	UUID               string          `json:"uuid"`
-	ThreadUUID         string          `json:"thread_uuid"`
-	TurnUUID           string          `json:"turn_uuid"`
-	RunUUID            string          `json:"run_uuid"`
-	RequestOrdinal     int             `json:"request_ordinal"`
-	RequestType        string          `json:"request_type"`
-	Scenario           string          `json:"scenario"`
-	ProviderUUID       string          `json:"provider_uuid"`
-	ProviderType       string          `json:"provider_type"`
-	Model              string          `json:"model"`
-	Status             string          `json:"status"`
-	Options            json.RawMessage `json:"options"`
-	InputSummary       string          `json:"input_summary,omitempty"`
-	OutputSummary      string          `json:"output_summary,omitempty"`
-	AssistantPreview   string          `json:"assistant_preview,omitempty"`
-	HasToolCalls       bool            `json:"has_tool_calls"`
-	InputTokens        *int            `json:"input_tokens,omitempty"`
-	CachedInputTokens  *int            `json:"cached_input_tokens,omitempty"`
-	OutputTokens       *int            `json:"output_tokens,omitempty"`
-	DurationMS         *int64          `json:"duration_ms,omitempty"`
-	FinishReason       string          `json:"finish_reason,omitempty"`
-	ErrorCode          string          `json:"error_code,omitempty"`
-	ErrorMessage       string          `json:"error_message,omitempty"`
-	HTTPStatus         *int            `json:"http_status,omitempty"`
-	ProviderErrorCode  string          `json:"provider_error_code,omitempty"`
-	ProviderRequestID  string          `json:"provider_request_id,omitempty"`
-	SystemPromptDigest string          `json:"system_prompt_digest,omitempty"`
-	ToolCatalogDigest  string          `json:"tool_catalog_digest,omitempty"`
-	HasRequestPayload  bool            `json:"has_request_payload"`
-	HasResponse        bool            `json:"has_response"`
-	StartEventSequence *int64          `json:"start_event_sequence,omitempty"`
-	EndEventSequence   *int64          `json:"end_event_sequence,omitempty"`
-	OrderingAccuracy   string          `json:"ordering_accuracy"`
-	UsageAccuracy      string          `json:"usage_accuracy"`
-	CreatedAt          time.Time       `json:"created_at"`
-	CompletedAt        *time.Time      `json:"completed_at,omitempty"`
+	UUID               string                     `json:"uuid"`
+	ThreadUUID         string                     `json:"thread_uuid"`
+	TurnUUID           string                     `json:"turn_uuid"`
+	RunUUID            string                     `json:"run_uuid"`
+	RequestOrdinal     int                        `json:"request_ordinal"`
+	SourceType         string                     `json:"source_type"`
+	WorkflowOrigins    []TrajectoryWorkflowOrigin `json:"workflow_origins,omitempty"`
+	Attempt            int                        `json:"attempt"`
+	RequestType        string                     `json:"request_type"`
+	Scenario           string                     `json:"scenario"`
+	ProviderUUID       string                     `json:"provider_uuid"`
+	ProviderType       string                     `json:"provider_type"`
+	Model              string                     `json:"model"`
+	Status             string                     `json:"status"`
+	Options            json.RawMessage            `json:"options"`
+	InputSummary       string                     `json:"input_summary,omitempty"`
+	OutputSummary      string                     `json:"output_summary,omitempty"`
+	AssistantPreview   string                     `json:"assistant_preview,omitempty"`
+	HasToolCalls       bool                       `json:"has_tool_calls"`
+	InputTokens        *int                       `json:"input_tokens,omitempty"`
+	CachedInputTokens  *int                       `json:"cached_input_tokens,omitempty"`
+	OutputTokens       *int                       `json:"output_tokens,omitempty"`
+	DurationMS         *int64                     `json:"duration_ms,omitempty"`
+	FinishReason       string                     `json:"finish_reason,omitempty"`
+	ErrorCode          string                     `json:"error_code,omitempty"`
+	ErrorMessage       string                     `json:"error_message,omitempty"`
+	HTTPStatus         *int                       `json:"http_status,omitempty"`
+	ProviderErrorCode  string                     `json:"provider_error_code,omitempty"`
+	ProviderRequestID  string                     `json:"provider_request_id,omitempty"`
+	SystemPromptDigest string                     `json:"system_prompt_digest,omitempty"`
+	ToolCatalogDigest  string                     `json:"tool_catalog_digest,omitempty"`
+	HasRequestPayload  bool                       `json:"has_request_payload"`
+	HasResponse        bool                       `json:"has_response"`
+	StartEventSequence *int64                     `json:"start_event_sequence,omitempty"`
+	EndEventSequence   *int64                     `json:"end_event_sequence,omitempty"`
+	OrderingAccuracy   string                     `json:"ordering_accuracy"`
+	UsageAccuracy      string                     `json:"usage_accuracy"`
+	CreatedAt          time.Time                  `json:"created_at"`
+	CompletedAt        *time.Time                 `json:"completed_at,omitempty"`
+}
+
+type TrajectoryWorkflowOrigin struct {
+	UUID  string `json:"uuid"`
+	Kind  string `json:"kind"`
+	Title string `json:"title"`
+}
+
+type TrajectoryWorkflow struct {
+	UUID           string     `json:"uuid"`
+	ThreadUUID     string     `json:"thread_uuid"`
+	Kind           string     `json:"kind"`
+	Title          string     `json:"title"`
+	Status         string     `json:"status"`
+	CurrentStepKey string     `json:"current_step_key,omitempty"`
+	ErrorCode      string     `json:"error_code,omitempty"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
+	StartedAt      *time.Time `json:"started_at,omitempty"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	DurationMS     *int64     `json:"duration_ms,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type TrajectoryCompaction struct {
@@ -221,7 +247,7 @@ type trajectoryToolRow struct {
 
 type trajectoryModelRow struct {
 	UUID, TurnUUID, RunUUID, ProviderUUID, ProviderType, Model, Status string
-	RequestType, Scenario                                              string
+	SourceType, RequestType, Scenario                                  string
 	InputSummary, OutputSummary, FinishReason, ErrorCode, ErrorMessage string
 	ProviderErrorCode, ProviderRequestID                               string
 	Attempt, InputTokens, OutputTokens, HTTPStatus                     int
@@ -256,16 +282,9 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 	if limit > 200 {
 		limit = 200
 	}
-	beforeSequence, err := decodeCursor(before)
-	if err != nil {
-		return TrajectoryPage{}, err
-	}
-	afterSequence, err := decodeCursor(after)
-	if err != nil {
-		return TrajectoryPage{}, err
-	}
+	before, after = strings.TrimSpace(before), strings.TrimSpace(after)
 	selectedItemUUID = strings.TrimSpace(selectedItemUUID)
-	if beforeSequence > 0 && afterSequence > 0 || selectedItemUUID != "" && (beforeSequence > 0 || afterSequence > 0) {
+	if before != "" && after != "" || selectedItemUUID != "" && (before != "" || after != "") {
 		return TrajectoryPage{}, domainError(CodeValidation, "Trajectory cursor 参数冲突", "before、after 与 item_uuid 只能使用一种定位方式。", nil)
 	}
 	if selectedItemUUID != "" && !isUUIDv7(selectedItemUUID) {
@@ -273,12 +292,12 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 	}
 
 	page := TrajectoryPage{
-		Turns: []TrajectoryTurn{}, Items: []TrajectorySourceItem{}, Tools: []TrajectoryTool{},
+		Turns: []TrajectoryTurn{}, Items: []TrajectorySourceItem{}, Tools: []TrajectoryTool{}, Workflows: []TrajectoryWorkflow{},
 		ModelRequests: []TrajectoryModelRequest{}, Compactions: []TrajectoryCompaction{},
 		CursorPagination: CursorPagination{PerPage: limit},
 		Overview:         TrajectoryOverview{Timeline: []TrajectoryTimelineEntry{}},
 	}
-	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
+	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			pid, err := projectID(ctx, tx, projectUUID)
 			if err != nil {
@@ -291,6 +310,17 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 			page.Thread = threadDTO(thread, projectUUID)
 			page.Thread.Title = sanitizeDiagnosticText(page.Thread.Title)
 			page.Thread.Model = sanitizeDiagnosticText(page.Thread.Model)
+			if thread.ThreadType == ThreadTypeWorkflow {
+				return populateWorkflowTrajectory(tx, thread, &page, before, after, selectedItemUUID, limit)
+			}
+			beforeSequence, err := decodeCursor(before)
+			if err != nil {
+				return err
+			}
+			afterSequence, err := decodeCursor(after)
+			if err != nil {
+				return err
+			}
 
 			anchorSequence := int64(0)
 			if selectedItemUUID != "" {
@@ -341,12 +371,12 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 			events := indexTrajectoryEvents(eventRows)
 
 			var modelRows []trajectoryModelRow
-			if err := tx.Table("llm_logs AS logs").Select(`logs.uuid,turns.uuid AS turn_uuid,runs.uuid AS run_uuid,logs.request_type,logs.scenario,logs.provider_uuid,logs.provider_type,logs.model,logs.status,logs.input_summary,logs.output_summary,logs.attempt,logs.input_tokens,logs.cached_input_tokens,logs.output_tokens,logs.duration_ms,logs.finish_reason,logs.error_code,logs.error_message,logs.http_status,logs.provider_error_code,logs.provider_request_id,logs.request_payload,logs.response,logs.created_at,logs.completed_at`).Joins("JOIN chat_runs runs ON runs.id=logs.chat_run_id").Joins("JOIN chat_turns turns ON turns.id=runs.turn_id").Where("logs.chat_thread_id=? AND logs.source_type='project_chat'", thread.ID).Order("logs.created_at,logs.id").Scan(&modelRows).Error; err != nil {
+			if err := tx.Table("llm_logs AS logs").Select(`logs.uuid,turns.uuid AS turn_uuid,runs.uuid AS run_uuid,logs.source_type,logs.request_type,logs.scenario,logs.provider_uuid,logs.provider_type,logs.model,logs.status,logs.input_summary,logs.output_summary,logs.attempt,logs.input_tokens,logs.cached_input_tokens,logs.output_tokens,logs.duration_ms,logs.finish_reason,logs.error_code,logs.error_message,logs.http_status,logs.provider_error_code,logs.provider_request_id,logs.request_payload,logs.response,logs.created_at,logs.completed_at`).Joins("JOIN chat_runs runs ON runs.id=logs.chat_run_id").Joins("JOIN chat_turns turns ON turns.id=runs.turn_id").Where("logs.chat_thread_id=? AND logs.source_type='project_chat'", thread.ID).Order("logs.created_at,logs.id").Scan(&modelRows).Error; err != nil {
 				return err
 			}
 
-			var toolRows []trajectoryToolRow
-			if err := tx.Table("agent_tool_executions AS executions").Select(`executions.id,executions.uuid,turns.uuid AS turn_uuid,calls.uuid AS call_item_uuid,COALESCE(results.uuid,'') AS result_item_uuid,executions.tool_call_uuid,executions.tool_name,executions.target_uuid,calls.sequence AS call_sequence,results.sequence AS result_sequence,executions.arguments_json,executions.state,executions.result_json,executions.error_code,executions.error_message,calls.metadata_json AS call_metadata,executions.started_at,executions.completed_at,executions.created_at`).Joins("JOIN chat_turns turns ON turns.id=executions.turn_id").Joins("JOIN chat_items calls ON calls.id=executions.item_id").Joins(`LEFT JOIN chat_items results ON results.id=(SELECT result_item.id FROM chat_items result_item WHERE result_item.thread_id=executions.thread_id AND result_item.remote_item_uuid=executions.tool_call_uuid AND result_item.item_type='tool_result' ORDER BY result_item.sequence DESC,result_item.id DESC LIMIT 1)`).Where("executions.thread_id=?", thread.ID).Order("calls.sequence,executions.id").Scan(&toolRows).Error; err != nil {
+			toolRows, err := queryTrajectoryTools(tx, thread.ID)
+			if err != nil {
 				return err
 			}
 
@@ -524,6 +554,12 @@ func queryTrajectoryItems(tx *gorm.DB, threadID, before, after, anchor int64, li
 	return rows, hasMore, descending, nil
 }
 
+func queryTrajectoryTools(tx *gorm.DB, threadID int64) ([]trajectoryToolRow, error) {
+	var toolRows []trajectoryToolRow
+	err := tx.Table("agent_tool_executions AS executions").Select(`executions.id,executions.uuid,turns.uuid AS turn_uuid,calls.uuid AS call_item_uuid,COALESCE(results.uuid,'') AS result_item_uuid,executions.tool_call_uuid,executions.tool_name,executions.target_uuid,calls.sequence AS call_sequence,results.sequence AS result_sequence,executions.arguments_json,executions.state,executions.result_json,executions.error_code,executions.error_message,calls.metadata_json AS call_metadata,executions.started_at,executions.completed_at,executions.created_at`).Joins("JOIN chat_turns turns ON turns.id=executions.turn_id").Joins("JOIN chat_items calls ON calls.id=executions.item_id").Joins(`LEFT JOIN chat_items results ON results.id=(SELECT result_item.id FROM chat_items result_item WHERE result_item.thread_id=executions.thread_id AND result_item.remote_item_uuid=executions.tool_call_uuid AND result_item.item_type='tool_result' ORDER BY result_item.sequence DESC,result_item.id DESC LIMIT 1)`).Where("executions.thread_id=?", threadID).Order("calls.sequence,executions.id").Scan(&toolRows).Error
+	return toolRows, err
+}
+
 func queryTrajectoryTurns(tx *gorm.DB, threadID int64) ([]TrajectoryTurn, error) {
 	var rows []struct {
 		UUID, SourceType, SourceFollowUpUUID, Status, ErrorCode, ErrorMessage string
@@ -642,15 +678,18 @@ func projectTrajectoryModelRequests(rows []trajectoryModelRow, threadUUID string
 	for _, row := range rows {
 		options, systemDigest, toolsDigest, hasPayload := trajectoryRequestMetadata(row.RequestPayload)
 		hasToolCalls, assistantPreview, hasResponse := trajectoryResponseMetadata(row.Response, row.OutputSummary)
-		request := TrajectoryModelRequest{UUID: row.UUID, ThreadUUID: threadUUID, TurnUUID: row.TurnUUID, RunUUID: row.RunUUID, RequestOrdinal: row.Attempt, RequestType: sanitizeDiagnosticText(row.RequestType), Scenario: sanitizeDiagnosticText(row.Scenario), ProviderUUID: publicUUIDOrEmpty(row.ProviderUUID), ProviderType: sanitizeDiagnosticText(row.ProviderType), Model: sanitizeDiagnosticText(row.Model), Status: row.Status, Options: options, InputSummary: sanitizeDiagnosticText(row.InputSummary), OutputSummary: sanitizeDiagnosticText(row.OutputSummary), AssistantPreview: sanitizeDiagnosticText(assistantPreview), HasToolCalls: hasToolCalls, CachedInputTokens: row.CachedInputTokens, FinishReason: sanitizeDiagnosticText(row.FinishReason), ErrorCode: sanitizeDiagnosticText(row.ErrorCode), ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), ProviderErrorCode: sanitizeDiagnosticText(row.ProviderErrorCode), ProviderRequestID: sanitizeDiagnosticText(row.ProviderRequestID), SystemPromptDigest: systemDigest, ToolCatalogDigest: toolsDigest, HasRequestPayload: hasPayload, HasResponse: hasResponse, OrderingAccuracy: "legacy_unlinked", UsageAccuracy: "recorded", CreatedAt: row.CreatedAt, CompletedAt: row.CompletedAt}
+		request := TrajectoryModelRequest{UUID: row.UUID, ThreadUUID: threadUUID, TurnUUID: row.TurnUUID, RunUUID: row.RunUUID, RequestOrdinal: row.Attempt, SourceType: sanitizeDiagnosticText(row.SourceType), Attempt: row.Attempt, RequestType: sanitizeDiagnosticText(row.RequestType), Scenario: sanitizeDiagnosticText(row.Scenario), ProviderUUID: publicUUIDOrEmpty(row.ProviderUUID), ProviderType: sanitizeDiagnosticText(row.ProviderType), Model: sanitizeDiagnosticText(row.Model), Status: row.Status, Options: options, InputSummary: sanitizeDiagnosticText(row.InputSummary), OutputSummary: sanitizeDiagnosticText(row.OutputSummary), AssistantPreview: sanitizeDiagnosticText(assistantPreview), HasToolCalls: hasToolCalls, CachedInputTokens: row.CachedInputTokens, FinishReason: sanitizeDiagnosticText(row.FinishReason), ErrorCode: sanitizeDiagnosticText(row.ErrorCode), ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), ProviderErrorCode: sanitizeDiagnosticText(row.ProviderErrorCode), ProviderRequestID: sanitizeDiagnosticText(row.ProviderRequestID), SystemPromptDigest: systemDigest, ToolCatalogDigest: toolsDigest, HasRequestPayload: hasPayload, HasResponse: hasResponse, OrderingAccuracy: "legacy_unlinked", UsageAccuracy: "recorded", CreatedAt: row.CreatedAt, CompletedAt: row.CompletedAt}
 		if row.RequestType != "text" {
 			request.OrderingAccuracy = "approximate"
 		}
-		if row.InputTokens > 0 {
+		if row.RequestType == "text" && row.InputTokens > 0 {
 			request.InputTokens = intPointer(row.InputTokens)
 		}
-		if row.OutputTokens > 0 {
+		if row.RequestType == "text" && row.OutputTokens > 0 {
 			request.OutputTokens = intPointer(row.OutputTokens)
+		}
+		if row.RequestType != "text" {
+			request.CachedInputTokens = nil
 		}
 		if row.DurationMS > 0 && row.CompletedAt != nil {
 			request.DurationMS = int64Pointer(row.DurationMS)
@@ -658,7 +697,7 @@ func projectTrajectoryModelRequests(rows []trajectoryModelRow, threadUUID string
 		if row.HTTPStatus > 0 {
 			request.HTTPStatus = intPointer(row.HTTPStatus)
 		}
-		if row.InputTokens == 0 || row.OutputTokens == 0 {
+		if row.RequestType != "text" || row.InputTokens == 0 || row.OutputTokens == 0 {
 			request.UsageAccuracy = "legacy_unknown"
 		}
 		if sequence := events.requestStart[row.UUID]; sequence > 0 {

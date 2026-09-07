@@ -149,7 +149,7 @@ func TestBailianImageRequestSizeAndResponse(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&generationPayload); err != nil {
 				t.Fatal(err)
 			}
-			return response(200, `{"output":{"choices":[{"message":{"content":[{"text":"done"},{"image":"https://cdn.example.test/result.png"}]}}]}}`), nil
+			return response(200, `{"output":{"rewrite_status":"REWRITE_SUCCESS","choices":[{"message":{"content":[{"text":"done"},{"image":"https://cdn.example.test/result.png"}]}}]}}`), nil
 		case "https://cdn.example.test/result.png":
 			result := response(200, string(imageBytes))
 			result.ContentLength = int64(len(imageBytes))
@@ -160,7 +160,7 @@ func TestBailianImageRequestSizeAndResponse(t *testing.T) {
 		}
 	})})
 	result, err := client.Generate(context.Background(), Request{ProviderType: "aliyun_bailian", BaseURL: endpoint, APIKey: "bailian-key", Model: "qwen-image-3.0-pro", Prompt: "draw", Size: "1024x1536"})
-	if err != nil || !bytes.Equal(result.Bytes, imageBytes) || result.MIMEType != "image/png" {
+	if err != nil || !bytes.Equal(result.Bytes, imageBytes) || result.MIMEType != "image/png" || result.RewriteStatus != "REWRITE_SUCCESS" {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}
 	parameters := generationPayload["parameters"].(map[string]any)

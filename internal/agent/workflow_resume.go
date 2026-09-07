@@ -11,11 +11,11 @@ import (
 )
 
 type workflowResumeState struct {
-	AwaitID, ToolExecutionID, WorkflowID                                int64
-	AwaitStatus, WorkflowUUID, WorkflowKind, WorkflowStatus, ThreadUUID string
-	CurrentStepKey, TaskUUID, ResourceUUID, OutputJSON, ErrorCode       string
-	InputSnapshot                                                       string
-	Steps                                                               []workflowResumeStep
+	AwaitID, ToolExecutionID, WorkflowID                                        int64
+	AwaitStatus, WorkflowUUID, WorkflowKind, WorkflowStatus, ThreadUUID         string
+	CurrentStepKey, TaskUUID, ResourceUUID, OutputJSON, ErrorCode, ErrorMessage string
+	InputSnapshot                                                               string
+	Steps                                                                       []workflowResumeStep
 }
 
 type workflowResumeStep struct {
@@ -35,14 +35,14 @@ type workflowTerminalStepSummary struct {
 
 func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.Store, tc toolContext) (bool, error) {
 	var state workflowResumeState
-	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.id,w.uuid,w.kind,w.status,th.uuid,w.current_step_key,w.error_code,w.input_snapshot
+	err := store.DB().WithContext(ctx).Raw(`SELECT a.id,a.tool_execution_id,a.status,w.id,w.uuid,w.kind,w.status,th.uuid,w.current_step_key,w.error_code,w.error_message,w.input_snapshot
 		FROM workflow_awaits a
 		JOIN workflows w ON w.id=a.workflow_id
 		JOIN chat_threads th ON th.id=a.chat_thread_id
 		WHERE a.chat_run_id=? AND a.status IN ('ready','resuming')
 		ORDER BY a.id LIMIT 1`, tc.Run.ID).Row().Scan(
 		&state.AwaitID, &state.ToolExecutionID, &state.AwaitStatus, &state.WorkflowID, &state.WorkflowUUID,
-		&state.WorkflowKind, &state.WorkflowStatus, &state.ThreadUUID, &state.CurrentStepKey, &state.ErrorCode, &state.InputSnapshot,
+		&state.WorkflowKind, &state.WorkflowStatus, &state.ThreadUUID, &state.CurrentStepKey, &state.ErrorCode, &state.ErrorMessage, &state.InputSnapshot,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
@@ -181,6 +181,17 @@ func workflowTerminalToolResult(state workflowResumeState) json.RawMessage {
 	code := strings.TrimSpace(state.ErrorCode)
 	if code == "" {
 		code = "workflow_" + state.WorkflowStatus
+	}
+	if state.WorkflowKind == WorkflowStoryProfile || state.WorkflowKind == WorkflowStoryProfileFromChapters {
+		message := strings.TrimSpace(state.ErrorMessage)
+		if message == "" {
+			message = "异步生成未完成。"
+		}
+		encoded, _ := json.Marshal(map[string]any{
+			"success": false, "data": nil,
+			"error": map[string]any{"code": code, "message": message, "details": ""},
+		})
+		return encoded
 	}
 	encoded, _ := json.Marshal(map[string]any{
 		"success": false,

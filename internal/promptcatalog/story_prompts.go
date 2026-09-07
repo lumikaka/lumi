@@ -1,5 +1,7 @@
 package promptcatalog
 
+import "strings"
+
 const jsonSystemPrompt = `You are a professional comic story planner and chapter writer.
 Return one valid JSON object only. Do not include markdown fences, comments, or prose outside JSON.`
 
@@ -71,7 +73,7 @@ const profileFromChaptersPromptZH = `根据已有章节正文反推漫画 STORY.
 - story_md 必须是非空 Markdown 字符串，不要使用 Markdown 代码块包裹
 - story_md 应完整覆盖一句话故事、故事梗概、世界观和重要人物小传，可按故事需要增加其他章节
 - story_md 应优先精炼，通常控制在 800-1200 个字符；内容简单时可以更短，只有确有必要才可更长，最多不得超过 6000 个字符
-- chapter_plans 可为空数组`
+- 本任务只重建故事总纲，不规划或创建章节。chapter_plans 必须严格返回 []，不得填入已有章节或新增章节计划。`
 
 const profileFromChaptersPromptEN = `Infer the comic STORY.md from the existing chapter prose.
 
@@ -89,7 +91,7 @@ Constraints:
 - story_md must be a non-empty Markdown string and must not be wrapped in a Markdown code fence
 - story_md should cover the logline, synopsis, worldview, and important character bios, and may include other useful sections
 - story_md should be concise and usually 800-1,200 characters; it may be shorter for a simple story, should be longer only when necessary, and must not exceed 6,000 characters
-- chapter_plans may be an empty array`
+- This task only reconstructs the story profile; it does not plan or create chapters. chapter_plans must be exactly [], with no existing chapters or new chapter plans.`
 
 const storyChapterPromptZH = `根据 STORY.md 和当前章节计划生成单章正文。
 
@@ -316,12 +318,17 @@ func storyDefinitions(language string) []Definition {
 		}
 		return Definition{Group: GroupStory, Key: key, Title: copy[0], Description: copy[1], PromptType: PromptTypeTemplate, DefaultValue: value}
 	}
+	profileFromChapters := definition("profile_from_chapters", choose(profileFromChaptersPromptZH, profileFromChaptersPromptEN))
+	profileFromChapters.PreviousDefaultValues = []string{choose(
+		strings.Replace(profileFromChaptersPromptZH, "- 本任务只重建故事总纲，不规划或创建章节。chapter_plans 必须严格返回 []，不得填入已有章节或新增章节计划。", "- chapter_plans 可为空数组", 1),
+		strings.Replace(profileFromChaptersPromptEN, "- This task only reconstructs the story profile; it does not plan or create chapters. chapter_plans must be exactly [], with no existing chapters or new chapter plans.", "- chapter_plans may be an empty array", 1),
+	)}
 	return []Definition{
 		definition("json_system", jsonSystemPrompt),
 		definition("story_profile", choose(storyProfilePromptZH, storyProfilePromptEN)),
 		definition("story_chapter", choose(storyChapterPromptZH, storyChapterPromptEN)),
 		definition("chapter_batch_plan", choose(chapterBatchPlanPromptZH, chapterBatchPlanPromptEN)),
 		definition("next_story_chapter", choose(nextStoryChapterPromptZH, nextStoryChapterPromptEN)),
-		definition("profile_from_chapters", choose(profileFromChaptersPromptZH, profileFromChaptersPromptEN)),
+		profileFromChapters,
 	}
 }

@@ -28,20 +28,25 @@ export function formatTrajectoryThroughput(value, fallback = '—') {
   return throughput < 100 ? throughput.toFixed(1) : String(Math.round(throughput))
 }
 
-export function trajectoryStatsGroups(overview = {}, t) {
+export function trajectoryStatsGroups(overview = {}, t, workflowThread = false) {
   const turnCount = recordedNumber(overview.turn_count) || 0
   const requestCount = recordedNumber(overview.model_request_count) || 0
   const toolCount = recordedNumber(overview.tool_count) || 0
   const notRecorded = t('trajectory.stats.not_recorded')
   const groups = []
 
-  if (turnCount > 0 || requestCount > 0) {
+  if (workflowThread) {
+    groups.push([
+      t(requestCount === 1 ? 'trajectory.stats.request.one' : 'trajectory.stats.request.other', { count: requestCount }),
+      t(toolCount === 1 ? 'trajectory.stats.tool_count.one' : 'trajectory.stats.tool_count.other', { count: toolCount }),
+    ].join(' · '))
+  } else if (turnCount > 0 || requestCount > 0) {
     const turns = t(turnCount === 1 ? 'trajectory.stats.turn.one' : 'trajectory.stats.turn.other', { count: turnCount })
     const requests = t(requestCount === 1 ? 'trajectory.stats.request.one' : 'trajectory.stats.request.other', { count: requestCount })
     groups.push(`${turns} · ${requests}`)
   }
-  if (requestCount > 0) {
-    const durations = [t('trajectory.stats.llm', { duration: formatTrajectoryDuration(overview.llm_duration_ms, notRecorded) })]
+  if (requestCount > 0 || workflowThread && toolCount > 0) {
+    const durations = requestCount > 0 ? [t('trajectory.stats.llm', { duration: formatTrajectoryDuration(overview.llm_duration_ms, notRecorded) })] : []
     if (toolCount > 0) {
       const toolExecutionDuration = recordedNumber(overview.tool_execution_duration_ms)
       const userWaitDuration = recordedNumber(overview.user_wait_duration_ms)
@@ -51,6 +56,7 @@ export function trajectoryStatsGroups(overview = {}, t) {
       } else durations.push(t('trajectory.stats.tool', { duration: formatTrajectoryDuration(overview.tool_duration_ms, notRecorded) }))
     }
     groups.push(durations.join(' · '))
+    if (workflowThread && overview.input_tokens == null && overview.output_tokens == null) return groups
     const throughput = recordedNumber(overview.output_tokens_per_second)
     groups.push([
       t('trajectory.stats.ttft', { duration: formatTrajectoryDuration(overview.average_ttft_ms, notRecorded) }),

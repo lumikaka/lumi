@@ -36,6 +36,10 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	if tc.Turn.Status == TurnCompleted || tc.Turn.Status == TurnCancelled {
 		return nil
 	}
+	// Stop legacy chat jobs before claiming a run, resuming tools, or calling a model.
+	if err := requireConversationInput(tc.Thread); err != nil {
+		return service.finishRunWithStatus(ctx, store, tc, TurnCancelled, CodeWorkflowThreadReadOnly, safeMessage(err))
+	}
 	if ready, err := service.turnFIFOReady(ctx, store, tc); err != nil {
 		return err
 	} else if !ready {
@@ -797,6 +801,9 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 }
 
 func (service *Service) promoteNextFollowUpTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, promptSnapshot contextPromptSet) error {
+	if thread.ThreadType == ThreadTypeWorkflow {
+		return nil
+	}
 	var follow followUpRecord
 	err := tx.QueryRowContext(ctx, `SELECT id,uuid,thread_id,input_text,position,status,promoted_turn_id,created_at,updated_at,deleted_at FROM chat_follow_ups WHERE thread_id=? AND status='queued' AND deleted_at IS NULL ORDER BY position,id LIMIT 1`, thread.ID).Scan(&follow.ID, &follow.UUID, &follow.ThreadID, &follow.InputText, &follow.Position, &follow.Status, &follow.PromotedTurnID, &follow.CreatedAt, &follow.UpdatedAt, &follow.DeletedAt)
 	if errors.Is(err, sql.ErrNoRows) {

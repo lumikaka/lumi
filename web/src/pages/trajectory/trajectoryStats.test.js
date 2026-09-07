@@ -9,6 +9,8 @@ const messages = {
   'trajectory.stats.turn.other': '{count} 个 Turn',
   'trajectory.stats.request.one': '{count} 次 Request',
   'trajectory.stats.request.other': '{count} 次 Request',
+  'trajectory.stats.tool_count.one': '{count} 次 Tool 调用',
+  'trajectory.stats.tool_count.other': '{count} 次 Tool 调用',
   'trajectory.stats.llm': 'LLM {duration}',
   'trajectory.stats.tool': '工具调用 {duration}',
   'trajectory.stats.tool_execution': '工具执行 {duration}',
@@ -50,4 +52,9 @@ test('trajectory stats reproduce the compact reference grouping from recorded fa
 test('trajectory stats keep unavailable timing and usage explicit', () => {
   const groups = trajectoryStatsGroups({ turn_count: 2, model_request_count: 1, tool_count: 1 }, t)
   assert.equal(groups.join(' | '), '2 个 Turn · 1 次 Request | LLM 未记录 · 工具调用 未记录 | 首 token 平均 未记录 · 吞吐率未记录 | 缓存命中 未记录 | 输入 未记录 tok · 输出 未记录 tok')
+})
+
+test('workflow image statistics count real requests and tools without inventing turns or token usage', () => {
+  const groups = trajectoryStatsGroups({ turn_count: 0, model_request_count: 1, tool_count: 0, llm_duration_ms: 47061 }, t, true)
+  assert.deepEqual(groups, ['1 次 Request · 0 次 Tool 调用', 'LLM 47.1s'])
 })

@@ -3,9 +3,9 @@ import { Fragment, useMemo } from 'react'
 import { useI18n } from '../../i18n/useI18n.js'
 import { trajectoryStatsGroups } from './trajectoryStats.js'
 
-export default function TrajectoryStats({ overview }) {
+export default function TrajectoryStats({ overview, threadType }) {
   const { t } = useI18n()
-  const groups = useMemo(() => trajectoryStatsGroups(overview, t), [overview, t])
+  const groups = useMemo(() => trajectoryStatsGroups(overview, t, threadType === 'workflow'), [overview, t, threadType])
   if (!groups.length) return null
   const line = groups.join(' | ')
   return (

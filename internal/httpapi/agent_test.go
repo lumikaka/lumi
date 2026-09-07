@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"lumi/internal/agent"
 	"lumi/internal/appstore"
@@ -190,6 +191,40 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 	}
 	if itemsResponse.Code != http.StatusOK || !strings.Contains(itemsResponse.Body.String(), `"cursor_pagination"`) || !strings.Contains(itemsResponse.Body.String(), storyboardSection.UUID) || !strings.Contains(itemsResponse.Body.String(), `"resource_type":"comic_section"`) || eventsResponse.Code != http.StatusOK || trajectoryResponse.Code != http.StatusOK || trajectoryDeepLinkResponse.Code != http.StatusOK || !strings.Contains(trajectoryResponse.Body.String(), `"history_complete":true`) || !strings.Contains(trajectoryResponse.Body.String(), `"model_requests":[]`) || missingTrajectoryResponse.Code != http.StatusNotFound || workflowResponse.Code != http.StatusCreated || workflowRunsResponse.Code != http.StatusOK || workflowEventsResponse.Code != http.StatusOK || workflowLogsResponse.Code != http.StatusOK || filteredWorkflowLogsResponse.Code != http.StatusOK || !strings.Contains(projectList.Body.String(), `"pagination"`) {
 		t.Fatalf("items=%d events=%d trajectory=%d deep_link=%d missing_trajectory=%d workflow=%d runs=%d workflow_events=%d logs=%d filtered_logs=%d", itemsResponse.Code, eventsResponse.Code, trajectoryResponse.Code, trajectoryDeepLinkResponse.Code, missingTrajectoryResponse.Code, workflowResponse.Code, workflowRunsResponse.Code, workflowEventsResponse.Code, workflowLogsResponse.Code, filteredWorkflowLogsResponse.Code)
+	}
+
+	// A workflow with no Chat Items still exposes a real, directly addressable request.
+	logUUID := httpAgentUUIDv7(t)
+	now := time.Now().UTC()
+	if err := projects.WithCurrentStore(ctx, created.UUID, func(store *project.Store) error {
+		return store.DB().Exec(`INSERT INTO llm_logs(uuid,project_id,workflow_id,workflow_step_id,source_type,scenario,request_type,attempt,provider_uuid,model,status,duration_ms,created_at,completed_at)
+		SELECT ?,w.project_id,w.id,s.id,'workflow','premise_asset_generation','image',1,w.provider_uuid,'image-model','completed',47061,?,?
+		FROM workflows w JOIN workflow_steps s ON s.workflow_id=w.id WHERE w.uuid=? AND s.uuid=?`, logUUID, now, now.Add(47061*time.Millisecond), workflowUUID, workflowStepUUID).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
+	workflowThreadUUID := envelopeData(t, workflowResponse)["thread_uuid"].(string)
+	workflowTrajectory := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+workflowThreadUUID+"/trajectory?limit=1&item_uuid="+logUUID, nil)
+	if workflowTrajectory.Code != http.StatusOK {
+		t.Fatalf("workflow trajectory=%d %s", workflowTrajectory.Code, workflowTrajectory.Body.String())
+	}
+	workflowTrajectoryData := envelopeData(t, workflowTrajectory)
+	workflowRequests := workflowTrajectoryData["model_requests"].([]any)
+	if len(workflowRequests) != 1 || workflowRequests[0].(map[string]any)["uuid"] != logUUID || workflowRequests[0].(map[string]any)["duration_ms"] != float64(47061) || len(workflowTrajectoryData["items"].([]any)) != 0 || len(workflowTrajectoryData["tools"].([]any)) != 0 {
+		t.Fatalf("workflow trajectory data=%+v", workflowTrajectoryData)
+	}
+	origins := workflowRequests[0].(map[string]any)["workflow_origins"].([]any)
+	if len(origins) != 1 || origins[0].(map[string]any)["uuid"] != workflowUUID {
+		t.Fatalf("workflow request origins=%+v", origins)
+	}
+	for _, forbidden := range []string{`"id":`, "http-agent-secret", "root_path"} {
+		if strings.Contains(workflowTrajectory.Body.String(), forbidden) {
+			t.Fatalf("workflow trajectory leaked %q", forbidden)
+		}
+	}
+	wrongAnchor := requestJSON(t, e, http.MethodGet, base+"/chat_threads/"+threadUUID+"/trajectory?item_uuid="+logUUID, nil)
+	if wrongAnchor.Code != http.StatusNotFound || !strings.Contains(wrongAnchor.Body.String(), `"success":false`) || !strings.Contains(wrongAnchor.Body.String(), `"data":null`) {
+		t.Fatalf("cross-thread anchor=%d %s", wrongAnchor.Code, wrongAnchor.Body.String())
 	}
 }
 

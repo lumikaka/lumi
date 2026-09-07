@@ -83,6 +83,19 @@
   align-items: center
   gap: 6px
 
+.trajectory-thread-type
+  margin-right: 8px
+  padding: 2px 5px
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  border-radius: 3px
+  color: #735495
+  background: #f0eafa
+  font-size: $font-size-micro
+  line-height: 16px
+  vertical-align: baseline
+
 .trajectory-refresh
   min-height: 24px
   padding: 0 8px
@@ -310,6 +323,13 @@
   &[aria-pressed="true"]:focus-visible
     color: $color-text
     background: $color-accent-muted
+
+  &:disabled,
+  &:disabled:hover
+    color: $color-muted
+    background: transparent
+    cursor: default
+    opacity: .45
 
 .trajectory-timeline__plot
   height: 66px
@@ -615,6 +635,7 @@
   background: $color-surface-subtle
 
 .trajectory-ledger__scroll
+  grid-row: 3
   min-width: 0
   min-height: 0
   overflow: auto
@@ -628,6 +649,10 @@
   top: 0
   left: 0
   width: 100%
+
+  &:hover,
+  &:focus-within
+    z-index: 2
 
 .trajectory-row
   position: relative
@@ -779,6 +804,7 @@
     top: 2px
     left: 17px
     width: max-content
+    max-width: 520px
     padding: 0 4px
     border: 1px solid $color-border
     border-radius: 2px
@@ -788,11 +814,11 @@
     content: attr(data-label)
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace
     font-size: $font-size-micro
-    line-height: 12px
+    line-height: 1.5
     opacity: 0
     pointer-events: none
     transform: translateX(-2px)
-    white-space: nowrap
+    white-space: normal
 
   &:hover::before,
   &:focus-visible::before
@@ -820,6 +846,32 @@
   &[data-request-status="error"]:focus-visible::before
     background: $color-danger
 
+.trajectory-row--request-marker
+  min-height: 20px
+  border-bottom: 0
+
+  &:hover
+    background: $color-surface
+
+  &.trajectory-row--turn-start
+    min-height: 30px
+
+    .trajectory-row__event--requests
+      padding-top: 12px
+
+.trajectory-row__event--requests
+  grid-column: 1 / -1
+  height: auto
+  padding: 2px 8px 2px 12px
+  flex-wrap: wrap
+  gap: 4px
+
+.trajectory-request-boundary--detached
+  position: relative
+  top: auto
+  left: auto
+  flex: 0 0 16px
+
 .trajectory-row__content
   min-width: 0
   padding: 0 8px 0 4px
@@ -844,6 +896,24 @@
   align-items: center
   justify-content: flex-end
   gap: 5px
+
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+    font-variant-numeric: tabular-nums
+
+.trajectory-workflow-origins
+  display: grid
+  gap: 8px
+
+  > div
+    display: grid
+    gap: 3px
+
+  code
+    color: $color-muted
+    font-size: $font-size-micro
+    overflow-wrap: anywhere
 
 .trajectory-tool-group-toggle
   width: 20px
@@ -886,11 +956,15 @@
 .trajectory-row--status-completed .trajectory-row__trailing > em
   display: none
 
+.trajectory-row--kind-workflow .trajectory-row__trailing > em
+  display: inline
+
 .trajectory-row--kind-system .trajectory-row__kind-slot strong,
 .trajectory-row--kind-user .trajectory-row__kind-slot strong,
 .trajectory-row--kind-context .trajectory-row__kind-slot strong,
 .trajectory-row--kind-assistant .trajectory-row__kind-slot strong,
 .trajectory-row--kind-tool .trajectory-row__kind-slot strong,
+.trajectory-row--kind-workflow .trajectory-row__kind-slot strong,
 .trajectory-row--kind-compaction .trajectory-row__kind-slot strong,
 .trajectory-row--kind-error .trajectory-row__kind-slot strong
   padding: 1px 6px
@@ -916,6 +990,10 @@
 .trajectory-row--kind-tool .trajectory-row__kind-slot strong
   color: $color-warning
   background: $color-warm-muted
+
+.trajectory-row--kind-workflow .trajectory-row__kind-slot strong
+  color: #36558e
+  background: #eaf0fc
 
 .trajectory-row--kind-compaction .trajectory-row__kind-slot strong
   color: #27727c

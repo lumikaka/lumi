@@ -353,8 +353,12 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 				}
 			}
 			for name, definition := range map[string]Definition{"body": body, "cover": cover} {
-				if len(definition.PreviousDefaultValues) != 1 {
-					t.Fatalf("%s previous defaults=%d want=1", name, len(definition.PreviousDefaultValues))
+				wantPrevious := 1
+				if name == "cover" {
+					wantPrevious = 2
+				}
+				if len(definition.PreviousDefaultValues) != wantPrevious {
+					t.Fatalf("%s previous defaults=%d want=%d", name, len(definition.PreviousDefaultValues), wantPrevious)
 				}
 				if strings.Contains(definition.PreviousDefaultValues[0], test.bodyHeadings[0]) || strings.Contains(definition.PreviousDefaultValues[0], test.coverHeadings[0]) {
 					t.Errorf("%s previous default unexpectedly contains new heading guidance", name)
@@ -366,8 +370,8 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "3435ac0c94de0326ce4d2efb7cd8da54dfbde6fbb43dd33da42c6586c1109a55",
-		LanguageEnglish: "ee0067434aae8ce6142ea8a3ce76d5c3667931c64b3957db8304b145bb3dd049",
+		LanguageChinese: "7b5e35fedb00ebb2311ab5d21282097e7f15064bbe26979fe4da96808c757211",
+		LanguageEnglish: "73446ef9465a1c7979e9bec5caff634588ddcdd359b1bbb9841600e7b4f3be67",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()

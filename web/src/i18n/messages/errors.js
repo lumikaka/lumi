@@ -5,6 +5,7 @@ export const errors = defineMessages({
   "errors.code.model_price_conflict": ["价格已被更新，请刷新后重试。", "The price was updated. Refresh and try again."],
   "errors.code.model_price_not_found": ["计价资源不存在。", "The pricing resource does not exist."],
   "errors.code.model_price_unavailable": ["本地费用估算暂不可用。", "Local cost estimates are temporarily unavailable."],
+  'errors.code.workflow_thread_read_only': ['工作流线程不接受聊天输入，请新建对话继续。', 'Workflow threads do not accept chat input. Start a new conversation to continue.'],
   'errors.title': ['操作失败', 'Operation failed'],
   'errors.generic': ['操作暂时无法完成，请稍后重试。', 'The operation could not be completed. Please try again.'],
   'errors.network': ['无法连接 Lumi 服务，请检查服务状态后重试。', 'Could not connect to the Lumi service. Check its status and try again.'],

@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Workflow } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n.js'
 
@@ -8,6 +8,7 @@ const kindOptions = [
   ['context', 'trajectory.kind.context'],
   ['assistant', 'trajectory.kind.assistant'],
   ['tool', 'trajectory.kind.tool'],
+  ['workflow', 'trajectory.kind.workflow'],
   ['compaction', 'trajectory.kind.compaction'],
   ['error', 'trajectory.kind.error'],
   ['request', 'trajectory.filter.request'],
@@ -32,7 +33,7 @@ export default function TrajectoryToolbar({ projection, fetching = false, search
     <header className="trajectory-toolbar">
       <div className="trajectory-toolbar__heading">
         <p className="eyebrow">{t('trajectory.title')}</p>
-        <h1>{thread?.title || t('trajectory.title')}</h1>
+        <h1>{thread?.thread_type === 'workflow' ? <span className="trajectory-thread-type"><Workflow size={13} aria-hidden="true" />{t('trajectory.origin.workflow')}</span> : null}{thread?.title || t('trajectory.title')}</h1>
         <p>{t('trajectory.subtitle')}</p>
         {thread?.uuid ? <code title={t('trajectory.thread_uuid')}>{thread.uuid}</code> : null}
       </div>

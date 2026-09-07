@@ -14,6 +14,7 @@ import { applyTrajectoryCollapse, buildAssistantToolGroups } from './trajectoryC
 import { applyTrajectoryUpserts, combineTrajectoryPages } from './trajectoryProjector.js'
 import { filterTrajectoryRows, reconcileTrajectorySearchIndex, updateTrajectoryRequestSearchDocument } from './trajectorySearch.js'
 import { trajectoryTimelineEntries } from './trajectoryTimeline.js'
+import { trajectoryWorkflowTitle } from './trajectoryRequestOrigin.js'
 import {
   captureTrajectoryVirtualAnchor,
   isTrajectoryAtTail,
@@ -47,7 +48,7 @@ function resolveSelectedRow(rows, sourceUuid, sourceKind = '') {
   return candidates.find((row) => row.rowType === 'request') || candidates[0] || null
 }
 
-export default function ThreadTrajectoryPage({ projectUuid }) {
+export default function ThreadTrajectoryPage({ projectUuid, pictureBook }) {
   const { threadUuid } = useParams()
   const { t } = useI18n()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -108,8 +109,8 @@ export default function ThreadTrajectoryPage({ projectUuid }) {
   const virtualEntries = useMemo(() => trajectoryVirtualWindow(rowMeasurement, viewport.scrollTop, viewport.height), [rowMeasurement, viewport.height, viewport.scrollTop])
 
   useEffect(() => {
-    setSearchIndex((current) => reconcileTrajectorySearchIndex(current, projection.rows))
-  }, [projection.rows])
+    setSearchIndex((current) => reconcileTrajectorySearchIndex(current, projection.rows, { workflowTitle: (workflow) => trajectoryWorkflowTitle(workflow, t, pictureBook) }))
+  }, [pictureBook, projection.rows, t])
 
   const recordRequestDetail = useCallback((requestUuid, detail) => {
     setSearchIndex((current) => updateTrajectoryRequestSearchDocument(current, requestUuid, detail))
@@ -333,6 +334,8 @@ export default function ThreadTrajectoryPage({ projectUuid }) {
         selectedSourceKind={selected?.sourceKind || selectedSourceKind}
         allTurnsCollapsed={allTurnsCollapsed}
         allToolGroupsCollapsed={allToolGroupsCollapsed}
+        canCollapseTurns={collapsibleTurnUuids.length > 0}
+        canCollapseToolGroups={collapsibleToolGroupKeys.length > 0}
         onToggleAllTurns={toggleAllTurns}
         onToggleAllToolGroups={toggleAllToolGroups}
         onRangeChange={setTimelineRange}
@@ -342,6 +345,7 @@ export default function ThreadTrajectoryPage({ projectUuid }) {
       <div className={`trajectory-workbench ${selected ? 'trajectory-workbench--inspector-open' : ''}`}>
         <div className="trajectory-ledger-shell">
           <TrajectoryLedger
+            pictureBook={pictureBook}
             rows={visibleRows}
             virtualEntries={virtualEntries}
             totalSize={rowMeasurement.totalSize}
@@ -361,9 +365,9 @@ export default function ThreadTrajectoryPage({ projectUuid }) {
             onLoadEarlier={loadEarlier}
           />
         </div>
-        <TrajectoryInspector projectUuid={projectUuid} selected={selected} onClose={closeInspector} onResizeStart={startResize} onRequestDetailLoaded={recordRequestDetail} />
+        <TrajectoryInspector projectUuid={projectUuid} pictureBook={pictureBook} selected={selected} onClose={closeInspector} onResizeStart={startResize} onRequestDetailLoaded={recordRequestDetail} />
       </div>
-      <TrajectoryStats overview={projection.overview} />
+      <TrajectoryStats overview={projection.overview} threadType={projection.thread?.thread_type} />
     </div>
   )
 }

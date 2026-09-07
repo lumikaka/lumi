@@ -67,6 +67,18 @@ func pictureBookCoverDirective(language string, options PictureBookOptions) stri
 	return "这是绘本封面，不是正文页。生成一张宽高比为 " + ratio + " 的平面最终封面画布。正文页的无字、叙事句数、互动提问或漫画分格数量规则不适用于封面；封面只遵循下方逐字标题和封面构图规则。禁止生成书本样机、立体书、展开封套、书脊或封底。"
 }
 
+const coverArtworkCanvasZH = `## 输出画布：满版二维插画
+
+交付物是封面的插画与标题排版原稿。整个输出矩形就是作品本身：场景底色或背景连续铺满上、下、左、右四边，标题直接排在同一画布上；标题留白属于画面内部。
+画布四边平直，没有物理厚度。尤其左、右边缘不得出现书脊、装订槽、折痕、卷边、页块，或模拟书壳厚度的竖向高光、暗带和投影；画布外没有桌面、展示背景或包围整张插画的书本轮廓。
+上述要求约束画布的呈现方式；人物与场景仍保留项目画风所需的体积、透视和光影。脚本应直接描述画面及标题布局。`
+
+const coverArtworkCanvasEN = `## Output Canvas: Full-bleed 2D Artwork
+
+The deliverable is the cover illustration and title layout artwork. The entire output rectangle is the artwork itself: extend the scene background or base color continuously to all four edges, and place the title directly on that same canvas. Whitespace for the title belongs inside the composition.
+All four canvas edges are straight and have no physical thickness. In particular, neither side edge may contain a spine, binding groove, crease, curled edge, page block, or vertical highlight, dark band, or cast shadow simulating the thickness of a book cover. There is no tabletop, display backdrop, or book silhouette surrounding the illustration.
+These requirements govern how the canvas is presented; characters and scenery retain the volume, perspective, and lighting of the project's art style. The storyboard should directly describe the artwork and title layout.`
+
 func pictureBookBackCoverDirective(language string, options PictureBookOptions) string {
 	ratio := fmt.Sprintf("%d:%d", options.AspectWidth, options.AspectHeight)
 	if NormalizeLanguage(language) == LanguageEnglish {
@@ -244,6 +256,15 @@ func DefinitionsForPictureBook(language string, options PictureBookOptions) []De
 			definition.Description = choosePictureBook(english, "组合进完整页面图片模板的基础规则。", "Base rules composed into a complete page image prompt.")
 		case definition.Group == GroupStory:
 			definition.DefaultValue = strings.TrimSpace(directive + "\n\n" + definition.DefaultValue)
+			for previousIndex := range definition.PreviousDefaultValues {
+				definition.PreviousDefaultValues[previousIndex] = strings.TrimSpace(directive + "\n\n" + definition.PreviousDefaultValues[previousIndex])
+			}
+		}
+		if definition.Group == GroupChapter && (definition.Key == "cover_storyboard" || definition.Key == "cover_before_image") {
+			// Keep both earlier storyboard defaults and the last full template
+			// recognizable so existing built-in project prompts can migrate.
+			definition.PreviousDefaultValues = append(definition.PreviousDefaultValues, definition.DefaultValue)
+			definition.DefaultValue = choosePictureBook(english, coverArtworkCanvasZH, coverArtworkCanvasEN) + "\n\n" + definition.DefaultValue
 		}
 	}
 	return definitions

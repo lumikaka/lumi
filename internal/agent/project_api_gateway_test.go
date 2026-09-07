@@ -83,7 +83,7 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 	}
 	if _, err := service.parseAgentAPIRequest(tc, map[string]any{
 		"method": http.MethodGet, "url": "/api/v1/projects/" + projectUUID + "/not-real", "response_filter": ".data",
-	}); err == nil || errorCode(err) != CodeToolNotAllowed {
+	}); err == nil || errorCode(err) != CodeToolValidation {
 		t.Fatalf("unknown route accepted: %v", err)
 	}
 	otherProjectUUID := mustAgentUUID(t)

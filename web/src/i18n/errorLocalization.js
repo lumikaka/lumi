@@ -98,6 +98,7 @@ export const ERROR_CODE_KEYS = Object.freeze({
   agent_not_found: 'errors.not_found',
   agent_thread_busy: 'errors.conflict',
   agent_state_conflict: 'errors.conflict',
+  workflow_thread_read_only: 'errors.code.workflow_thread_read_only',
   agent_tool_not_allowed: 'errors.forbidden',
   agent_tool_validation_failed: 'errors.validation',
   agent_context_too_large: 'errors.too_large',

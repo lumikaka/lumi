@@ -36,6 +36,17 @@ test('prepend restores the same stable row key and viewport offset', () => {
   assert.equal(restored.offset, anchor.offset)
 })
 
+test('prepend can restore an existing Request after it joins an earlier marker strip', () => {
+  const later = { key: 'model_request:later' }
+  const current = measureTrajectoryRows([{ ...later, rowType: 'request', requestBoundaries: [later] }])
+  const anchor = captureTrajectoryVirtualAnchor(current, 6)
+  const prepended = measureTrajectoryRows([
+    ...rows(2, 'earlier-content'),
+    { key: 'model_request:earlier', rowType: 'request', requestBoundaries: [{ key: 'model_request:earlier' }, later] },
+  ])
+  assert.equal(restoreTrajectoryVirtualAnchor(prepended, anchor), 66)
+})
+
 test('history autoload and tail follow suspend when the user scrolls away', () => {
   assert.equal(shouldLoadEarlierTrajectory({ scrollTop: 120, hasPreviousPage: true }), true)
   assert.equal(shouldLoadEarlierTrajectory({ scrollTop: 120, hasPreviousPage: true, fetchingPreviousPage: true }), false)

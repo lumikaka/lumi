@@ -204,7 +204,7 @@ func TestReviewedAgentAPIResponseFilterShapePreflight(t *testing.T) {
 }
 
 func TestToolCallBatchRejectsCrossFieldAndProjectorPreflightWithoutSiblingSideEffects(t *testing.T) {
-	for _, invalidKind := range []string{"cross_field", "object_broad", "object_index", "object_deep_path", "object_deep_projection", "list_broad", "list_deep_path", "list_deep_projection"} {
+	for _, invalidKind := range []string{"unknown_route", "cross_field", "object_broad", "object_index", "object_deep_path", "object_deep_projection", "list_broad", "list_deep_path", "list_deep_projection"} {
 		for _, invalidFirst := range []bool{false, true} {
 			name := invalidKind + "_last"
 			if invalidFirst {
@@ -227,6 +227,11 @@ func TestToolCallBatchRejectsCrossFieldAndProjectorPreflightWithoutSiblingSideEf
 					"response_filter": ".data | {uuid,title,revision}",
 				}
 				switch invalidKind {
+				case "unknown_route":
+					invalidArgs = map[string]any{
+						"method": "GET", "url": "/api/v1/projects/" + harness.project.UUID + "/story",
+						"response_filter": ".data | {uuid,revision,story_md}",
+					}
 				case "object_broad":
 					invalidArgs = map[string]any{
 						"method": "POST", "url": "/api/v1/projects/" + harness.project.UUID + "/chapters",

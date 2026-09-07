@@ -336,7 +336,7 @@ func agentAPIError(err error) error {
 	switch domainErr.Code {
 	case agent.CodeNotFound:
 		status = http.StatusNotFound
-	case agent.CodeBusy, agent.CodeStateConflict:
+	case agent.CodeBusy, agent.CodeStateConflict, agent.CodeWorkflowThreadReadOnly:
 		status = http.StatusConflict
 	case agent.CodeProvider:
 		status = http.StatusBadGateway

@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { getProjectLLMLog } from '../../api/ai.js'
+import { getWorkflow } from '../../api/chat.js'
 import LocalizedErrorMessage from '../../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../../i18n/useI18n.js'
 import { jsonSyntaxSegments } from './trajectoryMachineValue.js'
+import { trajectoryRequestOrigin, trajectoryWorkflowTitle } from './trajectoryRequestOrigin.js'
 
 function systemPrompt(payload) {
   if (!payload || typeof payload !== 'object') return null
@@ -31,6 +33,7 @@ function requestUuidFor(selected) {
 function inspectorTabs(selected) {
   if (!selected) return []
   if (selected.sourceKind === 'model_request') return ['summary', 'payload', 'result', 'timing', 'raw']
+  if (selected.kind === 'workflow') return ['summary', 'payload', 'result', 'timing', 'raw']
   if (selected.kind === 'tool') return ['summary', 'payload', 'result', 'schema', 'timing', 'raw']
   if (selected.kind === 'system') return selected.previousRequestUuid
     ? ['summary', 'diff', 'prompt', 'tools', 'raw']
@@ -44,14 +47,14 @@ function formatDuration(value, formatNumber, fallback) {
   const duration = Number(value)
   if (!Number.isFinite(duration)) return fallback
   if (duration < 1000) return `${formatNumber(duration)} ms`
-  return `${formatNumber(duration / 1000, { maximumFractionDigits: 2 })} s`
+  return `${formatNumber(duration / 1000, { maximumFractionDigits: 3 })} s`
 }
 
 function factValue(value, fallback) {
   return value == null || value === '' ? fallback : value
 }
 
-export default function TrajectoryInspector({ projectUuid, selected, onClose, onResizeStart, onRequestDetailLoaded }) {
+export default function TrajectoryInspector({ projectUuid, pictureBook, selected, onClose, onResizeStart, onRequestDetailLoaded }) {
   const { formatDateTime, formatNumber, t } = useI18n()
   const tabs = useMemo(() => inspectorTabs(selected), [selected])
   const [tab, setTab] = useState('summary')
@@ -74,15 +77,19 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
   useEffect(() => { if (previousRequestUuid && previousQuery.data) onRequestDetailLoaded?.(previousRequestUuid, previousQuery.data) }, [onRequestDetailLoaded, previousQuery.data, previousRequestUuid])
 
   const detail = requestQuery.data
-  const requestSource = selected?.sourceKind === 'model_request' ? selected.source : selected?.source
+  const isModelRequest = selected?.sourceKind === 'model_request'
+  const requestSource = selected?.source
   const displayRequest = detail || requestSource || {}
   const notRecorded = t('trajectory.inspector.not_recorded')
   const isUserWait = selected?.kind === 'tool' && selected.source?.tool_name === 'request_user_input'
   const timingStartedAt = selected?.kind === 'tool' ? selected.startedAt : displayRequest.created_at || selected?.startedAt
   const timingCompletedAt = selected?.kind === 'tool' ? selected.completedAt : displayRequest.completed_at || selected?.completedAt
-  const timingDuration = selected?.kind === 'tool' ? selected.durationMs : displayRequest.duration_ms ?? selected?.durationMs
+  const timingDuration = selected?.kind === 'tool' || isModelRequest ? selected.durationMs : displayRequest.duration_ms ?? selected?.durationMs
   const currentPrompt = systemPrompt(detail?.request_payload)
   const previousPrompt = systemPrompt(previousQuery.data?.request_payload)
+  const usageValue = (field) => isModelRequest && (displayRequest.request_type !== 'text' || requestSource?.[field] == null)
+    ? notRecorded
+    : factValue(displayRequest[field], notRecorded)
 
   if (!selected) {
     return (
@@ -94,14 +101,25 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
   }
 
   const summaryFacts = [
+    ...(isModelRequest && requestSource?.workflow_origins?.length ? [
+      [t('trajectory.inspector.workflow'), <div className="trajectory-workflow-origins">{requestSource.workflow_origins.map((origin) => <div key={origin.uuid}><span>{trajectoryWorkflowTitle(origin, t, pictureBook)}</span><code>{origin.uuid}</code></div>)}</div>],
+    ] : []),
     [t('trajectory.inspector.source_uuid'), selected.sourceUuid],
-    [t('trajectory.inspector.turn_uuid'), selected.turnUuid || notRecorded],
+    ...(!isModelRequest || selected.turnUuid ? [[t('trajectory.inspector.turn_uuid'), selected.turnUuid || notRecorded]] : []),
     [t('trajectory.inspector.request_uuid'), requestUuid || notRecorded],
-    [t('trajectory.inspector.call_uuid'), selected.callUuid || notRecorded],
+    ...(!isModelRequest ? [[t('trajectory.inspector.call_uuid'), selected.callUuid || notRecorded]] : []),
     [t('common.label.status'), t(`trajectory.status.${selected.status || 'completed'}`)],
     [t('trajectory.inspector.provider'), displayRequest.provider_type || displayRequest.provider_uuid || notRecorded],
     [t('trajectory.inspector.model'), displayRequest.model || notRecorded],
     [t('trajectory.inspector.ordinal'), selected.requestOrdinal || displayRequest.attempt || notRecorded],
+    ...(isModelRequest ? [
+      [t('trajectory.inspector.request_type'), t(`trajectory.request_type.${displayRequest.request_type || selected.requestType}`)],
+      [t('trajectory.inspector.source_type'), trajectoryRequestOrigin(requestSource, t, pictureBook) || notRecorded],
+      [t('trajectory.inspector.attempt'), factValue(displayRequest.attempt, notRecorded)],
+      [t('trajectory.inspector.duration'), formatDuration(timingDuration, formatNumber, notRecorded)],
+    ] : []),
+    ...(displayRequest.error_code ? [[t('trajectory.inspector.error_code'), displayRequest.error_code]] : []),
+    ...(displayRequest.error_message ? [[t('trajectory.inspector.error_message'), displayRequest.error_message]] : []),
   ]
   const toolSummaryFacts = [
     [t('trajectory.inspector.hierarchy'), `${t('trajectory.ledger.request', { number: selected.requestOrdinal || displayRequest.attempt || '—' })} › ${selected.source?.tool_name || t('trajectory.kind.tool')}`],
@@ -120,6 +138,7 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
         {tabs.map((name) => <button type="button" role="tab" key={name} aria-selected={tab === name} aria-pressed={tab === name} onClick={() => setTab(name)}>{t(`trajectory.inspector.${name}`)}</button>)}
       </div>
       <div className="trajectory-inspector__body" role="tabpanel">
+        {selected.kind === 'workflow' ? <WorkflowDetail projectUuid={projectUuid} pictureBook={pictureBook} selected={selected} tab={tab} /> : <>
         {tab === 'summary' ? (
           <>
             {selected.kind !== 'tool' ? <p className="trajectory-inspector__preview">{selected.preview || '—'}</p> : null}
@@ -150,9 +169,9 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
             <div><dt>{t('trajectory.inspector.completed_at')}</dt><dd>{timingCompletedAt ? formatDateTime(timingCompletedAt) : selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded}</dd></div>
             <div><dt>{t(isUserWait ? 'trajectory.inspector.wait_duration' : 'trajectory.inspector.duration')}</dt><dd>{formatDuration(timingDuration, formatNumber, selected.status === 'pending' || selected.status === 'running' ? t('trajectory.inspector.pending') : notRecorded)}</dd></div>
             <div><dt>{t('trajectory.inspector.finish_reason')}</dt><dd>{factValue(displayRequest.finish_reason, notRecorded)}</dd></div>
-            <div><dt>{t('trajectory.inspector.input_tokens')}</dt><dd>{factValue(displayRequest.input_tokens, notRecorded)}</dd></div>
-            <div><dt>{t('trajectory.inspector.cached_tokens')}</dt><dd>{factValue(displayRequest.cached_input_tokens, notRecorded)}</dd></div>
-            <div><dt>{t('trajectory.inspector.output_tokens')}</dt><dd>{factValue(displayRequest.output_tokens, notRecorded)}</dd></div>
+            <div><dt>{t('trajectory.inspector.input_tokens')}</dt><dd>{usageValue('input_tokens')}</dd></div>
+            <div><dt>{t('trajectory.inspector.cached_tokens')}</dt><dd>{usageValue('cached_input_tokens')}</dd></div>
+            <div><dt>{t('trajectory.inspector.output_tokens')}</dt><dd>{usageValue('output_tokens')}</dd></div>
             <div><dt>{t('trajectory.inspector.ttft')}</dt><dd>{notRecorded}</dd></div>
             <div><dt>{t('trajectory.inspector.generation')}</dt><dd>{notRecorded}</dd></div>
             <div><dt>{t('trajectory.inspector.reasoning')}</dt><dd>{notRecorded}</dd></div>
@@ -175,9 +194,41 @@ export default function TrajectoryInspector({ projectUuid, selected, onClose, on
           </div>
         ) : null}
         <LocalizedErrorMessage error={requestQuery.error || previousQuery.error} compact />
+        </>}
       </div>
     </aside>
   )
+}
+
+function WorkflowDetail({ projectUuid, pictureBook, selected, tab }) {
+  const { formatDateTime, formatNumber, t } = useI18n()
+  const query = useQuery({
+    queryKey: ['workflow', projectUuid, selected.sourceUuid],
+    queryFn: () => getWorkflow(projectUuid, selected.sourceUuid),
+  })
+  const workflow = selected.source
+  const notRecorded = t('trajectory.inspector.not_recorded')
+  const pending = selected.status === 'pending' || selected.status === 'running'
+  const facts = tab === 'timing' ? [
+    [t('trajectory.inspector.created_at'), selected.startedAt ? formatDateTime(selected.startedAt) : notRecorded],
+    [t('trajectory.inspector.completed_at'), selected.completedAt ? formatDateTime(selected.completedAt) : pending ? t('trajectory.inspector.pending') : notRecorded],
+    [t('trajectory.inspector.duration'), formatDuration(selected.durationMs, formatNumber, pending ? t('trajectory.inspector.pending') : notRecorded)],
+  ] : [
+    [t('trajectory.inspector.workflow_name'), trajectoryWorkflowTitle(workflow, t, pictureBook)],
+    [t('trajectory.inspector.source_uuid'), workflow.uuid],
+    [t('common.label.status'), t(`trajectory.status.${selected.status}`)],
+    [t('trajectory.inspector.current_step'), workflow.current_step_key || notRecorded],
+    [t('trajectory.inspector.duration'), formatDuration(selected.durationMs, formatNumber, notRecorded)],
+    ...(workflow.error_code ? [[t('trajectory.inspector.error_code'), workflow.error_code]] : []),
+    ...(workflow.error_message ? [[t('trajectory.inspector.error_message'), workflow.error_message]] : []),
+  ]
+  return <>
+    {tab === 'summary' || tab === 'timing' ? <dl className="trajectory-inspector__facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
+    {tab === 'payload' ? <DetailValue query={query} title={t('trajectory.inspector.payload')} value={query.data?.input_snapshot} /> : null}
+    {tab === 'result' ? <DetailValue query={query} title={t('trajectory.inspector.result')} value={query.data?.steps?.map((step) => ({ uuid: step.uuid, step_key: step.step_key, status: step.status, output: step.output, ...(step.error_code ? { error_code: step.error_code, error_message: step.error_message } : {}) }))} /> : null}
+    {tab === 'raw' ? <MachineValue title={t('trajectory.inspector.safe_json')} value={query.data || workflow} /> : null}
+    <LocalizedErrorMessage error={query.error} compact />
+  </>
 }
 
 function DetailValue({ query, title, value }) {

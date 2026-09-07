@@ -97,6 +97,7 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     add('asset-maintenance-tasks')
     add('assets')
   } else if (event === 'llm_log:changed') {
+    add('chat-trajectory')
     add('project-llm-logs')
     add('project-llm-cost-summary')
     add('project-llm-cost-backfills')

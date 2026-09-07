@@ -160,7 +160,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
               <Route path="chapters/:chapterUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/preview" element={<SimpleBookView projectUuid={projectUuid} />} />
-              <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
+              <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} pictureBook={project?.picture_book} />} />
               <Route path="*" element={<SimpleNotFound projectUuid={projectUuid} />} />
             </Routes>
           )}

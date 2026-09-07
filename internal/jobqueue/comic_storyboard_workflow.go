@@ -60,6 +60,10 @@ type inlineWorkflowOwner struct {
 
 func projectedStoryTaskWorkflowConfig(taskKind string) (storyTaskWorkflowConfig, bool) {
 	switch taskKind {
+	case KindStoryProfileGeneration:
+		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowStoryProfile, StepKey: agent.WorkflowStepStoryProfile, Title: agent.WorkflowStoryProfile, IdempotencyPrefix: "story-task:"}, true
+	case KindStoryProfileFromChapters:
+		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowStoryProfileFromChapters, StepKey: agent.WorkflowStepProfileFromChapters, Title: agent.WorkflowStoryProfileFromChapters, IdempotencyPrefix: "story-task:"}, true
 	case KindStoryChapterGeneration:
 		return storyTaskWorkflowConfig{WorkflowKind: agent.WorkflowStoryChapter, StepKey: agent.WorkflowStepStoryChapter, Title: agent.WorkflowStoryChapter, IdempotencyPrefix: "story-task:"}, true
 	case KindStoryChapterBatchPlan:
@@ -238,7 +242,8 @@ func loadInlineWorkflowOwnerTx(ctx context.Context, tx *sql.Tx, projectID int64,
 		JOIN agent_tool_executions x ON x.thread_id=th.id AND x.turn_id=t.id AND x.run_id=r.id
 		JOIN chat_items i ON i.id=x.item_id
 		WHERE th.project_id=? AND th.thread_type='conversation' AND th.uuid=? AND t.uuid=? AND r.uuid=? AND x.uuid=?
-		  AND t.status='in_progress' AND r.status='in_progress' AND x.state IN ('intent','executing')`, projectID, invocation.ThreadUUID, invocation.TurnUUID, invocation.RunUUID, invocation.ToolExecutionUUID).
+		  AND t.status IN ('in_progress','queued') AND r.status IN ('in_progress','queued')
+		  AND t.cancel_requested_at IS NULL AND r.cancel_requested_at IS NULL AND x.state IN ('intent','executing')`, projectID, invocation.ThreadUUID, invocation.TurnUUID, invocation.RunUUID, invocation.ToolExecutionUUID).
 		Scan(&owner.ThreadID, &owner.TurnID, &owner.RunID, &owner.ToolExecutionID, &owner.ToolItemID, &owner.ThreadUUID, &owner.TurnUUID, &owner.RunUUID, &owner.ToolCallUUID, &owner.ToolItemUUID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return owner, taskError(CodeInvalidTask, "Chat Tool 调用归属无效", "Thread、Turn、Run 与 Tool Execution 必须属于同一活动 Chat Run。", nil)
@@ -248,7 +253,7 @@ func loadInlineWorkflowOwnerTx(ctx context.Context, tx *sql.Tx, projectID int64,
 
 func storyTaskWorkflowRefTx(ctx context.Context, tx *sql.Tx, taskUUID string) (storyTaskWorkflowRef, bool, error) {
 	var ref storyTaskWorkflowRef
-	err := tx.QueryRowContext(ctx, `SELECT w.id,COALESCE(w.thread_id,0),s.id,w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.kind,s.step_key,w.status,s.status FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.WorkflowKind, &ref.StepKey, &ref.Status, &ref.StepStatus)
+	err := tx.QueryRowContext(ctx, `SELECT w.id,COALESCE(w.thread_id,0),s.id,w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.kind,s.step_key,w.status,s.status FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.task_uuid=? AND w.kind IN (?,?,?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard, agent.WorkflowStoryProfile, agent.WorkflowStoryProfileFromChapters).Scan(&ref.ID, &ref.ThreadID, &ref.StepID, &ref.UUID, &ref.ThreadUUID, &ref.StepUUID, &ref.ResourceUUID, &ref.WorkflowKind, &ref.StepKey, &ref.Status, &ref.StepStatus)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ref, false, nil
 	}
@@ -427,7 +432,10 @@ func reconcileStoryTaskWorkflows(ctx context.Context, db *sql.DB, projectID int6
 		return err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id WHERE tasks.project_id=? AND tasks.kind=w.kind AND w.kind IN (?,?,?)`, projectID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard)
+	if err := repairMissingStoryProfileAwaitsTx(ctx, tx, projectID, now); err != nil {
+		return err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT tasks.id,tasks.uuid,tasks.status,tasks.error_code,tasks.error_message,w.status,s.status FROM task_runs tasks JOIN workflow_steps s ON s.task_uuid=tasks.uuid JOIN workflows w ON w.id=s.workflow_id WHERE tasks.project_id=? AND tasks.kind=w.kind AND w.kind IN (?,?,?,?,?)`, projectID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard, agent.WorkflowStoryProfile, agent.WorkflowStoryProfileFromChapters)
 	if err != nil {
 		return err
 	}
@@ -555,7 +563,7 @@ func (runtime *projectRuntime) broadcastStoryTaskWorkflow(event, taskUUID string
 		LEFT JOIN workflow_awaits a ON a.workflow_id=w.id
 		LEFT JOIN chat_turns turns ON turns.id=a.chat_turn_id
 		LEFT JOIN agent_tool_executions x ON x.id=a.tool_execution_id
-		WHERE s.task_uuid=? AND w.kind IN (?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &progress, &turnUUID, &toolCallUUID)
+		WHERE s.task_uuid=? AND w.kind IN (?,?,?,?,?) LIMIT 1`, taskUUID, agent.WorkflowStoryChapter, agent.WorkflowStoryChapterBatchPlan, agent.WorkflowComicStoryboard, agent.WorkflowStoryProfile, agent.WorkflowStoryProfileFromChapters).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &progress, &turnUUID, &toolCallUUID)
 	if err != nil {
 		return
 	}

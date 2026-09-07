@@ -351,6 +351,12 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	if err := validateAgentAPIPath(path); err != nil {
 		return agentAPIRequest{}, err
 	}
+	// Check the project boundary before route lookup so an unknown route in
+	// another project cannot enter the model's argument-repair loop.
+	projectPath := "/api/v1/projects/" + tc.ProjectUUID
+	if path != projectPath && !strings.HasPrefix(path, projectPath+"/") {
+		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路径越界", "url 只能包含当前 project_uuid。", nil)
+	}
 	body, hasBody, err := requestBodyArg(args)
 	if err != nil {
 		return agentAPIRequest{}, err
@@ -393,7 +399,11 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 		}
 	}
 	if matched == nil {
-		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路由不存在", "method + path 没有匹配当前服务端注册的 Project API Route。", nil)
+		return agentAPIRequest{}, toolValidationError(
+			"项目 API 路由不存在",
+			"method + path 没有匹配当前服务端注册的 Project API Route，本批工具未执行。请用 read_agent_doc 读取 "+agentDocOverviewPath+"，再阅读对应 API Contract，按文档修正 method、url 和 response_filter 后重试；不得猜测路径或字段。",
+			toolValidationViolation{Path: "url", Rule: "route_not_found"},
+		)
 	}
 	if params["project_uuid"] != tc.ProjectUUID {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路径越界", "url 只能包含当前 project_uuid。", nil)

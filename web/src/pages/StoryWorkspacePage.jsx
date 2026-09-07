@@ -525,7 +525,7 @@ function StoryWorkspaceContent({ projectUuid }) {
           <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="premise/assets/:assetUuid" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="assets" element={<AssetsPanel projectUuid={projectUuid} />} />
-          <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} />} />
+          <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="*" element={<ProjectWorkspaceNotFound projectUuid={projectUuid} />} />
         </Routes>}
       </main>

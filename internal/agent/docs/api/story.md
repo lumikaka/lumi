@@ -29,7 +29,7 @@ Story Profile 是 SQLite 中的故事总纲事实状态；`story_md` 始终表�
 {
   "method": "GET",
   "url": "/api/v1/projects/01970000-0000-7000-8000-000000000001/story-profile",
-  "response_filter": ".data | {uuid,revision,projection_state}"
+  "response_filter": ".data | {uuid,revision,story_md,projection_state}"
 }
 ```
 

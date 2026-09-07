@@ -35,6 +35,8 @@ type inlineWorkflowAgentModel struct {
 	releaseStory             chan struct{}
 	storyErr                 error
 	storyboard               bool
+	profileKind              string
+	invalidProfile           bool
 }
 
 func newInlineWorkflowAgentModel() *inlineWorkflowAgentModel {
@@ -57,7 +59,13 @@ func (model *inlineWorkflowAgentModel) Generate(ctx context.Context, request llm
 		return llm.Response{}, model.storyErr
 	}
 	var content []byte
-	if model.storyboard {
+	if model.profileKind != "" {
+		plans := []map[string]string{}
+		if model.profileKind == KindStoryProfileGeneration || model.invalidProfile {
+			plans = append(plans, map[string]string{"chapter_code": "vol01.ch01", "title": "第一章", "outline": "小狐狸送信。"})
+		}
+		content, _ = json.Marshal(map[string]any{"story_md": "# 故事总纲\n\n小狐狸送出一封月光信件。", "chapter_plans": plans})
+	} else if model.storyboard {
 		content, _ = json.Marshal(map[string]any{
 			"chapter_code": "vol01.ch01",
 			"title":        "月光邮差",
@@ -79,6 +87,9 @@ func (model *inlineWorkflowAgentModel) Generate(ctx context.Context, request llm
 
 func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.ChatRequest) (llm.ChatResponse, error) {
 	for _, message := range request.Messages {
+		if model.profileKind != "" && message.Role == "tool" && strings.Contains(message.Content, `"success":false`) && !strings.Contains(message.Content, "agent_tool_confirmation_required") {
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "总纲生成失败，已读取具体错误并结束本轮。"}, FinishReason: "stop"}, nil
+		}
 		if strings.Contains(message.Content, `"workflow_uuid"`) && strings.Contains(message.Content, `"status":"completed"`) {
 			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: "章节 Workflow 已完成，我已读取终态结果并继续回复。"}, FinishReason: "stop"}, nil
 		}
@@ -89,6 +100,16 @@ func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.C
 	last := ""
 	if len(request.Messages) > 0 {
 		last = request.Messages[len(request.Messages)-1].Content
+	}
+	if strings.Contains(last, "发起总纲任务") {
+		path := "/story-profile/generations"
+		body := map[string]any{"prompt": "小狐狸的月光信件", "chapter_count": 1}
+		if model.profileKind == KindStoryProfileFromChapters {
+			path = "/story-profile/reconstructions"
+			body = map[string]any{}
+		}
+		arguments, _ := json.Marshal(map[string]any{"method": "POST", "url": "/api/v1/projects/" + model.projectUUID + path, "request_body": body, "response_filter": ".data | {uuid,status}"})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-profile-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 	}
 	if strings.Contains(last, "发起漫画分镜生成") {
 		arguments, _ := json.Marshal(map[string]any{

@@ -63,6 +63,7 @@ type Response struct {
 	Usage                   pricing.Usage
 	Bytes                   []byte
 	MIMEType, RevisedPrompt string
+	RewriteStatus           string
 }
 type Client interface {
 	Generate(context.Context, Request) (Response, error)
@@ -213,7 +214,8 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 			OutputHeight     int    `json:"output_height"`
 		} `json:"usage"`
 		Output struct {
-			Choices []struct {
+			RewriteStatus string `json:"rewrite_status"`
+			Choices       []struct {
 				Message struct {
 					Content []struct {
 						Image string `json:"image"`
@@ -245,7 +247,7 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 			}
 		}
 	}
-	result := Response{Usage: pricing.Usage{InputImages: pricing.Int(int64(len(input.Images))), OutputImages: pricing.Int(generated), Size: input.Size, Quality: input.Quality}}
+	result := Response{RewriteStatus: envelope.Output.RewriteStatus, Usage: pricing.Usage{InputImages: pricing.Int(int64(len(input.Images))), OutputImages: pricing.Int(generated), Size: input.Size, Quality: input.Quality}}
 	if envelope.Usage.InputImageCount != nil {
 		result.Usage.InputImages = envelope.Usage.InputImageCount
 	}
@@ -278,7 +280,9 @@ func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input
 	if mime != "image/png" && mime != "image/jpeg" && mime != "image/gif" && mime != "image/webp" {
 		return result, &Error{Code: "image_invalid_response", SafeMessage: "百炼返回的内容不是支持的图片。"}
 	}
-	return Response{Bytes: content, MIMEType: mime, Usage: result.Usage}, nil
+	result.Bytes = content
+	result.MIMEType = mime
+	return result, nil
 }
 
 func (client *OpenAICompatibleClient) download(ctx context.Context, raw string) ([]byte, error) {

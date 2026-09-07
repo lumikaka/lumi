@@ -2,6 +2,7 @@ export const DEFAULT_TRAJECTORY_OVERSCAN = 480
 
 export function estimateTrajectoryRowHeight(row) {
   if (row?.rowType === 'summary') return 28
+  if (row?.rowType === 'request') return row.turnStart ? 30 : 20
   return 30
 }
 
@@ -53,7 +54,8 @@ export function captureTrajectoryVirtualAnchor(measurement, scrollTop) {
 
 export function restoreTrajectoryVirtualAnchor(measurement, anchor) {
   if (!anchor?.key) return null
-  const entry = measurement?.entries?.find((candidate) => candidate.key === anchor.key)
+  const entry = measurement?.entries?.find((candidate) => candidate.key === anchor.key
+    || candidate.row.requestBoundaries?.some((request) => request.key === anchor.key))
   return entry ? Math.max(0, entry.start - anchor.offset) : null
 }
 

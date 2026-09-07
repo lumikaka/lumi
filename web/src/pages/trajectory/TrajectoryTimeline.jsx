@@ -79,6 +79,8 @@ export default function TrajectoryTimeline({
   selectedSourceKind = '',
   allTurnsCollapsed = false,
   allToolGroupsCollapsed = false,
+  canCollapseTurns = false,
+  canCollapseToolGroups = false,
   onToggleAllTurns,
   onToggleAllToolGroups,
   onRangeChange,
@@ -187,6 +189,7 @@ export default function TrajectoryTimeline({
             type="button"
             className="trajectory-timeline__toolbar-button"
             aria-pressed={allTurnsCollapsed}
+            disabled={!canCollapseTurns}
             title={t(allTurnsCollapsed ? 'trajectory.timeline.expand_turns' : 'trajectory.timeline.collapse_turns')}
             onClick={onToggleAllTurns}
           ><TurnIcon size={12} aria-hidden="true" />{t('trajectory.timeline.turns')}</button>
@@ -194,6 +197,7 @@ export default function TrajectoryTimeline({
             type="button"
             className="trajectory-timeline__toolbar-button"
             aria-pressed={allToolGroupsCollapsed}
+            disabled={!canCollapseToolGroups}
             title={t(allToolGroupsCollapsed ? 'trajectory.timeline.expand_calls' : 'trajectory.timeline.collapse_calls')}
             onClick={onToggleAllToolGroups}
           ><CallsIcon size={12} aria-hidden="true" />{t('trajectory.timeline.calls')}</button>

@@ -71,10 +71,21 @@ test('production, asset and LLM events invalidate exact and aggregate queries', 
   assert.deepEqual(keyNames(asset), ['asset-scans', 'asset-maintenance-tasks', 'assets'])
 
   const llm = projectRealtimeInvalidation(projectUuid, 'llm_log:changed', { log_uuid: 'log-uuid' })
-  assert.deepEqual(keyNames(llm), ['project-llm-logs', 'project-llm-cost-summary', 'project-llm-cost-backfills', 'project-llm-log', 'workflow-llm-logs'])
+  assert.deepEqual(keyNames(llm), ['chat-trajectory', 'project-llm-logs', 'project-llm-cost-summary', 'project-llm-cost-backfills', 'project-llm-log', 'workflow-llm-logs'])
   assert.ok(llm.queryKeys.some((key) => key[0] === 'project-llm-log' && key[2] === 'log-uuid'))
   assert.ok(!keyNames(llm).includes('workflow-runs'))
   assert.ok(!keyNames(llm).includes('workflow-events'))
+})
+
+test('LLM changes invalidate trajectory pages and anchors within only their project', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'llm_log:changed', { log_uuid: 'log-uuid', status: 'completed' })
+  const prefix = result.queryKeys.find((key) => key[0] === 'chat-trajectory')
+  assert.deepEqual(prefix, ['chat-trajectory', projectUuid])
+  const matches = (key) => prefix.every((part, index) => key[index] === part)
+  assert.ok(matches(['chat-trajectory', projectUuid, 'thread-uuid']))
+  assert.ok(matches(['chat-trajectory', projectUuid, 'thread-uuid', 'anchor', 'log-uuid']))
+  assert.ok(!matches(['chat-trajectory', 'other-project', 'thread-uuid']))
+  assert.equal(result.invalidateAll, false)
 })
 
 test('comic export cleanup refreshes REST facts without polling', () => {

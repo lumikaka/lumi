@@ -2208,7 +2208,7 @@ func projectedProductionWorkflowTaskUUID(workflow Workflow) string {
 
 func projectedStoryWorkflowTaskKind(workflowKind string) (string, bool) {
 	switch workflowKind {
-	case WorkflowStoryChapter, WorkflowStoryChapterBatchPlan, WorkflowComicStoryboard:
+	case WorkflowStoryProfile, WorkflowStoryProfileFromChapters, WorkflowStoryChapter, WorkflowStoryChapterBatchPlan, WorkflowComicStoryboard:
 		return workflowKind, true
 	default:
 		return "", false

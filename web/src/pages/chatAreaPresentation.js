@@ -38,6 +38,8 @@ const workflowKindCopy = {
   comic_storyboard_generation: 'chat.workflow.kind.comic_storyboard_generation',
   story_chapter_generation: 'chat.workflow.kind.story_chapter_generation',
   story_chapter_batch_plan: 'chat.workflow.kind.story_chapter_batch_plan',
+  story_profile_generation: 'chat.workflow.kind.story_profile_generation',
+  story_profile_from_chapters: 'chat.workflow.kind.story_profile_from_chapters',
 }
 
 export function workflowDisplayTitle(workflow, t) {
@@ -76,6 +78,8 @@ export function threadDisplayTitle(thread, workflow, t) {
 }
 
 export function threadContextCopyKey(thread, workflow) {
+  if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_profile_generation') return 'chat.workflow.kind.story_profile_generation'
+  if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_profile_from_chapters') return 'chat.workflow.kind.story_profile_from_chapters'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_generation') return 'chat.workflow.kind.story_chapter_generation'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'story_chapter_batch_plan') return 'chat.workflow.kind.story_chapter_batch_plan'
 	if (workflow?.presentation_mode === 'dedicated_thread' && workflow?.kind === 'comic_storyboard_generation') return 'chat.workflow.kind.comic_storyboard_generation'

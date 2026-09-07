@@ -147,6 +147,9 @@ func TestFrontCoverImageTaskUsesCoverRulesInsteadOfBodyPageRules(t *testing.T) {
 	if !strings.Contains(coverSnapshot.PromptTemplate, "封面图片生成规则") || !strings.Contains(coverSnapshot.PromptTemplate, "正文页的无字") || strings.Contains(coverSnapshot.PromptTemplate, "1–3 句") {
 		t.Fatalf("cover prompt used body rules: %q", coverSnapshot.PromptTemplate)
 	}
+	if !strings.HasPrefix(coverSnapshot.PromptTemplate, "## 输出画布：满版二维插画") || strings.Contains(bodySnapshot.PromptTemplate, "## 输出画布：满版二维插画") {
+		t.Fatal("cover artwork canvas instruction missing or applied to a body page")
+	}
 	if !strings.Contains(bodySnapshot.PromptTemplate, "1–3 句") || strings.Contains(bodySnapshot.PromptTemplate, "封面图片生成规则") {
 		t.Fatalf("body prompt used cover rules: %q", bodySnapshot.PromptTemplate)
 	}

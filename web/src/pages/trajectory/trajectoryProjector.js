@@ -1,7 +1,7 @@
 import { trajectoryKey } from './trajectoryIdentity.js'
 
 const TERMINAL_TURN_STATUSES = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
-const ITEM_KINDS = new Set(['system', 'user', 'context', 'assistant', 'tool', 'compaction', 'error'])
+const ITEM_KINDS = new Set(['system', 'user', 'context', 'assistant', 'tool', 'workflow', 'compaction', 'error'])
 
 export function createTrajectoryProjection() {
   return rebuildProjection({
@@ -59,6 +59,7 @@ export function combineTrajectoryPages(pages = []) {
 }
 
 function rebuildProjection(base) {
+  const workflowThread = base.thread?.thread_type === 'workflow'
   const turns = sortTurns([...base.raw.turns.values()])
   const turnByUuid = new Map(turns.map((turn) => [turn.uuid, turn]))
   const requests = [...base.raw.requests.values()].map(projectRequestBoundary).sort(compareExecutionFacts)
@@ -77,16 +78,19 @@ function rebuildProjection(base) {
   for (const source of base.raw.tools.values()) {
     items.push(projectToolItem(source, turnByUuid.get(source.turn_uuid)))
   }
+  for (const source of base.raw.workflows.values()) {
+    items.push(projectWorkflowItem(source))
+  }
   for (const source of base.raw.compactions.values()) {
     items.push(projectCompactionItem(source))
   }
   for (const request of requests) {
     const source = base.raw.requests.get(request.sourceUuid)
-    if (shouldProjectRequestAssistant(source, persistedAssistantRequests)) {
+    if (!workflowThread && shouldProjectRequestAssistant(source, persistedAssistantRequests)) {
       items.push(projectRequestAssistant(source))
     }
   }
-  items.push(...projectSystemChanges([...base.raw.requests.values()], base.historyComplete))
+  if (!workflowThread) items.push(...projectSystemChanges([...base.raw.requests.values()], base.historyComplete))
 
   const dedupedItems = uniqueByStableKey(items).sort(compareExecutionFacts)
   const itemByKey = new Map(dedupedItems.map((item) => [item.key, item]))
@@ -113,13 +117,14 @@ function rawProjectionFromSnapshot(snapshot = {}) {
     turns: mapByUuid(snapshot.turns),
     chatItems: mapByUuid(snapshot.items),
     tools: mapByUuid(snapshot.tools),
+    workflows: mapByUuid(snapshot.workflows),
     requests: mapByUuid(snapshot.model_requests),
     compactions: mapByUuid(snapshot.compactions),
   }
 }
 
 function emptyRawProjection() {
-  return { turns: new Map(), chatItems: new Map(), tools: new Map(), requests: new Map(), compactions: new Map() }
+  return { turns: new Map(), chatItems: new Map(), tools: new Map(), workflows: new Map(), requests: new Map(), compactions: new Map() }
 }
 
 function mergeRawProjection(current = emptyRawProjection(), incoming = emptyRawProjection(), incomingWins = true) {
@@ -127,6 +132,7 @@ function mergeRawProjection(current = emptyRawProjection(), incoming = emptyRawP
     turns: mergeMaps(current.turns, incoming.turns, incomingWins),
     chatItems: mergeMaps(current.chatItems, incoming.chatItems, incomingWins),
     tools: mergeMaps(current.tools, incoming.tools, incomingWins),
+    workflows: mergeMaps(current.workflows, incoming.workflows, incomingWins),
     requests: mergeMaps(current.requests, incoming.requests, incomingWins),
     compactions: mergeMaps(current.compactions, incoming.compactions, incomingWins),
   }
@@ -213,6 +219,23 @@ function projectToolItem(source, turn) {
   })
 }
 
+function projectWorkflowItem(source) {
+  return trajectoryItem({
+    sourceUuid: source.uuid,
+    sourceKind: 'workflow',
+    threadUuid: source.thread_uuid,
+    kind: 'workflow',
+    status: source.status,
+    startedAt: timestamp(source.started_at),
+    completedAt: timestamp(source.completed_at),
+    durationMs: numberOrUndefined(source.duration_ms),
+    preview: source.title || source.kind,
+    source,
+    sortAt: timestamp(source.created_at),
+    sortRank: -1,
+  })
+}
+
 function projectCompactionItem(source) {
   return trajectoryItem({
     id: source.uuid,
@@ -241,6 +264,7 @@ function projectRequestBoundary(source) {
   const completedAt = timestamp(source?.completed_at)
   return {
     rowType: 'request',
+    kind: 'model_request',
     id: source.uuid,
     key: trajectoryKey('model_request', source.uuid),
     sourceUuid: source.uuid,
@@ -249,6 +273,7 @@ function projectRequestBoundary(source) {
     turnUuid: source.turn_uuid || null,
     requestUuid: source.uuid,
     requestOrdinal: Number(source.request_ordinal) || 0,
+    attempt: numberOrUndefined(source.attempt),
     requestType: source.request_type || 'text',
     status: normalizeStatus(source.status, 'model_request'),
     seq: numberOrNull(source.start_event_sequence),
