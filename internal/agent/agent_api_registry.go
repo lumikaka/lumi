@@ -752,6 +752,7 @@ func startAgentRouteGeneration(ctx context.Context, service *Service, tc toolCon
 		Model: stringArg(args, "model"), PromptKey: stringArg(args, "prompt_key"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"),
 		IdempotencyKey: idempotencyKey, Invocation: chatToolInvocationContext(tc, execution),
 	}
+	request = projectImageTaskRequest(request)
 	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, request)
 }
 

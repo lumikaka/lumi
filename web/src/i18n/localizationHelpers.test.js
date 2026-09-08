@@ -67,3 +67,23 @@ test('unknown API and persisted task errors never expose server copy as the inte
   assert.equal(task.message, 'The operation could not be completed. Please try again.')
   assert.equal(api.diagnostic, '中文服务端消息')
 })
+
+test('workflow provider rejection shows the actual cause and preserves original diagnostics', () => {
+  const error = {
+    code: 'image_provider_error',
+    provider_error: {
+      code: 'IPInfringementSuspect',
+      message: 'Output data is suspected of being involved in IP infringement',
+      http_status: 400,
+    },
+  }
+  const chinese = localizedErrorPresentation(translator('zh-Hans'), error)
+  assert.equal(chinese.message, '图片生成被拒绝：输出疑似涉及知识产权侵权。')
+  assert.equal(chinese.status, 400)
+  assert.equal(chinese.diagnostic, 'IPInfringementSuspect\nOutput data is suspected of being involved in IP infringement')
+  assert.match(localizedErrorPresentation(translator('en'), error).message, /intellectual property rights/)
+  const unknown = localizedErrorPresentation(translator('en'), { ...error, provider_error: { code: 'FutureCode', message: 'specific reason' } })
+  assert.match(unknown.message, /rejected the request/)
+  assert.equal(unknown.diagnostic, 'FutureCode\nspecific reason')
+  assert.equal(localizedErrorPresentation(translator('en'), { code: 'image_provider_error' }).diagnostic, '')
+})

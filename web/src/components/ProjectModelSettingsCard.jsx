@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { getProjectModelSettings, updateProjectModelSettings } from '../api/ai.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
-import { INHERIT_MODEL_VALUE, modelOptionsForSetting, modelSelectionValue, parseModelSelection } from '../pages/modelSettingsState.js'
+import { INHERIT_MODEL_VALUE, modelOptionsForSetting, modelSelectionValue, parseModelSelection, imageThinkingSelection, imagePromptExtendSelection, imageThinkingEnabled } from '../pages/modelSettingsState.js'
 
 const definitions = [
   ['project_text', 'projects.overview.model.project_text'],
@@ -60,6 +60,9 @@ export default function ProjectModelSettingsCard({ projectUuid }) {
             const options = modelOptionsForSetting(settings, setting)
             const value = modelSelectionValue(setting.override)
             const invalid = setting.override_status === 'invalid'
+            const thinkingSelection = imageThinkingSelection(settings, setting)
+            const promptExtendSelection = imagePromptExtendSelection(settings, setting)
+            const thinkingUnavailable = thinkingSelection?.prompt_extend === false
             return (
               <article className={`overview-model-setting ${invalid ? 'is-invalid' : ''}`} key={key}>
                 <div className="overview-model-setting__title">
@@ -74,6 +77,24 @@ export default function ProjectModelSettingsCard({ projectUuid }) {
                     {options.map((option) => <option value={modelSelectionValue(option)} key={`${option.provider_uuid}:${option.model}`}>{optionLabel(option)}</option>)}
                   </select>
                 </label>
+                {promptExtendSelection ? (
+                  <div className="overview-model-setting__image-option">
+                    <label>
+                      <input type="checkbox" role="switch" checked={promptExtendSelection.prompt_extend !== false} disabled={update.isPending} aria-describedby="image-prompt-extend-help" onChange={(event) => update.mutate({ key, selection: { ...promptExtendSelection, prompt_extend: event.target.checked } })} />
+                      <span>{t('projects.overview.model.prompt_extend')}</span>
+                    </label>
+                    <p id="image-prompt-extend-help">{t('projects.overview.model.prompt_extend_help')}</p>
+                  </div>
+                ) : null}
+                {thinkingSelection ? (
+                  <div className="overview-model-setting__image-option">
+                    <label>
+                      <input type="checkbox" role="switch" checked={imageThinkingEnabled(thinkingSelection)} disabled={update.isPending || thinkingUnavailable} aria-describedby="image-thinking-help" onChange={(event) => update.mutate({ key, selection: { ...thinkingSelection, enable_thinking: event.target.checked } })} />
+                      <span>{t('projects.overview.model.enable_thinking')}</span>
+                    </label>
+                    <p id="image-thinking-help">{t(thinkingUnavailable ? 'projects.overview.model.thinking_requires_prompt_extend' : 'projects.overview.model.thinking_help')}</p>
+                  </div>
+                ) : null}
                 <dl>
                   <div><dt>{t('projects.overview.model.inherited')}</dt><dd>{effectiveLabel(settings, setting.inherited)}</dd></div>
                   <div><dt>{t('projects.overview.model.effective')}</dt><dd>{effectiveLabel(settings, setting.effective)}</dd></div>

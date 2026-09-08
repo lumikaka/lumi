@@ -8,6 +8,7 @@ export default function LocalizedErrorMessage({
   messageKey,
   onDismiss,
   compact = false,
+  showDiagnostics = false,
 }) {
   const { t } = useI18n()
   if (!error) return null
@@ -17,14 +18,14 @@ export default function LocalizedErrorMessage({
       <div>
         <strong>{presentation.title}</strong>
         <span>{presentation.message}</span>
-        {!compact && (presentation.code || presentation.status) ? (
+        {(!compact || showDiagnostics) && (presentation.code || presentation.status) ? (
           <small>
             {presentation.code ? t('errors.diagnostic_code', { code: presentation.code }) : null}
             {presentation.code && presentation.status ? ' · ' : null}
             {presentation.status ? t('errors.diagnostic_status', { status: presentation.status }) : null}
           </small>
         ) : null}
-        {!compact && presentation.diagnostic ? (
+        {(!compact || showDiagnostics) && presentation.diagnostic ? (
           <details>
             <summary>{t('errors.details')}</summary>
             <pre data-user-content>{presentation.diagnostic}</pre>

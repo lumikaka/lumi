@@ -289,6 +289,8 @@ type UpdateSectionInput struct {
 }
 
 type GenerationSnapshot struct {
+	EnableThinking            *bool                       `json:"enable_thinking,omitempty"`
+	PromptExtend              *bool                       `json:"prompt_extend,omitempty"`
 	Version                   int                         `json:"version"`
 	Kind                      string                      `json:"kind"`
 	ProjectUUID               string                      `json:"project_uuid"`

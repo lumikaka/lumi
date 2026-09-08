@@ -291,6 +291,8 @@ type ProductionTask struct {
 }
 
 type CreateProductionGenerationInput struct {
+	EnableThinking        *bool                                `json:"-"`
+	PromptExtend          *bool                                `json:"-"`
 	ProviderUUID          string                               `json:"-"`
 	Model                 string                               `json:"model"`
 	SelectionProviderUUID string                               `json:"-"`
@@ -308,6 +310,8 @@ type CreateProductionGenerationInput struct {
 }
 
 type CreateComicImageGenerationBatchInput struct {
+	EnableThinking        *bool    `json:"-"`
+	PromptExtend          *bool    `json:"-"`
 	SectionUUIDs          []string `json:"section_uuids"`
 	ProviderUUID          string   `json:"-"`
 	Model                 string   `json:"-"`

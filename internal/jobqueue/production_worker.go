@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"strings"
+	"time"
 
 	"lumi/internal/files"
 	"lumi/internal/imagegen"
@@ -34,6 +35,19 @@ const (
 type productionWorker struct {
 	river.WorkerDefaults[productionArgs]
 	runtime *projectRuntime
+}
+
+// Image tasks include reference preparation, generation and durable asset storage.
+const imageJobTimeout = imagegen.RequestTimeout + 5*time.Minute
+const stuckJobRescueAfter = imageJobTimeout + time.Minute
+
+func (worker *productionWorker) Timeout(job *river.Job[productionArgs]) time.Duration {
+	switch job.Args.TaskKind {
+	case KindPremiseSettingGeneration, KindPremiseAssetGeneration, KindComicImageGeneration:
+		return imageJobTimeout
+	default:
+		return 0 // Inherit the queue's normal five-minute budget.
+	}
 }
 
 func (worker *productionWorker) Work(ctx context.Context, job *river.Job[productionArgs]) error {
@@ -129,7 +143,7 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 		}
 		referenceImages = append(referenceImages, imagegen.ImageInput{MIMEType: "image/png", Data: board})
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Prompt: prompt, Size: "1536x1024", Images: referenceImages})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1536x1024", Images: referenceImages})
 	if err != nil {
 		if len(referenceImages) > 0 && referenceImageRejected(err) {
 			return productionError("image_reference_unsupported", "图片 Provider 拒绝了参考图输入；请确认模型支持图片参考后重试当前步骤。", true)
@@ -216,7 +230,7 @@ func (runtime *projectRuntime) generatePremiseAsset(ctx context.Context, service
 		}
 		prompt += "\n\n" + project.GenerationLanguageVisualInstruction(snapshot.GenerationLanguage)
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseAssetGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Prompt: prompt, Size: "1024x1024"})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseAssetGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1024x1024"})
 	if err != nil {
 		return err
 	}
@@ -425,7 +439,7 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	if snapshot.Version >= 4 && strings.TrimSpace(snapshot.OutputSize) != "" {
 		imageSize = snapshot.OutputSize
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindComicImageGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Prompt: prompt, Size: imageSize, Images: referenceImages})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindComicImageGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: imageSize, Images: referenceImages})
 	if err != nil {
 		return err
 	}

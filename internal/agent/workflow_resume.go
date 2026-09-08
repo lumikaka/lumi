@@ -11,6 +11,7 @@ import (
 )
 
 type workflowResumeState struct {
+	ProviderError                                                               *WorkflowProviderError
 	AwaitID, ToolExecutionID, WorkflowID                                        int64
 	AwaitStatus, WorkflowUUID, WorkflowKind, WorkflowStatus, ThreadUUID         string
 	CurrentStepKey, TaskUUID, ResourceUUID, OutputJSON, ErrorCode, ErrorMessage string
@@ -61,6 +62,14 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 		step := state.Steps[len(state.Steps)-1]
 		state.TaskUUID, state.ResourceUUID, state.OutputJSON = step.TaskUUID, step.ResourceUUID, step.OutputJSON
 	}
+	if state.WorkflowStatus == WorkflowFailed {
+		providerErrors, err := workflowProviderErrors(ctx, store, state.WorkflowID)
+		if err != nil {
+			return false, err
+		}
+		state.ProviderError = providerErrors[state.CurrentStepKey]
+	}
+
 	now := service.now().UTC()
 	if err := store.DB().WithContext(ctx).Table("workflow_awaits").Where("id=? AND status='ready'", state.AwaitID).Updates(map[string]any{"status": "resuming", "updated_at": now}).Error; err != nil {
 		return false, err
@@ -84,7 +93,7 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	return true, nil
 }
 
-func workflowTerminalToolResult(state workflowResumeState) json.RawMessage {
+func workflowTerminalToolResultBase(state workflowResumeState) json.RawMessage {
 	if state.WorkflowKind == WorkflowYolo {
 		currentStepKey := strings.TrimSpace(state.CurrentStepKey)
 		if currentStepKey == "" && len(state.Steps) > 0 {

@@ -244,3 +244,111 @@ func errorCode(err error) string {
 	}
 	return ""
 }
+
+func TestImageThinkingPersistsResolvesAndResets(t *testing.T) {
+	h := newSettingsHarness(t)
+	resolver := NewResolver(h.providers)
+	disabled := false
+	view, err := resolver.Patch(h.ctx, h.store, PatchInput{Changes: map[string]*Selection{
+		ProjectImage: {ProviderUUID: h.bailian.UUID, Model: provider.BailianImageModelPro, EnableThinking: &disabled},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := view.Settings[ProjectImage].Effective
+	if selected.EnableThinking == nil || *selected.EnableThinking {
+		t.Fatalf("explicit false lost: %+v", selected)
+	}
+	for _, model := range []string{"", provider.BailianImageModelPro} {
+		resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", model)
+		if err != nil || resolved.Provider.ImageEnableThinking == nil || *resolved.Provider.ImageEnableThinking {
+			t.Fatalf("resolved=%+v err=%v", resolved, err)
+		}
+	}
+	// Switching models starts with that model's documented default.
+	view, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{
+		ProjectImage: {ProviderUUID: h.bailian.UUID, Model: provider.BailianImageModel},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.ImageEnableThinking == nil || !*resolved.Provider.ImageEnableThinking {
+		t.Fatalf("default=%+v err=%v", resolved, err)
+	}
+	for key, selection := range map[string]*Selection{
+		ProjectText:  {ProviderUUID: h.bailian.UUID, Model: provider.BailianTextModel, EnableThinking: &disabled},
+		ProjectImage: {ProviderUUID: h.cloud.UUID, Model: h.cloud.DefaultImageModel, EnableThinking: &disabled},
+	} {
+		if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{key: selection}}); errorCode(err) != CodeInvalid {
+			t.Fatalf("unsupported thinking accepted: %v", err)
+		}
+	}
+	if _, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{ProjectImage: nil}}); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err = resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.ImageEnableThinking != nil {
+		t.Fatalf("inherited Cloudflare setting leaked thinking: %+v %v", resolved, err)
+	}
+}
+
+func TestPromptExtensionPersistsAndGatesThinking(t *testing.T) {
+	h := newSettingsHarness(t)
+	resolver := NewResolver(h.providers)
+	on, off := true, false
+	view, err := resolver.Patch(h.ctx, h.store, PatchInput{Changes: map[string]*Selection{
+		ProjectImage: {ProviderUUID: h.bailian.UUID, Model: provider.BailianImageModel, PromptExtend: &off, EnableThinking: &on},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err = resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := view.Settings[ProjectImage].Override
+	if selected.PromptExtend == nil || *selected.PromptExtend || selected.EnableThinking == nil || !*selected.EnableThinking {
+		t.Fatalf("saved preferences=%+v", selected)
+	}
+	for _, model := range []string{"", provider.BailianImageModel} {
+		resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", model)
+		if err != nil || resolved.Provider.ImagePromptExtend == nil || *resolved.Provider.ImagePromptExtend || resolved.Provider.ImageEnableThinking == nil || *resolved.Provider.ImageEnableThinking {
+			t.Fatalf("dependency not resolved: %+v err=%v", resolved, err)
+		}
+	}
+	selected.PromptExtend = &on
+	view, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{ProjectImage: selected}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.ImageEnableThinking == nil || !*resolved.Provider.ImageEnableThinking {
+		t.Fatalf("thinking preference not restored: %+v %v", resolved, err)
+	}
+	for key, selection := range map[string]*Selection{
+		ProjectText:  {ProviderUUID: h.bailian.UUID, Model: provider.BailianTextModel, PromptExtend: &off},
+		ProjectImage: {ProviderUUID: h.cloud.UUID, Model: h.cloud.DefaultImageModel, PromptExtend: &off},
+	} {
+		if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{key: selection}}); errorCode(err) != CodeInvalid {
+			t.Fatalf("unsupported prompt extension accepted: %v", err)
+		}
+	}
+	view, err = resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{
+		ProjectImage: {ProviderUUID: h.bailian.UUID, Model: provider.BailianImageModelPro},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err = resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.ImagePromptExtend == nil || !*resolved.Provider.ImagePromptExtend {
+		t.Fatalf("new selection did not default on: %+v %v", resolved, err)
+	}
+	if _, err := resolver.Patch(h.ctx, h.store, PatchInput{ExpectedRevision: view.Revision, Changes: map[string]*Selection{ProjectImage: nil}}); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err = resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", "")
+	if err != nil || resolved.Provider.ImagePromptExtend != nil || resolved.Provider.ImageEnableThinking != nil {
+		t.Fatalf("image options leaked to inherited provider: %+v %v", resolved, err)
+	}
+}

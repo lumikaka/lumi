@@ -60,7 +60,7 @@ func TestChatAndImageResponsesCaptureSafeStructuredResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	imageRequest, err := EncodeImageRequest(imagegen.Request{
-		ProviderType: "aliyun_bailian", BaseURL: "https://image.example/v1", APIKey: secret, Model: "image-model", Prompt: "draw", Size: "1024x1024", Quality: "high",
+		ProviderType: "aliyun_bailian", BaseURL: "https://image.example/v1", APIKey: secret, Model: "qwen-image-3.0", Prompt: "draw", Size: "1024x1024", Quality: "high",
 		Images: []imagegen.ImageInput{{MIMEType: "image/jpeg", Data: []byte("reference-image-bytes")}},
 	})
 	if err != nil {
@@ -214,5 +214,33 @@ func TestEncodeProviderResponseDiagnosticBoundsAndRedactsFinishReason(t *testing
 		if !strings.Contains(snapshot.FinishReason, expected) {
 			t.Fatalf("finish reason missing %q: %s", expected, snapshot.FinishReason)
 		}
+	}
+}
+
+func TestImageThinkingSnapshotPreservesExplicitFalse(t *testing.T) {
+	disabled := false
+	request := imagegen.Request{ProviderType: "aliyun_bailian", Model: "qwen-image-3.0-pro", EnableThinking: &disabled}
+	encoded, err := EncodeImageRequest(request)
+	if err != nil || !strings.Contains(string(encoded), `"enable_thinking":false`) {
+		t.Fatalf("snapshot=%s err=%v", encoded, err)
+	}
+	request.ProviderType = "cloudflare_ai_gateway"
+	encoded, err = EncodeImageRequest(request)
+	if err != nil || strings.Contains(string(encoded), `"enable_thinking"`) {
+		t.Fatalf("unsupported snapshot=%s err=%v", encoded, err)
+	}
+}
+
+func TestImageSnapshotThinkingDependsOnPromptExtension(t *testing.T) {
+	disabled, enabled := false, true
+	request := imagegen.Request{ProviderType: "aliyun_bailian", Model: "qwen-image-3.0", EnableThinking: &enabled, EnablePromptExtend: &disabled}
+	encoded, err := EncodeImageRequest(request)
+	if err != nil || !strings.Contains(string(encoded), `"prompt_extend":false`) || !strings.Contains(string(encoded), `"enable_thinking":false`) {
+		t.Fatalf("snapshot=%s err=%v", encoded, err)
+	}
+	request.ProviderType = "cloudflare_ai_gateway"
+	encoded, err = EncodeImageRequest(request)
+	if err != nil || strings.Contains(string(encoded), `"prompt_extend"`) || strings.Contains(string(encoded), `"enable_thinking"`) {
+		t.Fatalf("unsupported snapshot=%s err=%v", encoded, err)
 	}
 }

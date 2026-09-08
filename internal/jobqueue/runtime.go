@@ -200,7 +200,7 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 		Queues: projectQueueConfig(), Workers: workers,
 		PeriodicJobs: []*river.PeriodicJob{comicExportCleanupPeriodicJob(store.ProjectUUID())},
 		MaxAttempts:  3, PollOnly: true, FetchPollInterval: 200 * time.Millisecond,
-		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: 6 * time.Minute,
+		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: stuckJobRescueAfter,
 		SoftStopTimeout: 5 * time.Second,
 		Logger:          logger,
 		ErrorHandler:    &riverErrorLogger{logger: logger},

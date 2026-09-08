@@ -48,8 +48,10 @@ type Provider struct {
 
 type Resolved struct {
 	Provider
-	APIKey            string `json:"-"`
-	ConfigFingerprint string `json:"-"`
+	APIKey              string `json:"-"`
+	ConfigFingerprint   string `json:"-"`
+	ImageEnableThinking *bool  `json:"-"`
+	ImagePromptExtend   *bool  `json:"-"`
 }
 
 // SupportedTextModels returns the selectable text models for a provider, with its default first.
@@ -471,4 +473,41 @@ func isUUIDv7(value string) bool {
 func IsNotReady(err error) bool {
 	var domainErr *Error
 	return errors.As(err, &domainErr) && (domainErr.Code == CodeNoActiveProvider || domainErr.Code == CodeProviderNotReady)
+}
+
+// SupportsImageThinking describes the documented Qwen Image 3.0 capability.
+func SupportsImageThinking(providerType, model string) bool {
+	return providerType == TypeAliyunBailian && (model == BailianImageModel || model == BailianImageModelPro)
+}
+
+func SupportsImagePromptExtend(providerType, model string) bool {
+	return providerType == TypeAliyunBailian && (model == BailianImageModel || model == BailianImageModelPro)
+}
+
+// ImagePromptExtend defaults to enabled for supported image models.
+func ImagePromptExtend(providerType, model string, selected *bool) *bool {
+	if !SupportsImagePromptExtend(providerType, model) {
+		return nil
+	}
+	enabled := true
+	if selected != nil {
+		enabled = *selected
+	}
+	return &enabled
+}
+
+// ImageThinking preserves the saved preference but is only effective while
+// prompt extension is enabled. Keep this dependency shared by requests and logs.
+func ImageThinking(providerType, model string, selected, promptExtend *bool) *bool {
+	if !SupportsImageThinking(providerType, model) {
+		return nil
+	}
+	enabled := true
+	if selected != nil {
+		enabled = *selected
+	}
+	if promptExtend != nil && !*promptExtend {
+		enabled = false
+	}
+	return &enabled
 }

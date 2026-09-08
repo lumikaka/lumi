@@ -634,7 +634,7 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
           </footer>
         </section>
       ) : null}
-      {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code }} compact /> : null}
+      {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code, provider_error: workflow.provider_error }} compact showDiagnostics /> : null}
       <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{t('chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
       <WorkflowDiagnostics projectUuid={projectUuid} pictureBook={pictureBook} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
     </section>
@@ -709,7 +709,7 @@ function WorkflowDiagnostics({ projectUuid, pictureBook, workflow, open, onOpenC
                 {focusedStep.started_at ? <div><dt>{t('chat.workflow.started_at')}</dt><dd>{formatDateTime(focusedStep.started_at)}</dd></div> : null}
                 {focusedStep.completed_at ? <div><dt>{t('chat.workflow.completed_at')}</dt><dd>{formatDateTime(focusedStep.completed_at)}</dd></div> : null}
                 {focusedStep.error_code ? <div><dt>{t('chat.workflow.error_code')}</dt><dd><code>{focusedStep.error_code}</code></dd></div> : null}
-                {focusedStep.error_code ? <div><dt>{t('chat.workflow.error_summary')}</dt><dd><LocalizedErrorMessage error={{ code: focusedStep.error_code }} compact /></dd></div> : null}
+                {focusedStep.error_code ? <div><dt>{t('chat.workflow.error_summary')}</dt><dd><LocalizedErrorMessage error={{ code: focusedStep.error_code, provider_error: focusedStep.provider_error }} compact showDiagnostics /></dd></div> : null}
               </dl>
               <details><summary>{t('chat.workflow.input')}</summary><pre data-machine-value>{prettyDiagnosticJSON(focusedStep.input)}</pre></details>
               <details><summary>{t('chat.workflow.output')}</summary><pre data-machine-value>{prettyDiagnosticJSON(focusedStep.output)}</pre></details>

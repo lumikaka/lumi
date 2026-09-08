@@ -16,6 +16,7 @@ import (
 	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
+	"lumi/internal/provider"
 	"lumi/internal/story"
 
 	"github.com/riverqueue/river"
@@ -56,7 +57,7 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 	if source.IgnoredAt != nil {
 		return ProductionTask{}, taskError(CodeInvalidTask, "Premise 批次已忽略", "恢复批次后才能继续生成设定总览图。", nil)
 	}
-	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true)
+	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true, input.EnableThinking, input.PromptExtend)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -112,7 +113,7 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 		composerVersion = creationReferenceComposerVersion
 	}
 	parameters, _ := json.Marshal(input.Parameters)
-	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
+	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
 	return manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
 		stepUUID, err := newUUIDv7()
 		if err != nil {
@@ -164,7 +165,7 @@ func (manager *Manager) CreatePremiseBreakdown(ctx context.Context, projectUUID,
 			}
 		}
 	}
-	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectText, input.ProviderUUID, input.Model, false)
+	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectText, input.ProviderUUID, input.Model, false, nil, nil)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -262,7 +263,7 @@ func (manager *Manager) createPremiseAssetGeneration(ctx context.Context, projec
 	default:
 		return ProductionTask{}, taskError(CodeInvalidTask, "AI 设定项操作无效", "asset_operation 只支持 create/variant。", nil)
 	}
-	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true)
+	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true, input.EnableThinking, input.PromptExtend)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -301,7 +302,7 @@ func (manager *Manager) createPremiseAssetGeneration(ctx context.Context, projec
 		AssetOperation: operation, AssetType: assetType, AssetTitle: assetTitle,
 		AssetSummary: assetSummary, AssetTags: assetTags, AssetRevision: assetRevision,
 		ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType,
-		ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, Parameters: parameters,
+		ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters,
 	}
 	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, _ int64, taskUUID string, _ []byte, now time.Time) error {
 		if !createVisibleWorkflow {
@@ -435,7 +436,7 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 			return result, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "所有目标 Section 都必须先创建或选择 storyboard 版本。", nil)
 		}
 		item, prepareErr := manager.prepareComicImageGeneration(ctx, runtime, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
-			ProviderUUID: input.ProviderUUID, Model: input.Model,
+			ProviderUUID: input.ProviderUUID, Model: input.Model, EnableThinking: input.EnableThinking, PromptExtend: input.PromptExtend,
 			SelectionProviderUUID: input.SelectionProviderUUID, SelectionModel: input.SelectionModel,
 			PremiseAssetUUIDs: premiseReferenceUUIDs(sectionsByUUID[sectionUUID].PremiseAssets),
 		})
@@ -620,7 +621,7 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	if section.CurrentStoryboard == nil {
 		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "先创建或选择 storyboard 版本。", nil)
 	}
-	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true)
+	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true, input.EnableThinking, input.PromptExtend)
 	if err != nil {
 		return preparedComicImageGeneration{}, err
 	}
@@ -726,7 +727,7 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	snapshot := production.GenerationSnapshot{Version: 5, Kind: KindComicImageGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: section.UUID, ChapterUUID: chapterUUID,
 		Prompt: prompt, PromptTemplate: imageTemplate, LanguageInstruction: languageInstruction, ReferencePresentPrompt: referencePresentPrompt, ReferenceAbsentPrompt: referenceAbsentPrompt, AdditionalDirectionPrompt: additionalDirectionPrompt, SelectionPrompt: selectionPrompt, SelectionProviderUUID: selectionProvider.UUID, SelectionBaseURL: selectionProvider.BaseURL, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource,
 		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
-		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
+		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
 	return preparedComicImageGeneration{Section: section, Snapshot: snapshot}, nil
 }
 
@@ -793,7 +794,7 @@ func (manager *Manager) CreateComicExport(ctx context.Context, projectUUID strin
 	return ComicExportOperation{Export: export, Task: task}, nil
 }
 
-func (manager *Manager) resolveProductionProvider(ctx context.Context, store *project.Store, settingKey, providerUUID, model string, image bool) (resolvedProvider, string, string, error) {
+func (manager *Manager) resolveProductionProvider(ctx context.Context, store *project.Store, settingKey, providerUUID, model string, image bool, frozenThinking, frozenPromptExtend *bool) (resolvedProvider, string, string, error) {
 	kind := modelsettings.KindText
 	if image {
 		kind = modelsettings.KindImage
@@ -806,7 +807,19 @@ func (manager *Manager) resolveProductionProvider(ctx context.Context, store *pr
 	if image {
 		baseURL = item.ImageBaseURL
 	}
-	return resolvedProvider{UUID: item.UUID, ProviderType: item.ProviderType, BaseURL: baseURL}, model, source, nil
+	thinking := item.ImageEnableThinking
+	promptExtend := item.ImagePromptExtend
+	if image && frozenThinking != nil {
+		thinking = frozenThinking
+	}
+	if image && frozenPromptExtend != nil {
+		promptExtend = frozenPromptExtend
+	}
+	if image {
+		promptExtend = provider.ImagePromptExtend(item.ProviderType, model, promptExtend)
+		thinking = provider.ImageThinking(item.ProviderType, model, thinking, promptExtend)
+	}
+	return resolvedProvider{UUID: item.UUID, ProviderType: item.ProviderType, BaseURL: baseURL, EnableThinking: thinking, PromptExtend: promptExtend}, model, source, nil
 }
 
 func boundedProductionPrompt(value, fallback string) (string, error) {
@@ -830,7 +843,11 @@ func validateProductionParameters(parameters GenerationParameters) error {
 	return nil
 }
 
-type resolvedProvider struct{ UUID, ProviderType, BaseURL string }
+type resolvedProvider struct {
+	UUID, ProviderType, BaseURL string
+	EnableThinking              *bool
+	PromptExtend                *bool
+}
 
 type productionInsertHook func(*sql.Tx, int64, string, []byte, time.Time) error
 

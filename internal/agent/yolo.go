@@ -22,6 +22,8 @@ import (
 )
 
 type yoloSnapshot struct {
+	ImageEnableThinking   *bool                       `json:"image_enable_thinking,omitempty"`
+	ImagePromptExtend     *bool                       `json:"image_prompt_extend,omitempty"`
 	Version               int                         `json:"version"`
 	ProjectUUID           string                      `json:"project_uuid"`
 	GenerationLanguage    string                      `json:"generation_language"`
@@ -141,7 +143,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		imageResolved, imageModel, imageModelSource, err := service.resolveProjectModel(ctx, store, modelsettings.ProjectImage, modelsettings.KindImage, input.ProviderUUID, "")
+		imageResolved, imageModel, imageModelSource, err := service.resolveProjectModel(ctx, store, modelsettings.ProjectImage, modelsettings.KindImage, "", "")
 		if err != nil {
 			return err
 		}
@@ -218,7 +220,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		snapshot, _ := json.Marshal(yoloSnapshot{Version: 6, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String(), CreationSessionUUID: creationSessionUUID, CreationReferences: creationReferences})
+		snapshot, _ := json.Marshal(yoloSnapshot{Version: 6, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, ImageEnableThinking: imageResolved.ImageEnableThinking, ImagePromptExtend: imageResolved.ImagePromptExtend, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String(), CreationSessionUUID: creationSessionUUID, CreationReferences: creationReferences})
 		result, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
@@ -433,13 +435,22 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 			progressByTask[task.UUID] = task.Progress
 		}
 	}
+	providerErrors, err := workflowProviderErrors(ctx, store, row.ID)
+	if err != nil {
+		return Workflow{}, err
+	}
 	dto := Workflow{UUID: row.UUID, ProjectUUID: projectUUID, ThreadUUID: threadUUID, PresentationMode: presentationMode, OriginTurnUUID: await.TurnUUID, OriginRunUUID: await.RunUUID, OriginToolCallUUID: await.ToolCallUUID, OriginItemUUID: await.ItemUUID, AwaitStatus: await.Status, Kind: row.Kind, Title: row.Title, Status: row.Status, InputVersion: row.InputVersion, InputSnapshot: sanitizeDiagnosticJSON(row.InputSnapshot), ProviderUUID: row.ProviderUUID, Model: row.Model, ModelSource: row.ModelSource, CurrentStepKey: row.CurrentStepKey, ErrorCode: row.ErrorCode, ErrorMessage: publicDiagnosticErrorMessage(row.ErrorCode), CancelRequestedAt: row.CancelRequestedAt, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	for _, step := range steps {
 		progress, found := progressByTask[step.TaskUUID]
 		if !found && step.Status == WorkflowCompleted {
 			progress = 100
 		}
-		dto.Steps = append(dto.Steps, workflowStepDTO(step, progress))
+		stepDTO := workflowStepDTO(step, progress)
+		stepDTO.ProviderError = providerErrors[step.StepKey]
+		dto.Steps = append(dto.Steps, stepDTO)
+		if row.Status == WorkflowFailed && step.StepKey == row.CurrentStepKey {
+			dto.ProviderError = stepDTO.ProviderError
+		}
 	}
 	return dto, nil
 }
@@ -569,6 +580,11 @@ func (service *Service) runYoloStep(ctx context.Context, store *project.Store, w
 	var snapshot yoloSnapshot
 	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5 && snapshot.Version != 6) || snapshot.ProjectUUID != store.ProjectUUID() {
 		return nil, false, domainError(CodeStateConflict, "自动生成输入快照损坏", "workflow 无法安全恢复。", err)
+	}
+	// Older workflows predate this option and always enabled prompt extension.
+	if snapshot.ImagePromptExtend == nil {
+		enabled := true
+		snapshot.ImagePromptExtend = &enabled
 	}
 	if snapshot.ImageProviderUUID == "" {
 		snapshot.ImageProviderUUID, snapshot.ImageModel = snapshot.ProviderUUID, snapshot.Model
@@ -769,7 +785,7 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 		for _, reference := range includedReferences {
 			referenceFiles = append(referenceFiles, DomainReferenceFile{ReferenceUUID: reference.ReferenceUUID, FileUUID: reference.FileUUID, Position: reference.Position, ReferenceRole: reference.ReferenceRole, Title: reference.Title, Instruction: reference.Instruction})
 		}
-		task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "premise_setting_generation", ResourceUUID: source.UUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, Prompt: source.SourceText, IdempotencyKey: step.IdempotencyKey + ":setting", ReferenceFiles: referenceFiles})
+		task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "premise_setting_generation", ResourceUUID: source.UUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, EnableThinking: snapshot.ImageEnableThinking, PromptExtend: snapshot.ImagePromptExtend, Prompt: source.SourceText, IdempotencyKey: step.IdempotencyKey + ":setting", ReferenceFiles: referenceFiles})
 		if err != nil {
 			return nil, false, err
 		}
@@ -1068,7 +1084,7 @@ func (service *Service) runYoloLegacyFirstImage(ctx context.Context, store *proj
 	if section.CurrentImage != nil {
 		return map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID, "image_variant_uuid": section.CurrentImage.UUID}, false, nil
 	}
-	task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "comic_image_generation", ResourceUUID: sectionUUID, ChapterUUID: chapterUUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, SelectionProviderUUID: snapshot.SelectionProviderUUID, SelectionModel: snapshot.SelectionModel, Prompt: section.CurrentStoryboard.ContentMD, IdempotencyKey: step.IdempotencyKey + ":image"})
+	task, err := service.ensureWorkflowDomainTask(ctx, store, step, DomainTaskRequest{Kind: "comic_image_generation", ResourceUUID: sectionUUID, ChapterUUID: chapterUUID, ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, EnableThinking: snapshot.ImageEnableThinking, PromptExtend: snapshot.ImagePromptExtend, SelectionProviderUUID: snapshot.SelectionProviderUUID, SelectionModel: snapshot.SelectionModel, Prompt: section.CurrentStoryboard.ContentMD, IdempotencyKey: step.IdempotencyKey + ":image"})
 	if err != nil {
 		return nil, false, err
 	}
@@ -1134,7 +1150,7 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 	if len(missing) > 0 {
 		batch, batchErr := service.ensureWorkflowDomainTaskBatch(ctx, store, step, DomainTaskBatchRequest{
 			Kind: "comic_image_generation", ResourceUUIDs: missing, ChapterUUID: chapterUUID,
-			ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel,
+			ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, EnableThinking: snapshot.ImageEnableThinking, PromptExtend: snapshot.ImagePromptExtend,
 			SelectionProviderUUID: snapshot.SelectionProviderUUID, SelectionModel: snapshot.SelectionModel,
 			IdempotencyKey: step.IdempotencyKey + ":images",
 		}, body.UUID)

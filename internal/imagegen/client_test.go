@@ -164,7 +164,7 @@ func TestBailianImageRequestSizeAndResponse(t *testing.T) {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}
 	parameters := generationPayload["parameters"].(map[string]any)
-	if generationPayload["model"] != "qwen-image-3.0-pro" || parameters["size"] != "1024*1536" || parameters["n"] != float64(1) || parameters["prompt_extend"] != true {
+	if generationPayload["model"] != "qwen-image-3.0-pro" || parameters["size"] != "1024*1536" || parameters["n"] != float64(1) || parameters["prompt_extend"] != true || parameters["enable_thinking"] != true {
 		t.Fatalf("Bailian payload=%+v", generationPayload)
 	}
 }
@@ -249,5 +249,81 @@ func TestBailianFailureCapturesProviderDiagnostics(t *testing.T) {
 	}
 	if strings.Contains(diagnostic.Message, "secret-key") || !strings.Contains(diagnostic.Message, "[REDACTED]") {
 		t.Fatalf("unsafe diagnostic message = %q", diagnostic.Message)
+	}
+}
+
+func TestBailianThinkingFalseAndGenerationDeadline(t *testing.T) {
+	for _, model := range []string{"qwen-image-3.0", "qwen-image-3.0-pro"} {
+		t.Run(model, func(t *testing.T) {
+			disabled := false
+			imageBytes := tinyPNG(t)
+			var generationDeadline time.Time
+			client := NewOpenAICompatibleClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				deadline, ok := r.Context().Deadline()
+				if !ok || time.Until(deadline) > RequestTimeout {
+					t.Fatal("generation request has no bounded deadline")
+				}
+				if r.Method == http.MethodPost {
+					generationDeadline = deadline
+					var body struct {
+						Parameters map[string]any `json:"parameters"`
+					}
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						t.Fatal(err)
+					}
+					if body.Parameters["enable_thinking"] != false || body.Parameters["prompt_extend"] != true {
+						t.Fatalf("parameters=%+v", body.Parameters)
+					}
+					return response(200, `{"output":{"choices":[{"message":{"content":[{"image":"https://cdn.example.test/result.png"}]}}]}}`), nil
+				}
+				if !deadline.Equal(generationDeadline) {
+					t.Fatal("result download reset the generation deadline")
+				}
+				return response(200, string(imageBytes)), nil
+			})})
+			_, err := client.Generate(context.Background(), Request{ProviderType: "aliyun_bailian", BaseURL: "https://fake.test/image", Model: model, Prompt: "draw", EnableThinking: &disabled})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestBailianPromptExtensionThinkingDependency(t *testing.T) {
+	on, off := true, false
+	for _, model := range []string{"qwen-image-3.0", "qwen-image-3.0-pro"} {
+		for _, tc := range []struct {
+			name                     string
+			extend, thinking         *bool
+			wantExtend, wantThinking bool
+		}{
+			{"defaults", nil, nil, true, true},
+			{"rewrite_only", &on, &off, true, false},
+			{"rewrite_off_default_thinking", &off, nil, false, false},
+			{"rewrite_off_explicit_thinking", &off, &on, false, false},
+		} {
+			t.Run(model+"/"+tc.name, func(t *testing.T) {
+				imageBytes := tinyPNG(t)
+				client := NewOpenAICompatibleClient(&http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+					if r.Method != http.MethodPost {
+						return response(200, string(imageBytes)), nil
+					}
+					var body struct {
+						Parameters map[string]any `json:"parameters"`
+					}
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						t.Fatal(err)
+					}
+					if body.Parameters["prompt_extend"] != tc.wantExtend || body.Parameters["enable_thinking"] != tc.wantThinking {
+						t.Fatalf("parameters=%+v", body.Parameters)
+					}
+					return response(200, `{"output":{"choices":[{"message":{"content":[{"image":"https://cdn.example.test/result.png"}]}}]}}`), nil
+				})})
+				_, err := client.Generate(context.Background(), Request{ProviderType: "aliyun_bailian", BaseURL: "https://fake.test/image", Model: model, Prompt: "draw", EnablePromptExtend: tc.extend, EnableThinking: tc.thinking})
+				if err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
 	}
 }

@@ -55,18 +55,22 @@ func domainError(code, message, details string, cause error) error {
 }
 
 type Selection struct {
-	ProviderUUID string `json:"provider_uuid"`
-	Model        string `json:"model"`
+	ProviderUUID   string `json:"provider_uuid"`
+	Model          string `json:"model"`
+	EnableThinking *bool  `json:"enable_thinking,omitempty"`
+	PromptExtend   *bool  `json:"prompt_extend,omitempty"`
 }
 
 type ModelOption struct {
-	ProviderUUID string `json:"provider_uuid"`
-	ProviderType string `json:"provider_type"`
-	ProviderName string `json:"provider_name"`
-	Model        string `json:"model"`
-	Kind         string `json:"kind"`
-	Ready        bool   `json:"ready"`
-	Active       bool   `json:"active"`
+	ProviderUUID         string `json:"provider_uuid"`
+	ProviderType         string `json:"provider_type"`
+	ProviderName         string `json:"provider_name"`
+	Model                string `json:"model"`
+	Kind                 string `json:"kind"`
+	SupportsThinking     bool   `json:"supports_thinking,omitempty"`
+	SupportsPromptExtend bool   `json:"supports_prompt_extend,omitempty"`
+	Ready                bool   `json:"ready"`
+	Active               bool   `json:"active"`
 }
 
 type Options struct {
@@ -109,6 +113,8 @@ type record struct {
 	ProjectID                                   int64
 	ProjectTextProviderUUID, ProjectTextModel   string
 	ProjectImageProviderUUID, ProjectImageModel string
+	ProjectImageEnableThinking                  *bool
+	ProjectImagePromptExtend                    *bool
 	ChatAreaProviderUUID, ChatAreaModel         string
 	StoryTextProviderUUID, StoryTextModel       string
 	SectionPremiseSelectionProviderUUID         string
@@ -170,6 +176,12 @@ func (resolver *Resolver) Patch(ctx context.Context, store *project.Store, input
 		}
 		selection.ProviderUUID = strings.TrimSpace(selection.ProviderUUID)
 		selection.Model = strings.TrimSpace(selection.Model)
+		if selection.EnableThinking != nil && (key != ProjectImage || !selectionSupportsThinking(options, *selection)) {
+			return View{}, domainError(CodeInvalid, "当前模型不支持图片思考模式", "enable_thinking 仅适用于千问 Image 3.0 图片模型。", nil)
+		}
+		if selection.PromptExtend != nil && (key != ProjectImage || !selectionSupportsPromptExtend(options, *selection)) {
+			return View{}, domainError(CodeInvalid, "当前模型不支持提示词智能改写", "prompt_extend 仅适用于支持该能力的图片模型。", nil)
+		}
 		if selection.ProviderUUID == "" || selection.Model == "" || len([]rune(selection.Model)) > 512 || !optionAvailable(options, kind, *selection) {
 			return View{}, domainError(CodeInvalid, "模型不可用或能力类型不匹配", "只能选择当前已就绪 Provider 对应类型的模型。", nil)
 		}
@@ -204,7 +216,9 @@ func (resolver *Resolver) Patch(ctx context.Context, store *project.Store, input
 		result := tx.Model(&record{}).Where("id = ? AND revision = ?", row.ID, input.ExpectedRevision).Updates(map[string]any{
 			"project_text_provider_uuid": row.ProjectTextProviderUUID, "project_text_model": row.ProjectTextModel,
 			"project_image_provider_uuid": row.ProjectImageProviderUUID, "project_image_model": row.ProjectImageModel,
-			"chat_area_provider_uuid": row.ChatAreaProviderUUID, "chat_area_model": row.ChatAreaModel,
+			"project_image_enable_thinking": row.ProjectImageEnableThinking,
+			"project_image_prompt_extend":   row.ProjectImagePromptExtend,
+			"chat_area_provider_uuid":       row.ChatAreaProviderUUID, "chat_area_model": row.ChatAreaModel,
 			"story_text_provider_uuid": row.StoryTextProviderUUID, "story_text_model": row.StoryTextModel,
 			"section_premise_selection_provider_uuid": row.SectionPremiseSelectionProviderUUID,
 			"section_premise_selection_model":         row.SectionPremiseSelectionModel,
@@ -251,6 +265,15 @@ func (resolver *Resolver) Resolve(ctx context.Context, store *project.Store, set
 	if err != nil {
 		return Resolved{}, err
 	}
+	if kind == KindImage {
+		effective := view.Settings[settingKey].Effective
+		if effective != nil && effective.ProviderUUID == selection.ProviderUUID && effective.Model == selection.Model {
+			selection.EnableThinking = effective.EnableThinking
+			selection.PromptExtend = effective.PromptExtend
+		}
+		item.ImagePromptExtend = provider.ImagePromptExtend(item.ProviderType, selection.Model, selection.PromptExtend)
+		item.ImageEnableThinking = provider.ImageThinking(item.ProviderType, selection.Model, selection.EnableThinking, item.ImagePromptExtend)
+	}
 	return Resolved{Provider: item, Model: selection.Model, Source: source}, nil
 }
 
@@ -265,7 +288,7 @@ func (resolver *Resolver) options(ctx context.Context) (Options, error) {
 			result.TextModels = append(result.TextModels, ModelOption{ProviderUUID: item.UUID, ProviderType: item.ProviderType, ProviderName: item.DisplayName, Model: model, Kind: KindText, Ready: item.Ready, Active: item.Active})
 		}
 		for _, model := range provider.SupportedImageModels(item) {
-			result.ImageModels = append(result.ImageModels, ModelOption{ProviderUUID: item.UUID, ProviderType: item.ProviderType, ProviderName: item.DisplayName, Model: model, Kind: KindImage, Ready: item.Ready, Active: item.Active})
+			result.ImageModels = append(result.ImageModels, ModelOption{ProviderUUID: item.UUID, ProviderType: item.ProviderType, ProviderName: item.DisplayName, Model: model, Kind: KindImage, SupportsThinking: provider.SupportsImageThinking(item.ProviderType, model), SupportsPromptExtend: provider.SupportsImagePromptExtend(item.ProviderType, model), Ready: item.Ready, Active: item.Active})
 		}
 	}
 	return result, nil
@@ -353,15 +376,15 @@ func overrideFor(row record, key string) *Selection {
 	selection := Selection{}
 	switch key {
 	case ProjectText:
-		selection = Selection{row.ProjectTextProviderUUID, row.ProjectTextModel}
+		selection = Selection{ProviderUUID: row.ProjectTextProviderUUID, Model: row.ProjectTextModel}
 	case ProjectImage:
-		selection = Selection{row.ProjectImageProviderUUID, row.ProjectImageModel}
+		selection = Selection{ProviderUUID: row.ProjectImageProviderUUID, Model: row.ProjectImageModel, EnableThinking: row.ProjectImageEnableThinking, PromptExtend: row.ProjectImagePromptExtend}
 	case ChatArea:
-		selection = Selection{row.ChatAreaProviderUUID, row.ChatAreaModel}
+		selection = Selection{ProviderUUID: row.ChatAreaProviderUUID, Model: row.ChatAreaModel}
 	case StoryText:
-		selection = Selection{row.StoryTextProviderUUID, row.StoryTextModel}
+		selection = Selection{ProviderUUID: row.StoryTextProviderUUID, Model: row.StoryTextModel}
 	case SectionPremiseSelection:
-		selection = Selection{row.SectionPremiseSelectionProviderUUID, row.SectionPremiseSelectionModel}
+		selection = Selection{ProviderUUID: row.SectionPremiseSelectionProviderUUID, Model: row.SectionPremiseSelectionModel}
 	}
 	if selection.ProviderUUID == "" && selection.Model == "" {
 		return nil
@@ -380,6 +403,8 @@ func applyChanges(row *record, changes map[string]*Selection) {
 			row.ProjectTextProviderUUID, row.ProjectTextModel = selection.ProviderUUID, selection.Model
 		case ProjectImage:
 			row.ProjectImageProviderUUID, row.ProjectImageModel = selection.ProviderUUID, selection.Model
+			row.ProjectImageEnableThinking = selection.EnableThinking
+			row.ProjectImagePromptExtend = selection.PromptExtend
 		case ChatArea:
 			row.ChatAreaProviderUUID, row.ChatAreaModel = selection.ProviderUUID, selection.Model
 		case StoryText:
@@ -404,4 +429,22 @@ func projectID(ctx context.Context, store *project.Store) (int64, error) {
 		return 0, domainError(CodeInvalid, "项目模型设置不可用", "当前项目身份无效。", err)
 	}
 	return id, nil
+}
+
+func selectionSupportsThinking(options Options, selection Selection) bool {
+	for _, option := range options.ImageModels {
+		if option.ProviderUUID == selection.ProviderUUID && option.Model == selection.Model {
+			return option.SupportsThinking
+		}
+	}
+	return false
+}
+
+func selectionSupportsPromptExtend(options Options, selection Selection) bool {
+	for _, option := range options.ImageModels {
+		if option.ProviderUUID == selection.ProviderUUID && option.Model == selection.Model {
+			return option.SupportsPromptExtend
+		}
+	}
+	return false
 }

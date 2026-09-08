@@ -32,7 +32,7 @@ export const simpleDashboard = defineMessages({
   'simple.action.trash': ['移入回收站', 'Move to trash'],
   'simple.not_found.title': ['没有找到这个简易页面', 'Simple page not found'],
   'simple.not_found.body': ['返回项目主页继续浏览真实项目内容。', 'Return to project home to keep browsing real project content.'],
-  'simple.home.story_action': ['阅读完整故事', 'Read full story'],
+  'simple.home.story_action': ['阅读故事简介', 'Read story synopsis'],
   'simple.home.description_fallback': ['这个项目还没有简介。完整故事和绘本内容会在生成或导入后显示在这里。', 'This project has no description yet. Its story and picture-book content will appear here after generation or import.'],
   'simple.home.style': ['当前画风', 'Visual style'],
   'simple.home.language': ['主语言', 'Primary language'],

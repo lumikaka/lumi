@@ -30,6 +30,14 @@ type agentWorker struct {
 	service *agent.Service
 }
 
+// Chat turns may invoke image_gen synchronously within the Agent worker.
+func (worker *agentWorker) Timeout(job *river.Job[agentArgs]) time.Duration {
+	if job.Args.JobKind == agent.JobChatTurn || job.Args.JobKind == agent.JobChatResume {
+		return imageJobTimeout
+	}
+	return 0
+}
+
 func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) error {
 	if worker.service == nil || job.Args.Version != 1 || job.Args.ProjectUUID != worker.runtime.projectUUID || !isUUIDv7(job.Args.ResourceUUID) || !isUUIDv7(job.Args.ThreadUUID) {
 		return river.JobCancel(taskError(CodeInvalidTask, "Agent River job 参数无效", "Job 只能引用当前项目公开 UUIDv7。", nil))
@@ -114,21 +122,21 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		for _, reference := range request.ReferenceFiles {
 			references = append(references, production.GenerationReferenceFile{ReferenceUUID: reference.ReferenceUUID, FileUUID: reference.FileUUID, Position: reference.Position, ReferenceRole: reference.ReferenceRole, Title: reference.Title, Instruction: reference.Instruction})
 		}
-		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey, ReferenceFiles: references})
+		task, err := manager.CreatePremiseSettingGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey, ReferenceFiles: references})
 		return productionDomainTask(task), err
 	case KindPremiseAssetBreakdown:
 		task, err := manager.CreatePremiseBreakdown(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt, IdempotencyKey: request.IdempotencyKey})
 		return productionDomainTask(task), err
 	case KindPremiseAssetGeneration:
 		task, err := manager.createPremiseAssetGeneration(ctx, projectUUID, request.ResourceUUID, CreateProductionGenerationInput{
-			ProviderUUID: request.ProviderUUID, Model: request.Model, Prompt: request.Prompt,
+			ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend, Prompt: request.Prompt,
 			AssetOperation: request.AssetOperation, AssetType: request.AssetType,
 			AssetTitle: request.AssetTitle, AssetSummary: request.AssetSummary,
 			AssetTags: request.AssetTags, IdempotencyKey: request.IdempotencyKey,
 		}, false)
 		return productionDomainTask(task), err
 	case KindComicImageGeneration:
-		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, false)
+		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, false)
 		return productionDomainTask(task), err
 	case KindStoryProfileGeneration, KindStoryProfileFromChapters, KindStoryChapterBatchPlan, KindComicStoryboardGeneration:
 		var maxSectionCount *int
@@ -160,7 +168,7 @@ func (manager *Manager) StartDomainTaskBatch(ctx context.Context, projectUUID st
 		return agent.DomainTaskBatch{}, taskError(CodeInvalidTask, "Domain task batch 不在 allowlist", "Agent 只能批量启动已注册的图片生成任务。", nil)
 	}
 	batch, err := manager.createComicImageGenerationBatch(ctx, projectUUID, request.ChapterUUID, CreateComicImageGenerationBatchInput{
-		SectionUUIDs: request.ResourceUUIDs, ProviderUUID: request.ProviderUUID, Model: request.Model,
+		SectionUUIDs: request.ResourceUUIDs, ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend,
 		SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel,
 		IdempotencyKey: request.IdempotencyKey,
 	}, request.Invocation)

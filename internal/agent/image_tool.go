@@ -15,6 +15,7 @@ import (
 	"lumi/internal/files"
 	"lumi/internal/imagegen"
 	"lumi/internal/llmlog"
+	"lumi/internal/modelsettings"
 	"lumi/internal/production"
 	"lumi/internal/project"
 
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	imageToolTimeout       = 10 * time.Minute
+	imageToolTimeout       = imagegen.RequestTimeout
 	maxImageGenReferences  = 4
 	imageOperationGenerate = "generate"
 	imageOperationEdit     = "edit"
@@ -133,15 +134,14 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err != nil {
 		return nil, err
 	}
-	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
+	resolved, model, _, err := service.resolveProjectModel(ctx, store, modelsettings.ProjectImage, modelsettings.KindImage, "", "")
 	if err != nil {
 		return nil, err
 	}
-	model := strings.TrimSpace(resolved.DefaultImageModel)
 	if model == "" || strings.TrimSpace(resolved.ImageBaseURL) == "" {
 		return nil, domainError(CodeProvider, "图片模型未配置", "当前 Provider 缺少默认图片模型或图片 API 地址。", nil)
 	}
-	request := imagegen.Request{ProviderType: resolved.ProviderType, BaseURL: resolved.ImageBaseURL, APIKey: resolved.APIKey, Model: model, Prompt: prompt, Size: size, Quality: quality, Images: inputs}
+	request := imagegen.Request{ProviderType: resolved.ProviderType, BaseURL: resolved.ImageBaseURL, APIKey: resolved.APIKey, Model: model, EnableThinking: resolved.ImageEnableThinking, EnablePromptExtend: resolved.ImagePromptExtend, Prompt: prompt, Size: size, Quality: quality, Images: inputs}
 	requestPayload, err := llmlog.EncodeImageRequest(request)
 	if err != nil {
 		return nil, err
@@ -498,4 +498,15 @@ func metadataStringSlice(value any, key string) []string {
 		return typed
 	}
 	return result
+}
+
+// New image requests resolve the project image model at task creation, rather
+// than inheriting the chat's text provider. Frozen workflow continuations bypass
+// this helper and carry their saved provider, model and thinking setting.
+func projectImageTaskRequest(request DomainTaskRequest) DomainTaskRequest {
+	switch request.Kind {
+	case "premise_setting_generation", "premise_asset_generation", "comic_image_generation":
+		request.ProviderUUID = ""
+	}
+	return request
 }

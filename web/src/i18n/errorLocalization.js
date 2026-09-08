@@ -129,13 +129,15 @@ export const ERROR_CODE_KEYS = Object.freeze({
   image_invalid_response: 'errors.invalid_content',
   image_too_large: 'errors.too_large',
   image_cancelled: 'errors.cancelled',
-  image_provider_error: 'errors.provider_unavailable',
+  image_provider_error: 'errors.code.image_provider_error',
 })
 
 export function localizedErrorPresentation(t, error, options = {}) {
   const status = Number(error?.status) || 0
   const code = typeof error?.code === 'string' && error.code ? error.code : ''
+  const providerError = error?.provider_error
   let messageKey = options.messageKey || ''
+  if (!messageKey && providerError?.code === 'IPInfringementSuspect') messageKey = 'errors.code.image_ip_infringement'
   if (!messageKey && ERROR_CODE_KEYS[code]) messageKey = ERROR_CODE_KEYS[code]
   if (!messageKey) {
     if (status === 0 && error && !code) messageKey = 'errors.network'
@@ -151,7 +153,7 @@ export function localizedErrorPresentation(t, error, options = {}) {
     title: t(options.titleKey || 'errors.title'),
     message: t(messageKey),
     code,
-    status,
-    diagnostic: [error?.message, error?.details].filter(Boolean).join('\n'),
+    status: Number(providerError?.http_status) || status,
+    diagnostic: [error?.message, error?.details, providerError?.code, providerError?.message].filter(Boolean).join('\n'),
   }
 }

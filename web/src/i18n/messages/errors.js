@@ -28,6 +28,8 @@ export const errors = defineMessages({
   'errors.too_large': ['内容或文件超过允许大小。', 'The content or file exceeds the allowed size.'],
   'errors.diagnostic_code': ['错误码：{code}', 'Error code: {code}'],
   'errors.diagnostic_status': ['HTTP 状态：{status}', 'HTTP status: {status}'],
+  'errors.code.image_provider_error': ['图片 Provider 拒绝了请求。请查看诊断信息了解具体原因。', 'The image provider rejected the request. See diagnostic details for the reason.'],
+  'errors.code.image_ip_infringement': ['图片生成被拒绝：输出疑似涉及知识产权侵权。', 'Image generation was rejected because the output may infringe intellectual property rights.'],
   'errors.details': ['诊断信息', 'Diagnostic details'],
   'errors.dismiss': ['关闭错误', 'Dismiss error'],
   'errors.code.validation_failed': ['提交的内容无效，请检查后重试。', 'The submitted content is invalid. Review it and try again.'],

@@ -220,7 +220,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		}
 		value, err := service.queue.StartDomainTaskBatch(ctx, tc.ProjectUUID, DomainTaskBatchRequest{
 			Kind: "comic_image_generation", ResourceUUIDs: stringSliceArg(args, "section_uuids"),
-			ChapterUUID: chapterUUID, ProviderUUID: tc.Run.ProviderUUID, IdempotencyKey: key,
+			ChapterUUID: chapterUUID, IdempotencyKey: key,
 			Invocation: chatToolInvocationContext(tc, execution),
 		})
 		return value, true, err
@@ -318,12 +318,12 @@ func phase3Generation(ctx context.Context, service *Service, tc toolContext, exe
 	if key == "" {
 		key = execution.UUID
 	}
-	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, DomainTaskRequest{
+	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, projectImageTaskRequest(DomainTaskRequest{
 		Kind: kind, ResourceUUID: resourceUUID, ChapterUUID: chapterUUID,
 		ProviderUUID: tc.Run.ProviderUUID, Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"),
 		ChapterCount: queryInt(args, "chapter_count", 1), MaxSectionCount: queryInt(args, "max_section_count", 0), IdempotencyKey: key,
 		Invocation: chatToolInvocationContext(tc, execution),
-	})
+	}))
 }
 
 func queryInt(values map[string]any, key string, fallback int) int {

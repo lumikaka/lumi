@@ -946,7 +946,7 @@ func updateStoryboardTool(ctx context.Context, service *production.Service, args
 
 func (service *Service) startGenerationTool(ctx context.Context, tc toolContext, execution toolExecutionRecord, args map[string]any) (DomainTask, error) {
 	request := DomainTaskRequest{Kind: stringArg(args, "kind"), ResourceUUID: stringArg(args, "resource_uuid"), ChapterUUID: stringArg(args, "chapter_uuid"), ProviderUUID: tc.Run.ProviderUUID, Model: stringArg(args, "model"), Prompt: stringArg(args, "prompt"), PremiseAssetUUIDs: stringSliceArg(args, "premise_asset_uuids"), IdempotencyKey: execution.IdempotencyKey, Invocation: chatToolInvocationContext(tc, execution)}
-	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, request)
+	return service.queue.StartDomainTask(ctx, tc.ProjectUUID, projectImageTaskRequest(request))
 }
 
 func toolErrorResult(err error) json.RawMessage {

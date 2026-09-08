@@ -172,7 +172,7 @@ func TestProjectImageProSelectionPreflightAndTaskFreeze(t *testing.T) {
 	base := "/api/v1/projects/" + created.UUID
 	updated := requestJSON(t, e, http.MethodPatch, base+"/model-settings", map[string]any{
 		"expected_revision": 0,
-		"overrides":         map[string]any{"project_image": map[string]any{"provider_uuid": bailian.UUID, "model": provider.BailianImageModelPro}},
+		"overrides":         map[string]any{"project_image": map[string]any{"provider_uuid": bailian.UUID, "model": provider.BailianImageModelPro, "enable_thinking": false, "prompt_extend": false}},
 	})
 	if updated.Code != http.StatusOK {
 		t.Fatalf("save Pro=%d %s", updated.Code, updated.Body.String())
@@ -185,7 +185,7 @@ func TestProjectImageProSelectionPreflightAndTaskFreeze(t *testing.T) {
 		t.Fatal(err)
 	}
 	setting := settings.Data.Settings[modelsettings.ProjectImage]
-	if shown.Code != http.StatusOK || settings.Data.Revision != 1 || setting.Effective == nil || setting.Effective.Model != provider.BailianImageModelPro || setting.Inherited == nil || setting.Inherited.Model != provider.BailianImageModel {
+	if shown.Code != http.StatusOK || settings.Data.Revision != 1 || setting.Effective == nil || setting.Effective.Model != provider.BailianImageModelPro || setting.Effective.EnableThinking == nil || *setting.Effective.EnableThinking || setting.Effective.PromptExtend == nil || *setting.Effective.PromptExtend || setting.Inherited == nil || setting.Inherited.Model != provider.BailianImageModel {
 		t.Fatalf("persisted settings=%d %s", shown.Code, shown.Body.String())
 	}
 	preflight := requestJSON(t, e, http.MethodPost, base+"/image-generation-preflights", map[string]any{})
@@ -215,12 +215,12 @@ func TestProjectImageProSelectionPreflightAndTaskFreeze(t *testing.T) {
 	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if task.ProviderUUID != bailian.UUID || task.Model != provider.BailianImageModelPro || task.ModelSource != modelsettings.SourceProjectImageOverride || snapshot.Model != provider.BailianImageModelPro || snapshot.OutputSize != "1536x1152" {
+	if task.ProviderUUID != bailian.UUID || task.Model != provider.BailianImageModelPro || task.ModelSource != modelsettings.SourceProjectImageOverride || snapshot.Model != provider.BailianImageModelPro || snapshot.EnableThinking == nil || *snapshot.EnableThinking || snapshot.PromptExtend == nil || *snapshot.PromptExtend || snapshot.OutputSize != "1536x1152" {
 		t.Fatalf("frozen task model=%s source=%s snapshot=%+v", task.Model, task.ModelSource, snapshot)
 	}
 	select {
 	case request := <-imageClient.requests:
-		if request.ProviderType != provider.TypeAliyunBailian || request.Model != provider.BailianImageModelPro || request.Size != snapshot.OutputSize || request.BaseURL != bailian.ImageBaseURL {
+		if request.ProviderType != provider.TypeAliyunBailian || request.Model != provider.BailianImageModelPro || request.EnableThinking == nil || *request.EnableThinking || request.EnablePromptExtend == nil || *request.EnablePromptExtend || request.Size != snapshot.OutputSize || request.BaseURL != bailian.ImageBaseURL {
 			t.Fatalf("image request provider=%s model=%s size=%s url=%s", request.ProviderType, request.Model, request.Size, request.BaseURL)
 		}
 	case <-time.After(5 * time.Second):

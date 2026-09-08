@@ -1,0 +1,1 @@
+ALTER TABLE project_model_settings DROP COLUMN project_image_prompt_extend;

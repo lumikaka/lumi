@@ -19,6 +19,9 @@ import (
 	"lumi/internal/providerdiag"
 )
 
+// RequestTimeout bounds the complete generation, including result download.
+const RequestTimeout = 10 * time.Minute
+
 const maxImageBytes = 64 << 20
 
 var errUnsafeDownloadURL = errors.New("unsafe provider image URL")
@@ -43,16 +46,14 @@ func (err *Error) ProviderDiagnostic() providerdiag.Details { return err.Diagnos
 type Request struct {
 	ProviderType, BaseURL, APIKey, Model, Prompt, Size, Quality string
 	Images                                                      []ImageInput
+	EnableThinking                                              *bool
+	EnablePromptExtend                                          *bool
 }
 
 // PromptExtend returns the effective provider setting, or nil when unused.
 // Keep the HTTP request and its log snapshot on the same value.
 func (input Request) PromptExtend() *bool {
-	if input.ProviderType != provider.TypeAliyunBailian {
-		return nil
-	}
-	enabled := true
-	return &enabled
+	return provider.ImagePromptExtend(input.ProviderType, input.Model, input.EnablePromptExtend)
 }
 
 type ImageInput struct {
@@ -73,7 +74,7 @@ type OpenAICompatibleClient struct{ http *http.Client }
 
 func NewOpenAICompatibleClient(client *http.Client) *OpenAICompatibleClient {
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Minute}
+		client = &http.Client{Timeout: RequestTimeout}
 	}
 	return &OpenAICompatibleClient{http: client}
 }
@@ -82,6 +83,8 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 	if strings.TrimSpace(input.Model) == "" || strings.TrimSpace(input.Prompt) == "" {
 		return Response{}, &Error{Code: "image_invalid_input", SafeMessage: "图片模型与 Prompt 不能为空。"}
 	}
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	defer cancel()
 	switch input.ProviderType {
 	case provider.TypeAliyunBailian:
 		return client.generateBailian(ctx, input)
@@ -167,7 +170,13 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 }
 
 func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input Request) (Response, error) {
-	parameters := map[string]any{"prompt_extend": input.PromptExtend(), "n": 1, "watermark": false}
+	parameters := map[string]any{"n": 1, "watermark": false}
+	if promptExtend := input.PromptExtend(); promptExtend != nil {
+		parameters["prompt_extend"] = promptExtend
+	}
+	if thinking := input.Thinking(); thinking != nil {
+		parameters["enable_thinking"] = thinking
+	}
 	if size := strings.TrimSpace(input.Size); size != "" {
 		parameters["size"] = strings.ReplaceAll(size, "x", "*")
 	}
@@ -373,3 +382,8 @@ func classify(err error, status int, diagnostics ...providerdiag.Details) error 
 }
 
 func (r Response) BillingUsage() pricing.Usage { return r.Usage }
+
+// Thinking is shared by HTTP encoding and the log snapshot.
+func (input Request) Thinking() *bool {
+	return provider.ImageThinking(input.ProviderType, input.Model, input.EnableThinking, input.PromptExtend())
+}

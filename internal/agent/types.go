@@ -166,6 +166,8 @@ type JobSpec struct {
 }
 
 type DomainTaskRequest struct {
+	EnableThinking        *bool
+	PromptExtend          *bool
 	Kind                  string
 	ResourceUUID          string
 	ChapterUUID           string
@@ -201,6 +203,8 @@ type DomainReferenceFile struct {
 }
 
 type DomainTaskBatchRequest struct {
+	EnableThinking        *bool
+	PromptExtend          *bool
 	Kind                  string
 	ResourceUUIDs         []string
 	ChapterUUID           string
@@ -427,51 +431,53 @@ type ThreadPage struct {
 }
 
 type Workflow struct {
-	UUID               string          `json:"uuid"`
-	ProjectUUID        string          `json:"project_uuid"`
-	ThreadUUID         string          `json:"thread_uuid,omitempty"`
-	PresentationMode   string          `json:"presentation_mode"`
-	OriginTurnUUID     string          `json:"origin_turn_uuid,omitempty"`
-	OriginRunUUID      string          `json:"origin_run_uuid,omitempty"`
-	OriginToolCallUUID string          `json:"origin_tool_call_uuid,omitempty"`
-	OriginItemUUID     string          `json:"origin_item_uuid,omitempty"`
-	AwaitStatus        string          `json:"await_status,omitempty"`
-	Kind               string          `json:"kind"`
-	Title              string          `json:"title"`
-	Status             string          `json:"status"`
-	InputVersion       int             `json:"input_version"`
-	InputSnapshot      json.RawMessage `json:"input_snapshot"`
-	IdempotencyKey     string          `json:"idempotency_key"`
-	ProviderUUID       string          `json:"provider_uuid"`
-	Model              string          `json:"model"`
-	ModelSource        string          `json:"model_source"`
-	CurrentStepKey     string          `json:"current_step_key,omitempty"`
-	ErrorCode          string          `json:"error_code,omitempty"`
-	ErrorMessage       string          `json:"error_message,omitempty"`
-	CancelRequestedAt  *time.Time      `json:"cancel_requested_at,omitempty"`
-	StartedAt          *time.Time      `json:"started_at,omitempty"`
-	CompletedAt        *time.Time      `json:"completed_at,omitempty"`
-	CreatedAt          time.Time       `json:"created_at"`
-	UpdatedAt          time.Time       `json:"updated_at"`
-	Steps              []WorkflowStep  `json:"steps,omitempty"`
+	ProviderError      *WorkflowProviderError `json:"provider_error,omitempty"`
+	UUID               string                 `json:"uuid"`
+	ProjectUUID        string                 `json:"project_uuid"`
+	ThreadUUID         string                 `json:"thread_uuid,omitempty"`
+	PresentationMode   string                 `json:"presentation_mode"`
+	OriginTurnUUID     string                 `json:"origin_turn_uuid,omitempty"`
+	OriginRunUUID      string                 `json:"origin_run_uuid,omitempty"`
+	OriginToolCallUUID string                 `json:"origin_tool_call_uuid,omitempty"`
+	OriginItemUUID     string                 `json:"origin_item_uuid,omitempty"`
+	AwaitStatus        string                 `json:"await_status,omitempty"`
+	Kind               string                 `json:"kind"`
+	Title              string                 `json:"title"`
+	Status             string                 `json:"status"`
+	InputVersion       int                    `json:"input_version"`
+	InputSnapshot      json.RawMessage        `json:"input_snapshot"`
+	IdempotencyKey     string                 `json:"idempotency_key"`
+	ProviderUUID       string                 `json:"provider_uuid"`
+	Model              string                 `json:"model"`
+	ModelSource        string                 `json:"model_source"`
+	CurrentStepKey     string                 `json:"current_step_key,omitempty"`
+	ErrorCode          string                 `json:"error_code,omitempty"`
+	ErrorMessage       string                 `json:"error_message,omitempty"`
+	CancelRequestedAt  *time.Time             `json:"cancel_requested_at,omitempty"`
+	StartedAt          *time.Time             `json:"started_at,omitempty"`
+	CompletedAt        *time.Time             `json:"completed_at,omitempty"`
+	CreatedAt          time.Time              `json:"created_at"`
+	UpdatedAt          time.Time              `json:"updated_at"`
+	Steps              []WorkflowStep         `json:"steps,omitempty"`
 }
 
 type WorkflowStep struct {
-	UUID         string          `json:"uuid"`
-	StepKey      string          `json:"step_key"`
-	Position     int             `json:"position"`
-	Status       string          `json:"status"`
-	Progress     int             `json:"progress"`
-	TaskUUID     string          `json:"task_uuid,omitempty"`
-	ResourceUUID string          `json:"resource_uuid,omitempty"`
-	Input        json.RawMessage `json:"input"`
-	Output       json.RawMessage `json:"output"`
-	ErrorCode    string          `json:"error_code,omitempty"`
-	ErrorMessage string          `json:"error_message,omitempty"`
-	StartedAt    *time.Time      `json:"started_at,omitempty"`
-	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	ProviderError *WorkflowProviderError `json:"provider_error,omitempty"`
+	UUID          string                 `json:"uuid"`
+	StepKey       string                 `json:"step_key"`
+	Position      int                    `json:"position"`
+	Status        string                 `json:"status"`
+	Progress      int                    `json:"progress"`
+	TaskUUID      string                 `json:"task_uuid,omitempty"`
+	ResourceUUID  string                 `json:"resource_uuid,omitempty"`
+	Input         json.RawMessage        `json:"input"`
+	Output        json.RawMessage        `json:"output"`
+	ErrorCode     string                 `json:"error_code,omitempty"`
+	ErrorMessage  string                 `json:"error_message,omitempty"`
+	StartedAt     *time.Time             `json:"started_at,omitempty"`
+	CompletedAt   *time.Time             `json:"completed_at,omitempty"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
 }
 
 type WorkflowDiagnosticRun struct {

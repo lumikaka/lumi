@@ -22,6 +22,8 @@ type comicImageBatchWorkflowSection struct {
 }
 
 type comicImageBatchWorkflowSnapshot struct {
+	EnableThinking        *bool                            `json:"enable_thinking,omitempty"`
+	PromptExtend          *bool                            `json:"prompt_extend,omitempty"`
 	Version               int                              `json:"version"`
 	ProjectUUID           string                           `json:"project_uuid"`
 	ChapterUUID           string                           `json:"chapter_uuid"`
@@ -38,6 +40,8 @@ type comicImageBatchWorkflowSnapshot struct {
 }
 
 type comicImageBatchRequestIdentity struct {
+	EnableThinking        *bool                  `json:"enable_thinking,omitempty"`
+	PromptExtend          *bool                  `json:"prompt_extend,omitempty"`
 	ProjectUUID           string                 `json:"project_uuid"`
 	ChapterUUID           string                 `json:"chapter_uuid"`
 	SectionUUIDs          []string               `json:"section_uuids"`
@@ -59,7 +63,7 @@ func newComicImageBatchWorkflowSnapshot(projectUUID, chapterUUID, batchKey strin
 	}
 	identity := comicImageBatchRequestIdentity{
 		ProjectUUID: projectUUID, ChapterUUID: chapterUUID, SectionUUIDs: append([]string(nil), input.SectionUUIDs...),
-		ProviderUUID: strings.TrimSpace(input.ProviderUUID), Model: strings.TrimSpace(input.Model),
+		ProviderUUID: strings.TrimSpace(input.ProviderUUID), Model: strings.TrimSpace(input.Model), EnableThinking: input.EnableThinking, PromptExtend: input.PromptExtend,
 		SelectionProviderUUID: strings.TrimSpace(input.SelectionProviderUUID), SelectionModel: strings.TrimSpace(input.SelectionModel),
 		InvocationSource: invocation.Source, PresentationMode: invocation.PresentationMode,
 		ThreadUUID: invocation.ThreadUUID, TurnUUID: invocation.TurnUUID,
@@ -82,6 +86,8 @@ func newComicImageBatchWorkflowSnapshot(projectUUID, chapterUUID, batchKey strin
 	if len(prepared) > 0 {
 		snapshot.ProviderUUID = prepared[0].Snapshot.ProviderUUID
 		snapshot.Model = prepared[0].Snapshot.Model
+		snapshot.EnableThinking = prepared[0].Snapshot.EnableThinking
+		snapshot.PromptExtend = prepared[0].Snapshot.PromptExtend
 		snapshot.ModelSource = prepared[0].Snapshot.ModelSource
 		snapshot.SelectionProviderUUID = prepared[0].Snapshot.SelectionProviderUUID
 		snapshot.SelectionModel = prepared[0].Snapshot.SelectionModel

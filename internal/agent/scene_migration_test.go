@@ -1519,7 +1519,11 @@ func TestProjectAssistantProjectAPIModeCoversLegacyCapabilities(t *testing.T) {
 		harness.queue.mu.Lock()
 		request := harness.queue.requests[len(harness.queue.requests)-1]
 		harness.queue.mu.Unlock()
-		if request.Kind != fixture.kind || request.ResourceUUID != fixture.resourceUUID || request.ChapterUUID != fixture.chapterUUID || request.ProviderUUID != tc.Run.ProviderUUID || request.Model != "explicit-model" || request.Prompt != "生成 "+fixture.name || request.IdempotencyKey != key {
+		expectedProvider := tc.Run.ProviderUUID
+		if fixture.kind == "premise_setting_generation" || fixture.kind == "comic_image_generation" {
+			expectedProvider = "" // Image jobs resolve and freeze the project's image settings.
+		}
+		if request.Kind != fixture.kind || request.ResourceUUID != fixture.resourceUUID || request.ChapterUUID != fixture.chapterUUID || request.ProviderUUID != expectedProvider || request.Model != "explicit-model" || request.Prompt != "生成 "+fixture.name || request.IdempotencyKey != key {
 			t.Fatalf("%s generation request=%+v", fixture.name, request)
 		}
 		if fixture.kind == "story_chapter_generation" && request.PromptKey != "next_story_chapter" {
