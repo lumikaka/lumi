@@ -155,14 +155,14 @@
 - id: demo_enter_workspace
   translation: Open workspace
 - id: demo_hero_alt
-  translation: Lumi project overview for the Moonlight Mail picture book
+  translation: Lumi project home showing the story synopsis and premise for Little Bear’s Moon Lamp
 - id: demo_story_alt
-  translation: Lumi story and chapter editing interface
+  translation: Lumi full-story workspace showing the story text and current version
 - id: demo_premise_alt
   translation: Lumi character, place, and prop reference interface
 - id: demo_storyboard_alt
-  translation: Lumi storyboard and image-candidate interface
+  translation: Lumi page workspace showing page thumbnails, page details, and current artwork
 - id: demo_preview_alt
-  translation: Lumi continuous chapter preview showing current picture-book frames in reading order
+  translation: Lumi book view showing existing artwork and pages awaiting generation in reading order
 - id: demo_local_alt
   translation: Lumi local project folder and restorable version interface

@@ -155,14 +155,14 @@
 - id: demo_enter_workspace
   translation: 进入工作台
 - id: demo_hero_alt
-  translation: Lumi 月亮邮差绘本项目概览界面演示
+  translation: Lumi 新版项目主页，展示小熊的月亮灯故事简介与设定
 - id: demo_story_alt
-  translation: Lumi 故事与章节编辑界面演示
+  translation: Lumi 完整故事工作区，展示故事正文与当前版本
 - id: demo_premise_alt
   translation: Lumi 角色、场景和道具设定界面演示
 - id: demo_storyboard_alt
-  translation: Lumi 漫画分镜与画面候选界面演示
+  translation: Lumi 逐页工作区，展示页面缩略图、页面信息与当前画面
 - id: demo_preview_alt
-  translation: Lumi 章节连续预览，按阅读顺序展示当前绘本画面
+  translation: Lumi 全书视图，按阅读顺序展示已有画面与待生成页面
 - id: demo_local_alt
   translation: Lumi 本地项目目录与版本恢复界面演示
