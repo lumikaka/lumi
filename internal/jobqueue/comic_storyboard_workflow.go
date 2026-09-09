@@ -210,6 +210,10 @@ func normalizeDomainInvocation(invocation agent.DomainInvocationContext) (agent.
 		invocation = agent.DirectUIInvocationContext()
 	}
 	switch invocation.Source {
+	case agent.InvocationExternalMCP:
+		if invocation.PresentationMode != agent.PresentationNone || invocation.AwaitCompletion || !isUUIDv7(invocation.ExternalCallUUID) || invocation.ThreadUUID != "" || invocation.TurnUUID != "" || invocation.RunUUID != "" || invocation.ToolExecutionUUID != "" {
+			return invocation, taskError(CodeInvalidTask, "外部调用上下文无效", "MCP 只能使用独立调用 UUID，不得引用聊天 Run。", nil)
+		}
 	case agent.InvocationDirectUI:
 		if invocation.PresentationMode != agent.PresentationDedicatedThread || invocation.AwaitCompletion || invocation.ThreadUUID != "" || invocation.TurnUUID != "" || invocation.RunUUID != "" || invocation.ToolExecutionUUID != "" {
 			return invocation, taskError(CodeInvalidTask, "直接调用上下文无效", "direct_ui 只能创建不等待的独立 Workflow Thread。", nil)

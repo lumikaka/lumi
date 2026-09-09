@@ -175,3 +175,8 @@ test('only the HTTP health card retains a refetch interval', () => {
   assert.deepEqual(offenders, ['components/HealthCard.jsx'])
   assert.match(readFileSync(`${sourceRoot}/components/HealthCard.jsx`, 'utf8'), /refetchInterval:\s*30_000/)
 })
+
+test('MCP authorization and confirmation hints invalidate project REST queries', () => {
+  const result = projectRealtimeInvalidation('project-mcp', 'mcp:changed', { project_uuid: 'project-mcp' })
+  assert.deepEqual(result.queryKeys, [['mcp-grants', 'project-mcp'], ['mcp-calls', 'project-mcp']])
+})

@@ -211,3 +211,42 @@ projects ──< actors
 7. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline `yolo_project_initialization` Workflow 和唯一 await；快照按位置冻结持久化计划。新参考全部进入 Premise 与图片输入；历史排除项仍留在审计快照且不进入生产。等待终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 8. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。
 9. 打开项目时验证 UUID、加锁、迁移、执行受控 reconciliation 并启动项目 Runtime；关闭只影响目标项目。
+
+## 表：mcp_grants（应用库）
+
+本机外部 AI 的项目授权，随应用存储而非项目目录保存。
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅内部使用。
+- `uuid` — TEXT UNIQUE，UUIDv7，公开授权身份。
+- `recent_project_id` — INTEGER FK → `recent_projects.id`，删除索引时级联删除授权。
+- `name` — 客户端名称；`permission` — `read` 或 `edit`。
+- `token_hash` — 唯一 SHA-256 凭据摘要，仅内部；`token_prefix` — 安全展示前缀。
+- `created_at`、`revoked_at`、`last_used_at` — 创建、撤销和最近鉴权时间；后两者可空。
+
+明文 token 只在创建响应中返回，列表不返回明文或摘要。授权不随项目文件夹复制。
+
+## 表：mcp_calls（应用库）
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅内部使用。
+- `uuid` — TEXT UNIQUE，公开调用 UUIDv7。
+- `grant_id` — INTEGER FK → `mcp_grants.id`，级联删除；授权间接绑定项目。
+- `idempotency_key` — 与 `grant_id` 联合唯一。
+- `fingerprint` — 原始规范化 JSON 参数的 SHA-256 摘要。
+- `arguments` — 原始调用 JSON；`action` — 展示动作；`async` — 是否为可恢复生成受理。
+- `status` — `pending_confirmation`、`executing`、`succeeded`、`failed`、`rejected`、`expired`、`interrupted`。
+- `result` — 业务结果/错误信封 JSON，未完成时为空字符串。
+- `created_at`、`updated_at`、`expires_at` — 调用时间及确认有效期。
+
+`mcp_calls_grant_status` 索引支持按授权和状态查询。Project UUID、授权 UUID 与外部来源由关联和固定 `external_mcp` 上下文得到，不向客户端暴露外键。
+
+主要 Feature：[本地项目级 MCP 接入](features/本地项目级MCP接入.md)。
+
+
+## 本机 OAuth（应用库）
+
+- `mcp_oauth_clients`：包含启动时幂等登记的正式/开发插件公共客户端，以及动态注册客户端；预注册不产生项目授权。自增 `id`、公开 UUIDv7 `uuid`、自报 `name`、JSON `redirect_uris`、创建时间。注册信息不等于客户端身份背书。
+- `mcp_oauth_authorizations`：自增 `id`、公开 UUIDv7、`client_id` 内部外键、resource、redirect_uri、challenge、state、scope、可空 recent_project_id 外键、permission、status（pending/approved/denied/used）、可空且唯一 code_hash、expires_at、created_at。公开详情不含 challenge/state/code_hash/内部外键；查询时校准 expired。
+- `mcp_grants` 增加可空 `oauth_client_id` 外键、`oauth_resource`（手动授权为空）、可空 `expires_at`（手动授权无自动到期）。OAuth 刷新保留原 UUID 和项目/权限，仅轮换摘要与有效期。
+- `mcp_oauth_refresh_tokens`：自增 `id`、UUIDv7、grant_id 内部外键、唯一 token_hash、expires_at、used_at。保留已用摘要至刷新链到期，以检测重放并撤销授权。
+
+全部存储于应用目录，项目文件夹复制不携带授权。删除项目记录通过外键级联撤销相关授权、请求和刷新链。

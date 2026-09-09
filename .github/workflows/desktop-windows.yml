@@ -253,6 +253,24 @@ jobs:
             throw 'Windows backend must remain unsigned.'
           }
 
+      - name: Test frontend and packaged MCP backend
+        shell: pwsh
+        env:
+          LUMI_MCP_TEST_BINARY: ${{ github.workspace }}/rel/app/src-tauri/backend-windows/lumi_web.exe
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pnpm --dir web test
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Frontend tests failed.'
+          }
+          if (-not (Test-Path $env:LUMI_MCP_TEST_BINARY -PathType Leaf)) {
+            throw "MCP test binary is missing: $env:LUMI_MCP_TEST_BINARY"
+          }
+          go test ./cmd/lumi_web -run '^TestMCPPackagedProcessReconnect$' -count=1 -v
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Packaged MCP connection and recovery tests failed.'
+          }
+
       - name: Build unsigned NSIS installer
         shell: pwsh
         env:

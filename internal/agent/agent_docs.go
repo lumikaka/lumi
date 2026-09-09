@@ -177,6 +177,10 @@ func readAgentDocWithRoutes(tc toolContext, args map[string]any, routes []agentA
 	if normalizedToolMode(tc.ToolMode) != ToolModeProjectAPI {
 		return nil, domainError(CodeToolNotAllowed, "read_agent_doc 不适用于当前 Tool Mode", "当前 Run 没有启用 project_api_tools。", nil)
 	}
+	return readProjectAgentDoc(args, routes)
+}
+
+func readProjectAgentDoc(args map[string]any, routes []agentAPIRoute) (map[string]any, error) {
 	path := stringArg(args, "path")
 	if !validAgentDocPath(path) {
 		return nil, domainError(CodeToolValidation, "Agent Doc path 无效", "只允许规范的 /api/v1/agent-docs/...md 注册路径；Query、Fragment、编码、反斜杠和路径穿越均被拒绝。", nil)

@@ -343,6 +343,15 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	if normalizedToolMode(tc.ToolMode) != ToolModeProjectAPI || !isUUIDv7(tc.ProjectUUID) {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "request_api 不适用于当前 Tool Mode", "当前 Run 没有启用 project_api_tools。", nil)
 	}
+	request, err := parseProjectAPIRequest(tc.ProjectUUID, args, routes)
+	if err == nil {
+		request.TargetUUID = routeTargetUUID(request, tc.Thread)
+	}
+	return request, err
+}
+
+// parseProjectAPIRequest validates a project capability without a chat runtime.
+func parseProjectAPIRequest(projectUUID string, args map[string]any, routes []agentAPIRoute) (agentAPIRequest, error) {
 	method := stringArg(args, "method")
 	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
 		return agentAPIRequest{}, domainError(CodeToolValidation, "request_api method 无效", "method 必须使用注册路由声明的标准大写 HTTP 方法。", nil)
@@ -353,7 +362,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 	}
 	// Check the project boundary before route lookup so an unknown route in
 	// another project cannot enter the model's argument-repair loop.
-	projectPath := "/api/v1/projects/" + tc.ProjectUUID
+	projectPath := "/api/v1/projects/" + projectUUID
 	if path != projectPath && !strings.HasPrefix(path, projectPath+"/") {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路径越界", "url 只能包含当前 project_uuid。", nil)
 	}
@@ -405,7 +414,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 			toolValidationViolation{Path: "url", Rule: "route_not_found"},
 		)
 	}
-	if params["project_uuid"] != tc.ProjectUUID {
+	if params["project_uuid"] != projectUUID {
 		return agentAPIRequest{}, domainError(CodeToolNotAllowed, "项目 API 路径越界", "url 只能包含当前 project_uuid。", nil)
 	}
 	argumentRepairs := []string(nil)
@@ -430,7 +439,7 @@ func parseAgentAPIRequestWithRoutes(tc toolContext, args map[string]any, routes 
 		}
 	}
 	request := agentAPIRequest{Route: *matched, Method: method, Path: path, Query: query, Body: body, HasBody: hasBody, UseDispatcher: useDispatcher, ResponseFilter: filter, Params: params, ArgumentRepairs: argumentRepairs}
-	request.TargetUUID = routeTargetUUID(request, tc.Thread)
+	request.TargetUUID = params["project_uuid"]
 	return request, nil
 }
 

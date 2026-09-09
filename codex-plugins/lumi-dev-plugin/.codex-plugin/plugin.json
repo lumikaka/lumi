@@ -1,0 +1,28 @@
+{
+  "name": "lumi-dev-plugin",
+  "version": "0.1.2",
+  "description": "Connect Codex to Lumi Development projects through local MCP OAuth.",
+  "author": {
+    "name": "Lumi"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Lumi Development",
+    "shortDescription": "Read and edit an authorized local Lumi project.",
+    "longDescription": "Connect through local HTTP OAuth, choose one project and permission in Lumi, then use shared API documentation and project tools. Lumi must be running.",
+    "developerName": "Lumi",
+    "category": "Productivity",
+    "capabilities": [
+      "MCP",
+      "OAuth",
+      "Project API"
+    ],
+    "brandColor": "#2B6B58",
+    "defaultPrompt": [
+      "Inspect my authorized Lumi project and suggest the next step."
+    ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

@@ -5,6 +5,8 @@ import HomePage from './pages/HomePage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import AccountSettingsPage from './pages/AccountSettingsPage.jsx'
 import LLMLogsPage from './pages/LLMLogsPage.jsx'
+import MCPSettingsPage from './pages/MCPSettingsPage.jsx'
+import MCPOAuthPage from './pages/MCPOAuthPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import ProviderSettingsPage from './pages/ProviderSettingsPage.jsx'
 import StoryWorkspacePage from './pages/StoryWorkspacePage.jsx'
@@ -35,6 +37,8 @@ export default function App() {
       <Route path="/settings/providers" element={<ProviderSettingsPage />} />
       <Route path="/settings/account" element={<AccountSettingsPage />} />
       <Route path="/settings/llm-logs" element={<LLMLogsPage />} />
+      <Route path="/settings/mcp/authorize" element={<MCPOAuthPage />} />
+      <Route path="/settings/mcp" element={<MCPSettingsPage />} />
       <Route path="/projects/:projectUuid/*" element={<ProviderGate><ProjectActivationGate><StoryWorkspacePage /></ProjectActivationGate></ProviderGate>} />
       <Route path="*" element={<ProviderGate><NotFoundPage /></ProviderGate>} />
     </Routes>

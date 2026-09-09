@@ -18,6 +18,7 @@ import (
 	"lumi/internal/imagegen"
 	"lumi/internal/jobqueue"
 	"lumi/internal/llm"
+	"lumi/internal/mcpserver"
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
 	"lumi/internal/projectcreation"
@@ -32,6 +33,8 @@ import (
 
 type Application struct {
 	*echo.Echo
+	mcpService      *mcpserver.Service
+	mcpConfig       config.Config
 	realtimeHub     *realtime.Hub
 	projects        *project.Manager
 	providers       *provider.Service
@@ -53,6 +56,16 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	e.Use(middleware.RequestID())
 	e.Use(requestLogger(slog.Default()))
 	e.Use(middleware.Recover())
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if c.Request().URL.Path == "/settings/mcp/authorize" {
+				c.Response().Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+				c.Response().Header().Set("X-Frame-Options", "DENY")
+				c.Response().Header().Set("Referrer-Policy", "no-referrer")
+			}
+			return next(c)
+		}
+	})
 	e.Use(desktopAuthentication(cfg.DesktopAuth))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: realtime.AllowedOrigins(cfg.FrontendURL),
@@ -284,6 +297,13 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.GET("/projects/:project_uuid/production-tasks/:task_uuid/events", productionHandler.ProductionTaskEvents)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/cancellations", productionHandler.CancelProductionTask)
 	api.POST("/projects/:project_uuid/production-tasks/:task_uuid/retries", productionHandler.RetryProductionTask)
+	mcpService, err := mcpserver.New(appStore, projects, agent.NewExternalProjectAPI(echoProjectAPIDispatcher(e), taskManager), func(projectUUID string) {
+		realtimeHub.Broadcast(realtime.ProjectTopic(projectUUID), "mcp:changed", map[string]any{"project_uuid": projectUUID})
+	})
+	if err != nil {
+		return nil, err
+	}
+	configureMCPManagement(api, mcpService, cfg)
 	configureAgentProjectAPIGateway(e, agentService)
 	if err := projectCreationService.Reconcile(context.Background()); err != nil {
 		return nil, err
@@ -298,7 +318,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		defer close(lifecycleDone)
 		lifecycle.run(lifecycleContext, projectIdleCheckInterval)
 	}()
-	return &Application{
+	return &Application{mcpService: mcpService, mcpConfig: cfg,
 		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService, agentService: agentService,
 		lifecycleCancel: lifecycleCancel, lifecycleDone: lifecycleDone,
 	}, nil

@@ -1,0 +1,12 @@
+interface:
+  display_name: "Lumi Development"
+  short_description: "Use an authorized local Lumi project"
+  default_prompt: "Use $lumi-dev-plugin to inspect my authorized Lumi project via MCP."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "lumi-dev-plugin"
+      description: "Local project-scoped Lumi MCP server"
+      transport: "streamable_http"
+      url: "http://127.0.0.1:5801/mcp"

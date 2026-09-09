@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lumi-dev-plugin": {
+      "type": "http",
+      "url": "http://127.0.0.1:5801/mcp"
+    }
+  }
+}

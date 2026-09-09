@@ -40,7 +40,10 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   const addPremise = () => premiseKeys.forEach((name) => add(name))
 
   let matched = true
-  if (event.startsWith('chat:')) {
+  if (event === 'mcp:changed') {
+    add('mcp-grants')
+    add('mcp-calls')
+  } else if (event.startsWith('chat:')) {
     addChat()
     if (payload.workflow_uuid) addWorkflow()
   } else if (event.startsWith('workflow:')) {

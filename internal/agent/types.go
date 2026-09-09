@@ -92,6 +92,7 @@ const (
 type InvocationSource string
 
 const (
+	InvocationExternalMCP  InvocationSource = "external_mcp"
 	InvocationDirectUI     InvocationSource = "direct_ui"
 	InvocationChatTool     InvocationSource = "chat_tool"
 	InvocationWorkflowStep InvocationSource = "workflow_step"
@@ -108,6 +109,7 @@ const (
 // DomainInvocationContext is trusted process-local ownership metadata. It is
 // never decoded from a public Generation request body.
 type DomainInvocationContext struct {
+	ExternalCallUUID  string
 	Source            InvocationSource
 	PresentationMode  PresentationMode
 	AwaitCompletion   bool
@@ -678,3 +680,7 @@ type workflowAwaitRecord struct {
 }
 
 func (workflowAwaitRecord) TableName() string { return "workflow_awaits" }
+
+func ExternalInvocationContext(callUUID string) DomainInvocationContext {
+	return DomainInvocationContext{Source: InvocationExternalMCP, PresentationMode: PresentationNone, ExternalCallUUID: callUUID}
+}

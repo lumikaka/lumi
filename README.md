@@ -270,7 +270,7 @@ make build-linux
 
 ### 桌面安装包
 
-Lumi 的 macOS 与 Windows 版本保持 `browser → Go backend` 架构。Tauri 2 只作为桌面启动器和系统托盘运行，不创建 WebView 主窗口：启动器选择随机 loopback 端口和本次运行专用的随机访问令牌，运行安装包内的 `lumi_web`，等待 `/api/v1/health` 确认数据库可用，然后用系统默认浏览器建立桌面会话并打开 Lumi。REST、WebSocket 和媒体内容都需要该桌面会话；退出托盘应用会同时终止 Go 子进程并使已有会话失效。普通开发服务器和未由 Tauri 提供令牌的 `lumi_web` 不启用这一机制。
+Lumi 的 macOS 与 Windows 版本保持 `browser → Go backend` 架构。Tauri 2 只作为桌面启动器和系统托盘运行，不创建 WebView 主窗口：启动器优先使用 `127.0.0.1:32323`，仅在该端口被占用时回退到系统分配的可用 loopback 端口，并在日志中记录回退原因和实际地址；其他绑定错误会导致启动失败。回退端口不持久化，下次启动仍优先尝试 `32323`。启动器生成本次运行专用的随机访问令牌，运行安装包内的 `lumi_web`，等待 `/api/v1/health` 确认数据库可用，然后用系统默认浏览器建立桌面会话并打开 Lumi。REST、WebSocket 和媒体内容都需要该桌面会话；退出托盘应用会同时终止 Go 子进程并使已有会话失效。普通开发服务器和未由 Tauri 提供令牌的 `lumi_web` 不启用这一机制。
 
 正式 Release 构建启用 Tauri Updater。应用启动时会后台检查 stable 更新，发现新版本后询问是否下载并安装；也可以从托盘菜单选择 **Check for Updates…** 手动检查。更新包包含 Tauri 启动器、前端和 Go 后端，安装前会使用内置公钥验证 Tauri updater 签名，完成后终止旧后端并重启应用。数据库和用户数据保存在平台应用数据目录中（macOS 为 `~/.lumi`，Windows 为 `%LOCALAPPDATA%\dev.lumi.Lumi`），不属于应用更新包。普通本地构建和 pull request 构建不启用 updater，也不会访问 Release 更新通道。
 
@@ -379,3 +379,7 @@ updater 密钥通过 `cargo tauri signer generate` 离线生成，公钥保存�
 接入 updater 之前安装的 v0.1.4 及更早版本没有内置 updater 公钥，必须手动安装首个支持自动更新的稳定版；从下一个 patch 版本开始才能验证完整的自动升级链路。当前 macOS 发布没有 Apple notarization，Windows 发布没有 Authenticode 签名，因此 ad-hoc 签名的 macOS 构建仍可能被 Gatekeeper 阻止，Windows unsigned 构建仍可能被 SmartScreen 提示。当前阶段不包含 macOS Intel、Universal Binary、DMG、Mac App Store、Windows ARM64、MSI 或 portable ZIP。
 
 </details>
+
+## 本地项目 MCP
+
+在项目配置中创建外部 AI 访问授权并复制 stdio 客户端配置。Lumi 必须运行且项目已打开；支持只读、编辑/生成与持久化危险操作确认。详见 [连接和使用说明](docs/local-project-mcp.md)。

@@ -211,6 +211,17 @@ jobs:
           codesign --verify --deep --strict "$app_path"
           codesign -dv --verbose=2 "$app_path"
 
+      - name: Test frontend and packaged MCP backend
+        shell: bash
+        env:
+          LUMI_MCP_TEST_BINARY: ${{ github.workspace }}/rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app/Contents/Resources/backend/lumi_web
+        run: |
+          set -euo pipefail
+          pnpm --dir web test
+          go test ./internal/mcpserver ./internal/server -run 'TestOAuth|TestMCPOAuth|TestMCPShared' -count=1
+          test -x "$LUMI_MCP_TEST_BINARY"
+          go test ./cmd/lumi_web -run '^TestMCPPackagedProcessReconnect$' -count=1 -v
+
       - name: Smoke test packaged app
         shell: bash
         run: |

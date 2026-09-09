@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"lumi/internal/config"
+	"lumi/internal/database"
+	"lumi/internal/dbmigrate"
 
 	"github.com/google/uuid"
 )
@@ -200,6 +202,35 @@ func TestCloudflareResponsesMigrationKeepsCredentialsAndBailian(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Rewind the real schema instead of only changing schema_migrations: later
+	// migrations may create tables that must not already exist on the next Up.
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	runner, err := dbmigrate.OpenApp(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		version, _, _, err := runner.Version()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if version <= 20260909000008 {
+			break
+		}
+		if err := runner.Down(1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := runner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := database.Open(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store = &Store{db: db, dataDir: directory}
 	rows := map[string]string{
 		"ai_providers.openai_compatible.default_model":        `"openai/gpt-5.6-sol"`,
 		"ai_providers.openai_compatible.default_image_model":  `"openai/gpt-5.5"`,
@@ -216,9 +247,6 @@ func TestCloudflareResponsesMigrationKeepsCredentialsAndBailian(t *testing.T) {
 		if err := store.DB().Exec("INSERT OR REPLACE INTO site_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)", key, value).Error; err != nil {
 			t.Fatal(err)
 		}
-	}
-	if err := store.DB().Exec("UPDATE schema_migrations SET version=20260909000008").Error; err != nil {
-		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)

@@ -21,6 +21,7 @@ use tauri_plugin_updater::UpdaterExt;
 
 const APP_NAME: &str = "Lumi";
 const TRAY_ID: &str = "lumi-tray";
+const PREFERRED_DESKTOP_PORT: u16 = 32323;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const HEALTH_INTERVAL: Duration = Duration::from_millis(150);
 const DESKTOP_ACCESS_TOKEN_ENV: &str = "LUMI_DESKTOP_ACCESS_TOKEN";
@@ -256,7 +257,7 @@ pub fn run() {
             let logger = DesktopLogger::new(log_path, log_level)?;
             logger.log(LogLevel::Info, "starting Lumi desktop launcher");
 
-            let port = select_port()?;
+            let port = select_port(PREFERRED_DESKTOP_PORT, &logger)?;
             let base_url = app_url(port);
             let access_token = generate_access_token().map_err(io::Error::other)?;
             let access_url = desktop_access_url(&base_url, &access_token);
@@ -934,11 +935,31 @@ fn generate_access_token() -> Result<String, String> {
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
-fn select_port() -> io::Result<u16> {
-    let listener = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))?;
+fn select_port(preferred_port: u16, logger: &DesktopLogger) -> io::Result<u16> {
+    let listener = bind_preferred_port(preferred_port, |address| TcpListener::bind(address))?;
     let port = listener.local_addr()?.port();
     drop(listener);
+    if port != preferred_port {
+        logger.log(
+            LogLevel::Warn,
+            &format!(
+                "preferred desktop address 127.0.0.1:{preferred_port} is already in use; using 127.0.0.1:{port}"
+            ),
+        );
+    }
     Ok(port)
+}
+
+fn bind_preferred_port(
+    preferred_port: u16,
+    mut bind: impl FnMut(SocketAddrV4) -> io::Result<TcpListener>,
+) -> io::Result<TcpListener> {
+    match bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, preferred_port)) {
+        Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
+            bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))
+        }
+        result => result,
+    }
 }
 
 fn health_is_ready(port: u16) -> io::Result<bool> {
@@ -1400,17 +1421,83 @@ mod tests {
     }
 
     #[test]
-    fn selected_port_is_loopback_and_available_after_selection() {
+    fn available_preferred_port_is_selected_on_loopback() {
+        let (preferred_port, listener) = (0..10)
+            .find_map(|_| {
+                let candidate = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+                let preferred_port = candidate.local_addr().unwrap().port();
+                drop(candidate);
+                let listener =
+                    bind_preferred_port(preferred_port, |address| TcpListener::bind(address))
+                        .unwrap();
+                (listener.local_addr().unwrap().port() == preferred_port)
+                    .then_some((preferred_port, listener))
+            })
+            .expect("preferred loopback ports remained unavailable after 10 attempts");
+        assert_eq!(listener.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
+        assert_eq!(listener.local_addr().unwrap().port(), preferred_port);
+    }
+
+    #[test]
+    fn occupied_preferred_port_falls_back_and_logs_the_selected_address() {
+        let occupied = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let preferred_port = occupied.local_addr().unwrap().port();
+        let path = unique_log_path("port-fallback");
+        let logger = DesktopLogger::new(path.clone(), LogLevel::Warn).unwrap();
         let (port, listener) = (0..10)
             .find_map(|_| {
-                let port = select_port().unwrap();
+                let port = select_port(preferred_port, &logger).unwrap();
+                assert_ne!(port, preferred_port);
                 TcpListener::bind((Ipv4Addr::LOCALHOST, port))
                     .ok()
                     .map(|listener| (port, listener))
             })
-            .expect("selected loopback ports remained unavailable after 10 attempts");
+            .expect("fallback loopback ports remained unavailable after 10 attempts");
         assert_eq!(listener.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
-        assert_eq!(listener.local_addr().unwrap().port(), port);
+        let contents = fs::read_to_string(&path).unwrap();
+        assert!(contents.contains(&format!(
+            "[WARN] preferred desktop address 127.0.0.1:{preferred_port} is already in use; using 127.0.0.1:{port}"
+        )));
+        remove_log_family(&path);
+    }
+
+    #[test]
+    fn preferred_port_errors_other_than_address_in_use_are_preserved() {
+        let mut attempts = 0;
+        let error = bind_preferred_port(PREFERRED_DESKTOP_PORT, |address| {
+            attempts += 1;
+            assert_eq!(address.ip(), &Ipv4Addr::LOCALHOST);
+            assert_eq!(address.port(), PREFERRED_DESKTOP_PORT);
+            Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "desktop bind denied",
+            ))
+        })
+        .unwrap_err();
+        assert_eq!(attempts, 1);
+        assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+        assert_eq!(error.to_string(), "desktop bind denied");
+    }
+
+    #[test]
+    fn fallback_port_bind_errors_are_preserved() {
+        let mut ports = Vec::new();
+        let error = bind_preferred_port(PREFERRED_DESKTOP_PORT, |address| {
+            assert_eq!(address.ip(), &Ipv4Addr::LOCALHOST);
+            ports.push(address.port());
+            if address.port() == PREFERRED_DESKTOP_PORT {
+                Err(io::Error::from(io::ErrorKind::AddrInUse))
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::AddrNotAvailable,
+                    "no fallback address available",
+                ))
+            }
+        })
+        .unwrap_err();
+        assert_eq!(ports, vec![PREFERRED_DESKTOP_PORT, 0]);
+        assert_eq!(error.kind(), io::ErrorKind::AddrNotAvailable);
+        assert_eq!(error.to_string(), "no fallback address available");
     }
 
     #[test]

@@ -16,6 +16,7 @@ import (
 
 	"lumi/internal/appstore"
 	"lumi/internal/config"
+	"lumi/internal/mcpbridge"
 	"lumi/internal/project"
 	"lumi/internal/server"
 	"lumi/internal/webui"
@@ -39,6 +40,9 @@ func main() {
 }
 
 func run(args []string, output io.Writer) error {
+	if len(args) > 0 && args[0] == "--mcp" {
+		return mcpbridge.Command(args[1:], os.Stdin, output, os.Stderr)
+	}
 	if len(args) > 0 {
 		if len(args) == 1 && args[0] == "--help" {
 			_, err := io.WriteString(output, usage)

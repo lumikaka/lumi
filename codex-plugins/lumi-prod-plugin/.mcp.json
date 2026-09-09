@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lumi-prod-plugin": {
+      "type": "http",
+      "url": "http://127.0.0.1:32323/mcp"
+    }
+  }
+}
