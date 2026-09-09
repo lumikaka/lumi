@@ -1,0 +1,17 @@
+@use './design-tokens' as *
+
+.image-task-progress
+  display: inline-flex
+  align-items: center
+  flex-wrap: wrap
+  gap: 6px
+  color: $color-muted
+  font-size: $font-size-small
+
+  progress
+    width: 32px
+    height: 5px
+    accent-color: $color-accent-strong
+
+  &__elapsed
+    font-variant-numeric: tabular-nums

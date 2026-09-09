@@ -1,6 +1,11 @@
 import { defineMessages } from './defineMessages.js'
 
 export const settings = defineMessages({
+  'settings.models.title': ['项目默认模型', 'Default project models'],
+  'settings.models.body': ['新旧项目会持续继承这些默认模型，项目自己的配置优先。修改仅影响后续任务，不改变已创建任务的模型快照。未配置的文本场景继承文本默认，文本和图片默认继承当前服务商。', 'New and existing projects inherit these defaults, with project overrides taking priority. Changes apply to future tasks; existing task snapshots stay unchanged. Unset text scenarios inherit the text default, and unset text and image defaults inherit the active provider.'],
+  'settings.models.loading': ['正在读取默认模型设置…', 'Loading default model settings…'],
+  'settings.models.selection': ['全局预置', 'Global default'],
+  'settings.models.thinking_help': ['提升出图质量，但会增加生成耗时。仅影响新建图片任务；修改此项会将当前图片模型保存为全局图片默认。', 'Improves image quality but takes longer. Applies only to new image tasks; changing this option saves the current image model as the global image default.'],
  'pricing.size_example': ['1024x1024', '1024x1024'],
  'pricing.quality_example': ['medium', 'medium'],
  'pricing.tier_range': ['{from} < T ≤ {to}', '{from} < T ≤ {to}'],

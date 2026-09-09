@@ -86,13 +86,13 @@ func TestCloudflareModelsUseGatewaySpecificRequestOptions(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 			t.Fatal(err)
 		}
-		if payload["max_completion_tokens"] != float64(12) || payload["max_tokens"] != nil || payload["temperature"] != nil {
+		if payload["max_output_tokens"] != float64(12) || payload["max_tokens"] != nil || payload["temperature"] != nil {
 			t.Fatalf("GPT-5 payload = %+v", payload)
 		}
-		return response(http.StatusOK, "application/json", `{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}`), nil
+		return response(http.StatusOK, "application/json", responsesOK), nil
 	})})
 	temperature := 0.2
-	if _, err := client.Generate(context.Background(), Request{BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "openai/gpt-5.5", Prompt: "ping", MaxTokens: 12, Temperature: &temperature}, nil); err != nil {
+	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "openai/gpt-5.5", Prompt: "ping", MaxTokens: 12, Temperature: &temperature}, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -100,9 +100,9 @@ func TestCloudflareModelsUseGatewaySpecificRequestOptions(t *testing.T) {
 		if request.Header.Get("cf-aig-gateway-id") != "default" {
 			t.Fatalf("Workers AI gateway header = %q", request.Header.Get("cf-aig-gateway-id"))
 		}
-		return response(http.StatusOK, "application/json", `{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}`), nil
+		return response(http.StatusOK, "application/json", responsesOK), nil
 	})})
-	if _, err := workersClient.Generate(context.Background(), Request{BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "@cf/meta/llama", Prompt: "ping"}, nil); err != nil {
+	if _, err := workersClient.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "@cf/meta/llama", Prompt: "ping"}, nil); err != nil {
 		t.Fatal(err)
 	}
 }

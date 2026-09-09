@@ -411,7 +411,14 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 	if err := store.DB().WithContext(ctx).Where("workflow_id=?", row.ID).Order("position,id").Find(&steps).Error; err != nil {
 		return Workflow{}, err
 	}
+	type taskProgress struct {
+		UUID                              string
+		Progress                          int
+		Stage                             string
+		StageStartedAt, CancelRequestedAt *time.Time
+	}
 	progressByTask := make(map[string]int, len(steps))
+	productionByTask := make(map[string]taskProgress, len(steps))
 	taskUUIDs := make([]string, 0, len(steps))
 	for _, step := range steps {
 		if step.TaskUUID != "" {
@@ -419,17 +426,16 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 		}
 	}
 	if len(taskUUIDs) > 0 {
-		type taskProgress struct {
-			UUID     string
-			Progress int
-		}
 		var storyTasks []taskProgress
 		if err := store.DB().WithContext(ctx).Table("task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&storyTasks).Error; err != nil {
 			return Workflow{}, err
 		}
 		var productionTasks []taskProgress
-		if err := store.DB().WithContext(ctx).Table("production_task_runs").Select("uuid,progress").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&productionTasks).Error; err != nil {
+		if err := store.DB().WithContext(ctx).Table("production_task_runs").Select("uuid,progress,stage,stage_started_at,cancel_requested_at").Where("project_id=? AND uuid IN ?", row.ProjectID, taskUUIDs).Scan(&productionTasks).Error; err != nil {
 			return Workflow{}, err
+		}
+		for _, task := range productionTasks {
+			productionByTask[task.UUID] = task
 		}
 		for _, task := range append(storyTasks, productionTasks...) {
 			progressByTask[task.UUID] = task.Progress
@@ -446,6 +452,9 @@ func (service *Service) workflowDTO(ctx context.Context, store *project.Store, p
 			progress = 100
 		}
 		stepDTO := workflowStepDTO(step, progress)
+		if task, ok := productionByTask[step.TaskUUID]; ok {
+			stepDTO.Stage, stepDTO.StageStartedAt, stepDTO.CancelRequestedAt = task.Stage, task.StageStartedAt, task.CancelRequestedAt
+		}
 		stepDTO.ProviderError = providerErrors[step.StepKey]
 		dto.Steps = append(dto.Steps, stepDTO)
 		if row.Status == WorkflowFailed && step.StepKey == row.CurrentStepKey {
@@ -1520,7 +1529,7 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Where("workflow_step_id=? AND scenario=?", step.ID, scenario).Count(&previous).Error; err != nil {
 		return err
 	}
-	request := llm.ChatRequest{BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Messages: []llm.ChatMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}}, MaxTokens: 16000}
+	request := llm.ChatRequest{ProviderType: resolved.ProviderType, BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Messages: []llm.ChatMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}}, MaxTokens: 16000}
 	requestPayload, err := llmlog.EncodeChatRequest(request)
 	if err != nil {
 		return err
@@ -2186,6 +2195,9 @@ func (service *Service) markComicImageBatchCancellationRequested(ctx context.Con
 				return nil
 			}
 			if err := tx.Model(&workflowRecord{}).Where("id=?", row.ID).Updates(map[string]any{"cancel_requested_at": now, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			if err := tx.Exec(`UPDATE production_task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE uuid IN (SELECT task_uuid FROM workflow_steps WHERE workflow_id=?) AND status IN ('queued','running')`, now, now, row.ID).Error; err != nil {
 				return err
 			}
 			return appendWorkflowEventGormTx(ctx, tx, row.ID, nil, "workflow_cancel_requested", map[string]any{

@@ -76,7 +76,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		}
 	}
 	if strings.TrimSpace(response.Content) == "" {
-		request := llm.Request{BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model,
+		request := llm.Request{ProviderType: resolved.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model,
 			SystemPrompt: systemPrompt,
 			Prompt:       snapshot.Prompt, Temperature: snapshot.Parameters.Temperature, MaxTokens: snapshot.Parameters.MaxTokens}
 		requestPayload, logErr := llmlog.EncodeTextRequest(request)

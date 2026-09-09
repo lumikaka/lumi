@@ -347,10 +347,16 @@ func taskRealtimePayload(projectUUID string, task Task) map[string]any {
 func (runtime *projectRuntime) consumeRiverEvents(ctx context.Context, events <-chan *river.Event, unsubscribe func()) {
 	defer close(runtime.eventsDone)
 	defer unsubscribe()
+	cancellations := time.NewTicker(2 * time.Second)
+	defer cancellations.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-cancellations.C:
+			if err := runtime.reconcileProductionCancellations(ctx); err != nil && ctx.Err() == nil {
+				slog.Error("production cancellation reconciliation failed", "project_uuid", runtime.projectUUID, "error", err)
+			}
 		case event, ok := <-events:
 			if !ok {
 				return
@@ -442,7 +448,7 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 	if err != nil {
 		return err
 	}
-	_, err = db.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,updated_at=?,error_code='',error_message='' WHERE project_id=? AND status='running'`, now, projectID)
+	_, err = db.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,updated_at=?,error_code='',error_message='' WHERE project_id=? AND status='running'`, now, projectID)
 	if err != nil {
 		return err
 	}

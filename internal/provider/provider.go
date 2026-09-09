@@ -24,7 +24,15 @@ const (
 	BailianTextModelQwen38Max = "qwen3.8-max"
 	BailianImageModel         = "qwen-image-3.0"
 	BailianImageModelPro      = "qwen-image-3.0-pro"
+	CloudflareImageToolModel  = "gpt-image-2.5-flare"
 )
+
+// UsesCloudflareImageTool identifies mainline models whose image output is
+// produced by the explicitly selected image tool, rather than the outer model.
+func UsesCloudflareImageTool(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.HasPrefix(model, "openai/gpt-5") || strings.HasPrefix(model, "openai/gpt-6")
+}
 
 type Provider struct {
 	UUID              string     `json:"uuid"`
@@ -64,6 +72,9 @@ func SupportedTextModels(item Provider) []string {
 	if item.ProviderType == TypeAliyunBailian && defaultModel != BailianTextModelQwen38Max {
 		models = append(models, BailianTextModelQwen38Max)
 	}
+	if item.ProviderType == TypeCloudflareAIGateway {
+		models = appendCloudflareModels(models, defaultModel)
+	}
 	return models
 }
 
@@ -76,6 +87,18 @@ func SupportedImageModels(item Provider) []string {
 	}
 	if item.ProviderType == TypeAliyunBailian && defaultModel != BailianImageModelPro {
 		models = append(models, BailianImageModelPro)
+	}
+	if item.ProviderType == TypeCloudflareAIGateway {
+		models = appendCloudflareModels(models, defaultModel)
+	}
+	return models
+}
+
+func appendCloudflareModels(models []string, defaultModel string) []string {
+	for _, model := range []string{sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol} {
+		if model != defaultModel {
+			models = append(models, model)
+		}
 	}
 	return models
 }
@@ -279,7 +302,7 @@ func (service *Service) Create(ctx context.Context, input CreateInput) (Provider
 	if imageModel == "" {
 		imageModel = input.DefaultModel
 	}
-	_, _, err := service.settings.Update(ctx, map[string]any{
+	_, _, err := service.settings.UpdateSystem(ctx, map[string]any{
 		sitesettings.CloudflareAccountIDKey:         input.AccountID,
 		sitesettings.CloudflareDefaultModelKey:      input.DefaultModel,
 		sitesettings.CloudflareDefaultImageModelKey: imageModel,

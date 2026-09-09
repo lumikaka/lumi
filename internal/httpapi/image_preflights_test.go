@@ -12,6 +12,7 @@ import (
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
 	"lumi/internal/provider"
+	"lumi/internal/sitesettings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -46,6 +47,33 @@ func TestImageGenerationPreflightValidatesBeforeProjectCreation(t *testing.T) {
 	})
 	if unsupported.Code != http.StatusUnprocessableEntity || !strings.Contains(unsupported.Body.String(), `"code":"image_aspect_ratio_unsupported"`) {
 		t.Fatalf("unsupported preflight=%d %s", unsupported.Code, unsupported.Body.String())
+	}
+	// A global image selection must change pre-creation capability checks too.
+	if _, _, err := providers.Settings().Update(ctx, map[string]any{
+		sitesettings.BailianWorkspaceKey: "global-preflight",
+		sitesettings.BailianRegionKey:    "cn-beijing",
+		sitesettings.BailianAPIKeyKey:    "test-secret",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := providers.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bailian, err := providers.MarkVerified(ctx, items[1].UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := modelsettings.NewResolver(providers).PatchGlobal(ctx, modelsettings.PatchInput{Changes: map[string]*modelsettings.Selection{
+		modelsettings.ProjectImage: {ProviderUUID: bailian.UUID, Model: provider.BailianImageModelPro},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	global := requestJSON(t, e, http.MethodPost, "/api/v1/image-generation-preflights", map[string]any{
+		"picture_book": map[string]any{"format": "classic_picture_book", "aspect_ratio": map[string]any{"mode": "landscape"}},
+	})
+	if global.Code != http.StatusOK || !strings.Contains(global.Body.String(), `"model":"qwen-image-3.0-pro"`) || !strings.Contains(global.Body.String(), `"model_source":"global_image_default"`) || !strings.Contains(global.Body.String(), `"value":"1536x1152"`) {
+		t.Fatalf("global preflight=%d %s", global.Code, global.Body.String())
 	}
 }
 

@@ -1,3 +1,5 @@
+import ImageTaskProgress from './ImageTaskProgress.jsx'
+import { imageBatchCounts } from './imageTaskPresentation.js'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -106,7 +108,7 @@ const turnStatusCopy = {
 }
 
 const workflowStatusCopy = {
-  pending: 'chat.workflow.status.queued', queued: 'chat.workflow.status.queued', running: 'chat.workflow.status.running', waiting: 'chat.status.waiting_for_input', completed: 'common.status.completed', failed: 'common.status.failed',
+  pending: 'chat.workflow.status.queued', queued: 'chat.workflow.status.queued', running: 'chat.workflow.status.running', waiting: 'chat.workflow.status.waiting', completed: 'common.status.completed', failed: 'common.status.failed',
   cancelled: 'common.status.cancelled', interrupted: 'common.status.interrupted',
 }
 
@@ -601,6 +603,8 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
   const controls = workflowControls(workflow)
   const overwriteRequest = comicStoryboardOverwriteRequest(workflow)
   const progress = workflowProgressPercent(workflow)
+  const imageBatch = workflow.kind === 'comic_image_generation_batch'
+  const counts = imageBatchCounts(workflow)
   const openStepDiagnostics = (stepUuid) => {
     setDiagnosticStepUuid(stepUuid)
     setDiagnosticsOpen(true)
@@ -609,13 +613,14 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
 	<section className={`workflow-progress ${inline ? 'workflow-progress--inline' : 'workflow-progress--dedicated'} ${selected ? 'is-selected' : ''}`} data-workflow-uuid={workflow.uuid}>
       <header><div><span>{t('chat.workflow.title')}</span><strong>{workflowDisplayTitle(workflow, term)}</strong></div><b className={`workflow-status workflow-status--${workflow.status}`}>{workflowStatusCopy[workflow.status] ? t(workflowStatusCopy[workflow.status]) : t('common.status.unknown_with_code', { code: workflow.status })}</b></header>
       <div className="workflow-progress__meter"><progress max="100" value={progress} aria-label={t('chat.workflow.progress', { progress })} /><small>{progress}%</small></div>
+      {imageBatch ? <p role="status">{[t('image.batch.completed', counts), ...['running', 'queued', 'failed', 'cancelled'].filter((key) => counts[key]).map((key) => t(`image.batch.${key}`, { count: counts[key] }))].join(' · ')}</p> : null}
       <ol>{workflow.steps?.map((step) => {
         const title = workflowStepTitle(workflow, step, pictureBook, term, t)
         return (
           <li key={step.uuid} className={`workflow-step workflow-step--${step.status}`}>
             <button type="button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
               <span aria-hidden="true">{step.status === 'completed' ? '✓' : step.status === 'running' || step.status === 'waiting' ? '●' : step.status === 'failed' ? '!' : '○'}</span>
-              <div><strong>{title}</strong><small>{workflowStatusCopy[step.status] ? t(workflowStatusCopy[step.status]) : t('common.status.unknown_with_code', { code: step.status })} · {Math.min(100, Math.max(0, Number(step.progress) || 0))}%</small></div>
+              <div><strong>{title}</strong><small>{imageBatch ? <ImageTaskProgress task={step} /> : <>{workflowStatusCopy[step.status] ? t(workflowStatusCopy[step.status]) : t('common.status.unknown_with_code', { code: step.status })} · {Math.min(100, Math.max(0, Number(step.progress) || 0))}%</>}</small></div>
               {step.resource_uuid ? <code>{step.resource_uuid.slice(0, 10)}</code> : null}
             </button>
           </li>
@@ -635,7 +640,7 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
         </section>
       ) : null}
       {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code, provider_error: workflow.provider_error }} compact showDiagnostics /> : null}
-      <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{t('chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
+      <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{pending ? t('image.task.stage.cancelling') : workflow.cancel_requested_at ? t('image.task.retry_cancel') : t(imageBatch ? 'image.batch.cancel' : 'chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
       <WorkflowDiagnostics projectUuid={projectUuid} pictureBook={pictureBook} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
     </section>
   )
@@ -1148,7 +1153,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     onSuccess: () => { setInputText(''); clearReferences(); setError(null); invalidate() },
     onError: setError,
   })
-  const abortMutation = useMutation({ mutationFn: () => abortChatTurn(projectUuid, selectedThreadUuid), onSuccess: () => invalidate(), onError: setError })
+  const abortMutation = useMutation({ mutationFn: () => abortChatTurn(projectUuid, selectedThreadUuid), onSuccess: () => { setError(null); invalidate() }, onError: (error) => { setError(error); invalidate() } })
   const followMutation = useMutation({
     mutationFn: ({ action, uuid, position, text }) => {
       if (action === 'delete') return deleteFollowUp(projectUuid, selectedThreadUuid, uuid)
@@ -1167,7 +1172,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   })
   const workflowMutation = useMutation({
     mutationFn: ({ workflowUuid, action }) => action === 'cancel' ? cancelWorkflow(projectUuid, workflowUuid) : retryWorkflow(projectUuid, workflowUuid),
-    onSuccess: (workflow) => invalidate({ thread_uuid: workflow.thread_uuid, workflow_uuid: workflow.uuid }), onError: setError,
+    onSuccess: (workflow) => { setError(null); invalidate({ thread_uuid: workflow.thread_uuid, workflow_uuid: workflow.uuid }) }, onError: (error) => { setError(error); invalidate() },
   })
   const workflowConflictMutation = useMutation({
     mutationFn: ({ workflowUuid, action, expectedRevision }) => resolveWorkflowConflict(projectUuid, workflowUuid, {

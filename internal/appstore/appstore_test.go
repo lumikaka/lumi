@@ -37,6 +37,7 @@ func TestOpenRepairsLegacyRecentProjectTimestampTypes(t *testing.T) {
 	statements := []string{
 		`CREATE TABLE schema_migrations (version uint64, dirty bool)`,
 		`INSERT INTO schema_migrations (version, dirty) VALUES (20260808000001, false)`,
+		`CREATE TABLE site_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME NOT NULL)`,
 		`CREATE TABLE recent_projects (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			uuid TEXT NOT NULL UNIQUE,
@@ -189,5 +190,55 @@ func TestProjectCreationSessionPersistsOrderedReferenceManifestAtomically(t *tes
 	var remaining int64
 	if err := store.DB().WithContext(ctx).Model(&ProjectCreationReference{}).Where("project_creation_session_id = ?", created.ID).Count(&remaining).Error; err != nil || remaining != 0 {
 		t.Fatalf("remaining references=%d err=%v", remaining, err)
+	}
+}
+
+func TestCloudflareResponsesMigrationKeepsCredentialsAndBailian(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "app")
+	dsn := config.SQLiteDSN(filepath.Join(directory, "lumi.sqlite"))
+	store, err := Open(directory, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := map[string]string{
+		"ai_providers.openai_compatible.default_model":        `"openai/gpt-5.6-sol"`,
+		"ai_providers.openai_compatible.default_image_model":  `"openai/gpt-5.5"`,
+		"ai_providers.openai_compatible.verified":             `true`,
+		"ai_providers.openai_compatible.verified_at":          `"2026-09-09T00:00:00Z"`,
+		"ai_providers.openai_compatible.verified_fingerprint": `"old-fingerprint"`,
+		"ai_providers.openai_compatible.api_key":              `"opaque-cloudflare-envelope"`,
+		"ai_providers.openai_compatible.account_id":           `"0123456789abcdef0123456789abcdef"`,
+		"ai_providers.aliyun_bailian.api_key":                 `"opaque-bailian-envelope"`,
+		"ai_providers.aliyun_bailian.verified":                `true`,
+		"ai_provider.active":                                  `"aliyun_bailian"`,
+	}
+	for key, value := range rows {
+		if err := store.DB().Exec("INSERT OR REPLACE INTO site_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)", key, value).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.DB().Exec("UPDATE schema_migrations SET version=20260909000008").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(directory, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	for _, key := range []string{"ai_providers.openai_compatible.default_image_model", "ai_providers.openai_compatible.verified", "ai_providers.openai_compatible.verified_at", "ai_providers.openai_compatible.verified_fingerprint"} {
+		var count int64
+		if err := reopened.DB().Table("site_settings").Where("key=?", key).Count(&count).Error; err != nil || count != 0 {
+			t.Fatalf("legacy %s remains: count=%d err=%v", key, count, err)
+		}
+		delete(rows, key)
+	}
+	for key, want := range rows {
+		var got string
+		if err := reopened.DB().Raw("SELECT value FROM site_settings WHERE key=?", key).Scan(&got).Error; err != nil || got != want {
+			t.Fatalf("migration changed %s", key)
+		}
 	}
 }

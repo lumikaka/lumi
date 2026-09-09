@@ -32,13 +32,22 @@ func TestSiteSettingsAPIEncryptsSecretsValidatesKeysAndResets(t *testing.T) {
 
 	secret := "api-setting-secret-never-return"
 	updated := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{
-		"ai_providers.openai_compatible.account_id":          "0123456789ABCDEF0123456789ABCDEF",
-		"ai_providers.openai_compatible.default_model":       "test/model",
-		"ai_providers.openai_compatible.default_image_model": "test/image-model",
-		"ai_providers.openai_compatible.api_key":             secret,
+		"ai_providers.openai_compatible.account_id": "0123456789ABCDEF0123456789ABCDEF",
+		"ai_providers.openai_compatible.api_key":    secret,
 	}})
 	if updated.Code != 200 || strings.Contains(updated.Body.String(), secret) || !strings.Contains(updated.Body.String(), `"value":null`) || !strings.Contains(updated.Body.String(), `"secret_state":"available"`) {
 		t.Fatalf("update response=%d %s", updated.Code, updated.Body.String())
+	}
+	for _, key := range []string{"ai_providers.openai_compatible.default_model", "ai_providers.openai_compatible.default_image_model"} {
+		selected := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{key: "openai/gpt-5.6-sol"}})
+		if selected.Code != 200 {
+			t.Fatalf("model selection failed: %s", selected.Body.String())
+		}
+		rejected := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{key: "openai/gpt-5.5"}})
+		if rejected.Code != 422 {
+			t.Fatalf("unsupported model accepted: %s", rejected.Body.String())
+		}
+
 	}
 	unknown := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{"unknown.key": true}})
 	if unknown.Code != 422 || !strings.Contains(unknown.Body.String(), `"code":"unknown_site_setting"`) {

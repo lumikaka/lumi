@@ -8,6 +8,7 @@ import (
 
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
+	"lumi/internal/realtime"
 
 	"github.com/labstack/echo/v4"
 )
@@ -40,35 +41,14 @@ func (handler *ModelSettingsHandler) Show(c echo.Context) error {
 }
 
 func (handler *ModelSettingsHandler) Update(c echo.Context) error {
-	var request struct {
-		ExpectedRevision *int                       `json:"expected_revision"`
-		Overrides        map[string]json.RawMessage `json:"overrides"`
-	}
-	if err := decodeJSON(c, &request); err != nil {
+	input, err := decodeModelSettingsPatch(c)
+	if err != nil {
 		return err
 	}
-	if request.ExpectedRevision == nil || *request.ExpectedRevision < 0 || len(request.Overrides) == 0 {
-		return NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置更新无效", "必须提供 expected_revision 和至少一个 override。", nil)
-	}
-	changes := make(map[string]*modelsettings.Selection, len(request.Overrides))
-	for key, raw := range request.Overrides {
-		if !modelsettings.ValidSettingKey(key) {
-			return NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置项无效", "不支持设置项 "+key+"。", nil)
-		}
-		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			changes[key] = nil
-			continue
-		}
-		var selection modelsettings.Selection
-		if err := json.Unmarshal(raw, &selection); err != nil {
-			return NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置值无效", "override 必须是 provider_uuid/model 对象或 null。", err)
-		}
-		changes[key] = &selection
-	}
 	var value modelsettings.View
-	err := handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
+	err = handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
 		var operationErr error
-		value, operationErr = handler.models.Patch(c.Request().Context(), store, modelsettings.PatchInput{ExpectedRevision: *request.ExpectedRevision, Changes: changes})
+		value, operationErr = handler.models.Patch(c.Request().Context(), store, input)
 		return operationErr
 	})
 	if err != nil {
@@ -97,4 +77,56 @@ func modelSettingsAPIError(err error) error {
 		status = http.StatusServiceUnavailable
 	}
 	return NewError(status, domainErr.Code, domainErr.Message, domainErr.Details, err)
+}
+
+func decodeModelSettingsPatch(c echo.Context) (modelsettings.PatchInput, error) {
+	var request struct {
+		ExpectedRevision *int                       `json:"expected_revision"`
+		Overrides        map[string]json.RawMessage `json:"overrides"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		return modelsettings.PatchInput{}, err
+	}
+	if request.ExpectedRevision == nil || *request.ExpectedRevision < 0 || len(request.Overrides) == 0 {
+		return modelsettings.PatchInput{}, NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置更新无效", "必须提供 expected_revision 和至少一个 override。", nil)
+	}
+	changes := make(map[string]*modelsettings.Selection, len(request.Overrides))
+	for key, raw := range request.Overrides {
+		if !modelsettings.ValidSettingKey(key) {
+			return modelsettings.PatchInput{}, NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置项无效", "不支持设置项 "+key+"。", nil)
+		}
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			changes[key] = nil
+			continue
+		}
+		var selection modelsettings.Selection
+		if err := json.Unmarshal(raw, &selection); err != nil {
+			return modelsettings.PatchInput{}, NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置值无效", "override 必须是 provider_uuid/model 对象或 null。", err)
+		}
+		changes[key] = &selection
+	}
+	return modelsettings.PatchInput{ExpectedRevision: *request.ExpectedRevision, Changes: changes}, nil
+}
+
+func (handler *ModelSettingsHandler) ShowGlobal(c echo.Context) error {
+	value, err := handler.models.GetGlobal(c.Request().Context())
+	if err != nil {
+		return modelSettingsAPIError(err)
+	}
+	return Success(c, http.StatusOK, value)
+}
+
+func (handler *ModelSettingsHandler) UpdateGlobal(c echo.Context) error {
+	input, err := decodeModelSettingsPatch(c)
+	if err != nil {
+		return err
+	}
+	value, err := handler.models.PatchGlobal(c.Request().Context(), input)
+	if err != nil {
+		return modelSettingsAPIError(err)
+	}
+	if handler.events != nil {
+		handler.events.Broadcast(realtime.SystemTopic, "model_settings:changed", map[string]any{"revision": value.Revision})
+	}
+	return Success(c, http.StatusOK, value)
 }

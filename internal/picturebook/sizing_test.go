@@ -32,6 +32,11 @@ func TestResolveImageSizeUsesExactRegisteredCapabilities(t *testing.T) {
 		{"cloudflare square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1024, 1024}},
 		{"cloudflare landscape", profile(project.PictureBookClassic, project.AspectCustom, 3, 2), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1536, 1024}},
 		{"cloudflare portrait", profile(project.PictureBookClassic, project.AspectCustom, 2, 3), provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", ImageSize{1024, 1536}},
+		{"terra landscape", profile(project.PictureBookClassic, project.AspectLandscape, 4, 3), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1536, 1152}},
+		{"sol portrait", profile(project.PictureBookClassic, project.AspectPortrait, 3, 4), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-sol", ImageSize{1152, 1536}},
+		{"terra square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1024, 1024}},
+		{"terra custom", profile(project.PictureBookClassic, project.AspectCustom, 5, 2), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1520, 608}},
+		{"terra custom larger exact size", profile(project.PictureBookClassic, project.AspectCustom, 100, 99), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1600, 1584}},
 		{"vertical strip bailian", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeAliyunBailian, "anything", ImageSize{768, 2304}},
 		{"vertical strip cloudflare", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeCloudflareAIGateway, "anything", ImageSize{1024, 1536}},
 	}

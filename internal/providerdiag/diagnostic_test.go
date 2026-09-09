@@ -33,6 +33,14 @@ func TestReadHTTPErrorRecognizesKnownProviderShapes(t *testing.T) {
 			name: "Bailian top-level error", body: `{"code":"InvalidParameter","message":"unsupported size","request_id":"dashscope-request"}`,
 			code: "InvalidParameter", message: "unsupported size", requestID: "dashscope-request",
 		},
+		{
+			name: "Cloudflare errors array", body: `{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}`,
+			code: "10000", message: "Authentication error", requestID: "cloudflare-ray", headers: http.Header{"Cf-Ray": []string{"cloudflare-ray"}},
+		},
+		{
+			name: "Cloudflare errors array skips invalid entries", body: `{"success":false,"errors":[null,"unknown",{}, {"code":1001,"message":"unsupported model"}]}`,
+			code: "1001", message: "unsupported model",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

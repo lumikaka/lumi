@@ -1,3 +1,4 @@
+import ImageTaskProgress from '../components/ImageTaskProgress.jsx'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -36,6 +37,7 @@ import {
   listTasks,
 } from '../api/ai.js'
 import {
+  cancelProductionTask,
   createComicSection,
   createPremiseAsset,
   createPremiseAssetVariant,
@@ -806,6 +808,16 @@ export function SimplePageView({ project, projectUuid }) {
     onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() },
   })
   const generate = useMutation({ mutationFn: () => generateSectionImage(projectUuid, chapterUuid, sectionUuid, { prompt: '', premise_asset_uuids: (section.premise_assets || []).map((item) => item.asset_uuid), idempotency_key: `simple-page-image-${Date.now()}` }), onSuccess: async () => { setFeedback(null); await queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
+  const cancelImage = useMutation({
+    mutationFn: (taskUuid) => cancelProductionTask(projectUuid, taskUuid),
+    onSuccess: (result) => setFeedback({ kind: 'success', message: t(result.status === 'completed' ? 'image.task.stage.completed' : 'image.task.cancelled') }),
+    onError: (error) => setFeedback({ kind: 'error', error }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] })
+      void queryClient.invalidateQueries({ queryKey: ['workflows', projectUuid] })
+      refreshPage()
+    },
+  })
   const importImage = useMutation({ mutationFn: async () => { const upload = await createAssetUpload(projectUuid, { purpose: 'comic_section_image', displayName: section.title || sectionUuid, file: imageFile }); return importSectionImage(projectUuid, chapterUuid, sectionUuid, { upload_uuid: upload.uuid, expected_revision: section.revision }) }, onSuccess: (updated) => { setImageFile(null); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_imported') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { setImageCandidatesOpen(false); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const chooseStoryboard = useMutation({ mutationFn: (variant) => selectStoryboard(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.text_restored') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
@@ -1080,7 +1092,8 @@ export function SimplePageView({ project, projectUuid }) {
           )}
           <div className="simple-illustration-actions">
             <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => setImageCandidatesOpen(true)}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{t(imageVariants.length === 1 ? 'simple.page.image_drafts_count.one' : 'simple.page.image_drafts_count.other', { count: imageVariants.length })}</span></button>
-            {taskActive ? <SimpleTaskStatus task={task} /> : null}
+            {task ? <ImageTaskProgress task={task} /> : null}
+            {taskActive ? <button type="button" className="simple-button" disabled={cancelImage.isPending} onClick={() => cancelImage.mutate(task.uuid)}>{t(cancelImage.isPending ? 'image.task.stage.cancelling' : task.cancel_requested_at ? 'image.task.retry_cancel' : 'image.task.cancel')}</button> : null}
             <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(generate.isPending ? 'simple.page.generation_starting' : section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
           </div>
           <section className="simple-page-content-card">

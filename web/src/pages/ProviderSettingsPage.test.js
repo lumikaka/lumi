@@ -7,6 +7,12 @@ const appSource = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../styles/settings.sass', import.meta.url), 'utf8')
 const messages = readFileSync(new URL('../i18n/messages/settings.js', import.meta.url), 'utf8')
 
+test('global model defaults appear between providers and prices only outside onboarding', () => {
+  const defaults = source.indexOf('{!onboarding ? <ModelSettingsCard /> : null}')
+  assert.ok(defaults > source.indexOf('className="provider-list"'))
+  assert.ok(defaults < source.indexOf('{!onboarding ? <ModelPricesPanel'))
+})
+
 test('provider setup uses a selectable list and opens one configuration dialog', () => {
   assert.match(source, /className="provider-list"/)
   assert.match(source, /function ProviderListItem/)
@@ -32,12 +38,12 @@ test('initial setup keeps the provider list and dialog on the dedicated setup UR
   assert.match(messages, /'settings\.provider\.connect_start': \['连接并开始使用'/)
 })
 
-test('initial Cloudflare dialog omits model fields while regular settings retain them', () => {
-  assert.match(source, /initialProviderForm\(provider, onboarding = false\)/)
-  assert.match(source, /\.\.\.\(onboarding \? {} : {[\s\S]*default_model[\s\S]*default_image_model/)
-  assert.match(source, /!onboarding \? <>[\s\S]*settings\.provider\.default_text_model[\s\S]*settings\.provider\.default_image_model[\s\S]*settings\.provider\.cloudflare_setup_defaults/)
-  assert.match(source, /settings\.provider\.cloudflare_account_id/)
-  assert.match(source, /settings\.provider\.cloudflare_api_token/)
+test('Cloudflare text and image defaults offer Terra and Sol in setup and settings', () => {
+  assert.match(source, /const CLOUDFLARE_MODELS = \['openai\/gpt-5\.6-terra', 'openai\/gpt-5\.6-sol'\]/)
+  assert.match(source, /<select \{\.\.\.field\('default_model'\)\}/)
+  assert.match(source, /<select \{\.\.\.field\('default_image_model'\)\}/)
+  assert.match(source, /default_model: provider\.default_model \|\| CLOUDFLARE_MODELS\[0\]/)
+  assert.doesNotMatch(source, /<input \{\.\.\.field\('default_(?:image_)?model'\)\}/)
 })
 
 test('the Cloudflare provider has a fixed gateway endpoint and no generic OpenAI URL field', () => {

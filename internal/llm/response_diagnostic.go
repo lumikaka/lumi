@@ -7,6 +7,8 @@ type ProviderResponseFailureReason string
 
 const (
 	ProviderResponseEmptyBody              ProviderResponseFailureReason = "empty_body"
+	ProviderResponseInvalidStatus          ProviderResponseFailureReason = "invalid_response_status"
+	ProviderResponseStreamIncomplete       ProviderResponseFailureReason = "stream_incomplete"
 	ProviderResponseBodyReadError          ProviderResponseFailureReason = "body_read_error"
 	ProviderResponseBodyTooLarge           ProviderResponseFailureReason = "body_too_large"
 	ProviderResponseMalformedJSON          ProviderResponseFailureReason = "malformed_json"

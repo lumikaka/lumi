@@ -45,6 +45,12 @@ func ResolveImageSize(profile project.PictureBookProfile, providerType, model st
 	ratio := profile.AspectRatio
 	switch providerType {
 	case provider.TypeCloudflareAIGateway, provider.LegacyTypeOpenAICompatible:
+		if provider.UsesCloudflareImageTool(model) {
+			if size, ok := cloudflareCustomImageSize(ratio); ok {
+				return size, nil
+			}
+			break
+		}
 		if !registeredCloudflareImageModel(model) {
 			break
 		}
@@ -81,5 +87,34 @@ func registeredCloudflareImageModel(model string) bool {
 	// Cloudflare's Responses adapter currently exposes OpenAI image-capable
 	// model identifiers. Keep this explicit so arbitrary/unknown models cannot
 	// silently inherit an output-size capability.
-	return strings.HasPrefix(model, "openai/gpt-image-") || strings.HasPrefix(model, "openai/gpt-5")
+	return strings.HasPrefix(model, "openai/gpt-image-")
+}
+
+// The pinned Cloudflare image tool accepts custom dimensions in multiples of
+// 16. Prefer a 1536px long edge (1024px for square images), increasing it only
+// when needed to preserve an exact ratio within the tool's pixel limits.
+func cloudflareCustomImageSize(ratio project.AspectRatio) (ImageSize, bool) {
+	if ratio.Width < 1 || ratio.Height < 1 || ratio.Width > ratio.Height*3 || ratio.Height > ratio.Width*3 {
+		return ImageSize{}, false
+	}
+	longest, target := max(ratio.Width, ratio.Height), 1536
+	if ratio.Width == ratio.Height {
+		target = 1024
+	}
+	var best ImageSize
+	for scale := 16; scale*longest <= 3840; scale += 16 {
+		size := ImageSize{Width: ratio.Width * scale, Height: ratio.Height * scale}
+		pixels := size.Width * size.Height
+		if pixels < 655360 || pixels > 8294400 {
+			continue
+		}
+		if scale*longest > target {
+			if best.Width == 0 {
+				best = size
+			}
+			break
+		}
+		best = size
+	}
+	return best, best.Width != 0
 }

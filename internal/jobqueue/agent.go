@@ -136,8 +136,11 @@ func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string,
 		}, false)
 		return productionDomainTask(task), err
 	case KindComicImageGeneration:
-		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, false)
-		return productionDomainTask(task), err
+		task, err := manager.createComicImageGeneration(ctx, projectUUID, request.ChapterUUID, request.ResourceUUID, CreateProductionGenerationInput{ProviderUUID: request.ProviderUUID, Model: request.Model, EnableThinking: request.EnableThinking, PromptExtend: request.PromptExtend, SelectionProviderUUID: request.SelectionProviderUUID, SelectionModel: request.SelectionModel, Prompt: request.Prompt, PremiseAssetUUIDs: request.PremiseAssetUUIDs, IdempotencyKey: request.IdempotencyKey}, request.Invocation)
+		if err != nil {
+			return productionDomainTask(task), err
+		}
+		return manager.awaitDomainTask(ctx, projectUUID, productionDomainTask(task), request.Invocation)
 	case KindStoryProfileGeneration, KindStoryProfileFromChapters, KindStoryChapterBatchPlan, KindComicStoryboardGeneration:
 		var maxSectionCount *int
 		if request.MaxSectionCount > 0 {

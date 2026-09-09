@@ -13,6 +13,36 @@ type workflowAwaitTarget struct {
 	AwaitUUID, ThreadUUID, TurnUUID string
 }
 
+// awaitDomainTask suspends only when the persisted dependency belongs to this
+// exact tool invocation, including an idempotent replay of task creation.
+func (manager *Manager) awaitDomainTask(ctx context.Context, projectUUID string, result agent.DomainTask, invocation agent.DomainInvocationContext) (agent.DomainTask, error) {
+	if !invocation.AwaitCompletion {
+		return result, nil
+	}
+	runtime, err := manager.runtimeFor(projectUUID)
+	if err != nil {
+		return result, err
+	}
+	var exists bool
+	err = runtime.sqlDB.QueryRowContext(ctx, `SELECT EXISTS(
+		SELECT 1 FROM workflow_awaits a
+		JOIN workflow_steps s ON s.workflow_id=a.workflow_id
+		JOIN agent_tool_executions x ON x.id=a.tool_execution_id
+		JOIN chat_runs r ON r.id=a.chat_run_id
+		JOIN chat_turns t ON t.id=a.chat_turn_id
+		JOIN chat_threads th ON th.id=a.chat_thread_id
+		WHERE s.task_uuid=? AND x.uuid=? AND r.uuid=? AND t.uuid=? AND th.uuid=? AND th.project_id=?
+		AND a.status IN ('waiting','ready','resuming')
+	)`, result.UUID, invocation.ToolExecutionUUID, invocation.RunUUID, invocation.TurnUUID, invocation.ThreadUUID, runtime.projectID).Scan(&exists)
+	if err != nil {
+		return result, err
+	}
+	if !exists {
+		return result, taskError(CodeTaskPersistenceFailed, "异步任务缺少对话等待记录", "无法安全等待任务终态，请检查 Workflow 与调用归属。", nil)
+	}
+	return result, agent.ErrWaitingWorkflow
+}
+
 // readyWorkflowAwaitsTx moves an inline Chat dependency across the durable
 // Workflow terminal boundary and inserts exactly one active Chat Resume job in
 // the same SQLite/River transaction.

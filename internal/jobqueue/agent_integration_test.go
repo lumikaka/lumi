@@ -129,6 +129,15 @@ func (model *inlineWorkflowAgentModel) Complete(_ context.Context, request llm.C
 		})
 		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-comic-image-batch-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
 	}
+	if strings.Contains(last, "生成封面图") {
+		arguments, _ := json.Marshal(map[string]any{
+			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/comic-sections/" + model.sectionUUIDs[0] + "/image-generations",
+			"method":          "POST",
+			"request_body":    map[string]any{"prompt": "按当前页面脚本生成封面图。"},
+			"response_filter": ".data | {uuid,kind,resource_uuid,status,error_code,error_message}",
+		})
+		return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "create-comic-image-workflow", Name: "request_api", Arguments: string(arguments)}}}, FinishReason: "tool_calls"}, nil
+	}
 	if strings.Contains(last, "发起章节生成") {
 		arguments, _ := json.Marshal(map[string]any{
 			"url":             "/api/v1/projects/" + model.projectUUID + "/chapters/" + model.chapterUUID + "/generations",

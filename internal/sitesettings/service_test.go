@@ -29,7 +29,7 @@ func TestSettingsSnapshotIsReadThroughAndMutationRefreshesIt(t *testing.T) {
 	ctx := context.Background()
 	store, _, service := testService(t)
 	first, err := service.Value(ctx, CloudflareDefaultModelKey)
-	if err != nil || first != "deepseek/deepseek-v4-pro" {
+	if err != nil || first != "openai/gpt-5.6-terra" {
 		t.Fatalf("first value=%v error=%v", first, err)
 	}
 	// A direct database write is deliberately invisible: all legitimate writes
@@ -38,10 +38,10 @@ func TestSettingsSnapshotIsReadThroughAndMutationRefreshesIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	stillCached, _ := service.Value(ctx, CloudflareDefaultModelKey)
-	if stillCached != "deepseek/deepseek-v4-pro" {
+	if stillCached != "openai/gpt-5.6-terra" {
 		t.Fatalf("read-through cache was reloaded unexpectedly: %v", stillCached)
 	}
-	if _, _, err := service.Update(ctx, map[string]any{CloudflareDefaultModelKey: "test/updated"}); err != nil {
+	if _, _, err := service.UpdateSystem(ctx, map[string]any{CloudflareDefaultModelKey: "test/updated"}); err != nil {
 		t.Fatal(err)
 	}
 	updated, _ := service.Value(ctx, CloudflareDefaultModelKey)
@@ -51,7 +51,7 @@ func TestSettingsSnapshotIsReadThroughAndMutationRefreshesIt(t *testing.T) {
 	if err := store.DB().Exec(`DROP TABLE site_settings`).Error; err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := service.Update(ctx, map[string]any{CloudflareDefaultModelKey: "test/must-not-stick"}); err == nil {
+	if _, _, err := service.UpdateSystem(ctx, map[string]any{CloudflareDefaultModelKey: "test/must-not-stick"}); err == nil {
 		t.Fatal("database failure did not fail the update")
 	}
 	unchanged, err := service.Value(ctx, CloudflareDefaultModelKey)
@@ -165,5 +165,31 @@ func TestMasterKeyCacheConcurrentLoadRetryAndMissingKeyProtection(t *testing.T) 
 	}
 	if keys.SetCount != setCount {
 		t.Fatalf("missing root key was overwritten: set count %d -> %d", setCount, keys.SetCount)
+	}
+}
+
+func TestCloudflareModelSelectionIsRestrictedToTerraAndSol(t *testing.T) {
+	_, _, service := testService(t)
+	ctx := context.Background()
+	for _, key := range []string{CloudflareDefaultModelKey, CloudflareDefaultImageModelKey} {
+		value, err := service.Value(ctx, key)
+		if err != nil || value != CloudflareModelTerra {
+			t.Fatalf("%s=%v error=%v", key, value, err)
+		}
+		for _, model := range []string{CloudflareModelSol, CloudflareModelTerra} {
+			if _, _, err := service.Update(ctx, map[string]any{key: model}); err != nil {
+				t.Fatal(err)
+			}
+			value, err = service.Value(ctx, key)
+			if err != nil || value != model {
+				t.Fatalf("selected=%v want=%s err=%v", value, model, err)
+			}
+		}
+		if _, _, err := service.Update(ctx, map[string]any{key: "openai/gpt-5.5"}); err == nil {
+			t.Fatalf("unsupported public selection allowed for %s", key)
+		}
+		if _, _, err := service.Reset(ctx, []string{key}); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

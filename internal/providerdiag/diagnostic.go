@@ -85,6 +85,14 @@ func ReadHTTPError(response *http.Response, apiKey string) Details {
 			candidates = append(candidates, nested)
 		}
 	}
+	// Cloudflare wraps API failures in an errors array instead of error.
+	if entries, ok := payload["errors"].([]any); ok {
+		for _, entry := range entries {
+			if candidate, ok := entry.(map[string]any); ok {
+				candidates = append(candidates, candidate)
+			}
+		}
+	}
 	for _, candidate := range candidates {
 		if details.ProviderCode == "" {
 			details.ProviderCode = firstString(candidate, "code", "type", "error_code")
@@ -121,7 +129,7 @@ func firstString(values map[string]any, keys ...string) string {
 
 // RequestID returns the first known Provider request-id header.
 func RequestID(headers http.Header) string {
-	for _, key := range []string{"X-Request-Id", "Request-Id", "X-Dashscope-Request-Id", "X-Trace-Id"} {
+	for _, key := range []string{"X-Request-Id", "Request-Id", "X-Dashscope-Request-Id", "X-Trace-Id", "Cf-Ray"} {
 		if value := strings.TrimSpace(headers.Get(key)); value != "" {
 			return value
 		}

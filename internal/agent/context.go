@@ -19,6 +19,7 @@ import (
 
 type contextItem struct {
 	itemRecord
+	ResponsesOutput   []json.RawMessage
 	TurnUUID, RunUUID string
 	References        []Reference
 }
@@ -140,6 +141,9 @@ func contextRequestBytes(messages []llm.ChatMessage, tools []llm.ToolDefinition)
 				calls = append(calls, map[string]any{"id": call.ID, "type": "function", "function": map[string]any{"name": call.Name, "arguments": call.Arguments}})
 			}
 			item["tool_calls"] = calls
+		}
+		if len(message.ResponsesOutput) > 0 {
+			item["responses_output"] = message.ResponsesOutput
 		}
 		wireMessages = append(wireMessages, item)
 	}
@@ -326,11 +330,42 @@ func loadContextItems(ctx context.Context, store *project.Store, threadID, throu
 		})
 	}
 	items := make([]contextItem, 0, len(records))
+	// Request snapshots are already persisted before tool intents. Restore the
+	// Responses output by request UUID so reasoning survives process restarts.
+	requestUUIDs := make([]string, 0)
+	seenRequests := map[string]bool{}
+	for _, record := range records {
+		requestUUID := metadataString(record.MetadataJSON, "request_uuid")
+		if isUUIDv7(requestUUID) && !seenRequests[requestUUID] {
+			seenRequests[requestUUID] = true
+			requestUUIDs = append(requestUUIDs, requestUUID)
+		}
+	}
+	responseOutputs := map[string][]json.RawMessage{}
+	if len(requestUUIDs) > 0 {
+		var snapshots []struct {
+			UUID   string
+			Output string
+		}
+		if err := store.DB().WithContext(ctx).Table("llm_logs").
+			Select("uuid, CASE WHEN json_valid(response) THEN COALESCE(json_extract(response, '$.message.responses_output'), '') ELSE '' END AS output").
+			Where("chat_thread_id=? AND uuid IN ? AND provider_type=?", threadID, requestUUIDs, "cloudflare_ai_gateway").
+			Scan(&snapshots).Error; err != nil {
+			return nil, err
+		}
+		for _, snapshot := range snapshots {
+			var output []json.RawMessage
+			if json.Unmarshal([]byte(snapshot.Output), &output) == nil {
+				responseOutputs[snapshot.UUID] = output
+			}
+		}
+	}
 	for _, record := range records {
 		if record.TurnID != nil && turnSequences[*record.TurnID] > throughTurnSequence {
 			continue
 		}
 		item := contextItem{itemRecord: record}
+		item.ResponsesOutput = responseOutputs[metadataString(record.MetadataJSON, "request_uuid")]
 		if record.TurnID != nil {
 			item.TurnUUID = turnUUIDs[*record.TurnID]
 		}
@@ -506,7 +541,7 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 			}
 			messages = append(messages, llm.ChatMessage{Role: "user", Content: content})
 		case "assistant_message":
-			messages = append(messages, llm.ChatMessage{Role: "assistant", Content: item.Content})
+			messages = append(messages, llm.ChatMessage{Role: "assistant", Content: item.Content, ResponsesOutput: item.ResponsesOutput})
 		case "tool_call":
 			calls := []llm.ToolCall{contextToolCall(item, providerCallIDs)}
 			// Every call emitted by one physical Provider response must be
@@ -524,7 +559,7 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 					itemIndex = nextIndex
 				}
 			}
-			messages = append(messages, llm.ChatMessage{Role: "assistant", ToolCalls: calls})
+			messages = append(messages, llm.ChatMessage{Role: "assistant", ToolCalls: calls, ResponsesOutput: matchingResponsesOutput(item.ResponsesOutput, calls)})
 		case "tool_result":
 			providerCallID, synthetic := contextProviderCallIdentity(item, providerCallIDs)
 			messages = append(messages, llm.ChatMessage{Role: "tool", ToolCallID: providerCallID, ToolCallIDSynthetic: synthetic, Content: item.Content})
@@ -533,6 +568,33 @@ func contextMessages(items []contextItem, summary string, currentTurn any, promp
 		}
 	}
 	return messages
+}
+
+// A rejected or repaired tool batch may retain only part of the model output.
+// Do not replay function calls that have no corresponding local tool result.
+func matchingResponsesOutput(output []json.RawMessage, calls []llm.ToolCall) []json.RawMessage {
+	index := 0
+	for _, raw := range output {
+		var item struct {
+			Type   string `json:"type"`
+			CallID string `json:"call_id"`
+			Name   string `json:"name"`
+		}
+		if json.Unmarshal(raw, &item) != nil {
+			return nil
+		}
+		if item.Type != "function_call" {
+			continue
+		}
+		if index >= len(calls) || item.CallID != calls[index].ID || item.Name != calls[index].Name {
+			return nil
+		}
+		index++
+	}
+	if index != len(calls) {
+		return nil
+	}
+	return output
 }
 
 func buildHistoricalImageReferenceManifest(items []contextItem, currentTurnID int64) historicalImageReferenceManifest {

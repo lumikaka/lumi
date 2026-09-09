@@ -161,6 +161,11 @@ func (service *Service) update(ctx context.Context, settings map[string]any, sys
 		if err != nil {
 			return Response{}, nil, invalidSetting(key, err)
 		}
+		if !system && len(definition.AllowedValues) > 0 {
+			if _, err := member(definition.AllowedValues...)(clean); err != nil {
+				return Response{}, nil, invalidSetting(key, err)
+			}
+		}
 		normalized[key] = clean
 	}
 	if !system {

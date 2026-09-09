@@ -96,7 +96,7 @@ test('comic image batches expose their section count, page titles and aggregate 
   assert.equal(comicImageBatchStepTitle(workflow.steps[0], t), 'chat.workflow.step.batch_section_image_with_title:1:封面')
   assert.equal(comicImageBatchStepTitle(workflow.steps[1], t), 'chat.workflow.step.batch_section_image_with_title:2:月光邮局')
   assert.equal(comicImageBatchStepTitle(workflow.steps[2], t), 'chat.workflow.step.batch_section_image:3:')
-  assert.equal(workflowProgressPercent(workflow), 47)
+  assert.equal(workflowProgressPercent(workflow), 33)
 })
 
 test('dedicated and inline workflows are separated and inline cards sort stably within their origin turn', () => {

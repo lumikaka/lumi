@@ -13,11 +13,11 @@ import (
 )
 
 type ImageGenerationPreflightHandler struct {
-	providers *provider.Service
+	models *modelsettings.Resolver
 }
 
 func NewImageGenerationPreflightHandler(providers *provider.Service) *ImageGenerationPreflightHandler {
-	return &ImageGenerationPreflightHandler{providers: providers}
+	return &ImageGenerationPreflightHandler{models: modelsettings.NewResolver(providers)}
 }
 
 func imageAspectUnsupportedError(err error, details string) error {
@@ -35,11 +35,11 @@ func (handler *ImageGenerationPreflightHandler) Create(c echo.Context) error {
 	if err != nil {
 		return projectAPIError(err)
 	}
-	resolved, err := handler.providers.Active(c.Request().Context())
+	resolved, err := handler.models.ResolveGlobal(c.Request().Context(), modelsettings.ProjectImage, modelsettings.KindImage)
 	if err != nil {
-		return providerAPIError(err)
+		return modelSettingsAPIError(err)
 	}
-	size, err := picturebook.ResolveImageSize(profile, resolved.ProviderType, resolved.DefaultImageModel)
+	size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model)
 	if err != nil {
 		var unsupported *picturebook.UnsupportedError
 		if errors.As(err, &unsupported) {
@@ -48,8 +48,8 @@ func (handler *ImageGenerationPreflightHandler) Create(c echo.Context) error {
 		return NewError(http.StatusInternalServerError, "image_preflight_failed", "图片生成预检失败", "无法解析图片模型能力。", err)
 	}
 	return Success(c, http.StatusOK, map[string]any{
-		"picture_book": profile, "provider_uuid": resolved.UUID, "provider_type": resolved.ProviderType,
-		"model": resolved.DefaultImageModel, "output_size": map[string]any{"width": size.Width, "height": size.Height, "value": size.String()},
+		"picture_book": profile, "provider_uuid": resolved.Provider.UUID, "provider_type": resolved.Provider.ProviderType,
+		"model": resolved.Model, "model_source": resolved.Source, "output_size": map[string]any{"width": size.Width, "height": size.Height, "value": size.String()},
 	})
 }
 

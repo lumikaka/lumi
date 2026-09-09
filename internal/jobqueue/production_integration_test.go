@@ -104,6 +104,19 @@ func TestUnsupportedPictureBookImageRatioIsRejectedBeforeTaskPersistence(t *test
 	}); err != nil {
 		t.Fatal(err)
 	}
+	task, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, section.UUID, CreateProductionGenerationInput{
+		IdempotencyKey: "unsupported-picture-book-size", ProviderUUID: harness.provider.UUID, Model: "openai/gpt-5.6-terra",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot production.GenerationSnapshot
+	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.OutputSize != "1536x1152" || snapshot.PictureBook == nil || snapshot.PictureBook.AspectRatio.Width != 4 || snapshot.PictureBook.AspectRatio.Height != 3 {
+		t.Fatalf("image task size/profile=%+v", snapshot)
+	}
 }
 
 func TestFrontCoverImageTaskUsesCoverRulesInsteadOfBodyPageRules(t *testing.T) {

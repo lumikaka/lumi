@@ -18,12 +18,9 @@ func (service *Service) ValidateBootstrapTextModel(ctx context.Context) error {
 	if service == nil || service.providers == nil {
 		return domainError(CodeProvider, "ChatArea 文本模型不可用", "Provider 服务尚未初始化。", nil)
 	}
-	resolved, err := service.providers.Active(ctx)
+	_, err := service.models.ResolveGlobal(ctx, modelsettings.ChatArea, modelsettings.KindText)
 	if err != nil {
 		return err
-	}
-	if strings.TrimSpace(resolved.DefaultModel) == "" {
-		return domainError(CodeProvider, "ChatArea 文本模型不可用", "当前 Provider 没有配置默认文本模型。", nil)
 	}
 	return nil
 }

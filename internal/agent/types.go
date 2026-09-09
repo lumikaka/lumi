@@ -462,22 +462,25 @@ type Workflow struct {
 }
 
 type WorkflowStep struct {
-	ProviderError *WorkflowProviderError `json:"provider_error,omitempty"`
-	UUID          string                 `json:"uuid"`
-	StepKey       string                 `json:"step_key"`
-	Position      int                    `json:"position"`
-	Status        string                 `json:"status"`
-	Progress      int                    `json:"progress"`
-	TaskUUID      string                 `json:"task_uuid,omitempty"`
-	ResourceUUID  string                 `json:"resource_uuid,omitempty"`
-	Input         json.RawMessage        `json:"input"`
-	Output        json.RawMessage        `json:"output"`
-	ErrorCode     string                 `json:"error_code,omitempty"`
-	ErrorMessage  string                 `json:"error_message,omitempty"`
-	StartedAt     *time.Time             `json:"started_at,omitempty"`
-	CompletedAt   *time.Time             `json:"completed_at,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	Stage             string                 `json:"stage,omitempty"`
+	StageStartedAt    *time.Time             `json:"stage_started_at,omitempty"`
+	CancelRequestedAt *time.Time             `json:"cancel_requested_at,omitempty"`
+	ProviderError     *WorkflowProviderError `json:"provider_error,omitempty"`
+	UUID              string                 `json:"uuid"`
+	StepKey           string                 `json:"step_key"`
+	Position          int                    `json:"position"`
+	Status            string                 `json:"status"`
+	Progress          int                    `json:"progress"`
+	TaskUUID          string                 `json:"task_uuid,omitempty"`
+	ResourceUUID      string                 `json:"resource_uuid,omitempty"`
+	Input             json.RawMessage        `json:"input"`
+	Output            json.RawMessage        `json:"output"`
+	ErrorCode         string                 `json:"error_code,omitempty"`
+	ErrorMessage      string                 `json:"error_message,omitempty"`
+	StartedAt         *time.Time             `json:"started_at,omitempty"`
+	CompletedAt       *time.Time             `json:"completed_at,omitempty"`
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
 }
 
 type WorkflowDiagnosticRun struct {

@@ -334,7 +334,8 @@
 - Section 必须属于路径中的 Chapter、处于 active 状态并有当前 Storyboard；同一 Section 不能已有活动图片任务。
 - `premise_asset_uuids` 必须互不重复，所有项须属于当前项目且有可用图片版本。
 - 此接口用于单个 Section；生成多个 Section 时使用批量接口。
-- 接口只创建异步 Task，并使用 Tool Execution 幂等键。
+- 接口按 Tool Execution 幂等键原子创建异步 Task 和 Workflow；重复恢复复用同一 Task、Workflow 和 await。
+- Chat Agent 调用会在当前 Turn 内展示 Workflow 并等待终态，等待期间不查询进度。运行时恢复同一 Run 后，Tool Result 的 `data` 包含 `workflow_uuid`、`task_uuid`、`resource_uuid`、`status`，成功时的 `data.result.image_variant_uuid` 为生成的图片版本。请求中的 `response_filter` 仍按上面的 Task 创建响应校验。
 
 ## `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-image-generation-batches`
 

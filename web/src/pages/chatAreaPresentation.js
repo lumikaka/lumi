@@ -1,3 +1,4 @@
+import { imageBatchCounts } from '../components/imageTaskPresentation.js'
 import { isVerticalStripPictureBook } from './pictureBookProfile.js'
 
 export function chatComposerMode({ activeTurn = null, draft = '' } = {}) {
@@ -121,6 +122,10 @@ function compareWorkflows(left, right) {
 }
 
 export function workflowProgressPercent(workflow) {
+  if (workflow?.kind === 'comic_image_generation_batch') {
+    const { total, completed } = imageBatchCounts(workflow)
+    return total ? Math.round(completed * 100 / total) : 0
+  }
   const steps = Array.isArray(workflow?.steps) ? workflow.steps : []
   if (!steps.length) return workflow?.status === 'completed' ? 100 : 0
   const total = steps.reduce((sum, step) => {

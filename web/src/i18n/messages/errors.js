@@ -1,6 +1,7 @@
 import { defineMessages } from './defineMessages.js'
 
 export const errors = defineMessages({
+  'errors.code.agent_cancellation_pending': ['本轮已停止，部分后台任务仍在取消中。后台会继续处理，也可在工作流卡片重试取消。', 'This turn has stopped. Some background tasks are still being cancelled. Cancellation will be retried automatically; you can also retry from the workflow card.'],
   "errors.code.model_price_invalid": ["计价配置或筛选无效，请检查价格档位、地域和所需用量。", "Invalid pricing or filters. Check tiers, region, and required usage."],
   "errors.code.model_price_conflict": ["价格已被更新，请刷新后重试。", "The price was updated. Refresh and try again."],
   "errors.code.model_price_not_found": ["计价资源不存在。", "The pricing resource does not exist."],

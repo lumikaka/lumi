@@ -5,13 +5,19 @@ Lumi 的 AI 能力是可选的本机基础设施。没有 Provider、系统密�
 ## 存储与安全边界
 
 - 全局 `lumi.sqlite` 的 `site_settings` 保存 Provider UUIDv7、Cloudflare Account ID、默认文本/图片模型、启用状态和加密后的 secret envelope。
-- 首次配置使用独立前端地址 `/setup/`，先展示可选服务商列表，再通过所选服务商的 Dialog 完成连接。Cloudflare AI Gateway 的首次 Dialog 只要求 32 位 Account ID 和 Cloudflare API Token；默认文本/图片模型由系统设置，不要求用户首次选择。后续管理页允许调整 `author/model` 格式的模型 ID。Base URL 不允许用户输入，由后端固定派生为 `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1`。
+- 首次配置使用独立前端地址 `/setup/`，先展示可选服务商列表，再通过所选服务商的 Dialog 完成连接。Cloudflare AI Gateway 的首次 Dialog 只要求 32 位 Account ID 和 Cloudflare API Token；默认文本/图片模型均为 `openai/gpt-5.6-terra`，首次配置与后续管理页均可分别选择 Terra 或 `openai/gpt-5.6-sol`。Base URL 不允许用户输入，由后端固定派生为 `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1`。
 - Cloudflare API Token 由操作系统 Keychain 根密钥派生的 AES-256-GCM 密钥加密，密文保存在 `site_settings`；测试使用进程内 `MemoryMasterKeyStore`。API 不提供读取密钥的端点。
 - 项目 `project.sqlite` 固化调用时的公开 Provider UUID、Base URL、模型、生成参数、Prompt 和章节 revision，但从不复制 API Key 或 Authorization header。
 - REST、WebSocket 与 React 状态只暴露产品 UUID。`river_job_id` 与 River 表只存在于后端内部关联中。
 - LLM 日志只保存受限长度的文本摘要、合法 JSON payload、token usage、Unicode 字符数、耗时、finish reason 和安全错误码，不保存请求 header、secret 或二进制内容。缓存输入 token 只在 Provider 返回 usage details 时记录；旧日志和图片调用保持 `NULL`，输出速度读取时推导。
 
-Cloudflare 文本和 Agent 请求使用 AI Gateway REST API 的 `/ai/v1/chat/completions`；图片生成和参考图编辑统一使用 `/ai/v1/responses` 的 `image_generation` tool。第三方模型走账户自动创建的 `default` Gateway；`@cf/` Workers AI 模型会显式发送 `cf-aig-gateway-id: default`。该 Provider 不兼容任意 OpenAI-compatible Base URL。阿里云百炼保留为独立 Provider。
+Cloudflare 连接验证、文本、Agent 和图片请求统一使用 AI Gateway REST API 的 `/ai/v1/responses`；图片生成和参考图编辑继续使用 `image_generation` tool。第三方模型走账户默认 Gateway；支持 Responses 的 `@cf/` Workers AI 模型会显式发送 `cf-aig-gateway-id: default`。该 Provider 不兼容任意 OpenAI-compatible Base URL。阿里云百炼保留独立的 Chat Completions 文本与流式验证流程。
+
+Cloudflare 的默认文本模型与默认图片模型均默认为 `openai/gpt-5.6-terra`，用户可以分别切换为 `openai/gpt-5.6-sol`，通过 [Responses 接口](https://developers.cloudflare.com/ai-gateway/usage/rest-api/) 调用。配置页提供两个模型下拉框，公开设置接口仅接受 Terra 和 Sol；模型选择也用于全局和项目的模型列表。修改默认模型后需要重新验证。升级时保留 Terra/Sol 选择，清除其他旧模型覆盖与 Cloudflare 的旧验证状态，保留双方凭据、百炼验证状态和当前服务商选择，重新验证后可继续使用。
+
+Responses 请求使用 `input`、`max_output_tokens` 和 `store: false`。文本生成消费 `response.output_text.delta` 并要求有效终态；Agent 使用 `function_call` / `function_call_output`，以 `call_id` 关联工具结果。返回的 reasoning、函数调用和消息 phase 保存在现有 LLM 响应快照中，构建上下文时按请求 UUID 恢复，以支持无服务端会话状态的多轮调用和进程重启。连接验证发送非流式请求与 512 token 上限；因 `max_output_tokens` 结束的有效响应可以证明模型访问成功，业务生成仍拒绝截断结果。
+
+验证失败的 `error.details` 保留经过脱敏的上游 HTTP 状态、错误码、消息及 request ID（包括 Cloudflare `errors[]` 和 `Cf-Ray`），以区分 Lumi 的 502 与真实上游错误。
 
 ## River 版本与兼容性 gate
 

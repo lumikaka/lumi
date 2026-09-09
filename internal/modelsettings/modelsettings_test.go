@@ -146,7 +146,7 @@ func TestUnavailableAndMismatchedModelsAreSafe(t *testing.T) {
 	if _, err := h.providers.Activate(h.ctx, provider.TypeAliyunBailian); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := h.providers.Settings().Update(h.ctx, map[string]any{sitesettings.CloudflareDefaultModelKey: "cloud/new-text"}); err != nil {
+	if _, _, err := h.providers.Settings().UpdateSystem(h.ctx, map[string]any{sitesettings.CloudflareDefaultModelKey: "cloud/new-text"}); err != nil {
 		t.Fatal(err)
 	}
 	view, err = resolver.Get(h.ctx, h.store)

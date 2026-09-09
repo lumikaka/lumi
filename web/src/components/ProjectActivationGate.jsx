@@ -6,6 +6,7 @@ import { ensureProjectOpen } from '../pages/projectActivation.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
+import AppPageShell from './AppPageShell.jsx'
 
 export default function ProjectActivationGate({ children }) {
   const { t } = useI18n()
@@ -26,23 +27,25 @@ export default function ProjectActivationGate({ children }) {
     queryClient.invalidateQueries({ queryKey: projectQueryKeys.recent() })
   }, [activationQuery.data, projectUuid, queryClient])
 
-  if (activationQuery.isError && !activationQuery.data) {
-    const error = activationQuery.error
-    const presentation = localizedErrorPresentation(t, error, { titleKey: 'projects.error.enter_title' })
-    return (
-      <main className="workspace-loading workspace-activation-error" role="alert">
-        <strong>{presentation.title}</strong>
-        <span>{presentation.message}</span>
-        {presentation.code ? <small>{t('errors.diagnostic_code', { code: presentation.code })}</small> : null}
-        <div>
-          <button type="button" onClick={() => activationQuery.refetch()}>{t('common.action.retry')}</button>
-          <Link className="button-link" to="/">{t('projects.all')}</Link>
-        </div>
-      </main>
-    )
-  }
   if (!activationQuery.data) {
-    return <p className="workspace-loading">{t('projects.loading.entering')}</p>
+    const presentation = activationQuery.isError
+      ? localizedErrorPresentation(t, activationQuery.error, { titleKey: 'projects.error.enter_title' })
+      : null
+    return (
+      <AppPageShell title={t('projects.workspace')}>
+        {presentation ? (
+          <section className="workspace-activation-error" role="alert">
+            <h1>{presentation.title}</h1>
+            <p>{presentation.message}</p>
+            {presentation.code ? <small>{t('errors.diagnostic_code', { code: presentation.code })}</small> : null}
+            <div>
+              <button type="button" disabled={activationQuery.isFetching} onClick={() => activationQuery.refetch()}>{t(activationQuery.isFetching ? 'projects.loading.entering' : 'common.action.retry')}</button>
+              <Link className="button-secondary" to="/">{t('projects.all')}</Link>
+            </div>
+          </section>
+        ) : <p className="workspace-loading" role="status">{t('projects.loading.entering')}</p>}
+      </AppPageShell>
+    )
   }
   return <ProjectBoundary key={projectUuid}>{children}</ProjectBoundary>
 }

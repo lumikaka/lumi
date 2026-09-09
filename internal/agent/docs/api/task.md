@@ -77,6 +77,8 @@ Story Task 使用 `/tasks`；Premise、Comic 与 Export 等生产任务使用 `/
 ### 接口约束
 
 - Task 是异步状态快照；图片或导出只能在 `completed` 后报告完成。
+- 漫画图片任务的 `stage` 与 `stage_started_at` 是已持久化的执行阶段和该阶段开始时间。阶段依次为 `selecting_references`、`preparing_references`、`generating`、`saving`；旧任务或尚未开始的任务可以省略。它们不代表供应商内部生成百分比，终态始终以 `status` 为准。Workflow 中关联该任务的 Step 同样公开这两个字段。
+- `cancel_requested_at` 表示取消意图已保存；任务仍处于活动状态时应显示“正在取消”。单任务取消仅影响该任务，批量取消保留已完成图片。取消在本地终止请求并阻止迟到结果提交，不承诺供应商远端计算已经停止。
 
 ## `GET /api/v1/projects/{project_uuid}/tasks`
 

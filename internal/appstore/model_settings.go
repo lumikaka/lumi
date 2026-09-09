@@ -21,8 +21,8 @@ type GlobalModelSelection struct {
 }
 
 type GlobalModelSettings struct {
-	ID                   int64 `gorm:"primaryKey;autoIncrement" json:"-"`
-	Singleton            int `json:"-"`
+	ID                   int64                            `gorm:"primaryKey;autoIncrement" json:"-"`
+	Singleton            int                              `json:"-"`
 	Settings             map[string]*GlobalModelSelection `gorm:"serializer:json"`
 	Revision             int
 	CreatedAt, UpdatedAt time.Time
@@ -44,15 +44,29 @@ func (store *Store) PatchGlobalModelSettings(ctx context.Context, expectedRevisi
 		result := tx.Model(&GlobalModelSettings{}).Where("singleton = ? AND revision = ?", 1, expectedRevision).Updates(map[string]any{
 			"revision": gorm.Expr("revision + 1"), "updated_at": time.Now().UTC(),
 		})
-		if result.Error != nil { return result.Error }
-		if result.RowsAffected != 1 { return ErrGlobalModelSettingsConflict }
-		if err := tx.Where("singleton = ?", 1).First(&row).Error; err != nil { return err }
-		if row.Settings == nil { row.Settings = make(map[string]*GlobalModelSelection) }
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrGlobalModelSettingsConflict
+		}
+		if err := tx.Where("singleton = ?", 1).First(&row).Error; err != nil {
+			return err
+		}
+		if row.Settings == nil {
+			row.Settings = make(map[string]*GlobalModelSelection)
+		}
 		for key, selection := range changes {
-			if selection == nil { delete(row.Settings, key) } else { row.Settings[key] = selection }
+			if selection == nil {
+				delete(row.Settings, key)
+			} else {
+				row.Settings[key] = selection
+			}
 		}
 		data, err := json.Marshal(row.Settings)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		return tx.Model(&GlobalModelSettings{}).Where("id = ?", row.ID).Update("settings", string(data)).Error
 	})
 	return row, err

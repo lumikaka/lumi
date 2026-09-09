@@ -126,7 +126,7 @@ func loadComicImageBatchReplayTx(ctx context.Context, tx *sql.Tx, projectID int6
 	if frozen.RequestFingerprint != expected.RequestFingerprint {
 		return "", nil, false, taskError(CodeTaskConflict, "批量图片幂等输入冲突", "相同幂等键已用于不同的有序 Section 输入、模型参数或调用归属。", nil)
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT t.id,t.uuid,t.project_id,t.river_job_id,t.kind,t.resource_uuid,t.input_snapshot,t.status,t.idempotency_key,t.provider_uuid,t.model,t.model_source,t.progress,t.attempt,t.max_attempts,t.error_code,t.error_message,t.cancel_requested_at,t.started_at,t.completed_at,t.created_at,t.updated_at
+	rows, err := tx.QueryContext(ctx, `SELECT t.id,t.uuid,t.project_id,t.river_job_id,t.kind,t.resource_uuid,t.input_snapshot,t.status,t.idempotency_key,t.provider_uuid,t.model,t.model_source,t.progress,t.attempt,t.max_attempts,t.error_code,t.error_message,t.cancel_requested_at,t.started_at,t.completed_at,t.created_at,t.updated_at,t.stage,t.stage_started_at
 		FROM workflow_steps s JOIN production_task_runs t ON t.uuid=s.task_uuid
 		WHERE s.workflow_id=? ORDER BY s.position,s.id`, workflowID)
 	if err != nil {
@@ -136,7 +136,7 @@ func loadComicImageBatchReplayTx(ctx context.Context, tx *sql.Tx, projectID int6
 	records := make([]productionTaskRecord, 0, len(expected.Sections))
 	for rows.Next() {
 		var row productionTaskRecord
-		if err := rows.Scan(&row.ID, &row.UUID, &row.ProjectID, &row.RiverJobID, &row.Kind, &row.ResourceUUID, &row.InputSnapshot, &row.Status, &row.IdempotencyKey, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.Progress, &row.Attempt, &row.MaxAttempts, &row.ErrorCode, &row.ErrorMessage, &row.CancelRequestedAt, &row.StartedAt, &row.CompletedAt, &row.CreatedAt, &row.UpdatedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.UUID, &row.ProjectID, &row.RiverJobID, &row.Kind, &row.ResourceUUID, &row.InputSnapshot, &row.Status, &row.IdempotencyKey, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.Progress, &row.Attempt, &row.MaxAttempts, &row.ErrorCode, &row.ErrorMessage, &row.CancelRequestedAt, &row.StartedAt, &row.CompletedAt, &row.CreatedAt, &row.UpdatedAt, &row.Stage, &row.StageStartedAt); err != nil {
 			return "", nil, false, err
 		}
 		records = append(records, row)

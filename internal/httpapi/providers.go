@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"lumi/internal/llm"
 	"lumi/internal/provider"
@@ -14,11 +16,11 @@ import (
 
 type ProviderHandler struct {
 	providers *provider.Service
-	client    llm.Client
+	client    llm.ConnectionChecker
 	hub       *realtime.Hub
 }
 
-func NewProviderHandler(providers *provider.Service, client llm.Client, hubs ...*realtime.Hub) *ProviderHandler {
+func NewProviderHandler(providers *provider.Service, client llm.ConnectionChecker, hubs ...*realtime.Hub) *ProviderHandler {
 	var hub *realtime.Hub
 	if len(hubs) > 0 {
 		hub = hubs[0]
@@ -55,10 +57,9 @@ func (handler *ProviderHandler) Check(c echo.Context) error {
 	if err != nil {
 		return providerAPIError(err)
 	}
-	_, checkErr := handler.client.Generate(c.Request().Context(), llm.Request{
+	checkErr := handler.client.CheckConnection(c.Request().Context(), resolved.ProviderType, llm.Request{
 		BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: resolved.DefaultModel,
-		Prompt: "Reply with OK.", MaxTokens: 1,
-	}, nil)
+	})
 	if checkErr != nil {
 		return llmAPIError(checkErr)
 	}
@@ -111,5 +112,19 @@ func llmAPIError(err error) error {
 	case llm.CodeCancelled:
 		status = http.StatusRequestTimeout
 	}
-	return NewError(status, domainErr.Code, domainErr.SafeMessage, "请检查 Provider 配置后重试。", err)
+	details := []string{"请检查 Provider 配置后重试。"}
+	diagnostic := domainErr.ProviderDiagnostic()
+	if diagnostic.HTTPStatus > 0 {
+		details = append(details, fmt.Sprintf("Provider HTTP status: %d", diagnostic.HTTPStatus))
+	}
+	if diagnostic.ProviderCode != "" {
+		details = append(details, "Provider code: "+diagnostic.ProviderCode)
+	}
+	if diagnostic.Message != "" {
+		details = append(details, "Provider message: "+diagnostic.Message)
+	}
+	if diagnostic.RequestID != "" {
+		details = append(details, "Provider request ID: "+diagnostic.RequestID)
+	}
+	return NewError(status, domainErr.Code, domainErr.SafeMessage, strings.Join(details, "\n"), err)
 }

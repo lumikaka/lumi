@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
+	"lumi/internal/modelsettings"
+	"lumi/internal/picturebook"
 	"lumi/internal/project"
 	"lumi/internal/realtime"
 	"lumi/internal/story"
@@ -12,11 +15,12 @@ import (
 
 type ProjectSetupHandler struct {
 	projects *project.Manager
+	models   *modelsettings.Resolver
 	hub      *realtime.Hub
 }
 
-func NewProjectSetupHandler(projects *project.Manager, hub *realtime.Hub) *ProjectSetupHandler {
-	return &ProjectSetupHandler{projects: projects, hub: hub}
+func NewProjectSetupHandler(projects *project.Manager, models *modelsettings.Resolver, hub *realtime.Hub) *ProjectSetupHandler {
+	return &ProjectSetupHandler{projects: projects, models: models, hub: hub}
 }
 
 func (handler *ProjectSetupHandler) Show(c echo.Context) error {
@@ -104,7 +108,21 @@ func (handler *ProjectSetupHandler) Finalize(c echo.Context) error {
 	}
 	var state project.SetupState
 	err := handler.projects.WithStore(c.Request().Context(), c.Param("project_uuid"), func(store *project.Store) error {
-		var err error
+		draft, err := store.ProjectSetup(c.Request().Context())
+		if err != nil {
+			return err
+		}
+		// Preserve revision/incomplete-draft errors and idempotent finalization.
+		// The store rechecks the revision before writing the immutable profile.
+		if draft.SetupStatus == project.SetupStatusDraft && draft.Revision == request.ExpectedRevision && len(draft.MissingInformation) == 0 && draft.DraftValues.PictureBook != nil {
+			resolved, err := handler.models.Resolve(c.Request().Context(), store, modelsettings.ProjectImage, modelsettings.KindImage, "", "")
+			if err != nil {
+				return modelSettingsAPIError(err)
+			}
+			if _, err := picturebook.ResolveImageSize(*draft.DraftValues.PictureBook, resolved.Provider.ProviderType, resolved.Model); err != nil {
+				return imageAspectUnsupportedError(err, "请切换图片模型或调整草稿比例后重新定稿；项目设置尚未定稿。")
+			}
+		}
 		state, err = store.FinalizeProjectSetup(c.Request().Context(), request.ExpectedRevision)
 		if err != nil {
 			return err
@@ -112,6 +130,10 @@ func (handler *ProjectSetupHandler) Finalize(c echo.Context) error {
 		return story.NewService(store).EnsurePromptCatalogVersions(c.Request().Context(), "project_created")
 	})
 	if err != nil {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		return ProjectAPIError(err)
 	}
 	if err := handler.projects.SyncProjectName(c.Request().Context(), c.Param("project_uuid")); err != nil {

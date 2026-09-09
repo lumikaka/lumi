@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
+import { invalidateModelSettingsQueries } from './modelSettingsQueries.js'
 import { getRealtimeSocket } from '../api/realtime.js'
 import { isProjectBusinessQuery, projectQueryKeys } from '../api/projectQueryKeys.js'
 
@@ -8,7 +9,9 @@ export function useSiteSettingsRealtime() {
   const queryClient = useQueryClient()
   useEffect(() => {
     const channel = getRealtimeSocket().channel('system')
+    const invalidateModels = () => invalidateModelSettingsQueries(queryClient)
     const invalidateSiteSettings = () => {
+      invalidateModels()
       queryClient.invalidateQueries({ queryKey: ['model-prices'] })
       queryClient.invalidateQueries({ queryKey: ['site-settings'] })
       queryClient.invalidateQueries({ queryKey: ['providers'] })
@@ -33,6 +36,7 @@ export function useSiteSettingsRealtime() {
     }
     const cleanups = [
       channel.on('site_settings:updated', invalidateSiteSettings),
+      channel.on('model_settings:changed', invalidateModels),
       channel.on('model_price:changed', invalidateSiteSettings),
       channel.on('open_project:changed', invalidateProjectLifecycle),
       channel.on('project_creation_session:changed', invalidateProjectCreation),

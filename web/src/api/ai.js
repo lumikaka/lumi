@@ -21,6 +21,17 @@ export function getActiveProvider() {
   return apiRequest(providerPath('', '/active'))
 }
 
+export function getModelSettings() {
+  return apiRequest('/api/v1/model-settings')
+}
+
+export function updateModelSettings(expectedRevision, overrides) {
+  return apiRequest('/api/v1/model-settings', jsonRequest('PATCH', {
+    expected_revision: expectedRevision,
+    overrides,
+  }))
+}
+
 export function getProjectModelSettings(projectUuid) {
   return apiRequest(taskPath(projectUuid, '/model-settings'))
 }

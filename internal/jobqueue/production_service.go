@@ -345,7 +345,7 @@ func normalizeProductionTags(values []string) []string {
 }
 
 func (manager *Manager) CreateComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput) (ProductionTask, error) {
-	return manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, input, true)
+	return manager.createComicImageGeneration(ctx, projectUUID, chapterUUID, sectionUUID, input, agent.DirectUIInvocationContext())
 }
 
 func (manager *Manager) CreateComicImageGenerationBatch(ctx context.Context, projectUUID, chapterUUID string, input CreateComicImageGenerationBatchInput) (ComicImageGenerationBatch, error) {
@@ -569,7 +569,11 @@ func comicImageGenerationBatchTask(task ProductionTask) ComicImageGenerationBatc
 	}
 }
 
-func (manager *Manager) createComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput, createVisibleWorkflow bool) (ProductionTask, error) {
+func (manager *Manager) createComicImageGeneration(ctx context.Context, projectUUID, chapterUUID, sectionUUID string, input CreateProductionGenerationInput, invocation agent.DomainInvocationContext) (ProductionTask, error) {
+	invocation, err := normalizeDomainInvocation(invocation)
+	if err != nil {
+		return ProductionTask{}, err
+	}
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
 		return ProductionTask{}, err
@@ -589,12 +593,12 @@ func (manager *Manager) createComicImageGeneration(ctx context.Context, projectU
 		if _, err = tx.ExecContext(ctx, `INSERT INTO comic_image_generations(uuid,comic_section_id,task_uuid,status,input_snapshot,created_at) VALUES(?,(SELECT s.id FROM comic_sections s JOIN chapter_comic_states cs ON cs.id=s.chapter_comic_state_id JOIN chapters c ON c.id=cs.chapter_id WHERE s.uuid=? AND c.uuid=?),?,'queued',?,?)`, generationUUID, sectionUUID, chapterUUID, taskUUID, string(encoded), now); err != nil {
 			return err
 		}
-		if !createVisibleWorkflow {
+		if invocation.PresentationMode == agent.PresentationNone {
 			return nil
 		}
-		return createComicImageWorkflowTx(ctx, tx, runtime.projectID, projectUUID, chapterUUID, generationUUID, taskUUID, prepared.Section, prepared.Snapshot.ProviderUUID, prepared.Snapshot.Model, prepared.Snapshot.ModelSource, now)
+		return createComicImageWorkflowTx(ctx, tx, runtime.projectID, projectUUID, chapterUUID, generationUUID, taskUUID, prepared.Section, prepared.Snapshot.ProviderUUID, prepared.Snapshot.Model, prepared.Snapshot.ModelSource, invocation, now)
 	})
-	if err == nil && createVisibleWorkflow {
+	if err == nil && invocation.PresentationMode != agent.PresentationNone {
 		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
 	}
 	return task, err
@@ -1064,7 +1068,27 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if err != nil {
 		return ProductionTask{}, err
 	}
-	runtime.cancelWork(taskUUID)
+	return runtime.cancelProductionTask(ctx, taskUUID)
+}
+
+func (runtime *projectRuntime) cancelProductionTask(ctx context.Context, taskUUID string) (ProductionTask, error) {
+	projectUUID := runtime.projectUUID
+	now := runtime.manager.now().UTC()
+	// Persist intent before interrupting work, so cancellation survives a failed
+	// River transaction or process exit. The runtime reconciles pending intents.
+	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE production_task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE project_id=? AND uuid=? AND status NOT IN ('completed','cancelled')`, now, now, runtime.projectID, taskUUID); err != nil {
+		return ProductionTask{}, err
+	}
+	if runtime.manager.hub != nil {
+		runtime.manager.hub.Broadcast("project:"+projectUUID, "production_task:cancel_requested", map[string]any{"project_uuid": projectUUID, "task_uuid": taskUUID})
+	}
+	runtime.broadcastProductionWorkflow("workflow:step_changed", taskUUID)
+	return runtime.finishProductionCancellation(ctx, taskUUID)
+}
+
+func (runtime *projectRuntime) finishProductionCancellation(ctx context.Context, taskUUID string) (ProductionTask, error) {
+	projectUUID := runtime.projectUUID
+	now := runtime.manager.now().UTC()
 	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
 	if err != nil {
 		return ProductionTask{}, err
@@ -1077,14 +1101,16 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if !found {
 		return ProductionTask{}, taskError(CodeTaskNotFound, "任务不存在", "生产任务不存在。", nil)
 	}
-	if record.Status == StatusCompleted || record.Status == StatusCancelled {
+	if record.Status == StatusCompleted || record.Status == StatusCancelled || record.CancelRequestedAt == nil {
 		_ = tx.Commit()
 		return record.DTO(), nil
 	}
+	// Check the persisted intent under the transaction before touching a worker.
+	// A retry may have cleared the intent since the recovery scan.
+	runtime.cancelWork(taskUUID)
 	if record.RiverJobID == nil {
 		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "任务缺少 River job", "无法安全取消。", nil)
 	}
-	now := manager.now().UTC()
 	if _, err := runtime.client.JobCancelTx(ctx, tx, *record.RiverJobID); err != nil {
 		return ProductionTask{}, err
 	}
@@ -1106,6 +1132,9 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if err := cancelComicWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
+	if err := readyWorkflowAwaitsTx(ctx, runtime, tx, taskUUID, now); err != nil {
+		return ProductionTask{}, err
+	}
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
@@ -1115,7 +1144,7 @@ func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, t
 	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
-	task, err := manager.GetProductionTask(ctx, projectUUID, taskUUID)
+	task, err := runtime.manager.GetProductionTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcastProduction("production_task:cancelled", task)
 		runtime.broadcastProductionWorkflow("workflow:cancelled", taskUUID)
@@ -1171,7 +1200,7 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if _, err := runtime.client.JobRetryTx(ctx, tx, *record.RiverJobID); err != nil {
 		return ProductionTask{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,error_code='',error_message='',cancel_requested_at=NULL,completed_at=NULL,updated_at=? WHERE id=?`, now, record.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,error_code='',error_message='',cancel_requested_at=NULL,completed_at=NULL,updated_at=? WHERE id=?`, now, record.ID); err != nil {
 		return ProductionTask{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE premise_generation_steps SET status='queued',error_code='',completed_at=NULL WHERE task_uuid=? AND status IN ('failed','cancelled')`, taskUUID); err != nil {
@@ -1237,7 +1266,7 @@ func getProductionTaskRecord(ctx context.Context, db *gorm.DB, projectID int64, 
 	return row, err
 }
 
-const productionSelect = `SELECT id,uuid,project_id,river_job_id,kind,resource_uuid,input_snapshot,status,idempotency_key,provider_uuid,model,model_source,progress,attempt,max_attempts,error_code,error_message,cancel_requested_at,started_at,completed_at,created_at,updated_at FROM production_task_runs`
+const productionSelect = `SELECT id,uuid,project_id,river_job_id,kind,resource_uuid,input_snapshot,status,idempotency_key,provider_uuid,model,model_source,progress,attempt,max_attempts,error_code,error_message,cancel_requested_at,started_at,completed_at,created_at,updated_at,stage,stage_started_at FROM production_task_runs`
 
 func findProductionTaskTx(ctx context.Context, tx *sql.Tx, projectID int64, kind, key string) (productionTaskRecord, bool, error) {
 	return scanProduction(tx.QueryRowContext(ctx, productionSelect+` WHERE project_id=? AND kind=? AND idempotency_key=? LIMIT 1`, projectID, kind, key))
@@ -1247,7 +1276,7 @@ func findProductionByUUIDTx(ctx context.Context, tx *sql.Tx, projectID int64, uu
 }
 func scanProduction(row rowScanner) (productionTaskRecord, bool, error) {
 	var r productionTaskRecord
-	err := row.Scan(&r.ID, &r.UUID, &r.ProjectID, &r.RiverJobID, &r.Kind, &r.ResourceUUID, &r.InputSnapshot, &r.Status, &r.IdempotencyKey, &r.ProviderUUID, &r.Model, &r.ModelSource, &r.Progress, &r.Attempt, &r.MaxAttempts, &r.ErrorCode, &r.ErrorMessage, &r.CancelRequestedAt, &r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt)
+	err := row.Scan(&r.ID, &r.UUID, &r.ProjectID, &r.RiverJobID, &r.Kind, &r.ResourceUUID, &r.InputSnapshot, &r.Status, &r.IdempotencyKey, &r.ProviderUUID, &r.Model, &r.ModelSource, &r.Progress, &r.Attempt, &r.MaxAttempts, &r.ErrorCode, &r.ErrorMessage, &r.CancelRequestedAt, &r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.UpdatedAt, &r.Stage, &r.StageStartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, false, nil
 	}

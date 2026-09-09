@@ -105,6 +105,9 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		content = append(content, map[string]any{"type": "input_image", "image_url": "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)})
 	}
 	tool := map[string]any{"type": "image_generation", "action": "generate", "moderation": "low"}
+	if provider.UsesCloudflareImageTool(input.Model) {
+		tool["model"] = provider.CloudflareImageToolModel
+	}
 	if strings.TrimSpace(input.Size) != "" {
 		tool["size"] = strings.TrimSpace(input.Size)
 	}

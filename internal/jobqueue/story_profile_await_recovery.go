@@ -64,30 +64,5 @@ func repairMissingStoryProfileAwaitsTx(ctx context.Context, tx *sql.Tx, projectI
 }
 
 func (manager *Manager) awaitStoryDomainTask(ctx context.Context, projectUUID string, task Task, invocation agent.DomainInvocationContext) (agent.DomainTask, error) {
-	result := storyDomainTask(task)
-	if !invocation.AwaitCompletion {
-		return result, nil
-	}
-	runtime, err := manager.runtimeFor(projectUUID)
-	if err != nil {
-		return result, err
-	}
-	var exists bool
-	err = runtime.sqlDB.QueryRowContext(ctx, `SELECT EXISTS(
-		SELECT 1 FROM workflow_awaits a
-		JOIN workflow_steps s ON s.workflow_id=a.workflow_id
-		JOIN agent_tool_executions x ON x.id=a.tool_execution_id
-		JOIN chat_runs r ON r.id=a.chat_run_id
-		JOIN chat_turns t ON t.id=a.chat_turn_id
-		JOIN chat_threads th ON th.id=a.chat_thread_id
-		WHERE s.task_uuid=? AND x.uuid=? AND r.uuid=? AND t.uuid=? AND th.uuid=? AND th.project_id=?
-		AND a.status IN ('waiting','ready','resuming')
-	)`, task.UUID, invocation.ToolExecutionUUID, invocation.RunUUID, invocation.TurnUUID, invocation.ThreadUUID, runtime.projectID).Scan(&exists)
-	if err != nil {
-		return result, err
-	}
-	if !exists {
-		return result, taskError(CodeTaskPersistenceFailed, "异步任务缺少对话等待记录", "无法安全等待任务终态，请检查 Workflow 与调用归属。", nil)
-	}
-	return result, agent.ErrWaitingWorkflow
+	return manager.awaitDomainTask(ctx, projectUUID, storyDomainTask(task), invocation)
 }

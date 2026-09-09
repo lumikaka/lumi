@@ -31,20 +31,38 @@ type comicWorkflowRef struct {
 	ThreadUUID string
 }
 
-func createComicImageWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, chapterUUID, generationUUID, taskUUID string, section production.ComicSection, providerUUID, model, modelSource string, now time.Time) error {
-	threadUUID, err := newUUIDv7()
+func createComicImageWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64, projectUUID, chapterUUID, generationUUID, taskUUID string, section production.ComicSection, providerUUID, model, modelSource string, invocation agent.DomainInvocationContext, now time.Time) error {
+	invocation, err := normalizeDomainInvocation(invocation)
 	if err != nil {
 		return err
+	}
+	var threadID int64
+	var threadUUID string
+	var inlineOwner inlineWorkflowOwner
+	switch invocation.PresentationMode {
+	case agent.PresentationDedicatedThread:
+		threadUUID, err = newUUIDv7()
+		if err != nil {
+			return err
+		}
+		threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, projectID, comicWorkflowTitle, providerUUID, model, modelSource, now, now)
+		if err != nil {
+			return err
+		}
+		threadID, err = threadResult.LastInsertId()
+		if err != nil {
+			return err
+		}
+	case agent.PresentationInline:
+		inlineOwner, err = loadInlineWorkflowOwnerTx(ctx, tx, projectID, invocation)
+		if err != nil {
+			return err
+		}
+		threadID, threadUUID = inlineOwner.ThreadID, inlineOwner.ThreadUUID
+	case agent.PresentationNone:
+		return nil
 	}
 	workflowUUID, err := newUUIDv7()
-	if err != nil {
-		return err
-	}
-	threadResult, err := tx.ExecContext(ctx, `INSERT INTO chat_threads(uuid,project_id,title,status,thread_type,provider_uuid,model,model_source,next_turn_sequence,next_item_sequence,next_event_sequence,created_at,updated_at) VALUES(?,?,?,'busy','workflow',?,?,?,1,1,1,?,?)`, threadUUID, projectID, comicWorkflowTitle, providerUUID, model, modelSource, now, now)
-	if err != nil {
-		return err
-	}
-	threadID, err := threadResult.LastInsertId()
 	if err != nil {
 		return err
 	}
@@ -81,10 +99,22 @@ func createComicImageWorkflowTx(ctx context.Context, tx *sql.Tx, projectID int64
 			return err
 		}
 	}
-	return appendComicWorkflowEventTx(ctx, tx, workflowID, "workflow_queued", map[string]any{
+	payload := map[string]any{
 		"project_uuid": projectUUID, "workflow_uuid": workflowUUID, "thread_uuid": threadUUID,
 		"task_uuid": taskUUID, "resource_uuid": section.UUID, "status": agent.WorkflowQueued,
-	}, now)
+	}
+	if invocation.PresentationMode == agent.PresentationInline {
+		awaitUUID, err := newUUIDv7()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_awaits(uuid,workflow_id,chat_thread_id,chat_turn_id,chat_run_id,tool_execution_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'waiting',?,?)`, awaitUUID, workflowID, inlineOwner.ThreadID, inlineOwner.TurnID, inlineOwner.RunID, inlineOwner.ToolExecutionID, now, now); err != nil {
+			return err
+		}
+		payload["turn_uuid"], payload["run_uuid"] = inlineOwner.TurnUUID, inlineOwner.RunUUID
+		payload["tool_call_uuid"], payload["origin_item_uuid"] = inlineOwner.ToolCallUUID, inlineOwner.ToolItemUUID
+	}
+	return appendComicWorkflowEventTx(ctx, tx, workflowID, "workflow_queued", payload, now)
 }
 
 func comicWorkflowRefTx(ctx context.Context, tx *sql.Tx, taskUUID string) (comicWorkflowRef, bool, error) {
@@ -151,8 +181,14 @@ func markComicImageGenerated(ctx context.Context, runtime *projectRuntime, recor
 	})
 }
 
-func markComicImageSaved(ctx context.Context, runtime *projectRuntime, record productionTaskRecord, imageVariantUUID string) error {
+func markComicImageSaved(ctx context.Context, runtime *projectRuntime, record productionTaskRecord) error {
 	return runtime.updateComicWorkflow(ctx, record.UUID, func(tx *sql.Tx, ref comicWorkflowRef, now time.Time) error {
+		// Read the variant produced by this task, independent of whichever
+		// image the user currently has selected on the Section.
+		var imageVariantUUID string
+		if err := tx.QueryRowContext(ctx, `SELECT v.uuid FROM comic_image_variants v JOIN comic_image_generations g ON g.id=v.image_generation_id WHERE g.task_uuid=? ORDER BY v.id DESC LIMIT 1`, record.UUID).Scan(&imageVariantUUID); err != nil {
+			return err
+		}
 		output, _ := json.Marshal(map[string]any{"image_variant_uuid": imageVariantUUID})
 		_, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET output_json=?,updated_at=? WHERE workflow_id=? AND step_key=?`, string(output), now, ref.ID, agent.WorkflowStepSaveSectionImage)
 		return err

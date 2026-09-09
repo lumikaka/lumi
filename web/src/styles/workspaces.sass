@@ -3583,20 +3583,32 @@ $sage: $color-success
   text-align: center
 
 .workspace-activation-error
+  width: 100%
   max-width: 680px
-  margin: 48px auto
+  margin: clamp(16px, 5vh, 48px) auto
+  padding: clamp(24px, 4vw, 50px)
   display: grid
   gap: 12px
+  color: $color-muted
+  font-size: 13px
+  line-height: 1.6
+  text-align: center
+  overflow-wrap: anywhere
   border: 1px solid rgba($color-danger, .22)
-  border-radius: 16px
+  border-radius: $radius-md
   background: rgba($color-danger, .05)
 
-  strong
-    color: $color-danger
-    font-size: 16px
+  h1,
+  p
+    margin: 0
 
-  div
+  h1
+    color: $color-danger
+    font-size: 18px
+
+  > div
     display: flex
+    flex-wrap: wrap
     justify-content: center
     gap: 10px
 

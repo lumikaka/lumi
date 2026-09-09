@@ -54,13 +54,25 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	if state.WorkflowStatus != WorkflowCompleted && state.WorkflowStatus != WorkflowFailed && state.WorkflowStatus != WorkflowCancelled && state.WorkflowStatus != WorkflowInterrupted {
 		return false, domainError(CodeStateConflict, "Workflow 尚未终止", "Chat Resume 只能读取持久化 Workflow 终态。", nil)
 	}
-	if err := store.DB().WithContext(ctx).Raw(`SELECT uuid,step_key,position,status,COALESCE(task_uuid,''),COALESCE(resource_uuid,''),COALESCE(output_json,'{}'),COALESCE(error_code,''),COALESCE(error_message,'')
+	if err := store.DB().WithContext(ctx).Raw(`SELECT uuid,step_key,position,status,
+		COALESCE(task_uuid,'') AS task_uuid,COALESCE(resource_uuid,'') AS resource_uuid,
+		COALESCE(output_json,'{}') AS output_json,COALESCE(error_code,'') AS error_code,COALESCE(error_message,'') AS error_message
 		FROM workflow_steps WHERE workflow_id=? ORDER BY position,id`, state.WorkflowID).Scan(&state.Steps).Error; err != nil {
 		return false, err
 	}
 	if state.WorkflowKind != WorkflowYolo && len(state.Steps) > 0 {
 		step := state.Steps[len(state.Steps)-1]
 		state.TaskUUID, state.ResourceUUID, state.OutputJSON = step.TaskUUID, step.ResourceUUID, step.OutputJSON
+	}
+	if state.WorkflowKind == WorkflowComicSectionImage {
+		// The image task belongs to the generation step; the saved variant is
+		// returned by the final save step, which deliberately has no task link.
+		for _, step := range state.Steps {
+			if step.StepKey == WorkflowStepGenerateSectionImage {
+				state.TaskUUID = step.TaskUUID
+				break
+			}
+		}
 	}
 	if state.WorkflowStatus == WorkflowFailed {
 		providerErrors, err := workflowProviderErrors(ctx, store, state.WorkflowID)

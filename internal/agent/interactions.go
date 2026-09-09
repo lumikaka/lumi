@@ -558,6 +558,9 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 		if _, err := tx.ExecContext(ctx, `UPDATE task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE uuid IN (SELECT s.task_uuid FROM workflow_awaits a JOIN workflow_steps s ON s.workflow_id=a.workflow_id WHERE a.chat_run_id=?) AND status IN ('queued','running','waiting_for_input')`, now, now, runID); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE uuid IN (SELECT s.task_uuid FROM workflow_awaits a JOIN workflow_steps s ON s.workflow_id=a.workflow_id WHERE a.chat_run_id=?) AND status IN ('queued','running')`, now, now, runID); err != nil {
+			return err
+		}
 		if _, err := appendEventTx(ctx, tx, &thread, &runID, "abort_requested", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": turn.UUID, "run_uuid": runUUID, "status": TurnCancelled}, now); err != nil {
 			return err
 		}
@@ -585,10 +588,16 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 	if jobID > 0 {
 		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, jobID)
 	}
+	var cancellationErr error
 	for _, task := range awaitedTasks {
-		_ = service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, task.Kind, task.UUID)
+		if err := service.queue.CancelDomainTask(context.WithoutCancel(ctx), projectUUID, task.Kind, task.UUID); err != nil {
+			cancellationErr = errors.Join(cancellationErr, err)
+		}
 	}
 	service.broadcastThread(projectUUID, threadUUID, "chat:turn_cancelled", map[string]any{"project_uuid": projectUUID, "thread_uuid": threadUUID, "turn_uuid": result.UUID, "status": result.Status})
+	if cancellationErr != nil {
+		return result, domainError("agent_cancellation_pending", "本轮已停止，部分后台任务仍在取消中。", "取消请求已保存；后台会继续处理，可在工作流卡片重试取消。", cancellationErr)
+	}
 	return result, nil
 }
 

@@ -358,10 +358,13 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	var status, generationUUID string
 	_ = runtime.store.DB().WithContext(ctx).Raw(`SELECT status,uuid FROM comic_image_generations WHERE task_uuid=?`, record.UUID).Row().Scan(&status, &generationUUID)
 	if status == "completed" {
-		return nil
+		return markComicImageSaved(ctx, runtime, record)
 	}
 	resolved, err := runtime.manager.providers.Resolve(ctx, snapshot.ProviderUUID)
 	if err != nil {
+		return err
+	}
+	if err := runtime.productionStage(ctx, record, "selecting_references"); err != nil {
 		return err
 	}
 	selection := sectionReferenceSelection{References: snapshot.PremiseAssets}
@@ -372,6 +375,9 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 		}
 	}
 	if err := markComicReferencesSelected(ctx, runtime, record, selection); err != nil {
+		return err
+	}
+	if err := runtime.productionStage(ctx, record, "preparing_references"); err != nil {
 		return err
 	}
 	references := selection.References
@@ -439,6 +445,9 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	if snapshot.Version >= 4 && strings.TrimSpace(snapshot.OutputSize) != "" {
 		imageSize = snapshot.OutputSize
 	}
+	if err := runtime.productionStage(ctx, record, "generating"); err != nil {
+		return err
+	}
 	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindComicImageGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: imageSize, Images: referenceImages})
 	if err != nil {
 		return err
@@ -449,11 +458,13 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	if err := runtime.productionProgress(ctx, record, 80); err != nil {
 		return err
 	}
-	imageVariant, err := service.CommitGeneratedSectionImage(ctx, snapshot.ChapterUUID, snapshot.ResourceUUID, generationUUID, json.RawMessage(record.InputSnapshot), bytes.NewReader(response.Bytes))
-	if err != nil {
+	if err := runtime.productionStage(ctx, record, "saving"); err != nil {
 		return err
 	}
-	return markComicImageSaved(ctx, runtime, record, imageVariant.UUID)
+	if _, err := service.CommitGeneratedSectionImage(ctx, snapshot.ChapterUUID, snapshot.ResourceUUID, generationUUID, json.RawMessage(record.InputSnapshot), bytes.NewReader(response.Bytes)); err != nil {
+		return err
+	}
+	return markComicImageSaved(ctx, runtime, record)
 }
 
 func comicImageSize(providerType string) string {
@@ -506,6 +517,7 @@ func (runtime *projectRuntime) selectSectionReferences(ctx context.Context, reso
 }
 
 func (runtime *projectRuntime) callProductionText(ctx context.Context, record productionTaskRecord, snapshot production.GenerationSnapshot, resolved provider.Resolved, scenario string, request llm.Request) (llm.Response, error) {
+	request.ProviderType = resolved.ProviderType
 	requestPayload, err := llmlog.EncodeTextRequest(request)
 	if err != nil {
 		return llm.Response{}, err
@@ -827,6 +839,9 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	if err := completeComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := completePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
@@ -865,6 +880,9 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	if err := failComicWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
+	if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := failPremiseAssetWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
@@ -892,7 +910,7 @@ func (runtime *projectRuntime) retryProductionFailure(ctx context.Context, recor
 	}
 	defer tx.Rollback()
 	now := runtime.manager.now().UTC()
-	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,attempt=?,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE id=? AND cancel_requested_at IS NULL AND status<>'cancelled'`, attempt, now, record.ID)
+	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,attempt=?,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE id=? AND cancel_requested_at IS NULL AND status<>'cancelled'`, attempt, now, record.ID)
 	if err != nil {
 		return err
 	}
@@ -959,6 +977,9 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 	if err := cancelComicWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
+	if err := readyWorkflowAwaitsTx(ctx, runtime, tx, record.UUID, now); err != nil {
+		return err
+	}
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
@@ -968,6 +989,8 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	record.Status = StatusCancelled
+	runtime.broadcastProduction("production_task:cancelled", record.DTO())
 	runtime.broadcastProductionWorkflow("workflow:cancelled", record.UUID)
 	return nil
 }
@@ -985,7 +1008,7 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 	}
 	defer tx.Rollback()
 	now := runtime.manager.now().UTC()
-	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,attempt=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='running' AND cancel_requested_at IS NULL`, attempt, now, record.ID)
+	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,attempt=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='running' AND cancel_requested_at IS NULL`, attempt, now, record.ID)
 	if err != nil {
 		return err
 	}
@@ -1045,7 +1068,7 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		}
 		defer tx.Rollback()
 		now := runtime.manager.now().UTC()
-		result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,completed_at=NULL,updated_at=? WHERE id=? AND status='failed'`, now, record.ID)
+		result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,completed_at=NULL,updated_at=? WHERE id=? AND status='failed'`, now, record.ID)
 		if err != nil {
 			return err
 		}

@@ -269,6 +269,8 @@ type exportCleanupArgs struct {
 func (exportCleanupArgs) Kind() string { return "lumi_comic_export_cleanup_v1" }
 
 type ProductionTask struct {
+	Stage             string          `json:"stage,omitempty"`
+	StageStartedAt    *time.Time      `json:"stage_started_at,omitempty"`
 	UUID              string          `json:"uuid"`
 	Kind              string          `json:"kind"`
 	ResourceUUID      string          `json:"resource_uuid"`
@@ -346,6 +348,8 @@ type CreateExportInput struct {
 }
 
 type productionTaskRecord struct {
+	Stage                                                                                       string
+	StageStartedAt                                                                              *time.Time
 	ID                                                                                          int64 `gorm:"primaryKey"`
 	UUID                                                                                        string
 	ProjectID                                                                                   int64
@@ -359,7 +363,7 @@ type productionTaskRecord struct {
 
 func (productionTaskRecord) TableName() string { return "production_task_runs" }
 func (r productionTaskRecord) DTO() ProductionTask {
-	return ProductionTask{UUID: r.UUID, Kind: r.Kind, ResourceUUID: r.ResourceUUID, InputSnapshot: json.RawMessage(r.InputSnapshot), Status: r.Status, IdempotencyKey: r.IdempotencyKey, ProviderUUID: r.ProviderUUID, Model: r.Model, ModelSource: r.ModelSource, Progress: r.Progress, Attempt: r.Attempt, MaxAttempts: r.MaxAttempts, ErrorCode: r.ErrorCode, ErrorMessage: r.ErrorMessage, CancelRequestedAt: r.CancelRequestedAt, StartedAt: r.StartedAt, CompletedAt: r.CompletedAt, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}
+	return ProductionTask{Stage: r.Stage, StageStartedAt: r.StageStartedAt, UUID: r.UUID, Kind: r.Kind, ResourceUUID: r.ResourceUUID, InputSnapshot: json.RawMessage(r.InputSnapshot), Status: r.Status, IdempotencyKey: r.IdempotencyKey, ProviderUUID: r.ProviderUUID, Model: r.Model, ModelSource: r.ModelSource, Progress: r.Progress, Attempt: r.Attempt, MaxAttempts: r.MaxAttempts, ErrorCode: r.ErrorCode, ErrorMessage: r.ErrorMessage, CancelRequestedAt: r.CancelRequestedAt, StartedAt: r.StartedAt, CompletedAt: r.CompletedAt, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}
 }
 
 type productionTaskEventRecord struct {

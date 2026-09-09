@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import ModelSettingsCard from '../components/ModelSettingsCard.jsx'
 import ModelPricesPanel from './ModelPricesPanel.jsx'
 import AppPageShell from '../components/AppPageShell.jsx'
 import { checkProvider, getSiteSettings, listProviders, resetSiteSettings, updateSiteSettings } from '../api/ai.js'
@@ -15,6 +16,8 @@ const PREFIXES = {
   aliyun_bailian: 'ai_providers.aliyun_bailian',
 }
 
+const CLOUDFLARE_MODELS = ['openai/gpt-5.6-terra', 'openai/gpt-5.6-sol']
+
 function secretItem(settings, providerType) {
   const key = `${PREFIXES[providerType]}.api_key`
   return settings?.items?.find((item) => item.key === key)
@@ -26,15 +29,13 @@ function providerNameKey(provider) {
     : 'settings.provider.cloudflare_name'
 }
 
-function initialProviderForm(provider, onboarding = false) {
+function initialProviderForm(provider) {
   return provider.provider_type === 'aliyun_bailian'
     ? { workspace_id: provider.workspace_id || '', region: provider.region || 'cn-beijing' }
     : {
         account_id: provider.account_id || '',
-        ...(onboarding ? {} : {
-          default_model: provider.default_model || '',
-          default_image_model: provider.default_image_model || '',
-        }),
+        default_model: provider.default_model || CLOUDFLARE_MODELS[0],
+        default_image_model: provider.default_image_model || CLOUDFLARE_MODELS[0],
       }
 }
 
@@ -80,13 +81,13 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
   const prefix = PREFIXES[provider.provider_type]
   const isBailian = provider.provider_type === 'aliyun_bailian'
   const secret = secretItem(settings, provider.provider_type)
-  const [form, setForm] = useState(() => initialProviderForm(provider, onboarding))
+  const [form, setForm] = useState(() => initialProviderForm(provider))
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setForm(initialProviderForm(provider, onboarding))
-  }, [onboarding, provider.account_id, provider.default_image_model, provider.default_model, provider.provider_type, provider.region, provider.uuid, provider.workspace_id])
+    setForm(initialProviderForm(provider))
+  }, [provider.account_id, provider.default_model, provider.default_image_model, provider.provider_type, provider.region, provider.uuid, provider.workspace_id])
 
   const refresh = async () => {
     await Promise.all([
@@ -138,7 +139,7 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
     value: form[name],
     onChange: (event) => setForm((current) => ({ ...current, [name]: event.target.value })),
   })
-  const initialForm = initialProviderForm(provider, onboarding)
+  const initialForm = initialProviderForm(provider)
   const hasUnsavedChanges = apiKey.trim() || Object.keys(initialForm).some((key) => form[key] !== initialForm[key])
   const busy = saveAndCheck.isPending || activate.isPending || resetSecret.isPending
   const providerName = t(providerNameKey(provider))
@@ -171,10 +172,8 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
             </> : <>
               <label>{t('settings.provider.cloudflare_account_id')}<input {...field('account_id')} required autoFocus minLength={32} maxLength={32} pattern="[A-Fa-f0-9]{32}" placeholder={t('settings.provider.cloudflare_account_id_placeholder')} /></label>
               <p>{t('settings.provider.cloudflare_endpoint', { endpoint: cloudflareEndpoint(form.account_id) })}</p>
-              {!onboarding ? <>
-                <label>{t('settings.provider.default_text_model')}<input {...field('default_model')} required placeholder="deepseek/deepseek-v4-pro" /></label>
-                <label>{t('settings.provider.default_image_model')}<input {...field('default_image_model')} required placeholder="openai/gpt-5.5" /></label>
-              </> : <p>{t('settings.provider.cloudflare_setup_defaults')}</p>}
+              <label>{t('settings.provider.default_text_model')}<select {...field('default_model')} required>{CLOUDFLARE_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>
+              <label>{t('settings.provider.default_image_model')}<select {...field('default_image_model')} required>{CLOUDFLARE_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>
             </>}
             <label className="provider-api-key-field">
               {t(isBailian ? 'settings.provider.api_key' : 'settings.provider.cloudflare_api_token')}
@@ -223,6 +222,7 @@ export default function ProviderSettingsPage({ onboarding = false }) {
             {sortedItems.map((item) => <ProviderListItem key={item.uuid} provider={item} onOpen={() => setSelectedProviderType(item.provider_type)} />)}
           </div>
         </section>
+        {!onboarding ? <ModelSettingsCard /> : null}
         {!onboarding ? <ModelPricesPanel providers={items} /> : null}
       </div>
       {selectedProvider && settingsQuery.data ? <ProviderDialog provider={selectedProvider} settings={settingsQuery.data} onboarding={onboarding} onClose={() => setSelectedProviderType(null)} onActivated={onActivated} /> : null}

@@ -32,16 +32,17 @@ import (
 )
 
 type agentQueueFake struct {
-	mu            sync.Mutex
-	nextID        int64
-	jobs          []JobSpec
-	cancels       []string
-	domainCancels []string
-	tasks         map[string]DomainTask
-	retries       []string
-	requests      []DomainTaskRequest
-	batchRequests []DomainTaskBatchRequest
-	enqueueErr    error
+	domainCancelErr error
+	mu              sync.Mutex
+	nextID          int64
+	jobs            []JobSpec
+	cancels         []string
+	domainCancels   []string
+	tasks           map[string]DomainTask
+	retries         []string
+	requests        []DomainTaskRequest
+	batchRequests   []DomainTaskBatchRequest
+	enqueueErr      error
 }
 
 func (queue *agentQueueFake) EnqueueAgentTx(_ context.Context, _ string, _ *sql.Tx, spec JobSpec) (int64, error) {
@@ -135,6 +136,9 @@ func (queue *agentQueueFake) CancelDomainTask(_ context.Context, _ string, _ str
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	queue.domainCancels = append(queue.domainCancels, taskUUID)
+	if queue.domainCancelErr != nil {
+		return queue.domainCancelErr
+	}
 	if task, ok := queue.tasks[taskUUID]; ok {
 		task.Status = "cancelled"
 		queue.tasks[taskUUID] = task
@@ -919,6 +923,25 @@ func TestYoloRejectsUnsupportedPictureBookRatioBeforeCreatingWorkflow(t *testing
 	}
 	if workflows != 0 || threads != 0 {
 		t.Fatalf("preflight persisted workflows=%d threads=%d", workflows, threads)
+	}
+	// The same 4:3 project can start once its image model uses the custom-size tool.
+	if _, err := modelsettings.NewResolver(harness.providers).Patch(context.Background(), harness.store, modelsettings.PatchInput{
+		Changes: map[string]*modelsettings.Selection{modelsettings.ProjectImage: {ProviderUUID: harness.provider.UUID, Model: "openai/gpt-5.6-terra"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, CreateYoloInput{
+		Title: "Supported ratio", StoryPrompt: "A landscape page.", IdempotencyKey: "unsupported-ratio-yolo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal(workflow.InputSnapshot, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.OutputSize != "1536x1152" || snapshot.PictureBook == nil || snapshot.PictureBook.AspectRatio.Width != 4 || snapshot.PictureBook.AspectRatio.Height != 3 {
+		t.Fatalf("workflow size/profile=%+v", snapshot)
 	}
 }
 

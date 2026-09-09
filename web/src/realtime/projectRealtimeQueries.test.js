@@ -77,6 +77,15 @@ test('production, asset and LLM events invalidate exact and aggregate queries', 
   assert.ok(!keyNames(llm).includes('workflow-events'))
 })
 
+test('image stage and cancellation hints reread tasks instead of trusting payload state', () => {
+  for (const event of ['production_task:stage_changed', 'production_task:cancel_requested', 'production_task:cancelled']) {
+    const result = projectRealtimeInvalidation(projectUuid, event, { task_uuid: 'image-task', stage: 'generating' })
+    assert.ok(result.queryKeys.some((key) => key[0] === 'production-tasks'))
+    assert.ok(result.queryKeys.some((key) => key[0] === 'production-task' && key[2] === 'image-task'))
+    assert.equal(result.invalidateAll, false)
+  }
+})
+
 test('LLM changes invalidate trajectory pages and anchors within only their project', () => {
   const result = projectRealtimeInvalidation(projectUuid, 'llm_log:changed', { log_uuid: 'log-uuid', status: 'completed' })
   const prefix = result.queryKeys.find((key) => key[0] === 'chat-trajectory')

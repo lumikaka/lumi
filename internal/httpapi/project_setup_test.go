@@ -1,16 +1,147 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"lumi/internal/appstore"
+	"lumi/internal/config"
+	"lumi/internal/modelsettings"
 	"lumi/internal/project"
+	"lumi/internal/provider"
+	"lumi/internal/sitesettings"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
+
+func TestProjectSetupFinalizationChecksImageSizeBeforeFreezingDraft(t *testing.T) {
+	ctx := context.Background()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers := provider.NewService(app, provider.NewMemorySecretStore())
+	projects := project.NewManager(app)
+	t.Cleanup(func() { _ = projects.Close(); providers.Close(); _ = app.Close() })
+	configured, err := providers.Create(ctx, provider.CreateInput{
+		AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "openai/gpt-5.6-terra", DefaultImageModel: "openai/gpt-image-1.5", APIKey: "test-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := projects.CreateWithInput(ctx, project.CreateInput{Name: "Draft fixture"}, project.ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectUUID := created.UUID
+	// Build the draft fixture in the isolated test directory; CreateDraftAt is
+	// intentionally restricted to the user's real default project directory.
+	if err := projects.WithStore(ctx, projectUUID, func(store *project.Store) error {
+		var deleteGuard string
+		if err := store.DB().Raw("SELECT sql FROM sqlite_master WHERE name='project_picture_book_profiles_immutable_delete'").Scan(&deleteGuard).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec("DROP TRIGGER project_picture_book_profiles_immutable_delete").Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec("DELETE FROM project_picture_book_profiles").Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(deleteGuard).Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec("UPDATE projects SET setup_status='draft'").Error; err != nil {
+			return err
+		}
+		if err := store.DB().Exec(`INSERT INTO project_setup_drafts
+			(uuid,project_id,status,revision,original_input,generation_language,generation_brief,created_at,updated_at)
+			SELECT ?,id,'draft',1,'A cute mystery by the sea.','zh-Hans','A cute mystery by the sea.',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM projects`, uuid.Must(uuid.NewV7()).String()).Error; err != nil {
+			return err
+		}
+		return store.RefreshProject(ctx)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	models := modelsettings.NewResolver(providers)
+	handler := NewProjectSetupHandler(projects, models, nil)
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler
+	base := "/api/v1/projects/" + projectUUID
+	e.GET("/api/v1/projects/:project_uuid/project-setup", handler.Show)
+	e.PATCH("/api/v1/projects/:project_uuid/project-setup", handler.Update)
+	e.POST("/api/v1/projects/:project_uuid/project-setup-finalizations", handler.Finalize)
+	e.POST("/api/v1/projects/:project_uuid/image-generation-preflights", NewProjectImageGenerationPreflightHandler(projects, models).Create)
+	updated := requestJSON(t, e, http.MethodPatch, base+"/project-setup", map[string]any{
+		"expected_revision": 1, "project_name": "Tidal Mystery", "overall_style": "Cute watercolor",
+		"picture_book": map[string]any{"format": "classic_picture_book"},
+	})
+	if updated.Code != http.StatusOK {
+		t.Fatalf("update=%d %s", updated.Code, updated.Body.String())
+	}
+	finalize := func(revision int) *httptest.ResponseRecorder {
+		return requestJSON(t, e, http.MethodPost, base+"/project-setup-finalizations", map[string]any{"expected_revision": revision})
+	}
+	if stale := finalize(1); stale.Code != http.StatusConflict {
+		t.Fatalf("stale revision=%d %s", stale.Code, stale.Body.String())
+	}
+	blocked := finalize(2)
+	if blocked.Code != http.StatusUnprocessableEntity || !strings.Contains(blocked.Body.String(), `"code":"image_aspect_ratio_unsupported"`) || !strings.Contains(blocked.Body.String(), `"data":null`) {
+		t.Fatalf("unsupported model=%d %s", blocked.Code, blocked.Body.String())
+	}
+	shown := requestJSON(t, e, http.MethodGet, base+"/project-setup", nil)
+	var state struct {
+		Data project.SetupState `json:"data"`
+	}
+	if err := json.Unmarshal(shown.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Data.SetupStatus != project.SetupStatusDraft || state.Data.Revision != 2 || state.Data.FinalPictureBook != nil {
+		t.Fatalf("rejected finalization changed draft: %+v", state.Data)
+	}
+	if err := projects.WithStore(ctx, projectUUID, func(store *project.Store) error {
+		var count int64
+		if err := store.DB().Table("project_picture_book_profiles").Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			t.Fatalf("rejected finalization persisted %d profiles", count)
+		}
+		_, err := models.Patch(ctx, store, modelsettings.PatchInput{ExpectedRevision: 0, Changes: map[string]*modelsettings.Selection{
+			modelsettings.ProjectImage: {ProviderUUID: configured.UUID, Model: sitesettings.CloudflareModelTerra},
+		}})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	completed := finalize(2)
+	if completed.Code != http.StatusOK || !strings.Contains(completed.Body.String(), `"setup_status":"ready"`) {
+		t.Fatalf("supported model=%d %s", completed.Code, completed.Body.String())
+	}
+	preflight := requestJSON(t, e, http.MethodPost, base+"/image-generation-preflights", map[string]any{})
+	if preflight.Code != http.StatusOK || !strings.Contains(preflight.Body.String(), `"value":"1536x1152"`) {
+		t.Fatalf("finalized project preflight=%d %s", preflight.Code, preflight.Body.String())
+	}
+	// Replaying a completed finalization must not depend on today's model settings.
+	if err := projects.WithStore(ctx, projectUUID, func(store *project.Store) error {
+		_, err := models.Patch(ctx, store, modelsettings.PatchInput{ExpectedRevision: 1, Changes: map[string]*modelsettings.Selection{modelsettings.ProjectImage: nil}})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if replay := finalize(2); replay.Code != http.StatusOK {
+		t.Fatalf("replay=%d %s", replay.Code, replay.Body.String())
+	}
+	if conflict := finalize(3); conflict.Code != http.StatusConflict {
+		t.Fatalf("conflict=%d %s", conflict.Code, conflict.Body.String())
+	}
+}
 
 func TestProjectSetupChangedPayloadContainsOnlyPublicResyncHints(t *testing.T) {
 	state := project.SetupState{

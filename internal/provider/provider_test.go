@@ -23,8 +23,8 @@ func TestSupportedImageModelsPreservesProviderDefaults(t *testing.T) {
 	}{
 		{"bailian", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: BailianImageModel}, []string{BailianImageModel, BailianImageModelPro}},
 		{"pro default is not duplicated", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: " " + BailianImageModelPro + " "}, []string{BailianImageModelPro}},
-		{"cloudflare", Provider{ProviderType: TypeCloudflareAIGateway, DefaultImageModel: " cloud/image "}, []string{"cloud/image"}},
-		{"unconfigured cloudflare", Provider{ProviderType: TypeCloudflareAIGateway}, []string{}},
+		{"cloudflare", Provider{ProviderType: TypeCloudflareAIGateway, DefaultImageModel: " cloud/image "}, []string{"cloud/image", sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
+		{"unconfigured cloudflare", Provider{ProviderType: TypeCloudflareAIGateway}, []string{sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := SupportedImageModels(test.item); !slices.Equal(got, test.want) {
@@ -114,7 +114,7 @@ func TestProviderSettingUpdateInvalidatesVerification(t *testing.T) {
 		t.Fatal(err)
 	}
 	replacement := "replacement-secret"
-	_, _, err = service.Settings().Update(ctx, map[string]any{
+	_, _, err = service.Settings().UpdateSystem(ctx, map[string]any{
 		"ai_providers.openai_compatible.default_model": "test/second",
 		"ai_providers.openai_compatible.api_key":       replacement,
 	})
@@ -212,7 +212,7 @@ func TestConnectionCheckFingerprintCannotVerifyAChangedConfiguration(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := service.Settings().Update(ctx, map[string]any{sitesettings.CloudflareDefaultModelKey: "test/new-model"}); err != nil {
+	if _, _, err := service.Settings().UpdateSystem(ctx, map[string]any{sitesettings.CloudflareDefaultModelKey: "test/new-model"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.MarkVerified(ctx, created.UUID, checked.ConfigFingerprint); err != nil {

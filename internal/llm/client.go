@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
 )
 
@@ -56,6 +57,7 @@ func (err *Error) InvalidProviderResponse() *ProviderResponseDiagnostic {
 func (err *Error) PartialChatResponse() *ChatResponse { return err.PartialResponse }
 
 type Request struct {
+	ProviderType string
 	BaseURL      string
 	APIKey       string `json:"-"`
 	Model        string
@@ -86,15 +88,17 @@ type Response struct {
 	FinishReason string
 }
 
-// ChatMessage and ToolDefinition are the deliberately small OpenAI-compatible
-// subset used by Lumi's project agent runtime. They live in the provider
-// package so the agent package does not need to know about HTTP wire details.
+// ChatMessage and ToolDefinition are the protocol-neutral subset used by
+// Lumi's agent runtime. Provider adapters translate these to their wire formats.
 type ChatMessage struct {
-	Role                string     `json:"role"`
-	Content             string     `json:"content,omitempty"`
-	ToolCallID          string     `json:"tool_call_id,omitempty"`
-	ToolCallIDSynthetic bool       `json:"-"`
-	ToolCalls           []ToolCall `json:"tool_calls,omitempty"`
+	// ResponsesOutput retains reasoning, function call IDs, and message phases
+	// for stateless continuation through the Responses API.
+	ResponsesOutput     []json.RawMessage `json:"responses_output,omitempty"`
+	Role                string            `json:"role"`
+	Content             string            `json:"content,omitempty"`
+	ToolCallID          string            `json:"tool_call_id,omitempty"`
+	ToolCallIDSynthetic bool              `json:"-"`
+	ToolCalls           []ToolCall        `json:"tool_calls,omitempty"`
 }
 
 type ToolCall struct {
@@ -111,13 +115,14 @@ type ToolDefinition struct {
 }
 
 type ChatRequest struct {
-	BaseURL     string
-	APIKey      string `json:"-"`
-	Model       string
-	Messages    []ChatMessage
-	Tools       []ToolDefinition
-	Temperature *float64
-	MaxTokens   int
+	ProviderType string
+	BaseURL      string
+	APIKey       string `json:"-"`
+	Model        string
+	Messages     []ChatMessage
+	Tools        []ToolDefinition
+	Temperature  *float64
+	MaxTokens    int
 }
 
 type ChatResponse struct {
@@ -146,6 +151,9 @@ func NewOpenAICompatibleClient(client *http.Client) *OpenAICompatibleClient {
 }
 
 func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Request, onDelta func(string) error) (Response, error) {
+	if input.ProviderType == provider.TypeCloudflareAIGateway {
+		return client.generateResponses(ctx, input, onDelta)
+	}
 	if strings.TrimSpace(input.Model) == "" || strings.TrimSpace(input.Prompt) == "" {
 		return Response{}, &Error{Code: CodeInvalidContent, SafeMessage: "模型或 Prompt 不能为空。"}
 	}
@@ -208,6 +216,9 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 }
 
 func (client *OpenAICompatibleClient) Complete(ctx context.Context, input ChatRequest) (ChatResponse, error) {
+	if input.ProviderType == provider.TypeCloudflareAIGateway {
+		return client.completeResponses(ctx, input)
+	}
 	if strings.TrimSpace(input.Model) == "" || len(input.Messages) == 0 {
 		return ChatResponse{}, &Error{Code: CodeInvalidContent, SafeMessage: "模型或消息不能为空。"}
 	}

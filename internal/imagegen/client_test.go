@@ -44,6 +44,20 @@ func TestFakeImageProviderSuccessAndInvalidContent(t *testing.T) {
 		if request.URL.Path != "/v1/responses" || request.Header.Get("Authorization") != "Bearer secret" {
 			t.Fatalf("Cloudflare request=%s authorization=%q", request.URL.Path, request.Header.Get("Authorization"))
 		}
+		var requestBody struct {
+			Model string `json:"model"`
+			Tools []struct {
+				Type  string `json:"type"`
+				Model string `json:"model"`
+				Size  string `json:"size"`
+			} `json:"tools"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
+			t.Fatal(err)
+		}
+		if requestBody.Model != "openai/gpt-5.6-terra" || len(requestBody.Tools) != 1 || requestBody.Tools[0].Type != "image_generation" || requestBody.Tools[0].Model != "gpt-image-2.5-flare" || requestBody.Tools[0].Size != "1536x1152" {
+			t.Fatalf("request body=%+v", requestBody)
+		}
 		calls++
 		payload := valid
 		if calls == 2 {
@@ -51,11 +65,11 @@ func TestFakeImageProviderSuccessAndInvalidContent(t *testing.T) {
 		}
 		return response(200, fmt.Sprintf(`{"output":[{"type":"image_generation_call","result":%q}]}`, payload)), nil
 	})})
-	result, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.5", Prompt: "draw"})
+	result, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.6-terra", Prompt: "draw", Size: "1536x1152"})
 	if err != nil || result.MIMEType != "image/png" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
-	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.5", Prompt: "invalid"}); err == nil {
+	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.6-terra", Prompt: "invalid", Size: "1536x1152"}); err == nil {
 		t.Fatal("invalid provider content was accepted")
 	}
 }

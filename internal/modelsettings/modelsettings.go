@@ -28,6 +28,9 @@ const (
 	SourceProjectTextOverride  = "project_text_override"
 	SourceProjectImageOverride = "project_image_override"
 	SourceGlobalDefault        = "global_provider_default"
+	SourceGlobalTextDefault    = "global_text_default"
+	SourceGlobalImageDefault   = "global_image_default"
+	SourceGlobalScenario       = "global_scenario_default"
 )
 
 const (
@@ -155,7 +158,11 @@ func (resolver *Resolver) Get(ctx context.Context, store *project.Store) (View, 
 	if err != nil {
 		return View{}, err
 	}
-	return buildView(row, options), nil
+	defaults, err := resolver.globalView(ctx, options)
+	if err != nil {
+		return View{}, err
+	}
+	return buildProjectView(row, options, defaults), nil
 }
 
 func (resolver *Resolver) Patch(ctx context.Context, store *project.Store, input PatchInput) (View, error) {
@@ -166,25 +173,8 @@ func (resolver *Resolver) Patch(ctx context.Context, store *project.Store, input
 	if err != nil {
 		return View{}, err
 	}
-	for key, selection := range input.Changes {
-		kind, ok := settingKinds[key]
-		if !ok {
-			return View{}, domainError(CodeInvalid, "模型设置项无效", "不支持设置项 "+key+"。", nil)
-		}
-		if selection == nil {
-			continue
-		}
-		selection.ProviderUUID = strings.TrimSpace(selection.ProviderUUID)
-		selection.Model = strings.TrimSpace(selection.Model)
-		if selection.EnableThinking != nil && (key != ProjectImage || !selectionSupportsThinking(options, *selection)) {
-			return View{}, domainError(CodeInvalid, "当前模型不支持图片思考模式", "enable_thinking 仅适用于千问 Image 3.0 图片模型。", nil)
-		}
-		if selection.PromptExtend != nil && (key != ProjectImage || !selectionSupportsPromptExtend(options, *selection)) {
-			return View{}, domainError(CodeInvalid, "当前模型不支持提示词智能改写", "prompt_extend 仅适用于支持该能力的图片模型。", nil)
-		}
-		if selection.ProviderUUID == "" || selection.Model == "" || len([]rune(selection.Model)) > 512 || !optionAvailable(options, kind, *selection) {
-			return View{}, domainError(CodeInvalid, "模型不可用或能力类型不匹配", "只能选择当前已就绪 Provider 对应类型的模型。", nil)
-		}
+	if err := validateChanges(options, input); err != nil {
+		return View{}, err
 	}
 	projectID, err := projectID(ctx, store)
 	if err != nil {
@@ -246,6 +236,11 @@ func (resolver *Resolver) Resolve(ctx context.Context, store *project.Store, set
 	if err != nil {
 		return Resolved{}, err
 	}
+	return resolver.resolveView(ctx, view, settingKey, kind, explicitProviderUUID, explicitModel)
+}
+
+func (resolver *Resolver) resolveView(ctx context.Context, view View, settingKey, kind, explicitProviderUUID, explicitModel string) (Resolved, error) {
+	var err error
 	selection := Selection{ProviderUUID: strings.TrimSpace(explicitProviderUUID), Model: strings.TrimSpace(explicitModel)}
 	source := SourceExplicitTask
 	if selection.ProviderUUID == "" && selection.Model == "" {
@@ -294,17 +289,20 @@ func (resolver *Resolver) options(ctx context.Context) (Options, error) {
 	return result, nil
 }
 
-func buildView(row record, options Options) View {
-	globalText := activeSelection(options.TextModels)
-	globalImage := activeSelection(options.ImageModels)
-	projectText := settingView(KindText, overrideFor(row, ProjectText), globalText, SourceProjectTextOverride, SourceGlobalDefault, options)
-	projectImage := settingView(KindImage, overrideFor(row, ProjectImage), globalImage, SourceProjectImageOverride, SourceGlobalDefault, options)
-	settings := map[string]SettingView{
-		ProjectText:             projectText,
-		ProjectImage:            projectImage,
-		ChatArea:                settingView(KindText, overrideFor(row, ChatArea), projectText.Effective, SourceScenarioOverride, projectText.Source, options),
-		StoryText:               settingView(KindText, overrideFor(row, StoryText), projectText.Effective, SourceScenarioOverride, projectText.Source, options),
-		SectionPremiseSelection: settingView(KindText, overrideFor(row, SectionPremiseSelection), projectText.Effective, SourceScenarioOverride, projectText.Source, options),
+func buildProjectView(row record, options Options, defaults View) View {
+	textDefault := defaults.Settings[ProjectText]
+	imageDefault := defaults.Settings[ProjectImage]
+	projectText := settingView(KindText, overrideFor(row, ProjectText), textDefault.Effective, SourceProjectTextOverride, textDefault.Source, options)
+	projectImage := settingView(KindImage, overrideFor(row, ProjectImage), imageDefault.Effective, SourceProjectImageOverride, imageDefault.Source, options)
+	settings := map[string]SettingView{ProjectText: projectText, ProjectImage: projectImage}
+	for _, key := range []string{ChatArea, StoryText, SectionPremiseSelection} {
+		inherited := defaults.Settings[key]
+		// Only a valid project text override outranks global scenario settings;
+		// a project text value that itself inherits must not mask the scenario.
+		if projectText.OverrideStatus == "valid" {
+			inherited = projectText
+		}
+		settings[key] = settingView(KindText, overrideFor(row, key), inherited.Effective, SourceScenarioOverride, inherited.Source, options)
 	}
 	return View{Revision: row.Revision, Settings: settings, Options: options}
 }
@@ -447,4 +445,31 @@ func selectionSupportsPromptExtend(options Options, selection Selection) bool {
 		}
 	}
 	return false
+}
+
+func validateChanges(options Options, input PatchInput) error {
+	if input.ExpectedRevision < 0 || len(input.Changes) == 0 {
+		return domainError(CodeInvalid, "模型设置更新无效", "expected_revision 必须非负且至少更新一项。", nil)
+	}
+	for key, selection := range input.Changes {
+		kind, ok := settingKinds[key]
+		if !ok {
+			return domainError(CodeInvalid, "模型设置项无效", "不支持设置项 "+key+"。", nil)
+		}
+		if selection == nil {
+			continue
+		}
+		selection.ProviderUUID = strings.TrimSpace(selection.ProviderUUID)
+		selection.Model = strings.TrimSpace(selection.Model)
+		if selection.EnableThinking != nil && (key != ProjectImage || !selectionSupportsThinking(options, *selection)) {
+			return domainError(CodeInvalid, "当前模型不支持图片思考模式", "enable_thinking 仅适用于千问 Image 3.0 图片模型。", nil)
+		}
+		if selection.PromptExtend != nil && (key != ProjectImage || !selectionSupportsPromptExtend(options, *selection)) {
+			return domainError(CodeInvalid, "当前模型不支持提示词智能改写", "prompt_extend 仅适用于支持该能力的图片模型。", nil)
+		}
+		if selection.ProviderUUID == "" || selection.Model == "" || len([]rune(selection.Model)) > 512 || !optionAvailable(options, kind, *selection) {
+			return domainError(CodeInvalid, "模型不可用或能力类型不匹配", "只能选择当前已就绪 Provider 对应类型的模型。", nil)
+		}
+	}
+	return nil
 }

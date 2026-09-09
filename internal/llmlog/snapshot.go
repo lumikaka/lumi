@@ -9,6 +9,7 @@ import (
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
 	"lumi/internal/pricing"
+	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
 )
 
@@ -25,6 +26,7 @@ var (
 )
 
 type textRequestSnapshot struct {
+	APIFormat    string              `json:"api_format,omitempty"`
 	Model        string              `json:"model"`
 	SystemPrompt string              `json:"system_prompt,omitempty"`
 	Prompt       string              `json:"prompt"`
@@ -41,6 +43,7 @@ type textImageSnapshot struct {
 }
 
 type chatRequestSnapshot struct {
+	APIFormat   string               `json:"api_format,omitempty"`
 	Model       string               `json:"model"`
 	Messages    []llm.ChatMessage    `json:"messages"`
 	Tools       []llm.ToolDefinition `json:"tools,omitempty"`
@@ -106,7 +109,8 @@ func EncodeTextRequest(input llm.Request) (json.RawMessage, error) {
 		images = append(images, textImageSnapshot{MIMEType: image.MIMEType, ByteSize: len(image.Data), Detail: image.Detail})
 	}
 	return encodeSnapshot(textRequestSnapshot{
-		Model: input.Model, SystemPrompt: input.SystemPrompt, Prompt: input.Prompt, Images: images,
+		APIFormat: requestAPIFormat(input.ProviderType),
+		Model:     input.Model, SystemPrompt: input.SystemPrompt, Prompt: input.Prompt, Images: images,
 		Temperature: input.Temperature, MaxTokens: input.MaxTokens, Stream: true,
 	}, input.APIKey)
 }
@@ -117,9 +121,17 @@ func EncodeTextResponse(input llm.Response, apiKey string) (json.RawMessage, err
 
 func EncodeChatRequest(input llm.ChatRequest) (json.RawMessage, error) {
 	return encodeSnapshot(chatRequestSnapshot{
-		Model: input.Model, Messages: snapshotChatMessages(input.Messages), Tools: input.Tools,
+		APIFormat: requestAPIFormat(input.ProviderType),
+		Model:     input.Model, Messages: snapshotChatMessages(input.Messages), Tools: input.Tools,
 		Temperature: input.Temperature, MaxTokens: input.MaxTokens, Stream: false,
 	}, input.APIKey)
+}
+
+func requestAPIFormat(providerType string) string {
+	if providerType == provider.TypeCloudflareAIGateway {
+		return "responses"
+	}
+	return "chat_completions"
 }
 
 func EncodeChatResponse(input llm.ChatResponse, apiKey string) (json.RawMessage, error) {
