@@ -91,6 +91,7 @@ type CreateInput struct {
 }
 
 type Service struct {
+	app        *appstore.Store
 	prices     *pricing.Service
 	settings   *sitesettings.Service
 	now        func() time.Time
@@ -98,7 +99,15 @@ type Service struct {
 }
 
 func NewService(app *appstore.Store, keys sitesettings.MasterKeyStore) *Service {
-	return &Service{settings: sitesettings.NewService(app, keys), prices: pricing.NewService(app.DB()), now: time.Now}
+	return &Service{app: app, settings: sitesettings.NewService(app, keys), prices: pricing.NewService(app.DB()), now: time.Now}
+}
+
+func (service *Service) GlobalModelSettings(ctx context.Context) (appstore.GlobalModelSettings, error) {
+	return service.app.GlobalModelSettings(ctx)
+}
+
+func (service *Service) PatchGlobalModelSettings(ctx context.Context, expectedRevision int, changes map[string]*appstore.GlobalModelSelection) (appstore.GlobalModelSettings, error) {
+	return service.app.PatchGlobalModelSettings(ctx, expectedRevision, changes)
 }
 
 func (service *Service) Prices() *pricing.Service {

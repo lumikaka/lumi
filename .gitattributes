@@ -1,0 +1,2 @@
+# Embedded Markdown must have identical bytes on every build platform.
+*.md text eol=lf

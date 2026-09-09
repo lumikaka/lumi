@@ -1631,11 +1631,20 @@ mod tests {
             while attempts < 2 && Instant::now() < deadline {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        // Accepted sockets can inherit the listener's nonblocking mode.
+                        stream.set_nonblocking(false).unwrap();
+                        stream
+                            .set_read_timeout(Some(Duration::from_secs(2)))
+                            .unwrap();
                         attempts += 1;
-                        let mut request = [0_u8; 512];
-                        let count = stream.read(&mut request).unwrap();
-                        assert!(String::from_utf8_lossy(&request[..count])
-                            .starts_with("GET /api/v1/health"));
+                        let mut request = String::new();
+                        {
+                            let mut reader = BufReader::new(&mut stream);
+                            while !request.ends_with("\r\n\r\n") {
+                                assert_ne!(reader.read_line(&mut request).unwrap(), 0);
+                            }
+                        }
+                        assert!(request.starts_with("GET /api/v1/health"));
 
                         let status = if attempts == 1 {
                             "503 Service Unavailable"

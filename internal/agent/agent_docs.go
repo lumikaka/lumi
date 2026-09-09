@@ -258,7 +258,7 @@ func readAgentDocTemplate(path string) (string, error) {
 	if err != nil {
 		return "", domainError(CodeToolNotAllowed, "Agent Doc 未注册", "注册路径没有对应的内嵌 Markdown 文档。", err)
 	}
-	return string(content), nil
+	return strings.ReplaceAll(string(content), "\r\n", "\n"), nil
 }
 
 func renderAgentDocOverview(template string, routes []agentAPIRoute) string {

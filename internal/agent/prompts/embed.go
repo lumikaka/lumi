@@ -29,7 +29,7 @@ func mustRead(path string) string {
 	if err != nil {
 		panic(fmt.Sprintf("read embedded agent prompt %q: %v", path, err))
 	}
-	value := strings.TrimSpace(string(content))
+	value := strings.TrimSpace(strings.ReplaceAll(string(content), "\r\n", "\n"))
 	if value == "" {
 		panic(fmt.Sprintf("embedded agent prompt %q is blank", path))
 	}
