@@ -474,5 +474,8 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 	if err := reconcilePremiseAssetWorkflows(ctx, db, projectID, now); err != nil {
 		return err
 	}
+	if err := reconcilePremiseBatchWorkflows(ctx, db, projectID, now); err != nil {
+		return err
+	}
 	return reconcileComicStoryboardWorkflows(ctx, db, projectID, now)
 }

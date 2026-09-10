@@ -388,11 +388,11 @@ func (runtime *projectRuntime) broadcastProductionWorkflow(event, taskUUID strin
 	}
 	var workflowUUID, threadUUID, stepUUID, resourceUUID, status, workflowKind string
 	var progress int
-	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.status,w.kind,tasks.progress FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id JOIN production_task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid WHERE w.kind IN (?,?,?) AND s.task_uuid=? LIMIT 1`, agent.WorkflowComicSectionImage, agent.WorkflowPremiseAsset, agent.WorkflowComicImageBatch, taskUUID).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &workflowKind, &progress)
+	err := runtime.sqlDB.QueryRowContext(context.Background(), `SELECT w.uuid,COALESCE(t.uuid,''),s.uuid,s.resource_uuid,w.status,w.kind,tasks.progress FROM workflows w LEFT JOIN chat_threads t ON t.id=w.thread_id JOIN workflow_steps s ON s.workflow_id=w.id JOIN production_task_runs tasks ON tasks.project_id=w.project_id AND tasks.uuid=s.task_uuid WHERE w.kind IN (?,?,?,?) AND s.task_uuid=? LIMIT 1`, agent.WorkflowComicSectionImage, agent.WorkflowPremiseAsset, agent.WorkflowComicImageBatch, agent.WorkflowPremiseBatch, taskUUID).Scan(&workflowUUID, &threadUUID, &stepUUID, &resourceUUID, &status, &workflowKind, &progress)
 	if err != nil {
 		return
 	}
-	if workflowKind == agent.WorkflowComicImageBatch {
+	if workflowKind == agent.WorkflowComicImageBatch || workflowKind == agent.WorkflowPremiseBatch {
 		if event != "workflow:queued" {
 			switch status {
 			case agent.WorkflowCompleted, agent.WorkflowFailed, agent.WorkflowCancelled, agent.WorkflowInterrupted:

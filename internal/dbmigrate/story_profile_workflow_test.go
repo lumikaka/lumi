@@ -9,13 +9,22 @@ import (
 )
 
 func TestStoryProfileWorkflowMigrationPreservesGraphAndCosts(t *testing.T) {
+	testWorkflowMigrationPreservesGraphAndCosts(t, 20260905000038, []string{"story_profile_generation", "story_profile_from_chapters"}, false)
+}
+
+func TestPremiseBatchWorkflowMigrationPreservesGraphAndCosts(t *testing.T) {
+	testWorkflowMigrationPreservesGraphAndCosts(t, 20260910000043, []string{"premise_batch_generation"}, true)
+}
+
+func testWorkflowMigrationPreservesGraphAndCosts(t *testing.T, previous uint, kinds []string, guardedRollback bool) {
+	t.Helper()
 	dsn := "file:" + filepath.Join(t.TempDir(), "profiles.sqlite") + "?_pragma=foreign_keys(1)"
 	runner, err := OpenProject(dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = runner.Close() })
-	if err := runner.migrator.Migrate(20260905000038); err != nil {
+	if err := runner.migrator.Migrate(previous); err != nil {
 		t.Fatal(err)
 	}
 	db, err := sql.Open("sqlite", dsn)
@@ -123,19 +132,43 @@ func TestStoryProfileWorkflowMigrationPreservesGraphAndCosts(t *testing.T) {
 		return string(data)
 	}
 	before := snapshot()
+	if guardedRollback {
+		if _, err := db.Exec(`UPDATE sqlite_sequence SET seq=900 WHERE name='workflows'`); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := runner.Up(); err != nil {
 		t.Fatal(err)
 	}
 	if after := snapshot(); after != before {
 		t.Fatal("up migration changed the existing graph or costs")
 	}
-	for i, kind := range []string{"story_profile_generation", "story_profile_from_chapters"} {
+	for i, kind := range kinds {
 		uuid := fmt.Sprintf("01a06a00-0000-7000-8000-%012d", 40+i)
 		if _, err := db.Exec(`INSERT INTO workflows(uuid,project_id,thread_id,kind,title,input_snapshot,idempotency_key,provider_uuid,model,created_at,updated_at) VALUES(?,1,1,?,'Profile','{}',?,?, 'model',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`, uuid, kind, "profile-"+kind, providerUUID); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := runner.migrator.Migrate(20260905000038); err != nil {
+	if guardedRollback {
+		var lastID int
+		if err := db.QueryRow(`SELECT max(id) FROM workflows`).Scan(&lastID); err != nil || lastID <= 900 {
+			t.Fatalf("sequence reused: %d %v", lastID, err)
+		}
+		withBatch := snapshot()
+		if err := runner.migrator.Migrate(previous); err == nil {
+			t.Fatal("lossy batch rollback accepted")
+		}
+		if after := snapshot(); after != withBatch {
+			t.Fatal("rejected rollback changed data")
+		}
+		if err := runner.migrator.Force(20260910000044); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(`DELETE FROM workflows WHERE kind='premise_batch_generation'`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := runner.migrator.Migrate(previous); err != nil {
 		t.Fatal(err)
 	}
 	if after := snapshot(); after != before {

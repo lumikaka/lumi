@@ -27,6 +27,11 @@ import {
   workflowProgressPercent,
 } from './chatAreaPresentation.js'
 
+test('premise batches have a readable inline workflow title', () => {
+  const t = (key) => key
+  assert.equal(workflowDisplayTitle({ kind: 'premise_batch_generation' }, t), 'chat.workflow.kind.premise_batch_generation')
+})
+
 test('composer supports send, queue, stop and steering behavior', () => {
   assert.equal(chatComposerMode(), 'disabled')
   assert.equal(chatComposerMode({ draft: '继续写' }), 'send')

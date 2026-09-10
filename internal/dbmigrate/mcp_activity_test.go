@@ -45,7 +45,7 @@ func TestMCPMigrationPreservesThreadSequenceAndModelConstraints(t *testing.T) {
 	if _, err = db.Exec(`UPDATE chat_threads SET status='busy'`); err == nil {
 		t.Fatal("MCP running status accepted")
 	}
-	if err = r.Down(1); err == nil {
+	if err = r.migrator.Migrate(20260909000042); err == nil {
 		t.Fatal("lossy downgrade accepted")
 	}
 	var count int

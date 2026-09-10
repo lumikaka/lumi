@@ -169,6 +169,8 @@
 
 ## `POST /api/v1/projects/{project_uuid}/premise-sources/{source_uuid}/setting-generations`
 
+聊天工具调用会在原 Thread 创建 `premise_batch_generation` 内联 Workflow：`generate_setting` 成功后，后台自动对本次产出的图执行 `breakdown_assets`。工具持久化等待整个 Workflow，成功返回 `workflow_uuid`、`thread_uuid`、`kind`、`status`、`setting_image_uuid`、`premise_asset_uuids`，无需再次确认或提交拆解请求。失败返回统一错误信封（`data:null`）；通过 Workflow REST 查询阶段详情。普通 UI 和外部 MCP 保持下述单任务响应与独立拆分行为。调用来源由服务端确定，不能通过请求体指定。
+
 根据一个 Premise Source 创建异步设定图生成任务。
 
 ### 请求字段
@@ -190,6 +192,12 @@
 | `data.status` | string | 初始任务状态，通常为 `queued`。 |
 | `data.error_code` | string，可省略 | 公开错误码。 |
 | `data.error_message` | string，可省略 | 公开错误信息。 |
+| `data.workflow_uuid` | string(UUIDv7) | 聊天调用完成后返回的批量设定 Workflow UUID。 |
+| `data.thread_uuid` | string(UUIDv7) | 原聊天 Thread UUID。 |
+| `data.setting_image_uuid` | string(UUIDv7) | 本批次生成并拆分的总览图 UUID。 |
+| `data.premise_asset_uuids` | array<string> | 本批次拆分产出的设定资产 UUIDv7 列表。 |
+
+聊天返回 Workflow 终态字段，`data.kind` 为 `premise_batch_generation`，`data.status` 为 `completed`；单任务字段 `uuid`、`resource_uuid` 仅用于普通 UI / 外部 MCP 响应。
 
 ### request_api 示例
 
@@ -198,14 +206,14 @@
   "method": "POST",
   "url": "/api/v1/projects/01970000-0000-7000-8000-000000000001/premise-sources/01970000-0000-7000-8000-000000000003/setting-generations",
   "request_body": {"prompt": "生成角色与主要场景的统一设定图"},
-  "response_filter": ".data | {uuid,kind,resource_uuid,status,error_code,error_message}"
+  "response_filter": ".data | {workflow_uuid,thread_uuid,kind,status,setting_image_uuid,premise_asset_uuids}"
 }
 ```
 
 ### 接口约束
 
 - `source_uuid` 必须属于当前项目；`premise_asset_uuids` 不适用于本接口。
-- 接口只创建异步 Task，并使用 Tool Execution 幂等键。
+- 聊天调用使用 Tool Execution 幂等键创建并等待两阶段 Workflow，后台负责自动拆分；普通 UI / 外部 MCP 只创建异步 Task。
 
 ## `POST /api/v1/projects/{project_uuid}/premise-setting-images/{setting_image_uuid}/breakdowns`
 

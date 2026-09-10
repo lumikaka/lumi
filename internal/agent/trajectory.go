@@ -378,6 +378,21 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 				return err
 			}
 
+			inlineRequests, err := queryInlineWorkflowRequests(tx, thread)
+			if err != nil {
+				return err
+			}
+			modelRows = append(modelRows, inlineRequests...)
+			sort.SliceStable(modelRows, func(i, j int) bool { return modelRows[i].CreatedAt.Before(modelRows[j].CreatedAt) })
+			page.Workflows, err = queryTrajectoryWorkflows(tx, thread)
+			if err != nil {
+				return err
+			}
+			origins, err := queryTrajectoryWorkflowOrigins(tx, thread)
+			if err != nil {
+				return err
+			}
+
 			toolRows, err := queryTrajectoryTools(tx, thread.ID)
 			if err != nil {
 				return err
@@ -396,6 +411,9 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 			low, high := trajectoryPageBounds(itemRows)
 			page.Items = projectTrajectoryItems(itemRows, thread.UUID, events)
 			allRequests := projectTrajectoryModelRequests(modelRows, thread.UUID, events)
+			for index := range allRequests {
+				allRequests[index].WorkflowOrigins = origins[allRequests[index].UUID]
+			}
 			page.Overview.ModelRequestCount = int64(len(allRequests))
 			for _, request := range allRequests {
 				if request.Status == "pending" {
@@ -515,9 +533,16 @@ func resolveTrajectoryAnchor(ctx context.Context, tx *gorm.DB, threadID int64, i
   (SELECT MIN(sequence) FROM chat_items WHERE thread_id=? AND remote_item_uuid=?),
   (SELECT MAX(sequence) FROM chat_items WHERE thread_id=? AND json_extract(metadata_json,'$.request_uuid')=?),
   (SELECT MAX(items.sequence) FROM llm_logs logs JOIN chat_items items ON items.run_id=logs.chat_run_id WHERE logs.chat_thread_id=? AND logs.uuid=?),
-  (SELECT through_item_sequence FROM agent_context_summaries WHERE thread_id=? AND uuid=? LIMIT 1)
+  (SELECT through_item_sequence FROM agent_context_summaries WHERE thread_id=? AND uuid=? LIMIT 1),
+  (SELECT i.sequence FROM llm_logs logs JOIN workflows w ON w.project_id=logs.project_id
+   JOIN workflow_awaits a ON a.workflow_id=w.id JOIN agent_tool_executions x ON x.id=a.tool_execution_id
+   JOIN chat_items i ON i.id=x.item_id
+   WHERE w.thread_id=? AND a.chat_thread_id=w.thread_id AND i.thread_id=w.thread_id AND logs.uuid=? AND ` + workflowTrajectoryLogAssociation + ` LIMIT 1),
+  (SELECT i.sequence FROM workflows w JOIN workflow_awaits a ON a.workflow_id=w.id
+   JOIN agent_tool_executions x ON x.id=a.tool_execution_id JOIN chat_items i ON i.id=x.item_id
+   WHERE w.thread_id=? AND a.chat_thread_id=w.thread_id AND i.thread_id=w.thread_id AND w.uuid=? LIMIT 1)
 ) AS sequence`
-	if err := tx.WithContext(ctx).Raw(query, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID).Scan(&anchor).Error; err != nil {
+	if err := tx.WithContext(ctx).Raw(query, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID, threadID, itemUUID).Scan(&anchor).Error; err != nil {
 		return 0, err
 	}
 	if !anchor.Valid || anchor.Int64 <= 0 {

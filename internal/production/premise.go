@@ -420,6 +420,16 @@ func (service *Service) ImportSettingImage(ctx context.Context, uploadUUID, sour
 }
 
 func (service *Service) CommitGeneratedSettingImage(ctx context.Context, taskUUID, sourceUUID, prompt string, reader filesReader) (SettingImage, error) {
+	return service.commitGeneratedSettingImage(ctx, taskUUID, sourceUUID, prompt, reader, true)
+}
+
+// CommitUnselectedSettingImage stores a batch result without replacing the
+// user's current setting selection. The batch consumes its exact output UUID.
+func (service *Service) CommitUnselectedSettingImage(ctx context.Context, taskUUID, sourceUUID, prompt string, reader filesReader) (SettingImage, error) {
+	return service.commitGeneratedSettingImage(ctx, taskUUID, sourceUUID, prompt, reader, false)
+}
+
+func (service *Service) commitGeneratedSettingImage(ctx context.Context, taskUUID, sourceUUID, prompt string, reader filesReader, selectImage bool) (SettingImage, error) {
 	settingUUID, err := newUUIDv7()
 	if err != nil {
 		return SettingImage{}, err
@@ -447,8 +457,10 @@ func (service *Service) CommitGeneratedSettingImage(ctx context.Context, taskUUI
 			return err
 		}
 		settingID = record.ID
-		if err := tx.Model(&premiseProfileRecord{}).Where("id = ?", profile.ID).Updates(map[string]any{"current_setting_image_id": record.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error; err != nil {
-			return err
+		if selectImage {
+			if err := tx.Model(&premiseProfileRecord{}).Where("id = ?", profile.ID).Updates(map[string]any{"current_setting_image_id": record.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error; err != nil {
+				return err
+			}
 		}
 		return tx.Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=?,output_json=json_set(CASE WHEN json_valid(output_json) THEN output_json ELSE '{}' END,'$.setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, record.ID, record.UUID, now, taskUUID).Error
 	}})

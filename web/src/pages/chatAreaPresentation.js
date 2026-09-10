@@ -33,6 +33,7 @@ export function chatThreadCountLabel(loaded, total) {
 }
 
 const workflowKindCopy = {
+  premise_batch_generation: 'chat.workflow.kind.premise_batch_generation',
   premise_asset_generation: 'chat.workflow.kind.premise_asset_generation',
   comic_section_image_generation: 'chat.workflow.kind.comic_section_image_generation',
   comic_image_generation_batch: 'chat.workflow.kind.comic_image_generation_batch',

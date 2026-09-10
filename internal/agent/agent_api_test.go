@@ -538,8 +538,8 @@ func TestPremiseAssetGuidesRouteBatchCreationThroughSettingWorkflow(t *testing.T
 		taskDocPath,
 		"只创建一个 Premise Source",
 		"只创建一次 Premise 设定图任务",
-		"等待用户确认",
-		"再创建一次 Premise 拆解任务",
+		"后台在总览图生成成功后直接拆分本次生成图",
+		"工具等待整个 Workflow 终态后返回",
 	} {
 		if !strings.Contains(batchGuide, required) {
 			t.Fatalf("batch premise Guide missing workflow instruction %q: %s", required, batchGuide)

@@ -42,6 +42,9 @@ const (
 	TurnInterrupted        = "interrupted"
 
 	WorkflowYolo                     = "yolo_project_initialization"
+	WorkflowPremiseBatch             = "premise_batch_generation"
+	WorkflowStepGenerateSetting      = "generate_setting"
+	WorkflowStepBreakdownAssets      = "breakdown_assets"
 	WorkflowPremiseAsset             = "premise_asset_generation"
 	WorkflowComicSectionImage        = "comic_section_image_generation"
 	WorkflowComicImageBatch          = "comic_image_generation_batch"

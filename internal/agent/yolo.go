@@ -1809,6 +1809,9 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 	if workflow.Status == WorkflowCompleted || workflow.Status == WorkflowCancelled {
 		return workflow, nil
 	}
+	if workflow.Kind == WorkflowPremiseBatch {
+		return service.cancelPremiseBatch(ctx, projectUUID, workflowUUID)
+	}
 	if workflow.Kind == WorkflowComicImageBatch {
 		if err := service.markComicImageBatchCancellationRequested(ctx, projectUUID, workflowUUID); err != nil {
 			return Workflow{}, err
@@ -2029,6 +2032,22 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 	}
 	if workflow.Status != WorkflowFailed && workflow.Status != WorkflowInterrupted && workflow.Status != WorkflowCancelled {
 		return Workflow{}, domainError(CodeStateConflict, "Workflow 当前不可重试", "仅 failed、interrupted 或 cancelled workflow 可以重试。", nil)
+	}
+	if workflow.Kind == WorkflowPremiseBatch {
+		for _, step := range workflow.Steps {
+			if step.Status == WorkflowCompleted || step.TaskUUID == "" {
+				continue
+			}
+			if _, err := service.queue.RetryDomainTask(ctx, projectUUID, premiseBatchTaskKind(step.StepKey), step.TaskUUID); err != nil {
+				return Workflow{}, err
+			}
+			result, err := service.GetWorkflow(ctx, projectUUID, workflowUUID)
+			if err == nil {
+				service.broadcastWorkflow(projectUUID, result, "workflow:queued", step.UUID)
+			}
+			return result, err
+		}
+		return Workflow{}, domainError(CodeStateConflict, "批量设定没有可重试任务", "没有未完成且关联任务的步骤。", nil)
 	}
 	if workflow.Kind == WorkflowComicImageBatch {
 		if err := service.prepareComicImageBatchRetry(ctx, projectUUID, workflowUUID); err != nil {

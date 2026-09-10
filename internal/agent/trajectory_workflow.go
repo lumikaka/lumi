@@ -30,6 +30,21 @@ const workflowTrajectoryLogScope = `logs.project_id = ? AND (
  EXISTS (SELECT 1 FROM workflows w WHERE w.project_id=logs.project_id AND w.thread_id=? AND ` + workflowTrajectoryLogAssociation + `)
 )`
 
+// Conversation pagination stays anchored to chat items. Associate asynchronous
+// requests with the tool's original turn so they appear on the same page and
+// remain addressable by request UUID after the suspended chat resumes.
+func queryInlineWorkflowRequests(tx *gorm.DB, thread threadRecord) ([]trajectoryModelRow, error) {
+	var rows []trajectoryModelRow
+	err := tx.Table("llm_logs AS logs").Distinct(`logs.uuid,turns.uuid AS turn_uuid,runs.uuid AS run_uuid,logs.source_type,logs.request_type,logs.scenario,logs.provider_uuid,logs.provider_type,logs.model,logs.status,logs.input_summary,logs.output_summary,logs.attempt,logs.input_tokens,logs.cached_input_tokens,logs.output_tokens,logs.duration_ms,logs.finish_reason,logs.error_code,logs.error_message,logs.http_status,logs.provider_error_code,logs.provider_request_id,logs.request_payload,logs.response,logs.created_at,logs.completed_at`).
+		Joins("JOIN workflows w ON w.project_id=logs.project_id").
+		Joins("JOIN workflow_awaits a ON a.workflow_id=w.id AND a.chat_thread_id=w.thread_id").
+		Joins("JOIN chat_runs runs ON runs.id=a.chat_run_id AND runs.thread_id=w.thread_id").
+		Joins("JOIN chat_turns turns ON turns.id=runs.turn_id AND turns.id=a.chat_turn_id").
+		Where("w.project_id=? AND w.thread_id=?", thread.ProjectID, thread.ID).
+		Where(workflowTrajectoryLogAssociation).Order("logs.created_at,logs.uuid").Scan(&rows).Error
+	return rows, err
+}
+
 type workflowTrajectoryCall struct {
 	SourceKind string    `json:"source_kind"`
 	SourceUUID string    `json:"source_uuid"`

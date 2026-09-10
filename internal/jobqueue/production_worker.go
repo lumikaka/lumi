@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/agent"
 	"lumi/internal/files"
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
@@ -97,6 +98,9 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 	case KindComicExport:
 		workErr = runtime.renderExport(workCtx, service, record)
 	}
+	if workErr == nil {
+		workErr = runtime.completeProduction(workCtx, record)
+	}
 	if workErr != nil {
 		code, message, retryable, cancelled := classifyProductionError(workErr)
 		if cancelled {
@@ -118,7 +122,7 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		}
 		return workErr
 	}
-	return runtime.completeProduction(workCtx, record)
+	return nil
 }
 
 func (runtime *projectRuntime) generateSetting(ctx context.Context, service *production.Service, record productionTaskRecord, snapshot production.GenerationSnapshot) error {
@@ -153,7 +157,15 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 	if err := runtime.productionProgress(ctx, record, 75); err != nil {
 		return err
 	}
-	setting, err := service.CommitGeneratedSettingImage(ctx, record.UUID, snapshot.SourceUUID, prompt, bytes.NewReader(response.Bytes))
+	var batch bool
+	if err := runtime.sqlDB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id WHERE s.task_uuid=? AND w.kind=?)`, record.UUID, agent.WorkflowPremiseBatch).Scan(&batch); err != nil {
+		return err
+	}
+	commit := service.CommitGeneratedSettingImage
+	if batch {
+		commit = service.CommitUnselectedSettingImage
+	}
+	setting, err := commit(ctx, record.UUID, snapshot.SourceUUID, prompt, bytes.NewReader(response.Bytes))
 	if err != nil {
 		return err
 	}
@@ -768,7 +780,7 @@ func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record
 	if err := markPremiseAssetWorkflowRunningTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -804,7 +816,7 @@ func (runtime *projectRuntime) productionProgress(ctx context.Context, record pr
 	if err := appendProductionEventTx(ctx, tx, record.ID, "task_progress", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "resource_uuid": record.ResourceUUID, "status": StatusRunning, "progress": progress}, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -845,7 +857,7 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	if err := completePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -886,7 +898,7 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 	if err := failPremiseAssetWorkflowTx(ctx, tx, record.UUID, code, message, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -942,7 +954,7 @@ func (runtime *projectRuntime) retryProductionFailure(ctx context.Context, recor
 	if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -983,7 +995,7 @@ func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, r
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1037,7 +1049,7 @@ func (runtime *projectRuntime) pauseProduction(ctx context.Context, record produ
 	if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 		return err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1097,7 +1109,7 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		if err := queuePremiseAssetWorkflowTx(ctx, tx, record.UUID, now); err != nil {
 			return err
 		}
-		if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
+		if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, runtime.projectUUID, record.UUID, now); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {

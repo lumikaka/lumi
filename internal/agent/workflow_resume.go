@@ -106,6 +106,42 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 }
 
 func workflowTerminalToolResultBase(state workflowResumeState) json.RawMessage {
+	if state.WorkflowKind == WorkflowPremiseBatch {
+		if state.WorkflowStatus != WorkflowCompleted {
+			code := strings.TrimSpace(state.ErrorCode)
+			if code == "" {
+				code = "workflow_" + state.WorkflowStatus
+			}
+			message := strings.TrimSpace(state.ErrorMessage)
+			if message == "" {
+				message = "批量设定生成未完成。"
+			}
+			encoded, _ := json.Marshal(map[string]any{"success": false, "data": nil, "error": map[string]any{"code": code, "message": message, "details": ""}})
+			return encoded
+		}
+		data := map[string]any{"workflow_uuid": state.WorkflowUUID, "thread_uuid": state.ThreadUUID, "kind": state.WorkflowKind, "status": state.WorkflowStatus}
+		for _, step := range state.Steps {
+			var result struct {
+				SettingImageUUID  string   `json:"setting_image_uuid"`
+				PremiseAssetUUIDs []string `json:"premise_asset_uuids"`
+			}
+			_ = json.Unmarshal([]byte(step.OutputJSON), &result)
+			if step.StepKey == WorkflowStepGenerateSetting {
+				data["setting_image_uuid"] = publicUUIDOrEmpty(result.SettingImageUUID)
+			}
+			if step.StepKey == WorkflowStepBreakdownAssets {
+				uuids := []string{}
+				for _, uuid := range result.PremiseAssetUUIDs {
+					if value := publicUUIDOrEmpty(uuid); value != "" {
+						uuids = append(uuids, value)
+					}
+				}
+				data["premise_asset_uuids"] = uuids
+			}
+		}
+		encoded, _ := json.Marshal(map[string]any{"success": true, "data": data})
+		return encoded
+	}
 	if state.WorkflowKind == WorkflowYolo {
 		currentStepKey := strings.TrimSpace(state.CurrentStepKey)
 		if currentStepKey == "" && len(state.Steps) > 0 {

@@ -138,6 +138,20 @@ func rawAgentAPIProjectors() []agentAPIProjector {
 			{Name: "error_message", Type: "string", Description: "公开错误信息；无错误时为空。"},
 		}, RecommendedFields: []string{"uuid", "kind", "resource_uuid", "status", "error_code", "error_message"}},
 	}
+	for _, projector := range base {
+		if projector.Key != "task" {
+			continue
+		}
+		batch := projector
+		batch.Key = "premise_batch_task"
+		batch.Fields = append(append([]agentAPIResponseField{}, projector.Fields...),
+			agentAPIResponseField{Name: "workflow_uuid", Type: "string", Description: "聊天批量设定 Workflow 公开 UUIDv7。"},
+			agentAPIResponseField{Name: "thread_uuid", Type: "string", Description: "原聊天 Thread 公开 UUIDv7。"},
+			agentAPIResponseField{Name: "setting_image_uuid", Type: "string", Description: "本批生成的总览图公开 UUIDv7。"},
+			agentAPIResponseField{Name: "premise_asset_uuids", Type: "array<string>", Description: "本批拆分产出的设定资产公开 UUIDv7 列表。"})
+		base = append(base, batch)
+		break
+	}
 	return append(base, phase3AgentAPIProjectors()...)
 }
 
@@ -247,7 +261,7 @@ func rawAgentAPIRoutes() []agentAPIRoute {
 		{ID: RouteComicSectionGet, Action: "读取漫画 Section", Method: "GET", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}", Handler: RouteComicSectionGet, Projector: "comic_section", DocPath: comicSectionDocPath, RecommendedResponseFilter: ".data | {uuid,chapter_uuid,section_no,page_role,title,description_md,current_storyboard,revision}", ReadOnly: true, Risk: RiskLow},
 		{ID: RouteStoryboardUpdate, Action: "更新 Storyboard", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/storyboard-variants", Handler: RouteStoryboardUpdate, Projector: "comic_section", DocPath: storyboardDocPath, BodySchema: storyboardBody, ExpectedRevision: true, Risk: RiskWrite},
 		{ID: RouteChapterGenerationCreate, Action: "创建章节生成任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/generations", Handler: RouteChapterGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: chapterGenerationBody, Async: true, Risk: RiskWrite},
-		{ID: RoutePremiseSettingGenerationCreate, Action: "创建 Premise 设定图任务", Method: "POST", PathTemplate: project + "/premise-sources/{source_uuid}/setting-generations", Handler: RoutePremiseSettingGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
+		{ID: RoutePremiseSettingGenerationCreate, Action: "创建 Premise 设定图任务", Method: "POST", PathTemplate: project + "/premise-sources/{source_uuid}/setting-generations", Handler: RoutePremiseSettingGenerationCreate, Projector: "premise_batch_task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, StrictSchema: true, Risk: RiskWrite},
 		{ID: RoutePremiseBreakdownCreate, Action: "创建 Premise 拆解任务", Method: "POST", PathTemplate: project + "/premise-setting-images/{setting_image_uuid}/breakdowns", Handler: RoutePremiseBreakdownCreate, Projector: "task", DocPath: generationDocPath, BodySchema: generationBody, Async: true, Risk: RiskWrite},
 		{ID: RouteComicImageGenerationCreate, Action: "创建漫画图片任务", Method: "POST", PathTemplate: project + "/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations", Handler: RouteComicImageGenerationCreate, Projector: "task", DocPath: generationDocPath, BodySchema: comicImageGenerationBody, Async: true, Risk: RiskWrite},
 		{ID: RouteStoryTaskGet, Action: "读取故事任务状态", Method: "GET", PathTemplate: project + "/tasks/{task_uuid}", Handler: RouteStoryTaskGet, Projector: "task", DocPath: taskDocPath, ReadOnly: true, Async: true, Risk: RiskLow},

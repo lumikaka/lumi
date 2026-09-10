@@ -25,6 +25,10 @@ import (
 )
 
 func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, projectUUID, sourceUUID string, input CreateProductionGenerationInput) (ProductionTask, error) {
+	return manager.createPremiseSettingGeneration(ctx, projectUUID, sourceUUID, input, agent.DirectUIInvocationContext())
+}
+
+func (manager *Manager) createPremiseSettingGeneration(ctx context.Context, projectUUID, sourceUUID string, input CreateProductionGenerationInput, invocation agent.DomainInvocationContext) (ProductionTask, error) {
 	if err := validateProductionParameters(input.Parameters); err != nil {
 		return ProductionTask{}, err
 	}
@@ -34,6 +38,14 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 	}
 	if err := runtime.store.RequireReady(); err != nil {
 		return ProductionTask{}, err
+	}
+	if invocation.Source == agent.InvocationChatTool {
+		if _, err := normalizeDomainInvocation(invocation); err != nil {
+			return ProductionTask{}, err
+		}
+		if task, found, err := replayPremiseBatch(ctx, runtime, sourceUUID, input, invocation); err != nil || found {
+			return task, err
+		}
 	}
 	generationLanguage, err := loadProjectGenerationLanguage(ctx, runtime.store)
 	if err != nil {
@@ -114,14 +126,31 @@ func (manager *Manager) CreatePremiseSettingGeneration(ctx context.Context, proj
 	}
 	parameters, _ := json.Marshal(input.Parameters)
 	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
-	return manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
+	var batch premiseBatchSnapshot
+	if invocation.Source == agent.InvocationChatTool {
+		batch, err = manager.preparePremiseBatch(ctx, runtime, *source, input, snapshot, invocation)
+		if err != nil {
+			return ProductionTask{}, err
+		}
+	}
+	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, taskID int64, taskUUID string, encoded []byte, now time.Time) error {
 		stepUUID, err := newUUIDv7()
 		if err != nil {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO premise_generation_steps(uuid,project_id,task_uuid,source_id,step_type,status,input_snapshot,created_at) VALUES(?,?,?,(SELECT id FROM premise_sources WHERE project_id=? AND uuid=?),'setting_generation','queued',?,?)`, stepUUID, runtime.projectID, taskUUID, runtime.projectID, sourceUUID, string(encoded), now)
+		if err == nil && invocation.Source == agent.InvocationChatTool {
+			return createPremiseBatchTx(ctx, tx, runtime, taskUUID, batch, invocation, now)
+		}
 		return err
 	})
+	if err == nil && invocation.Source == agent.InvocationChatTool {
+		if _, _, replayErr := replayPremiseBatch(ctx, runtime, sourceUUID, input, invocation); replayErr != nil {
+			return ProductionTask{}, replayErr
+		}
+		runtime.broadcastProductionWorkflow("workflow:queued", task.UUID)
+	}
+	return task, err
 }
 
 func (manager *Manager) CreatePremiseBreakdown(ctx context.Context, projectUUID, settingUUID string, input CreateProductionGenerationInput) (ProductionTask, error) {
@@ -1138,7 +1167,7 @@ func (runtime *projectRuntime) finishProductionCancellation(ctx context.Context,
 	if err := cancelPremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1221,7 +1250,10 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if err := queuePremiseAssetWorkflowTx(ctx, tx, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
-	if _, err := syncComicImageBatchWorkflowTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET cancel_requested_at=NULL WHERE kind=? AND id IN (SELECT workflow_id FROM workflow_steps WHERE task_uuid=?)`, agent.WorkflowPremiseBatch, taskUUID); err != nil {
+		return ProductionTask{}, err
+	}
+	if _, err := syncProductionTaskWorkflowsTx(ctx, runtime, tx, projectUUID, taskUUID, now); err != nil {
 		return ProductionTask{}, err
 	}
 	if err := tx.Commit(); err != nil {
