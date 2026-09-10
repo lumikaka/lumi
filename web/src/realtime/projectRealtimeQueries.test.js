@@ -178,5 +178,13 @@ test('only the HTTP health card retains a refetch interval', () => {
 
 test('MCP authorization and confirmation hints invalidate project REST queries', () => {
   const result = projectRealtimeInvalidation('project-mcp', 'mcp:changed', { project_uuid: 'project-mcp' })
-  assert.deepEqual(result.queryKeys, [['mcp-grants', 'project-mcp'], ['mcp-calls', 'project-mcp']])
+  assert.deepEqual(result.queryKeys, [['mcp-grants', 'project-mcp'], ['mcp-calls', 'project-mcp'], ['chat-threads', 'project-mcp'], ['chat-thread', 'project-mcp'], ['mcp-thread-activity', 'project-mcp']])
+})
+
+test('MCP changes refresh history and thread entries; background progress does not', () => {
+  const keys = keyNames(projectRealtimeInvalidation(projectUuid, 'mcp:changed', { project_uuid: projectUuid }))
+  for (const key of ['chat-threads', 'chat-thread', 'mcp-thread-activity', 'mcp-calls']) assert.ok(keys.includes(key))
+  for (const event of ['production_task:progress', 'production_task:completed', 'task:completed']) {
+    assert.ok(!keyNames(projectRealtimeInvalidation(projectUuid, event, {})).includes('mcp-thread-activity'))
+  }
 })

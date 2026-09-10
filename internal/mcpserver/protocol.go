@@ -60,6 +60,16 @@ func (s *Service) protocol(resource string) http.Handler {
 					return toolResult(failure("mcp_invalid_arguments", "缺少参数："+k)), nil
 				}
 			}
+			var activity activityRecord
+			if name != "request_api" && s.projects.IsOpen(g.ProjectUUID) {
+				labels := map[string]string{"read_agent_doc": "读取接口说明", "get_call": "读取调用结果", "read_media": "读取图片"}
+				var err error
+				activity, err = s.beginActivity(ctx, g, name, activitySpec{action: "read", label: labels[name]}, nil)
+				if err != nil {
+					return toolResult(publicError(err)), nil
+				}
+				defer s.activityRunning.Delete(activity.UUID)
+			}
 			var result map[string]any
 			switch name {
 			case "request_api":
@@ -79,7 +89,22 @@ func (s *Service) protocol(resource string) http.Handler {
 			case "get_call":
 				result = s.GetCall(ctx, g, args["call_uuid"].(string))
 			case "read_media":
-				return s.readMedia(ctx, g, args["file_uuid"].(string)), nil
+				media := s.readMedia(ctx, g, args["file_uuid"].(string))
+				if activity.UUID != "" {
+					status, message := "succeeded", ""
+					if media.IsError {
+						status, message = "failed", "图片读取失败"
+					}
+					s.finishActivity(g.ProjectUUID, activity, status, message)
+				}
+				return media, nil
+			}
+			if activity.UUID != "" {
+				status, message := "succeeded", ""
+				if result["success"] == false {
+					status, message = "failed", activityError(result)
+				}
+				s.finishActivity(g.ProjectUUID, activity, status, message)
 			}
 			return toolResult(result), nil
 		})

@@ -2539,3 +2539,23 @@
 
   .chat-input-request__options
     grid-template-columns: 1fr
+
+.mcp-activity-history
+  min-width: 0
+  &__entries
+    list-style: none
+    margin: 1rem 0
+    padding: 0
+    li
+      padding: .8rem 0
+      border-bottom: 1px solid var(--border-color, #8883)
+      overflow-wrap: anywhere
+    p
+      margin: 0 0 .35rem
+    time
+      display: inline-block
+      opacity: .65
+      font-size: .75rem
+      margin-right: .75rem
+  &__error p
+    color: var(--danger-color, #bd4940)

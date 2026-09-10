@@ -7,10 +7,11 @@ import (
 	"lumi/internal/mcpserver"
 	"lumi/internal/project"
 	"lumi/internal/sitesettings"
+	"strings"
 	"testing"
 )
 
-func TestMCPGenerationPersistsWithoutChatAndRecoversAfterClose(t *testing.T) {
+func TestMCPGenerationPersistsWithReadOnlyHistoryAndRecoversAfterClose(t *testing.T) {
 	h := newQueueHarness(t)
 	chapter := h.createChapter(t, "vol01.ch01")
 	api := agent.NewExternalProjectAPI(nil, h.queue)
@@ -42,8 +43,21 @@ func TestMCPGenerationPersistsWithoutChatAndRecoversAfterClose(t *testing.T) {
 		t.Fatalf("%+v %v", task, err)
 	}
 	var n int64
-	if err = h.runtime(t).store.DB().Raw("SELECT COUNT(*) FROM chat_threads").Scan(&n).Error; err != nil || n != 0 {
-		t.Fatalf("fabricated chat threads: %d %v", n, err)
+	if err = h.runtime(t).store.DB().Raw("SELECT COUNT(*) FROM chat_threads WHERE thread_type='mcp' AND status='idle' AND provider_uuid='' AND model=''").Scan(&n).Error; err != nil || n != 1 {
+		t.Fatalf("missing read-only MCP history: %d %v", n, err)
+	}
+	for _, table := range []string{"chat_turns", "chat_runs", "chat_items"} {
+		if err = h.runtime(t).store.DB().Table(table).Count(&n).Error; err != nil || n != 0 {
+			t.Fatalf("fabricated %s: %d %v", table, n, err)
+		}
+	}
+	var threadUUID string
+	if err = h.runtime(t).store.DB().Raw("SELECT uuid FROM chat_threads WHERE thread_type='mcp'").Scan(&threadUUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	history, err := s.Activity(t.Context(), h.project.UUID, threadUUID, "", "", 40)
+	if err != nil || len(history.Items) != 1 || history.Items[0].Status != "succeeded" || !strings.HasPrefix(history.Items[0].Text, "已提交") {
+		t.Fatalf("submission history: %+v %v", history, err)
 	}
 	if task.IdempotencyKey != "mcp:"+call.UUID || task.ProviderUUID != h.provider.UUID || task.Model == "" {
 		t.Fatalf("ownership/model: %+v", task)

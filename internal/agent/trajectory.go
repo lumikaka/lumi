@@ -307,6 +307,9 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 			if err := tx.Where("project_id=? AND uuid=?", pid, threadUUID).First(&thread).Error; err != nil {
 				return notFound(err, "Chat thread 不存在")
 			}
+			if thread.ThreadType == ThreadTypeMCP {
+				return domainError(CodeValidation, "MCP 线程仅提供概括历史", "", nil)
+			}
 			page.Thread = threadDTO(thread, projectUUID)
 			page.Thread.Title = sanitizeDiagnosticText(page.Thread.Title)
 			page.Thread.Model = sanitizeDiagnosticText(page.Thread.Model)

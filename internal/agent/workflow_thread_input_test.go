@@ -172,3 +172,27 @@ func TestWorkflowThreadStopsLegacyChatJobsAndFollowUpPromotion(t *testing.T) {
 		})
 	}
 }
+
+func TestMCPThreadRejectsInputAndDoesNotAggregateStatus(t *testing.T) {
+	h := newAgentHarness(t)
+	thread := h.createThread(t)
+	if err := h.store.DB().Table("chat_threads").Where("uuid=?", thread.UUID).Updates(map[string]any{"thread_type": ThreadTypeMCP, "provider_uuid": "", "model": "", "model_source": ""}).Error; err != nil {
+		t.Fatal(err)
+	}
+	before := workflowInputRowCounts(t, h)
+	if _, err := h.service.CreateTurn(t.Context(), h.project.UUID, thread.UUID, CreateTurnInput{InputText: "hello"}); err == nil {
+		t.Fatal("accepted turn")
+	}
+	if _, err := h.service.CreateFollowUp(t.Context(), h.project.UUID, thread.UUID, CreateFollowUpInput{InputText: "hello"}); err == nil {
+		t.Fatal("accepted follow-up")
+	}
+	if _, err := h.service.Steer(t.Context(), h.project.UUID, thread.UUID, SteeringInput{InputText: "hello"}); err == nil {
+		t.Fatal("accepted steering")
+	}
+	if after := workflowInputRowCounts(t, h); !reflect.DeepEqual(before, after) {
+		t.Fatalf("input mutated state: %v %v", before, after)
+	}
+	if _, err := h.service.ListTrajectory(t.Context(), h.project.UUID, thread.UUID, "", "", "", 40); err == nil {
+		t.Fatal("accepted trajectory")
+	}
+}

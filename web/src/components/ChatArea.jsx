@@ -1,3 +1,4 @@
+import MCPActivityHistory from './MCPActivityHistory.jsx'
 import ImageTaskProgress from './ImageTaskProgress.jsx'
 import { imageBatchCounts } from './imageTaskPresentation.js'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -900,7 +901,7 @@ function ThreadList({ pictureBook, threads, workflows, total, loading, loadingMo
           <div className="chat-thread-row" key={thread.uuid}>
             <button className="chat-thread" type="button" onClick={() => onOpenThread(thread.uuid)}>
               <span className="chat-thread__title">{threadDisplayTitle(thread, workflowByThread.get(thread.uuid), term)}</span>
-              <span className="chat-thread__meta">{ACTIVE_CHAT_STATUSES.has(thread.status) ? <i aria-hidden="true" /> : null}<span>{threadStatusCopy[thread.status] ? t(threadStatusCopy[thread.status]) : t('common.status.unknown_with_code', { code: thread.status })}</span></span>
+              <span className="chat-thread__meta">{thread.thread_type === 'mcp' ? <><span>{t('chat.mcp.source')}</span><time dateTime={thread.updated_at}>{new Date(thread.updated_at).toLocaleString()}</time></> : <>{ACTIVE_CHAT_STATUSES.has(thread.status) ? <i aria-hidden="true" /> : null}<span>{threadStatusCopy[thread.status] ? t(threadStatusCopy[thread.status]) : t('common.status.unknown_with_code', { code: thread.status })}</span></>}</span>
             </button>
           </div>
         ))}
@@ -993,6 +994,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
+  const isMCPThread = selectedThread?.thread_type === 'mcp'
   const isWorkflowThread = selectedThread?.thread_type === 'workflow'
   const canAcceptChatInput = selectedThread?.thread_type === 'conversation'
   const referenceBlocked = references.some((item) => item.status === 'uploading' || item.status === 'error')
@@ -1102,11 +1104,11 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     initialPageParam: '',
     getPreviousPageParam: () => undefined,
     getNextPageParam: (lastPage) => lastPage.cursor_pagination?.has_more ? lastPage.cursor_pagination.prev_cursor : undefined,
-    enabled: expanded && Boolean(selectedThreadUuid),
+    enabled: expanded && Boolean(selectedThread) && !isMCPThread,
   })
-  const turnsQuery = useQuery({ queryKey: ['chat-turns', projectUuid, selectedThreadUuid], queryFn: () => listChatTurns(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
-  const followUpsQuery = useQuery({ queryKey: ['chat-follow-ups', projectUuid, selectedThreadUuid], queryFn: () => listFollowUps(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
-  const requestsQuery = useQuery({ queryKey: ['chat-input-requests', projectUuid, selectedThreadUuid], queryFn: () => listUserInputRequests(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) })
+  const turnsQuery = useQuery({ queryKey: ['chat-turns', projectUuid, selectedThreadUuid], queryFn: () => listChatTurns(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThread) && !isMCPThread })
+  const followUpsQuery = useQuery({ queryKey: ['chat-follow-ups', projectUuid, selectedThreadUuid], queryFn: () => listFollowUps(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThread) && !isMCPThread })
+  const requestsQuery = useQuery({ queryKey: ['chat-input-requests', projectUuid, selectedThreadUuid], queryFn: () => listUserInputRequests(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThread) && !isMCPThread })
   const invalidate = useCallback((payload = { thread_uuid: selectedThreadUuid }) => {
     agentQueryKeysForEvent(projectUuid, payload).forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
   }, [projectUuid, queryClient, selectedThreadUuid])
@@ -1334,8 +1336,8 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
           <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
 		  <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) : t('chat.threads')}</h2></div>
           <div className="chat-detail-actions">
-            <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>
-            {selectedThread ? (
+            {isMCPThread ? <span className="chat-muted">{t('chat.mcp.source')}</span> : <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>}
+            {selectedThread && !isMCPThread ? (
               <a
                 className="chat-detail__trajectory-link"
                 href={threadTrajectoryHref(projectUuid, selectedThread.uuid)}
@@ -1349,6 +1351,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
           </div>
         </header>
         <div className="chat-detail-body">
+          {isMCPThread ? <div className="chat-messages"><MCPActivityHistory key={selectedThreadUuid} projectUuid={projectUuid} threadUuid={selectedThreadUuid} /></div> : <>
           <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
             {itemsQuery.isFetchingNextPage ? <div className="chat-history-loader" role="status"><span>{t('chat.messages.loading_earlier')}</span></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
@@ -1358,6 +1361,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
             {!isWorkflowThread && !itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
 			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
           </div>
+          </>}
           {isWorkflowThread ? <div className="chat-composer-shell chat-workflow-notice">
             <p className="chat-muted">{t('chat.workflow.read_only')}</p>
             <button type="button" className="button-quiet" onClick={startNewThread}>{t('chat.thread.new')}</button>

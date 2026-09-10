@@ -78,7 +78,7 @@ func OpenWithFS(dsn string, migrationFS fs.FS, path string) (*Runner, error) {
 		_ = sqlDB.Close()
 		return nil, fmt.Errorf("initialize migration database: %w", err)
 	}
-	migrator, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", databaseDriver)
+	migrator, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", &rebuildDriver{Driver: databaseDriver, db: sqlDB})
 	if err != nil {
 		_ = sourceDriver.Close()
 		_ = databaseDriver.Close()

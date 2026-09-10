@@ -43,6 +43,9 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   if (event === 'mcp:changed') {
     add('mcp-grants')
     add('mcp-calls')
+    add('chat-threads')
+    add('chat-thread')
+    add('mcp-thread-activity')
   } else if (event.startsWith('chat:')) {
     addChat()
     if (payload.workflow_uuid) addWorkflow()

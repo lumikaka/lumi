@@ -26,9 +26,9 @@ chat_context_references ──> files / premise_assets / comic_sections
 
 - `uuid` — TEXT NOT NULL UNIQUE，公开 Thread UUIDv7
 - `project_id` — INTEGER NOT NULL FK → `projects.id`
-- `thread_type` — `conversation|workflow`；普通对话使用聚合状态，独立 Workflow Thread 镜像其 Workflow 终态
+- `thread_type` — `conversation|workflow|mcp`；普通对话使用聚合状态，独立 Workflow Thread 镜像其 Workflow 终态
 - `title` / `status` — 展示标题和 `idle|busy|waiting_for_input|completed|failed|cancelled|interrupted` 状态
-- `provider_uuid` / `model` / `model_source` — 创建时冻结的模型选择
+- `provider_uuid` / `model` / `model_source` — conversation/workflow 创建时冻结的模型选择；mcp 为空且不要求模型配置
 - `next_turn_sequence` / `next_item_sequence` / `next_event_sequence` — Thread 内递增序列
 - `archived_at` / `created_at` / `updated_at` — 生命周期时间
 
@@ -88,3 +88,13 @@ chat_context_references ──> files / premise_assets / comic_sections
 7. 客户端以 REST 重读列表、items 和 events；实时消息只触发目标 Thread 查询失效。
 8. v4 回答必须覆盖请求中每个 question id，每题恰好使用一个所属选项 UUID 或非空 Other；写入回答、同 Tool call 的 Codex 形状 Tool Result、Run/Turn 排队和唯一 Resume Job 在同一事务完成。
 9. 项目仍为 `draft` 时，Agent 每次工具执行都重读 `setup_status`；Project Setup 定稿后，同一 Run 的后续工具即可按 `ready` 能力继续。
+
+## MCP 概括历史
+
+项目库 `mcp_threads` 使用自增 `id`，以唯一 `thread_id` 关联 `chat_threads.id`，保存公开 `uuid`、授权来源 UUID 和名称快照、`started_at`、`last_call_at`、`next_sequence`、`revision`。授权 UUID 仅作跨应用库的来源标识，不包含凭据。
+
+`mcp_thread_activities` 使用自增 `id` 与公开 UUIDv7，通过 `mcp_thread_id` 关联 session；保存唯一受理序号、可空且唯一的跨库 `call_uuid`、工具/动作类别、内部资源合并键、安全名称快照、调用状态、短错误和受理时间。它是概括归并所需的轻量事实，不保存完整参数、响应或媒体，也不关联后台任务。
+
+概括在 REST 读取时按受理序号归并。只有相邻且已成功的读取，或同资源同类别修改可以合并。未返回、等待确认及失败都是边界；失败按原位置保留。段标识使用首条调用的 UUID，cursor 绑定 thread、段 UUID 与历史 revision，归并变化后拒绝旧 cursor，客户端从头重读已加载窗口。
+
+MCP thread 的 `status` 固定为 `idle`，UI 不展示运行状态；不生成 Turn、Run 或聊天 Item，不接入聊天/Workflow 状态重算。

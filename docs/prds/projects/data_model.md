@@ -250,3 +250,7 @@ projects ──< actors
 - `mcp_oauth_refresh_tokens`：自增 `id`、UUIDv7、grant_id 内部外键、唯一 token_hash、expires_at、used_at。保留已用摘要至刷新链到期，以检测重放并撤销授权。
 
 全部存储于应用目录，项目文件夹复制不携带授权。删除项目记录通过外键级联撤销相关授权、请求和刷新链。
+
+## MCP 活动展示（项目库）
+
+`mcp_threads` 和 `mcp_thread_activities` 为 ChatArea 提供按受理顺序归并的只读历史，详见 [对话线程数据模型](../chat_threads/data_model.md)。内部关联使用自增 ID，授权来源/调用 UUID 仅为跨应用库相关性标识，不复制凭据或后台任务关系。现有应用库 `mcp_calls` 的执行、确认和幂等语义不变。

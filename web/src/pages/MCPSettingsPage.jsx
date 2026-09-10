@@ -37,7 +37,12 @@ export default function MCPSettingsPage() {
     <div className="local-account-page">
       <header className="local-account-heading">
         <span className="local-account-heading__icon"><Plug size={22} aria-hidden="true" /></span>
-        <div><p className="eyebrow">{t('settings.mcp.eyebrow')}</p><h1>{t('settings.mcp')}</h1><p>{t('settings.mcp.description')}</p></div>
+        <div>
+          <p className="eyebrow">{t('settings.mcp.eyebrow')}</p>
+          <h1>{t('settings.mcp')}</h1>
+          <p>{t('settings.mcp.description')}</p>
+          <p className="mcp-development-notice">{t('settings.mcp.development_notice')}</p>
+        </div>
       </header>
       <div className="local-account-layout">
         <LocalAccountSettingsNav />

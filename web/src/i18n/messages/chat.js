@@ -1,6 +1,11 @@
 import { defineMessages } from './defineMessages.js'
 
 export const chat = defineMessages({
+  'chat.mcp.source': ['MCP', 'MCP'],
+  'chat.mcp.history': ['MCP 操作历史', 'MCP activity history'],
+  'chat.mcp.confirmation': ['前往确认', 'Review confirmation'],
+  'chat.mcp.empty': ['暂无调用结果', 'No call results yet'],
+  'chat.mcp.more': ['加载更多历史', 'Load more history'],
   'chat.title': ['聊天区', 'ChatArea'],
   'chat.project': ['项目聊天区', 'Project ChatArea'],
   'chat.open': ['打开聊天区', 'Open ChatArea'],

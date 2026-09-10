@@ -58,14 +58,16 @@ type Call struct {
 func (Call) TableName() string { return "mcp_calls" }
 
 type Service struct {
-	app        *appstore.Store
-	projects   *project.Manager
-	api        *agent.ExternalProjectAPI
-	mu         sync.Mutex // serializes admission/confirmation with revoke in this runtime
-	changed    func(string)
-	now        func() time.Time
-	running    sync.Map
-	connection sync.Map
+	app             *appstore.Store
+	projects        *project.Manager
+	api             *agent.ExternalProjectAPI
+	mu              sync.Mutex // serializes admission/confirmation with revoke in this runtime
+	changed         func(string)
+	now             func() time.Time
+	running         sync.Map
+	connection      sync.Map
+	activityMu      sync.Mutex
+	activityRunning sync.Map
 }
 
 func New(app *appstore.Store, projects *project.Manager, api *agent.ExternalProjectAPI, changed func(string)) (*Service, error) {
@@ -76,6 +78,11 @@ func New(app *appstore.Store, projects *project.Manager, api *agent.ExternalProj
 	// A process crash cannot establish whether a normal write committed. Never
 	// automatically repeat it. Async submissions can be recovered by durable key.
 	err := app.DB().Model(&Call{}).Where("status = ? AND async = ?", "executing", false).Update("status", "interrupted").Error
+	if err == nil {
+		projects.WithOpenHook(func(ctx context.Context, store *project.Store) error {
+			return s.reconcileActivities(ctx, store)
+		})
+	}
 	return s, err
 }
 func newUUID() string        { return uuid.Must(uuid.NewV7()).String() }
@@ -169,7 +176,17 @@ func (s *Service) notify(p string) {
 		s.changed(p)
 	}
 }
-func (s *Service) Call(ctx context.Context, g Grant, args map[string]any, key string) map[string]any {
+func (s *Service) Call(ctx context.Context, g Grant, args map[string]any, key string) (result map[string]any) {
+	recorded := false
+	defer func() {
+		if recorded || !s.projects.IsOpen(g.ProjectUUID) || !s.valid(ctx, g) {
+			return
+		}
+		row, err := s.beginActivity(ctx, g, "request_api", activitySpec{action: "operation:invalid", label: "调用项目接口"}, nil)
+		if err == nil {
+			s.finishActivity(g.ProjectUUID, row, "failed", activityError(result))
+		}
+	}()
 	if len(key) > 128 {
 		return failure("mcp_invalid_key", "idempotency_key 最多 128 字节。")
 	}
@@ -200,6 +217,12 @@ func (s *Service) Call(ctx context.Context, g Grant, args map[string]any, key st
 		if c.Fingerprint != fp {
 			return failure("mcp_idempotency_conflict", "同一幂等键不能用于不同请求。")
 		}
+		recorded = true
+		// A replay is a read of an existing operation, not another execution.
+		replay, recordErr := s.beginActivity(ctx, g, "get_call", activitySpec{action: "read", label: "读取调用结果"}, nil)
+		if recordErr == nil {
+			s.finishActivity(g.ProjectUUID, replay, "succeeded", "")
+		}
 		if c.Status == "executing" && c.Async {
 			return s.execute(g, c, req)
 		}
@@ -219,12 +242,20 @@ func (s *Service) Call(ctx context.Context, g Grant, args map[string]any, key st
 		status = "pending_confirmation"
 	}
 	c = Call{UUID: newUUID(), GrantID: g.ID, IdempotencyKey: key, Fingerprint: fp, Arguments: string(encoded), Action: req.Action(), Status: status, Async: req.Async(), CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(15 * time.Minute)}
+	recorded = true
+	activity, activityErr := s.beginActivity(ctx, g, "request_api", requestActivity(req), &c.UUID)
+	if activityErr != nil {
+		s.mu.Unlock()
+		return publicError(activityErr)
+	}
+	defer s.activityRunning.Delete(activity.UUID)
 	err = s.app.DB().WithContext(ctx).Create(&c).Error
 	s.mu.Unlock()
 	if err != nil {
+		s.finishActivity(g.ProjectUUID, activity, "failed", "操作未受理")
 		return publicError(err)
 	}
-	s.notify(g.ProjectUUID)
+	s.syncCallActivity(g.ProjectUUID, c)
 	if c.Status == "pending_confirmation" {
 		return s.callResult(c)
 	}
@@ -260,7 +291,7 @@ func (s *Service) execute(g Grant, c Call, req agent.ExternalRequest) map[string
 	if err = s.app.DB().Model(&Call{}).Where("id = ?", c.ID).Updates(map[string]any{"status": c.Status, "result": c.Result, "updated_at": c.UpdatedAt}).Error; err != nil {
 		return failure("mcp_result_unavailable", "操作结果未能保存，请检查项目状态，不要使用新幂等键重放。")
 	}
-	s.notify(g.ProjectUUID)
+	s.syncCallActivity(g.ProjectUUID, c)
 	return s.callResult(c)
 }
 func (s *Service) callResult(c Call) map[string]any {
@@ -276,6 +307,9 @@ func (s *Service) callResult(c Call) map[string]any {
 	_ = s.app.DB().First(&g, c.GrantID).Error
 	var p appstore.RecentProject
 	_ = s.app.DB().First(&p, g.RecentProjectID).Error
+	if c.Status == "expired" {
+		s.syncCallActivity(p.UUID, c)
+	}
 	return success(map[string]any{"call": c, "result": result, "source": "external_mcp", "grant_uuid": g.UUID, "project_uuid": p.UUID, "status_url": "mcp://calls/" + c.UUID})
 }
 func (s *Service) GetCall(ctx context.Context, g Grant, u string) map[string]any {
@@ -353,7 +387,7 @@ func (s *Service) Decide(ctx context.Context, p, u, fingerprint, decision string
 	if r.RowsAffected != 1 {
 		return failure("mcp_state_conflict", "请求状态已变化。")
 	}
-	s.notify(p)
+	s.syncCallActivity(p, c)
 	if c.Status != "executing" {
 		return s.callResult(c)
 	}

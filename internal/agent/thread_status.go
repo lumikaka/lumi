@@ -19,6 +19,10 @@ func RecomputeThreadStatusTx(ctx context.Context, tx *sql.Tx, threadID int64, no
 		return "", err
 	}
 
+	if threadType == ThreadTypeMCP {
+		return ThreadIdle, nil
+	}
+
 	var waiting int
 	if err := tx.QueryRowContext(ctx, `SELECT
 		EXISTS(SELECT 1 FROM chat_turns WHERE thread_id=? AND status='waiting_for_input') OR

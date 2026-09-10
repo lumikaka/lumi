@@ -15,9 +15,9 @@
 
 ### Thread 与 Turn
 
-Thread 只固定项目、标题、会话级模型选择和运行状态。每次用户输入形成按序排队的 Turn，Reference 归属于对应 User Item；执行产生 Run、可读 Item 和 append-only Event，Thread 的展示状态是这些持久记录的投影。
+普通对话 Thread 固定项目、标题、会话级模型选择和运行状态。每次用户输入形成按序排队的 Turn，Reference 归属于对应 User Item；执行产生 Run、可读 Item 和 append-only Event，Thread 的展示状态是这些持久记录的投影。
 
-Thread 以 `thread_type=conversation|workflow` 区分普通对话与公开 UI 创建的独立 Workflow 页面。Chat Tool 发起的 Workflow 仍关联当前 `conversation` Thread，并通过 origin Turn 内联显示，不覆盖会话标题。
+Thread 以 `thread_type=conversation|workflow|mcp` 区分普通对话与公开 UI 创建的独立 Workflow 页面。Chat Tool 发起的 Workflow 仍关联当前 `conversation` Thread，并通过 origin Turn 内联显示，不覆盖会话标题。
 
 ### Reference
 
@@ -48,3 +48,7 @@ Agent 的工具调用、用户选择题和图片引用均先写入持久记录�
 | 工作流 | `direct_ui` Workflow 使用独立 `workflow` Thread；`chat_tool` Workflow 复用当前 `conversation` Thread，并以持久 await 暂停/恢复父 Run。 |
 | 文件 | 普通上传图片作为 `file` Reference；实际上传、内容服务和冻结图片引用保护由 `files` 管理。 |
 | Chapter / Premise 资产 / 漫画 Section | 作为用户输入 Reference 提供紧凑上下文；修改仍通过受控项目 API 并由各领域服务校验。 |
+
+### MCP 活动
+
+`mcp` thread 是同一 ChatArea 列表内的只读操作历史，不增加页签或入口。按项目和授权来源、连续 30 分钟没有工具调用切分；只依据调用受理时间。概括按受理顺序分段保留，连续成功读取与同资源同类别修改合并，未返回调用阻断合并，晚返回失败仍保留原位置。没有输入框、Trajectory、thread 运行状态或后台任务进度。

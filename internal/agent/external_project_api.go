@@ -52,7 +52,22 @@ func (r ExternalRequest) Dangerous() bool {
 func (r ExternalRequest) Async() bool {
 	return r.request.Route.Async && r.request.Method == "POST" && strings.HasPrefix(r.request.Route.ID, "generation.")
 }
-func (r ExternalRequest) Action() string  { return r.request.Route.Action }
+func (r ExternalRequest) Action() string { return r.request.Route.Action }
+
+// ActivityIdentity exposes only reviewed action metadata and a validated path.
+// The path is stored internally as a merge key, never as displayed parameters.
+func (r ExternalRequest) ActivityIdentity() (string, string) {
+	if r.ReadOnly() {
+		return "read", ""
+	}
+	if r.Async() {
+		return "submit", r.request.Path
+	}
+	if r.request.Method == "PUT" || r.request.Method == "PATCH" {
+		return "modify:" + r.request.Route.ID, r.request.Path
+	}
+	return "operation:" + r.request.Route.ID, r.request.Path
+}
 func (r ExternalRequest) Revision() int64 { return agentAPIRequestExpectedRevision(r.request) }
 func (api *ExternalProjectAPI) Prepare(projectUUID string, args map[string]any) (ExternalRequest, error) {
 	if !isUUIDv7(projectUUID) {

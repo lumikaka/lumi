@@ -120,6 +120,7 @@ export const settings = defineMessages({
   'settings.mcp': ['MCP 设置', 'MCP settings'],
   'settings.mcp.eyebrow': ['外部 AI 连接', 'EXTERNAL AI CONNECTIONS'],
   'settings.mcp.description': ['管理本机外部 AI 客户端的项目授权、连接配置和待确认操作。', 'Manage project access, connection configurations and pending operations for external AI clients on this device.'],
+  'settings.mcp.development_notice': ['mcp功能还在开发中，暂时不保证顺畅运行', 'MCP is still under development and may not run smoothly yet.'],
   'settings.mcp.project': ['授权项目', 'Authorized project'],
   'settings.mcp.select_project': ['请选择项目', 'Select a project'],
   'settings.mcp.empty_title': ['选择要管理的项目', 'Choose a project to manage'],

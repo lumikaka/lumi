@@ -146,3 +146,10 @@ export function retryWorkflow(projectUuid, workflowUuid) {
 export function resolveWorkflowConflict(projectUuid, workflowUuid, payload) {
   return apiRequest(projectPath(projectUuid, `/workflows/${encodeURIComponent(workflowUuid)}/conflict-resolutions`), jsonRequest('POST', payload))
 }
+
+export function listMCPActivity(projectUuid, threadUuid, { before = '', after = '', limit = 40, signal } = {}) {
+  const search = new URLSearchParams({ limit: String(limit) })
+  if (before) search.set('before', before)
+  if (after) search.set('after', after)
+  return apiRequest(threadPath(projectUuid, threadUuid, `/mcp_activity?${search}`), { signal })
+}

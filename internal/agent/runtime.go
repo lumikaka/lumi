@@ -801,7 +801,7 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 }
 
 func (service *Service) promoteNextFollowUpTx(ctx context.Context, tx *sql.Tx, projectUUID string, thread *threadRecord, promptSnapshot contextPromptSet) error {
-	if thread.ThreadType == ThreadTypeWorkflow {
+	if thread.ThreadType != ThreadTypeConversation {
 		return nil
 	}
 	var follow followUpRecord

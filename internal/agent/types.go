@@ -20,6 +20,7 @@ const (
 	ThreadInterrupted      = "interrupted"
 	ThreadTypeConversation = "conversation"
 	ThreadTypeWorkflow     = "workflow"
+	ThreadTypeMCP          = "mcp"
 	// Recovery-only Scene-era values. New Thread API and storage do not expose
 	// or persist these discriminators.
 	ThreadScopeProject       = "project"

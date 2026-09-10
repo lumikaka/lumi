@@ -109,7 +109,7 @@ UI 复制的配置包含当前后端可执行文件绝对路径、运行环境�
 
 受理后返回任务 UUID，调用 `succeeded` 表示受理成功，任务本身可能仍为 `queued` 或 `running`。通过清单中的 `GET .../tasks/{task_uuid}` 或 `GET .../production-tasks/{task_uuid}` 读取任务事实状态。客户端需要状态时主动查询；Lumi UI 使用 WebSocket 失效提示重新读取 REST，不做定时 HTTP 轮询。
 
-调用以应用库授权和调用 UUID 归属，任务使用 `mcp:<call_uuid>` 幂等键。没有虚构的 `chat_threads`、`chat_turns` 或 `chat_runs`。原有任务自己的 `agent_threads` / `agent_runs` 审计仍由任务运行时正常创建，这些不是 MCP 聊天上下文。
+调用以应用库授权和调用 UUID 归属，任务使用 `mcp:<call_uuid>` 幂等键。工具活动会生成只读 `thread_type=mcp` 展示线程，不创建虚构的聊天消息、`chat_turns` 或 `chat_runs`。原有任务自己的 `agent_threads` / `agent_runs` 审计仍由任务运行时正常创建，这些不是 MCP 聊天上下文。
 
 重试同一写入必须复用原 `idempotency_key` 和完整参数（包括投影），不同参数返回 `mcp_idempotency_conflict`。后端退出后，已提交任务按原运行时规则恢复；如果任务已提交但 MCP 结果还未保存，同键重试通过持久化任务幂等键找回原任务。普通同步写入若在进程崩溃时结果不明，会标为 `interrupted`，不会自动重放；先核查业务资源当前状态再决定新操作。
 
@@ -137,3 +137,11 @@ UI 复制的配置包含当前后端可执行文件绝对路径、运行环境�
 多个项目可分别创建授权，并在客户端配置中使用不同的服务器名称；每个凭据始终只能访问它绑定的项目。
 
 更多细节见 [架构说明](architecture/local-project-mcp.md)、[验证记录](local-project-mcp-validation.md) 与 [项目级 MCP PRD](prds/projects/features/本地项目级MCP接入.md)。
+
+## 在 ChatArea 查看 MCP 操作历史
+
+MCP 活动直接显示在原有 thread 列表中，无须切换页签。按项目和授权来源聚合，连续 30 分钟无工具调用后，下次调用创建新 thread；后台任务不延长会话。
+
+打开后可查看按调用受理顺序保留的概括历史。连续成功读取、同资源同类别修改会合并，切换操作或资源后另起一段；失败独立保留，晚返回也不会打乱顺序或被成功覆盖。概括由固定规则生成，不调用 AI，也不显示详细参数和完整响应。
+
+生成请求只显示“已提交”，此处不追踪任务进度或完成结果。MCP thread 没有聊天输入框和运行状态；待确认条目可前往原 MCP 设置页处理。原始请求与结果仍使用既有 MCP 管理和 `get_call` 能力查看。

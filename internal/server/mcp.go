@@ -12,9 +12,11 @@ import (
 	"lumi/internal/httpapi"
 	"lumi/internal/mcpbridge"
 	"lumi/internal/mcpserver"
+	"lumi/internal/project"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // Start publishes MCP on the actual business listener, including a desktop
@@ -64,6 +66,31 @@ func (a *Application) mountMCP(base, nonce string) {
 }
 
 func configureMCPManagement(api *echo.Group, s *mcpserver.Service, cfg config.Config) {
+	api.GET("/projects/:project_uuid/chat_threads/:thread_uuid/mcp_activity", func(c echo.Context) error {
+		limit := 40
+		if raw := c.QueryParam("limit"); raw != "" {
+			var err error
+			limit, err = strconv.Atoi(raw)
+			if err != nil {
+				return httpapi.NewError(422, "validation_failed", "分页参数无效", "", nil)
+			}
+		}
+		page, err := s.Activity(c.Request().Context(), c.Param("project_uuid"), c.Param("thread_uuid"), c.QueryParam("before"), c.QueryParam("after"), limit)
+		if errors.Is(err, mcpserver.ErrActivityChanged) {
+			return httpapi.NewError(409, "mcp_activity_changed", "历史已更新，请重新读取", "", nil)
+		}
+		if errors.Is(err, mcpserver.ErrActivityNotFound) {
+			return httpapi.NewError(404, "mcp_activity_not_found", "MCP 历史不存在", "", nil)
+		}
+		var projectErr *project.Error
+		if errors.As(err, &projectErr) {
+			return httpapi.NewError(409, projectErr.Code, projectErr.Message, projectErr.Details, err)
+		}
+		if err != nil {
+			return httpapi.NewError(422, "mcp_activity_unavailable", "无法读取 MCP 历史", "", err)
+		}
+		return httpapi.Success(c, 200, page)
+	})
 	cfg.Environment = mcpEnvironment(cfg)
 	api.GET("/mcp", func(c echo.Context) error { return httpapi.Success(c, 200, s.ConnectionInfo()) })
 	api.GET("/mcp-authorization-requests/:uuid", func(c echo.Context) error {

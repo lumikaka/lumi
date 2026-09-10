@@ -51,7 +51,7 @@ MCP JSON-RPC 和 MCP 协议字段（例如 `protocolVersion`、`inputSchema`、`
 
 应用库与项目库是独立 SQLite，不能把二者提交伪称一个原子事务。普通写入若崩溃于业务提交和结果记录之间，启动后标记 `interrupted`，保守保留结果不明状态。生成受理可凭 `mcp:<call_uuid>` 找回已提交任务；如果原任务不存在才进入正常生成校验。客户端断开从不隐式取消已接受任务。
 
-实时路径保持 `/api/v1/ws` 的 `topic/event/payload/ref/join_ref` 信封。现有业务 handler/任务事件使业务查询失效；`mcp:changed` 仅携带 `project_uuid`，使授权/确认查询失效。首次 join、重新 join 与窗口聚焦沿用全项目 REST 校准；没有定时 HTTP 同步。
+实时路径保持 `/api/v1/ws` 的 `topic/event/payload/ref/join_ref` 信封。现有业务 handler/任务事件使业务查询失效；`mcp:changed` 仅携带 `project_uuid`，使授权/确认查询以及 ChatArea 的 thread 列表、详情、MCP 概括历史查询失效。首次 join、重新 join 与窗口聚焦沿用全项目 REST 校准；没有定时 HTTP 同步。
 
 ## 规范和验证来源
 
@@ -67,3 +67,13 @@ OAuth 真实 SDK 集成位于 `internal/server/mcp_oauth_test.go`，覆盖 DCR�
 桌面原有打包已包含 `lumi_web`，因此无须增加 Rust 业务实现。前端检查与 MCP 二进制进程测试合入现有 `desktop-macos.yml`、`desktop-windows.yml`，复用已有构建产物；Go 全套检查沿用 Windows 流程，Rust/native 检查和完整打包沿用两平台原有步骤，不设独立 MCP workflow。macOS 验证随手动／发布流程执行，Windows 保留 PR 检查；本地不运行 Cargo/Rust。
 
 实际嵌入式二进制使用 SDK `CommandTransport` 的测试位于 `cmd/lumi_web/mcp_process_test.go`，通过 `LUMI_MCP_TEST_BINARY` 指定构建产物。详细执行结果与 CI 边界见 [验证记录](../local-project-mcp-validation.md)。
+
+## MCP 概括历史
+
+项目库的 `mcp_threads` 与 `mcp_thread_activities` 使用现有 `chat_threads` 的 `mcp` 类型作为统一展示入口。session 按项目和授权来源划分，只计算调用受理间隔，30 分钟无调用后下次新建。OAuth 刷新和后台任务均不改变分组规则。
+
+每次受理在项目事务中分配递增序号，结果写回原位置；应用库 `mcp_calls` 保留执行事实。概括只归并相邻已成功的读取或同资源同类别修改，未返回/待确认阻断合并，失败独立保留。只保存轻量动作和资源摘要，不复制参数、响应或媒体。重启和重新打开项目时校准尚未落下的调用结果，不重执行业务操作。
+
+生成保持 `PresentationNone`；MCP 只读 Thread 不生成 Turn/Run/Item，也不依赖模型配置、聊天状态重算或后台任务进度。调用提交成功后只显示已提交，后台结束不回写历史。详情分页在归并后执行，cursor 使用公开 thread/段 UUID 和 revision，拒绝旧版本，前端重读已加载窗口。
+
+SQLite 父表约束调整采用显式标记的迁移：同一连接在事务外暂停外键动作，事务内重建并保留自增序列，提交前执行 `foreign_key_check`，结束后恢复原外键设置；普通迁移行为不变。有 MCP 历史时拒绝丢失数据的降级。

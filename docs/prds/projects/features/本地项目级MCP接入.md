@@ -59,7 +59,7 @@ WebSocket `mcp:changed` 仅发送项目 UUID，触发相关 TanStack Query 失�
 
 ## jobs
 
-章节正文、来源设定图、设定拆解和页面图片任务复用现有 `StartDomainTask`/River 持久化运行时与 Lumi 模型设置。外部来源使用独立调用 UUID、`external_mcp` 和 `PresentationNone`，不创建聊天 Thread/Turn/Run。任务自身现有审计保留。
+章节正文、来源设定图、设定拆解和页面图片任务复用现有 `StartDomainTask`/River 持久化运行时与 Lumi 模型设置。外部来源使用独立调用 UUID、`external_mcp` 和 `PresentationNone`，只创建独立的只读 MCP 展示 Thread，不创建聊天 Turn/Run。任务自身现有审计保留。
 
 调用受理后，即使 MCP 客户端断开，任务也继续由后台运行时管理；关闭项目后按原队列规则恢复。外部请求租约通过 Project Manager 获取，不允许客户端以任意路径打开项目。
 
@@ -69,3 +69,13 @@ WebSocket `mcp:changed` 仅发送项目 UUID，触发相关 TanStack Query 失�
 - [架构与规范来源](../../../architecture/local-project-mcp.md)
 - 自动测试覆盖真实 MCP SDK、业务编辑、确认状态、幂等恢复、媒体边界、发现替换和 WebSocket/REST 同步。
 - Rust/native 仅安排 CI；完整桌面包验证由现有 Desktop workflows 执行，不在本地运行 Cargo。
+
+## ChatArea 操作历史
+
+工具调用按「项目 + 授权来源」聚合为 ChatArea 原列表中的只读 MCP thread。连续 30 分钟无调用后下次新建；后台任务运行、结果返回、确认及界面查看都不续期。OAuth token 刷新保留授权归属。
+
+项目库保存 session 与轻量受理事实，应用库 `mcp_calls` 继续负责原执行、幂等、确认和结果。概括按受理顺序，而非返回顺序；仅连续已成功的读取和同资源同类别修改合并。未知结果与等待确认阻断合并，失败在原位置独立保留。幂等重放作为读取原结果概括，不重复业务效果。
+
+详情 REST 为 `GET /api/v1/projects/:project_uuid/chat_threads/:thread_uuid/mcp_activity`，支持 `before/after/limit`，返回标准列表及 cursor 分页信封。历史 revision 变化时旧 cursor 返回 `mcp_activity_changed`，前端重读全部已加载页。来源仅为名称快照，不代表已验证客户端身份。
+
+只显示模板概括、等待确认和调用结果，无完整参数、响应、聊天输入框或 thread 运行状态；生成只记录已提交，不追踪后台任务进度。`mcp:changed` 同时刷新 ChatArea 列表及概括历史；后台任务事件不刷新该历史。
