@@ -23,7 +23,10 @@ func (d *rebuildDriver) Run(reader io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if !bytes.HasPrefix(b, []byte("-- lumi: rebuild-without-foreign-key-actions\n")) {
+	// Match the directive with either checkout line ending without changing SQL data.
+	firstLine, _, _ := bytes.Cut(b, []byte("\n"))
+	firstLine = bytes.TrimSuffix(firstLine, []byte("\r"))
+	if !bytes.Equal(firstLine, []byte("-- lumi: rebuild-without-foreign-key-actions")) {
 		return d.Driver.Run(bytes.NewReader(b))
 	}
 	ctx := context.Background()
