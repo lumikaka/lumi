@@ -1511,7 +1511,7 @@ mod tests {
     }
 
     #[test]
-    fn tauri_config_has_no_webview_window_or_file_association() {
+    fn tauri_config_builds_app_and_dmg_without_a_webview_or_file_association() {
         let config: serde_json::Value =
             serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         assert_eq!(
@@ -1528,6 +1528,10 @@ mod tests {
             .pointer("/app/windows")
             .and_then(|item| item.as_array())
             .is_some_and(|windows| windows.is_empty()));
+        assert_eq!(
+            config.pointer("/bundle/targets"),
+            Some(&serde_json::json!(["app", "dmg"]))
+        );
         assert!(config.pointer("/bundle/fileAssociations").is_none());
         assert_eq!(
             config

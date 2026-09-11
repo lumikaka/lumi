@@ -161,8 +161,8 @@ jobs:
           set -euo pipefail
 
           required_assets=(
-            artifacts/macos/Lumi-macos-aarch64.app.zip
-            artifacts/macos/Lumi-macos-aarch64.app.zip.sha256
+            artifacts/macos/Lumi-macos-aarch64.dmg
+            artifacts/macos/Lumi-macos-aarch64.dmg.sha256
             artifacts/macos/Lumi-macos-aarch64.app.tar.gz
             artifacts/macos/Lumi-macos-aarch64.app.tar.gz.sig
             artifacts/windows/Lumi-windows-x64-setup.exe

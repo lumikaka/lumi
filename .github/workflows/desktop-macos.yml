@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and release macOS Apple Silicon app
+    name: Build and release macOS Apple Silicon DMG
     runs-on: macos-15
     env:
       APPLE_SIGNING_IDENTITY: "${{ vars.APPLE_SIGNING_IDENTITY || '-' }}"
@@ -189,7 +189,7 @@ jobs:
           cargo test --locked --target aarch64-apple-darwin
           cargo test --locked --features desktop-updater --target aarch64-apple-darwin
 
-      - name: Build Lumi app
+      - name: Build Lumi app and DMG
         shell: bash
         env:
           LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
@@ -198,18 +198,11 @@ jobs:
 
       - name: Verify bundle and signing
         shell: bash
+        env:
+          LUMI_DESKTOP_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-
-          app_path="rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app"
-          backend_path="${app_path}/Contents/Resources/backend/lumi_web"
-
-          test -d "$app_path"
-          test -x "$backend_path"
-          test "$(lipo -archs "$backend_path")" = "arm64"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${app_path}/Contents/Info.plist")" = "${{ steps.release.outputs.version }}"
-          codesign --verify --deep --strict "$app_path"
-          codesign -dv --verbose=2 "$app_path"
+          ./rel/app/tauri.sh verify
 
       - name: Test frontend and packaged MCP backend
         shell: bash
@@ -289,14 +282,18 @@ jobs:
           pgrep -af "${app_path}/Contents/Resources/backend/lumi_web" >&2 || true
           exit 1
 
-      - name: Package release assets
+      - name: Normalize DMG release asset
         shell: bash
         run: |
           set -euo pipefail
-          ditto -c -k --keepParent \
-            rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app \
-            Lumi-macos-aarch64.app.zip
-          shasum -a 256 Lumi-macos-aarch64.app.zip > Lumi-macos-aarch64.app.zip.sha256
+          shopt -s nullglob
+          dmg_bundles=(rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg)
+          if [ "${#dmg_bundles[@]}" -ne 1 ]; then
+            echo "Expected one macOS DMG, found ${#dmg_bundles[@]}." >&2
+            exit 1
+          fi
+          cp "${dmg_bundles[0]}" Lumi-macos-aarch64.dmg
+          shasum -a 256 Lumi-macos-aarch64.dmg > Lumi-macos-aarch64.dmg.sha256
 
       - name: Package updater assets
         if: ${{ steps.release.outputs.updater == 'true' }}
@@ -319,8 +316,8 @@ jobs:
         with:
           name: Lumi-macos-aarch64
           path: |
-            Lumi-macos-aarch64.app.zip
-            Lumi-macos-aarch64.app.zip.sha256
+            Lumi-macos-aarch64.dmg
+            Lumi-macos-aarch64.dmg.sha256
             Lumi-macos-aarch64.app.tar.gz
             Lumi-macos-aarch64.app.tar.gz.sig
           if-no-files-found: error

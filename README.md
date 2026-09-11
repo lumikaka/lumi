@@ -91,8 +91,8 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 > [!IMPORTANT]
 > 当前桌面安装包支持 macOS Apple Silicon 和 Windows x64。AI 功能需要自行配置阿里云百炼或 Cloudflare AI Gateway；对应模型服务可能产生费用。
 
-1. 前往 [GitHub Releases](https://github.com/lumikaka/lumi/releases)，macOS Apple Silicon 下载 `Lumi-macos-aarch64.app.zip`，Windows x64 下载 `Lumi-windows-x64-setup.exe`。
-2. macOS 解压后打开 `Lumi.app`；Windows 运行安装程序后从开始菜单打开 Lumi。macOS 版本尚未公证，Windows 版本没有 Authenticode 签名；如果系统拦截首次启动，请先确认文件来自本仓库 Release 并核对 SHA-256，再决定是否继续。
+1. 前往 [GitHub Releases](https://github.com/lumikaka/lumi/releases)，macOS Apple Silicon 下载 `Lumi-macos-aarch64.dmg`，Windows x64 下载 `Lumi-windows-x64-setup.exe`。
+2. macOS 打开 DMG 并将 `Lumi.app` 拖入 Applications；Windows 运行安装程序后从开始菜单打开 Lumi。macOS 版本尚未公证，Windows 版本没有 Authenticode 签名；如果系统拦截首次启动，请先确认文件来自本仓库 Release 并核对 SHA-256，再决定是否继续。
 3. 按首次启动引导连接阿里云百炼或 Cloudflare AI Gateway。
 4. 选择“快速生成”，输入最小故事创意；或者选择“手动创建”，从空白项目开始。
 5. 在剧情、章节、设定和漫画工作台中继续修改，完成后从导出页面生成原图 ZIP 或 A4 PDF。
@@ -293,21 +293,24 @@ make desktop-build
 make desktop-app
 ```
 
+`make desktop-build` 会生成 `.app` 和 DMG；`make desktop-app` 只生成 `.app` 并立即启动，避免本地调试时额外制作 DMG。
+
 包含 Rust 测试、bundle 内容和签名校验的完整本地检查为：
 
 ```bash
 make desktop-check
 ```
 
-生成的应用位于：
+完整构建生成的应用和 DMG 位于：
 
 ```text
 rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app
+rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/Lumi_<version>_aarch64.dmg
 ```
 
 首次启动可在 Finder 中打开 `Lumi.app`，或运行 `open rel/app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app`。启动后可以从菜单栏的 Lumi 托盘菜单重新打开页面、复制 Access URL、查看 `~/Library/Logs/Lumi/lumi.log` 或退出应用。release 包默认只记录 Warning/Error；日志达到 5 MiB 后轮转并保留 `lumi.log.1`、`lumi.log.2` 两个备份。生产数据仍保存在 `~/.lumi`；安装包不改变项目目录或数据库格式。
 
-从 GitHub Release 下载时，解压 `Lumi-macos-aarch64.app.zip` 后得到的真正应用是 `Lumi.app`。从 Actions 页面下载的 `Lumi-macos-aarch64` workflow artifact 是一个容器，里面还有 `Lumi-macos-aarch64.app.zip` 和 SHA-256 文件，需要再解压内层 ZIP；不要把 artifact 容器目录改名为或当作 `.app` 打开。如果确认文件来自本仓库 Release 且 SHA-256 一致，但 macOS 仍因未公证而阻止 `Lumi.app`，请在首次尝试打开后前往“系统设置 → 隐私与安全性”，使用“仍要打开”。
+从 GitHub Release 下载 `Lumi-macos-aarch64.dmg` 后，先将其 SHA-256 与同名 `.sha256` 文件核对，再打开 DMG 并把 `Lumi.app` 拖入 Applications。从 Actions 页面下载的 `Lumi-macos-aarch64` workflow artifact 是一个 ZIP 容器，解压后可获得 DMG 和 SHA-256 文件。如果确认文件来自本仓库 Release 且 SHA-256 一致，但 macOS 仍因未公证而阻止 `Lumi.app`，请在首次尝试打开后前往“系统设置 → 隐私与安全性”，使用“仍要打开”。
 
 #### Windows x64 无签名安装包
 
@@ -335,8 +338,8 @@ Windows workflow 不读取 Azure Secret，不安装或调用 `trusted-signing-cl
 macOS workflow 会在干净的 runner 上预检桌面图标和脚本，再执行 Rust 测试、构建并启动 `.app`、校验 health response、系统浏览器调用、子进程退出与 codesign，最后生成：
 
 ```text
-Lumi-macos-aarch64.app.zip
-Lumi-macos-aarch64.app.zip.sha256
+Lumi-macos-aarch64.dmg
+Lumi-macos-aarch64.dmg.sha256
 Lumi-macos-aarch64.app.tar.gz
 Lumi-macos-aarch64.app.tar.gz.sig
 ```
@@ -376,7 +379,7 @@ Tag 中去掉 `v` 的版本号会注入 Tauri bundle，因此不需要为了每�
 
 updater 密钥通过 `cargo tauri signer generate` 离线生成，公钥保存在 `rel/app/src-tauri/tauri.conf.json`，私钥和密码只保存在 GitHub Secrets，并必须另做安全的离线备份。私钥丢失后，已经安装的客户端无法信任使用新密钥签名的后续更新。workflow 不会打印这些 Secret。
 
-接入 updater 之前安装的 v0.1.4 及更早版本没有内置 updater 公钥，必须手动安装首个支持自动更新的稳定版；从下一个 patch 版本开始才能验证完整的自动升级链路。当前 macOS 发布没有 Apple notarization，Windows 发布没有 Authenticode 签名，因此 ad-hoc 签名的 macOS 构建仍可能被 Gatekeeper 阻止，Windows unsigned 构建仍可能被 SmartScreen 提示。当前阶段不包含 macOS Intel、Universal Binary、DMG、Mac App Store、Windows ARM64、MSI 或 portable ZIP。
+接入 updater 之前安装的 v0.1.4 及更早版本没有内置 updater 公钥，必须手动安装首个支持自动更新的稳定版；从下一个 patch 版本开始才能验证完整的自动升级链路。当前 macOS 发布没有 Apple notarization，Windows 发布没有 Authenticode 签名，因此 ad-hoc 签名的 macOS 构建仍可能被 Gatekeeper 阻止，Windows unsigned 构建仍可能被 SmartScreen 提示。当前阶段不包含 macOS Intel、Universal Binary、Mac App Store、Windows ARM64、MSI 或 portable ZIP。
 
 </details>
 

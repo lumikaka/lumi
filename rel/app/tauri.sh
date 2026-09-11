@@ -7,6 +7,7 @@ main() {
   tauri_dir="${root_dir}/src-tauri"
   backend_dir="${tauri_dir}/backend-darwin"
   app_path="${tauri_dir}/target/aarch64-apple-darwin/release/bundle/macos/Lumi.app"
+  dmg_dir="${tauri_dir}/target/aarch64-apple-darwin/release/bundle/dmg"
   target="aarch64-apple-darwin"
   command="${1:-build}"
 
@@ -56,7 +57,7 @@ main() {
       ;;
     app)
       build_backend
-      build_tauri "$@"
+      build_tauri --bundles app "$@"
       open -W "$app_path"
       ;;
     check)
@@ -69,6 +70,9 @@ main() {
         cargo test --features desktop-updater --target "$target"
       )
       build_tauri "$@"
+      verify_bundle
+      ;;
+    verify)
       verify_bundle
       ;;
     *)
@@ -133,13 +137,13 @@ build_tauri() {
   pnpm --dir "$root_dir" exec tauri build \
     --config "$config_json" \
     --target "$target" \
-    --bundles app \
     "${updater_args[@]}" \
     "$@"
 }
 
 verify_bundle() {
   bundled_backend="${app_path}/Contents/Resources/backend/lumi_web"
+  app_version=""
 
   if [ ! -d "$app_path" ]; then
     echo "Tauri app bundle not found: ${app_path}" >&2
@@ -150,8 +154,76 @@ verify_bundle() {
     exit 1
   fi
 
+  if [ "$(lipo -archs "$bundled_backend")" != "arm64" ]; then
+    echo "Bundled Lumi backend is not arm64: ${bundled_backend}" >&2
+    exit 1
+  fi
+
+  app_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${app_path}/Contents/Info.plist")"
+  if [ -n "${LUMI_DESKTOP_VERSION:-}" ] && [ "$app_version" != "$LUMI_DESKTOP_VERSION" ]; then
+    echo "Bundled Lumi version ${app_version} does not match ${LUMI_DESKTOP_VERSION}." >&2
+    exit 1
+  fi
+
   codesign --verify --deep --strict "$app_path"
-  echo "Verified ${app_path}"
+  codesign -dv --verbose=2 "$app_path"
+
+  if [ ! -d "$dmg_dir" ]; then
+    echo "Tauri DMG output directory not found: ${dmg_dir}" >&2
+    exit 1
+  fi
+
+  shopt -s nullglob
+  dmg_paths=("${dmg_dir}"/*.dmg)
+  shopt -u nullglob
+  if [ "${#dmg_paths[@]}" -ne 1 ]; then
+    echo "Expected one Tauri DMG, found ${#dmg_paths[@]} in ${dmg_dir}." >&2
+    exit 1
+  fi
+  dmg_path="${dmg_paths[0]}"
+  hdiutil verify "$dmg_path"
+
+  mount_dir="$(mktemp -d "${TMPDIR:-/tmp}/lumi-dmg.XXXXXX")"
+  cleanup_mounted_dmg() {
+    hdiutil detach "$mount_dir" >/dev/null 2>&1 || true
+    rmdir "$mount_dir" >/dev/null 2>&1 || true
+  }
+  trap cleanup_mounted_dmg EXIT
+  trap 'exit 1' INT TERM
+
+  hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "$dmg_path" >/dev/null
+  mounted_app="${mount_dir}/Lumi.app"
+  mounted_backend="${mounted_app}/Contents/Resources/backend/lumi_web"
+
+  if [ ! -d "$mounted_app" ]; then
+    echo "Mounted DMG does not contain Lumi.app: ${dmg_path}" >&2
+    exit 1
+  fi
+  if [ ! -L "${mount_dir}/Applications" ]; then
+    echo "Mounted DMG does not contain the Applications shortcut: ${dmg_path}" >&2
+    exit 1
+  fi
+  if [ ! -x "$mounted_backend" ]; then
+    echo "Mounted Lumi backend is missing or not executable: ${mounted_backend}" >&2
+    exit 1
+  fi
+  if [ "$(lipo -archs "$mounted_backend")" != "arm64" ]; then
+    echo "Mounted Lumi backend is not arm64: ${mounted_backend}" >&2
+    exit 1
+  fi
+  mounted_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${mounted_app}/Contents/Info.plist")"
+  if [ "$mounted_version" != "$app_version" ]; then
+    echo "Mounted Lumi version ${mounted_version} does not match built app version ${app_version}." >&2
+    exit 1
+  fi
+  codesign --verify --deep --strict "$mounted_app"
+
+  hdiutil detach "$mount_dir" >/dev/null
+  if [ -d "$mount_dir" ]; then
+    rmdir "$mount_dir"
+  fi
+  trap - EXIT INT TERM
+  echo "Verified ${app_path} and ${dmg_path}"
 }
 
 main "$@"
