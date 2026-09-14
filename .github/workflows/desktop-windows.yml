@@ -376,6 +376,7 @@ jobs:
           $cacheDirectory = Join-Path $appDataDirectory 'cache'
           $logPath = Join-Path $appDataDirectory 'logs\lumi.log'
           $appProcess = $null
+          $backendProcessId = $null
 
           if ($appDataDirectory.StartsWith($installDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or [StringComparer]::OrdinalIgnoreCase.Equals($appDataDirectory, $installDirectory)) {
             throw "Application data directory must not be inside the install directory: $appDataDirectory"
@@ -443,6 +444,7 @@ jobs:
               throw "Expected one installed lumi_web.exe process, found $($backendProcesses.Count)."
             }
             $backendProcess = $backendProcesses[0]
+            $backendProcessId = $backendProcess.ProcessId
             if ($backendProcess.CommandLine -match 'desktop_token|LUMI_DESKTOP_ACCESS_TOKEN') {
               throw 'Desktop access token information leaked into the backend command line.'
             }
@@ -474,17 +476,19 @@ jobs:
               throw 'Desktop access token information leaked into the launcher log.'
             }
           } finally {
-            if ($null -ne $appProcess) {
-              Get-Process -Id $appProcess.Id -ErrorAction SilentlyContinue | Stop-Process -Force
-            }
-            Get-Process -Name 'lumi_web' -ErrorAction SilentlyContinue | Stop-Process -Force
-            Start-Sleep -Seconds 1
             if (Test-Path $uninstallerPath -PathType Leaf) {
               $uninstaller = Start-Process -FilePath $uninstallerPath -ArgumentList '/S' -Wait -PassThru
               if ($uninstaller.ExitCode -ne 0) {
                 throw "NSIS uninstaller exited with code $($uninstaller.ExitCode)."
               }
             }
+          }
+
+          if ($null -ne $appProcess -and (Get-Process -Id $appProcess.Id -ErrorAction SilentlyContinue)) {
+            throw "Silent uninstall left lumi.exe process $($appProcess.Id) running."
+          }
+          if ($null -ne $backendProcessId -and (Get-Process -Id $backendProcessId -ErrorAction SilentlyContinue)) {
+            throw "Silent uninstall left lumi_web.exe process $backendProcessId running."
           }
 
           $installedFiles = @($launcherPath, $backendPath, $uninstallerPath, $startMenuShortcut, $desktopShortcut)
@@ -502,6 +506,87 @@ jobs:
           foreach ($path in @($databasePath, $cacheDirectory, $logPath)) {
             if (-not (Test-Path $path)) {
               throw "Silent uninstall removed user data: $path"
+            }
+          }
+
+          $reinstaller = Start-Process -FilePath $installerPath -ArgumentList '/S' -Wait -PassThru
+          if ($reinstaller.ExitCode -ne 0) {
+            throw "NSIS reinstall exited with code $($reinstaller.ExitCode)."
+          }
+          $restartedApp = Start-Process -FilePath $launcherPath -PassThru
+          $restartedBackend = $null
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            $restartedBackend = @(
+              Get-CimInstance Win32_Process -Filter "Name = 'lumi_web.exe'" |
+                Where-Object { [StringComparer]::OrdinalIgnoreCase.Equals($_.ExecutablePath, $backendPath) }
+            ) | Select-Object -First 1
+            if ($null -ne $restartedBackend) {
+              $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $restartedBackend.ProcessId -ErrorAction SilentlyContinue)
+              if ($listeners | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -eq 32323 }) {
+                break
+              }
+            }
+            Start-Sleep -Seconds 1
+          }
+          if ($null -eq $restartedBackend) {
+            throw 'Reinstalled Lumi did not start its backend.'
+          }
+          $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $restartedBackend.ProcessId -ErrorAction SilentlyContinue)
+          if (-not ($listeners | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -eq 32323 })) {
+            throw 'Reinstalled Lumi did not reclaim the preferred port 32323.'
+          }
+
+          $jobBackendProcessId = $restartedBackend.ProcessId
+          Get-Process -Id $restartedApp.Id | Stop-Process -Force
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            if (-not (Get-Process -Id $jobBackendProcessId -ErrorAction SilentlyContinue)) {
+              break
+            }
+            Start-Sleep -Milliseconds 200
+          }
+          if (Get-Process -Id $jobBackendProcessId -ErrorAction SilentlyContinue) {
+            throw "Forced launcher termination left lumi_web.exe process $jobBackendProcessId running."
+          }
+
+          $restartedApp = Start-Process -FilePath $launcherPath -PassThru
+          $restartedBackend = $null
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            $restartedBackend = @(
+              Get-CimInstance Win32_Process -Filter "Name = 'lumi_web.exe'" |
+                Where-Object {
+                  $_.ProcessId -ne $jobBackendProcessId -and
+                  [StringComparer]::OrdinalIgnoreCase.Equals($_.ExecutablePath, $backendPath)
+                }
+            ) | Select-Object -First 1
+            if ($null -ne $restartedBackend) {
+              $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $restartedBackend.ProcessId -ErrorAction SilentlyContinue)
+              if ($listeners | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -eq 32323 }) {
+                break
+              }
+            }
+            Start-Sleep -Seconds 1
+          }
+          if ($null -eq $restartedBackend) {
+            throw 'Lumi did not restart after its forced launcher termination.'
+          }
+          $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $restartedBackend.ProcessId -ErrorAction SilentlyContinue)
+          if (-not ($listeners | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -eq 32323 })) {
+            throw 'Lumi did not reclaim port 32323 after its forced launcher termination.'
+          }
+
+          $deleteUninstaller = Start-Process -FilePath $uninstallerPath -ArgumentList @('/S', '/DELETEAPPDATA') -Wait -PassThru
+          if ($deleteUninstaller.ExitCode -ne 0) {
+            throw "NSIS delete-data uninstall exited with code $($deleteUninstaller.ExitCode)."
+          }
+          if (Get-Process -Id $restartedApp.Id -ErrorAction SilentlyContinue) {
+            throw "Delete-data uninstall left lumi.exe process $($restartedApp.Id) running."
+          }
+          if (Get-Process -Id $restartedBackend.ProcessId -ErrorAction SilentlyContinue) {
+            throw "Delete-data uninstall left lumi_web.exe process $($restartedBackend.ProcessId) running."
+          }
+          foreach ($path in @($installDirectory, $appDataDirectory)) {
+            if (Test-Path $path) {
+              throw "Delete-data uninstall left path behind: $path"
             }
           }
 

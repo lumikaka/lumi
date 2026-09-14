@@ -2,13 +2,20 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 #[cfg(target_os = "windows")]
-use std::{ffi::OsStr, os::windows::process::CommandExt};
+use std::{
+    ffi::OsStr,
+    os::windows::{
+        io::{AsRawHandle, FromRawHandle, OwnedHandle},
+        process::CommandExt,
+    },
+};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager};
@@ -18,6 +25,12 @@ use tauri_plugin_dialog::MessageDialogButtons;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 #[cfg(feature = "desktop-updater")]
 use tauri_plugin_updater::UpdaterExt;
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::System::JobObjects::{
+    AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
+    SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+};
 
 const APP_NAME: &str = "Lumi";
 const TRAY_ID: &str = "lumi-tray";
@@ -43,6 +56,37 @@ const OPEN_TARGET_ENV: &str = "LUMI_OPEN_TARGET";
 #[cfg(target_os = "windows")]
 const OPEN_TARGET_SCRIPT: &str =
     "$target = $env:LUMI_OPEN_TARGET; Remove-Item Env:LUMI_OPEN_TARGET; Start-Process -FilePath $target";
+
+struct BackendProcess {
+    #[cfg(target_os = "windows")]
+    _lifetime_job: Option<OwnedHandle>,
+    child: Child,
+}
+
+impl BackendProcess {
+    #[cfg(test)]
+    fn unmanaged(child: Child) -> Self {
+        Self {
+            #[cfg(target_os = "windows")]
+            _lifetime_job: None,
+            child,
+        }
+    }
+}
+
+impl Deref for BackendProcess {
+    type Target = Child;
+
+    fn deref(&self) -> &Self::Target {
+        &self.child
+    }
+}
+
+impl DerefMut for BackendProcess {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.child
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum LogLevel {
@@ -305,7 +349,7 @@ pub fn run() {
 }
 
 struct LauncherState {
-    child: Arc<Mutex<Option<Child>>>,
+    child: Arc<Mutex<Option<BackendProcess>>>,
     ready: Mutex<bool>,
     open_requested: Mutex<bool>,
     terminating: Mutex<bool>,
@@ -715,7 +759,7 @@ fn start_backend(
     port: u16,
     access_token: &str,
     logger: &DesktopLogger,
-) -> Result<Child, String> {
+) -> Result<BackendProcess, String> {
     let backend_path = if cfg!(debug_assertions) {
         std::env::var_os("LUMI_DESKTOP_BACKEND")
             .map(PathBuf::from)
@@ -759,13 +803,60 @@ fn start_backend(
         .spawn()
         .map_err(|error| format!("failed to start {}: {error}", backend_path.display()))?;
 
+    #[cfg(target_os = "windows")]
+    let lifetime_job = match backend_lifetime_job(&child) {
+        Ok(job) => Some(job),
+        Err(error) => {
+            logger.log(
+                LogLevel::Warn,
+                &format!(
+                    "failed to attach Lumi backend to its Windows lifetime job: {error}"
+                ),
+            );
+            None
+        }
+    };
+
     if let Some(stdout) = child.stdout.take() {
         spawn_output_thread(stdout, logger.clone(), "stdout");
     }
     if let Some(stderr) = child.stderr.take() {
         spawn_output_thread(stderr, logger.clone(), "stderr");
     }
-    Ok(child)
+    Ok(BackendProcess {
+        #[cfg(target_os = "windows")]
+        _lifetime_job: lifetime_job,
+        child,
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn backend_lifetime_job(child: &Child) -> io::Result<OwnedHandle> {
+    let raw_job = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+    if raw_job.is_null() {
+        return Err(io::Error::last_os_error());
+    }
+    let job = unsafe { OwnedHandle::from_raw_handle(raw_job) };
+
+    let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    let configured = unsafe {
+        SetInformationJobObject(
+            job.as_raw_handle(),
+            JobObjectExtendedLimitInformation,
+            std::ptr::from_ref(&limits).cast(),
+            std::mem::size_of_val(&limits) as u32,
+        )
+    };
+    if configured == 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    let assigned = unsafe { AssignProcessToJobObject(job.as_raw_handle(), child.as_raw_handle()) };
+    if assigned == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(job)
 }
 
 fn default_debug_backend_path() -> PathBuf {
@@ -808,7 +899,7 @@ fn configure_hidden_command(command: &mut Command) {
 fn configure_hidden_command(_command: &mut Command) {}
 
 fn wait_until_ready(
-    child_slot: &Arc<Mutex<Option<Child>>>,
+    child_slot: &Arc<Mutex<Option<BackendProcess>>>,
     port: u16,
     timeout: Duration,
 ) -> Result<(), String> {
@@ -842,7 +933,11 @@ fn wait_until_ready(
     }
 }
 
-fn monitor_backend(app: AppHandle, child_slot: Arc<Mutex<Option<Child>>>, logger: DesktopLogger) {
+fn monitor_backend(
+    app: AppHandle,
+    child_slot: Arc<Mutex<Option<BackendProcess>>>,
+    logger: DesktopLogger,
+) {
     loop {
         if app.state::<LauncherState>().is_terminating() {
             return;
@@ -1643,6 +1738,21 @@ mod tests {
         assert!(config.pointer("/bundle/fileAssociations").is_none());
     }
 
+    #[test]
+    fn windows_installer_hooks_cover_backend_and_user_data_cleanup() {
+        let hooks = include_str!("../windows/hooks.nsh");
+        for expected in [
+            "!macro NSIS_HOOK_PREINSTALL",
+            "!macro NSIS_HOOK_PREUNINSTALL",
+            "!macro NSIS_HOOK_POSTUNINSTALL",
+            "KillProcessCurrentUser \"lumi_web.exe\"",
+            "RmDir /r \"${directory}\"",
+            "\"/DELETEAPPDATA\"",
+        ] {
+            assert!(hooks.contains(expected), "missing NSIS hook: {expected}");
+        }
+    }
+
     #[cfg(target_os = "windows")]
     #[test]
     fn windows_paths_use_exe_and_application_log_directory() {
@@ -1760,7 +1870,7 @@ mod tests {
             attempts
         });
 
-        let child = long_running_test_command().spawn().unwrap();
+        let child = BackendProcess::unmanaged(long_running_test_command().spawn().unwrap());
         let child_slot = Arc::new(Mutex::new(Some(child)));
         let result = wait_until_ready(&child_slot, port, Duration::from_secs(2));
         let mut child = child_slot.lock().unwrap().take().unwrap();
@@ -1774,7 +1884,7 @@ mod tests {
     fn startup_wait_reports_backend_exit() {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let port = listener.local_addr().unwrap().port();
-        let child = exiting_test_command().spawn().unwrap();
+        let child = BackendProcess::unmanaged(exiting_test_command().spawn().unwrap());
         let child_slot = Arc::new(Mutex::new(Some(child)));
 
         let error = wait_until_ready(&child_slot, port, Duration::from_secs(2)).unwrap_err();
@@ -1810,7 +1920,7 @@ mod tests {
         );
         state.terminate();
 
-        let child = long_running_test_command().spawn().unwrap();
+        let child = BackendProcess::unmanaged(long_running_test_command().spawn().unwrap());
         let pid = child.id();
         assert!(!state.attach_child(child));
         assert!(state.child.lock().unwrap().is_none());
