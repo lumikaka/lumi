@@ -809,9 +809,7 @@ fn start_backend(
         Err(error) => {
             logger.log(
                 LogLevel::Warn,
-                &format!(
-                    "failed to attach Lumi backend to its Windows lifetime job: {error}"
-                ),
+                &format!("failed to attach Lumi backend to its Windows lifetime job: {error}"),
             );
             None
         }
