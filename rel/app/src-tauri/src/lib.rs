@@ -432,7 +432,7 @@ impl LauncherState {
         *self.terminating.lock().unwrap()
     }
 
-    fn attach_child(&self, mut child: Child) -> bool {
+    fn attach_child(&self, mut child: BackendProcess) -> bool {
         let mut guard = self.child.lock().unwrap();
         if self.is_terminating() {
             drop(guard);
