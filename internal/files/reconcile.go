@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -19,9 +20,11 @@ func ReconcileOnOpen(ctx context.Context, store *project.Store) error {
 	// A full scan cannot continue across a process boundary. Release its
 	// active uniqueness slot before River restores the owning maintenance
 	// task, which will create a fresh, auditable scan attempt.
-	if err := store.DB().WithContext(ctx).Model(&scanRecord{}).
-		Where("project_id = (SELECT id FROM projects WHERE uuid = ?) AND status = ?", store.ProjectUUID(), "running").
-		Updates(map[string]any{"status": "failed", "completed_at": now, "updated_at": now, "summary_json": `{"interrupted":true}`}).Error; err != nil {
+	if err := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&scanRecord{}).
+			Where("project_id = (SELECT id FROM projects WHERE uuid = ?) AND status = ?", store.ProjectUUID(), "running").
+			Updates(map[string]any{"status": "failed", "completed_at": now, "updated_at": now, "summary_json": `{"interrupted":true}`})
+	}).Error; err != nil {
 		return err
 	}
 	_, err := service.Reconcile(ctx, lightReconcileLimit)
@@ -69,7 +72,7 @@ func (service *Service) CleanupUploads(ctx context.Context, limit int, retention
 	}
 	now := service.now().UTC()
 	var removed, retired int64
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if len(orphanFileIDs) > 0 {
 			result := tx.Model(&fileRecord{}).
 				Where("id IN ? AND purpose='project_chatbot_reference' AND deleted_at IS NULL", orphanFileIDs).
@@ -133,7 +136,7 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 				state = ObjectMissing
 			}
 			now := service.now().UTC()
-			if err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 				if err := tx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", state).Error; err != nil {
 					return err
 				}
@@ -147,7 +150,9 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 			continue
 		}
 		now := service.now().UTC()
-		result := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ? AND state = ?", upload.ID, StateConsuming).Updates(map[string]any{"state": StateReady, "updated_at": now})
+		result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&uploadRecord{}).Where("id = ? AND state = ?", upload.ID, StateConsuming).Updates(map[string]any{"state": StateReady, "updated_at": now})
+		})
 		if result.Error != nil {
 			return summary, result.Error
 		}
@@ -170,7 +175,7 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 		target, pathErr := service.assetPath(object.KeyPath)
 		if pathErr != nil {
 			now := service.now().UTC()
-			if err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 				if err := tx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectPending).Update("state", ObjectCorrupt).Error; err != nil {
 					return err
 				}
@@ -193,7 +198,7 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 		}
 		if statErr == nil && service.verifyObjectFile(object) == nil {
 			now := service.now().UTC()
-			err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 				if err := tx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectPending).Updates(map[string]any{"state": ObjectReady, "verified_at": now}).Error; err != nil {
 					return err
 				}
@@ -210,7 +215,7 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 			continue
 		}
 		now := service.now().UTC()
-		if err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			if err := tx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectPending).Update("state", ObjectMissing).Error; err != nil {
 				return err
 			}
@@ -233,7 +238,9 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 	for _, object := range ready {
 		path, err := service.assetPath(object.KeyPath)
 		if err != nil {
-			if updateErr := service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectCorrupt).Error; updateErr != nil {
+			if updateErr := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+				return executionTx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectCorrupt)
+			}).Error; updateErr != nil {
 				return summary, updateErr
 			}
 			continue
@@ -243,20 +250,26 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 			quarantine, quarantineErr := service.quarantinePath(object.UUID, object.CanonicalExt)
 			if quarantineErr == nil {
 				if quarantineInfo, statErr := os.Lstat(quarantine); statErr == nil && quarantineInfo.Mode().IsRegular() && quarantineInfo.Mode()&os.ModeSymlink == 0 {
-					if updateErr := service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectQuarantined).Error; updateErr != nil {
+					if updateErr := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+						return executionTx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectQuarantined)
+					}).Error; updateErr != nil {
 						return summary, updateErr
 					}
 					service.emitObjectAssets(ctx, object.ID, "asset/updated", ObjectQuarantined)
 					continue
 				}
 			}
-			if updateErr := service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectMissing).Error; updateErr != nil {
+			if updateErr := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+				return executionTx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectMissing)
+			}).Error; updateErr != nil {
 				return summary, updateErr
 			}
 			summary.Missing++
 			service.emitObjectAssets(ctx, object.ID, "asset/missing", ObjectMissing)
 		} else if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() != object.ByteSize {
-			if updateErr := service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectCorrupt).Error; updateErr != nil {
+			if updateErr := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+				return executionTx.Model(&objectRecord{}).Where("id = ? AND state = ?", object.ID, ObjectReady).Update("state", ObjectCorrupt)
+			}).Error; updateErr != nil {
 				return summary, updateErr
 			}
 			service.emitObjectAssets(ctx, object.ID, "asset/updated", ObjectCorrupt)
@@ -268,7 +281,9 @@ func (service *Service) reconcile(ctx context.Context, limit int) (ReconcileSumm
 		return summary, err
 	}
 	for _, upload := range expired {
-		result := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ? AND state IN ?", upload.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now})
+		result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&uploadRecord{}).Where("id = ? AND state IN ?", upload.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now})
+		})
 		if result.Error != nil {
 			return summary, result.Error
 		}

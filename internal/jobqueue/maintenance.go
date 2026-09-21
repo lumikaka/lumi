@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	"lumi/internal/taskexecution"
+
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"gorm.io/gorm"
@@ -63,7 +65,7 @@ func (manager *Manager) CreateMaintenanceTask(ctx context.Context, projectUUID s
 		return MaintenanceTask{}, err
 	}
 	now := manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return MaintenanceTask{}, err
 	}
@@ -86,14 +88,14 @@ func (manager *Manager) CreateMaintenanceTask(ctx context.Context, projectUUID s
 	if err := appendMaintenanceEventTx(ctx, tx, taskID, "task_queued", map[string]any{"project_uuid": projectUUID, "task_uuid": taskUUID, "kind": input.Kind, "resource_uuid": resourceUUID, "status": StatusQueued, "progress": 0}, now); err != nil {
 		return MaintenanceTask{}, err
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, maintenanceArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, MaintenanceKind: input.Kind, ResourceUUID: resourceUUID}, &river.InsertOpts{Queue: QueueAssetMaintenance, MaxAttempts: maxAttempts, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
+	inserted, err := runtime.insertExecutionTx(ctx, tx, maintenanceArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, MaintenanceKind: input.Kind, ResourceUUID: resourceUUID}, &river.InsertOpts{Queue: QueueAssetMaintenance, MaxAttempts: maxAttempts, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
 	if err != nil {
 		return MaintenanceTask{}, err
 	}
 	if inserted.UniqueSkippedAsDuplicate {
 		return MaintenanceTask{}, taskError(CodeTaskConflict, "同类维护任务已在队列中", "River unique job 拒绝了重复维护任务。", nil)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE asset_maintenance_runs SET river_job_id = ? WHERE id = ?", inserted.Job.ID, taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE asset_maintenance_runs SET river_job_id = ?, execution_uuid = ? WHERE id = ?", inserted.Job.ID, executionBindingFor(inserted.Job).NullableUUID(), taskID); err != nil {
 		return MaintenanceTask{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -202,8 +204,7 @@ func (manager *Manager) CancelMaintenanceTask(ctx context.Context, projectUUID, 
 	if err != nil {
 		return MaintenanceTask{}, err
 	}
-	runtime.cancelWork(taskUUID)
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return MaintenanceTask{}, err
 	}
@@ -219,11 +220,8 @@ func (manager *Manager) CancelMaintenanceTask(ctx context.Context, projectUUID, 
 		_ = tx.Commit()
 		return record.DTO(), nil
 	}
-	if record.RiverJobID == nil {
-		return MaintenanceTask{}, taskError(CodeTaskPersistenceFailed, "维护任务缺少队列关联", "任务无法安全取消。", nil)
-	}
 	now := manager.now().UTC()
-	if _, err := runtime.client.JobCancelTx(ctx, tx, *record.RiverJobID); err != nil {
+	if err := runtime.cancelOwnedJobTx(ctx, tx, "asset_maintenance_runs", taskUUID); err != nil {
 		return MaintenanceTask{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE asset_maintenance_runs SET status='cancelled',cancel_requested_at=?,completed_at=?,updated_at=? WHERE id=?`, now, now, now, record.ID); err != nil {
@@ -235,7 +233,6 @@ func (manager *Manager) CancelMaintenanceTask(ctx context.Context, projectUUID, 
 	if err := tx.Commit(); err != nil {
 		return MaintenanceTask{}, err
 	}
-	_, _ = runtime.client.JobCancel(context.WithoutCancel(ctx), *record.RiverJobID)
 	task, err := manager.GetMaintenanceTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcastMaintenance("task:cancelled", task)

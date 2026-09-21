@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -298,7 +299,7 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 		Overview:         TrajectoryOverview{Timeline: []TrajectoryTimelineEntry{}},
 	}
 	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			pid, err := projectID(ctx, tx, projectUUID)
 			if err != nil {
 				return err

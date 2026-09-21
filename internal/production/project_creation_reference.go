@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -76,7 +78,7 @@ func (service *Service) BindProjectCreationReferenceAsset(ctx context.Context, r
 		return PremiseAsset{}, domainError(CodeValidation, "创建参考图 UUID 无效", "reference_uuid 与 file_uuid 必须是 UUIDv7。", nil)
 	}
 	var domainID int64
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, err := service.projectActor(ctx, tx)
 		if err != nil {
 			return err
@@ -181,7 +183,7 @@ func (service *Service) BindProjectCreationReferenceAsset(ctx context.Context, r
 
 func (service *Service) projectReferenceAssetByBreakdownTitle(ctx context.Context, taskUUID, title string) (PremiseAsset, bool, error) {
 	var assetID int64
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := tx.Table("project_creation_reference_files AS refs").Select("assets.id").
 			Joins("JOIN premise_assets AS assets ON assets.id=refs.premise_asset_id").
 			Where("refs.project_id=(SELECT project_id FROM production_task_runs WHERE uuid=?) AND assets.deleted_at IS NULL AND lower(assets.title)=lower(?)", taskUUID, strings.TrimSpace(title)).

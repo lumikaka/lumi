@@ -13,6 +13,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -248,7 +249,7 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 		return Task{}, err
 	}
 	now := manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return Task{}, err
 	}
@@ -285,14 +286,14 @@ func (manager *Manager) persistStoryWorkflowTask(ctx context.Context, runtime *p
 			return Task{}, err
 		}
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: kind, ResourceUUID: resourceUUID}, &river.InsertOpts{Queue: QueueStory, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
+	inserted, err := runtime.insertExecutionTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: kind, ResourceUUID: resourceUUID}, &river.InsertOpts{Queue: QueueStory, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
 	if err != nil {
 		return Task{}, err
 	}
 	if inserted.UniqueSkippedAsDuplicate {
 		return Task{}, taskError(CodeTaskConflict, "资源已有互斥生成任务", "River unique job 拒绝了重复任务。", nil)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE task_runs SET river_job_id=? WHERE id=?", inserted.Job.ID, taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE task_runs SET river_job_id=?, execution_uuid=? WHERE id=?", inserted.Job.ID, executionBindingFor(inserted.Job).NullableUUID(), taskID); err != nil {
 		return Task{}, err
 	}
 	if err := tx.Commit(); err != nil {

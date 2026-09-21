@@ -182,9 +182,6 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 	if err := store.DB().WithContext(ctx).Raw("SELECT id FROM projects WHERE uuid = ?", store.ProjectUUID()).Scan(&projectID).Error; err != nil || projectID == 0 {
 		return nil, fmt.Errorf("resolve project identity for runtime: %w", err)
 	}
-	if err := reconcileProductTasks(ctx, sqlDB, projectID, manager.now().UTC()); err != nil {
-		return nil, err
-	}
 	runtimeCtx, cancel := context.WithCancel(context.Background())
 	runtime := &projectRuntime{store: store, projectID: projectID, projectUUID: store.ProjectUUID(), sqlDB: sqlDB, manager: manager, cancel: cancel, eventsDone: make(chan struct{}), workCancels: make(map[string]context.CancelFunc)}
 	workers := river.NewWorkers()
@@ -210,6 +207,20 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 		return nil, fmt.Errorf("create River client: %w", err)
 	}
 	runtime.client = client
+	if err := runtime.reconcileExecutionBindings(ctx); err != nil {
+		cancel()
+		return nil, err
+	}
+	if err := reconcileProductTasks(ctx, sqlDB, projectID, manager.now().UTC()); err != nil {
+		cancel()
+		return nil, err
+	}
+	if manager.agents != nil {
+		if err := manager.agents.ReconcileWithEnqueue(ctx, store, runtime.enqueueAgentTx); err != nil {
+			cancel()
+			return nil, err
+		}
+	}
 	events, unsubscribe := client.Subscribe(river.EventKindJobCompleted, river.EventKindJobFailed, river.EventKindJobCancelled, river.EventKindJobSnoozed)
 	go runtime.consumeRiverEvents(runtimeCtx, events, unsubscribe)
 	if err := client.Start(runtimeCtx); err != nil {
@@ -364,7 +375,7 @@ func (runtime *projectRuntime) consumeRiverEvents(ctx context.Context, events <-
 			if event == nil || event.Job == nil {
 				continue
 			}
-			if err := runtime.projectRiverEvent(context.WithoutCancel(ctx), event); err != nil {
+			if err := runtime.handleExecutionEvent(context.WithoutCancel(ctx), event); err != nil {
 				slog.Error("project River event projection failed", "project_uuid", runtime.projectUUID, "event", event.Kind, "error", err)
 			}
 		}
@@ -438,17 +449,11 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 	if _, err := db.ExecContext(ctx, `UPDATE llm_logs SET status='failed',error_code='provider_call_interrupted',error_message='应用在 Provider 请求期间退出。',completed_at=COALESCE(completed_at,?) WHERE project_id=? AND status='pending'`, now, projectID); err != nil {
 		return err
 	}
-	if _, err := db.ExecContext(ctx, `
-		UPDATE task_runs
-		SET status = 'interrupted', error_code = 'unsafe_restart', error_message = '应用在任务执行期间退出，请显式重试。', completed_at = ?, updated_at = ?
-		WHERE project_id = ? AND status = 'running' AND retryable = 0`, now, now, projectID); err != nil {
-		return err
-	}
-	_, err := db.ExecContext(ctx, `UPDATE asset_maintenance_runs SET status='queued',progress=0,updated_at=?,error_code='',error_message='' WHERE project_id=? AND status='running'`, now, projectID)
+	_, err := db.ExecContext(ctx, `UPDATE asset_maintenance_runs SET status='queued',updated_at=? WHERE project_id=? AND status='running'`, now, projectID)
 	if err != nil {
 		return err
 	}
-	_, err = db.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,updated_at=?,error_code='',error_message='' WHERE project_id=? AND status='running'`, now, projectID)
+	_, err = db.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',updated_at=? WHERE project_id=? AND status='running'`, now, projectID)
 	if err != nil {
 		return err
 	}

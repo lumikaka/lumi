@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"lumi/internal/promptcatalog"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -248,7 +249,7 @@ func (service *Service) CreatePromptVersion(ctx context.Context, input CreatePro
 		return PromptVersion{}, err
 	}
 	var result promptVersionRecord
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, loadErr := service.projectAndActor(ctx, tx)
 		if loadErr != nil {
 			return loadErr
@@ -335,7 +336,7 @@ func (service *Service) UpdatePromptGroup(ctx context.Context, input UpdatePromp
 	}
 	sort.Strings(keys)
 	now := service.now().UTC()
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, loadErr := service.projectAndActor(ctx, tx)
 		if loadErr != nil {
 			return loadErr
@@ -413,7 +414,7 @@ func (service *Service) EnsurePromptCatalogVersions(ctx context.Context, sourceT
 		return storyError(CodeValidationFailed, "Prompt 初始化来源无效", "source_type 只支持 project_created 或 migration。", nil)
 	}
 	now := service.now().UTC()
-	return service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, err := service.projectAndActor(ctx, tx)
 		if err != nil {
 			return err
@@ -520,7 +521,7 @@ func (service *Service) RestorePromptVersion(ctx context.Context, versionUUID st
 		return PromptVersion{}, storyError(CodeValidationFailed, "Prompt 版本 UUID 无效", "版本资源标识必须是 UUIDv7。", nil)
 	}
 	var next promptVersionRecord
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, loadErr := service.projectAndActor(ctx, tx)
 		if loadErr != nil {
 			return loadErr

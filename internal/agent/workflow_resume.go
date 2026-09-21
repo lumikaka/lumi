@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"gorm.io/gorm"
 	"strings"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 type workflowResumeState struct {
@@ -83,7 +85,9 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	}
 
 	now := service.now().UTC()
-	if err := store.DB().WithContext(ctx).Table("workflow_awaits").Where("id=? AND status='ready'", state.AwaitID).Updates(map[string]any{"status": "resuming", "updated_at": now}).Error; err != nil {
+	if err := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Table("workflow_awaits").Where("id=? AND status='ready'", state.AwaitID).Updates(map[string]any{"status": "resuming", "updated_at": now})
+	}).Error; err != nil {
 		return false, err
 	}
 	var execution toolExecutionRecord
@@ -99,7 +103,9 @@ func (service *Service) resumeWorkflowAwait(ctx context.Context, store *project.
 	if err := service.resetNoProgress(ctx, store, tc.Run.ID); err != nil {
 		return false, err
 	}
-	if err := store.DB().WithContext(ctx).Table("workflow_awaits").Where("id=? AND status IN ('ready','resuming')", state.AwaitID).Updates(map[string]any{"status": "resumed", "resumed_at": now, "updated_at": now}).Error; err != nil {
+	if err := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Table("workflow_awaits").Where("id=? AND status IN ('ready','resuming')", state.AwaitID).Updates(map[string]any{"status": "resumed", "resumed_at": now, "updated_at": now})
+	}).Error; err != nil {
 		return false, err
 	}
 	return true, nil

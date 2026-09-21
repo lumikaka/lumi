@@ -15,6 +15,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 )
 
 type contextItem struct {
@@ -816,7 +817,7 @@ func (service *Service) persistSummary(ctx context.Context, store *project.Store
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}

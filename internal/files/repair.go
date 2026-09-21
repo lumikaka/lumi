@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -81,7 +83,7 @@ func (service *Service) RepairContent(ctx context.Context, assetUUID string, rea
 			return err
 		}
 		now := service.now().UTC()
-		return service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			if err := tx.Model(&objectRecord{}).Where("id = ?", current.FileObjectID).Updates(map[string]any{"state": ObjectReady, "verified_at": now}).Error; err != nil {
 				return err
 			}

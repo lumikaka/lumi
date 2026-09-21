@@ -16,6 +16,7 @@ import (
 	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -582,7 +583,7 @@ func (service *Service) persistToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return existing, nil, false, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return existing, nil, false, err
 	}
@@ -641,7 +642,7 @@ func (service *Service) persistRejectedToolCall(ctx context.Context, store *proj
 	if err != nil {
 		return false, nil, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return false, nil, err
 	}
@@ -769,7 +770,9 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 	service.hydrateToolExecutionMetadata(tc, &execution, args)
 	if execution.ID > 0 && execution.State != "executing" {
 		now := service.now().UTC()
-		updated := store.DB().WithContext(ctx).Model(&toolExecutionRecord{}).Table("agent_tool_executions").Where("id=? AND state='intent'", execution.ID).Updates(map[string]any{"state": "executing", "started_at": now, "updated_at": now})
+		updated := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&toolExecutionRecord{}).Table("agent_tool_executions").Where("id=? AND state='intent'", execution.ID).Updates(map[string]any{"state": "executing", "started_at": now, "updated_at": now})
+		})
 		if updated.Error != nil {
 			return nil, updated.Error
 		}
@@ -1011,7 +1014,7 @@ func (service *Service) persistToolResult(ctx context.Context, store *project.St
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -1099,7 +1102,7 @@ func (service *Service) createUserInputRequest(ctx context.Context, store *proje
 	if err != nil {
 		return UserInputRequest{}, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return UserInputRequest{}, err
 	}

@@ -18,6 +18,7 @@ import (
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -413,7 +414,7 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	if err != nil {
 		return result, err
 	}
-	replayTx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	replayTx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return result, err
 	}
@@ -480,7 +481,7 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 		return result, err
 	}
 	now := manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return result, err
 	}
@@ -890,7 +891,7 @@ func (manager *Manager) createProductionTask(ctx context.Context, runtime *proje
 		return ProductionTask{}, taskError(CodeInvalidTask, "idempotency_key 无效", "必须提供 1-255 字符的幂等键。", nil)
 	}
 	now := manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -957,14 +958,14 @@ func (manager *Manager) insertProductionTaskTx(ctx context.Context, runtime *pro
 			return productionTaskRecord{}, false, err
 		}
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, productionArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: snapshot.Kind, ResourceUUID: snapshot.ResourceUUID}, &river.InsertOpts{Queue: QueueProduction, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
+	inserted, err := runtime.insertExecutionTx(ctx, tx, productionArgs{Version: 1, ProjectUUID: runtime.projectUUID, TaskUUID: taskUUID, TaskKind: snapshot.Kind, ResourceUUID: snapshot.ResourceUUID}, &river.InsertOpts{Queue: QueueProduction, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}}})
 	if err != nil {
 		return productionTaskRecord{}, false, err
 	}
 	if inserted.UniqueSkippedAsDuplicate {
 		return productionTaskRecord{}, false, taskError(CodeTaskConflict, "重复生产任务", "River 拒绝了重复任务。", nil)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE production_task_runs SET river_job_id=? WHERE id=?", inserted.Job.ID, taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE production_task_runs SET river_job_id=?, execution_uuid=? WHERE id=?", inserted.Job.ID, executionBindingFor(inserted.Job).NullableUUID(), taskID); err != nil {
 		return productionTaskRecord{}, false, err
 	}
 	return productionTaskRecord{
@@ -1105,7 +1106,15 @@ func (runtime *projectRuntime) cancelProductionTask(ctx context.Context, taskUUI
 	now := runtime.manager.now().UTC()
 	// Persist intent before interrupting work, so cancellation survives a failed
 	// River transaction or process exit. The runtime reconciles pending intents.
-	if _, err := runtime.sqlDB.ExecContext(ctx, `UPDATE production_task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE project_id=? AND uuid=? AND status NOT IN ('completed','cancelled')`, now, now, runtime.projectID, taskUUID); err != nil {
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
+	if err != nil {
+		return ProductionTask{}, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE project_id=? AND uuid=? AND status NOT IN ('completed','cancelled')`, now, now, runtime.projectID, taskUUID); err != nil {
+		return ProductionTask{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return ProductionTask{}, err
 	}
 	if runtime.manager.hub != nil {
@@ -1118,7 +1127,7 @@ func (runtime *projectRuntime) cancelProductionTask(ctx context.Context, taskUUI
 func (runtime *projectRuntime) finishProductionCancellation(ctx context.Context, taskUUID string) (ProductionTask, error) {
 	projectUUID := runtime.projectUUID
 	now := runtime.manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -1136,11 +1145,7 @@ func (runtime *projectRuntime) finishProductionCancellation(ctx context.Context,
 	}
 	// Check the persisted intent under the transaction before touching a worker.
 	// A retry may have cleared the intent since the recovery scan.
-	runtime.cancelWork(taskUUID)
-	if record.RiverJobID == nil {
-		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "任务缺少 River job", "无法安全取消。", nil)
-	}
-	if _, err := runtime.client.JobCancelTx(ctx, tx, *record.RiverJobID); err != nil {
+	if err := runtime.cancelOwnedJobTx(ctx, tx, "production_task_runs", taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='cancelled',cancel_requested_at=?,completed_at=?,updated_at=? WHERE id=?`, now, now, now, record.ID); err != nil {
@@ -1189,16 +1194,16 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 	if err != nil {
 		return ProductionTask{}, err
 	}
+	if current.Status == StatusQueued || current.Status == StatusRunning {
+		return current.DTO(), nil
+	}
 	if current.Status != StatusFailed && current.Status != StatusInterrupted && current.Status != StatusCancelled {
 		return ProductionTask{}, taskError(CodeTaskStateConflict, "任务不能重试", "只有 failed、interrupted 或 cancelled 任务可重试。", nil)
 	}
-	if current.RiverJobID == nil {
-		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "任务缺少 River job", "无法安全重试。", nil)
-	}
-	if err := waitProductionJobRetryable(ctx, runtime, *current.RiverJobID); err != nil {
+	if err := runtime.waitExecutionRetryBoundary(ctx, "production_task_runs", taskUUID); err != nil {
 		return ProductionTask{}, err
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return ProductionTask{}, err
 	}
@@ -1210,11 +1215,11 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 		}
 		return ProductionTask{}, err
 	}
+	if record.Status == StatusQueued || record.Status == StatusRunning {
+		return record.DTO(), nil
+	}
 	if record.Status != StatusFailed && record.Status != StatusInterrupted && record.Status != StatusCancelled {
 		return ProductionTask{}, taskError(CodeTaskStateConflict, "任务不能重试", "只有 failed、interrupted 或 cancelled 任务可重试。", nil)
-	}
-	if record.RiverJobID == nil {
-		return ProductionTask{}, taskError(CodeTaskPersistenceFailed, "任务缺少 River job", "无法安全重试。", nil)
 	}
 	now := manager.now().UTC()
 	if record.Kind == KindComicExport {
@@ -1226,7 +1231,11 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 			return ProductionTask{}, taskError(CodeTaskStateConflict, "导出已过期", "失败或取消的导出只保留 7 天；请创建新的导出任务。", nil)
 		}
 	}
-	if _, err := runtime.client.JobRetryTx(ctx, tx, *record.RiverJobID); err != nil {
+	owner, err := runtime.findExecutionRecordTx(ctx, tx, "production_task_runs", taskUUID)
+	if err != nil {
+		return ProductionTask{}, err
+	}
+	if err := runtime.enqueueProductRecordTx(ctx, tx, owner); err != nil {
 		return ProductionTask{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,error_code='',error_message='',cancel_requested_at=NULL,completed_at=NULL,updated_at=? WHERE id=?`, now, record.ID); err != nil {
@@ -1265,25 +1274,6 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 		runtime.broadcastProductionWorkflow("workflow:queued", taskUUID)
 	}
 	return task, err
-}
-
-func waitProductionJobRetryable(ctx context.Context, runtime *projectRuntime, jobID int64) error {
-	waitCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	for {
-		job, err := runtime.client.JobGet(waitCtx, jobID)
-		if err != nil {
-			return err
-		}
-		if job.State != rivertype.JobStateRunning {
-			return nil
-		}
-		select {
-		case <-waitCtx.Done():
-			return taskError(CodeTaskStateConflict, "任务仍在结束上一次执行", "请稍后重试。", waitCtx.Err())
-		case <-time.After(20 * time.Millisecond):
-		}
-	}
 }
 
 func getProductionTaskRecord(ctx context.Context, db *gorm.DB, projectID int64, uuid string) (productionTaskRecord, error) {

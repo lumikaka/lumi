@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"database/sql"
+	"lumi/internal/taskexecution"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -26,13 +27,19 @@ import (
 
 type httpAgentQueue struct{ next int64 }
 
-func (queue *httpAgentQueue) EnqueueAgentTx(context.Context, string, *sql.Tx, agent.JobSpec) (int64, error) {
+func (queue *httpAgentQueue) EnqueueAgentTx(context.Context, string, *sql.Tx, agent.JobSpec) (taskexecution.Binding, error) {
 	queue.next++
-	return queue.next, nil
+	return taskexecution.Binding{JobID: queue.next}, nil
 }
 
-func (*httpAgentQueue) CancelAgentJob(context.Context, string, int64) error { return nil }
-func (*httpAgentQueue) CancelAgentWork(string, string)                      {}
+func (queue *httpAgentQueue) WaitAgentExecution(context.Context, string, taskexecution.Owner) error {
+	return nil
+}
+
+func (*httpAgentQueue) CancelAgentJob(context.Context, string, taskexecution.Owner, taskexecution.Binding) error {
+	return nil
+}
+func (*httpAgentQueue) CancelAgentWork(string, string, taskexecution.Binding) {}
 func (*httpAgentQueue) StartDomainTask(context.Context, string, agent.DomainTaskRequest) (agent.DomainTask, error) {
 	return agent.DomainTask{}, nil
 }

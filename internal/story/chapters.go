@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"lumi/internal/agentcheckpoint"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -47,7 +48,7 @@ func (service *Service) CreateChapter(ctx context.Context, input CreateChapterIn
 	}
 	now := service.now().UTC()
 	record := chapterRecord{UUID: chapterUUID, ProjectID: projectRecord.ID, VolumeNo: volume, ChapterNo: chapterNo, ChapterCode: code, SortOrder: sortOrder, Title: input.Title, Revision: 0, CreatedAt: now, UpdatedAt: now}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := tx.Create(&record).Error; err != nil {
 			return err
 		}
@@ -184,9 +185,11 @@ func (service *Service) UpdateChapter(ctx context.Context, uuid string, input Up
 	if err != nil {
 		return Chapter{}, err
 	}
-	result := service.store.DB().WithContext(ctx).Model(&chapterRecord{}).
-		Where("id = ? AND revision = ? AND deleted_at IS NULL", record.ID, input.ExpectedRevision).
-		Updates(map[string]any{"title": input.Title, "revision": gorm.Expr("revision + 1"), "updated_at": service.now().UTC()})
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&chapterRecord{}).
+			Where("id = ? AND revision = ? AND deleted_at IS NULL", record.ID, input.ExpectedRevision).
+			Updates(map[string]any{"title": input.Title, "revision": gorm.Expr("revision + 1"), "updated_at": service.now().UTC()})
+	})
 	if result.Error != nil {
 		return Chapter{}, result.Error
 	}
@@ -235,7 +238,7 @@ func (service *Service) UpdateStory(ctx context.Context, chapterUUID string, inp
 		return Chapter{}, err
 	}
 	now := service.now().UTC()
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var locked chapterRecord
 		if err := tx.Where("id = ? AND deleted_at IS NULL", record.ID).First(&locked).Error; err != nil {
 			return err
@@ -311,7 +314,9 @@ func (service *Service) TrashChapter(ctx context.Context, uuid string, expectedR
 		return Chapter{}, storyError(CodeChapterStateConflict, "章节已在回收站", "无需重复回收该章节。", nil)
 	}
 	now := service.now().UTC()
-	result := service.store.DB().WithContext(ctx).Model(&chapterRecord{}).Where("id = ? AND revision = ? AND deleted_at IS NULL", record.ID, expectedRevision).Updates(map[string]any{"deleted_at": now, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&chapterRecord{}).Where("id = ? AND revision = ? AND deleted_at IS NULL", record.ID, expectedRevision).Updates(map[string]any{"deleted_at": now, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+	})
 	if result.Error != nil {
 		return Chapter{}, result.Error
 	}
@@ -334,7 +339,9 @@ func (service *Service) RestoreChapter(ctx context.Context, uuid string, expecte
 		return Chapter{}, storyError(CodeChapterStateConflict, "章节不在回收站", "只有回收站中的章节可以恢复。", nil)
 	}
 	now := service.now().UTC()
-	result := service.store.DB().WithContext(ctx).Model(&chapterRecord{}).Where("id = ? AND revision = ? AND deleted_at IS NOT NULL", record.ID, expectedRevision).Updates(map[string]any{"deleted_at": nil, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&chapterRecord{}).Where("id = ? AND revision = ? AND deleted_at IS NOT NULL", record.ID, expectedRevision).Updates(map[string]any{"deleted_at": nil, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+	})
 	if result.Error != nil {
 		if uniqueConflict(result.Error) {
 			return Chapter{}, storyError(CodeChapterConflict, "无法恢复章节", "active 章节中已有相同编号或排序，请先处理冲突。", result.Error)
@@ -365,7 +372,7 @@ func (service *Service) ReorderChapters(ctx context.Context, orderedUUIDs []stri
 		}
 		seen[chapterUUID] = struct{}{}
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, _, err := service.projectAndActor(ctx, tx)
 		if err != nil {
 			return err
@@ -437,7 +444,7 @@ func (service *Service) permanentlyDeleteChapter(ctx context.Context, uuid strin
 	if !isUUIDv7(uuid) {
 		return storyError(CodeValidationFailed, "章节 UUID 无效", "章节资源标识必须是 UUIDv7。", nil)
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if toolExecutionUUID != "" {
 			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterPermanentDelete)
 			if err != nil {
@@ -501,7 +508,7 @@ func (service *Service) EmptyChapterTrashFromTool(ctx context.Context, toolExecu
 
 func (service *Service) emptyChapterTrash(ctx context.Context, toolExecutionUUID string) (EmptyChapterTrashResult, error) {
 	result := EmptyChapterTrashResult{BlockedItems: []ChapterTrashBlockedItem{}}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if toolExecutionUUID != "" {
 			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RouteChapterTrashEmpty)
 			if err != nil {

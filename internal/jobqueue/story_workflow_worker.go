@@ -11,6 +11,7 @@ import (
 	"lumi/internal/production"
 	"lumi/internal/realtime"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 )
 
 type workflowChapterPlan struct {
@@ -37,8 +38,15 @@ func (runtime *projectRuntime) persistStoryPromptResult(ctx context.Context, rec
 	if err != nil {
 		return err
 	}
-	_, err = runtime.sqlDB.ExecContext(ctx, `INSERT INTO story_prompt_results(uuid,task_run_id,result_kind,output_json,created_at) VALUES(?,?,?,?,?) ON CONFLICT(task_run_id) DO NOTHING`, uuid, record.ID, record.Kind, raw, runtime.manager.now().UTC())
-	return err
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO story_prompt_results(uuid,task_run_id,result_kind,output_json,created_at) VALUES(?,?,?,?,?) ON CONFLICT(task_run_id) DO NOTHING`, uuid, record.ID, record.Kind, raw, runtime.manager.now().UTC()); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (runtime *projectRuntime) applyStoryWorkflowResponse(ctx context.Context, record taskRecord, snapshot storyGenerationSnapshot, raw string) (map[string]any, error) {
@@ -189,7 +197,7 @@ func invalidStoryWorkflowContent(message string, cause error) error {
 }
 
 func (runtime *projectRuntime) completeStoryWorkflowTask(ctx context.Context, record taskRecord, resultPayload map[string]any) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}

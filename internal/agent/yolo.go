@@ -17,6 +17,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -171,7 +172,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -288,7 +289,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=? WHERE uuid=?`, jobID, firstStepUUID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,execution_uuid=? WHERE uuid=?`, jobID.JobID, jobID.NullableUUID(), firstStepUUID); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {
@@ -541,7 +542,7 @@ var errWorkflowTransitionInactive = errors.New("workflow transition is no longer
 
 func (service *Service) markWorkflowStepRunning(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (bool, error) {
 	now := service.now().UTC()
-	err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		result := tx.Model(&workflowRecord{}).Where("id=? AND status IN ('queued','running','interrupted')", workflow.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": step.StepKey, "started_at": gorm.Expr("COALESCE(started_at,?)", now), "updated_at": now, "error_code": "", "error_message": ""})
 		if result.Error != nil {
 			return result.Error
@@ -566,7 +567,7 @@ func (service *Service) markWorkflowStepRunning(ctx context.Context, store *proj
 
 func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (bool, error) {
 	now := service.now().UTC()
-	if err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		result := tx.Model(&workflowStepRecord{}).Where("id=? AND status='running'", step.ID).Updates(map[string]any{"status": "waiting", "updated_at": now})
 		if result.Error != nil {
 			return result.Error
@@ -1261,7 +1262,9 @@ func (service *Service) checkpointWorkflowStepOutput(ctx context.Context, store 
 	if err != nil {
 		return err
 	}
-	result := store.DB().WithContext(ctx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", stepID).Updates(map[string]any{"output_json": string(encoded), "updated_at": service.now().UTC()})
+	result := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", stepID).Updates(map[string]any{"output_json": string(encoded), "updated_at": service.now().UTC()})
+	})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -1337,9 +1340,11 @@ func (service *Service) ensureWorkflowDomainTaskBatch(ctx context.Context, store
 			currentTask, currentResource = last.UUID, last.ResourceUUID
 		}
 	}
-	result := store.DB().WithContext(checkpointCtx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{
-		"task_uuid": currentTask, "resource_uuid": currentResource,
-		"output_json": string(encoded), "updated_at": service.now().UTC(),
+	result := taskexecution.Write(store.DB().WithContext(checkpointCtx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{
+			"task_uuid": currentTask, "resource_uuid": currentResource,
+			"output_json": string(encoded), "updated_at": service.now().UTC(),
+		})
 	})
 	if result.Error != nil || result.RowsAffected != 1 {
 		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, batch.Tasks)
@@ -1473,7 +1478,9 @@ func (service *Service) ensureWorkflowDomainTask(ctx context.Context, store *pro
 	output[request.IdempotencyKey] = task.UUID
 	encoded, _ := json.Marshal(output)
 	now := service.now().UTC()
-	result := store.DB().WithContext(checkpointCtx).Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{"task_uuid": task.UUID, "resource_uuid": request.ResourceUUID, "output_json": string(encoded), "updated_at": now})
+	result := taskexecution.Write(store.DB().WithContext(checkpointCtx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting')", step.ID).Updates(map[string]any{"task_uuid": task.UUID, "resource_uuid": request.ResourceUUID, "output_json": string(encoded), "updated_at": now})
+	})
 	if result.Error != nil || result.RowsAffected != 1 {
 		service.cancelActiveDomainTasks(checkpointCtx, store.ProjectUUID(), request.Kind, []DomainTask{task})
 		if result.Error != nil {
@@ -1599,7 +1606,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -1623,7 +1630,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 		return err
 	}
 	var next workflowStepRecord
-	err = tx.QueryRowContext(ctx, `SELECT id,uuid,workflow_id,step_key,position,status,idempotency_key,river_job_id,task_uuid,resource_uuid,input_json,output_json,error_code,error_message,started_at,completed_at,created_at,updated_at FROM workflow_steps WHERE workflow_id=? AND position>? ORDER BY position LIMIT 1`, workflow.ID, step.Position).Scan(&next.ID, &next.UUID, &next.WorkflowID, &next.StepKey, &next.Position, &next.Status, &next.IdempotencyKey, &next.RiverJobID, &next.TaskUUID, &next.ResourceUUID, &next.InputJSON, &next.OutputJSON, &next.ErrorCode, &next.ErrorMessage, &next.StartedAt, &next.CompletedAt, &next.CreatedAt, &next.UpdatedAt)
+	err = tx.QueryRowContext(ctx, `SELECT id,uuid,workflow_id,step_key,position,status,idempotency_key,river_job_id,COALESCE(execution_uuid,''),task_uuid,resource_uuid,input_json,output_json,error_code,error_message,started_at,completed_at,created_at,updated_at FROM workflow_steps WHERE workflow_id=? AND position>? ORDER BY position LIMIT 1`, workflow.ID, step.Position).Scan(&next.ID, &next.UUID, &next.WorkflowID, &next.StepKey, &next.Position, &next.Status, &next.IdempotencyKey, &next.RiverJobID, &next.ExecutionUUID, &next.TaskUUID, &next.ResourceUUID, &next.InputJSON, &next.OutputJSON, &next.ErrorCode, &next.ErrorMessage, &next.StartedAt, &next.CompletedAt, &next.CreatedAt, &next.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		result, err := tx.ExecContext(ctx, `UPDATE workflows SET status='completed',current_step_key='',completed_at=?,updated_at=?,error_code='',error_message='' WHERE id=? AND status='running'`, now, now, workflow.ID)
 		if err != nil {
@@ -1685,7 +1692,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=? WHERE id=?`, jobID, next.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,execution_uuid=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), next.ID); err != nil {
 			return err
 		}
 		result, err = tx.ExecContext(ctx, `UPDATE workflows SET current_step_key=?,updated_at=? WHERE id=? AND status='running'`, next.StepKey, now, workflow.ID)
@@ -1763,7 +1770,7 @@ func (service *Service) failWorkflowStep(ctx context.Context, store *project.Sto
 	}
 	now := service.now().UTC()
 	transitioned := false
-	err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		result := tx.Model(&workflowStepRecord{}).Where("id=? AND status IN ('queued','running','waiting','interrupted')", step.ID).Updates(map[string]any{"status": "failed", "error_code": code, "error_message": message, "completed_at": now, "updated_at": now})
 		if result.Error != nil {
 			return result.Error
@@ -1876,12 +1883,12 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 		}
 		return result, getErr
 	}
-	var riverJobID int64
+	var binding taskexecution.Binding
 	var currentTaskUUIDs []string
 	var currentTaskKind, workUUID string
 	err = service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		now := service.now().UTC()
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var row workflowRecord
 			if err := tx.Where("uuid=?", workflowUUID).First(&row).Error; err != nil {
 				return err
@@ -1901,7 +1908,7 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 				_ = tx.Where("workflow_id=? AND status<>'completed'", row.ID).Order("position DESC").First(&step).Error
 			}
 			if step.ID != 0 {
-				riverJobID, workUUID = valueInt64(step.RiverJobID), step.UUID
+				binding, workUUID = taskexecution.Binding{JobID: valueInt64(step.RiverJobID), ExecutionUUID: step.ExecutionUUID}, step.UUID
 				currentTaskUUIDs = workflowTaskUUIDs(step.OutputJSON, step.TaskUUID)
 				currentTaskKind = yoloStepTaskKind(step.StepKey)
 				if row.Kind == WorkflowYolo && step.StepKey == "first_section_image" {
@@ -1984,10 +1991,10 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 		return Workflow{}, err
 	}
 	if workUUID != "" {
-		service.queue.CancelAgentWork(projectUUID, workUUID)
+		service.queue.CancelAgentWork(projectUUID, workUUID, binding)
 	}
-	if riverJobID > 0 {
-		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, riverJobID)
+	if binding.JobID > 0 {
+		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, taskexecution.Owner{Table: "workflow_steps", UUID: workUUID}, binding)
 	}
 	for _, taskUUID := range currentTaskUUIDs {
 		if currentTaskKind != "" {
@@ -2029,6 +2036,9 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 	workflow, err := service.GetWorkflow(ctx, projectUUID, workflowUUID)
 	if err != nil {
 		return Workflow{}, err
+	}
+	if workflow.Status == WorkflowQueued || workflow.Status == WorkflowRunning {
+		return workflow, nil
 	}
 	if workflow.Status != WorkflowFailed && workflow.Status != WorkflowInterrupted && workflow.Status != WorkflowCancelled {
 		return Workflow{}, domainError(CodeStateConflict, "Workflow 当前不可重试", "仅 failed、interrupted 或 cancelled workflow 可以重试。", nil)
@@ -2111,6 +2121,9 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		if step.Status == "completed" {
 			continue
 		}
+		if err := service.queue.WaitAgentExecution(ctx, projectUUID, taskexecution.Owner{Table: "workflow_steps", UUID: step.UUID, ProjectUUID: projectUUID}); err != nil {
+			return Workflow{}, domainError(CodeStateConflict, "上次 Workflow 执行仍在收尾", "未创建第二个执行，请稍后重试。", err)
+		}
 		kind := yoloStepTaskKind(step.StepKey)
 		if kind != "" {
 			for _, taskUUID := range workflowTaskUUIDs(string(step.Output), step.TaskUUID) {
@@ -2132,7 +2145,7 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -2141,8 +2154,14 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		if err := tx.QueryRowContext(ctx, `SELECT id,uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,current_step_key,error_code,error_message,cancel_requested_at,started_at,completed_at,created_at,updated_at FROM workflows WHERE uuid=?`, workflowUUID).Scan(&row.ID, &row.UUID, &row.ProjectID, &row.ThreadID, &row.Kind, &row.Title, &row.Status, &row.InputVersion, &row.InputSnapshot, &row.IdempotencyKey, &row.ProviderUUID, &row.Model, &row.ModelSource, &row.CurrentStepKey, &row.ErrorCode, &row.ErrorMessage, &row.CancelRequestedAt, &row.StartedAt, &row.CompletedAt, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return err
 		}
+		if row.Status == WorkflowQueued || row.Status == WorkflowRunning {
+			return nil
+		}
+		if row.Status != WorkflowFailed && row.Status != WorkflowInterrupted && row.Status != WorkflowCancelled {
+			return domainError(CodeStateConflict, "Workflow 当前不可重试", "Workflow 已经结束。", nil)
+		}
 		var step workflowStepRecord
-		if err := tx.QueryRowContext(ctx, `SELECT id,uuid,workflow_id,step_key,position,status,idempotency_key,river_job_id,task_uuid,resource_uuid,input_json,output_json,error_code,error_message,started_at,completed_at,created_at,updated_at FROM workflow_steps WHERE workflow_id=? AND status<>'completed' ORDER BY position LIMIT 1`, row.ID).Scan(&step.ID, &step.UUID, &step.WorkflowID, &step.StepKey, &step.Position, &step.Status, &step.IdempotencyKey, &step.RiverJobID, &step.TaskUUID, &step.ResourceUUID, &step.InputJSON, &step.OutputJSON, &step.ErrorCode, &step.ErrorMessage, &step.StartedAt, &step.CompletedAt, &step.CreatedAt, &step.UpdatedAt); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT id,uuid,workflow_id,step_key,position,status,idempotency_key,river_job_id,COALESCE(execution_uuid,''),task_uuid,resource_uuid,input_json,output_json,error_code,error_message,started_at,completed_at,created_at,updated_at FROM workflow_steps WHERE workflow_id=? AND status<>'completed' ORDER BY position LIMIT 1`, row.ID).Scan(&step.ID, &step.UUID, &step.WorkflowID, &step.StepKey, &step.Position, &step.Status, &step.IdempotencyKey, &step.RiverJobID, &step.ExecutionUUID, &step.TaskUUID, &step.ResourceUUID, &step.InputJSON, &step.OutputJSON, &step.ErrorCode, &step.ErrorMessage, &step.StartedAt, &step.CompletedAt, &step.CreatedAt, &step.UpdatedAt); err != nil {
 			return domainError(CodeStateConflict, "Workflow 没有可重试步骤", "所有步骤已经完成。", err)
 		}
 		now := service.now().UTC()
@@ -2152,7 +2171,7 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, step.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='pending',river_job_id=NULL,task_uuid='',resource_uuid='',input_json='{}',output_json='{}',error_code='',error_message='',started_at=NULL,completed_at=NULL,updated_at=? WHERE workflow_id=? AND position>? AND status IN ('cancelled','failed','interrupted')`, now, row.ID, step.Position); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='pending',river_job_id=NULL,execution_uuid=NULL,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE workflow_id=? AND position>? AND status IN ('cancelled','failed','interrupted')`, now, row.ID, step.Position); err != nil {
 			return err
 		}
 		var threadUUID string
@@ -2166,7 +2185,7 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=? WHERE id=?`, jobID, step.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,execution_uuid=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), step.ID); err != nil {
 			return err
 		}
 		if err := appendWorkflowEventTx(ctx, tx, row.ID, &step.ID, "workflow_retried", map[string]any{"project_uuid": projectUUID, "workflow_uuid": row.UUID, "thread_uuid": threadUUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": WorkflowQueued}, now); err != nil {
@@ -2205,7 +2224,7 @@ func projectedProductionWorkflowTaskKind(workflowKind string) (string, bool) {
 func (service *Service) markComicImageBatchCancellationRequested(ctx context.Context, projectUUID, workflowUUID string) error {
 	return service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		now := service.now().UTC()
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var row workflowRecord
 			if err := tx.Where("uuid=? AND kind=?", workflowUUID, WorkflowComicImageBatch).First(&row).Error; err != nil {
 				return err
@@ -2229,7 +2248,7 @@ func (service *Service) markComicImageBatchCancellationRequested(ctx context.Con
 func (service *Service) prepareComicImageBatchRetry(ctx context.Context, projectUUID, workflowUUID string) error {
 	return service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		now := service.now().UTC()
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var row workflowRecord
 			if err := tx.Where("uuid=? AND kind=?", workflowUUID, WorkflowComicImageBatch).First(&row).Error; err != nil {
 				return err

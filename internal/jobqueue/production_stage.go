@@ -1,10 +1,14 @@
 package jobqueue
 
-import "context"
+import (
+	"context"
+
+	"lumi/internal/taskexecution"
+)
 
 // Stages are durable milestones, not estimates of provider-side completion.
 func (runtime *projectRuntime) productionStage(ctx context.Context, record productionTaskRecord, stage string) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}

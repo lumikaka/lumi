@@ -10,12 +10,13 @@ import (
 	"lumi/internal/llm"
 	"lumi/internal/project"
 	"lumi/internal/provider"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
 
 func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, spec JobSpec) error {
-	if spec.Version != 1 || spec.ProjectUUID != store.ProjectUUID() || !isUUIDv7(spec.ResourceUUID) || !isUUIDv7(spec.ThreadUUID) {
+	if (spec.Version != 1 && spec.Version != 2) || spec.ProjectUUID != store.ProjectUUID() || !isUUIDv7(spec.ResourceUUID) || !isUUIDv7(spec.ThreadUUID) {
 		return domainError(CodeValidation, "Agent job 参数无效", "Job 只能引用当前项目的公开 UUIDv7。", nil)
 	}
 	if spec.JobKind == JobWorkflowStep {
@@ -451,7 +452,7 @@ func (service *Service) recordLegacyToolRecoveryUse(ctx context.Context, store *
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -579,7 +580,7 @@ func (service *Service) claimRun(ctx context.Context, store *project.Store, tc *
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -658,10 +659,12 @@ func (service *Service) cancelRequested(ctx context.Context, store *project.Stor
 func (service *Service) recordModelStart(ctx context.Context, store *project.Store, tc toolContext, contextBytes int) (int, error) {
 	now := service.now().UTC()
 	var ordinal int
-	err := store.DB().WithContext(ctx).Raw(`UPDATE chat_runs
+	err := taskexecution.ScanRow(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *sql.Row {
+		return executionTx.Raw(`UPDATE chat_runs
 		SET context_bytes=?,model_request_count=model_request_count+1,updated_at=?
 		WHERE id=? AND status='in_progress'
-		RETURNING model_request_count`, contextBytes, now, tc.Run.ID).Row().Scan(&ordinal)
+		RETURNING model_request_count`, contextBytes, now, tc.Run.ID).Row()
+	}, &ordinal)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, domainError(CodeStateConflict, "Model Request 无法开始", "Run 已不在执行状态。", nil)
 	}
@@ -679,7 +682,7 @@ func (service *Service) recordModelRequestEvent(ctx context.Context, store *proj
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -742,7 +745,7 @@ func (service *Service) completeRun(ctx context.Context, store *project.Store, t
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -843,7 +846,7 @@ func (service *Service) finishRunWithStatus(ctx context.Context, store *project.
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -894,7 +897,7 @@ func (service *Service) failOrRetryRun(ctx context.Context, store *project.Store
 	}
 	if retryable {
 		now := service.now().UTC()
-		if err := store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			if err := tx.Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(map[string]any{"status": TurnQueued, "error_code": errorCode(cause), "error_message": safeMessage(cause), "updated_at": now}).Error; err != nil {
 				return err
 			}

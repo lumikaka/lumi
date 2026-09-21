@@ -10,6 +10,7 @@ import (
 
 	"lumi/internal/durablefs"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -87,7 +88,7 @@ func (service *Service) ensureStoryProfile(ctx context.Context) (storyProfileRec
 		return current, err
 	}
 	current = storyProfileRecord{UUID: profileUUID, ProjectID: projectRecord.ID, ActorID: actor.ID, VersionNo: 1, Revision: 1, IsCurrent: true, StoryMD: DefaultStoryMD, ContentHash: defaultHash, SourceType: "project_created", ProjectionState: state, ExportedRevision: 1, ExportedHash: defaultHash, ObservedFileHash: fileHash, CreatedAt: service.now().UTC()}
-	if err := service.store.DB().WithContext(ctx).Create(&current).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&current) }).Error; err != nil {
 		if uniqueConflict(err) {
 			if lookupErr := service.store.DB().WithContext(ctx).Where("project_id = ? AND is_current = 1", projectRecord.ID).First(&current).Error; lookupErr == nil {
 				return current, nil
@@ -99,7 +100,9 @@ func (service *Service) ensureStoryProfile(ctx context.Context) (storyProfileRec
 }
 
 func (service *Service) updateProjectionState(ctx context.Context, profileID int64, state string, exportedRevision int64, exportedHash, observedHash string) error {
-	return service.store.DB().WithContext(ctx).Model(&storyProfileRecord{}).Where("id = ?", profileID).Updates(map[string]any{"projection_state": state, "exported_revision": exportedRevision, "exported_hash": exportedHash, "observed_file_hash": observedHash}).Error
+	return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&storyProfileRecord{}).Where("id = ?", profileID).Updates(map[string]any{"projection_state": state, "exported_revision": exportedRevision, "exported_hash": exportedHash, "observed_file_hash": observedHash})
+	}).Error
 }
 
 func (service *Service) reconcileStoryProfile(ctx context.Context) (storyProfileRecord, error) {
@@ -170,7 +173,7 @@ func (service *Service) createStoryProfileVersion(ctx context.Context, current s
 		return storyProfileRecord{}, err
 	}
 	next := storyProfileRecord{UUID: profileUUID, ProjectID: projectRecord.ID, ActorID: actor.ID, VersionNo: current.VersionNo + 1, Revision: current.Revision + 1, IsCurrent: true, StoryMD: storyMD, ContentHash: contentHash(storyMD), SourceType: sourceType, ProjectionState: state, ExportedRevision: exportedRevision, ExportedHash: exportedHash, ObservedFileHash: observedHash, CreatedAt: service.now().UTC()}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		result := tx.Model(&storyProfileRecord{}).Where("id = ? AND revision = ? AND is_current = 1", current.ID, current.Revision).Update("is_current", false)
 		if result.Error != nil {
 			return result.Error

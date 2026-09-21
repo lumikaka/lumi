@@ -13,6 +13,7 @@ import (
 
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
+	"lumi/internal/taskexecution"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -171,7 +172,7 @@ func (service *Service) UpdateProject(ctx context.Context, input UpdateProjectIn
 		}
 		requestedLanguage = &language
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		projectRecord, actor, err := service.projectAndActor(ctx, tx)
 		if err != nil {
 			return err

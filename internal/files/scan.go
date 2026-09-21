@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -64,7 +66,7 @@ func (service *Service) RunIntegrityScanWithProgress(ctx context.Context, onProg
 	}
 	now := service.now().UTC()
 	record := scanRecord{UUID: uuidValue, ProjectID: projectRecord.ID, Mode: "full", Status: "running", Progress: 0, SummaryJSON: "{}", StartedAt: &now, CreatedAt: now, UpdatedAt: now}
-	if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error; err != nil {
 		return IntegrityScan{}, fileError(CodeInvalidState, "完整性扫描已在运行", "同一项目同一时间只能有一个 full scan。", err)
 	}
 	service.emit("integrity_scan/progress", map[string]any{"scan_uuid": record.UUID, "status": "running", "progress": 0})
@@ -99,11 +101,15 @@ func (service *Service) RunIntegrityScanWithProgress(ctx context.Context, onProg
 				kind, severity, summary = "corrupt", "error", "磁盘内容与 SHA-256、MIME 或尺寸摘要不一致"
 				if errors.Is(verifyErr, os.ErrNotExist) {
 					kind, summary = "missing", "数据库对象缺少对应磁盘文件"
-					_ = service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectMissing).Error
+					_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+						return executionTx.Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectMissing)
+					}).Error
 					service.emitObjectAssets(ctx, object.ID, "asset/missing", ObjectMissing)
 				} else {
 					if quarantineErr := service.quarantineObject(ctx, object); quarantineErr != nil {
-						_ = service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectCorrupt).Error
+						_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+							return executionTx.Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectCorrupt)
+						}).Error
 						service.emitObjectAssets(ctx, object.ID, "asset/updated", ObjectCorrupt)
 					} else {
 						service.emitObjectAssets(ctx, object.ID, "asset/updated", ObjectQuarantined)
@@ -129,7 +135,9 @@ func (service *Service) RunIntegrityScanWithProgress(ctx context.Context, onProg
 			progress = 10 + (index+1)*70/len(objects)
 		}
 		if index%25 == 0 {
-			_ = service.store.DB().WithContext(ctx).Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"progress": progress, "checked_objects": index + 1, "updated_at": service.now().UTC()}).Error
+			_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+				return executionTx.Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"progress": progress, "checked_objects": index + 1, "updated_at": service.now().UTC()})
+			}).Error
 			service.emit("integrity_scan/progress", map[string]any{"scan_uuid": record.UUID, "status": "running", "progress": progress})
 			if onProgress != nil {
 				if err := onProgress(progress); err != nil {
@@ -197,7 +205,9 @@ func (service *Service) RunIntegrityScanWithProgress(ctx context.Context, onProg
 	for _, value := range counts {
 		total += value
 	}
-	if err := service.store.DB().WithContext(ctx).Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"status": "completed", "progress": 100, "checked_objects": len(objects), "finding_count": total, "summary_json": string(summaryJSON), "completed_at": completed, "updated_at": completed}).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"status": "completed", "progress": 100, "checked_objects": len(objects), "finding_count": total, "summary_json": string(summaryJSON), "completed_at": completed, "updated_at": completed})
+	}).Error; err != nil {
 		return service.failScan(ctx, record, err)
 	}
 	service.emit("integrity_scan/completed", map[string]any{"scan_uuid": record.UUID, "status": "completed", "progress": 100, "finding_count": total})
@@ -290,7 +300,9 @@ func (service *Service) createFinding(ctx context.Context, scanID int64, object 
 		value := filepath.ToSlash(safePath)
 		path = &value
 	}
-	return service.store.DB().WithContext(ctx).Create(&findingRecord{UUID: uuidValue, ScanID: scanID, FileObjectID: objectID, Kind: kind, Severity: severity, SafePath: path, Summary: summary, Resolution: "open", ResultJSON: "{}", CreatedAt: service.now().UTC()}).Error
+	return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Create(&findingRecord{UUID: uuidValue, ScanID: scanID, FileObjectID: objectID, Kind: kind, Severity: severity, SafePath: path, Summary: summary, Resolution: "open", ResultJSON: "{}", CreatedAt: service.now().UTC()})
+	}).Error
 }
 
 func (service *Service) quarantineObject(ctx context.Context, object objectRecord) error {
@@ -322,13 +334,17 @@ func (service *Service) quarantineObject(ctx context.Context, object objectRecor
 		} else {
 			return statErr
 		}
-		return service.store.DB().WithContext(ctx).Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectQuarantined).Error
+		return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&objectRecord{}).Where("id = ?", object.ID).Update("state", ObjectQuarantined)
+		}).Error
 	})
 }
 
 func (service *Service) failScan(ctx context.Context, record scanRecord, cause error) (IntegrityScan, error) {
 	now := service.now().UTC()
-	_ = service.store.DB().WithContext(context.WithoutCancel(ctx)).Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"status": "failed", "completed_at": now, "updated_at": now}).Error
+	_ = taskexecution.Write(service.store.DB().WithContext(context.WithoutCancel(ctx)), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&scanRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"status": "failed", "completed_at": now, "updated_at": now})
+	}).Error
 	return IntegrityScan{}, cause
 }
 

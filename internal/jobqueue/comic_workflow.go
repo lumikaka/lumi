@@ -9,6 +9,7 @@ import (
 
 	"lumi/internal/agent"
 	"lumi/internal/production"
+	"lumi/internal/taskexecution"
 )
 
 const comicWorkflowTitle = agent.WorkflowComicSectionImage
@@ -350,7 +351,7 @@ func reconcileComicImageWorkflows(ctx context.Context, db *sql.DB, projectID int
 }
 
 func (runtime *projectRuntime) updateComicWorkflow(ctx context.Context, taskUUID string, update func(*sql.Tx, comicWorkflowRef, time.Time) error) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}

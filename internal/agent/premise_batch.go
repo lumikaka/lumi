@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -19,7 +20,7 @@ func (service *Service) cancelPremiseBatch(ctx context.Context, projectUUID, wor
 	// Fence the stage transition first. Read task links again afterwards, so a
 	// concurrently completed setting cannot leave a newly queued breakdown alive.
 	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			now := service.now().UTC()
 			if err := tx.Exec(`UPDATE workflows SET cancel_requested_at=COALESCE(cancel_requested_at,?),updated_at=? WHERE uuid=? AND kind=? AND status<>'completed'`, now, now, workflowUUID, WorkflowPremiseBatch).Error; err != nil {
 				return err

@@ -8,18 +8,20 @@ import (
 
 	"lumi/internal/agent"
 	"lumi/internal/production"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 )
 
 type agentArgs struct {
-	Version      int    `json:"version"`
-	ProjectUUID  string `json:"project_uuid" river:"unique"`
-	JobKind      string `json:"job_kind" river:"unique"`
-	ResourceUUID string `json:"resource_uuid" river:"unique"`
-	ThreadUUID   string `json:"thread_uuid" river:"unique"`
-	WakeupUUID   string `json:"wakeup_uuid,omitempty" river:"unique"`
+	ExecutionUUID string `json:"execution_uuid,omitempty"`
+	Version       int    `json:"version"`
+	ProjectUUID   string `json:"project_uuid" river:"unique"`
+	JobKind       string `json:"job_kind" river:"unique"`
+	ResourceUUID  string `json:"resource_uuid" river:"unique"`
+	ThreadUUID    string `json:"thread_uuid" river:"unique"`
+	WakeupUUID    string `json:"wakeup_uuid,omitempty" river:"unique"`
 }
 
 func (agentArgs) Kind() string { return "lumi_project_agent_v1" }
@@ -39,17 +41,28 @@ func (worker *agentWorker) Timeout(job *river.Job[agentArgs]) time.Duration {
 }
 
 func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) error {
-	if worker.service == nil || job.Args.Version != 1 || job.Args.ProjectUUID != worker.runtime.projectUUID || !isUUIDv7(job.Args.ResourceUUID) || !isUUIDv7(job.Args.ThreadUUID) {
+	if worker.service == nil || (job.Args.Version != 1 && job.Args.Version != 2) || job.Args.ProjectUUID != worker.runtime.projectUUID || !isUUIDv7(job.Args.ResourceUUID) || !isUUIDv7(job.Args.ThreadUUID) {
 		return river.JobCancel(taskError(CodeInvalidTask, "Agent River job 参数无效", "Job 只能引用当前项目公开 UUIDv7。", nil))
 	}
+	guardedCtx, guardErr := worker.runtime.executionContext(ctx, job.JobRow)
+	if guardErr != nil {
+		if errors.Is(guardErr, taskexecution.ErrSuperseded) {
+			return river.JobCancel(guardErr)
+		}
+		return guardErr
+	}
+	ctx = guardedCtx
 	workCtx, cancel := context.WithCancel(ctx)
-	worker.runtime.registerWork(job.Args.ResourceUUID, cancel)
+	unregister := worker.runtime.registerExecutionWork(ctx, cancel)
 	defer func() {
 		cancel()
-		worker.runtime.unregisterWork(job.Args.ResourceUUID)
+		unregister()
 	}()
 	for {
-		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID, WakeupUUID: job.Args.WakeupUUID})
+		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, ExecutionUUID: job.Args.ExecutionUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID, WakeupUUID: job.Args.WakeupUUID})
+		if errors.Is(err, taskexecution.ErrSuperseded) {
+			return river.JobCancel(err)
+		}
 		if errors.Is(err, agent.ErrJobNotReady) {
 			// River promotes snoozed jobs on its maintenance cadence, which is too
 			// coarse for an Agent polling a task running on another queue. Keep the
@@ -75,38 +88,79 @@ func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) 
 	}
 }
 
-func (manager *Manager) EnqueueAgentTx(ctx context.Context, projectUUID string, tx *sql.Tx, spec agent.JobSpec) (int64, error) {
+func (manager *Manager) EnqueueAgentTx(ctx context.Context, projectUUID string, tx *sql.Tx, spec agent.JobSpec) (taskexecution.Binding, error) {
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
-		return 0, err
+		return taskexecution.Binding{}, err
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, agentArgs{Version: spec.Version, ProjectUUID: projectUUID, JobKind: spec.JobKind, ResourceUUID: spec.ResourceUUID, ThreadUUID: spec.ThreadUUID, WakeupUUID: spec.WakeupUUID}, &river.InsertOpts{
+	return runtime.enqueueAgentTx(ctx, projectUUID, tx, spec)
+}
+
+func (runtime *projectRuntime) enqueueAgentTx(ctx context.Context, projectUUID string, tx *sql.Tx, spec agent.JobSpec) (taskexecution.Binding, error) {
+	if projectUUID != runtime.projectUUID || spec.ProjectUUID != projectUUID {
+		return taskexecution.Binding{}, taskexecution.ErrSuperseded
+	}
+	inserted, err := runtime.insertExecutionTx(ctx, tx, agentArgs{Version: spec.Version, ProjectUUID: projectUUID, JobKind: spec.JobKind, ResourceUUID: spec.ResourceUUID, ThreadUUID: spec.ThreadUUID, WakeupUUID: spec.WakeupUUID}, &river.InsertOpts{
 		Queue: QueueAgent, MaxAttempts: 5,
 		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}},
 	})
 	if err != nil {
-		return 0, err
+		return taskexecution.Binding{}, err
 	}
-	if inserted.Job == nil {
-		return 0, taskError(CodeTaskPersistenceFailed, "无法读取 Agent River job", "队列插入未返回 job。", nil)
+	identity, err := executionIdentityFor(inserted.Job)
+	if err != nil || identity.ProjectUUID != projectUUID || identity.JobKind != spec.JobKind || identity.ResourceUUID != spec.ResourceUUID || identity.ThreadUUID != spec.ThreadUUID || identity.WakeupUUID != spec.WakeupUUID {
+		return taskexecution.Binding{}, taskexecution.ErrSuperseded
 	}
-	return inserted.Job.ID, nil
+	return executionBindingFor(inserted.Job), nil
 }
 
-func (manager *Manager) CancelAgentJob(ctx context.Context, projectUUID string, jobID int64) error {
+func (manager *Manager) CancelAgentJob(ctx context.Context, projectUUID string, owner taskexecution.Owner, expected taskexecution.Binding) error {
 	runtime, err := manager.runtimeFor(projectUUID)
 	if err != nil {
 		return err
 	}
-	_, err = runtime.client.JobCancel(ctx, jobID)
-	return err
+	if owner.Table != "chat_turns" && owner.Table != "workflow_steps" {
+		return taskexecution.ErrSuperseded
+	}
+	if owner.ProjectUUID != "" && owner.ProjectUUID != projectUUID {
+		return taskexecution.ErrSuperseded
+	}
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	record, err := runtime.findExecutionRecordTx(ctx, tx, owner.Table, owner.UUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if record.binding() != expected {
+		return nil
+	}
+	if err := runtime.cancelOwnedJobTx(ctx, tx, owner.Table, owner.UUID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (manager *Manager) CancelAgentWork(projectUUID, workUUID string) {
-	runtime, err := manager.runtimeFor(projectUUID)
-	if err == nil {
-		runtime.cancelWork(workUUID)
+func (manager *Manager) CancelAgentWork(projectUUID, workUUID string, binding taskexecution.Binding) {
+	if runtime, err := manager.runtimeFor(projectUUID); err == nil {
+		runtime.cancelExecutionWork(workUUID, binding)
 	}
+}
+
+func (manager *Manager) WaitAgentExecution(ctx context.Context, projectUUID string, owner taskexecution.Owner) error {
+	if owner.ProjectUUID != projectUUID || (owner.Table != "chat_turns" && owner.Table != "workflow_steps") {
+		return taskexecution.ErrSuperseded
+	}
+	runtime, err := manager.runtimeFor(projectUUID)
+	if err != nil {
+		return err
+	}
+	return runtime.waitExecutionRetryBoundary(ctx, owner.Table, owner.UUID)
 }
 
 func (manager *Manager) StartDomainTask(ctx context.Context, projectUUID string, request agent.DomainTaskRequest) (agent.DomainTask, error) {

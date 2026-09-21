@@ -93,17 +93,17 @@ func readyWorkflowAwaitsTx(ctx context.Context, runtime *projectRuntime, tx *sql
 		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET status='ready',ready_at=COALESCE(ready_at,?),updated_at=? WHERE id=? AND status='waiting'`, now, now, target.ID); err != nil {
 			return err
 		}
-		jobID, err := runtime.manager.EnqueueAgentTx(ctx, runtime.projectUUID, tx, agent.JobSpec{
+		jobID, err := runtime.enqueueAgentTx(ctx, runtime.projectUUID, tx, agent.JobSpec{
 			Version: 1, ProjectUUID: runtime.projectUUID, JobKind: agent.JobChatResume,
 			ResourceUUID: target.TurnUUID, ThreadUUID: target.ThreadUUID, WakeupUUID: target.AwaitUUID,
 		})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, target.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, target.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, target.TurnID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, target.TurnID); err != nil {
 			return err
 		}
 		if _, err := agent.RecomputeThreadStatusTx(ctx, tx, target.ThreadID, now); err != nil {

@@ -6,21 +6,31 @@ import (
 	"time"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 // ReconcileOnOpen restores only durable safe boundaries. Original items and
 // events remain append-only; in-progress turns resume from persisted tool
 // intent, while user-input and Workflow dependencies stay worker-free until
 // their durable wake-up condition is satisfied.
+type RecoveryEnqueue func(context.Context, string, *sql.Tx, JobSpec) (taskexecution.Binding, error)
+
 func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Store) error {
 	if service == nil || service.queue == nil {
+		return nil
+	}
+	return service.ReconcileWithEnqueue(ctx, store, service.queue.EnqueueAgentTx)
+}
+
+func (service *Service) ReconcileWithEnqueue(ctx context.Context, store *project.Store, enqueue RecoveryEnqueue) error {
+	if service == nil || enqueue == nil {
 		return nil
 	}
 	sqlDB, err := store.DB().DB()
 	if err != nil {
 		return err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -95,7 +105,10 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 		WHEN EXISTS(SELECT 1 FROM chat_user_input_requests q WHERE q.turn_id=t.id AND q.status='resuming') THEN COALESCE((SELECT q.uuid FROM chat_user_input_requests q WHERE q.turn_id=t.id AND q.status='resuming' ORDER BY q.id LIMIT 1),'')
 		ELSE '' END
 		FROM chat_turns t JOIN chat_threads th ON th.id=t.thread_id
-		WHERE t.status='queued' ORDER BY th.id,t.queue_sequence`)
+		WHERE t.status='queued' AND (t.river_job_id IS NULL OR EXISTS(
+			SELECT 1 FROM workflow_awaits a WHERE a.chat_turn_id=t.id AND a.status IN ('ready','resuming')
+			AND (a.river_job_id IS NULL OR a.river_job_id<>t.river_job_id OR COALESCE(a.execution_uuid,'')<>COALESCE(t.execution_uuid,''))
+		)) ORDER BY th.id,t.queue_sequence`)
 	if err != nil {
 		return err
 	}
@@ -116,20 +129,20 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 		return err
 	}
 	for _, row := range turns {
-		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: row.Kind, ResourceUUID: row.TurnUUID, ThreadUUID: row.ThreadUUID, WakeupUUID: row.WakeupUUID})
+		jobID, err := enqueue(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: row.Kind, ResourceUUID: row.TurnUUID, ThreadUUID: row.ThreadUUID, WakeupUUID: row.WakeupUUID})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, row.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, row.ID); err != nil {
 			return err
 		}
 		if row.Kind == JobChatResume {
-			if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,updated_at=? WHERE chat_turn_id=? AND status IN ('ready','resuming')`, jobID, now, row.ID); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,execution_uuid=?,updated_at=? WHERE chat_turn_id=? AND status IN ('ready','resuming')`, jobID.JobID, jobID.NullableUUID(), now, row.ID); err != nil {
 				return err
 			}
 		}
 	}
-	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id WHERE s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? ORDER BY w.id,s.position`, WorkflowYolo)
+	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id WHERE s.river_job_id IS NULL AND s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? ORDER BY w.id,s.position`, WorkflowYolo)
 	if err != nil {
 		return err
 	}
@@ -150,11 +163,11 @@ func (service *Service) ReconcileOnOpen(ctx context.Context, store *project.Stor
 		return err
 	}
 	for _, row := range steps {
-		jobID, err := service.queue.EnqueueAgentTx(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: row.StepUUID, ThreadUUID: row.ThreadUUID})
+		jobID, err := enqueue(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: row.StepUUID, ThreadUUID: row.ThreadUUID})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, row.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, row.ID); err != nil {
 			return err
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -176,19 +177,21 @@ func (service *Service) createUpload(ctx context.Context, input CreateUploadInpu
 			}
 			record = existing
 			record.State, record.ErrorCode, record.ExpiresAt, record.UpdatedAt = StateReceiving, "", now.Add(24*time.Hour), now
-			if err := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ?", record.ID).Updates(map[string]any{
-				"mime_type": nil, "canonical_ext": nil, "byte_size": nil, "sha256": nil, "width": nil, "height": nil, "duration_ms": nil,
-				"state": StateReceiving, "error_code": "", "file_object_id": nil, "finalized_file_id": nil, "expires_at": record.ExpiresAt, "consumed_at": nil, "updated_at": now,
+			if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+				return executionTx.Model(&uploadRecord{}).Where("id = ?", record.ID).Updates(map[string]any{
+					"mime_type": nil, "canonical_ext": nil, "byte_size": nil, "sha256": nil, "width": nil, "height": nil, "duration_ms": nil,
+					"state": StateReceiving, "error_code": "", "file_object_id": nil, "finalized_file_id": nil, "expires_at": record.ExpiresAt, "consumed_at": nil, "updated_at": now,
+				})
 			}).Error; err != nil {
 				return Upload{}, err
 			}
 			if path, pathErr := service.partPath(record.UUID); pathErr == nil {
 				_ = os.Remove(path)
 			}
-		} else if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+		} else if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error; err != nil {
 			return Upload{}, err
 		}
-	} else if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+	} else if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error; err != nil {
 		return Upload{}, err
 	}
 	operationErr := service.store.WithFileCommit(func() error {
@@ -214,10 +217,12 @@ func (service *Service) createUpload(ctx context.Context, input CreateUploadInpu
 		if err != nil {
 			return err
 		}
-		return service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ? AND state = ?", record.ID, StateReceiving).Updates(map[string]any{
-			"mime_type": inspection.MIMEType, "canonical_ext": inspection.Extension, "byte_size": inspection.ByteSize,
-			"sha256": inspection.SHA256, "width": inspection.Width, "height": inspection.Height, "duration_ms": inspection.DurationMS,
-			"state": StateReady, "updated_at": service.now().UTC(),
+		return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&uploadRecord{}).Where("id = ? AND state = ?", record.ID, StateReceiving).Updates(map[string]any{
+				"mime_type": inspection.MIMEType, "canonical_ext": inspection.Extension, "byte_size": inspection.ByteSize,
+				"sha256": inspection.SHA256, "width": inspection.Width, "height": inspection.Height, "duration_ms": inspection.DurationMS,
+				"state": StateReady, "updated_at": service.now().UTC(),
+			})
 		}).Error
 	})
 	if operationErr != nil {
@@ -226,7 +231,9 @@ func (service *Service) createUpload(ctx context.Context, input CreateUploadInpu
 		if errors.As(operationErr, &domainErr) {
 			code = domainErr.Code
 		}
-		_ = service.store.DB().WithContext(context.WithoutCancel(ctx)).Model(&uploadRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"state": StateFailed, "error_code": code, "updated_at": service.now().UTC()}).Error
+		_ = taskexecution.Write(service.store.DB().WithContext(context.WithoutCancel(ctx)), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&uploadRecord{}).Where("id = ?", record.ID).Updates(map[string]any{"state": StateFailed, "error_code": code, "updated_at": service.now().UTC()})
+		}).Error
 		if path, pathErr := service.partPath(record.UUID); pathErr == nil {
 			_ = os.Remove(path)
 		}
@@ -281,7 +288,9 @@ func (service *Service) CancelUpload(ctx context.Context, uploadUUID string) err
 		return fileError(CodeUploadConsumed, "上传正在或已经被消费", "正式 Asset 不会被取消上传操作删除。", nil)
 	}
 	now := service.now().UTC()
-	result := service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ? AND state IN ?", record.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now})
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&uploadRecord{}).Where("id = ? AND state IN ?", record.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now})
+	})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -391,7 +400,9 @@ func (service *Service) SoftDelete(ctx context.Context, assetUUID string) (Asset
 	}
 	if row.DeletedAt == nil {
 		now := service.now().UTC()
-		if err := service.store.DB().WithContext(ctx).Model(&fileRecord{}).Where("id = ? AND deleted_at IS NULL", row.ID).Update("deleted_at", now).Error; err != nil {
+		if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&fileRecord{}).Where("id = ? AND deleted_at IS NULL", row.ID).Update("deleted_at", now)
+		}).Error; err != nil {
 			return Asset{}, err
 		}
 	}
@@ -408,7 +419,9 @@ func (service *Service) Restore(ctx context.Context, assetUUID string) (Asset, e
 		return Asset{}, err
 	}
 	if row.DeletedAt != nil {
-		if err := service.store.DB().WithContext(ctx).Model(&fileRecord{}).Where("id = ?", row.ID).Update("deleted_at", nil).Error; err != nil {
+		if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&fileRecord{}).Where("id = ?", row.ID).Update("deleted_at", nil)
+		}).Error; err != nil {
 			return Asset{}, err
 		}
 	}
@@ -448,7 +461,9 @@ func (service *Service) UpdateAsset(ctx context.Context, assetUUID string, input
 		updates["metadata_json"] = string(encoded)
 	}
 	if len(updates) > 0 {
-		if err := service.store.DB().WithContext(ctx).Model(&fileRecord{}).Where("id = ? AND deleted_at IS NULL", row.ID).Updates(updates).Error; err != nil {
+		if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&fileRecord{}).Where("id = ? AND deleted_at IS NULL", row.ID).Updates(updates)
+		}).Error; err != nil {
 			return Asset{}, err
 		}
 	}

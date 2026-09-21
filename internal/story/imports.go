@@ -12,6 +12,8 @@ import (
 
 	filestore "lumi/internal/files"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -235,7 +237,7 @@ func (service *Service) ImportChapters(ctx context.Context, files []ImportFile) 
 	}
 	now := service.now().UTC()
 	source := storySourceRecord{UUID: sourceUUID, ProjectID: projectRecord.ID, ActorID: actor.ID, SourceType: "file_import", RequestHash: requestHash, ItemCount: len(toCreate), CreatedAt: now}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := tx.Create(&source).Error; err != nil {
 			return err
 		}

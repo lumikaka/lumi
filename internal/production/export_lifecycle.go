@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -218,7 +220,7 @@ func (service *Service) CleanupExpiredExports(ctx context.Context, limit int) (E
 
 func (service *Service) claimExpiredExport(ctx context.Context, candidate exportRecord, now time.Time) (bool, error) {
 	claimed := false
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var current exportRecord
 		if err := tx.Where("id = ? AND project_id = ?", candidate.ID, candidate.ProjectID).First(&current).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -253,7 +255,7 @@ func (service *Service) claimExpiredExport(ctx context.Context, candidate export
 
 func (service *Service) deleteClaimedExport(ctx context.Context, candidate exportRecord, now time.Time) (int, int, error) {
 	deletedExport, deletedTask := 0, 0
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var active int64
 		if err := tx.Raw("SELECT COUNT(*) FROM production_task_runs WHERE project_id = ? AND uuid = ? AND status IN ('queued','running')", candidate.ProjectID, candidate.TaskUUID).Scan(&active).Error; err != nil {
 			return err
@@ -335,7 +337,8 @@ func (service *Service) removeRegisteredExportArtifacts(record exportRecord) err
 
 func (service *Service) deleteOrphanExportTasks(ctx context.Context, projectID int64, now time.Time, limit int) (int, error) {
 	cutoff := now.Add(-exportRetention)
-	result := service.store.DB().WithContext(ctx).Exec(`DELETE FROM production_task_runs WHERE id IN (
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Exec(`DELETE FROM production_task_runs WHERE id IN (
 		SELECT tasks.id FROM production_task_runs tasks
 		WHERE tasks.project_id = ? AND tasks.kind = 'comic_export'
 		  AND tasks.status IN ('completed','failed','cancelled','interrupted')
@@ -343,6 +346,7 @@ func (service *Service) deleteOrphanExportTasks(ctx context.Context, projectID i
 		  AND NOT EXISTS (SELECT 1 FROM comic_exports exports WHERE exports.task_uuid = tasks.uuid)
 		ORDER BY COALESCE(tasks.completed_at, tasks.created_at) ASC, tasks.id ASC LIMIT ?
 	)`, projectID, cutoff, limit)
+	})
 	return int(result.RowsAffected), result.Error
 }
 

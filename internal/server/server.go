@@ -105,7 +105,6 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	projects.WithOpenHook(story.ReconcileOnOpen)
 	projects.WithOpenHook(files.ReconcileOnOpen)
 	projects.WithRuntime(taskManager).WithOpenHook(taskManager.StartProject)
-	projects.WithOpenHook(agentService.ReconcileOnOpen)
 	projects.WithLifecycleHook(func(event project.LifecycleEvent) {
 		realtimeHub.Broadcast(realtime.SystemTopic, realtime.OpenProjectChanged, openProjectChangedPayload(event))
 	})

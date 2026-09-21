@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"image"
 	"image/draw"
 	"image/png"
@@ -23,6 +24,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -56,17 +58,25 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		return river.JobCancel(err)
 	}
 	runtime := worker.runtime
+	guardedCtx, guardErr := runtime.executionContext(ctx, job.JobRow)
+	if guardErr != nil {
+		if errors.Is(guardErr, taskexecution.ErrSuperseded) {
+			return river.JobCancel(guardErr)
+		}
+		return guardErr
+	}
+	ctx = guardedCtx
 	workCtx, cancel := context.WithCancel(ctx)
-	runtime.registerWork(job.Args.TaskUUID, cancel)
-	defer func() { cancel(); runtime.unregisterWork(job.Args.TaskUUID) }()
-	if job.Args.Version != 1 || job.Args.ProjectUUID != runtime.projectUUID || !validProductionKind(job.Args.TaskKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
+	unregister := runtime.registerExecutionWork(ctx, cancel)
+	defer func() { cancel(); unregister() }()
+	if (job.Args.Version != 1 && job.Args.Version != 2) || job.Args.ProjectUUID != runtime.projectUUID || !validProductionKind(job.Args.TaskKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
 		return river.JobCancel(taskError(CodeInvalidTask, "River 生产任务参数无效", "任务参数版本或 UUID 不受支持。", nil))
 	}
 	record, err := getProductionTaskRecord(workCtx, runtime.store.DB(), runtime.projectID, job.Args.TaskUUID)
 	if err != nil {
 		return err
 	}
-	if record.Status == StatusCompleted || record.Status == StatusCancelled {
+	if record.Status == StatusCompleted || record.Status == StatusCancelled || record.Status == StatusInterrupted {
 		return nil
 	}
 	var snapshot production.GenerationSnapshot
@@ -102,6 +112,9 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		workErr = runtime.completeProduction(workCtx, record)
 	}
 	if workErr != nil {
+		if errors.Is(workErr, taskexecution.ErrSuperseded) {
+			return river.JobCancel(workErr)
+		}
 		code, message, retryable, cancelled := classifyProductionError(workErr)
 		if cancelled {
 			requested, checkErr := runtime.productionCancelRequested(context.WithoutCancel(ctx), record.ID)
@@ -170,7 +183,9 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 		return err
 	}
 	now := runtime.manager.now().UTC()
-	return runtime.store.DB().WithContext(ctx).Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=(SELECT id FROM premise_setting_images WHERE uuid=?),output_json=json_set(CASE WHEN json_valid(output_json) THEN output_json ELSE '{}' END,'$.setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, setting.UUID, setting.UUID, now, record.UUID).Error
+	return taskexecution.Write(runtime.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Exec(`UPDATE premise_generation_steps SET status='completed',setting_image_id=(SELECT id FROM premise_setting_images WHERE uuid=?),output_json=json_set(CASE WHEN json_valid(output_json) THEN output_json ELSE '{}' END,'$.setting_image_uuid',?),completed_at=? WHERE task_uuid=?`, setting.UUID, setting.UUID, now, record.UUID)
+	}).Error
 }
 
 func referenceImageRejected(err error) bool {
@@ -363,7 +378,9 @@ func (runtime *projectRuntime) breakdownSetting(ctx context.Context, service *pr
 	}
 	output, _ := json.Marshal(map[string]any{"premise_asset_uuids": created})
 	now := runtime.manager.now().UTC()
-	return runtime.store.DB().WithContext(ctx).Exec(`UPDATE premise_generation_steps SET status='completed',output_json=?,completed_at=? WHERE task_uuid=?`, string(output), now, record.UUID).Error
+	return taskexecution.Write(runtime.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Exec(`UPDATE premise_generation_steps SET status='completed',output_json=?,completed_at=? WHERE task_uuid=?`, string(output), now, record.UUID)
+	}).Error
 }
 
 func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *production.Service, record productionTaskRecord, snapshot production.GenerationSnapshot) error {
@@ -659,7 +676,7 @@ func renderSectionReferenceUsage(references []production.PremiseAssetReference, 
 }
 
 func (runtime *projectRuntime) appendProductionEvent(ctx context.Context, taskID int64, eventType string, payload any) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -751,13 +768,13 @@ func cropImage(source image.Image, item breakdownItem) (image.Image, image.Recta
 }
 
 func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record productionTaskRecord, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	now := runtime.manager.now().UTC()
-	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='running',progress=5,attempt=?,started_at=COALESCE(started_at,?),updated_at=?,error_code='',error_message='' WHERE id=? AND cancel_requested_at IS NULL AND status NOT IN ('completed','cancelled')`, attempt, now, now, record.ID)
+	result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='running',progress=MAX(progress,5),attempt=?,started_at=COALESCE(started_at,?),updated_at=?,error_code='',error_message='' WHERE id=? AND cancel_requested_at IS NULL AND status NOT IN ('completed','cancelled')`, attempt, now, now, record.ID)
 	if err != nil {
 		return err
 	}
@@ -797,7 +814,7 @@ func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record
 	return nil
 }
 func (runtime *projectRuntime) productionProgress(ctx context.Context, record productionTaskRecord, progress int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -831,7 +848,7 @@ func (runtime *projectRuntime) productionProgress(ctx context.Context, record pr
 	return nil
 }
 func (runtime *projectRuntime) completeProduction(ctx context.Context, record productionTaskRecord) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -876,7 +893,7 @@ func (runtime *projectRuntime) completeProduction(ctx context.Context, record pr
 	return nil
 }
 func (runtime *projectRuntime) failProduction(ctx context.Context, record productionTaskRecord, code, message string, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -916,7 +933,7 @@ func (runtime *projectRuntime) failProduction(ctx context.Context, record produc
 }
 
 func (runtime *projectRuntime) retryProductionFailure(ctx context.Context, record productionTaskRecord, code, message string, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -974,7 +991,7 @@ func (runtime *projectRuntime) retryProductionFailure(ctx context.Context, recor
 }
 
 func (runtime *projectRuntime) cancelProductionProjection(ctx context.Context, record productionTaskRecord) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -1014,7 +1031,7 @@ func (runtime *projectRuntime) productionCancelRequested(ctx context.Context, ta
 }
 
 func (runtime *projectRuntime) pauseProduction(ctx context.Context, record productionTaskRecord, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -1074,13 +1091,13 @@ func (runtime *projectRuntime) projectProductionRiverEvent(ctx context.Context, 
 		return nil
 	}
 	if event.Kind == river.EventKindJobFailed && event.Job.State != rivertype.JobStateDiscarded {
-		tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 		if err != nil {
 			return err
 		}
 		defer tx.Rollback()
 		now := runtime.manager.now().UTC()
-		result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,completed_at=NULL,updated_at=? WHERE id=? AND status='failed'`, now, record.ID)
+		result, err := tx.ExecContext(ctx, `UPDATE production_task_runs SET status='queued',progress=0,stage='',stage_started_at=NULL,completed_at=NULL,updated_at=? WHERE id=? AND status='failed' AND attempt=?`, now, record.ID, event.Job.Attempt)
 		if err != nil {
 			return err
 		}

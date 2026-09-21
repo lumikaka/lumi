@@ -10,6 +10,7 @@ import (
 	"lumi/internal/agentcheckpoint"
 	"lumi/internal/files"
 	"lumi/internal/promptcatalog"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -104,7 +105,7 @@ func (service *Service) ensurePremiseProfile(ctx context.Context, db *gorm.DB) (
 	}
 	now := service.now().UTC()
 	record = premiseProfileRecord{UUID: uuid, ProjectID: p.ID, DefaultStyle: DefaultPremiseStyle(p.GenerationLanguage), CreatedAt: now, UpdatedAt: now}
-	if err := db.WithContext(ctx).Create(&record).Error; err != nil {
+	if err := taskexecution.Write(db.WithContext(ctx), func(tx *gorm.DB) *gorm.DB { return tx.Create(&record) }).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
 			return service.ensurePremiseProfile(ctx, db)
 		}
@@ -152,7 +153,7 @@ func (service *Service) UpdatePremise(ctx context.Context, input UpdatePremiseIn
 		return PremiseProfile{}, domainError(CodeValidation, "画风说明过长", "default_style 最多 12000 个字符。", nil)
 	}
 	now := service.now().UTC()
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		record, err := service.ensurePremiseProfile(ctx, tx)
 		if err != nil {
 			return err
@@ -242,7 +243,7 @@ func (service *Service) CreatePremiseSource(ctx context.Context, input CreateSou
 		return PremiseSource{}, err
 	}
 	var created premiseSourceRecord
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		p, actor, err := service.projectActor(ctx, tx)
 		if err != nil {
 			return err
@@ -350,9 +351,11 @@ func (service *Service) SetPremiseSourceIgnored(ctx context.Context, sourceUUID 
 	if ignored {
 		ignoredAt = now
 	}
-	result := service.store.DB().WithContext(ctx).Model(&premiseSourceRecord{}).Where("id = ? AND revision = ?", row.ID, expectedRevision).Updates(map[string]any{
-		"ignored_at": ignoredAt,
-		"revision":   gorm.Expr("revision + 1"),
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&premiseSourceRecord{}).Where("id = ? AND revision = ?", row.ID, expectedRevision).Updates(map[string]any{
+			"ignored_at": ignoredAt,
+			"revision":   gorm.Expr("revision + 1"),
+		})
 	})
 	if result.Error != nil {
 		return PremiseSource{}, result.Error
@@ -557,7 +560,9 @@ func (service *Service) SelectSettingImage(ctx context.Context, settingUUID stri
 		return PremiseProfile{}, notFound(err, "设置图不存在")
 	}
 	now := service.now().UTC()
-	if err := service.store.DB().WithContext(ctx).Model(&premiseProfileRecord{}).Where("id = ?", profile.ID).Updates(map[string]any{"current_setting_image_id": image.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now}).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&premiseProfileRecord{}).Where("id = ?", profile.ID).Updates(map[string]any{"current_setting_image_id": image.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+	}).Error; err != nil {
 		return PremiseProfile{}, err
 	}
 	result, err := service.GetPremise(ctx)
@@ -740,7 +745,7 @@ func (service *Service) CreatePremiseAssetFromFile(ctx context.Context, input Cr
 		return PremiseAsset{}, err
 	}
 	var domainID int64
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		p, actor, err := service.projectActor(ctx, tx)
 		if err != nil {
 			return err
@@ -1179,7 +1184,7 @@ func (service *Service) UpdatePremiseAsset(ctx context.Context, assetUUID string
 		}
 		updates["crop_json"] = value
 	}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var row premiseAssetRecord
 		if err := tx.Where("uuid = ? AND revision = ?", assetUUID, input.ExpectedRevision).First(&row).Error; err != nil {
 			return domainError(CodeConflict, "设定资产已被修改", "刷新后重试。", err)
@@ -1229,7 +1234,7 @@ func (service *Service) UpdatePremiseAssetFromFile(ctx context.Context, assetUUI
 		return PremiseAsset{}, err
 	}
 	var domainID int64
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var asset premiseAssetRecord
 		if err := tx.Where("uuid=? AND project_id=(SELECT id FROM projects WHERE uuid=?) AND deleted_at IS NULL", assetUUID, service.store.ProjectUUID()).First(&asset).Error; err != nil {
 			return notFound(err, "设定资产不存在")
@@ -1407,7 +1412,7 @@ func (service *Service) SelectAssetVariant(ctx context.Context, assetUUID, varia
 	if err := service.store.DB().WithContext(ctx).Where("uuid = ? AND premise_asset_id = ?", variantUUID, asset.ID).First(&variant).Error; err != nil {
 		return PremiseAsset{}, notFound(err, "资产版本不存在")
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		result := tx.Model(&premiseAssetRecord{}).Where("id = ? AND revision = ?", asset.ID, expectedRevision).Updates(map[string]any{"current_variant_id": variant.ID, "revision": gorm.Expr("revision + 1"), "updated_at": service.now().UTC()})
 		if result.Error != nil {
 			return result.Error
@@ -1455,7 +1460,7 @@ func (service *Service) setPremiseAssetTrashed(ctx context.Context, assetUUID st
 		event = "asset_trashed"
 	}
 	var id int64
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var row premiseAssetRecord
 		if err := tx.Where("uuid = ? AND project_id=(SELECT id FROM projects WHERE uuid=?)", assetUUID, service.store.ProjectUUID()).First(&row).Error; err != nil {
 			return notFound(err, "设定资产不存在")
@@ -1502,7 +1507,7 @@ func (service *Service) PermanentlyDeletePremiseAssetFromTool(ctx context.Contex
 
 func (service *Service) permanentlyDeletePremiseAssetWithCheckpoint(ctx context.Context, assetUUID string, expectedRevision int64, toolExecutionUUID string) (PremiseTrashDeleteResult, error) {
 	result := PremiseTrashDeleteResult{BlockedItems: []PremiseAssetDeleteBlocker{}}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if toolExecutionUUID != "" {
 			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetPermanentDelete)
 			if err != nil {
@@ -1570,7 +1575,7 @@ func (service *Service) emptyPremiseAssetTrashWithCheckpoint(ctx context.Context
 	result := PremiseTrashDeleteResult{BlockedItems: []PremiseAssetDeleteBlocker{}}
 	deletedUUIDs := make([]string, 0)
 	recovered := false
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if toolExecutionUUID != "" {
 			data, found, err := agentcheckpoint.Read(ctx, tx, toolExecutionUUID, agentcheckpoint.RoutePremiseAssetTrashEmpty)
 			if err != nil {

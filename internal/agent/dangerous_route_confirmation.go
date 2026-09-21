@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 type dangerousConfirmationBinding struct {
@@ -352,7 +353,7 @@ func (service *Service) recoverRuntimeDangerousConfirmation(ctx context.Context,
 	if err != nil {
 		return toolExecutionRecord{}, false, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return toolExecutionRecord{}, false, err
 	}
@@ -767,7 +768,7 @@ func (service *Service) repairPendingConfirmationReplayProviderID(ctx context.Co
 	if err != nil {
 		return execution, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return execution, err
 	}

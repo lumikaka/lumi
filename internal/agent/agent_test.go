@@ -29,6 +29,7 @@ import (
 	"lumi/internal/provider"
 	"lumi/internal/sitesettings"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 )
 
 type agentQueueFake struct {
@@ -45,20 +46,26 @@ type agentQueueFake struct {
 	enqueueErr      error
 }
 
-func (queue *agentQueueFake) EnqueueAgentTx(_ context.Context, _ string, _ *sql.Tx, spec JobSpec) (int64, error) {
+func (queue *agentQueueFake) EnqueueAgentTx(_ context.Context, _ string, _ *sql.Tx, spec JobSpec) (taskexecution.Binding, error) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	if queue.enqueueErr != nil {
-		return 0, queue.enqueueErr
+		return taskexecution.Binding{}, queue.enqueueErr
 	}
 	queue.nextID++
 	queue.jobs = append(queue.jobs, spec)
-	return queue.nextID, nil
+	return taskexecution.Binding{JobID: queue.nextID}, nil
 }
 
-func (queue *agentQueueFake) CancelAgentJob(context.Context, string, int64) error { return nil }
+func (queue *agentQueueFake) WaitAgentExecution(context.Context, string, taskexecution.Owner) error {
+	return nil
+}
 
-func (queue *agentQueueFake) CancelAgentWork(_, workUUID string) {
+func (queue *agentQueueFake) CancelAgentJob(context.Context, string, taskexecution.Owner, taskexecution.Binding) error {
+	return nil
+}
+
+func (queue *agentQueueFake) CancelAgentWork(_, workUUID string, _ taskexecution.Binding) {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	queue.cancels = append(queue.cancels, workUUID)
@@ -2799,7 +2806,9 @@ func TestYoloEveryStepRetriesAndReconcilesAtSafeBoundary(t *testing.T) {
 				if err := store.DB().Exec(`UPDATE workflows SET status='running',error_code='' WHERE uuid=?`, workflow.UUID).Error; err != nil {
 					t.Fatal(err)
 				}
-				if err := store.DB().Exec(`UPDATE workflow_steps SET status='running',error_code='' WHERE uuid=?`, retried.Steps[position-1].UUID).Error; err != nil {
+				// The queue adapter clears missing bindings before Agent recovery.
+				// This fake has no River rows; model that verified missing-job state.
+				if err := store.DB().Exec(`UPDATE workflow_steps SET status='running',river_job_id=NULL,execution_uuid=NULL,error_code='' WHERE uuid=?`, retried.Steps[position-1].UUID).Error; err != nil {
 					t.Fatal(err)
 				}
 				harness.queue.mu.Lock()

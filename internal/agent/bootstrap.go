@@ -7,6 +7,7 @@ import (
 
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 type BootstrapConversationResult struct {
@@ -80,7 +81,7 @@ func (service *Service) BootstrapConversation(ctx context.Context, projectUUID, 
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}

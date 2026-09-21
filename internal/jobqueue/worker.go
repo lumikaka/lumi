@@ -13,6 +13,7 @@ import (
 	"lumi/internal/provider"
 	"lumi/internal/realtime"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -25,23 +26,31 @@ type storyGenerationWorker struct {
 
 func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[riverArgs]) error {
 	runtime := worker.runtime
+	guardedCtx, guardErr := runtime.executionContext(ctx, job.JobRow)
+	if guardErr != nil {
+		if errors.Is(guardErr, taskexecution.ErrSuperseded) {
+			return river.JobCancel(guardErr)
+		}
+		return guardErr
+	}
+	ctx = guardedCtx
 	if err := runtime.store.RequireReady(); err != nil {
 		return river.JobCancel(err)
 	}
 	workCtx, workCancel := context.WithCancel(ctx)
-	runtime.registerWork(job.Args.TaskUUID, workCancel)
+	unregister := runtime.registerExecutionWork(ctx, workCancel)
 	defer func() {
 		workCancel()
-		runtime.unregisterWork(job.Args.TaskUUID)
+		unregister()
 	}()
-	if job.Args.Version != 1 || job.Args.ProjectUUID != runtime.projectUUID || !validStoryTaskKind(job.Args.TaskKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
+	if (job.Args.Version != 1 && job.Args.Version != 2) || job.Args.ProjectUUID != runtime.projectUUID || !validStoryTaskKind(job.Args.TaskKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
 		return river.JobCancel(taskError(CodeInvalidTask, "River job 参数无效", "任务参数版本或 UUID 不受支持。", nil))
 	}
 	record, err := getTaskRecord(workCtx, runtime.store.DB(), runtime.projectID, job.Args.TaskUUID)
 	if err != nil {
 		return err
 	}
-	if record.Status == StatusCompleted || record.Status == StatusCancelled {
+	if record.Status == StatusCompleted || record.Status == StatusCancelled || record.Status == StatusInterrupted {
 		return nil
 	}
 	var snapshot storyGenerationSnapshot
@@ -193,7 +202,7 @@ func storyGenerationSystemPrompt(language string) string {
 }
 
 func (runtime *projectRuntime) markRunning(ctx context.Context, record taskRecord, snapshot storyGenerationSnapshot, attempt int) (int64, int64, error) {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -244,7 +253,7 @@ func (runtime *projectRuntime) markRunning(ctx context.Context, record taskRecor
 }
 
 func (runtime *projectRuntime) recordProgress(ctx context.Context, record taskRecord, progress int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -276,7 +285,7 @@ func (runtime *projectRuntime) recordProgress(ctx context.Context, record taskRe
 }
 
 func (runtime *projectRuntime) completeTask(ctx context.Context, record taskRecord, chapter story.Chapter) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -342,6 +351,9 @@ func (runtime *projectRuntime) completeTask(ctx context.Context, record taskReco
 }
 
 func (runtime *projectRuntime) handleWorkError(ctx context.Context, record taskRecord, err error, attempt, maxAttempts int) error {
+	if errors.Is(err, taskexecution.ErrSuperseded) {
+		return river.JobCancel(err)
+	}
 	code, message, retryable, cancelled := classifyWorkError(err)
 	if cancelled {
 		requested, checkErr := runtime.cancelRequested(context.WithoutCancel(ctx), record.ID)
@@ -367,7 +379,7 @@ func (runtime *projectRuntime) handleWorkError(ctx context.Context, record taskR
 }
 
 func (runtime *projectRuntime) pauseTask(ctx context.Context, record taskRecord, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -403,7 +415,7 @@ func (runtime *projectRuntime) pauseTask(ctx context.Context, record taskRecord,
 }
 
 func (runtime *projectRuntime) failTask(ctx context.Context, record taskRecord, code, message string, retryable bool, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -443,7 +455,7 @@ func (runtime *projectRuntime) failTask(ctx context.Context, record taskRecord, 
 }
 
 func (runtime *projectRuntime) cancelTaskProjection(ctx context.Context, record taskRecord, code, message string) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -513,23 +525,19 @@ func (runtime *projectRuntime) projectRiverEvent(ctx context.Context, event *riv
 	if record.Status == StatusCompleted || record.Status == StatusCancelled || (record.Status == StatusFailed && event.Kind == river.EventKindJobCancelled) {
 		return nil
 	}
-	if event.Kind == river.EventKindJobCancelled && record.Status == StatusQueued && record.CancelRequestedAt == nil {
-		// JobRetryTx can requeue a previously cancelled River row before its
-		// cancellation event reaches this consumer. The durable task projection is
-		// authoritative only when River also reports that the job has moved on.
-		currentJob, currentErr := runtime.client.JobGet(ctx, event.Job.ID)
-		if currentErr == nil && currentJob.State != rivertype.JobStateCancelled {
-			return nil
-		}
-	}
 	if event.Kind == river.EventKindJobFailed && event.Job.State != rivertype.JobStateDiscarded {
-		tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 		if err != nil {
 			return err
 		}
 		defer tx.Rollback()
 		now := runtime.manager.now().UTC()
-		if _, err := tx.ExecContext(ctx, `UPDATE task_runs SET status = 'queued', progress = 0, updated_at = ? WHERE id = ? AND status = 'failed'`, now, record.ID); err != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE task_runs SET status = 'queued', progress = 0, updated_at = ? WHERE id = ? AND status = 'failed' AND attempt=?`, now, record.ID, event.Job.Attempt)
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil || changed == 0 {
 			return err
 		}
 		if err := appendTaskEventTx(ctx, tx, record.ID, "retry_scheduled", map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "chapter_uuid": record.ResourceUUID, "status": StatusQueued, "attempt": event.Job.Attempt}, now); err != nil {

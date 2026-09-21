@@ -11,6 +11,8 @@ import (
 	"sort"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -71,7 +73,7 @@ func (service *Service) GCDryRun(ctx context.Context, grace time.Duration) (GCPl
 		}
 		referenceSummaries[object.ID] = summary
 	}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := tx.Create(&plan).Error; err != nil {
 			return err
 		}
@@ -144,7 +146,9 @@ func (service *Service) gcApply(ctx context.Context, planUUID string, grace time
 		return GCPlan{}, err
 	}
 	if gcSnapshot(current) != record.SnapshotHash {
-		_ = service.store.DB().WithContext(ctx).Model(&gcPlanRecord{}).Where("id = ?", record.ID).Update("status", "stale").Error
+		_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&gcPlanRecord{}).Where("id = ?", record.ID).Update("status", "stale")
+		}).Error
 		return GCPlan{}, fileError(CodeGCPlanStale, "GC dry-run 已过期", "引用或候选对象发生变化，请重新 dry-run。", nil)
 	}
 	byUUID := map[string]objectRecord{}
@@ -163,7 +167,7 @@ func (service *Service) gcApply(ctx context.Context, planUUID string, grace time
 		if err != nil {
 			return GCPlan{}, err
 		}
-		err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var eligible int64
 			if err := tx.Raw(`SELECT COUNT(*) FROM file_objects o WHERE o.id=? AND o.project_id=? AND o.state IN ('ready','missing','corrupt','quarantined') AND EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file_object_id=o.id AND (f.deleted_at IS NULL OR f.deleted_at > ?)) AND NOT EXISTS (SELECT 1 FROM story_source_items ssi JOIN files f ON f.id=ssi.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM chat_context_references refs JOIN files f ON f.id=refs.file_id OR f.id=refs.image_file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM project_creation_reference_files refs JOIN files f ON f.id=refs.file_id WHERE f.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM files child JOIN files parent ON parent.id=child.source_file_id WHERE parent.file_object_id=o.id) AND NOT EXISTS (SELECT 1 FROM upload_stashed u WHERE u.file_object_id=o.id AND u.state <> 'consumed')`, object.ID, record.ProjectID, cutoff).Scan(&eligible).Error; err != nil {
 				return err
@@ -201,7 +205,9 @@ func (service *Service) gcApply(ctx context.Context, planUUID string, grace time
 		}
 	}
 	applied := service.now().UTC()
-	if err := service.store.DB().WithContext(ctx).Model(&gcPlanRecord{}).Where("id = ? AND status = ?", record.ID, "dry_run").Updates(map[string]any{"status": "applied", "applied_at": applied}).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&gcPlanRecord{}).Where("id = ? AND status = ?", record.ID, "dry_run").Updates(map[string]any{"status": "applied", "applied_at": applied})
+	}).Error; err != nil {
 		return GCPlan{}, err
 	}
 	plan.Status = "applied"

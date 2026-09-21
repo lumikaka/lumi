@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"lumi/internal/durablefs"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -79,7 +80,9 @@ func (service *Service) finalizeUpload(ctx context.Context, uploadUUID, expected
 	}
 	if service.now().UTC().After(record.ExpiresAt) && record.State != StateConsuming {
 		now := service.now().UTC()
-		_ = service.store.DB().WithContext(ctx).Model(&uploadRecord{}).Where("id = ? AND state IN ?", record.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now}).Error
+		_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&uploadRecord{}).Where("id = ? AND state IN ?", record.ID, []string{StateReceiving, StateReady, StateFailed}).Updates(map[string]any{"state": StateExpired, "updated_at": now})
+		}).Error
 		if part, pathErr := service.partPath(record.UUID); pathErr == nil {
 			_ = os.Remove(part)
 		}
@@ -98,7 +101,7 @@ func (service *Service) finalizeUpload(ctx context.Context, uploadUUID, expected
 	}
 	var object objectRecord
 	err = service.store.WithFileCommit(func() error {
-		if err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var locked uploadRecord
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&locked, record.ID).Error; err != nil {
 				return err
@@ -145,7 +148,7 @@ func (service *Service) finalizeUpload(ctx context.Context, uploadUUID, expected
 				return err
 			}
 		}
-		return service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var currentObject objectRecord
 			if err := tx.First(&currentObject, object.ID).Error; err != nil {
 				return err

@@ -18,6 +18,7 @@ import (
 
 	"lumi/internal/durablefs"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -314,7 +315,7 @@ func (service *Service) CreateExportRecord(ctx context.Context, taskUUID, scope,
 	relative := ExportRelativePath(uuid, scope, chapterUUID, snapshotHash, snapshot)
 	format := exportFormatForSnapshot(snapshot)
 	record := exportRecord{UUID: uuid, ProjectID: p.ID, ChapterID: chapterID, TaskUUID: taskUUID, Scope: scope, Format: format, Status: "queued", SnapshotJSON: string(encoded), SnapshotHash: snapshotHash, RelativePath: relative, RetentionDays: ExportRetentionDays, CreatedAt: now}
-	if err := service.store.DB().WithContext(ctx).Create(&record).Error; err != nil {
+	if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error; err != nil {
 		return Export{}, err
 	}
 	return service.exportDTO(ctx, record)
@@ -442,7 +443,9 @@ func (service *Service) ExportForTaskOrReadySnapshot(ctx context.Context, taskUU
 }
 
 func (service *Service) MarkExportRunning(ctx context.Context, taskUUID string) error {
-	return service.store.DB().WithContext(ctx).Model(&exportRecord{}).Where("task_uuid = ? AND status = 'queued'", taskUUID).Updates(map[string]any{"status": "running", "expires_at": nil}).Error
+	return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&exportRecord{}).Where("task_uuid = ? AND status = 'queued'", taskUUID).Updates(map[string]any{"status": "running", "expires_at": nil})
+	}).Error
 }
 func (service *Service) FailExport(ctx context.Context, taskUUID, code string, cancelled bool) error {
 	status := "failed"
@@ -450,7 +453,9 @@ func (service *Service) FailExport(ctx context.Context, taskUUID, code string, c
 		status = "cancelled"
 	}
 	now := service.now().UTC()
-	return service.store.DB().WithContext(ctx).Model(&exportRecord{}).Where("task_uuid = ? AND status IN ('queued','running')", taskUUID).Updates(map[string]any{"status": status, "error_code": code, "completed_at": now, "expires_at": now.Add(exportRetention)}).Error
+	return taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&exportRecord{}).Where("task_uuid = ? AND status IN ('queued','running')", taskUUID).Updates(map[string]any{"status": status, "error_code": code, "completed_at": now, "expires_at": now.Add(exportRetention)})
+	}).Error
 }
 
 func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID string, reportProgress func(int) error) (Export, error) {
@@ -474,7 +479,9 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 		return service.exportDTO(ctx, record)
 	}
 	if record.Status == "queued" {
-		result := service.store.DB().WithContext(ctx).Model(&exportRecord{}).Where("id = ? AND status = 'queued'", record.ID).Update("status", "running")
+		result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&exportRecord{}).Where("id = ? AND status = 'queued'", record.ID).Update("status", "running")
+		})
 		if result.Error != nil {
 			return Export{}, result.Error
 		}
@@ -495,7 +502,7 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 		if err := notifyExportProgress(reportProgress, 95); err != nil {
 			return Export{}, err
 		}
-		if err := service.store.DB().WithContext(ctx).Delete(&record).Error; err != nil {
+		if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Delete(&record) }).Error; err != nil {
 			return Export{}, err
 		}
 		return service.exportDTO(ctx, ready)
@@ -510,7 +517,9 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 	relative := record.RelativePath
 	if relative == "" {
 		relative = ExportRelativePath(record.UUID, record.Scope, snapshot.ChapterUUID, record.SnapshotHash, snapshot)
-		if err := service.store.DB().WithContext(ctx).Model(&exportRecord{}).Where("id = ? AND status = 'running'", record.ID).Update("relative_path", relative).Error; err != nil {
+		if err := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+			return executionTx.Model(&exportRecord{}).Where("id = ? AND status = 'running'", record.ID).Update("relative_path", relative)
+		}).Error; err != nil {
 			return Export{}, err
 		}
 	}
@@ -521,7 +530,7 @@ func (service *Service) RenderAndCommitExport(ctx context.Context, taskUUID stri
 	now = service.now().UTC()
 	expiresAt := now.Add(exportRetention)
 	canonicalReused := false
-	if err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := ensureProductionTaskRunning(tx, taskUUID); err != nil {
 			return err
 		}

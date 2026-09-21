@@ -2613,10 +2613,12 @@ func TestCancelledProductionTaskCanBeExplicitlyRetried(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err := getProductionTaskRecord(ctx, runtime.store.DB(), runtime.projectID, task.UUID)
-	if err != nil || record.RiverJobID == nil {
+	if err != nil {
 		t.Fatalf("production task record=%+v err=%v", record, err)
 	}
-	waitJobState(t, runtime.client, *record.RiverJobID, rivertype.JobStateCancelled)
+	if record.RiverJobID != nil {
+		waitJobState(t, runtime.client, *record.RiverJobID, rivertype.JobStateCancelled)
+	}
 	now := time.Now().UTC()
 	if err := runtime.store.DB().Exec(`UPDATE production_task_runs SET status=?,cancel_requested_at=?,completed_at=?,updated_at=? WHERE id=?`, StatusCancelled, now, now, now, record.ID).Error; err != nil {
 		t.Fatal(err)

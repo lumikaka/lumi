@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"lumi/internal/taskexecution"
 )
 
 const (
@@ -148,9 +150,10 @@ var ComicSectionImageStepKeys = []string{
 }
 
 type Queue interface {
-	EnqueueAgentTx(context.Context, string, *sql.Tx, JobSpec) (int64, error)
-	CancelAgentJob(context.Context, string, int64) error
-	CancelAgentWork(string, string)
+	EnqueueAgentTx(context.Context, string, *sql.Tx, JobSpec) (taskexecution.Binding, error)
+	CancelAgentJob(context.Context, string, taskexecution.Owner, taskexecution.Binding) error
+	CancelAgentWork(string, string, taskexecution.Binding)
+	WaitAgentExecution(context.Context, string, taskexecution.Owner) error
 	StartDomainTask(context.Context, string, DomainTaskRequest) (DomainTask, error)
 	StartDomainTaskBatch(context.Context, string, DomainTaskBatchRequest) (DomainTaskBatch, error)
 	GetDomainTask(context.Context, string, string, string) (DomainTask, error)
@@ -161,11 +164,12 @@ type Queue interface {
 }
 
 type JobSpec struct {
-	Version      int
-	ProjectUUID  string
-	JobKind      string
-	ResourceUUID string
-	ThreadUUID   string
+	ExecutionUUID string
+	Version       int
+	ProjectUUID   string
+	JobKind       string
+	ResourceUUID  string
+	ThreadUUID    string
 	// WakeupUUID distinguishes separate durable reasons for resuming the same
 	// turn, such as user confirmation and Workflow completion.
 	WakeupUUID string
@@ -600,6 +604,7 @@ type threadRecord struct {
 func (threadRecord) TableName() string { return "chat_threads" }
 
 type turnRecord struct {
+	ExecutionUUID                                 string
 	ID, ThreadID, QueueSequence, SourceFollowUpID int64
 	UUID, SourceType, InputText, Status           string
 	RiverJobID                                    *int64
@@ -664,6 +669,7 @@ type workflowRecord struct {
 func (workflowRecord) TableName() string { return "workflows" }
 
 type workflowStepRecord struct {
+	ExecutionUUID                                                 string
 	ID, WorkflowID                                                int64
 	UUID, StepKey, Status, IdempotencyKey, TaskUUID, ResourceUUID string
 	RiverJobID                                                    *int64
@@ -676,6 +682,7 @@ type workflowStepRecord struct {
 func (workflowStepRecord) TableName() string { return "workflow_steps" }
 
 type workflowAwaitRecord struct {
+	ExecutionUUID                                                        string
 	ID, WorkflowID, ChatThreadID, ChatTurnID, ChatRunID, ToolExecutionID int64
 	UUID, Status                                                         string
 	RiverJobID                                                           *int64

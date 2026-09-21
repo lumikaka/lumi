@@ -18,6 +18,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/realtime"
+	"lumi/internal/taskexecution"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -160,7 +161,7 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 			return err
 		}
 		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, ThreadType: ThreadTypeConversation, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
-		return store.DB().WithContext(ctx).Create(&record).Error
+		return taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error
 	})
 	if err != nil {
 		return Thread{}, err
@@ -276,7 +277,7 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -382,7 +383,7 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 	if err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=? WHERE id=?`, jobID, turnID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,execution_uuid=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), turnID); err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
 	thread.NextTurnSequence++
@@ -392,7 +393,7 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 	if _, err := RecomputeThreadStatusTx(ctx, tx, thread.ID, now); err != nil {
 		return turnRecord{}, runRecord{}, err
 	}
-	turn := turnRecord{ID: turnID, ThreadID: thread.ID, UUID: turnUUID, SourceType: sourceType, SourceFollowUpID: followUpID, QueueSequence: queueSequence, InputText: text, Status: TurnQueued, RiverJobID: &jobID, CreatedAt: now, UpdatedAt: now}
+	turn := turnRecord{ID: turnID, ThreadID: thread.ID, UUID: turnUUID, SourceType: sourceType, SourceFollowUpID: followUpID, QueueSequence: queueSequence, InputText: text, Status: TurnQueued, RiverJobID: &jobID.JobID, ExecutionUUID: jobID.ExecutionUUID, CreatedAt: now, UpdatedAt: now}
 	run := runRecord{ID: runID, ThreadID: thread.ID, TurnID: turnID, UUID: runUUID, TriggerType: sourceType, Status: TurnQueued, MaxModelRequests: limits.MaxModelRequests, MaxActiveDurationMS: limits.MaxActiveDurationMS, MaxTokenUnits: limits.MaxTokenUnits, MaxNoProgressRounds: limits.MaxNoProgressRounds, ProviderUUID: thread.ProviderUUID, Model: thread.Model, ModelSource: thread.ModelSource, CreatedAt: now, UpdatedAt: now}
 	return turn, run, nil
 }

@@ -189,7 +189,7 @@ func setupInlineWorkflowTestEnv(t *testing.T, model *inlineWorkflowAgentModel) i
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
-	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject)
 	created, err := projects.CreateWithInput(ctx, project.CreateInput{
 		Name: "Inline Workflow",
 		PictureBook: &project.PictureBookInput{
@@ -873,7 +873,7 @@ func TestChatToolChapterGenerationWaitsWithoutShadowThreadAndResumes(t *testing.
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
-	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject)
 	created, err := projects.Create(ctx, "Inline Workflow", project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
@@ -1223,7 +1223,7 @@ func TestRiverAgentWorkerPersistsFIFOAcrossConcurrentEnqueue(t *testing.T) {
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
-	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject)
 	created, err := projects.Create(ctx, "River Agent", project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
@@ -1311,7 +1311,7 @@ func TestRiverYoloCreatesCoverAndFirstBodyImageEndToEnd(t *testing.T) {
 	projects := project.NewManager(app).WithOpenHook(story.ReconcileOnOpen)
 	agents := agent.NewService(projects, providers, model, queue, nil)
 	queue.WithAgentService(agents)
-	projects.WithRuntime(queue).WithOpenHook(queue.StartProject).WithOpenHook(agents.ReconcileOnOpen)
+	projects.WithRuntime(queue).WithOpenHook(queue.StartProject)
 	created, err := projects.CreateWithInput(ctx, project.CreateInput{Name: "Yolo E2E", PictureBook: &project.PictureBookInput{Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare}}}, project.ExplicitNewProjectParent(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)

@@ -16,6 +16,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -63,9 +64,11 @@ func (service *Service) recordActiveDuration(ctx context.Context, store *project
 	if durationMS < 0 {
 		durationMS = 0
 	}
-	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=?", runID).Updates(map[string]any{
-		"active_duration_ms": gorm.Expr("active_duration_ms + ?", durationMS),
-		"updated_at":         service.now().UTC(),
+	return taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&runRecord{}).Where("id=?", runID).Updates(map[string]any{
+			"active_duration_ms": gorm.Expr("active_duration_ms + ?", durationMS),
+			"updated_at":         service.now().UTC(),
+		})
 	}).Error
 }
 
@@ -167,10 +170,12 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 func (service *Service) recordModelUsage(ctx context.Context, store *project.Store, tc *toolContext, durationMS int64, usage llm.Usage, fallbackBytes int64) error {
 	durationMS = nonnegativeInt64(durationMS)
 	tokenUnits := modelUsageTokenUnits(usage, fallbackBytes)
-	err := store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=?", tc.Run.ID).Updates(map[string]any{
-		"active_duration_ms": gorm.Expr("CASE WHEN active_duration_ms >= ? THEN ? ELSE active_duration_ms + ? END", math.MaxInt64-durationMS, math.MaxInt64, durationMS),
-		"token_units":        gorm.Expr("CASE WHEN token_units >= ? THEN ? ELSE token_units + ? END", math.MaxInt64-tokenUnits, math.MaxInt64, tokenUnits),
-		"updated_at":         service.now().UTC(),
+	err := taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&runRecord{}).Where("id=?", tc.Run.ID).Updates(map[string]any{
+			"active_duration_ms": gorm.Expr("CASE WHEN active_duration_ms >= ? THEN ? ELSE active_duration_ms + ? END", math.MaxInt64-durationMS, math.MaxInt64, durationMS),
+			"token_units":        gorm.Expr("CASE WHEN token_units >= ? THEN ? ELSE token_units + ? END", math.MaxInt64-tokenUnits, math.MaxInt64, tokenUnits),
+			"updated_at":         service.now().UTC(),
+		})
 	}).Error
 	if err == nil {
 		tc.Run.ActiveDurationMS = saturatingAddInt64(tc.Run.ActiveDurationMS, durationMS)
@@ -281,10 +286,12 @@ func (service *Service) recordToolCycleProgress(ctx context.Context, store *proj
 	}
 	digest := sha256.Sum256(encoded)
 	fingerprint := hex.EncodeToString(digest[:])
-	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(map[string]any{
-		"no_progress_streak":     gorm.Expr("CASE WHEN last_cycle_fingerprint = ? THEN no_progress_streak + 1 ELSE 1 END", fingerprint),
-		"last_cycle_fingerprint": fingerprint,
-		"updated_at":             service.now().UTC(),
+	return taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&runRecord{}).Where("id=? AND status='in_progress'", tc.Run.ID).Updates(map[string]any{
+			"no_progress_streak":     gorm.Expr("CASE WHEN last_cycle_fingerprint = ? THEN no_progress_streak + 1 ELSE 1 END", fingerprint),
+			"last_cycle_fingerprint": fingerprint,
+			"updated_at":             service.now().UTC(),
+		})
 	}).Error
 }
 
@@ -319,10 +326,12 @@ func (service *Service) recordRecoveredToolBatchProgress(ctx context.Context, st
 }
 
 func (service *Service) resetNoProgress(ctx context.Context, store *project.Store, runID int64) error {
-	return store.DB().WithContext(ctx).Model(&runRecord{}).Where("id=?", runID).Updates(map[string]any{
-		"no_progress_streak":     0,
-		"last_cycle_fingerprint": "",
-		"updated_at":             service.now().UTC(),
+	return taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&runRecord{}).Where("id=?", runID).Updates(map[string]any{
+			"no_progress_streak":     0,
+			"last_cycle_fingerprint": "",
+			"updated_at":             service.now().UTC(),
+		})
 	}).Error
 }
 
@@ -331,7 +340,7 @@ func (service *Service) beginBudgetFinalization(ctx context.Context, store *proj
 	if err != nil {
 		return false, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return false, err
 	}

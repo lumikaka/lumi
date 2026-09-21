@@ -232,16 +232,18 @@ type taskEventRecord struct {
 func (taskEventRecord) TableName() string { return "task_events" }
 
 type riverArgs struct {
-	Version      int    `json:"version"`
-	ProjectUUID  string `json:"project_uuid" river:"unique"`
-	TaskUUID     string `json:"task_uuid"`
-	TaskKind     string `json:"task_kind" river:"unique"`
-	ResourceUUID string `json:"resource_uuid" river:"unique"`
+	ExecutionUUID string `json:"execution_uuid,omitempty"`
+	Version       int    `json:"version"`
+	ProjectUUID   string `json:"project_uuid" river:"unique"`
+	TaskUUID      string `json:"task_uuid"`
+	TaskKind      string `json:"task_kind" river:"unique"`
+	ResourceUUID  string `json:"resource_uuid" river:"unique"`
 }
 
 func (riverArgs) Kind() string { return "lumi_story_generation_v1" }
 
 type maintenanceArgs struct {
+	ExecutionUUID   string `json:"execution_uuid,omitempty"`
 	Version         int    `json:"version"`
 	ProjectUUID     string `json:"project_uuid" river:"unique"`
 	TaskUUID        string `json:"task_uuid"`
@@ -252,11 +254,12 @@ type maintenanceArgs struct {
 func (maintenanceArgs) Kind() string { return "lumi_asset_maintenance_v1" }
 
 type productionArgs struct {
-	Version      int    `json:"version"`
-	ProjectUUID  string `json:"project_uuid" river:"unique"`
-	TaskUUID     string `json:"task_uuid" river:"unique"`
-	TaskKind     string `json:"task_kind" river:"unique"`
-	ResourceUUID string `json:"resource_uuid" river:"unique"`
+	ExecutionUUID string `json:"execution_uuid,omitempty"`
+	Version       int    `json:"version"`
+	ProjectUUID   string `json:"project_uuid" river:"unique"`
+	TaskUUID      string `json:"task_uuid" river:"unique"`
+	TaskKind      string `json:"task_kind" river:"unique"`
+	ResourceUUID  string `json:"resource_uuid" river:"unique"`
 }
 
 func (productionArgs) Kind() string { return "lumi_production_v1" }

@@ -12,6 +12,7 @@ import (
 
 	"gorm.io/gorm"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 func (service *Service) ListFollowUps(ctx context.Context, projectUUID, threadUUID string) ([]FollowUp, error) {
@@ -76,7 +77,7 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -151,7 +152,7 @@ func (service *Service) UpdateFollowUp(ctx context.Context, projectUUID, threadU
 		}
 		now := service.now().UTC()
 		var row followUpRecord
-		err = store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err = taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			if err := tx.Where("uuid=? AND thread_id=? AND status='queued' AND deleted_at IS NULL", followUpUUID, thread.ID).First(&row).Error; err != nil {
 				return domainError(CodeStateConflict, "Follow-up 无法修改", "只有 queued follow-up 可以修改。", err)
 			}
@@ -193,7 +194,7 @@ func (service *Service) MoveFollowUp(ctx context.Context, projectUUID, threadUUI
 		if err != nil {
 			return err
 		}
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var thread threadRecord
 			if err := tx.Where("project_id=? AND uuid=?", pid, threadUUID).First(&thread).Error; err != nil {
 				return notFound(err, "Chat thread 不存在")
@@ -243,7 +244,7 @@ func (service *Service) DeleteFollowUp(ctx context.Context, projectUUID, threadU
 		if err != nil {
 			return err
 		}
-		return store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			var followUpID int64
 			if err := tx.Table("chat_follow_ups").Select("id").Where("uuid=? AND thread_id=(SELECT id FROM chat_threads WHERE project_id=? AND uuid=?) AND status='queued' AND deleted_at IS NULL", followUpUUID, pid, threadUUID).Scan(&followUpID).Error; err != nil {
 				return err
@@ -312,7 +313,7 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -377,7 +378,7 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -493,14 +494,14 @@ func compactFollowUpsSQLTx(ctx context.Context, tx *sql.Tx, threadID int64, now 
 
 func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID string) (Turn, error) {
 	var result Turn
-	var jobID int64
+	var binding taskexecution.Binding
 	var awaitedTasks []struct{ Kind, UUID string }
 	err := service.withStore(ctx, projectUUID, func(store *project.Store) error {
 		sqlDB, err := store.DB().DB()
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -516,7 +517,7 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 		var turn turnRecord
 		var runID int64
 		var runUUID string
-		err = tx.QueryRowContext(ctx, `SELECT t.id,t.uuid,t.thread_id,t.source_type,COALESCE(t.source_follow_up_id,0),t.queue_sequence,t.input_text,t.status,t.river_job_id,t.error_code,t.error_message,t.cancel_requested_at,t.started_at,t.completed_at,t.created_at,t.updated_at,r.id,r.uuid FROM chat_turns t JOIN chat_runs r ON r.turn_id=t.id WHERE t.thread_id=? AND t.status IN ('queued','in_progress','waiting_for_input') ORDER BY CASE t.status WHEN 'in_progress' THEN 0 WHEN 'waiting_for_input' THEN 1 ELSE 2 END,t.queue_sequence LIMIT 1`, thread.ID).Scan(&turn.ID, &turn.UUID, &turn.ThreadID, &turn.SourceType, &turn.SourceFollowUpID, &turn.QueueSequence, &turn.InputText, &turn.Status, &turn.RiverJobID, &turn.ErrorCode, &turn.ErrorMessage, &turn.CancelRequestedAt, &turn.StartedAt, &turn.CompletedAt, &turn.CreatedAt, &turn.UpdatedAt, &runID, &runUUID)
+		err = tx.QueryRowContext(ctx, `SELECT t.id,t.uuid,t.thread_id,t.source_type,COALESCE(t.source_follow_up_id,0),t.queue_sequence,t.input_text,t.status,t.river_job_id,COALESCE(t.execution_uuid,''),t.error_code,t.error_message,t.cancel_requested_at,t.started_at,t.completed_at,t.created_at,t.updated_at,r.id,r.uuid FROM chat_turns t JOIN chat_runs r ON r.turn_id=t.id WHERE t.thread_id=? AND t.status IN ('queued','in_progress','waiting_for_input') ORDER BY CASE t.status WHEN 'in_progress' THEN 0 WHEN 'waiting_for_input' THEN 1 ELSE 2 END,t.queue_sequence LIMIT 1`, thread.ID).Scan(&turn.ID, &turn.UUID, &turn.ThreadID, &turn.SourceType, &turn.SourceFollowUpID, &turn.QueueSequence, &turn.InputText, &turn.Status, &turn.RiverJobID, &turn.ExecutionUUID, &turn.ErrorCode, &turn.ErrorMessage, &turn.CancelRequestedAt, &turn.StartedAt, &turn.CompletedAt, &turn.CreatedAt, &turn.UpdatedAt, &runID, &runUUID)
 		if err != nil {
 			return domainError(CodeStateConflict, "Thread 当前没有可取消的 turn", "所有 turn 已处于稳定状态。", err)
 		}
@@ -577,16 +578,16 @@ func (service *Service) Abort(ctx context.Context, projectUUID, threadUUID strin
 		turn.ErrorCode, turn.ErrorMessage = CodeCancelled, "用户已取消。"
 		result = turnDTO(turn, threadUUID, "")
 		if turn.RiverJobID != nil {
-			jobID = *turn.RiverJobID
+			binding = taskexecution.Binding{JobID: *turn.RiverJobID, ExecutionUUID: turn.ExecutionUUID}
 		}
 		return nil
 	})
 	if err != nil {
 		return Turn{}, err
 	}
-	service.queue.CancelAgentWork(projectUUID, result.UUID)
-	if jobID > 0 {
-		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, jobID)
+	service.queue.CancelAgentWork(projectUUID, result.UUID, binding)
+	if binding.JobID > 0 {
+		_ = service.queue.CancelAgentJob(context.WithoutCancel(ctx), projectUUID, taskexecution.Owner{Table: "chat_turns", UUID: result.UUID}, binding)
 	}
 	var cancellationErr error
 	for _, task := range awaitedTasks {
@@ -656,7 +657,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if err != nil {
 			return err
 		}
-		tx, err := sqlDB.BeginTx(ctx, nil)
+		tx, err := taskexecution.Begin(ctx, sqlDB)
 		if err != nil {
 			return err
 		}
@@ -730,7 +731,7 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=? WHERE id=?`, jobID, row.TurnID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,execution_uuid=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), row.TurnID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE chat_threads SET next_item_sequence=?,next_event_sequence=?,updated_at=? WHERE id=?`, thread.NextItemSequence, thread.NextEventSequence, now, thread.ID); err != nil {

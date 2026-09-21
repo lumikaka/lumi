@@ -74,10 +74,10 @@ func (service *Service) readyWorkflowAwaitTx(ctx context.Context, tx *sql.Tx, pr
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, target.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, target.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,updated_at=? WHERE id=?`, jobID, now, target.TurnID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_turns SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, target.TurnID); err != nil {
 			return err
 		}
 		if _, err := RecomputeThreadStatusTx(ctx, tx, target.ThreadID, now); err != nil {

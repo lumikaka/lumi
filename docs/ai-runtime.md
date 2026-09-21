@@ -8,7 +8,7 @@ Lumi 的 AI 能力是可选的本机基础设施。没有 Provider、系统密�
 - 首次配置使用独立前端地址 `/setup/`，先展示可选服务商列表，再通过所选服务商的 Dialog 完成连接。Cloudflare AI Gateway 的首次 Dialog 只要求 32 位 Account ID 和 Cloudflare API Token；默认文本/图片模型均为 `openai/gpt-5.6-terra`，首次配置与后续管理页均可分别选择 Terra 或 `openai/gpt-5.6-sol`。Base URL 不允许用户输入，由后端固定派生为 `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1`。
 - Cloudflare API Token 由操作系统 Keychain 根密钥派生的 AES-256-GCM 密钥加密，密文保存在 `site_settings`；测试使用进程内 `MemoryMasterKeyStore`。API 不提供读取密钥的端点。
 - 项目 `project.sqlite` 固化调用时的公开 Provider UUID、Base URL、模型、生成参数、Prompt 和章节 revision，但从不复制 API Key 或 Authorization header。
-- REST、WebSocket 与 React 状态只暴露产品 UUID。`river_job_id` 与 River 表只存在于后端内部关联中。
+- REST、WebSocket 与 React 状态只暴露产品 UUID。`river_job_id`、`execution_uuid` 与 River 表只存在于后端内部关联中，不增加公开 DTO 字段。
 - LLM 日志只保存受限长度的文本摘要、合法 JSON payload、token usage、Unicode 字符数、耗时、finish reason 和安全错误码，不保存请求 header、secret 或二进制内容。缓存输入 token 只在 Provider 返回 usage details 时记录；旧日志和图片调用保持 `NULL`，输出速度读取时推导。
 
 Cloudflare 连接验证、文本、Agent 和图片请求统一使用 AI Gateway REST API 的 `/ai/v1/responses`；图片生成和参考图编辑继续使用 `image_generation` tool。第三方模型走账户默认 Gateway；支持 Responses 的 `@cf/` Workers AI 模型会显式发送 `cf-aig-gateway-id: default`。该 Provider 不兼容任意 OpenAI-compatible Base URL。阿里云百炼保留独立的 Chat Completions 文本与流式验证流程。
@@ -33,12 +33,34 @@ River client 和类型只出现在 `internal/jobqueue`。domain、HTTP 和 React
 
 ## 生命周期与恢复
 
-1. ProjectStore 完成项目 migration 和一致性备份。
-2. AI runtime 检查单连接边界；River schema 需要升级时先额外创建 `project-before-river-*.sqlite` 备份，再运行官方 `rivermigrate` 和 validation。
-3. 每个已打开 ProjectStore 启动自己的 River client；Runtime 注册表以 `project_uuid` 路由任务，打开 B 不停止 A。`story_generation`、`asset_maintenance`、`production` 与 `agent` queue 各自保持每项目 `MaxWorkers: 1`。
-4. 创建 Story 生成时，产品 task、初始 append-only events、Agent run 与 River job 使用同一个 `*sql.Tx` 提交。domain 唯一索引与 River unique job 同时限制同章并发。
-5. Worker 只在短事务中读写状态；Provider 网络调用期间没有数据库事务或长期写锁。
-6. 切换标签页 URL 不操作 Runtime。仅目标项目显式关闭、独立空闲回收或应用退出时，River 才停止领取并最多 soft-stop 5 秒，再取消剩余 worker context；Runtime 未成功停止时对应 Store 和项目锁保持打开。安全幂等任务保持可恢复状态，旧 URL 重开项目后由 River 重试。
+1. 取得项目锁，ProjectStore 完成 Lumi migration 和一致性备份。
+2. AI runtime 检查单连接边界；River schema 需要升级时先额外创建 `project-before-river-*.sqlite` 备份，再运行官方 `rivermigrate` 和 validation，构造尚未启动的 client。
+3. 在 worker 与周期任务启动前核对执行关联，再恢复业务投影和 Agent 持久安全边界。Agent 恢复显式接收项目队列的事务入队函数，不替换全局 Service 依赖。
+4. 恢复提交后订阅事件、启动 River worker 和周期任务，再将运行时对外开放。Runtime 注册表以 `project_uuid` 路由任务，打开 B 不停止 A。每项目 `story_generation`、`asset_maintenance`、`agent` 的 `MaxWorkers` 为 1，`production` 为 5。
+5. 创建任务时，产品记录、初始 append-only events、Agent run、River job 和执行绑定使用同一个 `*sql.Tx` 提交。domain 唯一索引与 River unique job 同时限制同资源并发。Worker 只在短事务中读写状态；Provider 网络调用期间没有数据库事务或长期写锁。
+6. 切换标签页 URL 不操作 Runtime。仅目标项目显式关闭、独立空闲回收或应用退出时，River 才停止领取并最多 soft-stop 5 秒，再取消剩余 worker context；Runtime 未成功停止时对应 Store 和项目锁保持打开。安全幂等任务保持可恢复状态，重开项目后按执行归属恢复。
+
+### 当前执行关联
+
+业务任务永久保存，River job 是可以按正常 retention 清理的临时执行。SQLite 可能重新分配已清理的 job 数字编号，因此 `river_job_id` 不能作为历史执行身份。Lumi 的 `task_runs`、`production_task_runs`、`asset_maintenance_runs`、`chat_turns`、`workflow_steps`、`workflow_awaits` 增加可空 `execution_uuid`；保持原有唯一索引，River 自有源码、SQL、表、索引、迁移与 retention 不变。
+
+每次新入队生成 UUIDv7，业务记录和版本 2 args 保存同一个执行 UUID；River 对该 job 的自动重试沿用它。worker kind 注册名称保持不变，执行 UUID 不参与活动任务的唯一键。版本 1 job 只有在项目、任务类型、业务 UUID、资源归属和当前数字绑定全部匹配时才可继续执行。River 返回 duplicate 时采用返回行的真实执行 UUID；归属不符则报状态冲突。
+
+绑定新 job 编号前，在同一事务中查找占用该编号的 Lumi 记录，通过 River args 校验归属并释放失效绑定。因此即使队列最大 ID 为 8、历史任务仍占用 9，首次新建也能提交，不通过回滚重插来推进编号。
+
+释放必须以 River 实际进入 `completed|cancelled|discarded` 为边界。业务先变为完成、失败或取消时，运行中的 job 仍保留绑定；终态事件先补齐必要业务投影，再按预期任务、job ID 和执行 UUID 同时清空两个关联字段。排队、运行、scheduled、retryable、pending job 保留绑定。结束事件用于及时释放；启动检查、取消和显式重试也能修复缺失事件留下的关联。
+
+`internal/taskexecution` 将执行归属随 context 传入业务层，并在同一个 SQL/GORM 写事务内校验。旧执行的结果、进度与事件无法写入新执行，进程内取消句柄也按任务 UUID、job ID、执行 UUID 区分。即使同一任务再次获得同一数字编号，旧 worker 清理和迟到通知也不能影响新执行。
+
+### 旧项目恢复与显式重试
+
+启动修复先释放全部失效绑定，再查找可唯一确认的活动执行并重新关联。没有可采用 job 的活动任务从冻结输入和持久化进度重建一次；重复打开不会重复入队或重置已完成步骤。历史 `failed|cancelled|completed` 保留状态。无法安全重放、输入损坏或归属不唯一的任务转为明确的 `interrupted`，避免阻塞其他新任务。已开始的破坏性 GC 不自动重放。真正的数据库错误会中止恢复并返回，提交成功后日志记录修复类别、数量和任务 UUID。
+
+显式重试保留任务 UUID、输入快照、冻结模型、已有结果和历史日志，创建新的执行 UUID 与 River job；不使用 `JobRetryTx` 复活历史编号。旧执行尚未结束时最多等待两秒，超时返回状态冲突；并发重复请求最多创建一个执行。新 job 的 attempt 从头计数，沿用原任务的最大尝试次数与可重试限制。YOLO 从未完成步骤恢复，已经提交的步骤输出保留。
+
+聊天等待输入或 Workflow 依赖时，业务可以仍为活动状态，而对应 job 已成功结束并释放绑定。合法唤醒创建新执行，仍以 `wakeup_uuid` 去重；Turn 和 Await 的新绑定在同一事务提交。旧执行的终态通知只释放匹配自己的引用。
+
+关联回归使用真实 River/SQLite：`execution_bindings_test.go` 覆盖编号复用、旧版 args、duplicate、错误归属取消、显式重试、回滚、丢失事件、重复恢复与聊天等待；`internal/taskexecution` 测试 SQL、GORM 和 `RETURNING` 写回的执行隔离。队列与 Agent 的并发用例同时运行 Go race 检查。
 
 异步 Generation 的调用来源由进程内可信 `DomainInvocationContext` 指定，不能从 User-Agent、请求头或公开 JSON 推断。`direct_ui` 使用 `dedicated_thread` 且不等待 Chat；`chat_tool` 使用 `inline`、携带当前 Thread/Turn/Run/Tool Execution 的公开 UUIDv7 并等待完成；`workflow_step` 使用 `none`，避免嵌套业务步骤再创建展示 Thread。bootstrap YOLO route 显式注入 `chat_tool + inline + await_completion=true`，公开 YOLO 与章节 Generation HTTP 端点仍显式使用 `direct_ui`，请求体保持兼容。
 
@@ -92,7 +114,7 @@ Workflow 的公开 DTO、workflow/chat event payload 与 item metadata 在返回
 
 成功结果只能通过 Story domain service 追加新的正文版本。`story_generation_results.task_run_id` 唯一，River 重跑不会创建第二个结果；若用户在生成期间手动修改章节，revision check 会拒绝陈旧结果，原正文不被覆盖。
 
-取消按以下顺序执行：先中断应用级 Provider context，再在项目事务中写入 cancel request 并调用 River cancellation。Story 提交事务会再次检查持久取消状态。若 append-only 结果已经提交，则任务继续完成投影，不会产生“内容已修改但任务显示 cancelled”的矛盾状态。
+取消在项目事务内核对当前执行和 River args 的归属，再中断该执行的 Provider context、写入 cancel request 并调用 River cancellation。编号已被其他任务复用时，只释放本任务失效关联。Story 提交事务会再次检查执行归属与持久取消状态。若 append-only 结果已经提交，则任务继续完成投影，保持内容和任务状态一致。
 
 ## 错误分类与审计
 

@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -18,9 +20,11 @@ func (service *Service) RetireExportFile(ctx context.Context, fileID int64, reti
 	if fileID <= 0 {
 		return nil
 	}
-	result := service.store.DB().WithContext(ctx).Model(&fileRecord{}).
-		Where("id = ? AND project_id = (SELECT id FROM projects WHERE uuid = ?) AND purpose = 'export'", fileID, service.store.ProjectUUID()).
-		Update("deleted_at", gorm.Expr("COALESCE(deleted_at, ?)", retiredAt.UTC()))
+	result := taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&fileRecord{}).
+			Where("id = ? AND project_id = (SELECT id FROM projects WHERE uuid = ?) AND purpose = 'export'", fileID, service.store.ProjectUUID()).
+			Update("deleted_at", gorm.Expr("COALESCE(deleted_at, ?)", retiredAt.UTC()))
+	})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -100,7 +104,7 @@ func (service *Service) purgeRetiredExportFile(ctx context.Context, fileID int64
 			return fileError(CodeReferenced, "旧导出 Asset 仍被引用", "export-only GC 的事务前引用复检未通过。", nil)
 		}
 		if refs.OtherFiles > 0 {
-			applyErr := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			applyErr := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 				if err := lockExportGCPlan(tx, plan.ID); err != nil {
 					return err
 				}
@@ -128,7 +132,7 @@ func (service *Service) purgeRetiredExportFile(ctx context.Context, fileID int64
 		if err != nil {
 			return err
 		}
-		applyErr := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		applyErr := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 			// Acquire SQLite's write lock before the final reference check and
 			// filesystem mutation. If removal or commit fails, the logical rows
 			// remain eligible and the next cleanup pass can retry idempotently.
@@ -165,7 +169,9 @@ func (service *Service) purgeRetiredExportFile(ctx context.Context, fileID int64
 }
 
 func (service *Service) markExportGCPlanStale(ctx context.Context, planID int64) {
-	_ = service.store.DB().WithContext(ctx).Model(&gcPlanRecord{}).Where("id = ? AND status = 'dry_run'", planID).Update("status", "stale").Error
+	_ = taskexecution.Write(service.store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB {
+		return executionTx.Model(&gcPlanRecord{}).Where("id = ? AND status = 'dry_run'", planID).Update("status", "stale")
+	}).Error
 }
 
 func lockExportGCPlan(tx *gorm.DB, planID int64) error {
@@ -224,7 +230,7 @@ func (service *Service) createExportGCPlan(ctx context.Context, logical fileReco
 	}
 	now := service.now().UTC()
 	plan := gcPlanRecord{UUID: uuidValue, ProjectID: logical.ProjectID, SnapshotHash: gcSnapshot([]objectRecord{object}), Status: "dry_run", EstimatedBytes: object.ByteSize, CreatedAt: now}
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		if err := tx.Create(&plan).Error; err != nil {
 			return err
 		}

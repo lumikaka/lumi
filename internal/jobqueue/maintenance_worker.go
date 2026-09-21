@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"lumi/internal/files"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 )
@@ -21,17 +22,25 @@ func (worker *assetMaintenanceWorker) Work(ctx context.Context, job *river.Job[m
 		return river.JobCancel(err)
 	}
 	runtime := worker.runtime
+	guardedCtx, guardErr := runtime.executionContext(ctx, job.JobRow)
+	if guardErr != nil {
+		if errors.Is(guardErr, taskexecution.ErrSuperseded) {
+			return river.JobCancel(guardErr)
+		}
+		return guardErr
+	}
+	ctx = guardedCtx
 	workCtx, cancel := context.WithCancel(ctx)
-	runtime.registerWork(job.Args.TaskUUID, cancel)
-	defer func() { cancel(); runtime.unregisterWork(job.Args.TaskUUID) }()
-	if job.Args.Version != 1 || job.Args.ProjectUUID != runtime.projectUUID || !validMaintenanceKind(job.Args.MaintenanceKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
+	unregister := runtime.registerExecutionWork(ctx, cancel)
+	defer func() { cancel(); unregister() }()
+	if (job.Args.Version != 1 && job.Args.Version != 2) || job.Args.ProjectUUID != runtime.projectUUID || !validMaintenanceKind(job.Args.MaintenanceKind) || !isUUIDv7(job.Args.TaskUUID) || !isUUIDv7(job.Args.ResourceUUID) {
 		return river.JobCancel(taskError(CodeInvalidTask, "Asset 维护 job 参数无效", "任务参数版本、kind 或 UUID 不受支持。", nil))
 	}
 	record, err := getMaintenanceRecord(workCtx, runtime.store.DB(), runtime.projectID, job.Args.TaskUUID)
 	if err != nil {
 		return err
 	}
-	if record.Status == StatusCompleted || record.Status == StatusCancelled {
+	if record.Status == StatusCompleted || record.Status == StatusCancelled || record.Status == StatusInterrupted {
 		return nil
 	}
 	if err := runtime.startMaintenance(workCtx, record, job.Attempt); err != nil {
@@ -90,6 +99,9 @@ func (worker *assetMaintenanceWorker) Work(ctx context.Context, job *river.Job[m
 	}
 	if err != nil {
 		_ = runtime.failMaintenance(context.WithoutCancel(ctx), record, err, job.Attempt)
+		if errors.Is(err, taskexecution.ErrSuperseded) {
+			return river.JobCancel(err)
+		}
 		if errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -99,13 +111,13 @@ func (worker *assetMaintenanceWorker) Work(ctx context.Context, job *river.Job[m
 }
 
 func (runtime *projectRuntime) startMaintenance(ctx context.Context, record maintenanceRecord, attempt int) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	now := runtime.manager.now().UTC()
-	result, err := tx.ExecContext(ctx, `UPDATE asset_maintenance_runs SET status='running',progress=1,attempt=?,started_at=COALESCE(started_at,?),updated_at=?,error_code='',error_message='' WHERE id=? AND cancel_requested_at IS NULL AND status NOT IN ('completed','cancelled')`, attempt, now, now, record.ID)
+	result, err := tx.ExecContext(ctx, `UPDATE asset_maintenance_runs SET status='running',progress=MAX(progress,1),attempt=?,started_at=COALESCE(started_at,?),updated_at=?,error_code='',error_message='' WHERE id=? AND cancel_requested_at IS NULL AND status NOT IN ('completed','cancelled')`, attempt, now, now, record.ID)
 	if err != nil {
 		return err
 	}
@@ -135,7 +147,7 @@ func (runtime *projectRuntime) progressMaintenance(ctx context.Context, record m
 	if progress > 95 {
 		progress = 95
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -163,7 +175,7 @@ func (runtime *projectRuntime) progressMaintenance(ctx context.Context, record m
 	return nil
 }
 func (runtime *projectRuntime) completeMaintenance(ctx context.Context, record maintenanceRecord, resourceUUID string) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -220,7 +232,7 @@ func (runtime *projectRuntime) failMaintenance(ctx context.Context, record maint
 		// cancellation unless the user explicitly requested it.
 		status, eventType, completedAt = StatusQueued, "task_retrying", nil
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}

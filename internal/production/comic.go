@@ -11,6 +11,7 @@ import (
 
 	"lumi/internal/files"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
@@ -151,7 +152,7 @@ func (service *Service) ensureComicState(ctx context.Context, db *gorm.DB, chapt
 	}
 	now := service.now().UTC()
 	state = comicStateRecord{UUID: uuid, ChapterID: chapter.ID, Status: "empty", CreatedAt: now, UpdatedAt: now}
-	if err := db.WithContext(ctx).Create(&state).Error; err != nil {
+	if err := taskexecution.Write(db.WithContext(ctx), func(tx *gorm.DB) *gorm.DB { return tx.Create(&state) }).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
 			return service.ensureComicState(ctx, db, chapterUUID)
 		}
@@ -261,7 +262,7 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 	}
 	var row comicSectionRecord
 	var chapter chapterRow
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, foundChapter, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -354,7 +355,7 @@ func (service *Service) CreateGeneratedSections(ctx context.Context, chapterUUID
 		return existing, nil
 	}
 
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -425,7 +426,7 @@ func (service *Service) ReplaceGeneratedSections(ctx context.Context, chapterUUI
 		return nil, domainError(CodeValidation, "Comic state revision 无效", "expected_comic_state_revision 必须是非负整数。", nil)
 	}
 	changed := false
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -561,7 +562,7 @@ func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionU
 	}
 	var row comicSectionRecord
 	var actorID int64
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -633,7 +634,7 @@ func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionU
 }
 
 func (service *Service) DeleteSection(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64) error {
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -678,7 +679,7 @@ func (service *Service) DeleteSection(ctx context.Context, chapterUUID, sectionU
 
 func (service *Service) RestoreSection(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64) (ComicSection, error) {
 	var row comicSectionRecord
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -743,7 +744,7 @@ func (service *Service) RestoreSection(ctx context.Context, chapterUUID, section
 }
 
 func (service *Service) ReorderSections(ctx context.Context, chapterUUID string, orderedUUIDs []string) ([]ComicSection, error) {
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -844,7 +845,7 @@ func (service *Service) SetSectionPremiseAssets(ctx context.Context, chapterUUID
 		}
 		seen[assetUUID] = struct{}{}
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -907,7 +908,7 @@ func (service *Service) CreateStoryboard(ctx context.Context, chapterUUID, secti
 	if sourceType != "manual" && sourceType != "generated" && sourceType != "restore" {
 		return ComicSection{}, domainError(CodeValidation, "Storyboard source_type 无效", "source_type 不受支持。", nil)
 	}
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -1153,7 +1154,7 @@ func (service *Service) ListImageVariants(ctx context.Context, chapterUUID, sect
 }
 
 func (service *Service) SelectImageVariant(ctx context.Context, chapterUUID, sectionUUID, variantUUID string, expectedRevision int64) (ComicSection, error) {
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -1346,7 +1347,7 @@ func (service *Service) resolveSnapshotFile(ctx context.Context, fileID int64) C
 }
 
 func (service *Service) RestoreChapterSnapshot(ctx context.Context, chapterUUID, snapshotUUID string) ([]ComicSection, error) {
-	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err

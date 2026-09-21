@@ -10,6 +10,7 @@ import (
 
 	"lumi/internal/agent"
 	"lumi/internal/production"
+	"lumi/internal/taskexecution"
 )
 
 const comicStoryboardOverwriteActionRequired = "confirm_comic_storyboard_overwrite"
@@ -32,7 +33,7 @@ func (runtime *projectRuntime) waitForComicStoryboardOverwrite(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -212,7 +213,7 @@ func (runtime *projectRuntime) refreshComicStoryboardOverwrite(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}
@@ -254,7 +255,7 @@ func (runtime *projectRuntime) refreshComicStoryboardOverwrite(ctx context.Conte
 }
 
 func (runtime *projectRuntime) declineComicStoryboardOverwrite(ctx context.Context, record taskRecord) error {
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return err
 	}

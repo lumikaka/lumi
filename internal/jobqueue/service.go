@@ -14,6 +14,7 @@ import (
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
 	"lumi/internal/story"
+	"lumi/internal/taskexecution"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -97,7 +98,7 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 		return Task{}, err
 	}
 	now := manager.now().UTC()
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return Task{}, taskError(CodeTaskPersistenceFailed, "无法创建任务事务", "任务尚未创建。", err)
 	}
@@ -139,7 +140,7 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	if err := createStoryTaskWorkflowTx(ctx, tx, runtime.projectID, projectUUID, KindStoryChapterGeneration, input.ChapterUUID, taskUUID, resolved.UUID, model, modelSource, snapshotJSON, input.Invocation, now); err != nil {
 		return Task{}, taskError(CodeTaskPersistenceFailed, "无法创建章节任务 Workflow", "任务、审计记录与队列 job 已一并回滚。", err)
 	}
-	inserted, err := runtime.client.InsertTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, TaskKind: KindStoryChapterGeneration, ResourceUUID: input.ChapterUUID}, &river.InsertOpts{
+	inserted, err := runtime.insertExecutionTx(ctx, tx, riverArgs{Version: 1, ProjectUUID: projectUUID, TaskUUID: taskUUID, TaskKind: KindStoryChapterGeneration, ResourceUUID: input.ChapterUUID}, &river.InsertOpts{
 		Queue: QueueStory, MaxAttempts: 3,
 		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}},
 	})
@@ -149,7 +150,7 @@ func (manager *Manager) CreateChapterGeneration(ctx context.Context, projectUUID
 	if inserted.UniqueSkippedAsDuplicate {
 		return Task{}, taskError(CodeTaskConflict, "章节已有互斥生成任务", "River unique job 拒绝了重复任务。", nil)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE task_runs SET river_job_id = ? WHERE id = ?", inserted.Job.ID, taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE task_runs SET river_job_id = ?, execution_uuid = ? WHERE id = ?", inserted.Job.ID, executionBindingFor(inserted.Job).NullableUUID(), taskID); err != nil {
 		return Task{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -332,11 +333,9 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 	if err != nil {
 		return Task{}, err
 	}
-	// Cancel the application-level provider context before waiting for the
-	// single SQLite connection. This lets an in-flight result transaction
-	// observe cancellation and roll back instead of winning the DB lock race.
-	runtime.cancelWork(taskUUID)
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	// Resolve the current execution under the SQLite transaction before
+	// cancelling its provider context or touching River.
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return Task{}, err
 	}
@@ -371,11 +370,8 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 		}
 		return record.DTO(), nil
 	}
-	if record.RiverJobID == nil {
-		return Task{}, taskError(CodeTaskPersistenceFailed, "任务缺少队列关联", "任务无法安全取消。", nil)
-	}
 	now := manager.now().UTC()
-	if _, err := runtime.client.JobCancelTx(ctx, tx, *record.RiverJobID); err != nil {
+	if err := runtime.cancelOwnedJobTx(ctx, tx, "task_runs", taskUUID); err != nil {
 		return Task{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE task_runs SET status = ?, cancel_requested_at = ?, completed_at = ?, updated_at = ?, error_code = '', error_message = '' WHERE id = ?`, StatusCancelled, now, now, now, record.ID); err != nil {
@@ -401,7 +397,6 @@ func (manager *Manager) CancelTask(ctx context.Context, projectUUID, taskUUID st
 	if err := tx.Commit(); err != nil {
 		return Task{}, err
 	}
-	_, _ = runtime.client.JobCancel(context.WithoutCancel(ctx), *record.RiverJobID)
 	task, err := manager.GetTask(ctx, projectUUID, taskUUID)
 	if err == nil {
 		runtime.broadcast("task:cancelled", task)
@@ -421,16 +416,16 @@ func (manager *Manager) RetryTask(ctx context.Context, projectUUID, taskUUID str
 	if err != nil {
 		return Task{}, err
 	}
+	if preflight.Retryable && (preflight.Status == StatusQueued || preflight.Status == StatusRunning) {
+		return preflight.DTO(), nil
+	}
 	if !preflight.Retryable || (preflight.Status != StatusFailed && preflight.Status != StatusInterrupted && preflight.Status != StatusCancelled) {
 		return Task{}, taskError(CodeTaskStateConflict, "任务当前不能重试", "只有声明可重试的 failed、interrupted 或 cancelled 任务可以显式重试。", nil)
 	}
-	if preflight.RiverJobID == nil {
-		return Task{}, taskError(CodeTaskPersistenceFailed, "任务缺少队列关联", "任务无法安全重试。", nil)
-	}
-	if err := waitForStoryTaskRetryBoundary(ctx, runtime, *preflight.RiverJobID); err != nil {
+	if err := runtime.waitExecutionRetryBoundary(ctx, "task_runs", taskUUID); err != nil {
 		return Task{}, err
 	}
-	tx, err := runtime.sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
 	if err != nil {
 		return Task{}, err
 	}
@@ -442,13 +437,17 @@ func (manager *Manager) RetryTask(ctx context.Context, projectUUID, taskUUID str
 	if !found {
 		return Task{}, taskError(CodeTaskNotFound, "任务不存在", "该任务可能已经清理。", nil)
 	}
+	if record.Retryable && (record.Status == StatusQueued || record.Status == StatusRunning) {
+		return record.DTO(), nil
+	}
 	if !record.Retryable || (record.Status != StatusFailed && record.Status != StatusInterrupted && record.Status != StatusCancelled) {
 		return Task{}, taskError(CodeTaskStateConflict, "任务当前不能重试", "只有声明可重试的 failed、interrupted 或 cancelled 任务可以显式重试。", nil)
 	}
-	if record.RiverJobID == nil {
-		return Task{}, taskError(CodeTaskPersistenceFailed, "任务缺少队列关联", "任务无法安全重试。", nil)
+	owner, err := runtime.findExecutionRecordTx(ctx, tx, "task_runs", taskUUID)
+	if err != nil {
+		return Task{}, err
 	}
-	if _, err := runtime.client.JobRetryTx(ctx, tx, *record.RiverJobID); err != nil {
+	if err := runtime.enqueueProductRecordTx(ctx, tx, owner); err != nil {
 		return Task{}, err
 	}
 	now := manager.now().UTC()
@@ -477,29 +476,6 @@ func (manager *Manager) RetryTask(ctx context.Context, projectUUID, taskUUID str
 		}
 	}
 	return task, err
-}
-
-func waitForStoryTaskRetryBoundary(ctx context.Context, runtime *projectRuntime, riverJobID int64) error {
-	timeout := time.NewTimer(2 * time.Second)
-	defer timeout.Stop()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		job, err := runtime.client.JobGet(ctx, riverJobID)
-		if err != nil {
-			return err
-		}
-		if job.State != rivertype.JobStateRunning {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timeout.C:
-			return taskError(CodeTaskStateConflict, "上一轮任务仍在结束", "请稍后再次重试。", nil)
-		case <-ticker.C:
-		}
-	}
 }
 
 func getTaskRecord(ctx context.Context, db *gorm.DB, projectID int64, taskUUID string) (taskRecord, error) {

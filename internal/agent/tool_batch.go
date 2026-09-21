@@ -9,6 +9,7 @@ import (
 
 	"lumi/internal/llm"
 	"lumi/internal/project"
+	"lumi/internal/taskexecution"
 )
 
 // preparedToolIntent is the side-effect-free result of validating one model
@@ -236,7 +237,7 @@ func (service *Service) persistPreparedToolIntentBatch(ctx context.Context, stor
 	if err != nil {
 		return nil, err
 	}
-	tx, err := sqlDB.BeginTx(ctx, nil)
+	tx, err := taskexecution.Begin(ctx, sqlDB)
 	if err != nil {
 		return nil, err
 	}

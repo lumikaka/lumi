@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/taskexecution"
+
 	"gorm.io/gorm"
 )
 
@@ -54,7 +56,7 @@ func (service *Service) ApplyGeneratedChapter(ctx context.Context, taskUUID, cha
 		return Chapter{}, err
 	}
 	now := service.now().UTC()
-	err = service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
 		var task struct {
 			ID                int64
 			Status            string

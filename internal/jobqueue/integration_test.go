@@ -898,10 +898,12 @@ func TestFailedStoryGenerationCanBeExplicitlyRetriedOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err := getTaskRecord(context.Background(), runtime.store.DB(), runtime.projectID, created.UUID)
-	if err != nil || record.RiverJobID == nil {
-		t.Fatalf("task record = %+v, error = %v", record, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	waitJobState(t, runtime.client, *record.RiverJobID, rivertype.JobStateCancelled)
+	if record.RiverJobID != nil {
+		waitJobState(t, runtime.client, *record.RiverJobID, rivertype.JobStateCancelled)
+	}
 	customTemplate := "CUSTOM {{input_prompt}} {{story_md}} {{chapter_plan_json}} {{generated_summaries_json}} {{chapter_code}}"
 	if _, err := harness.stories.CreatePromptVersion(context.Background(), story.CreatePromptInput{PromptGroup: "story", PromptKey: "story_chapter", Prompt: customTemplate, ExpectedCurrentVersion: 1}); err != nil {
 		t.Fatal(err)
@@ -919,7 +921,8 @@ func TestFailedStoryGenerationCanBeExplicitlyRetriedOnce(t *testing.T) {
 		t.Fatalf("retry task = %+v, error = %v", queued, err)
 	}
 	completed := waitTaskStatus(t, harness.queue, harness.project.UUID, created.UUID, StatusCompleted)
-	if completed.Attempt != 2 {
+	// An explicit retry starts a fresh River execution and attempt budget.
+	if completed.Attempt != 1 {
 		t.Fatalf("completed retry = %+v", completed)
 	}
 	var projectionCounts struct{ Threads, Workflows int64 }
