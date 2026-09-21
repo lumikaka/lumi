@@ -9,14 +9,14 @@ import (
 )
 
 func TestStoryProfileWorkflowMigrationPreservesGraphAndCosts(t *testing.T) {
-	testWorkflowMigrationPreservesGraphAndCosts(t, 20260905000038, []string{"story_profile_generation", "story_profile_from_chapters"}, false)
+	testWorkflowMigrationPreservesGraphAndCosts(t, 20260905000038, 20260907071513, []string{"story_profile_generation", "story_profile_from_chapters"}, false)
 }
 
 func TestPremiseBatchWorkflowMigrationPreservesGraphAndCosts(t *testing.T) {
-	testWorkflowMigrationPreservesGraphAndCosts(t, 20260910000043, []string{"premise_batch_generation"}, true)
+	testWorkflowMigrationPreservesGraphAndCosts(t, 20260910000043, 20260910000044, []string{"premise_batch_generation"}, true)
 }
 
-func testWorkflowMigrationPreservesGraphAndCosts(t *testing.T, previous uint, kinds []string, guardedRollback bool) {
+func testWorkflowMigrationPreservesGraphAndCosts(t *testing.T, previous, target uint, kinds []string, guardedRollback bool) {
 	t.Helper()
 	dsn := "file:" + filepath.Join(t.TempDir(), "profiles.sqlite") + "?_pragma=foreign_keys(1)"
 	runner, err := OpenProject(dsn)
@@ -137,7 +137,7 @@ func testWorkflowMigrationPreservesGraphAndCosts(t *testing.T, previous uint, ki
 			t.Fatal(err)
 		}
 	}
-	if err := runner.Up(); err != nil {
+	if err := runner.migrator.Migrate(target); err != nil {
 		t.Fatal(err)
 	}
 	if after := snapshot(); after != before {
@@ -174,7 +174,7 @@ func testWorkflowMigrationPreservesGraphAndCosts(t *testing.T, previous uint, ki
 	if after := snapshot(); after != before {
 		t.Fatal("down migration changed the old graph, conversation, or costs")
 	}
-	if err := runner.Up(); err != nil {
+	if err := runner.migrator.Migrate(target); err != nil {
 		t.Fatal(err)
 	}
 	rows, err := db.Query("PRAGMA foreign_key_check")
