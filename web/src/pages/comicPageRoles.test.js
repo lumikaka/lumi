@@ -9,6 +9,7 @@ import {
   comicPageLabel,
   comicPageRole,
   comicPageRoleOptionDisabled,
+  insertedComicBodyUuids,
   reorderedComicBodyUuids,
 } from './comicPageRoles.js'
 
@@ -51,4 +52,11 @@ test('reordering emits only the complete ordered body UUID list and keeps covers
   assert.equal(comicBodyReorderUuids(pages, 'cover', 1), null)
   assert.deepEqual(reorderedComicBodyUuids(pages, 'body-a', 'body-b', 'after'), ['body-b', 'body-a'])
   assert.equal(reorderedComicBodyUuids(pages, 'body-a', 'back', 'before'), null)
+})
+
+test('inserting emits the complete body UUID list relative to a body page', () => {
+  assert.deepEqual(insertedComicBodyUuids(pages, 'body-new', 'body-a', 'before'), ['body-new', 'body-a', 'body-b'])
+  assert.deepEqual(insertedComicBodyUuids(pages, 'body-new', 'body-a', 'after'), ['body-a', 'body-new', 'body-b'])
+  assert.equal(insertedComicBodyUuids(pages, 'body-new', 'cover', 'before'), null)
+  assert.equal(insertedComicBodyUuids(pages, 'body-a', 'body-b', 'after'), null)
 })

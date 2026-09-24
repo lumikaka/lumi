@@ -59,3 +59,13 @@ export function reorderedComicBodyUuids(sections = [], sectionUuid, targetUuid, 
   remaining.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, sectionUuid)
   return remaining.every((uuid, index) => uuid === bodyUuids[index]) ? null : remaining
 }
+
+export function insertedComicBodyUuids(sections = [], sectionUuid, targetUuid, placement) {
+  if (!sectionUuid || !targetUuid || sectionUuid === targetUuid || !['before', 'after'].includes(placement)) return null
+  const bodyUuids = comicBodySections(sections).map((section) => section.uuid)
+  const targetIndex = bodyUuids.indexOf(targetUuid)
+  if (targetIndex < 0 || bodyUuids.includes(sectionUuid)) return null
+  const next = [...bodyUuids]
+  next.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, sectionUuid)
+  return next
+}

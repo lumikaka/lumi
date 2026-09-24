@@ -942,7 +942,7 @@
     z-index: 100
     top: auto
     right: auto
-    width: 132px
+    width: 156px
 
   .simple-page-rail__menu-action
     display: flex
@@ -2406,6 +2406,44 @@
     display: grid
     gap: 12px
 
+  .simple-page-artwork-references > header
+    position: relative
+
+    > div
+      padding-right: 44px
+
+  .simple-page-artwork-references__help
+    position: absolute
+    top: 0
+    right: 0
+    width: 32px
+    height: 32px
+    padding: 0
+    flex: 0 0 auto
+    display: grid
+    place-items: center
+    border: 1px solid $color-border
+    border-radius: 50%
+    color: $color-muted
+    background: $color-surface
+
+    &:hover,
+    &:focus-visible
+      border-color: rgba($color-accent, .42)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]
+      border-color: rgba($color-accent, .42)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]:hover,
+    &[aria-expanded="true"]:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
   .simple-page-artwork-references__image
     min-height: 160px
     overflow: hidden
@@ -2479,6 +2517,55 @@
       margin: 0
       font-size: $font-size-small
       line-height: 1.6
+
+  .simple-artwork-references-help
+    padding: 18px
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.7
+
+    > ol
+      margin: 16px 0
+      padding-left: 24px
+      display: grid
+      gap: 14px
+
+      li
+        padding-left: 4px
+
+        &::marker
+          color: $color-accent-strong
+          font-weight: $font-weight-semibold
+
+        strong
+          color: $color-text
+          font-size: 14px
+          font-weight: $font-weight-semibold
+
+        p
+          margin: 5px 0 0
+          color: $color-muted
+          font-size: $font-size-small
+          line-height: 1.7
+
+    > .simple-artwork-references-help__tip
+      padding: 11px 12px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      strong
+        color: $color-text
+        font-size: $font-size-small
+
+      p
+        margin: 5px 0 0
+        color: $color-muted
+        font-size: $font-size-small
+        line-height: 1.7
 
   .simple-book-reader
     min-height: 300px

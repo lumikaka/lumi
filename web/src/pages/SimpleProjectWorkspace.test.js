@@ -259,6 +259,17 @@ test('simple per-page rail moves a chosen page to trash from its context menu', 
   assert.match(messages, /'simple\.pages\.deleted': \['页面已移入回收站', 'Page moved to trash'\]/)
 })
 
+test('simple per-page rail inserts body pages before or after the context-menu target', () => {
+  assert.match(pagesSource, /const insertPage = useMutation\(\{[\s\S]*createComicSection\(projectUuid, chapterUuid, \{ title: '', description_md: '', storyboard_md: '', page_role: 'body' \}\)/)
+  assert.match(pagesSource, /insertedComicBodyUuids\(sections, created\.uuid, targetUuid, placement\)/)
+  assert.match(pagesSource, /reorderComicSections\(projectUuid, chapterUuid, sectionUuids\)/)
+  assert.match(pagesSource, /comicPageRole\(pageItemMenuPage\) === 'body'[\s\S]*placement: 'before'[\s\S]*placement: 'after'/)
+  assert.match(pagesSource, /simple\.pages\.insert_before/)
+  assert.match(pagesSource, /simple\.pages\.insert_after/)
+  assert.match(messages, /'simple\.pages\.insert_before': \['插入上一页', 'Insert page before'\]/)
+  assert.match(messages, /'simple\.pages\.insert_after': \['插入下一页', 'Insert page after'\]/)
+})
+
 test('simple per-page rail drag-sorts body pages while covers stay fixed', () => {
   assert.match(pagesSource, /const reorderPages = useMutation\(\{[\s\S]*reorderComicSections\(projectUuid, chapterUuid, uuids\)/)
   assert.match(pagesSource, /const reorderable = comicPageRole\(item\) === 'body'/)
@@ -328,6 +339,24 @@ test('simple page shows the images actually referenced by the current artwork wi
   assert.doesNotMatch(pageViewSource, /simple\.page\.references_override|referenceSettingsOpen|simple-page-reference-settings/)
   assert.match(styles, /\.simple-page-artwork-references__image[\s\S]*object-fit: contain/)
   assert.match(styles, /\.simple-page-artwork-references__titles[\s\S]*background: \$color-accent-muted/)
+})
+
+test('simple page explains how artwork setting references are matched', () => {
+  const pageViewSource = pagesSource.slice(
+    pagesSource.indexOf('export function SimplePageView'),
+    pagesSource.indexOf('export function SimpleBookView'),
+  )
+  assert.match(pageViewSource, /const \[artworkReferencesHelpOpen, setArtworkReferencesHelpOpen\] = useState\(false\)/)
+  assert.match(pageViewSource, /className="simple-page-artwork-references__help"[\s\S]*aria-haspopup="dialog"[\s\S]*aria-expanded=\{artworkReferencesHelpOpen\}[\s\S]*<HelpCircle/)
+  assert.match(pageViewSource, /artworkReferencesHelpOpen \? \([\s\S]*simple\.page\.current_artwork_references_help_title[\s\S]*className="simple-artwork-references-help"/)
+  assert.match(pageViewSource, /current_artwork_references_help_candidates_title[\s\S]*current_artwork_references_help_selection_title[\s\S]*current_artwork_references_help_compose_title/)
+  assert.match(styles, /\.simple-page-artwork-references__help[\s\S]*position: absolute[\s\S]*right: 0[\s\S]*\[aria-expanded="true"\]:hover/)
+  assert.match(styles, /\.simple-artwork-references-help[\s\S]*\.simple-artwork-references-help__tip/)
+  assert.doesNotMatch(pageViewSource, /current_artwork_references_help_note/)
+  assert.match(messages, /current_artwork_references_help_candidates_body': \['系统会读取项目中所有可用的角色、场景和道具设定，[\s\S]*名称作为识别依据/)
+  assert.match(messages, /current_artwork_references_help_selection_body': \['系统把页面脚本和候选设定的名称、类型及说明交给文本模型[\s\S]*不是按名称逐字匹配/)
+  assert.match(messages, /current_artwork_references_help_tip_title': \['匹配不到怎么办？'/)
+  assert.match(messages, /current_artwork_references_help_tip_body': \['在页面脚本中直接写出设定的准确名称[\s\S]*重新生成新稿/)
 })
 
 test('simple page content card opens a full Markdown script editor with version selection', () => {
