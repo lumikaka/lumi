@@ -1975,20 +1975,103 @@
         color: $color-accent-strong
         background: $color-accent-muted
 
-    span
+    > span
       margin-left: auto
       color: $color-muted
       font-size: $font-size-micro
 
   .simple-book-list > article
+    position: relative
     display: grid
     grid-template-rows: minmax(0, 1fr) auto
+    overflow: visible
+
+    &.is-menu-open
+      z-index: 2
+
+    > footer
+      flex-wrap: nowrap
+
+      > a
+        min-width: 0
+        margin-right: auto
+        white-space: nowrap
+
+      > button,
+      > .simple-book-list__more
+        flex: 0 0 auto
+
+  .simple-book-list__more
+    position: relative
+
+    > button
+      width: 32px
+      min-width: 32px
+      padding: 0
+      justify-content: center
+
+      &[aria-expanded="true"]
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &[aria-expanded="true"]:hover,
+      &[aria-expanded="true"]:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+  .simple-book-list__menu
+    position: absolute
+    z-index: 3
+    right: 0
+    bottom: calc(100% + 6px)
+    width: 184px
+    padding: 5px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface
+    box-shadow: $shadow-floating
+
+    > button
+      width: 100%
+      min-height: 34px
+      padding: 0 9px
+      justify-content: flex-start
+      white-space: nowrap
+      color: $color-text
+
+      > span
+        margin-left: 0
+        color: inherit
+        font-size: inherit
+
+      &:disabled
+        opacity: .45
+        cursor: not-allowed
+
+      &:disabled:hover,
+      &:disabled:focus-visible
+        color: $color-text
+        background: transparent
+
+      &.simple-danger-action
+        color: $color-danger
+
+        &:hover,
+        &:focus-visible
+          color: $color-danger
+          background: $color-danger-muted
+
+    > button:last-child
+      margin-top: 4px
+      border-top: 1px solid $color-border-subtle
+      border-radius: 0 0 $radius-sm $radius-sm
 
   .simple-book-list__main
     min-width: 0
     overflow: hidden
     display: grid
     grid-template-rows: 178px auto
+    border-radius: $radius-md $radius-md 0 0
     color: $color-text
     text-decoration: none
 

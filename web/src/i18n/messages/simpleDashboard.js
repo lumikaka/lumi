@@ -136,6 +136,7 @@ export const simpleDashboard = defineMessages({
   'simple.books.reordered': ['绘本顺序已保存', 'Picture-book order saved'],
   'simple.books.move_up': ['上移绘本', 'Move picture book up'],
   'simple.books.move_down': ['下移绘本', 'Move picture book down'],
+  'simple.books.more_actions': ['{title} 的更多操作', 'More actions for {title}'],
   'simple.books.trash_title': ['将绘本移入回收站', 'Move picture book to trash'],
   'simple.books.trash_body': ['将“{title}”移入回收站？其中页面会随绘本一起保留，恢复后仍可继续编辑。', 'Move “{title}” to trash? Its pages will stay with it and remain editable after restoration.'],
   'simple.books.open_pages': ['查看页面', 'View pages'],

@@ -471,6 +471,9 @@ export function SimpleBooksPage({ projectUuid }) {
   const [chapterCode, setChapterCode] = useState('')
   const [title, setTitle] = useState('')
   const [feedback, setFeedback] = useState(null)
+  const [openBookMenuUuid, setOpenBookMenuUuid] = useState('')
+  const bookMenuRef = useRef(null)
+  const bookMenuTriggerRef = useRef(null)
   const activeQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
   const trashQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'trashed'], queryFn: () => listChapters(projectUuid, 'trashed') })
   const chapters = activeQuery.data?.items || []
@@ -493,8 +496,45 @@ export function SimpleBooksPage({ projectUuid }) {
     ;[uuids[index], uuids[target]] = [uuids[target], uuids[index]]
     reorder.mutate(uuids)
   }
+  useEffect(() => {
+    if (!openBookMenuUuid) return undefined
+    const focusFrame = window.requestAnimationFrame(() => {
+      bookMenuRef.current?.querySelector('[role="menuitem"]:not(:disabled)')?.focus()
+    })
+    const onPointerDown = (event) => {
+      if (!bookMenuRef.current?.contains(event.target)) setOpenBookMenuUuid('')
+    }
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenBookMenuUuid('')
+        bookMenuTriggerRef.current?.focus()
+        return
+      }
+      if (event.key === 'Tab') {
+        setOpenBookMenuUuid('')
+        return
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !bookMenuRef.current?.contains(document.activeElement)) return
+      const menuItems = [...(bookMenuRef.current.querySelectorAll('[role="menuitem"]:not(:disabled)') || [])]
+      if (!menuItems.length) return
+      event.preventDefault()
+      const currentIndex = menuItems.indexOf(document.activeElement)
+      if (event.key === 'Home') menuItems[0].focus()
+      else if (event.key === 'End') menuItems.at(-1).focus()
+      else if (event.key === 'ArrowDown') menuItems[(currentIndex + 1 + menuItems.length) % menuItems.length].focus()
+      else menuItems[(currentIndex - 1 + menuItems.length) % menuItems.length].focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [openBookMenuUuid])
   const openCreate = () => { setChapterCode(nextChapterCode(chapters)); setTitle(''); setCreating(true); setFeedback(null) }
   const selectTrash = (trashed) => {
+    setOpenBookMenuUuid('')
     const next = new URLSearchParams(searchParams)
     if (trashed) next.set('state', 'trashed')
     else next.delete('state')
@@ -511,7 +551,40 @@ export function SimpleBooksPage({ projectUuid }) {
         const sections = sectionQueries[index]?.data?.items || []
         const cover = firstReadySimpleImage(sections)
         const chatSearch = withChatReference(location.search, 'chapter', chapter.uuid, [chapter.chapter_code, chapter.title].filter(Boolean).join(' · '))
-        return <article key={chapter.uuid}><Link className="simple-book-list__main" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: sections.length })}</em><b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link><footer>{showTrash ? <button type="button" disabled={restore.isPending} onClick={() => restore.mutate(chapter)}>{t('common.action.restore')}</button> : <><Link to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`).pathname, search: chatSearch }}><Bot size={14} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button type="button" onClick={() => { setEditing(chapter); setTitle(chapter.title || '') }}><Pencil size={14} aria-hidden="true" />{t('common.action.edit')}</button><button type="button" aria-label={t('simple.books.move_up')} disabled={index === 0 || reorder.isPending} onClick={() => move(chapter, -1)}><ChevronUp size={14} aria-hidden="true" /></button><button type="button" aria-label={t('simple.books.move_down')} disabled={index === chapters.length - 1 || reorder.isPending} onClick={() => move(chapter, 1)}><ChevronDown size={14} aria-hidden="true" /></button><button className="simple-danger-action" type="button" onClick={() => setDeleting(chapter)}><Trash2 size={14} aria-hidden="true" />{t('simple.action.trash')}</button></>}</footer></article>
+        const menuOpen = openBookMenuUuid === chapter.uuid
+        const menuLabel = t('simple.books.more_actions', { title: chapter.title || chapter.chapter_code })
+        return <article className={menuOpen ? 'is-menu-open' : undefined} key={chapter.uuid}>
+          <Link className="simple-book-list__main" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: sections.length })}</em><b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link>
+          <footer>{showTrash ? <button type="button" disabled={restore.isPending} onClick={() => restore.mutate(chapter)}>{t('common.action.restore')}</button> : <>
+            <Link to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`).pathname, search: chatSearch }}><Bot size={14} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
+            <button type="button" onClick={() => { setEditing(chapter); setTitle(chapter.title || '') }}><Pencil size={14} aria-hidden="true" />{t('common.action.edit')}</button>
+            <div className="simple-book-list__more" ref={menuOpen ? bookMenuRef : undefined}>
+              <button
+                ref={menuOpen ? bookMenuTriggerRef : undefined}
+                type="button"
+                aria-label={menuLabel}
+                title={menuLabel}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={(event) => {
+                  bookMenuTriggerRef.current = event.currentTarget
+                  setOpenBookMenuUuid((current) => current === chapter.uuid ? '' : chapter.uuid)
+                }}
+                onKeyDown={(event) => {
+                  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return
+                  event.preventDefault()
+                  bookMenuTriggerRef.current = event.currentTarget
+                  setOpenBookMenuUuid(chapter.uuid)
+                }}
+              ><MoreHorizontal size={18} aria-hidden="true" /></button>
+              {menuOpen ? <div className="simple-book-list__menu" role="menu" aria-label={menuLabel}>
+                <button type="button" role="menuitem" disabled={index === 0 || reorder.isPending} onClick={() => { setOpenBookMenuUuid(''); bookMenuTriggerRef.current?.focus(); move(chapter, -1) }}><ChevronUp size={15} aria-hidden="true" /><span>{t('simple.books.move_up')}</span></button>
+                <button type="button" role="menuitem" disabled={index === chapters.length - 1 || reorder.isPending} onClick={() => { setOpenBookMenuUuid(''); bookMenuTriggerRef.current?.focus(); move(chapter, 1) }}><ChevronDown size={15} aria-hidden="true" /><span>{t('simple.books.move_down')}</span></button>
+                <button className="simple-danger-action" type="button" role="menuitem" onClick={() => { setOpenBookMenuUuid(''); setDeleting(chapter) }}><Trash2 size={15} aria-hidden="true" /><span>{t('simple.action.trash')}</span></button>
+              </div> : null}
+            </div>
+          </>}</footer>
+        </article>
       })}</div> : <SimpleEmptyState icon={<BookOpenText size={25} aria-hidden="true" />} title={t(showTrash ? 'simple.books.trash_empty' : 'simple.books.empty_manage')} actions={!showTrash ? <button className="simple-button" type="button" onClick={openCreate}>{t('simple.books.add')}</button> : null} />}
       {creating ? <SimpleDialog title={t('simple.books.add_title')} onClose={() => !create.isPending && setCreating(false)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); create.mutate() }}><label>{t('simple.books.code')}<input autoFocus value={chapterCode} onChange={(event) => setChapterCode(event.target.value)} placeholder="vol01.ch01" /></label><label>{t('common.label.name')}<input maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} /></label><SimpleDialogActions pending={create.isPending} submitDisabled={!/^vol\d{2,}\.ch\d{2,}$/i.test(chapterCode.trim())} onCancel={() => setCreating(false)} /></form></SimpleDialog> : null}
       {editing ? <SimpleDialog title={t('simple.books.edit_title')} onClose={() => !update.isPending && setEditing(null)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); update.mutate() }}><label>{t('simple.books.code')}<input value={editing.chapter_code} disabled /></label><label>{t('common.label.name')}<input autoFocus maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} /></label><SimpleDialogActions pending={update.isPending} submitDisabled={title.trim() === (editing.title || '')} onCancel={() => setEditing(null)} /></form></SimpleDialog> : null}
