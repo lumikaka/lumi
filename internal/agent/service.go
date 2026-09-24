@@ -17,6 +17,7 @@ import (
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
 	"lumi/internal/taskexecution"
 
@@ -30,6 +31,7 @@ type Service struct {
 	models               *modelsettings.Resolver
 	model                llm.ToolClient
 	image                imagegen.Client
+	providerLimiter      providerlimit.Limiter
 	queue                Queue
 	hub                  *realtime.Hub
 	projectAPIRoutes     []agentAPIRoute
@@ -60,7 +62,7 @@ var defaultTurnBudgetLimits = turnBudgetLimits{
 }
 
 func NewService(projects *project.Manager, providers *provider.Service, model llm.ToolClient, queue Queue, hub *realtime.Hub) *Service {
-	return &Service{projects: projects, providers: providers, models: modelsettings.NewResolver(providers), model: model, queue: queue, hub: hub, turnBudget: defaultTurnBudgetLimits, now: time.Now}
+	return &Service{projects: projects, providers: providers, models: modelsettings.NewResolver(providers), model: model, queue: queue, hub: hub, providerLimiter: providerlimit.Noop(), turnBudget: defaultTurnBudgetLimits, now: time.Now}
 }
 
 // lockExecution serializes workers that target the same durable chat turn.
@@ -95,6 +97,13 @@ func (service *Service) lockExecution(key string) func() {
 func (service *Service) WithImageClient(client imagegen.Client) *Service {
 	if client != nil {
 		service.image = client
+	}
+	return service
+}
+
+func (service *Service) WithProviderLimiter(limiter providerlimit.Limiter) *Service {
+	if limiter != nil {
+		service.providerLimiter = limiter
 	}
 	return service
 }

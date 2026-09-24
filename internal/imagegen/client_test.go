@@ -44,6 +44,9 @@ func TestFakeImageProviderSuccessAndInvalidContent(t *testing.T) {
 		if request.URL.Path != "/v1/responses" || request.Header.Get("Authorization") != "Bearer secret" {
 			t.Fatalf("Cloudflare request=%s authorization=%q", request.URL.Path, request.Header.Get("Authorization"))
 		}
+		if request.Header.Get("cf-aig-max-attempts") != "1" {
+			t.Fatalf("cf-aig-max-attempts = %q", request.Header.Get("cf-aig-max-attempts"))
+		}
 		var requestBody struct {
 			Model string `json:"model"`
 			Tools []struct {
@@ -71,6 +74,22 @@ func TestFakeImageProviderSuccessAndInvalidContent(t *testing.T) {
 	}
 	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.6-terra", Prompt: "invalid", Size: "1536x1152"}); err == nil {
 		t.Fatal("invalid provider content was accepted")
+	}
+}
+
+func TestCloudflareImageRateLimitClassification(t *testing.T) {
+	client := NewOpenAICompatibleClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		result := response(http.StatusTooManyRequests, `{"errors":[{"code":2001,"message":"Wholesale rate limit exceeded"}]}`)
+		result.Header.Set("Retry-After", "75")
+		return result, nil
+	})})
+	_, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://fake.test/v1", APIKey: "secret", Model: "openai/gpt-5.6-terra", Prompt: "draw"})
+	var imageErr *Error
+	if !errors.As(err, &imageErr) || imageErr.Code != CodeRateLimited || !imageErr.Retryable {
+		t.Fatalf("rate limit error = %#v", err)
+	}
+	if imageErr.Diagnostic.HTTPStatus != http.StatusTooManyRequests || imageErr.Diagnostic.RetryAfter != 75*time.Second {
+		t.Fatalf("rate limit diagnostic = %+v", imageErr.Diagnostic)
 	}
 }
 

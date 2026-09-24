@@ -18,6 +18,7 @@ import (
 	"lumi/internal/modelsettings"
 	"lumi/internal/production"
 	"lumi/internal/project"
+	"lumi/internal/providerlimit"
 
 	"gorm.io/gorm"
 )
@@ -150,13 +151,19 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Select("COALESCE(MAX(attempt),0)+1").Where("chat_run_id=? AND request_type=?", tc.Run.ID, llmlog.RequestImage).Scan(&attempt).Error; err != nil {
 		return nil, err
 	}
+	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestImage)
+	if err != nil {
+		return nil, err
+	}
 	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{Prices: service.providers.Prices(), Endpoint: request.BaseURL, ProjectID: tc.Thread.ProjectID, ChatThreadID: tc.Thread.ID, ChatRunID: tc.Run.ID, SourceType: llmlog.SourceProjectChat, Scenario: "project_chat", RequestType: llmlog.RequestImage, Attempt: attempt, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: model, InputSummary: prompt, RequestPayload: requestPayload})
 	if err != nil {
+		lease.Finish(err)
 		return nil, err
 	}
 	generateCtx, cancel := context.WithTimeout(ctx, imageToolTimeout)
 	response, generateErr := service.image.Generate(generateCtx, request)
 	cancel()
+	lease.Finish(generateErr)
 	var responsePayload []byte
 	if generateErr == nil {
 		responsePayload, err = llmlog.EncodeImageResponse(response, resolved.APIKey)

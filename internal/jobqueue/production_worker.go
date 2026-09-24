@@ -24,6 +24,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
@@ -398,7 +399,14 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	}
 	selection := sectionReferenceSelection{References: snapshot.PremiseAssets}
 	if snapshot.Version >= 2 && len(selection.References) == 0 && len(snapshot.PremiseCandidates) > 0 {
-		selection, err = runtime.selectSectionReferences(ctx, resolved, record, snapshot)
+		selectionProvider := resolved
+		if selectionProviderUUID := strings.TrimSpace(snapshot.SelectionProviderUUID); selectionProviderUUID != "" && selectionProviderUUID != resolved.UUID {
+			selectionProvider, err = runtime.manager.providers.Resolve(ctx, selectionProviderUUID)
+			if err != nil {
+				return err
+			}
+		}
+		selection, err = runtime.selectSectionReferences(ctx, selectionProvider, record, snapshot)
 		if err != nil {
 			return err
 		}
@@ -551,16 +559,22 @@ func (runtime *projectRuntime) callProductionText(ctx context.Context, record pr
 	if err != nil {
 		return llm.Response{}, err
 	}
-	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
-		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
-		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: record.Attempt,
-		ProviderUUID: snapshot.ProviderUUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: request.Prompt,
-		RequestPayload: requestPayload,
-	})
+	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
 	if err != nil {
 		return llm.Response{}, err
 	}
+	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
+		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
+		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: record.Attempt,
+		ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: request.Prompt,
+		RequestPayload: requestPayload,
+	})
+	if err != nil {
+		lease.Finish(err)
+		return llm.Response{}, err
+	}
 	response, callErr := runtime.manager.llm.Generate(ctx, request, nil)
+	lease.Finish(callErr)
 	var responsePayload []byte
 	if callErr == nil {
 		responsePayload, err = llmlog.EncodeTextResponse(response, request.APIKey)
@@ -594,16 +608,22 @@ func (runtime *projectRuntime) callProductionImage(ctx context.Context, record p
 	if err != nil {
 		return imagegen.Response{}, err
 	}
-	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
-		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
-		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestImage, Attempt: record.Attempt,
-		ProviderUUID: snapshot.ProviderUUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: inputSummary,
-		RequestPayload: requestPayload,
-	})
+	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestImage)
 	if err != nil {
 		return imagegen.Response{}, err
 	}
+	handle, err := llmlog.Begin(ctx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
+		ProjectID: runtime.projectID, ProductionTaskRunID: record.ID,
+		SourceType: llmlog.SourceProduction, Scenario: scenario, RequestType: llmlog.RequestImage, Attempt: record.Attempt,
+		ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, Model: request.Model, InputSummary: inputSummary,
+		RequestPayload: requestPayload,
+	})
+	if err != nil {
+		lease.Finish(err)
+		return imagegen.Response{}, err
+	}
 	response, callErr := runtime.manager.image.Generate(ctx, request)
+	lease.Finish(callErr)
 	outputSummary := fmt.Sprintf("mime_type=%s; byte_size=%d", response.MIMEType, len(response.Bytes))
 	if strings.TrimSpace(response.RevisedPrompt) != "" {
 		outputSummary += "\nrevised_prompt=" + response.RevisedPrompt

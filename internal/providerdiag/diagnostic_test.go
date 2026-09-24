@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type countingReadCloser struct {
@@ -48,6 +49,29 @@ func TestReadHTTPErrorRecognizesKnownProviderShapes(t *testing.T) {
 			details := ReadHTTPError(response, "")
 			if details.HTTPStatus != http.StatusBadRequest || details.ProviderCode != test.code || details.Message != test.message || details.RequestID != test.requestID {
 				t.Fatalf("details = %+v", details)
+			}
+		})
+	}
+}
+
+func TestRetryAfterSupportsSecondsAndHTTPDate(t *testing.T) {
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name  string
+		value string
+		want  time.Duration
+	}{
+		{name: "integer seconds", value: "90", want: 90 * time.Second},
+		{name: "HTTP date", value: now.Add(2 * time.Minute).Format(http.TimeFormat), want: 2 * time.Minute},
+		{name: "expired date", value: now.Add(-time.Minute).Format(http.TimeFormat)},
+		{name: "invalid", value: "soon"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			headers := make(http.Header)
+			headers.Set("Retry-After", test.value)
+			if got := retryAfter(headers, now); got != test.want {
+				t.Fatalf("retryAfter(%q) = %s, want %s", test.value, got, test.want)
 			}
 		})
 	}

@@ -16,6 +16,7 @@ import (
 	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
+	"lumi/internal/providerlimit"
 	"lumi/internal/story"
 	"lumi/internal/taskexecution"
 
@@ -866,6 +867,10 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 		if err != nil {
 			return nil, false, err
 		}
+		premiseAssets, err := productionService.ListPremiseAssets(ctx, "", "active")
+		if err != nil {
+			return nil, false, err
+		}
 		chapterContext, _ := json.Marshal(map[string]any{"chapter_code": chapter.ChapterCode, "title": chapter.Title, "content": chapter.CurrentStory.Content, "content_format": chapter.CurrentStory.ContentFormat})
 		template, err := service.yoloPrompt(ctx, store, snapshot, promptcatalog.GroupChapter, "comic_storyboard")
 		if err != nil {
@@ -883,6 +888,9 @@ func (service *Service) runYoloComic(ctx context.Context, store *project.Store, 
 		})
 		if err != nil {
 			return nil, false, domainError(CodeValidation, "Comic Storyboard 提示词无法渲染", "项目提示词缺少规范占位符。", err)
+		}
+		if premiseContext := yoloStoryboardPremiseContext(premiseAssets, snapshot.GenerationLanguage); premiseContext != "" {
+			rendered = strings.TrimSpace(rendered + "\n\n" + premiseContext)
 		}
 		var generated struct {
 			ChapterCode string `json:"chapter_code"`
@@ -995,6 +1003,13 @@ func (service *Service) ensureYoloFrontCover(ctx context.Context, store *project
 		if err != nil {
 			return production.ComicSection{}, domainError(CodeValidation, "封面分镜提示词无法渲染", "项目提示词缺少规范占位符。", err)
 		}
+		premiseAssets, err := production.NewService(store, service.hub).ListPremiseAssets(ctx, "", "active")
+		if err != nil {
+			return production.ComicSection{}, err
+		}
+		if premiseContext := yoloStoryboardPremiseContext(premiseAssets, snapshot.GenerationLanguage); premiseContext != "" {
+			rendered = strings.TrimSpace(rendered + "\n\n" + premiseContext)
+		}
 		if err := service.completeYoloJSON(ctx, store, workflow, step, snapshot, "cover_storyboard_generation", service.yoloSystemPrompt(ctx, store, snapshot, promptcatalog.GroupChapter), rendered, &draft); err != nil {
 			return production.ComicSection{}, err
 		}
@@ -1068,6 +1083,58 @@ func yoloPageMomentPlan(profile project.PictureBookProfile) (string, string) {
 	}
 	encoded, _ := json.Marshal(values)
 	return string(encoded), maxMoments
+}
+
+func yoloStoryboardPremiseContext(assets []production.PremiseAsset, language string) string {
+	const maximumRunes = 24_000
+	type premiseFact struct {
+		UUID          string   `json:"uuid"`
+		AssetType     string   `json:"asset_type"`
+		Title         string   `json:"title"`
+		Summary       string   `json:"summary,omitempty"`
+		Tags          []string `json:"tags,omitempty"`
+		ReferenceRole string   `json:"reference_role,omitempty"`
+	}
+	facts := make([]premiseFact, 0, len(assets))
+	for _, asset := range assets {
+		if asset.DeletedAt != nil || strings.TrimSpace(asset.UUID) == "" || strings.TrimSpace(asset.Title) == "" {
+			continue
+		}
+		role := ""
+		for _, tag := range asset.Tags {
+			if strings.HasPrefix(tag, "reference-role-") {
+				role = strings.TrimPrefix(tag, "reference-role-")
+				break
+			}
+		}
+		candidate := premiseFact{
+			UUID: asset.UUID, AssetType: asset.AssetType, Title: asset.Title,
+			Summary: summarizeText(asset.Summary, 240), Tags: append([]string(nil), asset.Tags...), ReferenceRole: role,
+		}
+		proposed := append(append([]premiseFact(nil), facts...), candidate)
+		encoded, err := json.Marshal(proposed)
+		if err != nil {
+			continue
+		}
+		if len([]rune(string(encoded))) > maximumRunes {
+			break
+		}
+		facts = proposed
+		if len(facts) == 200 {
+			break
+		}
+	}
+	if len(facts) == 0 {
+		return ""
+	}
+	encoded, err := json.MarshalIndent(facts, "", "  ")
+	if err != nil {
+		return ""
+	}
+	if promptcatalog.NormalizeLanguage(language) == promptcatalog.LanguageEnglish {
+		return "## Canonical Project Premise Assets\nThe following JSON contains established project facts. Character identity, species, appearance, clothing, and signature features must follow character assets. Never infer or rewrite them from a character name. If prose or an earlier draft conflicts with these assets, the assets take precedence. Every storyboard must preserve these facts consistently.\n\n" + string(encoded)
+	}
+	return "## 项目设定资产（规范事实）\n以下 JSON 是已经落库的项目事实。角色身份、物种、外貌、服装和标志性特征必须以 character 资产为准；不得根据角色名称自行推断或改写。若正文或早期草稿与这些资产冲突，以资产为准。每个页面脚本都必须连续一致地保留这些事实。\n\n" + string(encoded)
 }
 
 func (service *Service) runYoloFirstImage(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord, snapshot yoloSnapshot) (map[string]any, bool, error) {
@@ -1563,6 +1630,10 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 	if err != nil {
 		return err
 	}
+	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+	if err != nil {
+		return err
+	}
 	logHandle, err := llmlog.Begin(ctx, store, service.hub, llmlog.StartInput{Prices: service.providers.Prices(), Endpoint: request.BaseURL,
 		ProjectID: workflow.ProjectID, WorkflowID: workflow.ID, WorkflowStepID: step.ID,
 		SourceType: llmlog.SourceWorkflow, Scenario: scenario, RequestType: llmlog.RequestText, Attempt: int(previous) + 1,
@@ -1570,9 +1641,11 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 		RequestPayload: requestPayload,
 	})
 	if err != nil {
+		lease.Finish(err)
 		return err
 	}
 	response, err := service.model.Complete(ctx, request)
+	lease.Finish(err)
 	var responsePayload []byte
 	if err == nil {
 		responsePayload, err = llmlog.EncodeChatResponse(response, request.APIKey)

@@ -74,7 +74,7 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 		}
 		return value, true, err
 	case RouteProjectSetupReferenceUpdate:
-		input := project.SetupReferencePatchInput{ExpectedRevision: intArg(args, "expected_revision"), Source: project.SetupSourceAgentProposed}
+		input := project.SetupReferencePatchInput{ExpectedRevision: intArg(args, "expected_revision"), Source: project.SetupSourceUserConfirmed}
 		if value, ok := args["reference_role"].(string); ok {
 			input.ReferenceRole = &value
 		}

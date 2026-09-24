@@ -182,31 +182,36 @@ func TestProjectSetupReferencePlanIsRevisionedAndFreezesAtFinalization(t *testin
 	if reference.UUID != bindingUUID || reference.FileUUID != fileUUID || reference.Title != "fox" || reference.ReferenceRole != "auto" || !reference.IncludeInYolo || reference.PlanSource != SetupSourceSystemDefault || reference.ThumbnailURL == "" {
 		t.Fatalf("initial reference=%+v", reference)
 	}
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: initial.Revision}); errorCode(err) != CodeProjectSetupInvalid {
 		t.Fatalf("empty reference update error=%v", err)
 	}
 	foreignTitle := "Foreign"
-	if _, err := store.UpdateProjectSetupReference(ctx, setupTestUUID(t), SetupReferencePatchInput{ExpectedRevision: initial.Revision, Title: &foreignTitle}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
+	if _, err := store.UpdateProjectSetupReference(ctx, setupTestUUID(t), SetupReferencePatchInput{ExpectedRevision: initial.Revision, Title: &foreignTitle}); errorCode(err) != CodeProjectSetupInvalid {
 		t.Fatalf("foreign reference update error=%v", err)
 	}
-	role, title, instruction, included := "style", "Watercolor fox", "Use only the brushwork and palette", false
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{
+	role, title, instruction, included := "character", "Moon fox", "This is the protagonist; preserve the scarf and identity", true
+	updatedReference, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{
 		ExpectedRevision: initial.Revision, ReferenceRole: &role, Title: &title, Instruction: &instruction,
-		IncludeInYolo: &included, Source: SetupSourceAgentProposed,
-	}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
+		IncludeInYolo: &included, Source: SetupSourceUserConfirmed,
+	})
+	if err != nil {
 		t.Fatalf("custom reference update error=%v", err)
+	}
+	updated := updatedReference.ReferencePlan.Items[0]
+	if updatedReference.Revision != initial.Revision+1 || updated.ReferenceRole != role || updated.Title != title || updated.Instruction != instruction || !updated.IncludeInYolo || updated.PlanSource != SetupSourceUserConfirmed {
+		t.Fatalf("updated setup=%+v reference=%+v", updatedReference, updated)
 	}
 
 	projectName, overallStyle := "Moon Fox", "Soft transparent watercolor"
-	completedDraft, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: initial.Revision, ProjectName: &projectName, OverallStyle: &overallStyle, PictureBook: &PictureBookInput{Format: PictureBookClassic}})
+	completedDraft, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: updatedReference.Revision, ProjectName: &projectName, OverallStyle: &overallStyle, PictureBook: &PictureBookInput{Format: PictureBookClassic}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	finalized, err := store.FinalizeProjectSetup(ctx, completedDraft.Revision)
-	if err != nil || finalized.SetupStatus != SetupStatusReady || finalized.ReferencePlan.Items[0].PlanSource != SetupSourceSystemDefault {
+	if err != nil || finalized.SetupStatus != SetupStatusReady || finalized.ReferencePlan.Items[0].PlanSource != SetupSourceUserConfirmed || finalized.ReferencePlan.Items[0].ReferenceRole != "character" {
 		t.Fatalf("finalized setup=%+v err=%v", finalized, err)
 	}
-	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: finalized.Revision, IncludeInYolo: &included}); errorCode(err) != CodeProjectSetupReferenceSystemManaged {
+	if _, err := store.UpdateProjectSetupReference(ctx, bindingUUID, SetupReferencePatchInput{ExpectedRevision: finalized.Revision, IncludeInYolo: &included}); errorCode(err) != CodePictureBookImmutable {
 		t.Fatalf("ready reference update error=%v", err)
 	}
 }

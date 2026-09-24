@@ -38,6 +38,7 @@ export const ERROR_CODE_KEYS = Object.freeze({
   image_timeout: 'errors.code.image_timeout',
   image_network_error: 'errors.code.image_network_error',
   image_provider_unavailable: 'errors.code.image_provider_unavailable',
+  image_rate_limited: 'errors.rate_limited',
 
   invalid_project_path: 'errors.validation',
   invalid_uuid: 'errors.validation',

@@ -47,8 +47,8 @@ type agentAPIDocSchemaField struct {
 
 func TestAgentAPIDocContractsMatchExactlyReviewedRoutes(t *testing.T) {
 	routes := agentAPIRoutes()
-	if len(routes) != 83 {
-		t.Fatalf("reviewed routes=%d want=83", len(routes))
+	if len(routes) != 84 {
+		t.Fatalf("reviewed routes=%d want=84", len(routes))
 	}
 	sections := readAgentAPIDocSections(t)
 	if len(sections) != len(routes) {

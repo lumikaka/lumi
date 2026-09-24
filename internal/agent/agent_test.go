@@ -315,6 +315,86 @@ func TestYoloPageMomentPlanCoversVerticalStripAndOtherFormats(t *testing.T) {
 	}
 }
 
+func TestYoloStoryboardPromptIncludesCanonicalPremiseAssets(t *testing.T) {
+	bodyResponse := finalResponse(`{"chapter_code":"vol01.ch01","title":"主角出发","sections":[{"section_no":1,"title":"第一页","storyboard":"## 核心剧情目标\n主角出发。\n## 构图与场景\n室内。\n## 人物与动作\n咕咕嘎嘎向前走。\n## 光影与色彩\n暖光。\n## 绘入文字\n无。\n## 阅读顺序\n从左到右。"}]}`)
+	coverResponse := finalResponse(`{"title":"主角出发","storyboard":"## 画布基础设定\n平面封面。\n## 场景与光影\n暖光。\n## 核心视觉与人物构图\n咕咕嘎嘎站在中央。\n## 标题排版与留白\n标题置顶。\n## 细节点缀\n保持简洁。"}`)
+	harness := newAgentHarnessWithPictureBook(t, &project.PictureBookInput{
+		Format: project.PictureBookClassic, AspectRatio: &project.AspectRatioInput{Mode: project.AspectSquare},
+	}, bodyResponse, coverResponse)
+	ctx := context.Background()
+	imageProvider, err := harness.providers.Create(ctx, provider.CreateInput{
+		AccountID: "fedcba9876543210fedcba9876543210", DefaultModel: "test/storyboard-model",
+		DefaultImageModel: "openai/gpt-image-1", APIKey: "storyboard-test-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	productionService := production.NewService(harness.store, nil)
+	upload, err := productionService.Files().CreateUpload(ctx, files.CreateUploadInput{
+		Purpose: "premise_asset", OriginalFilename: "hero.png", Reader: bytes.NewReader(agentTestPNG(t)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err := productionService.ImportPremiseAsset(ctx, production.CreateAssetInput{
+		UploadUUID: upload.UUID, AssetType: production.AssetCharacter, Title: "咕咕嘎嘎",
+		Summary: "穿深灰色小鸟连体服、露出黑色短发和蓝色眼睛的孩子。", Tags: []string{"主角", "reference-role-character"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter, err := story.NewService(harness.store).CreateChapter(ctx, story.CreateChapterInput{
+		ChapterCode: "vol01.ch01", Title: "主角出发", Content: "咕咕嘎嘎出发了。", ContentFormat: "txt",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowDTO, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{
+		Title: "角色事实进入页面脚本", StoryPrompt: "咕咕嘎嘎出发。", ProviderUUID: imageProvider.UUID, IdempotencyKey: "storyboard-premise-context",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Exec(`UPDATE workflow_steps SET status='completed',output_json=? WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?) AND step_key='story'`, `{"chapter_uuid":"`+chapter.UUID+`"}`, workflowDTO.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var workflow workflowRecord
+	var step workflowStepRecord
+	if err := harness.store.DB().Where("uuid=?", workflowDTO.UUID).First(&workflow).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Where("workflow_id=? AND step_key='comic_sections'", workflow.ID).First(&step).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowStepRecord{}).Where("id=?", step.ID).Update("status", WorkflowRunning).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := harness.store.DB().Model(&workflowRecord{}).Where("id=?", workflow.ID).Updates(map[string]any{"status": WorkflowRunning, "current_step_key": "comic_sections"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	output, wait, err := harness.service.runYoloComic(ctx, harness.store, workflow, step, snapshot)
+	if err != nil || wait || output["body_section_uuid"] == nil || output["cover_section_uuid"] == nil {
+		t.Fatalf("output=%+v wait=%v err=%v", output, wait, err)
+	}
+	if len(harness.model.requests) != 2 || len(harness.model.requests[0].Messages) != 2 {
+		t.Fatalf("model requests=%+v", harness.model.requests)
+	}
+	prompt := harness.model.requests[0].Messages[1].Content
+	for _, expected := range []string{"项目设定资产（规范事实）", asset.UUID, `"asset_type": "character"`, "穿深灰色小鸟连体服", "不得根据角色名称自行推断或改写"} {
+		if !strings.Contains(prompt, expected) {
+			t.Fatalf("storyboard prompt missing %q: %s", expected, prompt)
+		}
+	}
+	coverPrompt := harness.model.requests[1].Messages[1].Content
+	if !strings.Contains(coverPrompt, asset.UUID) || !strings.Contains(coverPrompt, "不得根据角色名称自行推断或改写") {
+		t.Fatalf("cover prompt missing canonical premise facts: %s", coverPrompt)
+	}
+}
+
 func TestYoloV6VerticalStripKeepsBodyOnly(t *testing.T) {
 	harness := newAgentHarness(t)
 	ctx := context.Background()

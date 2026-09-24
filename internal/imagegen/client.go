@@ -24,6 +24,8 @@ const RequestTimeout = 10 * time.Minute
 
 const maxImageBytes = 64 << 20
 
+const CodeRateLimited = "image_rate_limited"
+
 var errUnsafeDownloadURL = errors.New("unsafe provider image URL")
 
 type Error struct {
@@ -129,6 +131,7 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 	}
 	request.Header.Set("Authorization", "Bearer "+input.APIKey)
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("cf-aig-max-attempts", "1")
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(input.Model)), "@cf/") {
 		request.Header.Set("cf-aig-gateway-id", "default")
 	}
@@ -375,7 +378,10 @@ func classify(err error, status int, diagnostics ...providerdiag.Details) error 
 	if errors.As(err, &netErr) {
 		return &Error{Code: "image_network_error", SafeMessage: "无法连接图片 Provider。", Retryable: true, Cause: err, Diagnostic: diagnostic}
 	}
-	if status == 429 || status >= 500 {
+	if status == 429 {
+		return &Error{Code: CodeRateLimited, SafeMessage: "图片 Provider 当前限流，请稍后重试。", Retryable: true, Cause: err, Diagnostic: diagnostic}
+	}
+	if status >= 500 {
 		return &Error{Code: "image_provider_unavailable", SafeMessage: "图片 Provider 暂时不可用。", Retryable: true, Cause: err, Diagnostic: diagnostic}
 	}
 	if status == 401 || status == 403 {

@@ -19,6 +19,7 @@ import (
 	"lumi/internal/modelsettings"
 	"lumi/internal/project"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
 
 	"github.com/google/uuid"
@@ -42,18 +43,19 @@ func (handler *riverErrorLogger) HandlePanic(ctx context.Context, job *rivertype
 }
 
 type Manager struct {
-	mu          sync.RWMutex
-	runtimes    map[string]*projectRuntime
-	starts      map[string]*runtimeStart
-	stops       map[string]*runtimeStop
-	unavailable map[string]error
-	providers   *provider.Service
-	models      *modelsettings.Resolver
-	llm         llm.Client
-	image       imagegen.Client
-	hub         *realtime.Hub
-	now         func() time.Time
-	agents      *agent.Service
+	mu              sync.RWMutex
+	runtimes        map[string]*projectRuntime
+	starts          map[string]*runtimeStart
+	stops           map[string]*runtimeStop
+	unavailable     map[string]error
+	providers       *provider.Service
+	models          *modelsettings.Resolver
+	llm             llm.Client
+	image           imagegen.Client
+	providerLimiter providerlimit.Limiter
+	hub             *realtime.Hub
+	now             func() time.Time
+	agents          *agent.Service
 }
 
 type runtimeStart struct {
@@ -79,8 +81,15 @@ func NewManager(providers *provider.Service, modelClient llm.Client, hub *realti
 		runtimes: make(map[string]*projectRuntime), starts: make(map[string]*runtimeStart),
 		stops: make(map[string]*runtimeStop), unavailable: make(map[string]error),
 		providers: providers, models: modelsettings.NewResolver(providers), llm: modelClient,
-		image: imagegen.NewOpenAICompatibleClient(nil), hub: hub, now: time.Now,
+		image: imagegen.NewOpenAICompatibleClient(nil), providerLimiter: providerlimit.Noop(), hub: hub, now: time.Now,
 	}
+}
+
+func (manager *Manager) WithProviderLimiter(limiter providerlimit.Limiter) *Manager {
+	if limiter != nil {
+		manager.providerLimiter = limiter
+	}
+	return manager
 }
 
 func (manager *Manager) WithImageClient(client imagegen.Client) *Manager {

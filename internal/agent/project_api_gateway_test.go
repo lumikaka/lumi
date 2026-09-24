@@ -20,12 +20,13 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/prompt-groups/:prompt_group"},
 		{Method: http.MethodGet, Path: "/api/v1/projects/:project_uuid/project-setup"},
 		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/project-setup"},
+		{Method: http.MethodPatch, Path: "/api/v1/projects/:project_uuid/project-setup/references/:reference_uuid"},
 		{Method: http.MethodPost, Path: "/api/v1/projects/:project_uuid/project-setup-finalizations"},
 		{Method: http.MethodPost, Path: "/api/v1/projects/:project_uuid/workflows"},
 		{Method: http.MethodGet, Path: "/api/v1/providers"},
 	}, nil)
-	if len(service.requestAPIRoutes()) != 9 {
-		t.Fatalf("routes=%d want=9", len(service.requestAPIRoutes()))
+	if len(service.requestAPIRoutes()) != 10 {
+		t.Fatalf("routes=%d want=10", len(service.requestAPIRoutes()))
 	}
 
 	byKey := map[string]agentAPIRoute{}
@@ -46,6 +47,9 @@ func TestProjectAPIGatewayMergesReviewedAndDiscoveredRoutes(t *testing.T) {
 	}
 	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/project-setup")]; route.ID != RouteProjectSetupUpdate || route.Passthrough || route.Risk != RiskWrite || !route.ExpectedRevision || !route.StrictSchema {
 		t.Fatalf("reviewed setup PATCH route invalid: %+v", route)
+	}
+	if route := byKey[agentAPIRouteKey(http.MethodPatch, "/api/v1/projects/{project_uuid}/project-setup/references/{reference_uuid}")]; route.ID != RouteProjectSetupReferenceUpdate || route.Passthrough || route.Risk != RiskWrite || !route.ExpectedRevision || !route.StrictSchema {
+		t.Fatalf("reviewed setup reference PATCH route invalid: %+v", route)
 	}
 	if route := byKey[agentAPIRouteKey(http.MethodPost, "/api/v1/projects/{project_uuid}/project-setup-finalizations")]; route.ID != RouteProjectSetupFinalize || route.Passthrough || route.Risk != RiskDangerous || !route.RequiresConfirmation || !route.ExpectedRevision || !route.StrictSchema {
 		t.Fatalf("reviewed setup finalization route invalid: %+v", route)

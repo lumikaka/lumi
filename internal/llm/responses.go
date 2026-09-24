@@ -104,6 +104,7 @@ func (client *OpenAICompatibleClient) sendResponses(ctx context.Context, baseURL
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("cf-aig-max-attempts", "1")
 	if payload["stream"] == true {
 		req.Header.Set("Accept", "text/event-stream, application/json")
 	}

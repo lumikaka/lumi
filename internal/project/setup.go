@@ -275,12 +275,97 @@ func (store *Store) setupReferences(ctx context.Context, projectID int64, projec
 }
 
 func (store *Store) UpdateProjectSetupReference(ctx context.Context, referenceUUID string, input SetupReferencePatchInput) (SetupState, error) {
-	return SetupState{}, projectError(
-		CodeProjectSetupReferenceSystemManaged,
-		"视觉参考由系统自动管理",
-		"参考图会按附件顺序自动用于画面生成；该兼容端点不再接受计划修改。",
-		nil,
-	)
+	if !isUUIDv7(strings.TrimSpace(referenceUUID)) {
+		return SetupState{}, projectError(CodeProjectSetupInvalid, "视觉参考 UUID 无效", "reference_uuid 必须是 UUIDv7。", nil)
+	}
+	if input.ExpectedRevision < 1 {
+		return SetupState{}, projectError(CodeProjectSetupConflict, "项目设置版本冲突", "expected_revision 必须是刚读取到的正整数 revision。", nil)
+	}
+	if input.ReferenceRole == nil && input.Title == nil && input.Instruction == nil && input.IncludeInYolo == nil {
+		return SetupState{}, projectError(CodeProjectSetupInvalid, "视觉参考没有变化", "至少提供一个参考图计划字段。", nil)
+	}
+	source := strings.TrimSpace(input.Source)
+	if source == "" {
+		source = SetupSourceUserConfirmed
+	}
+	if source != SetupSourceAgentProposed && source != SetupSourceUserConfirmed {
+		return SetupState{}, projectError(CodeProjectSetupInvalid, "视觉参考来源无效", "source 只支持 agent_proposed 或 user_confirmed。", nil)
+	}
+	updates := map[string]any{"plan_source": source}
+	if input.ReferenceRole != nil {
+		role := strings.ToLower(strings.TrimSpace(*input.ReferenceRole))
+		if role != "auto" && role != "character" && role != "scene" && role != "prop" && role != "style" {
+			return SetupState{}, projectError(CodeProjectSetupInvalid, "视觉参考用途无效", "reference_role 只支持 auto、character、scene、prop 或 style。", nil)
+		}
+		updates["reference_role"] = role
+	}
+	if input.Title != nil {
+		title, err := validateSetupText(*input.Title, 160, "title")
+		if err != nil {
+			return SetupState{}, err
+		}
+		updates["title"] = title
+	}
+	if input.Instruction != nil {
+		instruction := strings.TrimSpace(*input.Instruction)
+		if !utf8.ValidString(instruction) || strings.ContainsRune(instruction, 0) || len([]rune(instruction)) > 2000 {
+			return SetupState{}, projectError(CodeProjectSetupInvalid, "视觉参考说明无效", "instruction 最多 2000 个有效字符。", nil)
+		}
+		updates["instruction"] = instruction
+	}
+	if input.IncludeInYolo != nil {
+		updates["include_in_yolo"] = *input.IncludeInYolo
+	}
+
+	now := time.Now().UTC()
+	err := store.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var projectRecord Project
+		if err := tx.Where("uuid = ?", store.ProjectUUID()).First(&projectRecord).Error; err != nil {
+			return err
+		}
+		if projectRecord.SetupStatus != SetupStatusDraft {
+			return projectError(CodePictureBookImmutable, "项目设置已经定稿", "ready 项目的视觉参考计划不可修改。", nil)
+		}
+		var record setupDraftRecord
+		if err := tx.Where("project_id = ?", projectRecord.ID).First(&record).Error; err != nil {
+			return err
+		}
+		if record.Status == SetupDraftStatusFinalized || record.Revision != input.ExpectedRevision {
+			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
+		}
+		var reference struct {
+			ID int64
+		}
+		result := tx.Table("project_creation_reference_files").Select("id").Where("project_id = ? AND uuid = ?", projectRecord.ID, referenceUUID).Limit(1).Scan(&reference)
+		if result.Error != nil {
+			return result.Error
+		}
+		if reference.ID == 0 {
+			return projectError(CodeProjectSetupInvalid, "视觉参考不存在", "reference_uuid 不属于当前项目。", gorm.ErrRecordNotFound)
+		}
+		updates["updated_at"] = now
+		if err := tx.Table("project_creation_reference_files").Where("id = ?", reference.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+		status := SetupDraftStatusDraft
+		if len(setupMissing(record)) == 0 {
+			status = SetupDraftStatusPendingConfirmation
+		}
+		draftResult := tx.Model(&setupDraftRecord{}).Where("id = ? AND revision = ?", record.ID, input.ExpectedRevision).Updates(map[string]any{
+			"status": status, "revision": gorm.Expr("revision + 1"), "error_code": "", "error_message": "", "updated_at": now,
+		})
+		if draftResult.Error != nil {
+			return draftResult.Error
+		}
+		if draftResult.RowsAffected != 1 {
+			return projectError(CodeProjectSetupConflict, "项目设置版本冲突", "项目设置已更新，请重新读取后再修改。", nil)
+		}
+		return nil
+	})
+	if err != nil {
+		return SetupState{}, err
+	}
+	return store.ProjectSetup(ctx)
 }
 
 func validateSetupText(value string, maximum int, field string) (string, error) {

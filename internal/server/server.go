@@ -23,6 +23,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/projectcreation"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
 	"lumi/internal/sitesettings"
 	"lumi/internal/story"
@@ -77,12 +78,13 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	realtimeHub := realtime.NewHub(realtime.ProjectTopics{AcquirePresence: projects.AcquirePresence})
 	modelClient := llm.NewOpenAICompatibleClient(nil)
 	imageClient := imagegen.NewOpenAICompatibleClient(nil)
+	providerLimiter := providerlimit.NewCoordinator()
 	providerService := provider.NewService(appStore, sitesettings.NewOSMasterKeyStore())
 	if err := providerService.Prices().Seed(context.Background()); err != nil {
 		slog.Warn("model price catalog unavailable", "error", err)
 	}
-	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient)
-	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient)
+	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
+	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
 	projectCreationService := projectcreation.NewService(appStore, projects, agentService, realtimeHub)
 	taskManager.WithAgentService(agentService)
 	api := e.Group("/api/v1")
@@ -108,7 +110,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	projects.WithLifecycleHook(func(event project.LifecycleEvent) {
 		realtimeHub.Broadcast(realtime.SystemTopic, realtime.OpenProjectChanged, openProjectChangedPayload(event))
 	})
-	providerHandler := httpapi.NewProviderHandler(providerService, modelClient, realtimeHub)
+	providerHandler := httpapi.NewProviderHandler(providerService, modelClient, realtimeHub).WithProviderLimiter(providerLimiter)
 	siteSettingsHandler := httpapi.NewSiteSettingsHandler(providerService, realtimeHub)
 	taskHandler := httpapi.NewTaskHandler(taskManager)
 	productionHandler := httpapi.NewProductionHandler(projects, taskManager, realtimeHub)

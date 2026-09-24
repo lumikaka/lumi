@@ -87,7 +87,7 @@ projects ──< actors
 - `original_filename` — TEXT NOT NULL，首次提交清单中的文件名
 - `declared_mime_type` — `image/png|image/jpeg|image/webp`
 - `declared_byte_size` — INTEGER NOT NULL，1–33,554,432 字节
-- `reference_role` — `auto|character|scene|prop|style`；新建项固定为 `auto`，其他值仅为历史兼容事实
+- `reference_role` — `auto|character|scene|prop|style`；新建项固定为 `auto`，草稿期可根据用户明确文本更新
 - `title` — TEXT NOT NULL，最多 160 个 Unicode 字符；新建项使用文件名去扩展名标题，空旧值在读取时同样派生
 - `instruction` — TEXT NOT NULL，最多 2000 个 Unicode 字符；新建项固定为空
 - `include_in_yolo` — INTEGER NOT NULL，`0|1`；新建项固定为 `1`，历史排除值保留
@@ -169,7 +169,7 @@ projects ──< actors
 - `(project_id, creation_session_uuid, position)` — 按项目和 Session 恢复有序绑定
 - `premise_asset_id IS NOT NULL` — partial unique index，避免一个来源 Asset 被多个创建 binding 复用
 
-重复跨库绑定只校验项目、Session、位置与 File 的不可变身份，不用应用库或新请求的计划字段覆盖已持久化事实。原参考 PATCH 兼容端点一律返回 `project_setup_reference_system_managed`，不增加 Setup revision。
+重复跨库绑定只校验项目、Session、位置与 File 的不可变身份，不用应用库或新请求的计划字段覆盖已持久化事实。参考 PATCH 只在项目草稿期更新项目库中的既有绑定，并使用 Setup revision 做乐观并发控制；成功更新会递增 revision，定稿后拒绝修改。
 
 **主要相关 Feature：**
 
@@ -206,7 +206,7 @@ projects ──< actors
 2. 对话式创建在应用库单事务持久化 Session 和有序参考图清单，再按检查点建立 `draft` 项目与 Setup Draft。
 3. 每张参考图使用预分配 Upload/File UUIDv7 重试；项目库单事务完成 File finalize、独立 binding UUID 与初始计划绑定，应用库随后标记 `ready`。启动 reconciliation 以项目绑定为事实校准跨库崩溃窗口。
 4. 全部参考图 ready 后，普通 Chat bootstrap 在项目库单事务创建首个 Thread/Turn/Run/User Item/Job，并把 File References 按清单顺序挂到首个 User Item；无参考图时直接进入该步骤。
-5. 参考计划是系统托管的只读事实；草稿期不提供用途、标题、instruction 或 included 修改，定稿也不改写 `plan_source` 或历史值。
+5. 参考计划以系统托管默认值创建；草稿期只允许根据用户明确文本，通过 Setup revision 保护的 PATCH 修改用途、标题、instruction 或 included，并记录 `plan_source=user_confirmed`。定稿后冻结且不可修改。
 6. Setup 完整后，运行时持久化并免确认执行绑定当前 bootstrap creation session 的 finalization 请求，在项目库单事务写入正式绘本规格、项目资料、默认画风和 finalized Setup，再切换 `setup_status=ready`；同 revision 重放幂等成功。非 bootstrap 运行时请求不继承该例外。
 7. 同一 bootstrap Turn 使用 `creation_session_uuid` 幂等创建一个 inline `yolo_project_initialization` Workflow 和唯一 await；快照按位置冻结持久化计划。新参考全部进入 Premise 与图片输入；历史排除项仍留在审计快照且不进入生产。等待终态后恢复同一 Run 并完成；其他生产写入继续失败关闭，后续 Turn 恢复普通 ready 能力。
 8. 项目总纲与 Prompt 覆盖仅在 `ready` 后创建；总纲和 Prompt 通过版本历史保留可恢复来源。

@@ -16,8 +16,8 @@ import (
 
 func TestReviewedAgentAPIRoutesIncludeDeletionOverlays(t *testing.T) {
 	routes := agentAPIRoutes()
-	if len(routes) != 83 {
-		t.Fatalf("reviewed routes=%d want=83", len(routes))
+	if len(routes) != 84 {
+		t.Fatalf("reviewed routes=%d want=84", len(routes))
 	}
 	wanted := map[string]struct {
 		method, path, projector, revisionSource string

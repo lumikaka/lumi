@@ -50,6 +50,6 @@
 | 对话线程 | 创建 Saga 在草稿项目中恰好一次建立普通 `conversation` Thread、首个 Turn/Run 和原始用户 Item，并把已就绪参考图按清单顺序冻结为 Item Reference；Agent 通过受控 Setup API 推进唯一的 Setup Draft。 |
 | 工作流 | `draft` 项目不能创建或执行 Workflow；对话式首次 Turn 定稿后只可在原 Turn 内启动并等待服务端绑定幂等键的 inline 自动生成 Workflow（内部 kind 为 `yolo_project_initialization`），后续 ready Turn 才开放普通业务编排。 |
 | AI 运行时 | `project_model_settings` 以项目为边界保存模型覆盖。 |
-| Premise 资产 | 自动生成 Workflow 把新建的系统托管参考图全部注册为来源型 Premise Asset；历史排除记录仍保持排除。Project Setup 只读展示创建事实，不承担后续资产版本管理。 |
+| Premise 资产 | 自动生成 Workflow 把参与生成的参考图按冻结用途注册为来源型 Premise Asset；明确标为 `character` 的原上传文件直接成为角色资产当前版本。历史排除记录仍保持排除；定稿后由 Premise 资产能力承担后续版本管理。 |
 | 文件 | 首页参考图先通过稳定 Upload/File UUIDv7 提交到项目 Asset Store，再由创建绑定和首个 Chat Item Reference 共同保护；参与自动生成的图复用同一 File 建立 Premise Asset，不复制对象内容。 |
 | 所有项目域 | URL、JSON、前端状态和实时 payload 都使用项目 UUIDv7。 |

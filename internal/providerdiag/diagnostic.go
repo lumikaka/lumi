@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -36,6 +37,7 @@ type Details struct {
 	ProviderCode string
 	Message      string
 	RequestID    string
+	RetryAfter   time.Duration
 }
 
 type Carrier interface {
@@ -70,7 +72,7 @@ func ReadHTTPError(response *http.Response, apiKey string) Details {
 	if response == nil {
 		return Details{}
 	}
-	details := Details{HTTPStatus: response.StatusCode, RequestID: requestID(response.Header)}
+	details := Details{HTTPStatus: response.StatusCode, RequestID: requestID(response.Header), RetryAfter: retryAfter(response.Header, time.Now())}
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxErrorBodyBytes))
 	if err != nil || len(body) == 0 {
 		return sanitize(details, apiKey)
@@ -105,6 +107,24 @@ func ReadHTTPError(response *http.Response, apiKey string) Details {
 		}
 	}
 	return sanitize(details, apiKey)
+}
+
+func retryAfter(headers http.Header, now time.Time) time.Duration {
+	value := strings.TrimSpace(headers.Get("Retry-After"))
+	if value == "" {
+		return 0
+	}
+	if seconds, err := strconv.ParseInt(value, 10, 64); err == nil {
+		if seconds <= 0 {
+			return 0
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	when, err := http.ParseTime(value)
+	if err != nil || !when.After(now) {
+		return 0
+	}
+	return when.Sub(now)
 }
 
 func firstString(values map[string]any, keys ...string) string {

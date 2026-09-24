@@ -13,6 +13,7 @@ import (
 	"lumi/internal/config"
 	"lumi/internal/llm"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/sitesettings"
 
 	"github.com/labstack/echo/v4"
@@ -25,6 +26,22 @@ type providerCheckFake struct {
 	providerType string
 	err          error
 }
+
+type providerLimitFake struct {
+	providerType string
+	baseURL      string
+	class        providerlimit.RequestClass
+	finished     bool
+}
+
+type providerLimitLeaseFake struct{ limiter *providerLimitFake }
+
+func (fake *providerLimitFake) Acquire(_ context.Context, providerType, baseURL string, class providerlimit.RequestClass) (providerlimit.Lease, error) {
+	fake.providerType, fake.baseURL, fake.class = providerType, baseURL, class
+	return providerLimitLeaseFake{limiter: fake}, nil
+}
+
+func (lease providerLimitLeaseFake) Finish(error) { lease.limiter.finished = true }
 
 type providerCheckTransportFunc func(*http.Request) (*http.Response, error)
 
@@ -96,7 +113,8 @@ func TestProviderHandlersKeepSecretsOutOfAPIEnvelopes(t *testing.T) {
 	t.Cleanup(func() { _ = app.Close() })
 	service := provider.NewService(app, provider.NewMemorySecretStore())
 	model := &providerCheckFake{}
-	handler := NewProviderHandler(service, model)
+	limiter := &providerLimitFake{}
+	handler := NewProviderHandler(service, model).WithProviderLimiter(limiter)
 	e := echo.New()
 	e.HTTPErrorHandler = ErrorHandler
 	e.GET("/api/v1/providers", handler.Index)
@@ -117,6 +135,9 @@ func TestProviderHandlersKeepSecretsOutOfAPIEnvelopes(t *testing.T) {
 	}
 	if checked.Code != 200 || model.model != "test/story-model" || model.key != secret || model.baseURL != "https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1" || strings.Contains(checked.Body.String(), secret) {
 		t.Fatalf("check response = %d %s, model=%q base_url=%q", checked.Code, checked.Body.String(), model.model, model.baseURL)
+	}
+	if limiter.providerType != provider.TypeCloudflareAIGateway || limiter.baseURL != model.baseURL || limiter.class != providerlimit.RequestText || !limiter.finished {
+		t.Fatalf("connection check limiter = %+v", limiter)
 	}
 }
 

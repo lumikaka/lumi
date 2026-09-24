@@ -11,6 +11,7 @@ import (
 	"lumi/internal/production"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
 	"lumi/internal/story"
 	"lumi/internal/taskexecution"
@@ -92,6 +93,10 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		if logErr != nil {
 			return runtime.handleWorkError(ctx, record, logErr, job.Attempt, job.MaxAttempts)
 		}
+		lease, limitErr := runtime.manager.providerLimiter.Acquire(workCtx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+		if limitErr != nil {
+			return runtime.handleWorkError(ctx, record, limitErr, job.Attempt, job.MaxAttempts)
+		}
 		logHandle, logErr := llmlog.Begin(workCtx, runtime.store, runtime.manager.hub, llmlog.StartInput{Prices: runtime.manager.providers.Prices(), Endpoint: request.BaseURL,
 			ProjectID: runtime.projectID, TaskRunID: record.ID, AgentThreadID: agentThreadID, AgentRunID: agentRunID,
 			SourceType: llmlog.SourceStoryGeneration, Scenario: record.Kind, RequestType: llmlog.RequestText, Attempt: job.Attempt,
@@ -99,6 +104,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 			RequestPayload: requestPayload,
 		})
 		if logErr != nil {
+			lease.Finish(logErr)
 			return runtime.handleWorkError(ctx, record, logErr, job.Attempt, job.MaxAttempts)
 		}
 		response, err = runtime.manager.llm.Generate(workCtx, request, func(_ string) error {
@@ -108,6 +114,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 			}
 			return runtime.recordProgress(workCtx, record, progress)
 		})
+		lease.Finish(err)
 		var responsePayload []byte
 		if err == nil {
 			responsePayload, logErr = llmlog.EncodeTextResponse(response, request.APIKey)

@@ -16,6 +16,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
+	"lumi/internal/providerlimit"
 	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
@@ -78,8 +79,13 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 	if err != nil {
 		return llm.ChatResponse{}, err
 	}
+	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+	if err != nil {
+		return llm.ChatResponse{}, err
+	}
 	requestOrdinal, err := service.recordModelStart(ctx, store, *tc, contextBytes)
 	if err != nil {
+		lease.Finish(err)
 		return llm.ChatResponse{}, err
 	}
 	tc.Run.ModelRequestCount = requestOrdinal
@@ -90,11 +96,13 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 		RequestPayload: requestPayload,
 	})
 	if err != nil {
+		lease.Finish(err)
 		return llm.ChatResponse{}, err
 	}
 	tc.RequestUUID = logHandle.UUID
 	tc.RequestOrdinal = requestOrdinal
 	if err := service.recordModelRequestEvent(ctx, store, *tc, "model_request_started", "pending"); err != nil {
+		lease.Finish(err)
 		return llm.ChatResponse{}, err
 	}
 	providerStartedAt := time.Now()
@@ -102,6 +110,7 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 	if providerErr == nil {
 		providerErr = requestUserInputMixedProviderError(response)
 	}
+	lease.Finish(providerErr)
 	durationMS := time.Since(providerStartedAt).Milliseconds()
 	var responsePayload []byte
 	var diagnosticBodyLength int64

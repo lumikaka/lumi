@@ -26,17 +26,61 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
+	"lumi/internal/providerlimit"
 	"lumi/internal/sitesettings"
 	"lumi/internal/story"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
+	"golang.org/x/time/rate"
 )
 
 type successfulImageProvider struct{ content []byte }
 
 func (provider successfulImageProvider) Generate(context.Context, imagegen.Request) (imagegen.Response, error) {
 	return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+}
+
+type concurrentImageProvider struct {
+	mu      sync.Mutex
+	active  int
+	maximum int
+	calls   int
+	started chan struct{}
+	release chan struct{}
+	content []byte
+}
+
+func (provider *concurrentImageProvider) Generate(ctx context.Context, _ imagegen.Request) (imagegen.Response, error) {
+	provider.mu.Lock()
+	provider.active++
+	provider.calls++
+	if provider.active > provider.maximum {
+		provider.maximum = provider.active
+	}
+	provider.mu.Unlock()
+	select {
+	case provider.started <- struct{}{}:
+	default:
+	}
+	select {
+	case <-provider.release:
+		provider.mu.Lock()
+		provider.active--
+		provider.mu.Unlock()
+		return imagegen.Response{Bytes: provider.content, MIMEType: "image/png"}, nil
+	case <-ctx.Done():
+		provider.mu.Lock()
+		provider.active--
+		provider.mu.Unlock()
+		return imagegen.Response{}, ctx.Err()
+	}
+}
+
+func (provider *concurrentImageProvider) snapshot() (calls, maximum int) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return provider.calls, provider.maximum
 }
 
 func TestPictureBookImageTaskFreezesProfileAndExactOutputSize(t *testing.T) {
@@ -883,6 +927,87 @@ func TestComicImageGenerationCreatesVisibleWorkflowAndTracksLifecycle(t *testing
 		return store.DB().Table("workflows").Where("kind=?", agent.WorkflowComicSectionImage).Count(&workflowCount).Error
 	}); err != nil || workflowCount != 2 {
 		t.Fatalf("regeneration workflows=%d err=%v", workflowCount, err)
+	}
+}
+
+func TestComicImageBatchQueuesFiveRunningTasksBehindSharedImageLimit(t *testing.T) {
+	harness := newQueueHarness(t)
+	config := providerlimit.DefaultConfig()
+	config.RequestsPerSecond = rate.Inf
+	config.Burst = 100
+	harness.queue.WithProviderLimiter(providerlimit.NewCoordinatorWithConfig(config))
+	imageProvider := &concurrentImageProvider{content: productionPNG(t), started: make(chan struct{}, 5), release: make(chan struct{})}
+	harness.queue.WithImageClient(imageProvider)
+	ctx := context.Background()
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch45")
+	sectionUUIDs := make([]string, 0, 5)
+	for index := range 5 {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{
+			Title:        fmt.Sprintf("Limited batch %d", index+1),
+			StoryboardMD: fmt.Sprintf("Create limited batch image %d.", index+1),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionUUIDs = append(sectionUUIDs, section.UUID)
+	}
+	batch, err := harness.queue.CreateComicImageGenerationBatch(ctx, harness.project.UUID, chapter.UUID, CreateComicImageGenerationBatchInput{
+		SectionUUIDs: sectionUUIDs, IdempotencyKey: "comic-shared-image-limit",
+	})
+	if err != nil || len(batch.Tasks) != 5 {
+		t.Fatalf("batch=%+v err=%v", batch, err)
+	}
+	select {
+	case <-imageProvider.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("first image provider call did not start")
+	}
+
+	deadline := time.Now().Add(8 * time.Second)
+	var running int
+	var logCount int64
+	for time.Now().Before(deadline) {
+		running = 0
+		for _, item := range batch.Tasks {
+			task, getErr := harness.queue.GetProductionTask(ctx, harness.project.UUID, item.UUID)
+			if getErr == nil && task.Status == StatusRunning {
+				running++
+			}
+		}
+		logCount = 0
+		err = harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+			taskUUIDs := make([]string, 0, len(batch.Tasks))
+			for _, item := range batch.Tasks {
+				taskUUIDs = append(taskUUIDs, item.UUID)
+			}
+			return store.DB().Table("llm_logs AS logs").
+				Joins("JOIN production_task_runs tasks ON tasks.id=logs.production_task_run_id").
+				Where("tasks.uuid IN ?", taskUUIDs).
+				Count(&logCount).Error
+		})
+		calls, maximum := imageProvider.snapshot()
+		if err == nil && running == 5 && logCount == 1 && calls == 1 && maximum == 1 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if calls, maximum := imageProvider.snapshot(); err != nil || running != 5 || logCount != 1 || calls != 1 || maximum != 1 {
+		close(imageProvider.release)
+		t.Fatalf("running=%d logs=%d calls=%d maximum=%d err=%v", running, logCount, calls, maximum, err)
+	}
+	close(imageProvider.release)
+	for _, item := range batch.Tasks {
+		waitProductionStatus(t, harness.queue, harness.project.UUID, item.UUID, StatusCompleted)
+	}
+	if calls, maximum := imageProvider.snapshot(); calls != 5 || maximum != 1 {
+		t.Fatalf("completed provider calls=%d maximum=%d", calls, maximum)
 	}
 }
 
@@ -2298,6 +2423,80 @@ func TestComicSectionAutomaticallySelectsReferencesAndSendsFinalRequest(t *testi
 	}
 	if !strings.Contains(composedPayload, premise.Asset.UUID) || strings.Contains(composedPayload, `"id"`) || strings.Contains(composedPayload, "path") {
 		t.Fatalf("section_premise_composed payload=%s", composedPayload)
+	}
+}
+
+func TestComicReferenceSelectionResolvesItsOwnProvider(t *testing.T) {
+	harness := newQueueHarness(t)
+	ctx := context.Background()
+	if _, _, err := harness.queue.providers.Settings().Update(ctx, map[string]any{
+		sitesettings.BailianWorkspaceKey: "workspace-selection",
+		sitesettings.BailianRegionKey:    "cn-beijing",
+		sitesettings.BailianAPIKeyKey:    "bailian-selection-secret",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	providers, err := harness.queue.providers.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var selectionProvider provider.Provider
+	for _, item := range providers {
+		if item.ProviderType == provider.TypeAliyunBailian {
+			selectionProvider, err = harness.queue.providers.MarkVerified(ctx, item.UUID)
+			break
+		}
+	}
+	if err != nil || selectionProvider.UUID == "" {
+		t.Fatalf("selection provider=%+v err=%v", selectionProvider, err)
+	}
+	imageProvider := &recordingImageProvider{content: productionPNG(t)}
+	selector := &recordingSelectionProvider{}
+	harness.queue.WithImageClient(imageProvider)
+	harness.queue.llm = selector
+	var service *production.Service
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		service = production.NewService(store, nil)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	chapter := harness.createChapter(t, "vol01.ch46")
+	section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Mixed providers", StoryboardMD: "Use the frozen setting reference."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	upload, err := service.Files().CreateUpload(ctx, files.CreateUploadInput{Purpose: "premise_asset", OriginalFilename: "mixed.png", Reader: bytes.NewReader(productionPNG(t))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	asset, err := service.ImportPremiseAsset(ctx, production.CreateAssetInput{UploadUUID: upload.UUID, AssetType: production.AssetReference, Title: "Mixed reference"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selector.sectionID, selector.title = section.UUID, asset.Title
+	task, err := harness.queue.CreateComicImageGeneration(ctx, harness.project.UUID, chapter.UUID, section.UUID, CreateProductionGenerationInput{
+		ProviderUUID:          harness.provider.UUID,
+		SelectionProviderUUID: selectionProvider.UUID,
+		SelectionModel:        provider.BailianTextModel,
+		IdempotencyKey:        "comic-mixed-selection-provider",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitProductionStatus(t, harness.queue, harness.project.UUID, task.UUID, StatusCompleted)
+	selectionRequest := selector.snapshot()
+	if selectionRequest.ProviderType != provider.TypeAliyunBailian || selectionRequest.BaseURL != selectionProvider.BaseURL || selectionRequest.APIKey != "bailian-selection-secret" {
+		t.Fatalf("selection request provider=%q base_url=%q api_key=%q", selectionRequest.ProviderType, selectionRequest.BaseURL, selectionRequest.APIKey)
+	}
+	var loggedProviderUUID string
+	if err := harness.projects.WithCurrentStore(ctx, harness.project.UUID, func(store *project.Store) error {
+		return store.DB().Table("llm_logs AS logs").
+			Joins("JOIN production_task_runs tasks ON tasks.id=logs.production_task_run_id").
+			Where("tasks.uuid=? AND logs.scenario='comic_reference_selection'", task.UUID).
+			Pluck("logs.provider_uuid", &loggedProviderUUID).Error
+	}); err != nil || loggedProviderUUID != selectionProvider.UUID {
+		t.Fatalf("selection log provider_uuid=%q want=%q err=%v", loggedProviderUUID, selectionProvider.UUID, err)
 	}
 }
 

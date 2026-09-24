@@ -36,7 +36,7 @@
 | `data.field_sources` | 字符串映射 | 各字段来源；值为 `system_default`、`agent_proposed` 或 `user_confirmed`。 |
 | `data.missing_information` | 字符串数组 | finalization 前仍缺少的字段路径。 |
 | `data.final_picture_book` | 对象，可省略 | 已定稿的不可变绘本规格；结构同规范化 `picture_book`。 |
-| `data.reference_plan` | 对象 | 首页创建视觉参考的只读事实，含 `items`；新附件由系统按顺序自动用于画面生成，Agent 不修改或逐项询问其用途。 |
+| `data.reference_plan` | 对象 | 首页创建视觉参考计划，含 `items`；附件默认按顺序自动用于画面生成。用户明确指定用途时，Agent 可在草稿期更新对应项。 |
 | `data.error_code` | 字符串，可省略 | 草稿失败时的安全错误码。 |
 | `data.error_message` | 字符串，可省略 | 草稿失败时的安全错误信息。 |
 | `data.created_at` | RFC 3339 字符串，可省略 | 草稿创建时间。 |
@@ -98,7 +98,7 @@
 | `data.field_sources` | 字符串映射 | 本次提交字段标记为 `agent_proposed`；采用默认值的细分字段标记为 `system_default`。 |
 | `data.missing_information` | 字符串数组 | 仍缺少的字段路径。 |
 | `data.final_picture_book` | 对象，可省略 | 草稿阶段通常省略。 |
-| `data.reference_plan` | 对象 | 系统托管且不随本次字段更新改变的视觉参考事实。 |
+| `data.reference_plan` | 对象 | 不随本次 Draft 字段更新改变的视觉参考计划；需使用独立的参考项 PATCH。 |
 | `data.error_code` | 字符串，可省略 | 失败状态的安全错误码。 |
 | `data.error_message` | 字符串，可省略 | 失败状态的安全错误信息。 |
 | `data.created_at` | RFC 3339 字符串，可省略 | 草稿创建时间。 |
@@ -133,6 +133,66 @@
 - 合法 `picture_book` 值示例：经典默认 4:3 为 `{"format":"classic_picture_book","large_image_minimal_text":false}`；经典自定义 3:2 为 `{"format":"classic_picture_book","aspect_ratio":{"mode":"custom","width":3,"height":2}}`；无字横向为 `{"format":"wordless_picture_book","aspect_ratio":{"mode":"landscape"}}`；条漫为 `{"format":"vertical_strip"}`。
 - 不确定的信息应向用户询问，不得臆造具体人物、剧情或风格偏好。
 
+## `PATCH /api/v1/projects/{project_uuid}/project-setup/references/{reference_uuid}`
+
+仅在用户已经明确说明某张附件的用途时更新对应视觉参考。它与 Setup Draft 共用同一个 revision。
+
+### 请求字段
+
+| 字段 | 位置 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- | --- |
+| `project_uuid` | path | UUIDv7 字符串 | 是 | 当前项目公开 UUID。 |
+| `reference_uuid` | path | UUIDv7 字符串 | 是 | `reference_plan.items[].uuid`。 |
+| `expected_revision` | body | 整数，1～2147483647 | 是 | 刚读取到的 Setup Draft revision。 |
+| `reference_role` | body | 枚举字符串 | 否 | `auto`、`character`、`scene`、`prop` 或 `style`。 |
+| `title` | body | 非空字符串，最长 160 字符 | 否 | 用户已明确提供时写入的设定标题。 |
+| `instruction` | body | 字符串，最长 2000 字符 | 否 | 用户已明确提供的参考要求。 |
+| `include_in_yolo` | body | 布尔值 | 否 | 是否参与本次自动视觉生成。 |
+
+### 返回字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `data.uuid` | UUIDv7 字符串 | Setup Draft UUID。 |
+| `data.project_uuid` | UUIDv7 字符串 | 所属项目 UUID。 |
+| `data.setup_status` | 字符串 | 仍为 `draft`。 |
+| `data.status` | 字符串 | 信息完整时为 `pending_confirmation`，否则为 `draft`。 |
+| `data.revision` | 整数 | 更新后递增的 revision。 |
+| `data.original_input` | 字符串，可省略 | 首页原始输入。 |
+| `data.draft_values` | 对象 | 当前初始化草稿值。 |
+| `data.field_sources` | 字符串映射 | Setup Draft 字段来源。 |
+| `data.missing_information` | 字符串数组 | 仍缺少的字段路径。 |
+| `data.final_picture_book` | 对象，可省略 | 草稿阶段通常省略。 |
+| `data.reference_plan` | 对象 | 更新后的视觉参考计划。 |
+| `data.error_code` | 字符串，可省略 | 失败状态的安全错误码。 |
+| `data.error_message` | 字符串，可省略 | 失败状态的安全错误信息。 |
+| `data.created_at` | RFC 3339 字符串，可省略 | 草稿创建时间。 |
+| `data.updated_at` | RFC 3339 字符串 | 更新时间。 |
+| `data.finalized_at` | RFC 3339 字符串，可省略 | 草稿阶段省略。 |
+
+### request_api 示例
+
+```json
+{
+  "method": "PATCH",
+  "url": "/api/v1/projects/<project_uuid>/project-setup/references/<reference_uuid>",
+  "request_body": {
+    "expected_revision": 2,
+    "reference_role": "character",
+    "title": "咕咕嘎嘎",
+    "instruction": "这是主角图，保持身份、外貌、服装和标志性特征。"
+  },
+  "response_filter": ".data | {uuid,project_uuid,setup_status,status,revision,reference_plan,updated_at}"
+}
+```
+
+### 接口约束
+
+- 仅允许修改当前草稿项目中已有的参考项；定稿后不可修改。
+- `expected_revision` 冲突后重新 GET；一次成功更新会递增 Setup revision。
+- 只落实用户文本已经明确指定的用途、标题或说明；不得通过猜图自行分类，也不得为每张附件逐项追问。
+- 用户明确说“这张图就是主角”时，应设置 `reference_role=character`；YOLO 会把原上传文件直接绑定为角色设定资产。
+
 ## `POST /api/v1/projects/{project_uuid}/project-setup-finalizations`
 
 确认完整 Setup Draft，将不可变绘本规格写入正式项目并切换为 `ready`。
@@ -158,7 +218,7 @@
 | `data.field_sources` | 字符串映射 | 已确认字段统一为 `user_confirmed`。 |
 | `data.missing_information` | 字符串数组 | 成功后固定为空数组。 |
 | `data.final_picture_book` | 对象 | 正式不可变绘本规格；含 `format`、规范化 `aspect_ratio` 和适用的形式专属字段。 |
-| `data.reference_plan` | 对象 | 已冻结的系统托管视觉参考事实；历史来源和值保持不变。 |
+| `data.reference_plan` | 对象 | 已冻结的视觉参考计划；保留默认值和用户明确指定的用途。 |
 | `data.error_code` | 字符串，可省略 | 成功时省略。 |
 | `data.error_message` | 字符串，可省略 | 成功时省略。 |
 | `data.created_at` | RFC 3339 字符串，可省略 | 草稿创建时间。 |
@@ -180,7 +240,7 @@
 
 ### 接口约束
 
-- 普通 Agent 调用属于危险操作：先清楚展示全部待确认设置、默认来源和缺失信息；若带图，只展示视觉参考数量并说明会自动用于画面生成，不逐项展示或询问计划字段；随后提交一次完整请求，确认由运行时生成。首页 bootstrap 不由 Agent 调用本接口；Setup 完整后，运行时可信生成的 finalization 会免确认执行并直接衔接自动生成。
+- 普通 Agent 调用属于危险操作：先清楚展示全部待确认设置、默认来源和缺失信息；若带图，只展示视觉参考数量、自动使用说明及用户已经明确指定的用途，不逐项追问计划字段；随后提交一次完整请求，确认由运行时生成。首页 bootstrap 不由 Agent 调用本接口；Setup 完整后，运行时可信生成的 finalization 会免确认执行并直接衔接自动生成。
 - 仅 `setup_status=draft`、草稿信息完整且 revision 匹配时可定稿；成功后正式绘本规格不可修改。
 - 定稿前会按当前项目图片模型校验草稿比例；返回 `image_aspect_ratio_unsupported` 时草稿保留，调整图片模型或草稿比例后可重试。该检查与图片生成预检、工作流创建共用尺寸规则，不调用供应商 API。
 - 同一已成功 revision 的自动重放幂等返回既有结果；不同 revision 会冲突。

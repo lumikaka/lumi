@@ -8,6 +8,7 @@ import (
 
 	"lumi/internal/llm"
 	"lumi/internal/provider"
+	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
 	"lumi/internal/sitesettings"
 
@@ -17,6 +18,7 @@ import (
 type ProviderHandler struct {
 	providers *provider.Service
 	client    llm.ConnectionChecker
+	limiter   providerlimit.Limiter
 	hub       *realtime.Hub
 }
 
@@ -25,7 +27,14 @@ func NewProviderHandler(providers *provider.Service, client llm.ConnectionChecke
 	if len(hubs) > 0 {
 		hub = hubs[0]
 	}
-	return &ProviderHandler{providers: providers, client: client, hub: hub}
+	return &ProviderHandler{providers: providers, client: client, limiter: providerlimit.Noop(), hub: hub}
+}
+
+func (handler *ProviderHandler) WithProviderLimiter(limiter providerlimit.Limiter) *ProviderHandler {
+	if limiter != nil {
+		handler.limiter = limiter
+	}
+	return handler
 }
 
 func (handler *ProviderHandler) Index(c echo.Context) error {
@@ -57,9 +66,14 @@ func (handler *ProviderHandler) Check(c echo.Context) error {
 	if err != nil {
 		return providerAPIError(err)
 	}
+	lease, err := handler.limiter.Acquire(c.Request().Context(), resolved.ProviderType, resolved.BaseURL, providerlimit.RequestText)
+	if err != nil {
+		return llmAPIError(err)
+	}
 	checkErr := handler.client.CheckConnection(c.Request().Context(), resolved.ProviderType, llm.Request{
 		BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: resolved.DefaultModel,
 	})
+	lease.Finish(checkErr)
 	if checkErr != nil {
 		return llmAPIError(checkErr)
 	}

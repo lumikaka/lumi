@@ -58,6 +58,10 @@ test('known API errors use localized copy and retain raw details only for diagno
     localizedErrorPresentation(translator('zh-Hans'), { code: 'production_export_empty', status: 422 }).message,
     '没有可导出的漫画图片。请先为至少一个 Section 生成或导入图片。',
   )
+  assert.equal(
+    localizedErrorPresentation(translator('zh-Hans'), { code: 'image_rate_limited', status: 429 }).message,
+    '模型服务商当前限流，请稍后重试。',
+  )
 })
 
 test('unknown API and persisted task errors never expose server copy as the interface message', () => {

@@ -18,6 +18,9 @@ func TestResponsesGenerateStreamsTextAndMapsImageInput(t *testing.T) {
 		if req.Method != "POST" || req.URL.Path != "/ai/v1/responses" {
 			t.Fatalf("request=%s %s", req.Method, req.URL)
 		}
+		if req.Header.Get("cf-aig-max-attempts") != "1" {
+			t.Fatalf("cf-aig-max-attempts = %q", req.Header.Get("cf-aig-max-attempts"))
+		}
 		var payload map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 			t.Fatal(err)
