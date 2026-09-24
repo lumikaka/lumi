@@ -912,6 +912,37 @@ func TestYoloInitialImageBatchWaitsForActiveSiblingBeforeReportingFailure(t *tes
 	}
 }
 
+func TestYoloInitialImageBatchSectionsStayFrozenWhenSiblingCompletes(t *testing.T) {
+	coverSectionUUID, _ := newUUIDv7()
+	bodySectionUUID, _ := newUUIDv7()
+	coverTaskUUID, _ := newUUIDv7()
+	bodyTaskUUID, _ := newUUIDv7()
+	bodyImageUUID, _ := newUUIDv7()
+	targets := []production.ComicSection{
+		{UUID: coverSectionUUID},
+		{UUID: bodySectionUUID, CurrentImage: &production.ImageVariant{UUID: bodyImageUUID}},
+	}
+	checkpointBytes, err := json.Marshal(map[string]any{
+		"task_uuid_by_section": map[string]string{
+			coverSectionUUID: coverTaskUUID,
+			bodySectionUUID:  bodyTaskUUID,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := yoloInitialImageBatchSectionUUIDs(targets, []string{coverSectionUUID}, string(checkpointBytes))
+	if len(got) != 2 || got[0] != coverSectionUUID || got[1] != bodySectionUUID {
+		t.Fatalf("checkpointed batch changed after body image completed: %v", got)
+	}
+
+	got = yoloInitialImageBatchSectionUUIDs(targets, []string{coverSectionUUID}, "{}")
+	if len(got) != 1 || got[0] != coverSectionUUID {
+		t.Fatalf("new batch did not use current missing sections: %v", got)
+	}
+}
+
 func TestYoloRejectsUnsupportedPictureBookRatioBeforeCreatingWorkflow(t *testing.T) {
 	harness := newAgentHarnessWithPictureBook(t, &project.PictureBookInput{Format: project.PictureBookClassic})
 	_, err := harness.service.CreateYoloWorkflow(context.Background(), harness.project.UUID, CreateYoloInput{

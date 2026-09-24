@@ -1157,9 +1157,14 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 		}
 		missing = append(missing, section.UUID)
 	}
+	checkpoint, checkpointErr := service.workflowStepOutput(ctx, store, step.ID)
+	if checkpointErr != nil {
+		return nil, false, checkpointErr
+	}
 	if len(missing) > 0 {
+		batchSectionUUIDs := yoloInitialImageBatchSectionUUIDs(targets, missing, checkpoint)
 		batch, batchErr := service.ensureWorkflowDomainTaskBatch(ctx, store, step, DomainTaskBatchRequest{
-			Kind: "comic_image_generation", ResourceUUIDs: missing, ChapterUUID: chapterUUID,
+			Kind: "comic_image_generation", ResourceUUIDs: batchSectionUUIDs, ChapterUUID: chapterUUID,
 			ProviderUUID: snapshot.ImageProviderUUID, Model: snapshot.ImageModel, EnableThinking: snapshot.ImageEnableThinking, PromptExtend: snapshot.ImagePromptExtend,
 			SelectionProviderUUID: snapshot.SelectionProviderUUID, SelectionModel: snapshot.SelectionModel,
 			IdempotencyKey: step.IdempotencyKey + ":images",
@@ -1201,7 +1206,10 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 		imageUUIDs = append(imageUUIDs, section.CurrentImage.UUID)
 	}
 	output["section_uuids"], output["image_variant_uuids"] = sectionUUIDs, imageUUIDs
-	checkpoint, _ := service.workflowStepOutput(ctx, store, step.ID)
+	checkpoint, checkpointErr = service.workflowStepOutput(ctx, store, step.ID)
+	if checkpointErr != nil {
+		return nil, false, checkpointErr
+	}
 	if taskUUIDs := workflowTaskUUIDs(checkpoint, ""); len(taskUUIDs) > 0 {
 		output["task_uuids"] = taskUUIDs
 	}
@@ -1213,6 +1221,20 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 		output["cover_image_variant_uuid"] = cover.CurrentImage.UUID
 	}
 	return output, false, nil
+}
+
+func yoloInitialImageBatchSectionUUIDs(targets []production.ComicSection, missing []string, checkpoint string) []string {
+	bySection := workflowTaskUUIDBySection(checkpoint)
+	if len(bySection) == 0 {
+		return missing
+	}
+	result := make([]string, 0, len(targets))
+	for _, section := range targets {
+		if isUUIDv7(bySection[section.UUID]) {
+			result = append(result, section.UUID)
+		}
+	}
+	return result
 }
 
 func yoloInitialImageBatchState(tasks []DomainTask) (bool, *DomainTask) {
