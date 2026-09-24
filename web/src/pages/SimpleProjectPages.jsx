@@ -1068,7 +1068,12 @@ export function SimplePageView({ project, projectUuid }) {
   if (chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
   if (!section) return routeSectionUuid ? <SimpleNotFound projectUuid={projectUuid} /> : <SimplePagesPage project={project} projectUuid={projectUuid} />
   const label = comicPageLabel(t, sections, section)
+  const bookTitle = chapterQuery.data?.title || t('projects.unnamed_picture_book')
   const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label)
+  const confirmBreadcrumbNavigation = (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if ((dirty || refsDirty) && !window.confirm(t('simple.page.leave_unsaved'))) event.preventDefault()
+  }
   const previous = sections[index - 1]
   const next = sections[index + 1]
   const imageVariants = imagesQuery.data?.items || []
@@ -1086,7 +1091,16 @@ export function SimplePageView({ project, projectUuid }) {
   const pageItemMenuKeepsRequiredBody = Boolean(pageItemMenuPage) && project?.picture_book?.format !== 'vertical_strip' && comicPageRole(pageItemMenuPage) === 'body' && bodyPageCount <= 1
   return (
     <div className="simple-project-page simple-page-view">
-      <div className="simple-page-view__toolbar"><Link to={projectRoute(projectUuid, '', location.search)}><ArrowLeft size={15} aria-hidden="true" />{t('simple.shell.page.home')}</Link><div><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div></div>
+      <div className="simple-page-view__toolbar">
+        <nav className="simple-page-view__breadcrumb" aria-label={t('simple.page.breadcrumb')}>
+          <ol>
+            <li><Link to={projectRoute(projectUuid, '', location.search)} onClick={confirmBreadcrumbNavigation}>{t('simple.shell.page.home')}</Link></li>
+            <li><ChevronRight size={13} aria-hidden="true" /><Link to={projectRoute(projectUuid, 'chapters', location.search)} onClick={confirmBreadcrumbNavigation}>{t('simple.shell.page.books')}</Link></li>
+            <li><ChevronRight size={13} aria-hidden="true" /><span aria-current="location" title={bookTitle} data-user-content>{bookTitle}</span></li>
+          </ol>
+        </nav>
+        <div className="simple-page-view__actions"><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div>
+      </div>
       <SimpleFeedback feedback={feedback} floating autoDismiss onDismiss={() => setFeedback(null)} />
       <SimpleError error={chapterQuery.error || sectionsQuery.error || storyboardsQuery.error || imagesQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); storyboardsQuery.refetch(); imagesQuery.refetch(); tasksQuery.refetch() }} />
       <div className="simple-page-editor-layout">

@@ -798,15 +798,55 @@
     border-bottom: 1px solid $color-border
     background: $color-surface
 
-    > a
-      display: inline-flex
-      align-items: center
-      gap: 5px
-      color: $color-muted
-      font-size: 12px
-      font-weight: $font-weight-semibold
+    .simple-page-view__breadcrumb
+      flex: 1 1 auto
+      min-width: 0
 
-    > div
+      ol
+        min-width: 0
+        margin: 0
+        padding: 0
+        display: flex
+        align-items: center
+        gap: 6px
+        list-style: none
+
+      li
+        flex: 0 0 auto
+        min-width: 0
+        display: flex
+        align-items: center
+        gap: 6px
+
+        &:last-child
+          flex: 1 1 auto
+
+      svg
+        flex: 0 0 auto
+        color: $color-muted
+
+      a,
+      span
+        font-size: 12px
+        font-weight: $font-weight-semibold
+        white-space: nowrap
+
+      a
+        color: $color-muted
+
+        &:hover,
+        &:focus-visible
+          color: $color-accent
+          text-decoration: underline
+
+      span
+        min-width: 0
+        overflow: hidden
+        color: $color-text
+        text-overflow: ellipsis
+
+    .simple-page-view__actions
+      flex: 0 0 auto
       display: flex
       gap: 8px
 
@@ -2950,7 +2990,7 @@
       display: grid
 
     .simple-page-heading__actions,
-    .simple-page-view__toolbar > div
+    .simple-page-view__actions
       justify-content: flex-start
 
     .simple-story-layout

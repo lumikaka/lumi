@@ -20,6 +20,8 @@ export const simpleDashboard = defineMessages({
   'simple.shell.page.pages': ['页面', 'Pages'],
   'simple.shell.page.page': ['逐页视图', 'Page view'],
   'simple.shell.page.book': ['全书视图', 'Book view'],
+  'simple.page.breadcrumb': ['面包屑导航', 'Breadcrumb'],
+  'simple.page.leave_unsaved': ['当前页面有未保存的修改，确定离开吗？', 'This page has unsaved changes. Leave anyway?'],
   'simple.loading.project': ['正在读取项目内容…', 'Loading project content…'],
   'simple.loading.story': ['正在读取完整故事…', 'Loading the full story…'],
   'simple.loading.settings': ['正在读取设定…', 'Loading premise items…'],
