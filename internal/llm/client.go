@@ -182,7 +182,7 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 	}
 	messages = append(messages, map[string]any{"role": "user", "content": userContent})
 	payload := map[string]any{"model": input.Model, "messages": messages, "stream": true, "stream_options": map[string]any{"include_usage": true}}
-	if input.Temperature != nil && !openAIGPT5Model(input.Model) {
+	if input.Temperature != nil && !openAIReasoningModel(input.Model) {
 		payload["temperature"] = *input.Temperature
 	}
 	if input.MaxTokens > 0 {
@@ -254,7 +254,7 @@ func (client *OpenAICompatibleClient) Complete(ctx context.Context, input ChatRe
 		payload["tools"] = tools
 		payload["tool_choice"] = "auto"
 	}
-	if input.Temperature != nil && !openAIGPT5Model(input.Model) {
+	if input.Temperature != nil && !openAIReasoningModel(input.Model) {
 		payload["temperature"] = *input.Temperature
 	}
 	if input.MaxTokens > 0 {
@@ -514,15 +514,16 @@ func hasPartialChatResponse(response ChatResponse) bool {
 func intPointer(value int) *int { return &value }
 
 func tokenLimitKey(model string) string {
-	if openAIGPT5Model(model) {
+	if openAIReasoningModel(model) {
 		return "max_completion_tokens"
 	}
 	return "max_tokens"
 }
 
-func openAIGPT5Model(model string) bool {
+func openAIReasoningModel(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
-	return strings.HasPrefix(model, "openai/gpt-5") || strings.HasPrefix(model, "gpt-5")
+	return strings.HasPrefix(model, "openai/gpt-5") || strings.HasPrefix(model, "gpt-5") ||
+		strings.HasPrefix(model, "openai/gpt-6") || strings.HasPrefix(model, "gpt-6")
 }
 
 func setCloudflareGatewayHeader(request *http.Request, model string) {

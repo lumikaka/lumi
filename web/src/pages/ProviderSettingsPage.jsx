@@ -16,7 +16,7 @@ const PREFIXES = {
   aliyun_bailian: 'ai_providers.aliyun_bailian',
 }
 
-const CLOUDFLARE_MODELS = ['openai/gpt-5.6-terra', 'openai/gpt-5.6-sol']
+const CLOUDFLARE_MODELS = ['openai/gpt-6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-sol']
 
 function secretItem(settings, providerType) {
   const key = `${PREFIXES[providerType]}.api_key`

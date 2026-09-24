@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	CloudflareModelTerra = "openai/gpt-5.6-terra"
-	CloudflareModelSol   = "openai/gpt-5.6-sol"
-	ActiveProviderKey    = "ai_provider.active"
+	CloudflareModelTerra   = "openai/gpt-5.6-terra"
+	CloudflareModelSol     = "openai/gpt-5.6-sol"
+	CloudflareModelGPT6Sol = "openai/gpt-6-sol"
+	ActiveProviderKey      = "ai_provider.active"
 
 	// The persisted prefix remains unchanged so existing encrypted secrets keep
 	// their AES-GCM associated-data binding. The public provider contract is
@@ -46,8 +47,8 @@ type definition struct {
 var orderedDefinitions = []definition{
 	{Key: ActiveProviderKey, Default: "none", Public: true, Mutable: true, Normalize: member("none", "cloudflare_ai_gateway", "openai_compatible", "aliyun_bailian")},
 	{Key: CloudflareAccountIDKey, Default: "", Public: true, Mutable: true, Normalize: cloudflareAccountID},
-	{Key: CloudflareDefaultModelKey, Default: CloudflareModelTerra, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelTerra, CloudflareModelSol}},
-	{Key: CloudflareDefaultImageModelKey, Default: CloudflareModelTerra, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelTerra, CloudflareModelSol}},
+	{Key: CloudflareDefaultModelKey, Default: CloudflareModelGPT6Sol, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelGPT6Sol, CloudflareModelTerra, CloudflareModelSol}},
+	{Key: CloudflareDefaultImageModelKey, Default: CloudflareModelGPT6Sol, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelGPT6Sol, CloudflareModelTerra, CloudflareModelSol}},
 	{Key: CloudflareAPITokenKey, Default: nil, Secret: true, Public: true, Mutable: true, Normalize: requiredString(8192)},
 	{Key: BailianWorkspaceKey, Default: "", Public: true, Mutable: true, Normalize: workspaceID},
 	{Key: BailianRegionKey, Default: "cn-beijing", Public: true, Mutable: true, Normalize: member("cn-beijing", "ap-southeast-1", "eu-central-1", "ap-northeast-1")},

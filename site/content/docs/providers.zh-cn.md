@@ -29,7 +29,7 @@ Lumi 会使用内置的文本和图片模型配置。填写信息后选择“连
 - Cloudflare Account ID
 - Cloudflare API Token
 
-接口地址由 Lumi 根据 Account ID 固定生成，使用 Responses API。默认文本模型和图片模型均为 `openai/gpt-5.6-terra`，可分别在下拉框中选择 Terra 或 `openai/gpt-5.6-sol`。API Token 需要 Account → Workers AI → Read 权限。升级后若提示需要验证，重新保存并验证即可。
+接口地址由 Lumi 根据 Account ID 固定生成，使用 Responses API。默认文本模型和图片模型均为 `openai/gpt-6-sol`，也可分别在下拉框中选择 `openai/gpt-5.6-terra` 或 `openai/gpt-5.6-sol`。API Token 需要 Account → Workers AI → Read 权限。升级后若提示需要验证，重新保存并验证即可。
 
 ## 保存并验证连接
 

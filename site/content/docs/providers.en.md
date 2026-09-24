@@ -29,7 +29,7 @@ Prepare:
 - A Cloudflare Account ID
 - A Cloudflare API token
 
-Lumi derives the Responses API endpoint from the Account ID. Text and image models each default to `openai/gpt-5.6-terra`. You can independently choose Terra or `openai/gpt-5.6-sol` from the dropdowns. The token needs Account → Workers AI → Read permission. If verification is requested after an upgrade, save and verify the connection again.
+Lumi derives the Responses API endpoint from the Account ID. Text and image models each default to `openai/gpt-6-sol`. You can independently choose `openai/gpt-5.6-terra` or `openai/gpt-5.6-sol` from the dropdowns instead. The token needs Account → Workers AI → Read permission. If verification is requested after an upgrade, save and verify the connection again.
 
 ## Save and verify
 

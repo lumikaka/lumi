@@ -38,8 +38,8 @@ test('initial setup keeps the provider list and dialog on the dedicated setup UR
   assert.match(messages, /'settings\.provider\.connect_start': \['连接并开始使用'/)
 })
 
-test('Cloudflare text and image defaults offer Terra and Sol in setup and settings', () => {
-  assert.match(source, /const CLOUDFLARE_MODELS = \['openai\/gpt-5\.6-terra', 'openai\/gpt-5\.6-sol'\]/)
+test('Cloudflare text and image defaults offer all supported models in setup and settings', () => {
+  assert.match(source, /const CLOUDFLARE_MODELS = \['openai\/gpt-6-sol', 'openai\/gpt-5\.6-terra', 'openai\/gpt-5\.6-sol'\]/)
   assert.match(source, /<select \{\.\.\.field\('default_model'\)\}/)
   assert.match(source, /<select \{\.\.\.field\('default_image_model'\)\}/)
   assert.match(source, /default_model: provider\.default_model \|\| CLOUDFLARE_MODELS\[0\]/)

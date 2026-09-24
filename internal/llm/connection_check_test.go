@@ -20,6 +20,7 @@ func TestConnectionChecksUseIndependentProviderRequests(t *testing.T) {
 	}{
 		{"cloudflare", provider.TypeCloudflareAIGateway, cloudflareURL, "openai/gpt-5.6-terra", "", "max_output_tokens", false, 512},
 		{"cloudflare gpt5", provider.TypeCloudflareAIGateway, cloudflareURL, "openai/gpt-5.6-sol", "", "max_output_tokens", false, 512},
+		{"cloudflare gpt6", provider.TypeCloudflareAIGateway, cloudflareURL, "openai/gpt-6-sol", "", "max_output_tokens", false, 512},
 		{"workers ai", provider.TypeCloudflareAIGateway, cloudflareURL, "@cf/openai/gpt-oss-120b", "default", "max_output_tokens", false, 512},
 		{"bailian", provider.TypeAliyunBailian, "https://ws-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", provider.BailianTextModel, "", "max_tokens", true, 1},
 	} {

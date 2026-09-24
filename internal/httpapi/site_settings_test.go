@@ -39,7 +39,7 @@ func TestSiteSettingsAPIEncryptsSecretsValidatesKeysAndResets(t *testing.T) {
 		t.Fatalf("update response=%d %s", updated.Code, updated.Body.String())
 	}
 	for _, key := range []string{"ai_providers.openai_compatible.default_model", "ai_providers.openai_compatible.default_image_model"} {
-		selected := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{key: "openai/gpt-5.6-sol"}})
+		selected := requestJSON(t, e, "PATCH", "/api/v1/site-settings", map[string]any{"settings": map[string]any{key: "openai/gpt-6-sol"}})
 		if selected.Code != 200 {
 			t.Fatalf("model selection failed: %s", selected.Body.String())
 		}

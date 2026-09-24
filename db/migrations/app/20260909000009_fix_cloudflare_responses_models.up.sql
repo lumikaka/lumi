@@ -1,4 +1,4 @@
--- Preserve supported selections; older models fall back to the Terra default.
+-- Preserve supported selections; older models fall back to the current application default.
 DELETE FROM site_settings WHERE key IN (
     'ai_providers.openai_compatible.default_model',
     'ai_providers.openai_compatible.default_image_model'

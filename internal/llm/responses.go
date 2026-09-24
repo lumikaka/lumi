@@ -19,7 +19,7 @@ func responsesPayload(model string, input []any, temperature *float64, maxTokens
 	if maxTokens > 0 {
 		payload["max_output_tokens"] = maxTokens
 	}
-	if temperature != nil && !openAIGPT5Model(model) {
+	if temperature != nil && !openAIReasoningModel(model) {
 		payload["temperature"] = *temperature
 	}
 	return payload

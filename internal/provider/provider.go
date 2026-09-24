@@ -95,7 +95,7 @@ func SupportedImageModels(item Provider) []string {
 }
 
 func appendCloudflareModels(models []string, defaultModel string) []string {
-	for _, model := range []string{sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol} {
+	for _, model := range []string{sitesettings.CloudflareModelGPT6Sol, sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol} {
 		if model != defaultModel {
 			models = append(models, model)
 		}

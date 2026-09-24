@@ -23,8 +23,8 @@ func TestSupportedImageModelsPreservesProviderDefaults(t *testing.T) {
 	}{
 		{"bailian", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: BailianImageModel}, []string{BailianImageModel, BailianImageModelPro}},
 		{"pro default is not duplicated", Provider{ProviderType: TypeAliyunBailian, DefaultImageModel: " " + BailianImageModelPro + " "}, []string{BailianImageModelPro}},
-		{"cloudflare", Provider{ProviderType: TypeCloudflareAIGateway, DefaultImageModel: " cloud/image "}, []string{"cloud/image", sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
-		{"unconfigured cloudflare", Provider{ProviderType: TypeCloudflareAIGateway}, []string{sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
+		{"cloudflare", Provider{ProviderType: TypeCloudflareAIGateway, DefaultImageModel: " cloud/image "}, []string{"cloud/image", sitesettings.CloudflareModelGPT6Sol, sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
+		{"unconfigured cloudflare", Provider{ProviderType: TypeCloudflareAIGateway}, []string{sitesettings.CloudflareModelGPT6Sol, sitesettings.CloudflareModelTerra, sitesettings.CloudflareModelSol}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := SupportedImageModels(test.item); !slices.Equal(got, test.want) {

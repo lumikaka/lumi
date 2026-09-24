@@ -29,7 +29,7 @@ func TestSettingsSnapshotIsReadThroughAndMutationRefreshesIt(t *testing.T) {
 	ctx := context.Background()
 	store, _, service := testService(t)
 	first, err := service.Value(ctx, CloudflareDefaultModelKey)
-	if err != nil || first != "openai/gpt-5.6-terra" {
+	if err != nil || first != CloudflareModelGPT6Sol {
 		t.Fatalf("first value=%v error=%v", first, err)
 	}
 	// A direct database write is deliberately invisible: all legitimate writes
@@ -38,7 +38,7 @@ func TestSettingsSnapshotIsReadThroughAndMutationRefreshesIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	stillCached, _ := service.Value(ctx, CloudflareDefaultModelKey)
-	if stillCached != "openai/gpt-5.6-terra" {
+	if stillCached != CloudflareModelGPT6Sol {
 		t.Fatalf("read-through cache was reloaded unexpectedly: %v", stillCached)
 	}
 	if _, _, err := service.UpdateSystem(ctx, map[string]any{CloudflareDefaultModelKey: "test/updated"}); err != nil {
@@ -168,15 +168,15 @@ func TestMasterKeyCacheConcurrentLoadRetryAndMissingKeyProtection(t *testing.T) 
 	}
 }
 
-func TestCloudflareModelSelectionIsRestrictedToTerraAndSol(t *testing.T) {
+func TestCloudflareModelSelectionIsRestrictedToSupportedModels(t *testing.T) {
 	_, _, service := testService(t)
 	ctx := context.Background()
 	for _, key := range []string{CloudflareDefaultModelKey, CloudflareDefaultImageModelKey} {
 		value, err := service.Value(ctx, key)
-		if err != nil || value != CloudflareModelTerra {
+		if err != nil || value != CloudflareModelGPT6Sol {
 			t.Fatalf("%s=%v error=%v", key, value, err)
 		}
-		for _, model := range []string{CloudflareModelSol, CloudflareModelTerra} {
+		for _, model := range []string{CloudflareModelSol, CloudflareModelTerra, CloudflareModelGPT6Sol} {
 			if _, _, err := service.Update(ctx, map[string]any{key: model}); err != nil {
 				t.Fatal(err)
 			}

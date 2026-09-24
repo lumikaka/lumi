@@ -87,12 +87,12 @@ func TestCloudflareModelsUseGatewaySpecificRequestOptions(t *testing.T) {
 			t.Fatal(err)
 		}
 		if payload["max_output_tokens"] != float64(12) || payload["max_tokens"] != nil || payload["temperature"] != nil {
-			t.Fatalf("GPT-5 payload = %+v", payload)
+			t.Fatalf("reasoning model payload = %+v", payload)
 		}
 		return response(http.StatusOK, "application/json", responsesOK), nil
 	})})
 	temperature := 0.2
-	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "openai/gpt-5.5", Prompt: "ping", MaxTokens: 12, Temperature: &temperature}, nil); err != nil {
+	if _, err := client.Generate(context.Background(), Request{ProviderType: "cloudflare_ai_gateway", BaseURL: "https://api.cloudflare.com/client/v4/accounts/test/ai/v1", APIKey: "secret", Model: "openai/gpt-6-sol", Prompt: "ping", MaxTokens: 12, Temperature: &temperature}, nil); err != nil {
 		t.Fatal(err)
 	}
 
