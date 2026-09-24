@@ -421,7 +421,7 @@ function ChatItem({ item, projectUuid, pictureBook, onProjectReferenceNavigate }
   }
 
   if (item.role === 'user') {
-    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact pictureBook={pictureBook} /></div></article>
+    return <article className="chat-message chat-message--user"><div className="chat-message__user-bubble"><p>{item.content}</p><ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact previewImages pictureBook={pictureBook} /></div></article>
   }
 
   return (
@@ -619,7 +619,7 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
         const title = workflowStepTitle(workflow, step, pictureBook, term, t)
         return (
           <li key={step.uuid} className={`workflow-step workflow-step--${step.status}`}>
-            <button type="button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
+            <button type="button" className="workflow-step__button" aria-pressed={diagnosticStepUuid === step.uuid} aria-label={t('chat.workflow.open_step_details', { title })} onClick={() => openStepDiagnostics(step.uuid)}>
               <span aria-hidden="true">{step.status === 'completed' ? '✓' : step.status === 'running' || step.status === 'waiting' ? '●' : step.status === 'failed' ? '!' : '○'}</span>
               <div><strong>{title}</strong><small>{imageBatch ? <ImageTaskProgress task={step} /> : <>{workflowStatusCopy[step.status] ? t(workflowStatusCopy[step.status]) : t('common.status.unknown_with_code', { code: step.status })} · {Math.min(100, Math.max(0, Number(step.progress) || 0))}%</>}</small></div>
               {step.resource_uuid ? <code>{step.resource_uuid.slice(0, 10)}</code> : null}
@@ -777,7 +777,7 @@ function FollowUpQueue({ projectUuid, pictureBook, items, pending, canSteer, not
             <div className="chat-queue__body">
               {editingUuid === item.uuid ? <form className="chat-queue__edit" onSubmit={(event) => { event.preventDefault(); saveEditing() }}><input autoFocus value={editingText} onChange={(event) => setEditingText(event.target.value)} maxLength="262144" aria-label={t('chat.queue.edit_label')} /><button type="submit" disabled={pending || !editingText.trim()} aria-label={t('common.action.save')}><Check size={14} /></button><button type="button" onClick={() => setEditingUuid('')} aria-label={t('common.action.cancel')}><X size={14} /></button></form> : <p title={item.input_text}>{item.input_text}</p>}
               <small>{t('chat.queue.item', { time: formatDateTime(item.created_at, { hour: '2-digit', minute: '2-digit' }) })}{item.references?.length ? ` · ${t('chat.reference.count_short', { count: item.references.length })}` : ''}</small>
-              <ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact pictureBook={pictureBook} />
+              <ReferenceStrip projectUuid={projectUuid} references={item.references || []} compact previewImages pictureBook={pictureBook} />
             </div>
             <div className="chat-queue__actions">
               <button type="button" disabled={pending || editingUuid === item.uuid} onClick={() => startEditing(item)} aria-label={t('chat.queue.edit')}><Pencil size={14} /></button>

@@ -198,6 +198,8 @@ export const chat = defineMessages({
   'chat.reference.uploading': ['正在上传并完成文件…', 'Uploading and finalizing…'],
   'chat.reference.upload_failed': ['上传失败', 'Upload failed'],
   'chat.reference.remove': ['移除引用“{title}”', 'Remove reference “{title}”'],
+  'chat.reference.preview_image': ['查看引用图片“{title}”', 'Preview reference image “{title}”'],
+  'chat.reference.image_preview': ['引用图片“{title}”', 'Reference image “{title}”'],
   'chat.reference.premise_assets': ['设定项', 'Premise items'],
   'chat.reference.chapters': ['章节', 'Chapters'],
   'chat.reference.comic_sections': ['画面段落', 'Visual sections'],

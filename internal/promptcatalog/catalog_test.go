@@ -370,8 +370,8 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "7b5e35fedb00ebb2311ab5d21282097e7f15064bbe26979fe4da96808c757211",
-		LanguageEnglish: "73446ef9465a1c7979e9bec5caff634588ddcdd359b1bbb9841600e7b4f3be67",
+		LanguageChinese: "0ae3dc33e542a69ad2ea22c9b28a537026f4e26a11886599e41f20cfb7061692",
+		LanguageEnglish: "8e1476e039fe7a94315df92756b5c3ea1b7d75445bbd93981d4e03dd38332945",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
@@ -388,6 +388,26 @@ func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 		got := hex.EncodeToString(hasher.Sum(nil))
 		if got != expected[language] {
 			t.Errorf("vertical strip %s prompt suite SHA-256=%s", language, got)
+		}
+	}
+}
+
+func TestSectionPremiseSelectionUsesJSONCandidatesAndMigratesPreviousDefault(t *testing.T) {
+	for _, test := range []struct {
+		language, currentMarker, previousMarker string
+	}{
+		{LanguageChinese, "## 候选设定项（JSON 数组）", "## 可选设定项标题"},
+		{LanguageEnglish, "## Available setting item candidates (JSON array)", "## Available setting item titles"},
+	} {
+		definition, ok := Lookup(GroupChapter, "section_premise_selection", test.language)
+		if !ok {
+			t.Fatalf("%s missing section_premise_selection", test.language)
+		}
+		if !strings.Contains(definition.DefaultValue, test.currentMarker) || len(definition.PreviousDefaultValues) != 1 || !strings.Contains(definition.PreviousDefaultValues[0], test.previousMarker) {
+			t.Fatalf("%s selection prompt migration defaults are incomplete", test.language)
+		}
+		if !reflect.DeepEqual(Placeholders(definition.DefaultValue), Placeholders(definition.PreviousDefaultValues[0])) {
+			t.Fatalf("%s selection prompt placeholders changed", test.language)
 		}
 	}
 }

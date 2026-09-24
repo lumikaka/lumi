@@ -212,7 +212,7 @@ const backCoverBeforeImagePromptEN = `## Back-cover Image-generation Rules
 6. Body-page rules for wordlessness, narrative-sentence count, interactive questions, comic-panel count, or continuous plot progression do not apply to the back cover. Follow the storyboard's back-cover composition and explicit copy instead.
 7. When setting references are present, use them only for subject identity and visual features; never copy the reference collage grid.`
 
-const settingSelectionPromptZH = `你是漫画设定项选择器。请根据当前 storyboard，从给定的 comic-settings 设定项标题中选出本 section 会实际涉及的设定元素。
+const settingSelectionPromptZHPrevious = `你是漫画设定项选择器。请根据当前 storyboard，从给定的 comic-settings 设定项标题中选出本 section 会实际涉及的设定元素。
 
 规则：
 - 只能选择“可选设定项标题”列表中真实存在的标题。
@@ -240,7 +240,7 @@ JSON 格式：
 ## Storyboard
 {{storyboard}}`
 
-const settingSelectionPromptEN = `You are a comic setting-asset selector. Based on the current storyboard, select the setting elements from the given comic-settings titles that this section actually involves.
+const settingSelectionPromptENPrevious = `You are a comic setting-asset selector. Based on the current storyboard, select the setting elements from the given comic-settings titles that this section actually involves.
 
 Rules:
 - Select only real titles from the "Available setting item titles" list.
@@ -263,6 +263,64 @@ JSON format:
 {{section_id}}
 
 ## Available setting item titles
+{{titles}}
+
+## Storyboard
+{{storyboard}}`
+
+const settingSelectionPromptZH = `你是漫画设定项选择器。请根据当前 storyboard，从给定的 comic-settings 候选设定项中选出本 section 会实际涉及的设定元素。
+
+规则：
+- 候选设定项是 JSON 数组；每个对象的 title 才是可选标题，asset_type、reference_role 和 summary 只是辅助判断的元数据。
+- titles 中的每个元素必须只包含某个候选对象的 title 字符串，不得返回整个对象，也不得附加元数据。
+- 不要创造新标题，不要返回文件名或路径。
+- 优先选择 storyboard 直接提到的人物、神灵、怪物、场景、阵营、道具和关键视觉设定。
+- 不要因为整体风格相似就选择无关元素。
+- 最多选择 {{max_files}} 个标题；如果只需要更少，就返回更少。
+- 只输出 JSON，不要代码块，不要解释过程。
+- titles 必须从候选对象的 title 字段中原样复制，不要为了适配项目语言而翻译或改写。
+- reason 必须使用当前项目语言；JSON key 保持示例中的英文 key。
+
+JSON 格式：
+{
+  "sectionId": "{{section_id}}",
+  "titles": ["设定项标题"],
+  "reason": "一句话说明选择依据"
+}
+
+## Section
+{{section_id}}
+
+## 候选设定项（JSON 数组）
+{{titles}}
+
+## Storyboard
+{{storyboard}}`
+
+const settingSelectionPromptEN = `You are a comic setting-asset selector. Based on the current storyboard, select the setting elements from the given comic-settings candidates that this section actually involves.
+
+Rules:
+- The candidates are a JSON array. Only each object's title field is a selectable title; asset_type, reference_role, and summary are metadata for making the decision.
+- Every titles element must contain only the title string from one candidate object. Do not return the whole object or append any metadata.
+- Do not invent new titles, and do not return filenames or paths.
+- Prefer characters, deities, monsters, scenes, factions, props, and key visual settings directly mentioned by the storyboard.
+- Do not select unrelated elements only because the overall style is similar.
+- Select at most {{max_files}} titles; if fewer are needed, return fewer.
+- Output only JSON. Do not include code blocks or explanations.
+- Copy titles exactly from candidate title fields; do not translate or rewrite them to fit the project language.
+- reason must use the current project language; JSON keys must remain the English keys shown in the example.
+
+JSON format:
+{
+  "sectionId": "{{section_id}}",
+  "titles": ["setting item title"],
+  "reason": "one-sentence reason for the selection"
+}
+
+## Section
+{{section_id}}
+
+## Available setting item candidates (JSON array)
 {{titles}}
 
 ## Storyboard
@@ -439,11 +497,13 @@ func chapterDefinitions(language string) []Definition {
 	coverStoryboard := coverStoryboardPrevious + "\n" + choose(coverStoryboardHeadingsZH, coverStoryboardHeadingsEN)
 	coverStoryboardDefinition := meta("cover_storyboard", "绘本封面分镜", "根据绘本标题、故事和正文第一页生成封面 storyboard。", "Picture-book cover storyboard", "Generate a front-cover storyboard from the picture-book title, story, and first body page.", PromptTypeTemplate, coverStoryboard)
 	coverStoryboardDefinition.PreviousDefaultValues = []string{coverStoryboardPrevious}
+	settingSelectionDefinition := meta("section_premise_selection", "Section 设定项选择", "根据当前 section storyboard 从 Premise 设定项中选择参考文件。", "Section setting asset selection", "Select reference files from Premise setting assets according to the current section storyboard.", PromptTypeTemplate, choose(settingSelectionPromptZH, settingSelectionPromptEN))
+	settingSelectionDefinition.PreviousDefaultValues = []string{choose(settingSelectionPromptZHPrevious, settingSelectionPromptENPrevious)}
 	return []Definition{
 		meta("json_system", "JSON 系统提示词", "约束漫画分集脚本生成任务只返回 JSON object。", "JSON system prompt", "Constrains comic episode script generation tasks to return only a JSON object.", PromptTypeTemplate, jsonSystemPrompt),
 		meta("comic_storyboard", "漫画分集脚本", "从章节正文或输入文本生成手机竖向条漫的 section storyboard。", "Comic episode script", "Generate section storyboards for a vertical mobile scrolling comic from chapter prose or input text.", PromptTypeTemplate, choose(comicStoryboardPromptZH, comicStoryboardPromptEN)),
 		coverStoryboardDefinition,
-		meta("section_premise_selection", "Section 设定项选择", "根据当前 section storyboard 从 Premise 设定项中选择参考文件。", "Section setting asset selection", "Select reference files from Premise setting assets according to the current section storyboard.", PromptTypeTemplate, choose(settingSelectionPromptZH, settingSelectionPromptEN)),
+		settingSelectionDefinition,
 		meta("before_image", "Section 图片基础规则", "组合进 Section 图片模板的基础生成规则。", "Section image base rules", "Base generation rules composed into the Section image template.", PromptTypeFragment, before),
 		meta("cover_before_image", "封面图片基础规则", "生成 front cover 图片时替代正文页面基础规则。", "Front-cover image base rules", "Replace body-page base rules when generating a front-cover image.", PromptTypeFragment, choose(coverBeforeImagePromptZH, coverBeforeImagePromptEN)),
 		meta("back_cover_before_image", "封底图片基础规则", "生成 back cover 图片时替代正文页面基础规则。", "Back-cover image base rules", "Replace body-page base rules when generating a back-cover image.", PromptTypeFragment, choose(backCoverBeforeImagePromptZH, backCoverBeforeImagePromptEN)),

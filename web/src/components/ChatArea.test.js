@@ -149,6 +149,13 @@ test('workflow diagnostics load only while open and rely on project realtime rec
   assert.match(diagnostics, /logsQuery\.fetchNextPage\(\)/)
 })
 
+test('workflow step buttons avoid the global unclassed primary-button styles', () => {
+  const workflowStepStyles = stylesSource.slice(stylesSource.indexOf('.workflow-step\n'), stylesSource.indexOf('.workflow-error\n'))
+  assert.match(source, /<button type="button" className="workflow-step__button" aria-pressed=\{diagnosticStepUuid === step\.uuid\}/)
+  assert.match(workflowStepStyles, /> \.workflow-step__button[\s\S]*?&:hover,[\s\S]*?&:focus-visible/)
+  assert.doesNotMatch(workflowStepStyles, /> button\s/)
+})
+
 test('inline workflows render inside their origin turn without replacing conversation thread identity', () => {
 	assert.match(source, /groupInlineWorkflowsByTurn\(workflows, selectedThreadUuid\)/)
 	assert.match(source, /workflows: inlineWorkflowsByTurn\.get\(group\.uuid\) \|\| \[\]/)

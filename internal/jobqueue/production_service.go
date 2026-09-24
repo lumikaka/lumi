@@ -566,26 +566,31 @@ func premiseAssetReference(asset production.PremiseAsset) production.PremiseAsse
 	}
 }
 
-func premiseCandidateLines(candidates []production.PremiseAssetReference) string {
+func premiseCandidateJSON(candidates []production.PremiseAssetReference) string {
 	const maximumRunes = 24_000
-	lines := make([]string, 0, len(candidates))
-	used := 0
+	type candidateJSON struct {
+		Title         string `json:"title"`
+		AssetType     string `json:"asset_type"`
+		ReferenceRole string `json:"reference_role,omitempty"`
+		Summary       string `json:"summary,omitempty"`
+	}
+	items := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		line := fmt.Sprintf("- %s | asset_type=%s", candidate.Title, candidate.AssetType)
-		if candidate.ReferenceRole != "" {
-			line += " | reference_role=" + candidate.ReferenceRole
+		encoded, err := json.Marshal(candidateJSON{Title: candidate.Title, AssetType: candidate.AssetType, ReferenceRole: candidate.ReferenceRole, Summary: candidate.Summary})
+		if err != nil {
+			continue
 		}
-		if candidate.Summary != "" {
-			line += " | summary=" + candidate.Summary
-		}
-		length := len([]rune(line)) + 1
-		if used+length > maximumRunes {
+		entry := "  " + string(encoded)
+		proposed := "[\n" + strings.Join(append(items, entry), ",\n") + "\n]"
+		if len([]rune(proposed)) > maximumRunes {
 			break
 		}
-		lines = append(lines, line)
-		used += length
+		items = append(items, entry)
 	}
-	return strings.Join(lines, "\n")
+	if len(items) == 0 {
+		return "[]"
+	}
+	return "[\n" + strings.Join(items, ",\n") + "\n]"
 }
 
 func comicImageBatchTaskKey(batchKey, sectionUUID string) string {
@@ -743,7 +748,7 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 		}
 	}
 	selectionPrompt, err := promptcatalog.Render(selectionTemplate, map[string]string{
-		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateLines(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
+		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateJSON(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
 	})
 	if err != nil {
 		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)

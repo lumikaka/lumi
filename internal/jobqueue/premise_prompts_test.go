@@ -1,6 +1,7 @@
 package jobqueue
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -44,9 +45,9 @@ func TestReferenceImageRejectionClassificationIsExplicit(t *testing.T) {
 	}
 }
 
-func TestPremiseSelectionCandidatesDescribeTypeRoleAndBoundedSummary(t *testing.T) {
+func TestPremiseSelectionCandidatesAreBoundedJSONObjectArray(t *testing.T) {
 	asset := production.PremiseAsset{
-		UUID: "asset", AssetType: "reference", Title: "Moonlight watercolor", Summary: strings.Repeat("水", 400),
+		UUID: "asset", AssetType: "reference", Title: "Moonlight | \"watercolor\"\nportrait", Summary: strings.Repeat("水", 400),
 		Tags:           []string{"project-creation-reference", "reference-role-style"},
 		CurrentVariant: &production.AssetVariant{UUID: "variant", Asset: files.Asset{UUID: "file"}},
 	}
@@ -54,19 +55,30 @@ func TestPremiseSelectionCandidatesDescribeTypeRoleAndBoundedSummary(t *testing.
 	if reference.AssetType != "reference" || reference.ReferenceRole != "style" || len([]rune(reference.Summary)) != 240 {
 		t.Fatalf("candidate reference=%+v", reference)
 	}
-	line := premiseCandidateLines([]production.PremiseAssetReference{reference})
-	for _, expected := range []string{"Moonlight watercolor", "asset_type=reference", "reference_role=style", "summary="} {
-		if !strings.Contains(line, expected) {
-			t.Fatalf("candidate line missing %q: %s", expected, line)
-		}
+	raw := premiseCandidateJSON([]production.PremiseAssetReference{reference})
+	var decoded []struct {
+		Title         string `json:"title"`
+		AssetType     string `json:"asset_type"`
+		ReferenceRole string `json:"reference_role"`
+		Summary       string `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
+		t.Fatalf("candidate JSON is invalid: %v\n%s", err, raw)
+	}
+	if len(decoded) != 1 || decoded[0].Title != reference.Title || decoded[0].AssetType != "reference" || decoded[0].ReferenceRole != "style" || decoded[0].Summary != reference.Summary {
+		t.Fatalf("candidate JSON=%+v", decoded)
 	}
 	candidates := make([]production.PremiseAssetReference, 200)
 	for index := range candidates {
 		candidates[index] = reference
 		candidates[index].Title = strings.Repeat("T", 160)
 	}
-	bounded := premiseCandidateLines(candidates)
-	if len([]rune(bounded)) > 24_000 || len(strings.Split(bounded, "\n")) >= len(candidates) {
-		t.Fatalf("candidate prompt was not bounded: runes=%d lines=%d", len([]rune(bounded)), len(strings.Split(bounded, "\n")))
+	bounded := premiseCandidateJSON(candidates)
+	var boundedDecoded []map[string]string
+	if err := json.Unmarshal([]byte(bounded), &boundedDecoded); err != nil {
+		t.Fatalf("bounded candidate JSON is invalid: %v", err)
+	}
+	if len([]rune(bounded)) > 24_000 || len(boundedDecoded) >= len(candidates) {
+		t.Fatalf("candidate prompt was not bounded: runes=%d candidates=%d", len([]rune(bounded)), len(boundedDecoded))
 	}
 }

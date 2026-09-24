@@ -8,6 +8,7 @@ import { MAX_PROJECT_CHAT_REFERENCES, referenceKey } from '../pages/projectChatA
 import { formatTerminologyKey, isVerticalStripPictureBook } from '../pages/pictureBookProfile.js'
 import { comicPageFallbackTitle, comicPageLabel } from '../pages/comicPageRoles.js'
 import { useI18n } from '../i18n/useI18n.js'
+import LumiDialog from './LumiDialog.jsx'
 
 function snapshotOf(reference) {
   if (reference?.snapshot && typeof reference.snapshot === 'object') return reference.snapshot
@@ -49,23 +50,39 @@ function referenceImageUrl(projectUuid, reference) {
   return fileUuid ? `/media/projects/${encodeURIComponent(projectUuid)}/assets/${encodeURIComponent(fileUuid)}/content` : ''
 }
 
-export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemove, compact = false, pictureBook }) {
+export function ReferenceStrip({ projectUuid, references = [], onRemove, canRemove, compact = false, previewImages = false, pictureBook }) {
   const { t } = useI18n()
+  const [imagePreview, setImagePreview] = useState(null)
   if (!references.length) return null
   return (
-    <div className={`chat-reference-strip${compact ? ' chat-reference-strip--compact' : ''}`} aria-label={t('chat.reference.selected')}>
-      {references.map((reference) => {
-        const imageUrl = reference.previewUrl || referenceImageUrl(projectUuid, reference)
-        const title = referenceTitle(reference, t('chat.reference.untitled'))
-        return (
-          <span className={`chat-reference-chip chat-reference-chip--${reference.status || 'ready'}`} key={reference.localId || referenceKey(reference)} title={title}>
-            {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : <span className="chat-reference-chip__icon">{['chapter', 'comic_section'].includes(reference.resource_type) ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
-            <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t, pictureBook)}</small></span>
-            {onRemove && (!canRemove || canRemove(reference)) ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
-          </span>
-        )
-      })}
-    </div>
+    <>
+      <div className={`chat-reference-strip${compact ? ' chat-reference-strip--compact' : ''}`} aria-label={t('chat.reference.selected')}>
+        {references.map((reference) => {
+          const imageUrl = reference.previewUrl || referenceImageUrl(projectUuid, reference)
+          const title = referenceTitle(reference, t('chat.reference.untitled'))
+          return (
+            <span className={`chat-reference-chip chat-reference-chip--${reference.status || 'ready'}`} key={reference.localId || referenceKey(reference)} title={title}>
+              {imageUrl
+                ? compact && previewImages
+                  ? <button className="chat-reference-chip__image" type="button" aria-haspopup="dialog" aria-label={t('chat.reference.preview_image', { title })} onClick={() => setImagePreview({ imageUrl, title })}><img src={imageUrl} alt="" loading="lazy" /></button>
+                  : <img src={imageUrl} alt="" loading="lazy" />
+                : <span className="chat-reference-chip__icon">{['chapter', 'comic_section'].includes(reference.resource_type) ? <BookOpen size={14} /> : reference.resource_type === 'premise_asset' ? <Layers3 size={14} /> : <Image size={14} />}</span>}
+              <span className="chat-reference-chip__copy"><b>{title}</b><small>{reference.status === 'uploading' ? t('chat.reference.uploading') : reference.status === 'error' ? t('chat.reference.upload_failed') : referenceTypeLabel(reference, t, pictureBook)}</small></span>
+              {onRemove && (!canRemove || canRemove(reference)) ? <button type="button" onClick={() => onRemove(reference.localId || referenceKey(reference))} aria-label={t('chat.reference.remove', { title })}><X size={12} /></button> : null}
+            </span>
+          )
+        })}
+      </div>
+      {imagePreview ? (
+        <LumiDialog className="chat-reference-preview-dialog" aria-label={t('chat.reference.image_preview', { title: imagePreview.title })} onClose={() => setImagePreview(null)}>
+          <header className="chat-reference-preview-dialog__header">
+            <h2>{imagePreview.title}</h2>
+            <button type="button" aria-label={t('common.action.close')} onClick={() => setImagePreview(null)}><X size={18} aria-hidden="true" /></button>
+          </header>
+          <div className="chat-reference-preview-dialog__media"><img src={imagePreview.imageUrl} alt={imagePreview.title} /></div>
+        </LumiDialog>
+      ) : null}
+    </>
   )
 }
 
