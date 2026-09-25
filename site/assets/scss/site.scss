@@ -517,9 +517,9 @@ img, svg { display: block; max-width: 100%; }
 .docs-layout { min-height: 100vh; display: grid; grid-template-columns: 272px minmax(0, 800px) 240px; justify-content: center; background: var(--surface-soft); }
 .docs-sidebar { position: sticky; top: 0; height: 100vh; padding: 22px 18px; border-right: 1px solid var(--line); background: var(--paper-deep); overflow-y: auto; z-index: 70; }
 .docs-sidebar__top { display: flex; align-items: center; justify-content: space-between; }
-.docs-sidebar__close { display: none; }
 .icon-button { width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); display: grid; place-items: center; font-size: 24px; cursor: pointer; }
 .icon-button:hover { background: var(--yellow-soft); }
+.docs-sidebar__close { display: none; }
 .docs-search-button { width: 100%; min-height: 44px; margin: 23px 0 26px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(255,255,255,.7); color: var(--ink-soft); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; text-align: left; font-size: 13px; cursor: pointer; }
 .docs-search-button:hover { border-color: #bfb6a7; background: #fff; color: var(--ink); }
 kbd { padding: 2px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--surface); color: var(--ink-soft); font-family: inherit; font-size: 10px; }
