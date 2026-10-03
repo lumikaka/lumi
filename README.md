@@ -143,6 +143,8 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 需要 Go 1.25+、Node.js 26+、pnpm 11.16+；一键开发额外需要 tmux。
 
+Codex Cloud 的仓库选择、依赖安装和服务启动配置见 [云环境配置](docs/codex-cloud.md)。
+
 ```bash
 cp .env.example .env
 make deps
