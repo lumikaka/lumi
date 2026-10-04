@@ -2289,6 +2289,106 @@ $sage: $color-success
   display: grid
   gap: 10px
 
+.overview-model-limits__header,
+.overview-model-limits__rule
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+
+.overview-model-limits__header
+  > button
+    flex: 0 0 auto
+    white-space: nowrap
+
+  p
+    margin: 5px 0 0
+    color: $color-muted
+    font-size: 12px
+    line-height: 1.5
+
+.overview-model-limits__list
+  display: grid
+  gap: 8px
+
+.overview-model-limits__rule,
+.overview-model-limits__editor
+  padding: 12px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+.overview-model-limits__rule
+  min-width: 0
+
+  strong,
+  span
+    display: block
+    overflow-wrap: anywhere
+
+  span
+    margin-top: 4px
+    color: $color-muted
+    font-size: 12px
+
+.overview-model-limits__actions
+  display: flex
+  align-items: center
+  justify-content: flex-end
+  gap: 8px
+
+.overview-model-limits__editor
+  display: grid
+  grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr) repeat(2, minmax(90px, 1fr))
+  align-items: end
+  gap: 10px
+  margin-top: 12px
+
+  label
+    display: grid
+    gap: 5px
+    min-width: 0
+    font-size: 12px
+    font-weight: $font-weight-semibold
+
+  select,
+  input
+    width: 100%
+    min-width: 0
+
+  > strong
+    grid-column: 1 / 3
+    align-self: center
+    overflow-wrap: anywhere
+
+  .overview-model-limits__actions,
+  .overview-model-limits__validation
+    grid-column: 1 / -1
+
+.overview-model-limits__validation
+  margin: 0
+  color: #93453a
+  font-size: 12px
+
+.overview-model-limits__empty
+  margin: 0
+  color: $color-muted
+  font-size: 12px
+
+@media (max-width: 560px)
+  .overview-model-limits__header,
+  .overview-model-limits__rule
+    align-items: stretch
+    flex-direction: column
+
+  .overview-model-limits__editor
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)
+
+    > label:nth-child(1),
+    > label:nth-child(2),
+    > strong
+      grid-column: 1 / -1
+
 .overview-model-setting
   padding: 12px
   display: grid

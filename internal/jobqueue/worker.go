@@ -93,7 +93,7 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		if logErr != nil {
 			return runtime.handleWorkError(ctx, record, logErr, job.Attempt, job.MaxAttempts)
 		}
-		lease, limitErr := runtime.manager.providerLimiter.Acquire(workCtx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+		lease, limitErr := runtime.manager.providerLimiter.Acquire(workCtx, resolved.ProviderType, request.BaseURL, request.Model, providerlimit.RequestText)
 		if limitErr != nil {
 			return runtime.handleWorkError(ctx, record, limitErr, job.Attempt, job.MaxAttempts)
 		}

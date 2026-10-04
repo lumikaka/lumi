@@ -129,8 +129,8 @@ func (service *Service) GlobalModelSettings(ctx context.Context) (appstore.Globa
 	return service.app.GlobalModelSettings(ctx)
 }
 
-func (service *Service) PatchGlobalModelSettings(ctx context.Context, expectedRevision int, changes map[string]*appstore.GlobalModelSelection) (appstore.GlobalModelSettings, error) {
-	return service.app.PatchGlobalModelSettings(ctx, expectedRevision, changes)
+func (service *Service) PatchGlobalModelSettings(ctx context.Context, expectedRevision int, changes map[string]*appstore.GlobalModelSelection, limitChanges map[string]map[string]*appstore.GlobalModelRateLimit, providerLimitChanges map[string]*appstore.GlobalModelRateLimit) (appstore.GlobalModelSettings, error) {
+	return service.app.PatchGlobalModelSettings(ctx, expectedRevision, changes, limitChanges, providerLimitChanges)
 }
 
 func (service *Service) Prices() *pricing.Service {

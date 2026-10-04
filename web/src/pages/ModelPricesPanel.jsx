@@ -70,8 +70,8 @@ export default function ModelPricesPanel({ providers }) {
   const provider = providers.find((p) => p.uuid === providerUuid) || providers.find((p) => p.active) || providers[0]
   const rows = prices.filter((p) => p.provider_type === provider?.provider_type && (!p.provider_uuid || p.provider_uuid === provider?.uuid))
   const revoke = useMutation({ mutationFn: deleteModelPrice, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['model-prices'] }) })
-  return <section className="pricing-panel">
-    <header className="pricing-actions"><div><h2>{t('pricing.title')}</h2><p className="pricing-note">{t('pricing.catalog_hint')}</p></div>{provider ? <button type="button" onClick={() => setEditor({})}>{t('pricing.add')}</button> : null}</header>
+  return <section id="provider-model-prices" className="overview-card pricing-panel pricing-panel--settings">
+    <header className="overview-card__header pricing-panel__header"><div><h2>{t('pricing.title')}</h2><p>{t('pricing.catalog_hint')}</p></div>{provider ? <button type="button" onClick={() => setEditor({})}>{t('pricing.add')}</button> : null}</header>
     <LocalizedErrorMessage error={query.error || revoke.error} />
     <label>{t('settings.provider')}<select value={provider?.uuid || ''} onChange={(e) => setProviderUuid(e.target.value)}>{providers.map((p) => <option key={p.uuid} value={p.uuid}>{p.display_name}</option>)}</select></label>
     {provider ? [provider.default_model, provider.default_image_model].filter(Boolean).filter((model) => !rows.some((p) => p.active && p.model === model && p.region === (provider.region || ''))).map((model) => <p key={model} className="pricing-note">{model} · {t('pricing.missing_price')}</p>) : null}

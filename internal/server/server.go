@@ -46,6 +46,43 @@ type Application struct {
 	closeErr        error
 }
 
+func restoredProviderLimiter(ctx context.Context, store *appstore.Store) (*providerlimit.Coordinator, error) {
+	row, err := store.GlobalModelSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	limiter := providerlimit.NewCoordinator()
+	applyModelLimits(limiter, row)
+	return limiter, nil
+}
+
+func applyModelLimits(limiter *providerlimit.Coordinator, row appstore.GlobalModelSettings) {
+	limits := make([]providerlimit.ModelLimit, 0)
+	for providerType, limit := range row.ProviderRateLimits {
+		item := providerlimit.ModelLimit{Scope: providerlimit.ScopeProvider, ProviderType: providerType}
+		if limit.RPM != nil {
+			item.RPM = *limit.RPM
+		}
+		if limit.RPS != nil {
+			item.RPS = *limit.RPS
+		}
+		limits = append(limits, item)
+	}
+	for providerType, models := range row.RateLimits {
+		for model, limit := range models {
+			item := providerlimit.ModelLimit{Scope: providerlimit.ScopeModel, ProviderType: providerType, Model: model}
+			if limit.RPM != nil {
+				item.RPM = *limit.RPM
+			}
+			if limit.RPS != nil {
+				item.RPS = *limit.RPS
+			}
+			limits = append(limits, item)
+		}
+	}
+	limiter.ReplaceLimits(row.Revision, limits)
+}
+
 func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager) (*Application, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -78,7 +115,10 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	realtimeHub := realtime.NewHub(realtime.ProjectTopics{AcquirePresence: projects.AcquirePresence})
 	modelClient := llm.NewOpenAICompatibleClient(nil)
 	imageClient := imagegen.NewOpenAICompatibleClient(nil)
-	providerLimiter := providerlimit.NewCoordinator()
+	providerLimiter, err := restoredProviderLimiter(context.Background(), appStore)
+	if err != nil {
+		return nil, err
+	}
 	providerService := provider.NewService(appStore, sitesettings.NewOSMasterKeyStore())
 	if err := providerService.Prices().Seed(context.Background()); err != nil {
 		slog.Warn("model price catalog unavailable", "error", err)
@@ -114,7 +154,9 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	siteSettingsHandler := httpapi.NewSiteSettingsHandler(providerService, realtimeHub)
 	taskHandler := httpapi.NewTaskHandler(taskManager)
 	productionHandler := httpapi.NewProductionHandler(projects, taskManager, realtimeHub)
-	modelResolver := modelsettings.NewResolver(providerService)
+	modelResolver := modelsettings.NewResolver(providerService).WithRateLimitObserver(func(row appstore.GlobalModelSettings) {
+		applyModelLimits(providerLimiter, row)
+	})
 	modelSettingsHandler := httpapi.NewModelSettingsHandler(projects, modelResolver, realtimeHub)
 	projectImagePreflightHandler := httpapi.NewProjectImageGenerationPreflightHandler(projects, modelResolver)
 	filesHandler := httpapi.NewFilesHandler(projects, realtimeHub, taskManager)

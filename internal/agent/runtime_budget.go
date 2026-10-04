@@ -79,7 +79,7 @@ func (service *Service) performChatModelRequest(ctx context.Context, store *proj
 	if err != nil {
 		return llm.ChatResponse{}, err
 	}
-	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, request.Model, providerlimit.RequestText)
 	if err != nil {
 		return llm.ChatResponse{}, err
 	}

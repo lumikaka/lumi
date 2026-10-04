@@ -559,7 +559,7 @@ func (runtime *projectRuntime) callProductionText(ctx context.Context, record pr
 	if err != nil {
 		return llm.Response{}, err
 	}
-	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestText)
+	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, request.Model, providerlimit.RequestText)
 	if err != nil {
 		return llm.Response{}, err
 	}
@@ -608,7 +608,7 @@ func (runtime *projectRuntime) callProductionImage(ctx context.Context, record p
 	if err != nil {
 		return imagegen.Response{}, err
 	}
-	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestImage)
+	lease, err := runtime.manager.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, request.Model, providerlimit.RequestImage)
 	if err != nil {
 		return imagegen.Response{}, err
 	}

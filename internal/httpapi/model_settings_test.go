@@ -117,6 +117,107 @@ func testModelSettingsPublicResource(t *testing.T, global bool) {
 	}
 }
 
+func TestGlobalModelRateLimitRulesAreRevisionedAndValidated(t *testing.T) {
+	ctx := context.Background()
+	dataDir := filepath.Join(t.TempDir(), "app")
+	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers := provider.NewService(app, provider.NewMemorySecretStore())
+	created, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "api/text", DefaultImageModel: "api/image", APIKey: "private-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allProviders, err := providers.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bailianUUID := ""
+	for _, item := range allProviders {
+		if item.ProviderType == provider.TypeAliyunBailian {
+			bailianUUID = item.UUID
+		}
+	}
+	if bailianUUID == "" {
+		t.Fatal("Bailian provider identity missing")
+	}
+	t.Cleanup(func() { providers.Close(); _ = app.Close() })
+	resolver := modelsettings.NewResolver(providers)
+	handler := NewModelSettingsHandler(nil, resolver, nil)
+	e := echo.New()
+	e.HTTPErrorHandler = ErrorHandler
+	e.GET("/api/v1/model-settings", handler.ShowGlobal)
+	e.PATCH("/api/v1/model-settings", handler.UpdateGlobal)
+	path := "/api/v1/model-settings"
+	initial := requestJSON(t, e, "GET", path, nil)
+	if initial.Code != 200 || !strings.Contains(initial.Body.String(), `"scope":"provider"`) || !strings.Contains(initial.Body.String(), `"rpm":200`) {
+		t.Fatalf("initial=%d %s", initial.Code, initial.Body.String())
+	}
+	update := map[string]any{"provider_uuid": created.UUID, "model": "api/text", "rpm": 3, "rps": 1}
+	createdRule := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 0, "rate_limit_updates": []any{update}})
+	if createdRule.Code != 200 || !strings.Contains(createdRule.Body.String(), `"rpm":3`) || !strings.Contains(createdRule.Body.String(), `"rps":1`) || !strings.Contains(createdRule.Body.String(), `"revision":1`) {
+		t.Fatalf("created rule=%d %s", createdRule.Code, createdRule.Body.String())
+	}
+	row, err := app.GlobalModelSettings(ctx)
+	if err != nil || len(row.RateLimits[created.ProviderType]) != 1 {
+		t.Fatalf("persisted limits=%+v err=%v", row.RateLimits, err)
+	}
+	for _, test := range []struct {
+		name   string
+		body   map[string]any
+		status int
+	}{
+		{"stale revision", map[string]any{"expected_revision": 0, "rate_limit_updates": []any{update}}, 409},
+		{"zero", map[string]any{"expected_revision": 1, "rate_limit_updates": []any{map[string]any{"provider_uuid": created.UUID, "model": "api/text", "rpm": 0}}}, 422},
+		{"wrong model", map[string]any{"expected_revision": 1, "rate_limit_updates": []any{map[string]any{"provider_uuid": created.UUID, "model": "api/unknown", "rpm": 3}}}, 422},
+		{"other provider model", map[string]any{"expected_revision": 1, "rate_limit_updates": []any{map[string]any{"provider_uuid": created.UUID, "model": provider.BailianTextModel, "rpm": 3}}}, 422},
+		{"other provider identity", map[string]any{"expected_revision": 1, "rate_limit_updates": []any{map[string]any{"provider_uuid": bailianUUID, "model": "api/text", "rpm": 3}}}, 422},
+		{"duplicate", map[string]any{"expected_revision": 1, "rate_limit_updates": []any{update, update}}, 422},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := requestJSON(t, e, "PATCH", path, test.body)
+			if response.Code != test.status {
+				t.Fatalf("response=%d %s", response.Code, response.Body.String())
+			}
+		})
+	}
+	cleared := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 1, "rate_limit_updates": []any{map[string]any{"provider_uuid": created.UUID, "model": "api/text", "rpm": nil, "rps": nil}}})
+	if cleared.Code != 200 || strings.Contains(cleared.Body.String(), `"scope":"model"`) || !strings.Contains(cleared.Body.String(), `"revision":2`) {
+		t.Fatalf("cleared=%d %s", cleared.Code, cleared.Body.String())
+	}
+	providerRule := map[string]any{"scope": "provider", "provider_uuid": created.UUID, "rpm": 20, "rps": 2}
+	providerSaved := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 2, "rate_limit_updates": []any{providerRule}})
+	if providerSaved.Code != 200 || !strings.Contains(providerSaved.Body.String(), `"scope":"provider"`) || !strings.Contains(providerSaved.Body.String(), `"rpm":20`) || !strings.Contains(providerSaved.Body.String(), `"revision":3`) {
+		t.Fatalf("provider rule=%d %s", providerSaved.Code, providerSaved.Body.String())
+	}
+	row, err = app.GlobalModelSettings(ctx)
+	if err != nil || row.ProviderRateLimits[created.ProviderType].RPM == nil || *row.ProviderRateLimits[created.ProviderType].RPM != 20 {
+		t.Fatalf("persisted provider limits=%+v err=%v", row.ProviderRateLimits, err)
+	}
+	for _, invalid := range []map[string]any{
+		{"scope": "provider", "provider_uuid": created.UUID, "model": "api/text", "rpm": 10},
+		{"scope": "other", "provider_uuid": created.UUID, "rpm": 10},
+		{"scope": "provider", "provider_uuid": created.UUID, "rpm": -1},
+	} {
+		response := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 3, "rate_limit_updates": []any{invalid}})
+		if response.Code != 422 {
+			t.Fatalf("invalid provider rule=%d %s", response.Code, response.Body.String())
+		}
+	}
+	providerCleared := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 3, "rate_limit_updates": []any{map[string]any{"scope": "provider", "provider_uuid": created.UUID, "rpm": nil, "rps": nil}}})
+	if providerCleared.Code != 200 || !strings.Contains(providerCleared.Body.String(), `"rate_limits":[]`) {
+		t.Fatalf("cleared provider rule=%d %s", providerCleared.Code, providerCleared.Body.String())
+	}
+	combined := requestJSON(t, e, "PATCH", path, map[string]any{"expected_revision": 4, "rate_limit_updates": []any{
+		map[string]any{"scope": "provider", "provider_uuid": created.UUID, "rpm": 20},
+		map[string]any{"scope": "model", "provider_uuid": created.UUID, "model": "api/text", "rps": 1},
+	}})
+	if combined.Code != 200 || strings.Count(combined.Body.String(), `"scope":`) != 2 || !strings.Contains(combined.Body.String(), `"revision":5`) {
+		t.Fatalf("combined rules=%d %s", combined.Code, combined.Body.String())
+	}
+}
+
 type observedHTTPImageProvider struct {
 	requests chan imagegen.Request
 	content  []byte

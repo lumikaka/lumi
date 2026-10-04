@@ -41,7 +41,7 @@ func (handler *ModelSettingsHandler) Show(c echo.Context) error {
 }
 
 func (handler *ModelSettingsHandler) Update(c echo.Context) error {
-	input, err := decodeModelSettingsPatch(c)
+	input, err := decodeModelSettingsPatch(c, false)
 	if err != nil {
 		return err
 	}
@@ -79,16 +79,17 @@ func modelSettingsAPIError(err error) error {
 	return NewError(status, domainErr.Code, domainErr.Message, domainErr.Details, err)
 }
 
-func decodeModelSettingsPatch(c echo.Context) (modelsettings.PatchInput, error) {
+func decodeModelSettingsPatch(c echo.Context, allowRateLimits bool) (modelsettings.PatchInput, error) {
 	var request struct {
 		ExpectedRevision *int                       `json:"expected_revision"`
 		Overrides        map[string]json.RawMessage `json:"overrides"`
+		RateLimitUpdates []modelsettings.RateLimit  `json:"rate_limit_updates"`
 	}
 	if err := decodeJSON(c, &request); err != nil {
 		return modelsettings.PatchInput{}, err
 	}
-	if request.ExpectedRevision == nil || *request.ExpectedRevision < 0 || len(request.Overrides) == 0 {
-		return modelsettings.PatchInput{}, NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置更新无效", "必须提供 expected_revision 和至少一个 override。", nil)
+	if request.ExpectedRevision == nil || *request.ExpectedRevision < 0 || (len(request.Overrides) == 0 && (!allowRateLimits || len(request.RateLimitUpdates) == 0)) || (!allowRateLimits && len(request.RateLimitUpdates) > 0) {
+		return modelsettings.PatchInput{}, NewError(http.StatusUnprocessableEntity, modelsettings.CodeInvalid, "模型设置更新无效", "必须提供 expected_revision 和至少一项有效更新。", nil)
 	}
 	changes := make(map[string]*modelsettings.Selection, len(request.Overrides))
 	for key, raw := range request.Overrides {
@@ -105,7 +106,7 @@ func decodeModelSettingsPatch(c echo.Context) (modelsettings.PatchInput, error) 
 		}
 		changes[key] = &selection
 	}
-	return modelsettings.PatchInput{ExpectedRevision: *request.ExpectedRevision, Changes: changes}, nil
+	return modelsettings.PatchInput{ExpectedRevision: *request.ExpectedRevision, Changes: changes, RateLimitUpdates: request.RateLimitUpdates}, nil
 }
 
 func (handler *ModelSettingsHandler) ShowGlobal(c echo.Context) error {
@@ -117,7 +118,7 @@ func (handler *ModelSettingsHandler) ShowGlobal(c echo.Context) error {
 }
 
 func (handler *ModelSettingsHandler) UpdateGlobal(c echo.Context) error {
-	input, err := decodeModelSettingsPatch(c)
+	input, err := decodeModelSettingsPatch(c, true)
 	if err != nil {
 		return err
 	}

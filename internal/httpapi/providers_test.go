@@ -36,7 +36,7 @@ type providerLimitFake struct {
 
 type providerLimitLeaseFake struct{ limiter *providerLimitFake }
 
-func (fake *providerLimitFake) Acquire(_ context.Context, providerType, baseURL string, class providerlimit.RequestClass) (providerlimit.Lease, error) {
+func (fake *providerLimitFake) Acquire(_ context.Context, providerType, baseURL, model string, class providerlimit.RequestClass) (providerlimit.Lease, error) {
 	fake.providerType, fake.baseURL, fake.class = providerType, baseURL, class
 	return providerLimitLeaseFake{limiter: fake}, nil
 }

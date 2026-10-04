@@ -151,7 +151,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Select("COALESCE(MAX(attempt),0)+1").Where("chat_run_id=? AND request_type=?", tc.Run.ID, llmlog.RequestImage).Scan(&attempt).Error; err != nil {
 		return nil, err
 	}
-	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, providerlimit.RequestImage)
+	lease, err := service.providerLimiter.Acquire(ctx, resolved.ProviderType, request.BaseURL, request.Model, providerlimit.RequestImage)
 	if err != nil {
 		return nil, err
 	}

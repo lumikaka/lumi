@@ -2,7 +2,6 @@ package providerlimit
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -11,8 +10,6 @@ import (
 
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
-
-	"golang.org/x/time/rate"
 )
 
 type RequestClass string
@@ -23,13 +20,25 @@ const (
 )
 
 const (
-	defaultRequestsPerSecond = 3
-	defaultTextConcurrency   = 3
-	defaultImageConcurrency  = 1
-	defaultImageMaximum      = 2
-	defaultImageSuccesses    = 5
-	defaultCooldown          = time.Minute
-	defaultMaximumCooldown   = 5 * time.Minute
+	defaultTextConcurrency  = 3
+	defaultImageConcurrency = 1
+	defaultImageMaximum     = 2
+	defaultImageSuccesses   = 5
+	defaultCooldown         = time.Minute
+	defaultMaximumCooldown  = 5 * time.Minute
+)
+
+type ModelLimit struct {
+	Scope        string
+	ProviderType string
+	Model        string
+	RPM          int
+	RPS          int
+}
+
+const (
+	ScopeProvider = "provider"
+	ScopeModel    = "model"
 )
 
 type Lease interface {
@@ -37,52 +46,48 @@ type Lease interface {
 }
 
 type Limiter interface {
-	Acquire(context.Context, string, string, RequestClass) (Lease, error)
+	Acquire(context.Context, string, string, string, RequestClass) (Lease, error)
 }
 
 type WaitFunc func(context.Context, time.Duration, <-chan struct{}) error
 
 type Config struct {
-	RequestsPerSecond rate.Limit
-	Burst             int
-	TextConcurrency   int
-	ImageConcurrency  int
-	ImageMaximum      int
-	ImageSuccesses    int
-	DefaultCooldown   time.Duration
-	MaximumCooldown   time.Duration
-	Now               func() time.Time
-	Wait              WaitFunc
-	Logger            *slog.Logger
+	TextConcurrency  int
+	ImageConcurrency int
+	ImageMaximum     int
+	ImageSuccesses   int
+	DefaultCooldown  time.Duration
+	MaximumCooldown  time.Duration
+	Now              func() time.Time
+	Wait             WaitFunc
+	Logger           *slog.Logger
 }
 
 func DefaultConfig() Config {
 	return Config{
-		RequestsPerSecond: defaultRequestsPerSecond,
-		Burst:             1,
-		TextConcurrency:   defaultTextConcurrency,
-		ImageConcurrency:  defaultImageConcurrency,
-		ImageMaximum:      defaultImageMaximum,
-		ImageSuccesses:    defaultImageSuccesses,
-		DefaultCooldown:   defaultCooldown,
-		MaximumCooldown:   defaultMaximumCooldown,
-		Now:               time.Now,
-		Wait:              waitContext,
-		Logger:            slog.Default(),
+		TextConcurrency:  defaultTextConcurrency,
+		ImageConcurrency: defaultImageConcurrency,
+		ImageMaximum:     defaultImageMaximum,
+		ImageSuccesses:   defaultImageSuccesses,
+		DefaultCooldown:  defaultCooldown,
+		MaximumCooldown:  defaultMaximumCooldown,
+		Now:              time.Now,
+		Wait:             waitContext,
+		Logger:           slog.Default(),
 	}
 }
 
 type Coordinator struct {
-	config Config
-	mu     sync.Mutex
-	pools  map[string]*gatewayPool
+	config   Config
+	mu       sync.Mutex
+	pools    map[string]*gatewayPool
+	windows  map[string]*requestWindow
+	limits   map[string]ModelLimit
+	revision int
 }
 
 type gatewayPool struct {
-	mu sync.Mutex
-
-	rate *rate.Limiter
-
+	providerType  string
 	textActive    int
 	imageActive   int
 	imageLimit    int
@@ -90,6 +95,10 @@ type gatewayPool struct {
 	textCooldown  time.Time
 	imageCooldown time.Time
 	changed       chan struct{}
+}
+
+type requestWindow struct {
+	starts []time.Time
 }
 
 type lease struct {
@@ -105,24 +114,16 @@ func (noopLease) Finish(error) {}
 
 type noopLimiter struct{}
 
-func (noopLimiter) Acquire(context.Context, string, string, RequestClass) (Lease, error) {
+func (noopLimiter) Acquire(context.Context, string, string, string, RequestClass) (Lease, error) {
 	return noopLease{}, nil
 }
 
 func Noop() Limiter { return noopLimiter{} }
 
-func NewCoordinator() *Coordinator {
-	return NewCoordinatorWithConfig(DefaultConfig())
-}
+func NewCoordinator() *Coordinator { return NewCoordinatorWithConfig(DefaultConfig()) }
 
 func NewCoordinatorWithConfig(config Config) *Coordinator {
 	defaults := DefaultConfig()
-	if config.RequestsPerSecond <= 0 {
-		config.RequestsPerSecond = defaults.RequestsPerSecond
-	}
-	if config.Burst <= 0 {
-		config.Burst = defaults.Burst
-	}
 	if config.TextConcurrency <= 0 {
 		config.TextConcurrency = defaults.TextConcurrency
 	}
@@ -150,132 +151,177 @@ func NewCoordinatorWithConfig(config Config) *Coordinator {
 	if config.Logger == nil {
 		config.Logger = defaults.Logger
 	}
-	return &Coordinator{config: config, pools: make(map[string]*gatewayPool)}
+	return &Coordinator{config: config, pools: make(map[string]*gatewayPool), windows: make(map[string]*requestWindow), limits: make(map[string]ModelLimit)}
 }
 
-func (coordinator *Coordinator) Acquire(ctx context.Context, providerType, baseURL string, class RequestClass) (Lease, error) {
-	if coordinator == nil || providerType != provider.TypeCloudflareAIGateway || (class != RequestText && class != RequestImage) {
+func providerLimitKey(providerType string) string { return ScopeProvider + "\x00" + providerType }
+
+func modelLimitKey(providerType, model string) string {
+	return ScopeModel + "\x00" + providerType + "\x00" + model
+}
+
+// ReplaceLimits applies a committed settings snapshot and wakes pending requests.
+// Request history is retained so lowering a limit cannot grant a fresh burst.
+func (coordinator *Coordinator) ReplaceLimits(revision int, limits []ModelLimit) {
+	if coordinator == nil {
+		return
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+	if revision < coordinator.revision {
+		return
+	}
+	next := make(map[string]ModelLimit, len(limits))
+	for _, limit := range limits {
+		if limit.RPM > 0 || limit.RPS > 0 {
+			key := modelLimitKey(limit.ProviderType, limit.Model)
+			if limit.Scope == ScopeProvider {
+				key = providerLimitKey(limit.ProviderType)
+			}
+			next[key] = limit
+		}
+	}
+	coordinator.limits = next
+	coordinator.revision = revision
+	for _, pool := range coordinator.pools {
+		pool.signalLocked()
+	}
+}
+
+func (coordinator *Coordinator) Acquire(ctx context.Context, providerType, baseURL, model string, class RequestClass) (Lease, error) {
+	if coordinator == nil || (providerType != provider.TypeCloudflareAIGateway && providerType != provider.TypeAliyunBailian) || (class != RequestText && class != RequestImage) {
 		return noopLease{}, nil
 	}
-	pool := coordinator.pool(providerType, baseURL)
 	waitStarted := coordinator.config.Now()
 	waitReason := ""
-
 	for {
-		granted, delay, wake, reason := coordinator.acquireSlot(pool, class)
-		if !granted {
-			waitReason = joinReason(waitReason, reason)
-			if err := coordinator.config.Wait(ctx, delay, wake); err != nil {
-				return nil, err
-			}
-			continue
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-
+		coordinator.mu.Lock()
+		pool := coordinator.poolLocked(providerType, baseURL)
 		now := coordinator.config.Now()
-		reservation := pool.rate.ReserveN(now, 1)
-		if !reservation.OK() {
-			coordinator.releaseSlot(pool, class)
-			return nil, errors.New("cloudflare provider request exceeds limiter burst")
+		providerKey := providerLimitKey(providerType)
+		modelKey := modelLimitKey(providerType, model)
+		providerWindow := coordinator.windowLocked(providerKey, now)
+		modelWindow := coordinator.windowLocked(modelKey, now)
+		delay := providerWindow.delay(now, coordinator.limits[providerKey])
+		if modelDelay := modelWindow.delay(now, coordinator.limits[modelKey]); modelDelay > delay {
+			delay = modelDelay
 		}
-		delay = reservation.DelayFrom(now)
+		reason := ""
 		if delay > 0 {
-			waitReason = joinReason(waitReason, "rate")
-			if err := coordinator.config.Wait(ctx, delay, nil); err != nil {
-				reservation.CancelAt(coordinator.config.Now())
-				coordinator.releaseSlot(pool, class)
-				return nil, err
+			reason = joinReason(reason, "rate")
+		}
+		if providerType == provider.TypeCloudflareAIGateway {
+			cooldown := pool.textCooldown
+			if class == RequestImage {
+				cooldown = pool.imageCooldown
+			}
+			if cooldown.After(now) {
+				if remaining := cooldown.Sub(now); remaining > delay {
+					delay = remaining
+				}
+				reason = joinReason(reason, "cooldown")
+			}
+			if (class == RequestText && pool.textActive >= coordinator.config.TextConcurrency) || (class == RequestImage && pool.imageActive >= pool.imageLimit) {
+				reason = joinReason(reason, "concurrency")
+				if delay == 0 {
+					delay = -1
+				}
 			}
 		}
-
-		if coordinator.cooldownRemaining(pool, class) > 0 {
-			coordinator.releaseSlot(pool, class)
-			waitReason = joinReason(waitReason, "cooldown")
-			continue
+		if reason == "" {
+			providerWindow.starts = append(providerWindow.starts, now)
+			modelWindow.starts = append(modelWindow.starts, now)
+			if providerType == provider.TypeCloudflareAIGateway {
+				if class == RequestText {
+					pool.textActive++
+				} else {
+					pool.imageActive++
+				}
+			}
+			imageLimit := pool.imageLimit
+			coordinator.mu.Unlock()
+			if waitReason != "" {
+				coordinator.config.Logger.InfoContext(ctx, "Provider model capacity acquired", "provider_type", providerType, "model", model, "request_type", class, "wait_ms", coordinator.config.Now().Sub(waitStarted).Milliseconds(), "wait_reason", waitReason, "image_concurrency", imageLimit)
+			}
+			return &lease{coordinator: coordinator, pool: pool, class: class}, nil
 		}
-
-		waited := coordinator.config.Now().Sub(waitStarted)
-		if waitReason != "" {
-			coordinator.config.Logger.InfoContext(ctx, "Cloudflare provider capacity acquired",
-				"request_type", class,
-				"wait_ms", waited.Milliseconds(),
-				"wait_reason", waitReason,
-				"image_concurrency", coordinator.imageLimit(pool),
-			)
+		for _, item := range strings.Split(reason, ",") {
+			waitReason = joinReason(waitReason, item)
 		}
-		return &lease{coordinator: coordinator, pool: pool, class: class}, nil
+		wake := pool.changed
+		coordinator.mu.Unlock()
+		if err := coordinator.config.Wait(ctx, delay, wake); err != nil {
+			return nil, err
+		}
 	}
+}
+
+func (coordinator *Coordinator) windowLocked(key string, now time.Time) *requestWindow {
+	window := coordinator.windows[key]
+	if window == nil {
+		window = &requestWindow{}
+		coordinator.windows[key] = window
+	}
+	window.prune(now)
+	return window
 }
 
 func (coordinator *Coordinator) pool(providerType, baseURL string) *gatewayPool {
-	key := providerType + "\x00" + normalizeBaseURL(baseURL)
 	coordinator.mu.Lock()
 	defer coordinator.mu.Unlock()
+	return coordinator.poolLocked(providerType, baseURL)
+}
+
+func (coordinator *Coordinator) poolLocked(providerType, baseURL string) *gatewayPool {
+	key := providerType + "\x00" + normalizeBaseURL(baseURL)
 	if existing := coordinator.pools[key]; existing != nil {
 		return existing
 	}
-	created := &gatewayPool{
-		rate:       rate.NewLimiter(coordinator.config.RequestsPerSecond, coordinator.config.Burst),
-		imageLimit: coordinator.config.ImageConcurrency,
-		changed:    make(chan struct{}),
-	}
+	created := &gatewayPool{providerType: providerType, imageLimit: coordinator.config.ImageConcurrency, changed: make(chan struct{})}
 	coordinator.pools[key] = created
 	return created
 }
 
-func (coordinator *Coordinator) acquireSlot(pool *gatewayPool, class RequestClass) (bool, time.Duration, <-chan struct{}, string) {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	now := coordinator.config.Now()
-	cooldown := pool.textCooldown
-	if class == RequestImage {
-		cooldown = pool.imageCooldown
+func (window *requestWindow) prune(now time.Time) {
+	cutoff := now.Add(-time.Minute)
+	index := 0
+	for index < len(window.starts) && !window.starts[index].After(cutoff) {
+		index++
 	}
-	if cooldown.After(now) {
-		return false, cooldown.Sub(now), pool.changed, "cooldown"
+	if index > 0 {
+		window.starts = append([]time.Time(nil), window.starts[index:]...)
 	}
-	if class == RequestText {
-		if pool.textActive >= coordinator.config.TextConcurrency {
-			return false, -1, pool.changed, "concurrency"
-		}
-		pool.textActive++
-		return true, 0, nil, ""
-	}
-	if pool.imageActive >= pool.imageLimit {
-		return false, -1, pool.changed, "concurrency"
-	}
-	pool.imageActive++
-	return true, 0, nil, ""
 }
 
-func (coordinator *Coordinator) cooldownRemaining(pool *gatewayPool, class RequestClass) time.Duration {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	cooldown := pool.textCooldown
-	if class == RequestImage {
-		cooldown = pool.imageCooldown
+func (window *requestWindow) delay(now time.Time, limit ModelLimit) time.Duration {
+	var delay time.Duration
+	if limit.RPM > 0 && len(window.starts) >= limit.RPM {
+		delay = window.starts[len(window.starts)-limit.RPM].Add(time.Minute).Sub(now)
 	}
-	if now := coordinator.config.Now(); cooldown.After(now) {
-		return cooldown.Sub(now)
-	}
-	return 0
-}
-
-func (coordinator *Coordinator) releaseSlot(pool *gatewayPool, class RequestClass) {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	if class == RequestText {
-		if pool.textActive > 0 {
-			pool.textActive--
+	if limit.RPS > 0 {
+		cutoff := now.Add(-time.Second)
+		first := len(window.starts)
+		for index, started := range window.starts {
+			if started.After(cutoff) {
+				first = index
+				break
+			}
 		}
-	} else if pool.imageActive > 0 {
-		pool.imageActive--
+		if count := len(window.starts) - first; count >= limit.RPS {
+			if secondDelay := window.starts[len(window.starts)-limit.RPS].Add(time.Second).Sub(now); secondDelay > delay {
+				delay = secondDelay
+			}
+		}
 	}
-	pool.signalLocked()
+	return delay
 }
 
 func (coordinator *Coordinator) imageLimit(pool *gatewayPool) int {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
 	return pool.imageLimit
 }
 
@@ -283,17 +329,17 @@ func (item *lease) Finish(err error) {
 	if item == nil || item.coordinator == nil || item.pool == nil {
 		return
 	}
-	item.once.Do(func() {
-		item.coordinator.finish(item.pool, item.class, err)
-	})
+	item.once.Do(func() { item.coordinator.finish(item.pool, item.class, err) })
 }
 
 func (coordinator *Coordinator) finish(pool *gatewayPool, class RequestClass, callErr error) {
+	if pool.providerType != provider.TypeCloudflareAIGateway {
+		return
+	}
 	diagnostic := providerdiag.FromError(callErr)
 	rateLimited := diagnostic.HTTPStatus == 429
 	now := coordinator.config.Now()
-
-	pool.mu.Lock()
+	coordinator.mu.Lock()
 	if class == RequestText {
 		if pool.textActive > 0 {
 			pool.textActive--
@@ -316,7 +362,6 @@ func (coordinator *Coordinator) finish(pool *gatewayPool, class RequestClass, ca
 			pool.imageSuccess = 0
 		}
 	}
-
 	cooldown := time.Duration(0)
 	if rateLimited {
 		cooldown = diagnostic.RetryAfter
@@ -336,14 +381,9 @@ func (coordinator *Coordinator) finish(pool *gatewayPool, class RequestClass, ca
 	}
 	imageLimit := pool.imageLimit
 	pool.signalLocked()
-	pool.mu.Unlock()
-
+	coordinator.mu.Unlock()
 	if rateLimited {
-		coordinator.config.Logger.Warn("Cloudflare provider rate limited",
-			"request_type", class,
-			"cooldown_ms", cooldown.Milliseconds(),
-			"image_concurrency", imageLimit,
-		)
+		coordinator.config.Logger.Warn("Cloudflare provider rate limited", "request_type", class, "cooldown_ms", cooldown.Milliseconds(), "image_concurrency", imageLimit)
 	}
 }
 

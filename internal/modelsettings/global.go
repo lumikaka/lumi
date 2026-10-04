@@ -3,6 +3,7 @@ package modelsettings
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"lumi/internal/appstore"
 )
@@ -31,7 +32,11 @@ func (resolver *Resolver) PatchGlobal(ctx context.Context, input PatchInput) (Vi
 	if err != nil {
 		return View{}, err
 	}
-	if err := validateChanges(options, input); err != nil {
+	if err := validateChanges(options, input, true); err != nil {
+		return View{}, err
+	}
+	limitChanges, providerLimitChanges, err := validateRateLimitUpdates(options, input.RateLimitUpdates)
+	if err != nil {
 		return View{}, err
 	}
 	changes := make(map[string]*appstore.GlobalModelSelection, len(input.Changes))
@@ -51,12 +56,15 @@ func (resolver *Resolver) PatchGlobal(ctx context.Context, input PatchInput) (Vi
 			}
 		}
 	}
-	row, err := resolver.providers.PatchGlobalModelSettings(ctx, input.ExpectedRevision, changes)
+	row, err := resolver.providers.PatchGlobalModelSettings(ctx, input.ExpectedRevision, changes, limitChanges, providerLimitChanges)
 	if errors.Is(err, appstore.ErrGlobalModelSettingsConflict) {
 		return View{}, domainError(CodeConflict, "模型设置已变化", "刷新后基于最新 revision 重试。", err)
 	}
 	if err != nil {
 		return View{}, err
+	}
+	if resolver.onRateLimitsChanged != nil {
+		resolver.onRateLimitsChanged(row)
 	}
 	return buildGlobalView(row, options), nil
 }
@@ -85,7 +93,90 @@ func buildGlobalView(row appstore.GlobalModelSettings, options Options) View {
 	for _, key := range []string{ChatArea, StoryText, SectionPremiseSelection} {
 		settings[key] = settingView(KindText, overrides[key], text.Effective, SourceGlobalScenario, text.Source, options)
 	}
-	return View{Revision: row.Revision, Settings: settings, Options: options}
+	rateLimits := make([]RateLimit, 0)
+	providerUUIDs := make(map[string]string)
+	for _, option := range items {
+		providerUUIDs[option.ProviderType] = option.ProviderUUID
+	}
+	for providerType, limit := range row.ProviderRateLimits {
+		if providerUUID := providerUUIDs[providerType]; providerUUID != "" {
+			rateLimits = append(rateLimits, RateLimit{Scope: "provider", ProviderUUID: providerUUID, RPM: limit.RPM, RPS: limit.RPS})
+		}
+	}
+	for providerType, models := range row.RateLimits {
+		providerUUID := providerUUIDs[providerType]
+		if providerUUID == "" {
+			continue
+		}
+		for model, limit := range models {
+			rateLimits = append(rateLimits, RateLimit{Scope: "model", ProviderUUID: providerUUID, Model: model, RPM: limit.RPM, RPS: limit.RPS})
+		}
+	}
+	sort.Slice(rateLimits, func(i, j int) bool {
+		if rateLimits[i].ProviderUUID != rateLimits[j].ProviderUUID {
+			return rateLimits[i].ProviderUUID < rateLimits[j].ProviderUUID
+		}
+		if rateLimits[i].Scope != rateLimits[j].Scope {
+			return rateLimits[i].Scope == "provider"
+		}
+		return rateLimits[i].Model < rateLimits[j].Model
+	})
+	return View{Revision: row.Revision, Settings: settings, Options: options, RateLimits: &rateLimits}
+}
+
+func validateRateLimitUpdates(options Options, updates []RateLimit) (map[string]map[string]*appstore.GlobalModelRateLimit, map[string]*appstore.GlobalModelRateLimit, error) {
+	changes := make(map[string]map[string]*appstore.GlobalModelRateLimit)
+	providerChanges := make(map[string]*appstore.GlobalModelRateLimit)
+	all := append(append([]ModelOption{}, options.TextModels...), options.ImageModels...)
+	for _, update := range updates {
+		if (update.RPM != nil && *update.RPM <= 0) || (update.RPS != nil && *update.RPS <= 0) {
+			return nil, nil, domainError(CodeInvalid, "模型限流设置无效", "rpm 和 rps 必须是正整数或 null。", nil)
+		}
+		scope := update.Scope
+		if scope == "" {
+			scope = "model"
+		}
+		if scope != "provider" && scope != "model" {
+			return nil, nil, domainError(CodeInvalid, "模型限流设置无效", "scope 必须是 provider 或 model。", nil)
+		}
+		matched := false
+		for _, option := range all {
+			if option.ProviderUUID == update.ProviderUUID && (scope == "provider" || option.Model == update.Model) {
+				if scope == "provider" {
+					if update.Model != "" {
+						return nil, nil, domainError(CodeInvalid, "供应商限流设置无效", "供应商总池规则不能指定 model。", nil)
+					}
+					if _, exists := providerChanges[option.ProviderType]; exists {
+						return nil, nil, domainError(CodeInvalid, "供应商限流设置重复", "同一服务商只能更新一次总池规则。", nil)
+					}
+					if update.RPM != nil || update.RPS != nil {
+						providerChanges[option.ProviderType] = &appstore.GlobalModelRateLimit{RPM: update.RPM, RPS: update.RPS}
+					} else {
+						providerChanges[option.ProviderType] = nil
+					}
+					matched = true
+					break
+				}
+				if changes[option.ProviderType] == nil {
+					changes[option.ProviderType] = make(map[string]*appstore.GlobalModelRateLimit)
+				}
+				if _, exists := changes[option.ProviderType][option.Model]; exists {
+					return nil, nil, domainError(CodeInvalid, "模型限流设置重复", "同一服务商模型只能更新一次。", nil)
+				}
+				if update.RPM != nil || update.RPS != nil {
+					changes[option.ProviderType][option.Model] = &appstore.GlobalModelRateLimit{RPM: update.RPM, RPS: update.RPS}
+				} else {
+					changes[option.ProviderType][option.Model] = nil
+				}
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return nil, nil, domainError(CodeInvalid, "模型限流设置无效", "只能配置当前服务商或其支持的模型。", nil)
+		}
+	}
+	return changes, providerChanges, nil
 }
 
 // ResolveGlobal is used by preflight checks before a project exists.

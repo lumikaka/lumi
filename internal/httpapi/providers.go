@@ -66,7 +66,7 @@ func (handler *ProviderHandler) Check(c echo.Context) error {
 	if err != nil {
 		return providerAPIError(err)
 	}
-	lease, err := handler.limiter.Acquire(c.Request().Context(), resolved.ProviderType, resolved.BaseURL, providerlimit.RequestText)
+	lease, err := handler.limiter.Acquire(c.Request().Context(), resolved.ProviderType, resolved.BaseURL, resolved.DefaultModel, providerlimit.RequestText)
 	if err != nil {
 		return llmAPIError(err)
 	}

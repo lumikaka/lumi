@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -17,6 +17,13 @@ const PREFIXES = {
 }
 
 const CLOUDFLARE_MODELS = ['openai/gpt-6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-sol']
+
+const SECTION_LINKS = [
+  ['provider-connections', 'settings.provider.choose_title'],
+  ['provider-default-models', 'settings.models.title'],
+  ['provider-rate-limits', 'settings.models.rate_limits.title'],
+  ['provider-model-prices', 'pricing.title'],
+]
 
 function secretItem(settings, providerType) {
   const key = `${PREFIXES[providerType]}.api_key`
@@ -199,6 +206,8 @@ export default function ProviderSettingsPage({ onboarding = false }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [selectedProviderType, setSelectedProviderType] = useState(null)
+  const [activeSection, setActiveSection] = useState(SECTION_LINKS[0][0])
+  const sectionsRef = useRef(null)
   const providersQuery = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const settingsQuery = useQuery({ queryKey: ['site-settings'], queryFn: getSiteSettings })
   const items = providersQuery.data?.items || []
@@ -207,23 +216,54 @@ export default function ProviderSettingsPage({ onboarding = false }) {
   const returnTarget = typeof location.state?.from === 'string' && !location.state.from.startsWith('/settings/providers') && !location.state.from.startsWith('/setup') ? location.state.from : '/'
   const onActivated = () => navigate(returnTarget, { replace: true })
 
+  useEffect(() => {
+    if (onboarding) return undefined
+    const scroller = sectionsRef.current?.closest('.app-page-content')
+    if (!scroller) return undefined
+    const updateActive = () => {
+      const threshold = scroller.getBoundingClientRect().top + 100
+      let current = SECTION_LINKS[0][0]
+      for (const [id] of SECTION_LINKS) {
+        const section = document.getElementById(id)
+        if (section && section.getBoundingClientRect().top <= threshold) current = id
+      }
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4) current = SECTION_LINKS.at(-1)[0]
+      setActiveSection(current)
+    }
+    scroller.addEventListener('scroll', updateActive, { passive: true })
+    window.addEventListener('resize', updateActive)
+    updateActive()
+    return () => {
+      scroller.removeEventListener('scroll', updateActive)
+      window.removeEventListener('resize', updateActive)
+    }
+  }, [onboarding])
+
   return (
     <AppPageShell title={t('settings.ai')} actions={!onboarding ? <Link className="project-topbar__action" to="/">{t('common.not_found.action')}</Link> : null}>
-      <div className="provider-settings">
+      <div className={`provider-settings${onboarding ? '' : ' provider-settings--with-nav'}`}>
         <header className="provider-heading">
           <div><p className="eyebrow">{t('settings.provider.eyebrow')}</p><h1>{t(onboarding ? 'settings.provider.onboarding_title' : 'settings.provider.title')}</h1><p>{t(onboarding ? 'settings.provider.onboarding_body' : 'settings.provider.security_body')}</p></div>
           <span className={items.some((item) => item.active) ? '' : 'provider-heading__inactive'}>{items.find((item) => item.active)?.display_name || t('settings.provider.not_active')}</span>
         </header>
         <LocalizedErrorMessage error={providersQuery.error || settingsQuery.error} className="provider-error" />
-        <section className="provider-list-section" aria-labelledby="provider-list-title">
-          <header className="provider-list-heading"><h2 id="provider-list-title">{t('settings.provider.choose_title')}</h2><p>{t('settings.provider.choose_body')}</p></header>
-          <div className="provider-list">
-            {providersQuery.isLoading || settingsQuery.isLoading ? <p className="workspace-loading">{t('settings.provider.loading')}</p> : null}
-            {sortedItems.map((item) => <ProviderListItem key={item.uuid} provider={item} onOpen={() => setSelectedProviderType(item.provider_type)} />)}
+        <div className={`provider-settings__body${onboarding ? '' : ' provider-settings__body--with-nav'}`}>
+          {!onboarding ? <nav className="provider-settings__toc" aria-label={t('settings.provider.contents')}>
+            <p>{t('settings.provider.contents')}</p>
+            {SECTION_LINKS.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={activeSection === id ? 'location' : undefined} onClick={() => setActiveSection(id)}>{t(label)}</a>)}
+          </nav> : null}
+          <div className="provider-settings__sections" ref={sectionsRef}>
+            <section id="provider-connections" className="provider-list-section" aria-labelledby="provider-list-title">
+              <header className="provider-list-heading"><h2 id="provider-list-title">{t('settings.provider.choose_title')}</h2><p>{t('settings.provider.choose_body')}</p></header>
+              <div className="provider-list">
+                {providersQuery.isLoading || settingsQuery.isLoading ? <p className="workspace-loading">{t('settings.provider.loading')}</p> : null}
+                {sortedItems.map((item) => <ProviderListItem key={item.uuid} provider={item} onOpen={() => setSelectedProviderType(item.provider_type)} />)}
+              </div>
+            </section>
+            {!onboarding ? <ModelSettingsCard /> : null}
+            {!onboarding ? <ModelPricesPanel providers={items} /> : null}
           </div>
-        </section>
-        {!onboarding ? <ModelSettingsCard /> : null}
-        {!onboarding ? <ModelPricesPanel providers={items} /> : null}
+        </div>
       </div>
       {selectedProvider && settingsQuery.data ? <ProviderDialog provider={selectedProvider} settings={settingsQuery.data} onboarding={onboarding} onClose={() => setSelectedProviderType(null)} onActivated={onActivated} /> : null}
     </AppPageShell>

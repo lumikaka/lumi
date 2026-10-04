@@ -11,8 +11,6 @@ import (
 
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
-
-	"golang.org/x/time/rate"
 )
 
 type fakeClock struct {
@@ -54,34 +52,28 @@ func (err diagnosticError) ProviderDiagnostic() providerdiag.Details { return er
 
 func testConfig() Config {
 	config := DefaultConfig()
-	config.RequestsPerSecond = rate.Inf
-	config.Burst = 100
 	config.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	return config
 }
 
-func TestCoordinatorAppliesThreeStartsPerSecondWithBurstOne(t *testing.T) {
+func TestCoordinatorAppliesRollingRPMAndRPSAcrossRequestClasses(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
 	config := testConfig()
-	config.RequestsPerSecond = 3
-	config.Burst = 1
 	config.Now = clock.Now
 	config.Wait = clock.Wait
 	coordinator := NewCoordinatorWithConfig(config)
+	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeCloudflareAIGateway, Model: "openai/gpt-6-sol", RPM: 3, RPS: 2}})
 
-	first, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "HTTPS://EXAMPLE.COM/ai/v1/", RequestText)
-	if err != nil {
-		t.Fatal(err)
+	for _, class := range []RequestClass{RequestText, RequestImage, RequestText, RequestImage} {
+		item, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "HTTPS://EXAMPLE.COM/ai/v1/", "openai/gpt-6-sol", class)
+		if err != nil {
+			t.Fatal(err)
+		}
+		item.Finish(nil)
 	}
-	first.Finish(nil)
-	second, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", RequestImage)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second.Finish(nil)
 
 	waits := clock.Waits()
-	if len(waits) != 1 || waits[0] < 330*time.Millisecond || waits[0] > 340*time.Millisecond {
+	if len(waits) != 2 || waits[0] != time.Second || waits[1] != 59*time.Second {
 		t.Fatalf("rate waits = %v", waits)
 	}
 }
@@ -103,7 +95,7 @@ func TestCoordinatorSharesTextConcurrencyAcrossCallers(t *testing.T) {
 
 	leases := make([]Lease, 0, 3)
 	for range 3 {
-		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", RequestText)
+		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", "openai/gpt-6-sol", RequestText)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +107,7 @@ func TestCoordinatorSharesTextConcurrencyAcrossCallers(t *testing.T) {
 	}
 	resultCh := make(chan result, 1)
 	go func() {
-		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "HTTPS://EXAMPLE.COM/ai/v1/", RequestText)
+		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "HTTPS://EXAMPLE.COM/ai/v1/", "openai/gpt-6-sol", RequestText)
 		resultCh <- result{lease: lease, err: err}
 	}()
 	select {
@@ -151,7 +143,7 @@ func TestCoordinatorAdaptsImageConcurrencyAndResetsOn429(t *testing.T) {
 	pool := coordinator.pool(provider.TypeCloudflareAIGateway, baseURL)
 
 	for range 5 {
-		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, RequestImage)
+		lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, "openai/gpt-6-sol", RequestImage)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,11 +153,11 @@ func TestCoordinatorAdaptsImageConcurrencyAndResetsOn429(t *testing.T) {
 		t.Fatalf("image concurrency after five successes = %d", limit)
 	}
 
-	first, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, RequestImage)
+	first, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, "openai/gpt-6-sol", RequestImage)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, RequestImage)
+	second, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, "openai/gpt-6-sol", RequestImage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,12 +185,12 @@ func TestCoordinatorUsesRetryAfterDefaultAndMaximumCooldown(t *testing.T) {
 			config.Now = clock.Now
 			config.Wait = clock.Wait
 			coordinator := NewCoordinatorWithConfig(config)
-			lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", RequestImage)
+			lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", "openai/gpt-6-sol", RequestImage)
 			if err != nil {
 				t.Fatal(err)
 			}
 			lease.Finish(diagnosticError{details: providerdiag.Details{HTTPStatus: 429, RetryAfter: test.retryAfter}})
-			next, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", RequestImage)
+			next, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "https://example.com/ai/v1", "openai/gpt-6-sol", RequestImage)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -211,22 +203,169 @@ func TestCoordinatorUsesRetryAfterDefaultAndMaximumCooldown(t *testing.T) {
 	}
 }
 
-func TestCoordinatorWaitCanBeCancelledAndOtherProvidersBypassIt(t *testing.T) {
+func TestCoordinatorWaitCanBeCancelledAndOtherProvidersRemainIndependent(t *testing.T) {
 	coordinator := NewCoordinatorWithConfig(testConfig())
 	baseURL := "https://example.com/ai/v1"
-	lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, RequestImage)
+	lease, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, baseURL, "openai/gpt-6-sol", RequestImage)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lease.Finish(diagnosticError{details: providerdiag.Details{HTTPStatus: 429}})
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := coordinator.Acquire(cancelled, provider.TypeCloudflareAIGateway, baseURL, RequestImage); !errors.Is(err, context.Canceled) {
+	if _, err := coordinator.Acquire(cancelled, provider.TypeCloudflareAIGateway, baseURL, "openai/gpt-6-sol", RequestImage); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled wait error = %v", err)
 	}
-	bypass, err := coordinator.Acquire(cancelled, provider.TypeAliyunBailian, "https://dashscope.example/v1", RequestImage)
+	bypass, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, "https://dashscope.example/v1", "qwen-image-3.0", RequestImage)
 	if err != nil {
 		t.Fatalf("Bailian should bypass Cloudflare limiter: %v", err)
 	}
 	bypass.Finish(nil)
+}
+
+func TestCoordinatorLimitsModelsAndProvidersIndependently(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
+	config := testConfig()
+	config.Now, config.Wait = clock.Now, clock.Wait
+	coordinator := NewCoordinatorWithConfig(config)
+	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPM: 1}})
+	for _, model := range []string{"qwen3.7-plus", "qwen3.8-max", "qwen3.7-plus"} {
+		item, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, "https://dashscope.example/v1", model, RequestText)
+		if err != nil {
+			t.Fatal(err)
+		}
+		item.Finish(nil)
+	}
+	if waits := clock.Waits(); len(waits) != 1 || waits[0] != time.Minute {
+		t.Fatalf("model waits = %v", waits)
+	}
+}
+
+func TestCoordinatorSharesModelRateAcrossEndpointsAndCountsFailures(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
+	config := testConfig()
+	config.Now, config.Wait = clock.Now, clock.Wait
+	coordinator := NewCoordinatorWithConfig(config)
+	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPS: 1}})
+	first, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, "https://dashscope.example/compatible-mode/v1", "qwen3.7-plus", RequestText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Finish(errors.New("upstream failed"))
+	second, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, "https://dashscope.example/other-endpoint", "qwen3.7-plus", RequestImage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second.Finish(nil)
+	if waits := clock.Waits(); len(waits) != 1 || waits[0] != time.Second {
+		t.Fatalf("shared model waits = %v", waits)
+	}
+}
+
+func TestCoordinatorAppliesProviderAndModelPoolsTogether(t *testing.T) {
+	clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
+	config := testConfig()
+	config.Now, config.Wait = clock.Now, clock.Wait
+	coordinator := NewCoordinatorWithConfig(config)
+	coordinator.ReplaceLimits(1, []ModelLimit{
+		{Scope: ScopeProvider, ProviderType: provider.TypeAliyunBailian, RPM: 3},
+		{Scope: ScopeModel, ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPS: 1},
+	})
+	for _, model := range []string{"qwen3.7-plus", "qwen3.8-max", "qwen3.7-plus", "qwen3.8-max"} {
+		item, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, "https://dashscope.example/v1", model, RequestText)
+		if err != nil {
+			t.Fatal(err)
+		}
+		item.Finish(nil)
+	}
+	if waits := clock.Waits(); len(waits) != 2 || waits[0] != time.Second || waits[1] != 59*time.Second {
+		t.Fatalf("provider and model waits = %v", waits)
+	}
+}
+
+func TestCoordinatorCancelledWaitDoesNotSpendRateAllowance(t *testing.T) {
+	entered := make(chan struct{}, 1)
+	config := testConfig()
+	config.Wait = func(ctx context.Context, duration time.Duration, wake <-chan struct{}) error {
+		entered <- struct{}{}
+		return waitContext(ctx, duration, wake)
+	}
+	coordinator := NewCoordinatorWithConfig(config)
+	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPM: 1}})
+	baseURL := "https://dashscope.example/v1"
+	first, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, baseURL, "qwen3.7-plus", RequestText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Finish(nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := coordinator.Acquire(ctx, provider.TypeAliyunBailian, baseURL, "qwen3.7-plus", RequestText)
+		result <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("second request did not wait")
+	}
+	cancel()
+	if err := <-result; !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled request error = %v", err)
+	}
+	coordinator.ReplaceLimits(2, []ModelLimit{{ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPM: 2}})
+	thirdCtx, stop := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer stop()
+	third, err := coordinator.Acquire(thirdCtx, provider.TypeAliyunBailian, baseURL, "qwen3.7-plus", RequestText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	third.Finish(nil)
+}
+
+func TestCoordinatorAppliesChangedLimitToExistingHistoryAndWakesWaiters(t *testing.T) {
+	entered := make(chan time.Duration, 1)
+	config := testConfig()
+	config.Wait = func(ctx context.Context, duration time.Duration, wake <-chan struct{}) error {
+		entered <- duration
+		select {
+		case <-wake:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	coordinator := NewCoordinatorWithConfig(config)
+	baseURL := "https://dashscope.example/v1"
+	first, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, baseURL, "qwen3.7-plus", RequestText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Finish(nil)
+	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeAliyunBailian, Model: "qwen3.7-plus", RPM: 1}})
+	result := make(chan error, 1)
+	go func() {
+		item, err := coordinator.Acquire(context.Background(), provider.TypeAliyunBailian, baseURL, "qwen3.7-plus", RequestText)
+		if err == nil {
+			item.Finish(nil)
+		}
+		result <- err
+	}()
+	select {
+	case duration := <-entered:
+		if duration < 59*time.Second {
+			t.Fatalf("wait duration = %s", duration)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("updated limit did not make request wait")
+	}
+	coordinator.ReplaceLimits(2, nil)
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("settings update did not wake waiting request")
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"lumi/internal/appstore"
 	"lumi/internal/project"
 	"lumi/internal/provider"
 
@@ -91,14 +92,24 @@ type SettingView struct {
 }
 
 type View struct {
-	Revision int                    `json:"revision"`
-	Settings map[string]SettingView `json:"settings"`
-	Options  Options                `json:"options"`
+	Revision   int                    `json:"revision"`
+	Settings   map[string]SettingView `json:"settings"`
+	Options    Options                `json:"options"`
+	RateLimits *[]RateLimit           `json:"rate_limits,omitempty"`
+}
+
+type RateLimit struct {
+	Scope        string `json:"scope"`
+	ProviderUUID string `json:"provider_uuid"`
+	Model        string `json:"model,omitempty"`
+	RPM          *int   `json:"rpm"`
+	RPS          *int   `json:"rps"`
 }
 
 type PatchInput struct {
 	ExpectedRevision int
 	Changes          map[string]*Selection
+	RateLimitUpdates []RateLimit
 }
 
 type Resolved struct {
@@ -107,9 +118,17 @@ type Resolved struct {
 	Source   string
 }
 
-type Resolver struct{ providers *provider.Service }
+type Resolver struct {
+	providers           *provider.Service
+	onRateLimitsChanged func(appstore.GlobalModelSettings)
+}
 
 func NewResolver(providers *provider.Service) *Resolver { return &Resolver{providers: providers} }
+
+func (resolver *Resolver) WithRateLimitObserver(observer func(appstore.GlobalModelSettings)) *Resolver {
+	resolver.onRateLimitsChanged = observer
+	return resolver
+}
 
 type record struct {
 	ID                                          int64 `gorm:"primaryKey"`
@@ -173,7 +192,7 @@ func (resolver *Resolver) Patch(ctx context.Context, store *project.Store, input
 	if err != nil {
 		return View{}, err
 	}
-	if err := validateChanges(options, input); err != nil {
+	if err := validateChanges(options, input, false); err != nil {
 		return View{}, err
 	}
 	projectID, err := projectID(ctx, store)
@@ -447,8 +466,8 @@ func selectionSupportsPromptExtend(options Options, selection Selection) bool {
 	return false
 }
 
-func validateChanges(options Options, input PatchInput) error {
-	if input.ExpectedRevision < 0 || len(input.Changes) == 0 {
+func validateChanges(options Options, input PatchInput, allowRateLimits bool) error {
+	if input.ExpectedRevision < 0 || (len(input.Changes) == 0 && (!allowRateLimits || len(input.RateLimitUpdates) == 0)) || (!allowRateLimits && len(input.RateLimitUpdates) > 0) {
 		return domainError(CodeInvalid, "模型设置更新无效", "expected_revision 必须非负且至少更新一项。", nil)
 	}
 	for key, selection := range input.Changes {

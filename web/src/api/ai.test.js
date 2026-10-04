@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { cancelTask, checkProvider, createChapterBatch, createChapterGeneration, createComicStoryboardGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, getProjectLLMLog, getProjectModelSettings, listProjectLLMLogs, listTaskEvents, retryTask, updateProjectModelSettings, updateSiteSettings } from './ai.js'
+import { cancelTask, checkProvider, createChapterBatch, createChapterGeneration, createComicStoryboardGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, getProjectLLMLog, getProjectModelSettings, listProjectLLMLogs, listTaskEvents, retryTask, updateModelRateLimits, updateProjectModelSettings, updateSiteSettings } from './ai.js'
 
 function envelope(data) {
   return new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -65,6 +65,21 @@ test('project model settings use a revisioned resource and null clears inheritan
   assert.equal(calls[1][0], '/api/v1/projects/project%20uuid/model-settings')
   assert.equal(calls[1][1].method, 'PATCH')
   assert.deepEqual(JSON.parse(calls[1][1].body), { expected_revision: 3, overrides: { story_text: null } })
+})
+
+test('model rate limit rules are saved and removed through revisioned global settings', async () => {
+  const calls = []
+  const original = global.fetch
+  global.fetch = async (url, options = {}) => { calls.push([url, options]); return envelope({ revision: 2, rate_limits: [] }) }
+  try {
+    await updateModelRateLimits(0, [{ scope: 'provider', provider_uuid: 'provider-uuid', rpm: 20, rps: 2 }])
+    await updateModelRateLimits(1, [{ scope: 'model', provider_uuid: 'provider-uuid', model: 'openai/gpt-6-sol', rpm: 3, rps: null }])
+    await updateModelRateLimits(2, [{ scope: 'provider', provider_uuid: 'provider-uuid', rpm: null, rps: null }])
+  } finally { global.fetch = original }
+  assert.deepEqual(calls.map(([url, options]) => [url, options.method]), Array(3).fill(['/api/v1/model-settings', 'PATCH']))
+  assert.deepEqual(JSON.parse(calls[0][1].body), { expected_revision: 0, rate_limit_updates: [{ scope: 'provider', provider_uuid: 'provider-uuid', rpm: 20, rps: 2 }] })
+  assert.deepEqual(JSON.parse(calls[1][1].body), { expected_revision: 1, rate_limit_updates: [{ scope: 'model', provider_uuid: 'provider-uuid', model: 'openai/gpt-6-sol', rpm: 3, rps: null }] })
+  assert.deepEqual(JSON.parse(calls[2][1].body), { expected_revision: 2, rate_limit_updates: [{ scope: 'provider', provider_uuid: 'provider-uuid', rpm: null, rps: null }] })
 })
 
 test('planning steps use project-scoped resource endpoints', async () => {

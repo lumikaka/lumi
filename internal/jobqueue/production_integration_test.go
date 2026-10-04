@@ -32,7 +32,6 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
-	"golang.org/x/time/rate"
 )
 
 type successfulImageProvider struct{ content []byte }
@@ -933,8 +932,6 @@ func TestComicImageGenerationCreatesVisibleWorkflowAndTracksLifecycle(t *testing
 func TestComicImageBatchQueuesFiveRunningTasksBehindSharedImageLimit(t *testing.T) {
 	harness := newQueueHarness(t)
 	config := providerlimit.DefaultConfig()
-	config.RequestsPerSecond = rate.Inf
-	config.Burst = 100
 	harness.queue.WithProviderLimiter(providerlimit.NewCoordinatorWithConfig(config))
 	imageProvider := &concurrentImageProvider{content: productionPNG(t), started: make(chan struct{}, 5), release: make(chan struct{})}
 	harness.queue.WithImageClient(imageProvider)

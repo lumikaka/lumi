@@ -7,6 +7,7 @@ import { invalidateModelSettingsQueries } from '../realtime/modelSettingsQueries
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { INHERIT_MODEL_VALUE, modelOptionsForSetting, modelSelectionValue, parseModelSelection, imageThinkingSelection, imagePromptExtendSelection, imageThinkingEnabled } from '../pages/modelSettingsState.js'
+import ModelRateLimits from './ModelRateLimits.jsx'
 
 const UNAVAILABLE_SOURCE = 'unavailable'
 
@@ -55,8 +56,8 @@ export default function ModelSettingsCard({ projectUuid }) {
   })
 
   const settings = settingsQuery.data
-  return (
-    <section className="overview-card overview-model-card" aria-labelledby={`${helpId}-title`}>
+  return <>
+    <section id={global ? 'provider-default-models' : undefined} className="overview-card overview-model-card" aria-labelledby={`${helpId}-title`}>
       <header className="overview-card__header">
         <div><h2 id={`${helpId}-title`}>{t(global ? 'settings.models.title' : 'projects.overview.model.title')}</h2><p>{t(global ? 'settings.models.body' : 'projects.overview.model.body')}</p></div>
         {!global ? <Link className="overview-card__action" to="/settings/providers" state={{ from: `${location.pathname}${location.search}` }}>{t('projects.overview.model.manage')}</Link> : null}
@@ -118,5 +119,6 @@ export default function ModelSettingsCard({ projectUuid }) {
         </div>
       ) : null}
     </section>
-  )
+    {global && settings ? <ModelRateLimits settings={settings} /> : null}
+  </>
 }

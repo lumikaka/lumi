@@ -32,6 +32,13 @@ export function updateModelSettings(expectedRevision, overrides) {
   }))
 }
 
+export function updateModelRateLimits(expectedRevision, rateLimitUpdates) {
+  return apiRequest('/api/v1/model-settings', jsonRequest('PATCH', {
+    expected_revision: expectedRevision,
+    rate_limit_updates: rateLimitUpdates,
+  }))
+}
+
 export function getProjectModelSettings(projectUuid) {
   return apiRequest(taskPath(projectUuid, '/model-settings'))
 }
