@@ -81,6 +81,8 @@ type providerResponseDiagnosticSnapshot struct {
 }
 
 type imageRequestSnapshot struct {
+	ImageAPIMode   string               `json:"image_api_mode,omitempty"`
+	APIPath        string               `json:"api_path,omitempty"`
 	Model          string               `json:"model"`
 	Prompt         string               `json:"prompt"`
 	PromptExtend   *bool                `json:"prompt_extend,omitempty"`
@@ -128,7 +130,7 @@ func EncodeChatRequest(input llm.ChatRequest) (json.RawMessage, error) {
 }
 
 func requestAPIFormat(providerType string) string {
-	if providerType == provider.TypeCloudflareAIGateway {
+	if provider.UsesResponses(providerType) {
 		return "responses"
 	}
 	return "chat_completions"
@@ -190,6 +192,7 @@ func EncodeImageRequest(input imagegen.Request) (json.RawMessage, error) {
 		images = append(images, imageInputSnapshot{MIMEType: image.MIMEType, ByteSize: len(image.Data)})
 	}
 	return encodeSnapshot(imageRequestSnapshot{
+		ImageAPIMode: input.APIMode(), APIPath: strings.TrimPrefix(input.Endpoint(), strings.TrimRight(input.BaseURL, "/")),
 		Model: input.Model, Prompt: input.Prompt, Size: input.Size, Quality: input.Quality, Images: images,
 		PromptExtend: input.PromptExtend(), EnableThinking: input.Thinking(),
 	}, input.APIKey)

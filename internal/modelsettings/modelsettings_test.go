@@ -352,3 +352,64 @@ func TestPromptExtensionPersistsAndGatesThinking(t *testing.T) {
 		t.Fatalf("image options leaked to inherited provider: %+v %v", resolved, err)
 	}
 }
+
+func TestRelayProtocolSwitchDoesNotSilentlyReplaceGlobalOrProjectImageOverride(t *testing.T) {
+	h := newSettingsHarness(t)
+	resolver := NewResolver(h.providers)
+	if _, _, err := h.providers.Settings().Update(h.ctx, map[string]any{sitesettings.RelayBaseURLKey: "https://text.example/v1", sitesettings.RelayImageBaseURLKey: "https://image.example/v1", sitesettings.RelayAPIKeyKey: "text-key", sitesettings.RelayImageAPIKeyKey: "image-key"}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := h.providers.List(h.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var relay provider.Provider
+	for _, item := range items {
+		if item.ProviderType == provider.TypeOpenAIRelay {
+			relay, err = h.providers.MarkVerified(h.ctx, item.UUID)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	input := PatchInput{Changes: map[string]*Selection{ProjectImage: {ProviderUUID: relay.UUID, Model: "gpt-6.1-sol"}}}
+	if _, err := resolver.PatchGlobal(h.ctx, input); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.providers.Settings().Update(h.ctx, map[string]any{sitesettings.RelayImageAPIModeKey: "images", sitesettings.RelayDefaultImageModelKey: "gpt-image-2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.providers.MarkVerified(h.ctx, relay.UUID); err != nil {
+		t.Fatal(err)
+	}
+	global, err := resolver.GetGlobal(h.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if setting := global.Settings[ProjectImage]; setting.Effective != nil || setting.OverrideStatus != "invalid" || setting.Override.Model != "gpt-6.1-sol" {
+		t.Fatalf("global=%+v", setting)
+	}
+	if _, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", ""); err == nil {
+		t.Fatal("silently inherited another image model")
+	}
+	input.Changes[ProjectImage].Model = "gpt-image-2"
+	if _, err := resolver.Patch(h.ctx, h.store, input); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolver.Resolve(h.ctx, h.store, ProjectImage, KindImage, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.providers.Settings().Update(h.ctx, map[string]any{sitesettings.RelayImageAPIModeKey: "responses", sitesettings.RelayDefaultImageModelKey: "gpt-6.1-sol"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.providers.MarkVerified(h.ctx, relay.UUID); err != nil {
+		t.Fatal(err)
+	}
+	view, err := resolver.Get(h.ctx, h.store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if setting := view.Settings[ProjectImage]; setting.Effective != nil || setting.OverrideStatus != "invalid" || setting.Override.Model != "gpt-image-2" {
+		t.Fatalf("project=%+v", setting)
+	}
+}

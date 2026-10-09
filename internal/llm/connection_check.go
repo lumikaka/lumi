@@ -13,9 +13,10 @@ type ConnectionChecker interface {
 // CheckConnection selects the provider's verification protocol explicitly.
 // Keep probe options separate from normal generation and from other providers.
 func (client *OpenAICompatibleClient) CheckConnection(ctx context.Context, providerType string, input Request) error {
+	input.ProviderType = providerType
 	switch providerType {
-	case provider.TypeCloudflareAIGateway:
-		return client.checkCloudflareConnection(ctx, input)
+	case provider.TypeCloudflareAIGateway, provider.TypeOpenAIRelay:
+		return client.checkResponsesConnection(ctx, input)
 	case provider.TypeAliyunBailian:
 		return client.checkBailianConnection(ctx, input)
 	default:

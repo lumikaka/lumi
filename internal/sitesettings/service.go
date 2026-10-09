@@ -168,6 +168,9 @@ func (service *Service) update(ctx context.Context, settings map[string]any, sys
 		}
 		normalized[key] = clean
 	}
+	if err := validateRelayImageSettings(service.cache, normalized, nil); err != nil {
+		return Response{}, nil, err
+	}
 	if !system {
 		invalidateVerification(normalized, settings)
 	}
@@ -225,6 +228,9 @@ func (service *Service) Reset(ctx context.Context, keys []string) (Response, []s
 			return Response{}, nil, unknownSetting(key)
 		}
 		unique[key] = struct{}{}
+	}
+	if err := validateRelayImageSettings(service.cache, nil, unique); err != nil {
+		return Response{}, nil, err
 	}
 	invalidateResetVerification(unique)
 	clean := make([]string, 0, len(unique))
@@ -331,6 +337,8 @@ func effectiveValue(definition definition, row cachedValue) any {
 func invalidateVerification(normalized map[string]any, original map[string]any) {
 	for key := range original {
 		switch {
+		case strings.HasPrefix(key, "ai_providers.openai_relay."):
+			normalized[RelayVerifiedKey], normalized[RelayVerifiedAtKey], normalized[RelayVerifiedFingerprintKey] = false, nil, nil
 		case strings.HasPrefix(key, "ai_providers.openai_compatible."):
 			normalized[CloudflareVerifiedKey], normalized[CloudflareVerifiedAtKey], normalized[CloudflareVerifiedFingerprintKey] = false, nil, nil
 		case strings.HasPrefix(key, "ai_providers.aliyun_bailian."):
@@ -340,10 +348,14 @@ func invalidateVerification(normalized map[string]any, original map[string]any) 
 }
 
 func invalidateResetVerification(keys map[string]struct{}) {
-	openAI, bailian := false, false
+	openAI, bailian, relay := false, false, false
 	for key := range keys {
+		relay = relay || strings.HasPrefix(key, "ai_providers.openai_relay.")
 		openAI = openAI || strings.HasPrefix(key, "ai_providers.openai_compatible.")
 		bailian = bailian || strings.HasPrefix(key, "ai_providers.aliyun_bailian.")
+	}
+	if relay {
+		keys[RelayVerifiedKey], keys[RelayVerifiedAtKey], keys[RelayVerifiedFingerprintKey] = struct{}{}, struct{}{}, struct{}{}
 	}
 	if openAI {
 		keys[CloudflareVerifiedKey], keys[CloudflareVerifiedAtKey], keys[CloudflareVerifiedFingerprintKey] = struct{}{}, struct{}{}, struct{}{}

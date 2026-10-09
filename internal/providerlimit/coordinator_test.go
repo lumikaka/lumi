@@ -57,24 +57,28 @@ func testConfig() Config {
 }
 
 func TestCoordinatorAppliesRollingRPMAndRPSAcrossRequestClasses(t *testing.T) {
-	clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
-	config := testConfig()
-	config.Now = clock.Now
-	config.Wait = clock.Wait
-	coordinator := NewCoordinatorWithConfig(config)
-	coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: provider.TypeCloudflareAIGateway, Model: "openai/gpt-6-sol", RPM: 3, RPS: 2}})
+	for _, providerType := range []string{provider.TypeCloudflareAIGateway, provider.TypeOpenAIRelay} {
+		t.Run(providerType, func(t *testing.T) {
+			clock := &fakeClock{now: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)}
+			config := testConfig()
+			config.Now = clock.Now
+			config.Wait = clock.Wait
+			coordinator := NewCoordinatorWithConfig(config)
+			coordinator.ReplaceLimits(1, []ModelLimit{{ProviderType: providerType, Model: "openai/gpt-6-sol", RPM: 3, RPS: 2}})
 
-	for _, class := range []RequestClass{RequestText, RequestImage, RequestText, RequestImage} {
-		item, err := coordinator.Acquire(context.Background(), provider.TypeCloudflareAIGateway, "HTTPS://EXAMPLE.COM/ai/v1/", "openai/gpt-6-sol", class)
-		if err != nil {
-			t.Fatal(err)
-		}
-		item.Finish(nil)
-	}
+			for _, class := range []RequestClass{RequestText, RequestImage, RequestText, RequestImage} {
+				item, err := coordinator.Acquire(context.Background(), providerType, "HTTPS://EXAMPLE.COM/ai/v1/", "openai/gpt-6-sol", class)
+				if err != nil {
+					t.Fatal(err)
+				}
+				item.Finish(nil)
+			}
 
-	waits := clock.Waits()
-	if len(waits) != 2 || waits[0] != time.Second || waits[1] != 59*time.Second {
-		t.Fatalf("rate waits = %v", waits)
+			waits := clock.Waits()
+			if len(waits) != 2 || waits[0] != time.Second || waits[1] != 59*time.Second {
+				t.Fatalf("rate waits = %v", waits)
+			}
+		})
 	}
 }
 

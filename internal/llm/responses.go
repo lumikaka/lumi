@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
 )
 
@@ -46,7 +47,7 @@ func (client *OpenAICompatibleClient) generateResponses(ctx context.Context, inp
 		content = append(content, map[string]any{"type": "input_image", "image_url": "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(image.Data), "detail": detail})
 	}
 	items = append(items, map[string]any{"role": "user", "content": content})
-	result, err := client.sendResponses(ctx, input.BaseURL, input.APIKey, responsesPayload(input.Model, items, input.Temperature, input.MaxTokens, true), onDelta, false)
+	result, err := client.sendResponses(ctx, input.ProviderType, input.BaseURL, input.APIKey, responsesPayload(input.Model, items, input.Temperature, input.MaxTokens, true), onDelta, false)
 	return Response{Content: result.Message.Content, Usage: result.Usage, FinishReason: result.FinishReason}, err
 }
 
@@ -89,10 +90,10 @@ func (client *OpenAICompatibleClient) completeResponses(ctx context.Context, inp
 		}
 		payload["tools"], payload["tool_choice"] = tools, "auto"
 	}
-	return client.sendResponses(ctx, input.BaseURL, input.APIKey, payload, nil, false)
+	return client.sendResponses(ctx, input.ProviderType, input.BaseURL, input.APIKey, payload, nil, false)
 }
 
-func (client *OpenAICompatibleClient) sendResponses(ctx context.Context, baseURL, apiKey string, payload map[string]any, onDelta func(string) error, probe bool) (ChatResponse, error) {
+func (client *OpenAICompatibleClient) sendResponses(ctx context.Context, providerType, baseURL, apiKey string, payload map[string]any, onDelta func(string) error, probe bool) (ChatResponse, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return ChatResponse{}, &Error{Code: CodeInvalidContent, SafeMessage: "无法编码模型请求。", Cause: err}
@@ -104,12 +105,14 @@ func (client *OpenAICompatibleClient) sendResponses(ctx context.Context, baseURL
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("cf-aig-max-attempts", "1")
+	if providerType == provider.TypeCloudflareAIGateway {
+		req.Header.Set("cf-aig-max-attempts", "1")
+		model, _ := payload["model"].(string)
+		setCloudflareGatewayHeader(req, model)
+	}
 	if payload["stream"] == true {
 		req.Header.Set("Accept", "text/event-stream, application/json")
 	}
-	model, _ := payload["model"].(string)
-	setCloudflareGatewayHeader(req, model)
 	response, err := client.http.Do(req)
 	if err != nil {
 		return ChatResponse{}, classify(err, 0)

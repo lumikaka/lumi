@@ -19,6 +19,7 @@ const (
 	TypeCloudflareAIGateway    = "cloudflare_ai_gateway"
 	LegacyTypeOpenAICompatible = "openai_compatible"
 	TypeAliyunBailian          = "aliyun_bailian"
+	TypeOpenAIRelay            = "openai_relay"
 
 	BailianTextModel          = "qwen3.7-plus"
 	BailianTextModelQwen38Max = "qwen3.8-max"
@@ -34,29 +35,40 @@ func UsesCloudflareImageTool(model string) bool {
 	return strings.HasPrefix(model, "openai/gpt-5") || strings.HasPrefix(model, "openai/gpt-6")
 }
 
+// UsesResponses selects the text protocol. Image requests resolve their own API mode.
+func UsesResponses(providerType string) bool {
+	return providerType == TypeCloudflareAIGateway || providerType == TypeOpenAIRelay
+}
+
+func RelayModels() []string { return sitesettings.RelayTextModels() }
+
 type Provider struct {
-	UUID              string     `json:"uuid"`
-	ProviderType      string     `json:"provider_type"`
-	DisplayName       string     `json:"display_name"`
-	BaseURL           string     `json:"base_url"`
-	ImageBaseURL      string     `json:"image_base_url"`
-	DefaultModel      string     `json:"default_model"`
-	DefaultImageModel string     `json:"default_image_model"`
-	AccountID         string     `json:"account_id,omitempty"`
-	Region            string     `json:"region,omitempty"`
-	WorkspaceID       string     `json:"workspace_id,omitempty"`
-	Enabled           bool       `json:"enabled"`
-	Configured        bool       `json:"configured"`
-	Verified          bool       `json:"verified"`
-	Active            bool       `json:"active"`
-	Ready             bool       `json:"ready"`
-	HasSecret         bool       `json:"has_secret"`
-	VerifiedAt        *time.Time `json:"verified_at"`
+	UUID              string              `json:"uuid"`
+	ProviderType      string              `json:"provider_type"`
+	DisplayName       string              `json:"display_name"`
+	BaseURL           string              `json:"base_url"`
+	ImageAPIMode      string              `json:"image_api_mode,omitempty"`
+	ImageModelsByMode map[string][]string `json:"image_models_by_mode,omitempty"`
+	TextModels        []string            `json:"text_models,omitempty"`
+	ImageBaseURL      string              `json:"image_base_url"`
+	DefaultModel      string              `json:"default_model"`
+	DefaultImageModel string              `json:"default_image_model"`
+	AccountID         string              `json:"account_id,omitempty"`
+	Region            string              `json:"region,omitempty"`
+	WorkspaceID       string              `json:"workspace_id,omitempty"`
+	Enabled           bool                `json:"enabled"`
+	Configured        bool                `json:"configured"`
+	Verified          bool                `json:"verified"`
+	Active            bool                `json:"active"`
+	Ready             bool                `json:"ready"`
+	HasSecret         bool                `json:"has_secret"`
+	VerifiedAt        *time.Time          `json:"verified_at"`
 }
 
 type Resolved struct {
 	Provider
 	APIKey              string `json:"-"`
+	ImageAPIKey         string `json:"-"`
 	ConfigFingerprint   string `json:"-"`
 	ImageEnableThinking *bool  `json:"-"`
 	ImagePromptExtend   *bool  `json:"-"`
@@ -75,11 +87,33 @@ func SupportedTextModels(item Provider) []string {
 	if item.ProviderType == TypeCloudflareAIGateway {
 		models = appendCloudflareModels(models, defaultModel)
 	}
+	if item.ProviderType == TypeOpenAIRelay {
+		for _, model := range RelayModels() {
+			if model != defaultModel {
+				models = append(models, model)
+			}
+		}
+	}
 	return models
 }
 
 // SupportedImageModels returns the selectable image models for a provider, with its default first.
 func SupportedImageModels(item Provider) []string {
+	if item.ProviderType == TypeOpenAIRelay {
+		allowed := sitesettings.RelayImageModels(item.ImageAPIMode)
+		models := make([]string, 0, len(allowed))
+		for _, model := range allowed {
+			if model == item.DefaultImageModel {
+				models = append(models, model)
+			}
+		}
+		for _, model := range allowed {
+			if model != item.DefaultImageModel {
+				models = append(models, model)
+			}
+		}
+		return models
+	}
 	models := make([]string, 0, 2)
 	defaultModel := strings.TrimSpace(item.DefaultImageModel)
 	if defaultModel != "" {
@@ -161,7 +195,11 @@ func (service *Service) List(ctx context.Context) ([]Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []Provider{cloudflare, bailian}, nil
+	relay, err := service.relay(ctx, active)
+	if err != nil {
+		return nil, err
+	}
+	return []Provider{cloudflare, bailian, relay}, nil
 }
 
 func (service *Service) Get(ctx context.Context, providerUUID string) (Provider, error) {
@@ -209,7 +247,23 @@ func (service *Service) Resolve(ctx context.Context, providerUUID string) (Resol
 	if err != nil {
 		return Resolved{}, err
 	}
+	// Bracket relay configuration reads so a concurrent edit cannot bind a
+	// mixed credential/endpoint snapshot to the new configuration fingerprint.
+	checkedFingerprint := ""
+	if item.ProviderType == TypeOpenAIRelay {
+		checkedFingerprint, err = service.providerFingerprint(ctx, item.ProviderType)
+		if err != nil {
+			return Resolved{}, err
+		}
+		item, err = service.Get(ctx, providerUUID)
+		if err != nil {
+			return Resolved{}, err
+		}
+	}
 	secretKey := sitesettings.CloudflareAPITokenKey
+	if item.ProviderType == TypeOpenAIRelay {
+		secretKey = sitesettings.RelayAPIKeyKey
+	}
 	if item.ProviderType == TypeAliyunBailian {
 		secretKey = sitesettings.BailianAPIKeyKey
 	}
@@ -223,16 +277,29 @@ func (service *Service) Resolve(ctx context.Context, providerUUID string) (Resol
 	if !item.Configured {
 		return Resolved{}, providerError(CodeProviderNotReady, "Provider 配置不完整", "请补全 Provider 配置。", nil)
 	}
+	imageSecret := secret
+	if item.ProviderType == TypeOpenAIRelay {
+		imageSecret, err = service.settings.Secret(ctx, sitesettings.RelayImageAPIKeyKey)
+		if err != nil {
+			return Resolved{}, providerError(CodeSecretStoreFailed, "无法读取生图组密钥", "请检查密钥存储。", err)
+		}
+		if strings.TrimSpace(imageSecret) == "" {
+			return Resolved{}, providerError(CodeSecretMissing, "生图组密钥缺失", "请保存生图组 API Key。", nil)
+		}
+	}
 	fingerprint, err := service.providerFingerprint(ctx, item.ProviderType)
 	if err != nil {
 		return Resolved{}, err
 	}
-	return Resolved{Provider: item, APIKey: secret, ConfigFingerprint: fingerprint}, nil
+	if checkedFingerprint != "" && checkedFingerprint != fingerprint {
+		return Resolved{}, providerError(CodeProviderNotReady, "Provider 配置已变化", "请重新检查连接。", nil)
+	}
+	return Resolved{Provider: item, APIKey: secret, ImageAPIKey: imageSecret, ConfigFingerprint: fingerprint}, nil
 }
 
 func (service *Service) Activate(ctx context.Context, providerType string) (Provider, error) {
 	providerType = normalizeProviderType(providerType)
-	if providerType != TypeCloudflareAIGateway && providerType != TypeAliyunBailian {
+	if providerType != TypeCloudflareAIGateway && providerType != TypeAliyunBailian && providerType != TypeOpenAIRelay {
 		return Provider{}, providerError(CodeInvalidProvider, "Provider 类型无效", "只能激活受支持的 Provider。", nil)
 	}
 	items, err := service.List(ctx)
@@ -277,6 +344,9 @@ func (service *Service) MarkVerified(ctx context.Context, providerUUID string, c
 	verifiedKey, verifiedAtKey, fingerprintKey := sitesettings.CloudflareVerifiedKey, sitesettings.CloudflareVerifiedAtKey, sitesettings.CloudflareVerifiedFingerprintKey
 	if item.ProviderType == TypeAliyunBailian {
 		verifiedKey, verifiedAtKey, fingerprintKey = sitesettings.BailianVerifiedKey, sitesettings.BailianVerifiedAtKey, sitesettings.BailianVerifiedFingerprintKey
+	}
+	if item.ProviderType == TypeOpenAIRelay {
+		verifiedKey, verifiedAtKey, fingerprintKey = sitesettings.RelayVerifiedKey, sitesettings.RelayVerifiedAtKey, sitesettings.RelayVerifiedFingerprintKey
 	}
 	now := service.now().UTC()
 	if _, _, err := service.settings.UpdateSystem(ctx, map[string]any{verifiedKey: true, verifiedAtKey: now.Format(time.RFC3339Nano), fingerprintKey: fingerprint}); err != nil {
@@ -332,7 +402,18 @@ func (service *Service) ensureIdentities(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	relay, err := service.stringValue(ctx, sitesettings.RelayUUIDKey)
+	if err != nil {
+		return err
+	}
 	updates := make(map[string]any)
+	if !isUUIDv7(relay) {
+		value, err := newUUIDv7()
+		if err != nil {
+			return err
+		}
+		updates[sitesettings.RelayUUIDKey] = value
+	}
 	if !isUUIDv7(cloudflare) {
 		value, err := newUUIDv7()
 		if err != nil {
@@ -468,6 +549,18 @@ func validBailianRegion(region string) bool {
 }
 
 func (service *Service) providerFingerprint(ctx context.Context, providerType string) (string, error) {
+	if providerType == TypeOpenAIRelay {
+		keys := []string{sitesettings.RelayBaseURLKey, sitesettings.RelayImageBaseURLKey, sitesettings.RelayAPIKeyKey, sitesettings.RelayImageAPIKeyKey, sitesettings.RelayDefaultModelKey, sitesettings.RelayDefaultImageModelKey}
+		mode, err := service.stringValue(ctx, sitesettings.RelayImageAPIModeKey)
+		if err != nil {
+			return "", err
+		}
+		// Preserve existing verified Responses configurations across upgrades.
+		if mode != sitesettings.ImageAPIResponses {
+			keys = append(keys, sitesettings.RelayImageAPIModeKey)
+		}
+		return service.settings.Fingerprint(ctx, keys...)
+	}
 	if providerType == TypeAliyunBailian {
 		return service.settings.Fingerprint(ctx, sitesettings.BailianWorkspaceKey, sitesettings.BailianRegionKey, sitesettings.BailianAPIKeyKey)
 	}
@@ -542,4 +635,34 @@ func ImageThinking(providerType, model string, selected, promptExtend *bool) *bo
 		enabled = false
 	}
 	return &enabled
+}
+
+func (service *Service) relay(ctx context.Context, active string) (Provider, error) {
+	uuidValue, err := service.stringValue(ctx, sitesettings.RelayUUIDKey)
+	if err != nil {
+		return Provider{}, err
+	}
+	baseURL, _ := service.stringValue(ctx, sitesettings.RelayBaseURLKey)
+	imageURL, _ := service.stringValue(ctx, sitesettings.RelayImageBaseURLKey)
+	model, _ := service.stringValue(ctx, sitesettings.RelayDefaultModelKey)
+	imageModel, _ := service.stringValue(ctx, sitesettings.RelayDefaultImageModelKey)
+	imageMode, _ := service.stringValue(ctx, sitesettings.RelayImageAPIModeKey)
+	secret, secretErr := service.settings.Secret(ctx, sitesettings.RelayAPIKeyKey)
+	imageSecret, imageSecretErr := service.settings.Secret(ctx, sitesettings.RelayImageAPIKeyKey)
+	hasSecret := secretErr == nil && imageSecretErr == nil && strings.TrimSpace(secret) != "" && strings.TrimSpace(imageSecret) != ""
+	configured := baseURL != "" && imageURL != "" && model != "" && imageModel != "" && hasSecret
+	verified, _ := service.boolValue(ctx, sitesettings.RelayVerifiedKey)
+	verifiedFingerprint, _ := service.stringValue(ctx, sitesettings.RelayVerifiedFingerprintKey)
+	fingerprint, _ := service.providerFingerprint(ctx, TypeOpenAIRelay)
+	verifiedAt, _ := service.timeValue(ctx, sitesettings.RelayVerifiedAtKey)
+	verified = verified && verifiedFingerprint != "" && verifiedFingerprint == fingerprint
+	if !verified {
+		verifiedAt = nil
+	}
+	ready, isActive := configured && verified, active == TypeOpenAIRelay
+	return Provider{UUID: uuidValue, ProviderType: TypeOpenAIRelay, DisplayName: "OpenAI 中转站",
+		BaseURL: baseURL, ImageBaseURL: imageURL, DefaultModel: model, DefaultImageModel: imageModel,
+		ImageAPIMode: imageMode, TextModels: RelayModels(), ImageModelsByMode: map[string][]string{sitesettings.ImageAPIResponses: sitesettings.RelayImageModels(sitesettings.ImageAPIResponses), sitesettings.ImageAPIImages: sitesettings.RelayImageModels(sitesettings.ImageAPIImages)},
+		Configured: configured, Verified: verified, Active: isActive, Ready: ready,
+		Enabled: isActive && ready, HasSecret: hasSecret, VerifiedAt: verifiedAt}, nil
 }

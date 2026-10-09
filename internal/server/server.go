@@ -20,6 +20,7 @@ import (
 	"lumi/internal/llm"
 	"lumi/internal/mcpserver"
 	"lumi/internal/modelsettings"
+	"lumi/internal/modeltest"
 	"lumi/internal/project"
 	"lumi/internal/projectcreation"
 	"lumi/internal/provider"
@@ -40,6 +41,7 @@ type Application struct {
 	projects        *project.Manager
 	providers       *provider.Service
 	agentService    *agent.Service
+	modelTests      *modeltest.Service
 	lifecycleCancel context.CancelFunc
 	lifecycleDone   chan struct{}
 	closeOnce       sync.Once
@@ -150,7 +152,14 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	projects.WithLifecycleHook(func(event project.LifecycleEvent) {
 		realtimeHub.Broadcast(realtime.SystemTopic, realtime.OpenProjectChanged, openProjectChangedPayload(event))
 	})
-	providerHandler := httpapi.NewProviderHandler(providerService, modelClient, realtimeHub).WithProviderLimiter(providerLimiter)
+	providerHandler := httpapi.NewProviderHandler(providerService, modelClient, realtimeHub).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
+	modelTests := modeltest.NewService(appStore, providerService, modelClient, imageClient, providerLimiter, realtimeHub)
+	modelTestHandler := httpapi.NewModelTestHandler(modelTests)
+	api.POST("/model-tests", modelTestHandler.Create)
+	api.GET("/model-tests", modelTestHandler.Index)
+	api.GET("/model-tests/:test_uuid", modelTestHandler.Show)
+	api.PUT("/model-tests/:test_uuid/execution", modelTestHandler.Execute)
+	api.DELETE("/model-tests/:test_uuid/execution", modelTestHandler.Stop)
 	siteSettingsHandler := httpapi.NewSiteSettingsHandler(providerService, realtimeHub)
 	taskHandler := httpapi.NewTaskHandler(taskManager)
 	productionHandler := httpapi.NewProductionHandler(projects, taskManager, realtimeHub)
@@ -354,6 +363,10 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	e.GET("/media/projects/:project_uuid/assets/:asset_uuid/content", filesHandler.Content, projectRequestLease(projects))
 	e.GET("/media/projects/:project_uuid/comic-exports/:export_uuid/content", productionHandler.ExportContent, projectRequestLease(projects))
 	e.GET("/media/recent-projects/:project_uuid/cover", recentProjectHandler.Cover)
+	e.GET("/media/model-tests/:test_uuid/steps/:step_uuid/content", modelTestHandler.Content)
+	if err := modelTests.Start(); err != nil {
+		return nil, err
+	}
 	lifecycleContext, lifecycleCancel := context.WithCancel(context.Background())
 	lifecycleDone := make(chan struct{})
 	lifecycle := newProjectLifecycleController(projects, projectIdleGrace)
@@ -362,7 +375,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		lifecycle.run(lifecycleContext, projectIdleCheckInterval)
 	}()
 	return &Application{mcpService: mcpService, mcpConfig: cfg,
-		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService, agentService: agentService,
+		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService, agentService: agentService, modelTests: modelTests,
 		lifecycleCancel: lifecycleCancel, lifecycleDone: lifecycleDone,
 	}, nil
 }
@@ -496,7 +509,10 @@ func (application *Application) Close() error {
 		if application.lifecycleDone != nil {
 			<-application.lifecycleDone
 		}
-		var projectErr, realtimeErr error
+		var projectErr, realtimeErr, modelTestErr error
+		if application.modelTests != nil {
+			modelTestErr = application.modelTests.Close()
+		}
 		if application.projects != nil {
 			projectErr = application.projects.Close()
 		}
@@ -506,7 +522,7 @@ func (application *Application) Close() error {
 		if application.providers != nil {
 			application.providers.Close()
 		}
-		application.closeErr = errors.Join(projectErr, realtimeErr)
+		application.closeErr = errors.Join(projectErr, realtimeErr, modelTestErr)
 	})
 	return application.closeErr
 }

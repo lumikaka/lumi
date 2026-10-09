@@ -12,8 +12,10 @@ import (
 
 	agentprompts "lumi/internal/agent/prompts"
 	"lumi/internal/llm"
+	"lumi/internal/modelsettings"
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
+	"lumi/internal/provider"
 	"lumi/internal/story"
 	"lumi/internal/taskexecution"
 )
@@ -350,7 +352,7 @@ func loadContextItems(ctx context.Context, store *project.Store, threadID, throu
 		}
 		if err := store.DB().WithContext(ctx).Table("llm_logs").
 			Select("uuid, CASE WHEN json_valid(response) THEN COALESCE(json_extract(response, '$.message.responses_output'), '') ELSE '' END AS output").
-			Where("chat_thread_id=? AND uuid IN ? AND provider_type=?", threadID, requestUUIDs, "cloudflare_ai_gateway").
+			Where("chat_thread_id=? AND uuid IN ? AND provider_type IN ?", threadID, requestUUIDs, []string{"cloudflare_ai_gateway", "openai_relay"}).
 			Scan(&snapshots).Error; err != nil {
 			return nil, err
 		}
@@ -443,7 +445,17 @@ func loadContextPrompts(ctx context.Context, store *project.Store, thread thread
 }
 
 func (service *Service) loadContextPrompts(ctx context.Context, store *project.Store, thread threadRecord) (contextPromptSet, error) {
-	return loadContextPromptsForModeWithRoutes(ctx, store, thread, service.configuredToolMode(thread), service.requestAPIRoutes())
+	prompts, err := loadContextPromptsForModeWithRoutes(ctx, store, thread, service.configuredToolMode(thread), service.requestAPIRoutes())
+	if err != nil || store.SetupStatus() != project.SetupStatusDraft {
+		return prompts, err
+	}
+	// Give the setup agent the effective image provider's constraint before it
+	// proposes the immutable page ratio. Finalization still validates it again.
+	resolved, _, _, resolveErr := service.resolveProjectModel(ctx, store, modelsettings.ProjectImage, modelsettings.KindImage, "", "")
+	if resolveErr == nil && resolved.ProviderType == provider.TypeOpenAIRelay {
+		prompts.Assistant += "\n\n当前项目图片供应商为中转站，Images 和 Responses 模式均仅按三档尺寸接入：1024x1024（1:1）、1536x1024（3:2）、1024x1536（2:3）。规划 Project Setup 和后续自动生成前必须考虑此限制。用户没有指定精确比例时，横版建议使用 aspect_ratio={\"mode\":\"custom\",\"width\":3,\"height\":2}，竖版建议使用 custom 2:3，方形使用 square；作为 Agent 建议向用户说明。landscape/portrait 预设实际为 4:3/3:4，不适用于当前中转站。用户明确要求其他比例时不得擅自改动，说明需更换支持该比例的图片供应商或由用户调整比例。vertical_strip 保持既有分段尺寸规则。"
+	}
+	return prompts, nil
 }
 
 func loadContextPromptsForMode(ctx context.Context, store *project.Store, thread threadRecord, mode string) (contextPromptSet, error) {

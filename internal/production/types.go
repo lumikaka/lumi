@@ -289,6 +289,7 @@ type UpdateSectionInput struct {
 }
 
 type GenerationSnapshot struct {
+	ImageAPIMode              string                      `json:"image_api_mode,omitempty"`
 	EnableThinking            *bool                       `json:"enable_thinking,omitempty"`
 	PromptExtend              *bool                       `json:"prompt_extend,omitempty"`
 	Version                   int                         `json:"version"`

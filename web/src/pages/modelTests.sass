@@ -1,0 +1,240 @@
+@use '../styles/design-tokens' as *
+
+.model-tools-page
+  width: min(100%, 960px)
+  margin: 0 auto
+  display: grid
+  gap: 22px
+  padding-bottom: 36px
+
+  h1, h2, p
+    margin: 0
+
+  h1
+    font-size: 24px
+
+  h2
+    font-size: 16px
+
+.model-tools-heading
+  display: grid
+  gap: 8px
+
+  p
+    color: $color-muted
+
+.model-tools-back
+  justify-self: start
+  display: inline-flex
+  align-items: center
+  gap: 5px
+  color: $color-muted
+  font-size: $font-size-small
+  font-weight: $font-weight-medium
+
+  &:hover, &:focus-visible
+    color: $color-accent-strong
+
+.model-tool-card
+  display: flex
+  align-items: center
+  gap: 18px
+  width: 100%
+  padding: 24px
+  text-align: left
+  text-decoration: none
+  color: $color-text
+  background: $color-surface
+  border: 1px solid rgba($color-text, .15)
+  border-radius: 14px
+
+  > span
+    display: grid
+    gap: 6px
+    flex: 1
+
+    > span
+      color: $color-muted
+      font-weight: 400
+
+  &:hover:not(:disabled), &:focus-visible
+    color: $color-text
+    background: rgba($color-text, .04)
+    border-color: $color-accent
+
+.model-test-history
+  > header
+    display: flex
+    justify-content: space-between
+    gap: 12px
+    margin-bottom: 14px
+
+  ul
+    padding: 0
+    margin: 0
+    list-style: none
+
+.model-test-history-row
+  display: flex
+  align-items: center
+  gap: 16px
+  padding: 18px 8px
+  border-bottom: 1px solid rgba($color-text, .12)
+  color: $color-text
+  text-decoration: none
+
+  &:hover, &:focus-visible
+    background: rgba($color-text, .04)
+
+.model-test-history-copy
+  display: grid
+  gap: 5px
+  flex: 1
+  min-width: 0
+
+  > span
+    color: $color-muted
+    overflow-wrap: anywhere
+
+.model-test-pagination, .model-test-summary
+  display: flex
+  align-items: center
+  flex-wrap: wrap
+  gap: 14px
+
+  > button:last-child
+    margin-left: auto
+
+.model-test-pagination
+  margin-top: 18px
+
+.model-test-stop
+  margin-left: auto
+  display: grid
+  gap: 8px
+
+  > button
+    justify-self: end
+
+.model-test-form, .model-test-step
+  padding: 22px
+  border: 1px solid rgba($color-text, .12)
+  background: $color-surface
+  border-radius: 14px
+
+.model-test-form
+  display: grid
+  gap: 18px
+
+  > button
+    justify-self: start
+
+  p
+    color: $color-muted
+
+.model-test-models
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 20px
+
+  label
+    display: grid
+    gap: 8px
+
+  select
+    width: 100%
+    min-width: 0
+
+.model-test-frozen
+  margin: 0
+
+  dt
+    color: $color-muted
+    margin-bottom: 6px
+
+  dd
+    margin: 0
+    overflow-wrap: anywhere
+
+.model-test-status
+  flex-shrink: 0
+  display: inline-flex
+  border-radius: 20px
+  padding: 4px 10px
+  font-size: 12px
+  color: $color-muted
+  background: rgba($color-text, .06)
+
+  &--succeeded
+    color: $color-success
+    background: rgba($color-success, .1)
+
+  &--failed, &--interrupted
+    color: $color-danger
+    background: rgba($color-danger, .08)
+
+  &--running, &--queued
+    color: $color-accent
+    background: rgba($color-accent, .1)
+
+.model-test-steps
+  display: grid
+  gap: 14px
+  padding: 0
+  margin: 0
+  list-style: none
+
+.model-test-step
+  display: grid
+  gap: 14px
+
+  > header
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+
+    h2
+      flex: 1
+
+  > p, small
+    color: $color-muted
+
+  figure
+    margin: 0
+
+    img
+      display: block
+      width: min(256px, 100%)
+      height: auto
+      border-radius: 10px
+      border: 1px solid rgba($color-text, .1)
+
+    figcaption
+      margin-top: 10px
+      font-size: 12px
+      color: $color-muted
+
+.model-test-step-number
+  display: grid
+  place-items: center
+  width: 28px
+  height: 28px
+  border-radius: 50%
+  background: rgba($color-text, .06)
+
+.model-test-output
+  margin: 0
+  white-space: pre-wrap
+  overflow-wrap: anywhere
+  font: inherit
+
+@media (max-width: 640px)
+  .model-test-models
+    grid-template-columns: 1fr
+
+  .model-test-form, .model-test-step, .model-tool-card
+    padding: 16px
+
+  .model-test-history-row
+    gap: 8px

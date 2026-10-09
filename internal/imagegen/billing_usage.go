@@ -2,6 +2,7 @@ package imagegen
 
 import (
 	"lumi/internal/pricing"
+	"lumi/internal/provider"
 	"math"
 	"strings"
 )
@@ -97,6 +98,6 @@ func (e responsesEnvelope) billingUsage(input Request) pricing.Usage {
 	if a < 0 || b < 0 || a > math.MaxInt64-b || a+b != *tool.InputTokens {
 		return u
 	}
-	u.Disjoint = strings.HasPrefix(input.Model, "openai/")
+	u.Disjoint = strings.HasPrefix(input.Model, "openai/") || input.ProviderType == provider.TypeOpenAIRelay
 	return u
 }

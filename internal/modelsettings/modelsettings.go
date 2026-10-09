@@ -336,6 +336,19 @@ func settingView(kind string, override, inherited *Selection, overrideSource, in
 		return result
 	}
 	result.OverrideStatus = "invalid"
+	// A relay protocol switch must not silently replace a saved image model.
+	if kind == KindImage {
+		relay, sameModel := false, false
+		for _, option := range options.ImageModels {
+			if option.ProviderUUID == override.ProviderUUID && option.ProviderType == provider.TypeOpenAIRelay {
+				relay = true
+				sameModel = sameModel || option.Model == override.Model
+			}
+		}
+		if relay && !sameModel {
+			result.Effective = nil
+		}
+	}
 	return result
 }
 

@@ -9,6 +9,8 @@ import MCPSettingsPage from './pages/MCPSettingsPage.jsx'
 import MCPOAuthPage from './pages/MCPOAuthPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import ProviderSettingsPage from './pages/ProviderSettingsPage.jsx'
+import ToolsPage from './pages/ToolsPage.jsx'
+import ModelTestPage from './pages/ModelTestPage.jsx'
 import StoryWorkspacePage from './pages/StoryWorkspacePage.jsx'
 import ProjectActivationGate from './components/ProjectActivationGate.jsx'
 import { getActiveProvider } from './api/ai.js'
@@ -35,6 +37,9 @@ export default function App() {
       <Route path="/about" element={<ProviderGate><AboutPage /></ProviderGate>} />
       <Route path="/setup/*" element={<ProviderSettingsPage onboarding />} />
       <Route path="/settings/providers" element={<ProviderSettingsPage />} />
+      <Route path="/settings/tools" element={<ToolsPage />} />
+      <Route path="/settings/tools/model-tests/new" element={<ModelTestPage />} />
+      <Route path="/settings/tools/model-tests/:testUuid" element={<ModelTestPage />} />
       <Route path="/settings/account" element={<AccountSettingsPage />} />
       <Route path="/settings/llm-logs" element={<LLMLogsPage />} />
       <Route path="/settings/mcp/authorize" element={<MCPOAuthPage />} />

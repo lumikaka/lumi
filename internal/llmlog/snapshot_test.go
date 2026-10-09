@@ -244,3 +244,29 @@ func TestImageSnapshotThinkingDependsOnPromptExtension(t *testing.T) {
 		t.Fatalf("unsupported snapshot=%s err=%v", encoded, err)
 	}
 }
+
+func TestImageSnapshotsRecordProtocolAndRelativePathWithoutCredentials(t *testing.T) {
+	for _, mode := range []string{"responses", "images"} {
+		request := imagegen.Request{ProviderType: "openai_relay", ImageAPIMode: mode, BaseURL: "https://private.example/api/v1/", APIKey: "private-secret", Model: "gpt-image-2", Prompt: "draw", Images: []imagegen.ImageInput{{MIMEType: "image/png", Data: []byte("private-binary")}}}
+		encoded, err := EncodeImageRequest(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(encoded, &payload); err != nil {
+			t.Fatal(err)
+		}
+		wantPath := "/responses"
+		if mode == "images" {
+			wantPath = "/images/edits"
+		}
+		if payload["image_api_mode"] != mode || payload["api_path"] != wantPath {
+			t.Fatalf("payload=%s", encoded)
+		}
+		for _, secret := range []string{"private.example", "private-secret", "private-binary"} {
+			if strings.Contains(string(encoded), secret) {
+				t.Fatal("unsafe snapshot")
+			}
+		}
+	}
+}

@@ -126,7 +126,7 @@ func (manager *Manager) createPremiseSettingGeneration(ctx context.Context, proj
 		composerVersion = creationReferenceComposerVersion
 	}
 	parameters, _ := json.Marshal(input.Parameters)
-	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
+	snapshot := production.GenerationSnapshot{Version: version, Kind: KindPremiseSettingGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: source.UUID, SourceUUID: source.UUID, Prompt: prompt, PromptTemplate: template, LanguageInstruction: languageInstruction, StyleSnapshot: source.StyleSnapshot, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, ImageAPIMode: resolved.ImageAPIMode, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters, ReferenceFiles: references, ReferenceComposerVersion: composerVersion}
 	var batch premiseBatchSnapshot
 	if invocation.Source == agent.InvocationChatTool {
 		batch, err = manager.preparePremiseBatch(ctx, runtime, *source, input, snapshot, invocation)
@@ -332,7 +332,7 @@ func (manager *Manager) createPremiseAssetGeneration(ctx context.Context, projec
 		AssetOperation: operation, AssetType: assetType, AssetTitle: assetTitle,
 		AssetSummary: assetSummary, AssetTags: assetTags, AssetRevision: assetRevision,
 		ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType,
-		ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters,
+		ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, ImageAPIMode: resolved.ImageAPIMode, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, Parameters: parameters,
 	}
 	task, err := manager.createProductionTask(ctx, runtime, snapshot, input.IdempotencyKey, func(tx *sql.Tx, _ int64, taskUUID string, _ []byte, now time.Time) error {
 		if !createVisibleWorkflow {
@@ -668,9 +668,9 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	if err != nil {
 		return preparedComicImageGeneration{}, err
 	}
-	outputSize, err := picturebook.ResolveImageSize(pictureBook, resolved.ProviderType, model)
+	outputSize, err := picturebook.ResolveImageSize(pictureBook, resolved.ProviderType, model, resolved.ImageAPIMode)
 	if err != nil {
-		return preparedComicImageGeneration{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。", err)
+		return preparedComicImageGeneration{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", picturebook.SizeErrorDetails(err, "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。"), err)
 	}
 	profile, err := service.GetPremise(ctx)
 	if err != nil {
@@ -766,7 +766,7 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	snapshot := production.GenerationSnapshot{Version: 5, Kind: KindComicImageGeneration, ProjectUUID: projectUUID, GenerationLanguage: generationLanguage, ResourceUUID: section.UUID, ChapterUUID: chapterUUID,
 		Prompt: prompt, PromptTemplate: imageTemplate, LanguageInstruction: languageInstruction, ReferencePresentPrompt: referencePresentPrompt, ReferenceAbsentPrompt: referenceAbsentPrompt, AdditionalDirectionPrompt: additionalDirectionPrompt, SelectionPrompt: selectionPrompt, SelectionProviderUUID: selectionProvider.UUID, SelectionBaseURL: selectionProvider.BaseURL, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource,
 		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
-		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
+		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, ImageAPIMode: resolved.ImageAPIMode, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
 	return preparedComicImageGeneration{Section: section, Snapshot: snapshot}, nil
 }
 
@@ -858,7 +858,7 @@ func (manager *Manager) resolveProductionProvider(ctx context.Context, store *pr
 		promptExtend = provider.ImagePromptExtend(item.ProviderType, model, promptExtend)
 		thinking = provider.ImageThinking(item.ProviderType, model, thinking, promptExtend)
 	}
-	return resolvedProvider{UUID: item.UUID, ProviderType: item.ProviderType, BaseURL: baseURL, EnableThinking: thinking, PromptExtend: promptExtend}, model, source, nil
+	return resolvedProvider{UUID: item.UUID, ProviderType: item.ProviderType, BaseURL: baseURL, ImageAPIMode: item.ImageAPIMode, EnableThinking: thinking, PromptExtend: promptExtend}, model, source, nil
 }
 
 func boundedProductionPrompt(value, fallback string) (string, error) {
@@ -883,6 +883,7 @@ func validateProductionParameters(parameters GenerationParameters) error {
 }
 
 type resolvedProvider struct {
+	ImageAPIMode                string
 	UUID, ProviderType, BaseURL string
 	EnableThinking              *bool
 	PromptExtend                *bool

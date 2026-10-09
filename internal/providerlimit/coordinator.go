@@ -189,7 +189,7 @@ func (coordinator *Coordinator) ReplaceLimits(revision int, limits []ModelLimit)
 }
 
 func (coordinator *Coordinator) Acquire(ctx context.Context, providerType, baseURL, model string, class RequestClass) (Lease, error) {
-	if coordinator == nil || (providerType != provider.TypeCloudflareAIGateway && providerType != provider.TypeAliyunBailian) || (class != RequestText && class != RequestImage) {
+	if coordinator == nil || (providerType != provider.TypeCloudflareAIGateway && providerType != provider.TypeAliyunBailian && providerType != provider.TypeOpenAIRelay) || (class != RequestText && class != RequestImage) {
 		return noopLease{}, nil
 	}
 	waitStarted := coordinator.config.Now()

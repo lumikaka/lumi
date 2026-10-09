@@ -119,7 +119,7 @@ func (handler *ProjectSetupHandler) Finalize(c echo.Context) error {
 			if err != nil {
 				return modelSettingsAPIError(err)
 			}
-			if _, err := picturebook.ResolveImageSize(*draft.DraftValues.PictureBook, resolved.Provider.ProviderType, resolved.Model); err != nil {
+			if _, err := picturebook.ResolveImageSize(*draft.DraftValues.PictureBook, resolved.Provider.ProviderType, resolved.Model, resolved.Provider.ImageAPIMode); err != nil {
 				return imageAspectUnsupportedError(err, "请切换图片模型或调整草稿比例后重新定稿；项目设置尚未定稿。")
 			}
 		}

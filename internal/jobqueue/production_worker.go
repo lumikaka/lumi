@@ -24,6 +24,7 @@ import (
 	"lumi/internal/project"
 	"lumi/internal/promptcatalog"
 	"lumi/internal/provider"
+	"lumi/internal/providerdiag"
 	"lumi/internal/providerlimit"
 	"lumi/internal/taskexecution"
 
@@ -161,7 +162,7 @@ func (runtime *projectRuntime) generateSetting(ctx context.Context, service *pro
 		}
 		referenceImages = append(referenceImages, imagegen.ImageInput{MIMEType: "image/png", Data: board})
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1536x1024", Images: referenceImages})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseSettingGeneration, imagegen.Request{ImageAPIMode: snapshot.ImageAPIMode, ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.ImageAPIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1536x1024", Images: referenceImages})
 	if err != nil {
 		if len(referenceImages) > 0 && referenceImageRejected(err) {
 			return productionError("image_reference_unsupported", "图片 Provider 拒绝了参考图输入；请确认模型支持图片参考后重试当前步骤。", true)
@@ -258,7 +259,7 @@ func (runtime *projectRuntime) generatePremiseAsset(ctx context.Context, service
 		}
 		prompt += "\n\n" + project.GenerationLanguageVisualInstruction(snapshot.GenerationLanguage)
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseAssetGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1024x1024"})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindPremiseAssetGeneration, imagegen.Request{ImageAPIMode: snapshot.ImageAPIMode, ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.ImageAPIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: "1024x1024"})
 	if err != nil {
 		return err
 	}
@@ -485,7 +486,7 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	if err := runtime.productionStage(ctx, record, "generating"); err != nil {
 		return err
 	}
-	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindComicImageGeneration, imagegen.Request{ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: imageSize, Images: referenceImages})
+	response, err := runtime.callProductionImage(ctx, record, snapshot, resolved, KindComicImageGeneration, imagegen.Request{ImageAPIMode: snapshot.ImageAPIMode, ProviderType: snapshot.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.ImageAPIKey, Model: snapshot.Model, EnableThinking: snapshot.EnableThinking, EnablePromptExtend: snapshot.PromptExtend, Prompt: prompt, Size: imageSize, Images: referenceImages})
 	if err != nil {
 		return err
 	}
@@ -635,7 +636,7 @@ func (runtime *projectRuntime) callProductionImage(ctx context.Context, record p
 			callErr = err
 		}
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, handle, llmlog.FinishInput{BillingUsage: response.BillingUsage(), OutputSummary: outputSummary, Response: responsePayload, Err: callErr})
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), runtime.store, runtime.manager.hub, handle, llmlog.FinishInput{BillingUsage: response.BillingUsage(), OutputSummary: providerdiag.RedactPreview(outputSummary, request.APIKey, 4000), Response: responsePayload, Err: callErr})
 	if finishErr != nil {
 		if callErr != nil {
 			callErr = errors.Join(callErr, finishErr)

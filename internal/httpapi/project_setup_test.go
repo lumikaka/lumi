@@ -21,6 +21,12 @@ import (
 )
 
 func TestProjectSetupFinalizationChecksImageSizeBeforeFreezingDraft(t *testing.T) {
+	for _, selection := range []string{"cloudflare", "relay_global", "relay_project"} {
+		t.Run(selection, func(t *testing.T) { testProjectSetupImageSize(t, selection) })
+	}
+}
+
+func testProjectSetupImageSize(t *testing.T, selection string) {
 	ctx := context.Background()
 	dataDir := filepath.Join(t.TempDir(), "app")
 	app, err := appstore.Open(dataDir, config.SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")))
@@ -74,6 +80,7 @@ func TestProjectSetupFinalizationChecksImageSizeBeforeFreezingDraft(t *testing.T
 	e := echo.New()
 	e.HTTPErrorHandler = ErrorHandler
 	base := "/api/v1/projects/" + projectUUID
+	e.POST("/api/v1/image-generation-preflights", NewImageGenerationPreflightHandler(providers).Create)
 	e.GET("/api/v1/projects/:project_uuid/project-setup", handler.Show)
 	e.PATCH("/api/v1/projects/:project_uuid/project-setup", handler.Update)
 	e.POST("/api/v1/projects/:project_uuid/project-setup-finalizations", handler.Finalize)
@@ -105,6 +112,30 @@ func TestProjectSetupFinalizationChecksImageSizeBeforeFreezingDraft(t *testing.T
 	if state.Data.SetupStatus != project.SetupStatusDraft || state.Data.Revision != 2 || state.Data.FinalPictureBook != nil {
 		t.Fatalf("rejected finalization changed draft: %+v", state.Data)
 	}
+	imageProviderUUID, imageModel := configured.UUID, sitesettings.CloudflareModelTerra
+	if selection != "cloudflare" {
+		imageModel = "gpt-image-2.5-flare"
+		if _, _, err := providers.Settings().Update(ctx, map[string]any{
+			sitesettings.RelayBaseURLKey: "https://text.example/v1", sitesettings.RelayAPIKeyKey: "test-secret",
+			sitesettings.RelayImageBaseURLKey: "https://image.example/v1", sitesettings.RelayImageAPIKeyKey: "test-image-secret",
+			sitesettings.RelayImageAPIModeKey: sitesettings.ImageAPIImages, sitesettings.RelayDefaultImageModelKey: imageModel,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		items, err := providers.List(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, item := range items {
+			if item.ProviderType == provider.TypeOpenAIRelay {
+				verified, err := providers.MarkVerified(ctx, item.UUID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				imageProviderUUID = verified.UUID
+			}
+		}
+	}
 	if err := projects.WithStore(ctx, projectUUID, func(store *project.Store) error {
 		var count int64
 		if err := store.DB().Table("project_picture_book_profiles").Count(&count).Error; err != nil {
@@ -113,32 +144,70 @@ func TestProjectSetupFinalizationChecksImageSizeBeforeFreezingDraft(t *testing.T
 		if count != 0 {
 			t.Fatalf("rejected finalization persisted %d profiles", count)
 		}
-		_, err := models.Patch(ctx, store, modelsettings.PatchInput{ExpectedRevision: 0, Changes: map[string]*modelsettings.Selection{
-			modelsettings.ProjectImage: {ProviderUUID: configured.UUID, Model: sitesettings.CloudflareModelTerra},
-		}})
+		input := modelsettings.PatchInput{Changes: map[string]*modelsettings.Selection{
+			modelsettings.ProjectImage: {ProviderUUID: imageProviderUUID, Model: imageModel},
+		}}
+		if selection == "relay_global" {
+			_, err := models.PatchGlobal(ctx, input)
+			return err
+		}
+		_, err := models.Patch(ctx, store, input)
 		return err
 	}); err != nil {
 		t.Fatal(err)
 	}
-	completed := finalize(2)
+	finalRevision, wantSize := 2, "1536x1152"
+	if selection != "cloudflare" {
+		if rejected := finalize(2); rejected.Code != http.StatusUnprocessableEntity || !strings.Contains(rejected.Body.String(), "image_aspect_ratio_unsupported") {
+			t.Fatalf("relay accepted 4:3 draft: %d %s", rejected.Code, rejected.Body.String())
+		}
+		updated := requestJSON(t, e, http.MethodPatch, base+"/project-setup", map[string]any{
+			"expected_revision": 2,
+			"picture_book":      map[string]any{"format": "classic_picture_book", "aspect_ratio": map[string]any{"mode": "custom", "width": 3, "height": 2}},
+		})
+		if updated.Code != http.StatusOK {
+			t.Fatalf("adjust draft ratio: %d %s", updated.Code, updated.Body.String())
+		}
+		finalRevision, wantSize = 3, "1536x1024"
+	}
+	if selection == "relay_global" {
+		global := requestJSON(t, e, http.MethodPost, "/api/v1/image-generation-preflights", map[string]any{
+			"picture_book": map[string]any{"format": "classic_picture_book", "aspect_ratio": map[string]any{"mode": "landscape"}},
+		})
+		if global.Code != http.StatusUnprocessableEntity || !strings.Contains(global.Body.String(), "image_aspect_ratio_unsupported") {
+			t.Fatalf("global accepted 4:3: %d %s", global.Code, global.Body.String())
+		}
+		global = requestJSON(t, e, http.MethodPost, "/api/v1/image-generation-preflights", map[string]any{
+			"picture_book": map[string]any{"format": "classic_picture_book", "aspect_ratio": map[string]any{"mode": "custom", "width": 3, "height": 2}},
+		})
+		if global.Code != http.StatusOK || !strings.Contains(global.Body.String(), `"value":"1536x1024"`) || !strings.Contains(global.Body.String(), `"model":"gpt-image-2.5-flare"`) {
+			t.Fatalf("global preflight=%d %s", global.Code, global.Body.String())
+		}
+	}
+	completed := finalize(finalRevision)
 	if completed.Code != http.StatusOK || !strings.Contains(completed.Body.String(), `"setup_status":"ready"`) {
 		t.Fatalf("supported model=%d %s", completed.Code, completed.Body.String())
 	}
 	preflight := requestJSON(t, e, http.MethodPost, base+"/image-generation-preflights", map[string]any{})
-	if preflight.Code != http.StatusOK || !strings.Contains(preflight.Body.String(), `"value":"1536x1152"`) {
+	if preflight.Code != http.StatusOK || !strings.Contains(preflight.Body.String(), `"value":"`+wantSize+`"`) {
 		t.Fatalf("finalized project preflight=%d %s", preflight.Code, preflight.Body.String())
 	}
 	// Replaying a completed finalization must not depend on today's model settings.
 	if err := projects.WithStore(ctx, projectUUID, func(store *project.Store) error {
-		_, err := models.Patch(ctx, store, modelsettings.PatchInput{ExpectedRevision: 1, Changes: map[string]*modelsettings.Selection{modelsettings.ProjectImage: nil}})
+		input := modelsettings.PatchInput{ExpectedRevision: 1, Changes: map[string]*modelsettings.Selection{modelsettings.ProjectImage: nil}}
+		if selection == "relay_global" {
+			_, err := models.PatchGlobal(ctx, input)
+			return err
+		}
+		_, err := models.Patch(ctx, store, input)
 		return err
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if replay := finalize(2); replay.Code != http.StatusOK {
+	if replay := finalize(finalRevision); replay.Code != http.StatusOK {
 		t.Fatalf("replay=%d %s", replay.Code, replay.Body.String())
 	}
-	if conflict := finalize(3); conflict.Code != http.StatusConflict {
+	if conflict := finalize(finalRevision + 1); conflict.Code != http.StatusConflict {
 		t.Fatalf("conflict=%d %s", conflict.Code, conflict.Body.String())
 	}
 }

@@ -24,6 +24,18 @@ const (
 	CloudflareVerifiedAtKey          = "ai_providers.openai_compatible.verified_at"
 	CloudflareVerifiedFingerprintKey = "ai_providers.openai_compatible.verified_fingerprint"
 
+	RelayUUIDKey                = "ai_providers.openai_relay.uuid"
+	RelayBaseURLKey             = "ai_providers.openai_relay.base_url"
+	RelayAPIKeyKey              = "ai_providers.openai_relay.api_key"
+	RelayImageBaseURLKey        = "ai_providers.openai_relay.image_base_url"
+	RelayImageAPIModeKey        = "ai_providers.openai_relay.image_api_mode"
+	RelayImageAPIKeyKey         = "ai_providers.openai_relay.image_api_key"
+	RelayDefaultModelKey        = "ai_providers.openai_relay.default_model"
+	RelayDefaultImageModelKey   = "ai_providers.openai_relay.default_image_model"
+	RelayVerifiedKey            = "ai_providers.openai_relay.verified"
+	RelayVerifiedAtKey          = "ai_providers.openai_relay.verified_at"
+	RelayVerifiedFingerprintKey = "ai_providers.openai_relay.verified_fingerprint"
+
 	BailianUUIDKey                = "ai_providers.aliyun_bailian.uuid"
 	BailianWorkspaceKey           = "ai_providers.aliyun_bailian.workspace_id"
 	BailianRegionKey              = "ai_providers.aliyun_bailian.region"
@@ -45,7 +57,19 @@ type definition struct {
 }
 
 var orderedDefinitions = []definition{
-	{Key: ActiveProviderKey, Default: "none", Public: true, Mutable: true, Normalize: member("none", "cloudflare_ai_gateway", "openai_compatible", "aliyun_bailian")},
+	{Key: RelayBaseURLKey, Default: "", Public: true, Mutable: true, Normalize: httpURL},
+	{Key: RelayImageBaseURLKey, Default: "", Public: true, Mutable: true, Normalize: httpURL},
+	{Key: RelayAPIKeyKey, Default: nil, Secret: true, Public: true, Mutable: true, Normalize: requiredString(8192)},
+	{Key: RelayImageAPIKeyKey, Default: nil, Secret: true, Public: true, Mutable: true, Normalize: requiredString(8192)},
+	{Key: RelayDefaultModelKey, Default: "gpt-6.1-sol", Public: true, Mutable: true, Normalize: member("gpt-6", "gpt-6.1-sol", "gpt-5.6-sol")},
+	{Key: RelayImageAPIModeKey, Default: ImageAPIResponses, Public: true, Mutable: true, Normalize: member(ImageAPIResponses, ImageAPIImages)},
+	{Key: RelayDefaultImageModelKey, Default: "gpt-6.1-sol", Public: true, Mutable: true, Normalize: relayImageModel},
+	{Key: RelayUUIDKey, Default: "", Normalize: requiredString(64)},
+	{Key: RelayVerifiedKey, Default: false, Normalize: boolean},
+	{Key: RelayVerifiedAtKey, Default: nil, Normalize: optionalString(64)},
+	{Key: RelayVerifiedFingerprintKey, Default: nil, Normalize: optionalString(64)},
+
+	{Key: ActiveProviderKey, Default: "none", Public: true, Mutable: true, Normalize: member("none", "cloudflare_ai_gateway", "openai_compatible", "aliyun_bailian", "openai_relay")},
 	{Key: CloudflareAccountIDKey, Default: "", Public: true, Mutable: true, Normalize: cloudflareAccountID},
 	{Key: CloudflareDefaultModelKey, Default: CloudflareModelGPT6Sol, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelGPT6Sol, CloudflareModelTerra, CloudflareModelSol}},
 	{Key: CloudflareDefaultImageModelKey, Default: CloudflareModelGPT6Sol, Public: true, Mutable: true, Normalize: cloudflareModel, AllowedValues: []string{CloudflareModelGPT6Sol, CloudflareModelTerra, CloudflareModelSol}},

@@ -18,6 +18,7 @@ import (
 	"lumi/internal/modelsettings"
 	"lumi/internal/production"
 	"lumi/internal/project"
+	"lumi/internal/providerdiag"
 	"lumi/internal/providerlimit"
 
 	"gorm.io/gorm"
@@ -142,7 +143,7 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	if model == "" || strings.TrimSpace(resolved.ImageBaseURL) == "" {
 		return nil, domainError(CodeProvider, "图片模型未配置", "当前 Provider 缺少默认图片模型或图片 API 地址。", nil)
 	}
-	request := imagegen.Request{ProviderType: resolved.ProviderType, BaseURL: resolved.ImageBaseURL, APIKey: resolved.APIKey, Model: model, EnableThinking: resolved.ImageEnableThinking, EnablePromptExtend: resolved.ImagePromptExtend, Prompt: prompt, Size: size, Quality: quality, Images: inputs}
+	request := imagegen.Request{ImageAPIMode: resolved.ImageAPIMode, ProviderType: resolved.ProviderType, BaseURL: resolved.ImageBaseURL, APIKey: resolved.ImageAPIKey, Model: model, EnableThinking: resolved.ImageEnableThinking, EnablePromptExtend: resolved.ImagePromptExtend, Prompt: prompt, Size: size, Quality: quality, Images: inputs}
 	requestPayload, err := llmlog.EncodeImageRequest(request)
 	if err != nil {
 		return nil, err
@@ -166,12 +167,12 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 	lease.Finish(generateErr)
 	var responsePayload []byte
 	if generateErr == nil {
-		responsePayload, err = llmlog.EncodeImageResponse(response, resolved.APIKey)
+		responsePayload, err = llmlog.EncodeImageResponse(response, resolved.ImageAPIKey)
 		if err != nil {
 			generateErr = err
 		}
 	}
-	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{BillingUsage: response.BillingUsage(), OutputSummary: response.RevisedPrompt, Response: responsePayload, Err: generateErr})
+	finishErr := llmlog.Finish(context.WithoutCancel(ctx), store, service.hub, logHandle, llmlog.FinishInput{BillingUsage: response.BillingUsage(), OutputSummary: providerdiag.RedactPreview(response.RevisedPrompt, request.APIKey, 4000), Response: responsePayload, Err: generateErr})
 	if generateErr != nil {
 		if finishErr != nil {
 			generateErr = errors.Join(generateErr, finishErr)

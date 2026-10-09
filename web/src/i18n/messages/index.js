@@ -8,6 +8,7 @@ import { trajectory } from './trajectory.js'
 import { settings } from './settings.js'
 import { errors } from './errors.js'
 import { simpleDashboard } from './simpleDashboard.js'
+import { tools } from './tools.js'
 
 export const DEFAULT_LOCALE = 'zh-Hans'
 export const LOCALE_STORAGE_KEY = 'lumi.locale'
@@ -27,6 +28,7 @@ export const MESSAGE_BUNDLES = Object.freeze([
   ['settings', settings],
   ['errors', errors],
   ['simpleDashboard', simpleDashboard],
+  ['tools', tools],
 ])
 
 export const RESOURCES = Object.freeze({

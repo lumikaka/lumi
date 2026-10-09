@@ -43,7 +43,7 @@ func TestResolveImageSizeUsesExactRegisteredCapabilities(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := ResolveImageSize(test.profile, test.providerType, test.model)
+			got, err := ResolveImageSize(test.profile, test.providerType, test.model, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +66,7 @@ func TestResolveImageSizeRejectsUnknownOrInexactCapabilities(t *testing.T) {
 		{provider.TypeCloudflareAIGateway, "unknown/image-model", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 		{"unknown", "unknown", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 	} {
-		_, err := ResolveImageSize(test.profile, test.providerType, test.model)
+		_, err := ResolveImageSize(test.profile, test.providerType, test.model, "")
 		var unsupported *UnsupportedError
 		if !errors.As(err, &unsupported) {
 			t.Errorf("error=%v, want UnsupportedError", err)

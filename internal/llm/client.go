@@ -151,7 +151,7 @@ func NewOpenAICompatibleClient(client *http.Client) *OpenAICompatibleClient {
 }
 
 func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Request, onDelta func(string) error) (Response, error) {
-	if input.ProviderType == provider.TypeCloudflareAIGateway {
+	if provider.UsesResponses(input.ProviderType) {
 		return client.generateResponses(ctx, input, onDelta)
 	}
 	if strings.TrimSpace(input.Model) == "" || strings.TrimSpace(input.Prompt) == "" {
@@ -216,7 +216,7 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 }
 
 func (client *OpenAICompatibleClient) Complete(ctx context.Context, input ChatRequest) (ChatResponse, error) {
-	if input.ProviderType == provider.TypeCloudflareAIGateway {
+	if provider.UsesResponses(input.ProviderType) {
 		return client.completeResponses(ctx, input)
 	}
 	if strings.TrimSpace(input.Model) == "" || len(input.Messages) == 0 {

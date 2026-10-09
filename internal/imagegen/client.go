@@ -17,6 +17,7 @@ import (
 	"lumi/internal/pricing"
 	"lumi/internal/provider"
 	"lumi/internal/providerdiag"
+	"lumi/internal/sitesettings"
 )
 
 // RequestTimeout bounds the complete generation, including result download.
@@ -46,6 +47,7 @@ func (err *Error) Unwrap() error { return err.Cause }
 func (err *Error) ProviderDiagnostic() providerdiag.Details { return err.Diagnostic }
 
 type Request struct {
+	ImageAPIMode                                                string
 	ProviderType, BaseURL, APIKey, Model, Prompt, Size, Quality string
 	Images                                                      []ImageInput
 	EnableThinking                                              *bool
@@ -91,13 +93,22 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 	case provider.TypeAliyunBailian:
 		return client.generateBailian(ctx, input)
 	case provider.TypeCloudflareAIGateway:
-		return client.generateCloudflare(ctx, input)
+		return client.generateResponses(ctx, input)
+	case provider.TypeOpenAIRelay:
+		switch input.APIMode() {
+		case sitesettings.ImageAPIResponses:
+			return client.generateResponses(ctx, input)
+		case sitesettings.ImageAPIImages:
+			return client.generateImages(ctx, input)
+		default:
+			return Response{}, &Error{Code: "image_invalid_input", SafeMessage: "不支持该生图调用方式。"}
+		}
 	default:
 		return Response{}, &Error{Code: "image_provider_unsupported", SafeMessage: "图片 Provider 不受支持。"}
 	}
 }
 
-func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, input Request) (Response, error) {
+func (client *OpenAICompatibleClient) generateResponses(ctx context.Context, input Request) (Response, error) {
 	content := []any{map[string]any{"type": "input_text", "text": input.Prompt}}
 	for _, image := range input.Images {
 		mimeType := strings.ToLower(strings.TrimSpace(image.MIMEType))
@@ -107,7 +118,7 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		content = append(content, map[string]any{"type": "input_image", "image_url": "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)})
 	}
 	tool := map[string]any{"type": "image_generation", "action": "generate", "moderation": "low"}
-	if provider.UsesCloudflareImageTool(input.Model) {
+	if input.ProviderType == provider.TypeCloudflareAIGateway && provider.UsesCloudflareImageTool(input.Model) {
 		tool["model"] = provider.CloudflareImageToolModel
 	}
 	if strings.TrimSpace(input.Size) != "" {
@@ -121,9 +132,13 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		"input": []any{map[string]any{"role": "user", "content": content}},
 		"tools": []any{tool},
 	}
+	if input.ProviderType == provider.TypeOpenAIRelay {
+		payload["store"] = false
+		payload["tool_choice"] = map[string]any{"type": "image_generation"}
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return Response{}, &Error{Code: "image_invalid_input", SafeMessage: "无法编码 Cloudflare 图片请求。", Cause: err}
+		return Response{}, &Error{Code: "image_invalid_input", SafeMessage: "无法编码 Responses 图片请求。", Cause: err}
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(input.BaseURL, "/")+"/responses", bytes.NewReader(body))
 	if err != nil {
@@ -131,9 +146,11 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 	}
 	request.Header.Set("Authorization", "Bearer "+input.APIKey)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("cf-aig-max-attempts", "1")
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(input.Model)), "@cf/") {
-		request.Header.Set("cf-aig-gateway-id", "default")
+	if input.ProviderType == provider.TypeCloudflareAIGateway {
+		request.Header.Set("cf-aig-max-attempts", "1")
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(input.Model)), "@cf/") {
+			request.Header.Set("cf-aig-gateway-id", "default")
+		}
 	}
 	response, err := client.http.Do(request)
 	if err != nil {
@@ -142,11 +159,11 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		diagnostic := providerdiag.ReadHTTPError(response, input.APIKey)
-		return Response{}, classify(fmt.Errorf("Cloudflare returned HTTP %d", response.StatusCode), response.StatusCode, diagnostic)
+		return Response{}, classify(fmt.Errorf("Provider returned HTTP %d", response.StatusCode), response.StatusCode, diagnostic)
 	}
 	var envelope responsesEnvelope
 	if err := json.NewDecoder(io.LimitReader(response.Body, 96<<20)).Decode(&envelope); err != nil {
-		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 返回了无法解析的图片响应。", Retryable: true, Cause: err}
+		return Response{}, &Error{Code: "image_invalid_response", SafeMessage: "Provider 返回了无法解析的图片响应。", Retryable: true, Cause: err}
 	}
 	result := Response{Usage: envelope.billingUsage(input)}
 	var count int64
@@ -164,15 +181,15 @@ func (client *OpenAICompatibleClient) generateCloudflare(ctx context.Context, in
 		}
 		imageBytes, err := base64.StdEncoding.DecodeString(item.Result)
 		if err != nil || len(imageBytes) == 0 || len(imageBytes) > maxImageBytes {
-			return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 图片内容无效。", Cause: err}
+			return result, &Error{Code: "image_invalid_response", SafeMessage: "Provider 图片内容无效。", Cause: err}
 		}
 		mimeType := http.DetectContentType(imageBytes)
 		if mimeType != "image/png" && mimeType != "image/jpeg" && mimeType != "image/webp" {
-			return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 返回的内容不是支持的图片。"}
+			return result, &Error{Code: "image_invalid_response", SafeMessage: "Provider 返回的内容不是支持的图片。"}
 		}
 		return Response{Bytes: imageBytes, MIMEType: mimeType, RevisedPrompt: item.RevisedPrompt, Usage: result.Usage}, nil
 	}
-	return result, &Error{Code: "image_invalid_response", SafeMessage: "Cloudflare 未返回 image_generation_call。", Retryable: true}
+	return result, &Error{Code: "image_invalid_response", SafeMessage: "Provider 未返回 image_generation_call。", Retryable: true}
 }
 
 func (client *OpenAICompatibleClient) generateBailian(ctx context.Context, input Request) (Response, error) {

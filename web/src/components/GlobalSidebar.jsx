@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   User,
+  Wrench,
   X,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
@@ -37,6 +38,7 @@ const SETTINGS_ITEMS = [
   { labelKey: 'settings.user_account', to: '/settings/account', icon: User },
   { labelKey: 'settings.language_preference', to: '/settings/account#language', icon: Languages },
   { labelKey: 'settings.model_configuration', to: '/settings/providers', icon: Cpu },
+  { labelKey: 'tools.title', to: '/settings/tools', icon: Wrench },
   { labelKey: 'settings.mcp', to: '/settings/mcp', icon: Plug },
   { labelKey: 'settings.llm_calls', to: '/settings/llm-logs', icon: Activity },
   { labelKey: 'settings.feedback', to: '/about', icon: MessageSquareWarning },

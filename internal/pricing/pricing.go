@@ -130,7 +130,7 @@ func Metrics(mode string) []string {
 	return nil
 }
 func Validate(r Rule) error {
-	if r.ProviderType != "aliyun_bailian" && r.ProviderType != "cloudflare_ai_gateway" {
+	if r.ProviderType != "aliyun_bailian" && r.ProviderType != "cloudflare_ai_gateway" && r.ProviderType != "openai_relay" {
 		return ErrInvalid
 	}
 	if strings.TrimSpace(r.Model) != r.Model || r.Model == "" || len(r.Model) > 512 || len(r.Region) > 80 || !currencyPattern.MatchString(r.Currency) || len(r.Rates) > 100 || len(r.SourceURL) > 2048 {

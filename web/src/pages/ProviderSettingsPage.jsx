@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import { changeRelayImageMode, providerSettingsChanges } from './providerSettingsForm.js'
+
 import ModelSettingsCard from '../components/ModelSettingsCard.jsx'
 import ModelPricesPanel from './ModelPricesPanel.jsx'
 import AppPageShell from '../components/AppPageShell.jsx'
@@ -14,9 +16,11 @@ import { useI18n } from '../i18n/useI18n.js'
 const PREFIXES = {
   cloudflare_ai_gateway: 'ai_providers.openai_compatible',
   aliyun_bailian: 'ai_providers.aliyun_bailian',
+  openai_relay: 'ai_providers.openai_relay',
 }
 
 const CLOUDFLARE_MODELS = ['openai/gpt-6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-sol']
+
 
 const SECTION_LINKS = [
   ['provider-connections', 'settings.provider.choose_title'],
@@ -25,18 +29,25 @@ const SECTION_LINKS = [
   ['provider-model-prices', 'pricing.title'],
 ]
 
-function secretItem(settings, providerType) {
-  const key = `${PREFIXES[providerType]}.api_key`
+function secretItem(settings, providerType, field = 'api_key') {
+  const key = `${PREFIXES[providerType]}.${field}`
   return settings?.items?.find((item) => item.key === key)
 }
 
 function providerNameKey(provider) {
+  if (provider.provider_type === 'openai_relay') return 'settings.provider.relay_name'
   return provider.provider_type === 'aliyun_bailian'
     ? 'settings.provider.bailian_name'
     : 'settings.provider.cloudflare_name'
 }
 
 function initialProviderForm(provider) {
+  if (provider.provider_type === 'openai_relay') return {
+    base_url: provider.base_url || '', image_base_url: provider.image_base_url || '',
+    image_api_mode: provider.image_api_mode || 'responses',
+    default_model: provider.default_model || provider.text_models?.[0] || '',
+    default_image_model: provider.default_image_model || '',
+  }
   return provider.provider_type === 'aliyun_bailian'
     ? { workspace_id: provider.workspace_id || '', region: provider.region || 'cn-beijing' }
     : {
@@ -71,8 +82,8 @@ function ProviderListItem({ provider, onOpen }) {
           <strong>{t(providerNameKey(provider))}</strong>
           {isBailian ? <span className="provider-recommended">{t('settings.provider.recommended')}</span> : null}
         </span>
-        <span className="provider-list-item__description">{t(isBailian ? 'settings.provider.bailian_description' : 'settings.provider.cloudflare_description')}</span>
-        <span className="provider-list-item__requirements">{t(isBailian ? 'settings.provider.bailian_requirements' : 'settings.provider.cloudflare_requirements')}</span>
+        <span className="provider-list-item__description">{t(provider.provider_type === 'openai_relay' ? 'settings.provider.relay_description' : isBailian ? 'settings.provider.bailian_description' : 'settings.provider.cloudflare_description')}</span>
+        <span className="provider-list-item__requirements">{t(provider.provider_type === 'openai_relay' ? 'settings.provider.relay_requirements' : isBailian ? 'settings.provider.bailian_requirements' : 'settings.provider.cloudflare_requirements')}</span>
       </span>
       <span className="provider-list-item__aside">
         <span className={`provider-status provider-status--${statusTone}`}>{t(statusKey)}</span>
@@ -85,16 +96,18 @@ function ProviderListItem({ provider, onOpen }) {
 function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
+  const isRelay = provider.provider_type === 'openai_relay'
   const prefix = PREFIXES[provider.provider_type]
   const isBailian = provider.provider_type === 'aliyun_bailian'
   const secret = secretItem(settings, provider.provider_type)
   const [form, setForm] = useState(() => initialProviderForm(provider))
   const [apiKey, setApiKey] = useState('')
+  const [imageApiKey, setImageApiKey] = useState('')
   const [error, setError] = useState(null)
 
   useEffect(() => {
     setForm(initialProviderForm(provider))
-  }, [provider.account_id, provider.default_model, provider.default_image_model, provider.provider_type, provider.region, provider.uuid, provider.workspace_id])
+  }, [provider.image_api_mode, provider.base_url, provider.image_base_url, provider.account_id, provider.default_model, provider.default_image_model, provider.provider_type, provider.region, provider.uuid, provider.workspace_id])
 
   const refresh = async () => {
     await Promise.all([
@@ -105,8 +118,7 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
   }
   const saveAndCheck = useMutation({
     mutationFn: async () => {
-      const next = Object.fromEntries(Object.entries(form).map(([key, value]) => [`${prefix}.${key}`, value]))
-      if (apiKey.trim()) next[`${prefix}.api_key`] = apiKey.trim()
+      const next = providerSettingsChanges(prefix, form, apiKey, imageApiKey)
       await updateSiteSettings(next)
       await checkProvider(provider.uuid)
       if (onboarding) await updateSiteSettings({ 'ai_provider.active': provider.provider_type })
@@ -114,6 +126,7 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
     onMutate: () => setError(null),
     onSuccess: async () => {
       setApiKey('')
+      setImageApiKey('')
       await refresh()
       onClose()
       if (onboarding) onActivated()
@@ -134,9 +147,10 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
     onError: setError,
   })
   const resetSecret = useMutation({
-    mutationFn: () => resetSiteSettings([`${prefix}.api_key`]),
-    onSuccess: async () => {
-      setApiKey('')
+    mutationFn: (key = 'api_key') => resetSiteSettings([`${prefix}.${key}`]),
+    onSuccess: async (_, key) => {
+      if (key === 'image_api_key') setImageApiKey('')
+      else setApiKey('')
       setError(null)
       await refresh()
     },
@@ -147,12 +161,12 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
     onChange: (event) => setForm((current) => ({ ...current, [name]: event.target.value })),
   })
   const initialForm = initialProviderForm(provider)
-  const hasUnsavedChanges = apiKey.trim() || Object.keys(initialForm).some((key) => form[key] !== initialForm[key])
+  const hasUnsavedChanges = apiKey.trim() || imageApiKey.trim() || Object.keys(initialForm).some((key) => form[key] !== initialForm[key])
   const busy = saveAndCheck.isPending || activate.isPending || resetSecret.isPending
   const providerName = t(providerNameKey(provider))
   const secretCopy = secret?.secret_state === 'unavailable'
     ? t('settings.provider.secret_unavailable')
-    : secret?.has_value ? t('settings.provider.secret_saved', { masked: secret.masked_value || '****' }) : t(isBailian ? 'settings.provider.api_key_required' : 'settings.provider.cloudflare_api_token_required')
+    : secret?.has_value ? t('settings.provider.secret_saved', { masked: secret.masked_value || '****' }) : t(isBailian || isRelay ? 'settings.provider.api_key_required' : 'settings.provider.cloudflare_api_token_required')
   const close = () => { if (!busy) onClose() }
 
   return (
@@ -172,7 +186,26 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
       <form aria-busy={busy} onSubmit={(event) => { event.preventDefault(); saveAndCheck.mutate() }}>
         <div className="lumi-dialog__body provider-dialog__body">
           <div className="provider-config-grid">
-            {isBailian ? <>
+            {isRelay ? <>
+              {[false, true].map((isImage) => {
+                const key = isImage ? 'image_api_key' : 'api_key'
+                const groupSecret = secretItem(settings, provider.provider_type, key)
+                const unavailable = groupSecret?.secret_state === 'unavailable'
+                return <fieldset key={key} className="provider-relay-group" disabled={busy}>
+                  <legend>{t(isImage ? 'settings.provider.relay_image_group' : 'settings.provider.relay_text_group')}</legend>
+                  <label>{t('settings.provider.base_url')}<input {...field(isImage ? 'image_base_url' : 'base_url')} type="url" required autoFocus={!isImage} placeholder="https://example.com/v1" /></label>
+                  <span className="provider-field-hint">{t(isImage && form.image_api_mode === 'images' ? 'settings.provider.relay_images_url_hint' : 'settings.provider.relay_url_hint')}</span>
+                  <label>{t('settings.provider.api_key')}
+                    <input type="password" value={isImage ? imageApiKey : apiKey} onChange={(event) => (isImage ? setImageApiKey : setApiKey)(event.target.value)} required={!groupSecret?.has_value} autoComplete="new-password" placeholder={t(groupSecret?.has_value ? 'settings.provider.api_key_keep' : 'settings.provider.api_key_enter')} />
+                    <span className={`provider-field-hint${unavailable ? ' provider-field-hint--danger' : ''}`}>{unavailable ? t('settings.provider.secret_unavailable') : groupSecret?.has_value ? t('settings.provider.secret_saved', { masked: groupSecret.masked_value || '****' }) : t('settings.provider.api_key_required')}</span>
+                  </label>
+                  {groupSecret?.has_value && !onboarding ? <button type="button" className="button-quiet danger-text" onClick={() => window.confirm(t('settings.provider.api_key_confirm')) && resetSecret.mutate(key)}>{t('settings.provider.api_key_reset')}</button> : null}
+                  {isImage ? <label>{t('settings.provider.image_api_mode')}<select value={form.image_api_mode} onChange={(event) => setForm((current) => changeRelayImageMode(current, event.target.value, provider.image_models_by_mode))}><option value="responses">{t('settings.provider.image_api_responses')}</option><option value="images">{t('settings.provider.image_api_images')}</option></select></label> : null}
+                  <label>{t(isImage ? 'settings.provider.default_image_model' : 'settings.provider.default_text_model')}<select {...field(isImage ? 'default_image_model' : 'default_model')} required><option value="" disabled>{t('settings.provider.select_image_model')}</option>{(isImage ? provider.image_models_by_mode?.[form.image_api_mode] || [] : provider.text_models || []).map((model) => <option key={model} value={model}>{model}</option>)}</select></label>
+                </fieldset>
+              })}
+              <p>{t('settings.provider.relay_check_hint')}</p>
+            </> : isBailian ? <>
               <label>{t('settings.provider.workspace_id')}<input {...field('workspace_id')} required autoFocus placeholder={t('settings.provider.workspace_id_placeholder')} /></label>
               <label>{t('settings.provider.region')}<select {...field('region')}><option value="cn-beijing">{t('settings.provider.region.beijing')}</option><option value="ap-southeast-1">{t('settings.provider.region.singapore')}</option><option value="eu-central-1">{t('settings.provider.region.frankfurt')}</option><option value="ap-northeast-1">{t('settings.provider.region.tokyo')}</option></select></label>
               <p>{t('settings.provider.fixed_models', { text_model: provider.default_model, image_model: provider.default_image_model })}</p>
@@ -182,16 +215,16 @@ function ProviderDialog({ provider, settings, onboarding, onClose, onActivated }
               <label>{t('settings.provider.default_text_model')}<select {...field('default_model')} required>{CLOUDFLARE_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>
               <label>{t('settings.provider.default_image_model')}<select {...field('default_image_model')} required>{CLOUDFLARE_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>
             </>}
-            <label className="provider-api-key-field">
+            {!isRelay ? <label className="provider-api-key-field">
               {t(isBailian ? 'settings.provider.api_key' : 'settings.provider.cloudflare_api_token')}
               <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required={!secret?.has_value} autoComplete="new-password" placeholder={t(secret?.has_value ? 'settings.provider.api_key_keep' : (isBailian ? 'settings.provider.api_key_enter' : 'settings.provider.cloudflare_api_token_enter'))} />
               <span className={secret?.secret_state === 'unavailable' ? 'provider-field-hint provider-field-hint--danger' : 'provider-field-hint'}>{secretCopy}</span>
-            </label>
+            </label> : null}
           </div>
           <LocalizedErrorMessage error={error} className="provider-error" />
         </div>
         <footer className="lumi-dialog__actions provider-dialog__actions">
-          {secret?.has_value && !onboarding ? <button type="button" className="button-quiet danger-text provider-dialog__reset" disabled={busy} onClick={() => window.confirm(t('settings.provider.api_key_confirm')) && resetSecret.mutate()}>{t('settings.provider.api_key_reset')}</button> : null}
+          {!isRelay && secret?.has_value && !onboarding ? <button type="button" className="button-quiet danger-text provider-dialog__reset" disabled={busy} onClick={() => window.confirm(t('settings.provider.api_key_confirm')) && resetSecret.mutate('api_key')}>{t('settings.provider.api_key_reset')}</button> : null}
           {!onboarding && provider.verified && !provider.active ? <button type="button" className="button-secondary" disabled={busy || Boolean(hasUnsavedChanges)} onClick={() => activate.mutate()}>{t('settings.provider.set_current')}</button> : null}
           <button type="button" className="button-secondary" disabled={busy} onClick={close}>{t('common.action.cancel')}</button>
           <button type="submit" disabled={busy}>{t(saveAndCheck.isPending ? (onboarding ? 'settings.provider.connecting_start' : 'settings.provider.saving_checking') : (onboarding ? 'settings.provider.connect_start' : 'settings.provider.save_check'))}</button>

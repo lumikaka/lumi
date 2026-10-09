@@ -21,7 +21,7 @@ func NewImageGenerationPreflightHandler(providers *provider.Service) *ImageGener
 }
 
 func imageAspectUnsupportedError(err error, details string) error {
-	return NewError(http.StatusUnprocessableEntity, picturebook.CodeAspectRatioUnsupported, "图片模型不支持所选比例", details, err)
+	return NewError(http.StatusUnprocessableEntity, picturebook.CodeAspectRatioUnsupported, "图片模型不支持所选比例", picturebook.SizeErrorDetails(err, details), err)
 }
 
 func (handler *ImageGenerationPreflightHandler) Create(c echo.Context) error {
@@ -39,7 +39,7 @@ func (handler *ImageGenerationPreflightHandler) Create(c echo.Context) error {
 	if err != nil {
 		return modelSettingsAPIError(err)
 	}
-	size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model)
+	size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model, resolved.Provider.ImageAPIMode)
 	if err != nil {
 		var unsupported *picturebook.UnsupportedError
 		if errors.As(err, &unsupported) {
@@ -75,7 +75,7 @@ func (handler *ProjectImageGenerationPreflightHandler) Create(c echo.Context) er
 		if err != nil {
 			return err
 		}
-		size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model)
+		size, err := picturebook.ResolveImageSize(profile, resolved.Provider.ProviderType, resolved.Model, resolved.Provider.ImageAPIMode)
 		if err != nil {
 			return err
 		}

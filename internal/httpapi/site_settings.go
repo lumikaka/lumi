@@ -47,8 +47,8 @@ func (handler *SiteSettingsHandler) Update(c echo.Context) error {
 	var changed []string
 	if activating {
 		active, ok := activeValue.(string)
-		if !ok || (active != provider.TypeCloudflareAIGateway && active != provider.TypeAliyunBailian) {
-			return siteSettingsAPIError(&sitesettings.Error{Code: sitesettings.CodeInvalidSetting, Message: "激活 Provider 失败", Details: "ai_provider.active 只能设置为 cloudflare_ai_gateway 或 aliyun_bailian。"})
+		if !ok || (active != provider.TypeCloudflareAIGateway && active != provider.TypeAliyunBailian && active != provider.TypeOpenAIRelay) {
+			return siteSettingsAPIError(&sitesettings.Error{Code: sitesettings.CodeInvalidSetting, Message: "激活 Provider 失败", Details: "ai_provider.active 只能设置为 cloudflare_ai_gateway、aliyun_bailian 或 openai_relay。"})
 		}
 		if _, err := handler.providers.Activate(c.Request().Context(), active); err != nil {
 			return providerAPIError(err)

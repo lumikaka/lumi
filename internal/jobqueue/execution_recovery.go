@@ -13,6 +13,8 @@ import (
 	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver"
+	"github.com/riverqueue/river/riverdriver/riversqlite"
 	"github.com/riverqueue/river/rivertype"
 )
 
@@ -92,6 +94,11 @@ func (runtime *projectRuntime) waitExecutionRetryBoundary(ctx context.Context, t
 			tx.Rollback()
 			return err
 		}
+		job, err = runtime.reclaimPreviousRuntimeExecutionTx(ctx, tx, record, job)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 		if job == nil || riverTerminal(job) {
 			if err := clearExecutionRecordTx(ctx, tx, record); err != nil {
 				tx.Rollback()
@@ -106,6 +113,49 @@ func (runtime *projectRuntime) waitExecutionRetryBoundary(ctx context.Context, t
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
+}
+
+// Lumi holds an exclusive project file lock, and Manager never replaces a
+// runtime until its River client has stopped successfully. Under those two
+// constraints, a running job last claimed by a different client is left over
+// from a stopped runtime. A different leader alone would not prove this.
+// Only explicit retries of terminal business owners reach this path. Keep
+// current-client jobs (including the gap before Work registers its cancel
+// handle), unknown claimants, and locally registered work on the normal wait
+// path. All identity checks and cancellation use the same SQLite transaction.
+func (runtime *projectRuntime) reclaimPreviousRuntimeExecutionTx(ctx context.Context, tx *sql.Tx, record executionRecord, job *rivertype.JobRow) (*rivertype.JobRow, error) {
+	if job == nil || job.State != rivertype.JobStateRunning || !record.owns(job, true) ||
+		(record.Status != StatusFailed && record.Status != StatusCancelled && record.Status != StatusInterrupted) ||
+		job.AttemptedAt == nil || len(job.AttemptedBy) == 0 {
+		return job, nil
+	}
+	claimant := job.AttemptedBy[len(job.AttemptedBy)-1]
+	if claimant == "" || claimant == runtime.client.ID() {
+		return job, nil
+	}
+	runtime.workMu.Lock()
+	_, working := runtime.workCancels[executionWorkKey(record.UUID, record.binding())]
+	runtime.workMu.Unlock()
+	if working {
+		return job, nil
+	}
+	now := runtime.manager.now().UTC()
+	// Use River's state transition API so its JSONB metadata and uniqueness
+	// bookkeeping stay intact. Clearing the owner binding below fences late
+	// writes, and both changes roll back together if either operation fails.
+	jobs, err := riversqlite.New(runtime.sqlDB).UnwrapExecutor(tx).JobSetStateIfRunningMany(ctx, &riverdriver.JobSetStateIfRunningManyParams{
+		ID: []int64{job.ID}, Attempt: []*int{nil}, ErrData: [][]byte{nil},
+		FinalizedAt: []*time.Time{&now}, ScheduledAt: []*time.Time{nil},
+		MetadataDoMerge: []bool{true}, MetadataUpdates: [][]byte{[]byte(`{"lumi_recovery_reason":"retry_previous_runtime"}`)},
+		State: []rivertype.JobState{rivertype.JobStateCancelled}, Now: &now,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(jobs) != 1 || !record.owns(jobs[0], true) || jobs[0].State != rivertype.JobStateCancelled {
+		return nil, taskexecution.ErrSuperseded
+	}
+	return jobs[0], nil
 }
 
 func (runtime *projectRuntime) activeJobsTx(ctx context.Context, tx *sql.Tx) ([]*rivertype.JobRow, error) {

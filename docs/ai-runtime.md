@@ -19,6 +19,32 @@ Responses 请求使用 `input`、`max_output_tokens` 和 `store: false`。文本
 
 验证失败的 `error.details` 保留经过脱敏的上游 HTTP 状态、错误码、消息及 request ID（包括 Cloudflare `errors[]` 和 `Cf-Ray`），以区分 Lumi 的 502 与真实上游错误。
 
+## OpenAI 中转站生图协议
+
+文本组固定使用 Responses API。生图组通过 `ai_providers.openai_relay.image_api_mode` 选择 `responses` 或 `images`，默认及缺省值均为 `responses`。旧凭据、默认模型、验证指纹保持兼容；切换模式或修改模型后重新验证。模式与默认图片模型必须一起满足后端校验，不能保存或重置成不兼容的组合。
+
+Responses 模式保留原 `image_generation` 工具调用及模型选项。Images 模式提供 `gpt-image-2`、`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`，具体可用性取决于中转站。模型与请求格式参考 [GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill/blob/main/src/gpt_image_cli/cli.py)：无参考图请求 `POST {base_url}/images/generations`（JSON）；有参考图请求 `POST {base_url}/images/edits`（multipart，按顺序上传 `image[]`）。显式发送模型、`n=1` 和 PNG 输出格式，不传 `response_format`。解析 `data[].b64_json`，兼容图片 URL 的受限下载。请求失败不自动切换协议。
+
+图片预检、草稿定稿、自动生成工作流及漫画图片任务使用同一个尺寸解析器，显式传入当前图片调用模式。中转站 Responses（含缺省模式）和 Images 均按 `1024×1024`、`1536×1024`、`1024×1536` 三档精确比例接入，分别对应 1:1、3:2、2:3；Images 仍按图片模型目录校验，不因模型名称较新就开放自定义尺寸。4:3、3:4 等比例在预检、定稿和 YOLO 创建前返回 `image_aspect_ratio_unsupported`，不裁剪或近似替换。新项目对话按实际图片供应商提供比例建议；中转站且用户未指定精确比例时建议 custom 3:2、custom 2:3 或 square，用户明确指定的比例不得擅自改动。竖条继续沿用现有分段尺寸。百炼和 Cloudflare 的尺寸规则保持不变，Cloudflare 图片工具继续支持自定义尺寸。错误详情区分模式／模型不匹配与三档尺寸限制，并附带公开模型、模式和比例信息。历史任务重试仍沿用已冻结的输入快照。
+
+Provider 响应提供 `image_api_mode`、`image_models_by_mode` 和 `text_models`，设置页及全局、项目模型选项使用后端目录。切换模式后，不兼容的项目或全局图片覆盖保留并显示失效，不静默改用其他模型。切换时需要重新选择兼容模型。
+
+保存并验证依次检查文本组和生图组；生图组复用实际图片适配器生成一张 `1024x1024/low` 测试图，使用图片限流和超时，会产生调用费用。生成检查不能证明编辑能力可用。检查结果绑定配置指纹，检查期间配置变化时拒绝写入通过状态。百炼的 DashScope 生图和 Cloudflare 的 Responses 生图均保持原实现。
+
+Agent 图片工具、模型测试和生产任务均传递模式。生产任务快照冻结 `image_api_mode`，执行和重试沿用快照；历史中转站快照缺少字段时走 Responses。图片日志记录 `image_api_mode`、相对 `api_path`、模型及用量，不记录主机地址、密钥或参考图字节。
+
+## 应用级模型联调测试
+
+「设置 → 工具 → 测试模型联通」创建独立测试记录，分别选择文本和图片模型后，一键顺序执行连接探测、短文本生成和单张测试图片生成。已配置但尚未验证的 Provider 也可参加测试；测试不会改变 Provider 验证状态或全局默认模型。第一步复用连接探测协议，第二步要求有效非空文本，第三步直接调用图片适配器，不经过 Agent。中转站 Images 模式下第三步使用内置 64×64 PNG 参考图验证 `/images/edits`，其余模式继续无参考图生成。任一步失败立即停止，后续步骤标记为未执行；再次测试创建新记录。
+
+测试与步骤保存在应用数据库 `model_tests`、`model_test_steps`，使用内部整数外键和公开 UUIDv7，独立于项目级 LLM 日志。图片保存在应用数据目录 `model-tests/`，通过受桌面认证保护的 `/media/model-tests/:test_uuid/steps/:step_uuid/content` 读取。诊断仅保留脱敏错误码、消息、HTTP 状态和请求标识，不保存凭据或图片 Base64。
+
+`POST /api/v1/model-tests` 接收 `text_model` 和 `image_model` 的 `{provider_uuid,model}`，冻结选择、创建排队记录并返回 202；`GET /api/v1/model-tests` 使用 `page/per_page` 分页；`GET /api/v1/model-tests/:test_uuid` 读取步骤事实；`PUT /api/v1/model-tests/:test_uuid/execution` 使用相同参数启动历史草稿并返回 202。重复提交相同选择只读回既有执行，不同选择返回 409。
+
+排队中和运行中的测试可在详情页点击「终止测试」。`DELETE /api/v1/model-tests/:test_uuid/execution` 将该测试标记为 `interrupted`，取消正在执行的请求或限流等待，保留已完成步骤并将未开始步骤标记为 `skipped`，返回 200 和当前测试。重复终止或终止已结束测试只返回已有结果；终止不会影响其他测试，迟到的模型结果不能覆盖终止状态。
+
+应用生命周期管理的单工作器串行消费已入库测试，不依赖页面请求存活。连接、文本、图片步骤的总时限分别为 60 秒、120 秒和 10 分钟，包含全局 Provider 限流等待。Cloudflare 测试图使用 `1024x1024/low`；百炼使用 `1536x1536`，关闭扩写和思考。退出或重启后遗留任务标记为已中断并保留已完成步骤，不自动重试。状态落库后向现有 WebSocket `system` topic 发布 `model_test:changed`，payload 仅含 `test_uuid`；前端失效 Query 并 REST 重读，同时在首次 join、重新 join 和窗口聚焦时校准，无 HTTP 轮询。
+
 ## River 版本与兼容性 gate
 
 当前固定并验证的 River 版本是 `v0.41.0`，仅使用官方 `github.com/riverqueue/river`、`riverdriver/riversqlite` 和 `rivermigrate`。SQLite driver 仍由 River 官方标记为 early testing，因此任何 River 升级都必须先运行：
