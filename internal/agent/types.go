@@ -164,6 +164,9 @@ type Queue interface {
 }
 
 type JobSpec struct {
+	// Attempt and MaxAttempts come from the durable queue execution, not API input.
+	Attempt       int
+	MaxAttempts   int
 	ExecutionUUID string
 	Version       int
 	ProjectUUID   string

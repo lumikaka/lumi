@@ -145,3 +145,12 @@ Workflow 的公开 DTO、workflow/chat event payload 与 item metadata 在返回
 ## 错误分类与审计
 
 统一 LLM client 将失败稳定分类为网络、超时、鉴权、限流、Provider 响应、默认模型不可用、内容无效和用户取消；worker 另行投影本地持久化错误。普通 API 只返回安全 message/details，底层技术错误进入本地服务日志。
+
+
+### 长任务超时与步骤恢复
+
+自动创建 Workflow 的同步文本生成（含漫画正文分镜和封面脚本），以及独立漫画分镜任务，单次 Provider 请求默认等待 15 分钟。通过 `LUMI_WORKFLOW_REQUEST_TIMEOUT=15m` 配置，支持 `1s` 至 `1h` 的 Go duration；修改后重启服务生效。普通聊天 HTTP 请求仍为 5 分钟。Workflow worker 为同一步中的正文、封面两次请求及收尾预留预算，River 的卡住任务回收期限始终大于 worker 预算。
+
+自动创建 Workflow 的步骤遇到可重试的 Provider 超时或网络错误时，通过 River 退避自动重试一次（同一持久执行最多两次尝试）。等待重试期间 Workflow/步骤保持 queued，原对话的 await 不会提前结束；每次 Provider 请求仍独立记录 LLM 日志。鉴权、无效内容、用户取消不会触发此自动重试。耗尽后步骤标记失败，现有重试入口只恢复第一个未完成步骤，保留之前已完成的故事、设定及页面结果。显式手动重试开启新的有限尝试预算。独立分镜任务沿用现有最多三次队列尝试策略。
+
+超时无法证明上游没有生成或计费，有限重试只减少重复请求，不能保证 Provider 端只计费一次。

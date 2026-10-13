@@ -9,12 +9,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"lumi/internal/platformpath"
 )
 
 func TestLoadUsesDefaults(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "APP_ADDRESS", "FRONTEND_URL", "VITE_DEV_SERVER_URL", "LUMI_DATA_DIR", "DATABASE_DSN", logLevelEnv, desktopAccessTokenEnv} {
+	for _, key := range []string{"APP_ENV", "APP_ADDRESS", "FRONTEND_URL", "VITE_DEV_SERVER_URL", "LUMI_DATA_DIR", "DATABASE_DSN", logLevelEnv, desktopAccessTokenEnv, "LUMI_WORKFLOW_REQUEST_TIMEOUT"} {
 		t.Setenv(key, "")
 	}
 	dataDir, err := platformpath.DefaultAppDataDir(defaultEnvironment)
@@ -23,12 +24,13 @@ func TestLoadUsesDefaults(t *testing.T) {
 	}
 
 	want := Config{
-		Environment:      defaultEnvironment,
-		Address:          defaultAddress,
-		FrontendURL:      defaultFrontendURL,
-		ViteDevServerURL: defaultViteDevServerURL,
-		AppDataDir:       dataDir,
-		DatabaseDSN:      SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")),
+		WorkflowRequestTimeout: 15 * time.Minute,
+		Environment:            defaultEnvironment,
+		Address:                defaultAddress,
+		FrontendURL:            defaultFrontendURL,
+		ViteDevServerURL:       defaultViteDevServerURL,
+		AppDataDir:             dataDir,
+		DatabaseDSN:            SQLiteDSN(filepath.Join(dataDir, "lumi.sqlite")),
 	}
 	got, err := Load()
 	if err != nil {
@@ -40,6 +42,7 @@ func TestLoadUsesDefaults(t *testing.T) {
 }
 
 func TestLoadReadsEnvironment(t *testing.T) {
+	t.Setenv("LUMI_WORKFLOW_REQUEST_TIMEOUT", "")
 	t.Setenv("APP_ENV", "test")
 	t.Setenv(logLevelEnv, "")
 	t.Setenv("APP_ADDRESS", ":15801")
@@ -49,7 +52,8 @@ func TestLoadReadsEnvironment(t *testing.T) {
 	t.Setenv("DATABASE_DSN", "file:test.sqlite3")
 
 	want := Config{
-		Environment: "test", Address: ":15801", FrontendURL: "https://lumi.example",
+		WorkflowRequestTimeout: 15 * time.Minute,
+		Environment:            "test", Address: ":15801", FrontendURL: "https://lumi.example",
 		ViteDevServerURL: "http://vite.example:5802", AppDataDir: "/tmp/lumi-test-data", DatabaseDSN: "file:test.sqlite3",
 	}
 	got, err := Load()
@@ -253,4 +257,21 @@ func unsetEnv(t *testing.T, key string) {
 			_ = os.Unsetenv(key)
 		}
 	})
+}
+
+func TestWorkflowRequestTimeoutConfiguration(t *testing.T) {
+	for _, value := range []string{"15m", "900s", "30m", "0", "-1s", "2h", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("LUMI_WORKFLOW_REQUEST_TIMEOUT", value)
+			cfg, err := Load()
+			duration, parseErr := time.ParseDuration(value)
+			valid := parseErr == nil && duration >= time.Second && duration <= time.Hour
+			if valid && (err != nil || cfg.WorkflowRequestTimeout != duration) {
+				t.Fatalf("config=%+v err=%v", cfg, err)
+			}
+			if !valid && err == nil {
+				t.Fatal("accepted invalid workflow timeout")
+			}
+		})
+	}
 }

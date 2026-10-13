@@ -206,7 +206,7 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 		Queues: projectQueueConfig(), Workers: workers,
 		PeriodicJobs: []*river.PeriodicJob{comicExportCleanupPeriodicJob(store.ProjectUUID())},
 		MaxAttempts:  3, PollOnly: true, FetchPollInterval: 200 * time.Millisecond,
-		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: stuckJobRescueAfter,
+		JobTimeout: 5 * time.Minute, RescueStuckJobsAfter: manager.rescueStuckJobsAfter(),
 		SoftStopTimeout: 5 * time.Second,
 		Logger:          logger,
 		ErrorHandler:    &riverErrorLogger{logger: logger},
@@ -492,4 +492,8 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 		return err
 	}
 	return reconcileComicStoryboardWorkflows(ctx, db, projectID, now)
+}
+
+func (manager *Manager) rescueStuckJobsAfter() time.Duration {
+	return max(stuckJobRescueAfter, manager.agents.WorkflowStepTimeout()+time.Minute)
 }

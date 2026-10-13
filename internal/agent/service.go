@@ -26,20 +26,21 @@ import (
 )
 
 type Service struct {
-	projects             *project.Manager
-	providers            *provider.Service
-	models               *modelsettings.Resolver
-	model                llm.ToolClient
-	image                imagegen.Client
-	providerLimiter      providerlimit.Limiter
-	queue                Queue
-	hub                  *realtime.Hub
-	projectAPIRoutes     []agentAPIRoute
-	projectAPIDispatcher ProjectAPIDispatcher
-	turnBudget           turnBudgetLimits
-	now                  func() time.Time
-	executionLocksMu     sync.Mutex
-	executionLocks       map[string]*executionLock
+	projects               *project.Manager
+	providers              *provider.Service
+	models                 *modelsettings.Resolver
+	model                  llm.ToolClient
+	image                  imagegen.Client
+	providerLimiter        providerlimit.Limiter
+	queue                  Queue
+	hub                    *realtime.Hub
+	projectAPIRoutes       []agentAPIRoute
+	projectAPIDispatcher   ProjectAPIDispatcher
+	turnBudget             turnBudgetLimits
+	workflowRequestTimeout time.Duration
+	now                    func() time.Time
+	executionLocksMu       sync.Mutex
+	executionLocks         map[string]*executionLock
 }
 
 type executionLock struct {
@@ -717,4 +718,26 @@ func publicRealtimePayload(payload map[string]any) map[string]any {
 		return map[string]any{}
 	}
 	return result
+}
+
+// WithWorkflowRequestTimeout configures synchronous workflow text generation.
+// Zero keeps the default, including callers that construct Config directly.
+func (service *Service) WithWorkflowRequestTimeout(timeout time.Duration) *Service {
+	if timeout > 0 {
+		service.workflowRequestTimeout = timeout
+	}
+	return service
+}
+
+func (service *Service) WorkflowRequestTimeout() time.Duration {
+	if service != nil && service.workflowRequestTimeout > 0 {
+		return service.workflowRequestTimeout
+	}
+	return 15 * time.Minute
+}
+
+// WorkflowStepTimeout accommodates body and cover requests in one step,
+// plus local persistence and Provider admission.
+func (service *Service) WorkflowStepTimeout() time.Duration {
+	return 2*service.WorkflowRequestTimeout() + time.Minute
 }

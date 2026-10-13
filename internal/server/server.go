@@ -126,7 +126,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		slog.Warn("model price catalog unavailable", "error", err)
 	}
 	taskManager := jobqueue.NewManager(providerService, modelClient, realtimeHub).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
-	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
+	agentService := agent.NewService(projects, providerService, modelClient, taskManager, realtimeHub).WithWorkflowRequestTimeout(cfg.WorkflowRequestTimeout).WithImageClient(imageClient).WithProviderLimiter(providerLimiter)
 	projectCreationService := projectcreation.NewService(appStore, projects, agentService, realtimeHub)
 	taskManager.WithAgentService(agentService)
 	api := e.Group("/api/v1")

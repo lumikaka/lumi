@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"lumi/internal/platformpath"
 
@@ -52,14 +53,15 @@ func (authentication *DesktopAuthentication) MatchesToken(token string) bool {
 }
 
 type Config struct {
-	Environment      string
-	LogLevel         slog.Level
-	Address          string
-	FrontendURL      string
-	ViteDevServerURL string
-	AppDataDir       string
-	DatabaseDSN      string
-	DesktopAuth      *DesktopAuthentication
+	Environment            string
+	LogLevel               slog.Level
+	Address                string
+	FrontendURL            string
+	ViteDevServerURL       string
+	AppDataDir             string
+	DatabaseDSN            string
+	DesktopAuth            *DesktopAuthentication
+	WorkflowRequestTimeout time.Duration
 }
 
 func Load() (Config, error) {
@@ -70,6 +72,10 @@ func Load() (Config, error) {
 	if !strings.EqualFold(strings.TrimSpace(environment), "production") {
 		_ = godotenv.Load()
 		environment = getEnv("APP_ENV", defaultEnvironment)
+	}
+	workflowTimeout, err := time.ParseDuration(getEnv("LUMI_WORKFLOW_REQUEST_TIMEOUT", "15m"))
+	if err != nil || workflowTimeout < time.Second || workflowTimeout > time.Hour {
+		return Config{}, fmt.Errorf("LUMI_WORKFLOW_REQUEST_TIMEOUT must be a duration between 1s and 1h")
 	}
 	logLevel, err := loadLogLevel(environment)
 	if err != nil {
@@ -93,14 +99,15 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Environment:      environment,
-		LogLevel:         logLevel,
-		Address:          getEnv("APP_ADDRESS", defaultAddress),
-		FrontendURL:      getEnv("FRONTEND_URL", defaultFrontendURL),
-		ViteDevServerURL: getEnv("VITE_DEV_SERVER_URL", defaultViteDevServerURL),
-		AppDataDir:       dataDirectory,
-		DatabaseDSN:      databaseDSN,
-		DesktopAuth:      desktopAuthentication,
+		Environment:            environment,
+		LogLevel:               logLevel,
+		Address:                getEnv("APP_ADDRESS", defaultAddress),
+		FrontendURL:            getEnv("FRONTEND_URL", defaultFrontendURL),
+		ViteDevServerURL:       getEnv("VITE_DEV_SERVER_URL", defaultViteDevServerURL),
+		AppDataDir:             dataDirectory,
+		DatabaseDSN:            databaseDSN,
+		DesktopAuth:            desktopAuthentication,
+		WorkflowRequestTimeout: workflowTimeout,
 	}, nil
 }
 

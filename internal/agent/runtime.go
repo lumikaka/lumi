@@ -23,7 +23,7 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 		if err := store.RequireReady(); err != nil {
 			return err
 		}
-		return service.ExecuteWorkflowStep(ctx, store, spec.ResourceUUID)
+		return service.executeWorkflowStepAttempt(ctx, store, spec.ResourceUUID, spec.Attempt, spec.MaxAttempts)
 	}
 	if spec.JobKind != JobChatTurn && spec.JobKind != JobChatResume {
 		return domainError(CodeValidation, "Agent job kind 无效", "不支持的 Agent job。", nil)

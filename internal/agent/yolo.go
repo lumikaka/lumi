@@ -476,6 +476,10 @@ func workflowStepDTO(row workflowStepRecord, progress int) WorkflowStep {
 }
 
 func (service *Service) ExecuteWorkflowStep(ctx context.Context, store *project.Store, stepUUID string) error {
+	return service.executeWorkflowStepAttempt(ctx, store, stepUUID, 1, 1)
+}
+
+func (service *Service) executeWorkflowStepAttempt(ctx context.Context, store *project.Store, stepUUID string, attempt, maxAttempts int) error {
 	workflow, step, threadUUID, err := service.loadWorkflowStep(ctx, store, stepUUID)
 	if err != nil {
 		return err
@@ -502,6 +506,9 @@ func (service *Service) ExecuteWorkflowStep(ctx context.Context, store *project.
 	step.Status = "running"
 	output, wait, err := service.runYoloStep(ctx, store, workflow, step)
 	if err != nil {
+		if retryableWorkflowRequest(err) && ctx.Err() == nil && attempt > 0 && attempt < min(maxAttempts, WorkflowMaxAttempts) {
+			return service.retryWorkflowStep(ctx, store, workflow, step, threadUUID, err, attempt)
+		}
 		return service.failWorkflowStep(context.WithoutCancel(ctx), store, workflow, step, threadUUID, err)
 	}
 	if wait {
@@ -1626,7 +1633,7 @@ func (service *Service) completeYoloJSON(ctx context.Context, store *project.Sto
 	if err := store.DB().WithContext(ctx).Table("llm_logs").Where("workflow_step_id=? AND scenario=?", step.ID, scenario).Count(&previous).Error; err != nil {
 		return err
 	}
-	request := llm.ChatRequest{ProviderType: resolved.ProviderType, BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Messages: []llm.ChatMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}}, MaxTokens: 16000}
+	request := llm.ChatRequest{Timeout: service.WorkflowRequestTimeout(), ProviderType: resolved.ProviderType, BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: snapshot.Model, Messages: []llm.ChatMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}}, MaxTokens: 16000}
 	requestPayload, err := llmlog.EncodeChatRequest(request)
 	if err != nil {
 		return err

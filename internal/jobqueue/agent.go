@@ -37,6 +37,9 @@ func (worker *agentWorker) Timeout(job *river.Job[agentArgs]) time.Duration {
 	if job.Args.JobKind == agent.JobChatTurn || job.Args.JobKind == agent.JobChatResume {
 		return imageJobTimeout
 	}
+	if job.Args.JobKind == agent.JobWorkflowStep {
+		return worker.service.WorkflowStepTimeout()
+	}
 	return 0
 }
 
@@ -59,7 +62,7 @@ func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) 
 		unregister()
 	}()
 	for {
-		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, ExecutionUUID: job.Args.ExecutionUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID, WakeupUUID: job.Args.WakeupUUID})
+		err := worker.service.ExecuteJob(workCtx, worker.runtime.store, agent.JobSpec{Attempt: job.Attempt, MaxAttempts: job.MaxAttempts, Version: job.Args.Version, ProjectUUID: job.Args.ProjectUUID, ExecutionUUID: job.Args.ExecutionUUID, JobKind: job.Args.JobKind, ResourceUUID: job.Args.ResourceUUID, ThreadUUID: job.Args.ThreadUUID, WakeupUUID: job.Args.WakeupUUID})
 		if errors.Is(err, taskexecution.ErrSuperseded) {
 			return river.JobCancel(err)
 		}
@@ -100,8 +103,12 @@ func (runtime *projectRuntime) enqueueAgentTx(ctx context.Context, projectUUID s
 	if projectUUID != runtime.projectUUID || spec.ProjectUUID != projectUUID {
 		return taskexecution.Binding{}, taskexecution.ErrSuperseded
 	}
+	maxAttempts := 5
+	if spec.JobKind == agent.JobWorkflowStep {
+		maxAttempts = agent.WorkflowMaxAttempts
+	}
 	inserted, err := runtime.insertExecutionTx(ctx, tx, agentArgs{Version: spec.Version, ProjectUUID: projectUUID, JobKind: spec.JobKind, ResourceUUID: spec.ResourceUUID, ThreadUUID: spec.ThreadUUID, WakeupUUID: spec.WakeupUUID}, &river.InsertOpts{
-		Queue: QueueAgent, MaxAttempts: 5,
+		Queue: QueueAgent, MaxAttempts: maxAttempts,
 		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateRetryable, rivertype.JobStateScheduled}},
 	})
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"lumi/internal/llm"
 	"lumi/internal/llmlog"
@@ -23,6 +24,13 @@ import (
 type storyGenerationWorker struct {
 	river.WorkerDefaults[riverArgs]
 	runtime *projectRuntime
+}
+
+func (worker *storyGenerationWorker) Timeout(job *river.Job[riverArgs]) time.Duration {
+	if job.Args.TaskKind == KindComicStoryboardGeneration {
+		return worker.runtime.manager.agents.WorkflowStepTimeout()
+	}
+	return 0
 }
 
 func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[riverArgs]) error {
@@ -89,6 +97,9 @@ func (worker *storyGenerationWorker) Work(ctx context.Context, job *river.Job[ri
 		request := llm.Request{ProviderType: resolved.ProviderType, BaseURL: snapshot.ProviderBaseURL, APIKey: resolved.APIKey, Model: snapshot.Model,
 			SystemPrompt: systemPrompt,
 			Prompt:       snapshot.Prompt, Temperature: snapshot.Parameters.Temperature, MaxTokens: snapshot.Parameters.MaxTokens}
+		if record.Kind == KindComicStoryboardGeneration {
+			request.Timeout = runtime.manager.agents.WorkflowRequestTimeout()
+		}
 		requestPayload, logErr := llmlog.EncodeTextRequest(request)
 		if logErr != nil {
 			return runtime.handleWorkError(ctx, record, logErr, job.Attempt, job.MaxAttempts)

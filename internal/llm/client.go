@@ -57,6 +57,8 @@ func (err *Error) InvalidProviderResponse() *ProviderResponseDiagnostic {
 func (err *Error) PartialChatResponse() *ChatResponse { return err.PartialResponse }
 
 type Request struct {
+	// Timeout overrides the HTTP budget for this request only.
+	Timeout      time.Duration `json:"-"`
 	ProviderType string
 	BaseURL      string
 	APIKey       string `json:"-"`
@@ -115,6 +117,8 @@ type ToolDefinition struct {
 }
 
 type ChatRequest struct {
+	// Timeout overrides the HTTP budget for this request only. Zero keeps the client default.
+	Timeout      time.Duration `json:"-"`
 	ProviderType string
 	BaseURL      string
 	APIKey       string `json:"-"`
@@ -151,6 +155,7 @@ func NewOpenAICompatibleClient(client *http.Client) *OpenAICompatibleClient {
 }
 
 func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Request, onDelta func(string) error) (Response, error) {
+	client = client.withTimeout(input.Timeout)
 	if provider.UsesResponses(input.ProviderType) {
 		return client.generateResponses(ctx, input, onDelta)
 	}
@@ -216,6 +221,7 @@ func (client *OpenAICompatibleClient) Generate(ctx context.Context, input Reques
 }
 
 func (client *OpenAICompatibleClient) Complete(ctx context.Context, input ChatRequest) (ChatResponse, error) {
+	client = client.withTimeout(input.Timeout)
 	if provider.UsesResponses(input.ProviderType) {
 		return client.completeResponses(ctx, input)
 	}
@@ -650,4 +656,14 @@ func classify(err error, status int, diagnostics ...providerdiag.Details) error 
 		return &Error{Code: CodeProviderResponse, SafeMessage: "Provider 服务暂时不可用。", Retryable: true, Cause: err, Diagnostic: diagnostic}
 	}
 	return &Error{Code: CodeProviderResponse, SafeMessage: "Provider 拒绝了模型请求。", Cause: err, Diagnostic: diagnostic}
+}
+
+// withTimeout shares the connection pool without changing concurrent requests.
+func (client *OpenAICompatibleClient) withTimeout(timeout time.Duration) *OpenAICompatibleClient {
+	if timeout <= 0 {
+		return client
+	}
+	requestClient := *client.http
+	requestClient.Timeout = timeout
+	return &OpenAICompatibleClient{http: &requestClient}
 }
