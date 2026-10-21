@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"lumi/internal/dbmigrate"
 )
 
 func TestHelp(t *testing.T) {
@@ -53,14 +56,23 @@ func TestProjectMigrationRejectsRelativeRoot(t *testing.T) {
 }
 
 func TestMigrationCommandsUseEmbeddedAppMigrations(t *testing.T) {
-	t.Setenv("DATABASE_DSN", "file:"+filepath.Join(t.TempDir(), "ctl.sqlite3"))
+	dsn := "file:" + filepath.Join(t.TempDir(), "ctl.sqlite3")
+	runner, err := dbmigrate.OpenApp(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	latestVersion := runner.LatestVersion()
+	if err := runner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DATABASE_DSN", dsn)
 	for _, scenario := range []struct {
 		args []string
 		want string
 	}{
 		{args: []string{"migrate", "up"}, want: "migrations applied"},
 		{args: []string{"migrate", "up"}, want: "no migrations to apply"},
-		{args: []string{"migrate", "version"}, want: "version: 20260909000011, dirty: false"},
+		{args: []string{"migrate", "version"}, want: fmt.Sprintf("version: %d, dirty: false", latestVersion)},
 		{args: []string{"migrate", "down"}, want: "rolled back 1 migration"},
 	} {
 		var output bytes.Buffer
@@ -68,7 +80,7 @@ func TestMigrationCommandsUseEmbeddedAppMigrations(t *testing.T) {
 			t.Fatalf("run(%v) error = %v", scenario.args, err)
 		}
 		if !strings.Contains(output.String(), scenario.want) {
-			t.Fatalf("run(%v) output = %q", scenario.args, output.String())
+			t.Fatalf("run(%v) output = %q, want %q", scenario.args, output.String(), scenario.want)
 		}
 	}
 }
