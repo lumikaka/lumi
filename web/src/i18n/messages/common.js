@@ -94,6 +94,7 @@ export const common = defineMessages({
   'common.task_kind.premise_asset_breakdown': ['设定项拆解', 'Premise item breakdown'],
   'common.task_kind.premise_asset_generation': ['设定项生成', 'Premise item generation'],
   'common.task_kind.comic_image_generation': ['漫画图片生成', 'Comic image generation'],
+  'common.task_kind.website_generation': ['网站生成', 'Website generation'],
   'common.task_kind.comic_export': ['漫画导出', 'Comic export'],
   'common.navigation.main': ['主导航', 'Main navigation'],
   'common.navigation.home': ['首页', 'Home'],

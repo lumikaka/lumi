@@ -30,6 +30,7 @@ const (
 	KindPremiseAssetGeneration    = "premise_asset_generation"
 	KindComicImageGeneration      = "comic_image_generation"
 	KindComicExport               = "comic_export"
+	KindWebsiteGeneration         = "website_generation"
 )
 
 const (

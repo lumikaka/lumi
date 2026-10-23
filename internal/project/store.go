@@ -63,6 +63,7 @@ type Store struct {
 	pictureBook *PictureBookProfile
 	lock        *projectLock
 	fileMu      sync.Mutex
+	websiteMu   sync.Mutex
 	closing     bool
 }
 
@@ -444,4 +445,12 @@ func removeNewProject(root string) {
 		return
 	}
 	_ = os.RemoveAll(root)
+}
+
+// WithWebsiteBuild serializes workers through cancellation/retry handoffs without
+// blocking content edits or Asset Store commits during image processing.
+func (store *Store) WithWebsiteBuild(callback func() error) error {
+	store.websiteMu.Lock()
+	defer store.websiteMu.Unlock()
+	return callback()
 }

@@ -43,11 +43,15 @@ type productionWorker struct {
 }
 
 // Image tasks include reference preparation, generation and durable asset storage.
+const websiteJobTimeout = 30 * time.Minute
+
 const imageJobTimeout = imagegen.RequestTimeout + 5*time.Minute
 const stuckJobRescueAfter = imageJobTimeout + time.Minute
 
 func (worker *productionWorker) Timeout(job *river.Job[productionArgs]) time.Duration {
 	switch job.Args.TaskKind {
+	case KindWebsiteGeneration:
+		return websiteJobTimeout
 	case KindPremiseSettingGeneration, KindPremiseAssetGeneration, KindComicImageGeneration:
 		return imageJobTimeout
 	default:
@@ -107,8 +111,13 @@ func (worker *productionWorker) Work(ctx context.Context, job *river.Job[product
 		workErr = runtime.generatePremiseAsset(workCtx, service, record, snapshot)
 	case KindComicImageGeneration:
 		workErr = runtime.generateComicImage(workCtx, service, record, snapshot)
+	case KindWebsiteGeneration:
+		workErr = service.RenderWebsite(workCtx, record.UUID, func(progress int) error { return runtime.productionProgress(workCtx, record, progress) })
 	case KindComicExport:
 		workErr = runtime.renderExport(workCtx, service, record)
+	}
+	if workErr == nil && record.Kind == KindWebsiteGeneration {
+		return nil // Publication commits task completion and its event atomically.
 	}
 	if workErr == nil {
 		workErr = runtime.completeProduction(workCtx, record)
@@ -1220,7 +1229,7 @@ func classifyProductionError(err error) (string, string, bool, bool) {
 }
 func validProductionKind(value string) bool {
 	switch value {
-	case KindPremiseSettingGeneration, KindPremiseAssetBreakdown, KindPremiseAssetGeneration, KindComicImageGeneration, KindComicExport:
+	case KindPremiseSettingGeneration, KindPremiseAssetBreakdown, KindPremiseAssetGeneration, KindComicImageGeneration, KindComicExport, KindWebsiteGeneration:
 		return true
 	}
 	return false

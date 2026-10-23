@@ -1,0 +1,80 @@
+@use './design-tokens' as *
+
+.project-website
+  h2
+    display: flex
+    align-items: center
+    gap: 8px
+  &__badge
+    white-space: nowrap
+  &__status
+    display: flex
+    flex-wrap: wrap
+    gap: 12px
+    align-items: center
+    margin: 12px 0
+    progress
+      max-width: 100%
+  &__actions
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+    margin: 16px 0
+    a
+      display: inline-flex
+      align-items: center
+      gap: 6px
+      text-decoration: none
+    button
+      display: inline-flex
+      align-items: center
+      gap: 6px
+  &__missing
+    margin: 16px 0
+    details
+      margin-bottom: 10px
+    ul
+      max-height: 180px
+      overflow-y: auto
+    label
+      display: flex
+      gap: 8px
+      align-items: center
+  &__note
+    font-size: 13px
+    line-height: 1.7
+    opacity: .8
+  &__publish
+    margin-top: 24px
+    padding-top: 20px
+    border-top: 1px solid $color-border
+    > p
+      margin: 10px 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.7
+    textarea
+      display: block
+      min-height: 240px
+      max-height: 640px
+      padding: 14px
+      font-size: $font-size-small
+      line-height: 1.8
+      background: $color-surface-muted
+  &__publish-header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    flex-wrap: wrap
+    gap: 12px
+    h3
+      margin: 0
+      font-size: $font-size-body
+    button
+      display: inline-flex
+      align-items: center
+      gap: 6px
+  &__publish > &__copy-status
+    min-height: 20px
+    margin-bottom: 0

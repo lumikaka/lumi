@@ -64,11 +64,11 @@ test('task events distinguish story work from asset maintenance', () => {
 
 test('production, asset and LLM events invalidate exact and aggregate queries', () => {
   const production = projectRealtimeInvalidation(projectUuid, 'production_task:progress', { task_uuid: 'task-uuid' })
-  assert.deepEqual(keyNames(production), ['production-tasks', 'production-task', 'comic-export-operation', 'comic-exports'])
+  assert.deepEqual(keyNames(production), ['project-website', 'production-tasks', 'production-task', 'comic-export-operation', 'comic-exports'])
   assert.ok(production.queryKeys.some((key) => key[0] === 'production-task' && key[2] === 'task-uuid'))
 
   const asset = projectRealtimeInvalidation(projectUuid, 'integrity_scan/completed', { scan_uuid: 'scan-uuid' })
-  assert.deepEqual(keyNames(asset), ['asset-scans', 'asset-maintenance-tasks', 'assets'])
+  assert.deepEqual(keyNames(asset), ['project-website', 'asset-scans', 'asset-maintenance-tasks', 'assets'])
 
   const llm = projectRealtimeInvalidation(projectUuid, 'llm_log:changed', { log_uuid: 'log-uuid' })
   assert.deepEqual(keyNames(llm), ['chat-trajectory', 'project-llm-logs', 'project-llm-cost-summary', 'project-llm-cost-backfills', 'project-llm-log', 'workflow-llm-logs'])
@@ -186,5 +186,13 @@ test('MCP changes refresh history and thread entries; background progress does n
   for (const key of ['chat-threads', 'chat-thread', 'mcp-thread-activity', 'mcp-calls']) assert.ok(keys.includes(key))
   for (const event of ['production_task:progress', 'production_task:completed', 'task:completed']) {
     assert.ok(!keyNames(projectRealtimeInvalidation(projectUuid, event, {})).includes('mcp-thread-activity'))
+  }
+})
+
+test('website status rereads REST on content, task and publication hints', () => {
+  for (const event of ['website:changed', 'story:chapter_order_changed', 'story:project_updated', 'comic:section_changed', 'production_task:progress', 'asset/deleted', 'integrity_scan/completed']) {
+    const result = projectRealtimeInvalidation(projectUuid, event, { task_uuid: 'task-uuid' })
+    assert.ok(result.queryKeys.some((key) => key[0] === 'project-website' && key[1] === projectUuid), event)
+    assert.equal(result.invalidateAll, false)
   }
 })

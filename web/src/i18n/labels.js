@@ -88,6 +88,7 @@ export function taskKindLabel(t, value) {
     premise_asset_breakdown: 'common.task_kind.premise_asset_breakdown',
     premise_asset_generation: 'common.task_kind.premise_asset_generation',
     comic_image_generation: 'common.task_kind.comic_image_generation',
+    website_generation: 'common.task_kind.website_generation',
     comic_export: 'common.task_kind.comic_export',
   }[value]
   return key ? t(key) : t('common.status.unknown_with_code', { code: value || '—' })

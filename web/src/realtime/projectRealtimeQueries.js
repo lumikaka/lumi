@@ -39,8 +39,12 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   }
   const addPremise = () => premiseKeys.forEach((name) => add(name))
 
+  if (/^(website:|story:|production_task:|production:|comic:|asset\/|integrity_scan\/)/.test(event)) add('project-website')
+
   let matched = true
-  if (event === 'mcp:changed') {
+  if (event.startsWith('website:')) {
+    // Payloads are hints; REST reads the persisted task and website state.
+  } else if (event === 'mcp:changed') {
     add('mcp-grants')
     add('mcp-calls')
     add('chat-threads')

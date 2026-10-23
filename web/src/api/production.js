@@ -73,3 +73,7 @@ export const getProductionTask = (projectUuid, taskUuid) => apiRequest(root(proj
 export const listProductionTaskEvents = (projectUuid, taskUuid, query = {}) => apiRequest(root(projectUuid, `/production-tasks/${encodeURIComponent(taskUuid)}/events?${new URLSearchParams(query)}`))
 export const cancelProductionTask = (projectUuid, taskUuid) => apiRequest(root(projectUuid, `/production-tasks/${encodeURIComponent(taskUuid)}/cancellations`), json('POST'))
 export const retryProductionTask = (projectUuid, taskUuid) => apiRequest(root(projectUuid, `/production-tasks/${encodeURIComponent(taskUuid)}/retries`), json('POST'))
+
+export const getProjectWebsite = (projectUuid) => apiRequest(root(projectUuid, '/website'))
+export const generateProjectWebsite = (projectUuid, payload) => apiRequest(root(projectUuid, '/website/generations'), json('POST', payload))
+export const openProjectWebsiteDirectory = (projectUuid) => apiRequest(root(projectUuid, '/website/directory-openings'), json('POST'))

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, generatePremiseAssetVariant, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listComicSections, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, restoreComicSection, selectImageVariant, setComicSectionPremiseAssets, updateComicSection, updatePremiseSource } from './production.js'
+import { getProjectWebsite, generateProjectWebsite, openProjectWebsiteDirectory, createComicExport, createComicSection, createPremiseAsset, createStoryboard, emptyPremiseAssetTrash, generateChapterImagesBatch, generatePremiseAssetVariant, getComicExportReadiness, getComicSnapshot, getPremiseAsset, getProductionTask, listComicExports, listComicSections, listPremiseSources, listProductionTaskEvents, listSettingImages, permanentlyDeletePremiseAsset, reorderComicSections, restoreComicSection, selectImageVariant, setComicSectionPremiseAssets, updateComicSection, updatePremiseSource } from './production.js'
 
 test('production API uses UUID resources, single-resource mutations, and snake_case bodies', async () => {
   const originalFetch = global.fetch
@@ -107,4 +107,23 @@ test('comic page trash uses a state-filtered collection and a restoration resour
   } finally {
     global.fetch = originalFetch
   }
+})
+
+
+test('website actions use resource URLs and explicit partial export consent', async () => {
+  const originalFetch = global.fetch
+  const calls = []
+  global.fetch = async (path, options = {}) => {
+    calls.push({ path, options })
+    return { ok: true, status: 200, json: async () => ({ success: true, data: {} }) }
+  }
+  try {
+    await getProjectWebsite('public-uuid')
+    await generateProjectWebsite('public-uuid', { allow_missing_images: true, idempotency_key: 'website-1' })
+    await openProjectWebsiteDirectory('public-uuid')
+    assert.deepEqual(calls.map(({ path }) => path), ['/api/v1/projects/public-uuid/website', '/api/v1/projects/public-uuid/website/generations', '/api/v1/projects/public-uuid/website/directory-openings'])
+    assert.equal(calls[1].options.method, 'POST')
+    assert.deepEqual(JSON.parse(calls[1].options.body), { allow_missing_images: true, idempotency_key: 'website-1' })
+    assert.equal(calls[2].options.method, 'POST')
+  } finally { global.fetch = originalFetch }
 })

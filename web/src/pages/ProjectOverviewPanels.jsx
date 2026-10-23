@@ -10,6 +10,7 @@ import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { useI18n } from '../i18n/useI18n.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
 import { projectionStateLabel } from '../i18n/labels.js'
+import ProjectWebsiteCard from '../components/ProjectWebsiteCard.jsx'
 import ComicExportDialog from '../components/ComicExportDialog.jsx'
 import ProjectDashboardModeSetting from '../components/ProjectDashboardModeSetting.jsx'
 import ProjectDirectoryRenameOption, { useProjectDirectoryPreview } from '../components/ProjectDirectoryRenameOption.jsx'
@@ -392,6 +393,7 @@ export function OverviewExportsPanel({ projectUuid, standalone = false }) {
         <OverviewExportTable items={chapterItems} loading={chapterExportsQuery.isLoading} emptyTitle={term('projects.exports.empty_chapter')} chapterTitles={chapterTitles} chapterFallbackLabel={term('projects.exports.chapter_label')} projectFallbackLabel={term('projects.exports.project_label')} />
         <OverviewExportPagination page={chapterPage} pagination={chapterPagination} fetching={chapterExportsQuery.isFetching} onPageChange={setChapterPage} label={term('projects.exports.pagination')} />
       </section>
+      <ProjectWebsiteCard key={projectUuid} projectUuid={projectUuid} />
       {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={() => setExportRequest(null)} /> : null}
     </div>
   )

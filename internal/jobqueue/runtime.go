@@ -17,6 +17,7 @@ import (
 	"lumi/internal/imagegen"
 	"lumi/internal/llm"
 	"lumi/internal/modelsettings"
+	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/provider"
 	"lumi/internal/providerlimit"
@@ -216,6 +217,10 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 		return nil, fmt.Errorf("create River client: %w", err)
 	}
 	runtime.client = client
+	if err := production.NewService(store, manager.hub).RecoverWebsite(ctx); err != nil {
+		cancel()
+		return nil, err
+	}
 	if err := runtime.reconcileExecutionBindings(ctx); err != nil {
 		cancel()
 		return nil, err
@@ -495,5 +500,5 @@ func reconcileProductTasks(ctx context.Context, db *sql.DB, projectID int64, now
 }
 
 func (manager *Manager) rescueStuckJobsAfter() time.Duration {
-	return max(stuckJobRescueAfter, manager.agents.WorkflowStepTimeout()+time.Minute)
+	return max(stuckJobRescueAfter, websiteJobTimeout+time.Minute, manager.agents.WorkflowStepTimeout()+time.Minute)
 }

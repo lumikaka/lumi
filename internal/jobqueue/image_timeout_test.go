@@ -66,3 +66,12 @@ func TestWorkflowEnqueueHasBoundedRetryBudget(t *testing.T) {
 		t.Fatalf("persisted max_attempts=%d", maxAttempts)
 	}
 }
+
+func TestWebsiteBudgetFitsQueueRescueWindow(t *testing.T) {
+	worker := &productionWorker{}
+	manager := NewManager(nil, nil, nil)
+	budget := worker.Timeout(&river.Job[productionArgs]{Args: productionArgs{TaskKind: KindWebsiteGeneration}})
+	if budget != websiteJobTimeout || manager.rescueStuckJobsAfter() <= budget {
+		t.Fatalf("website budget=%v rescue=%v", budget, manager.rescueStuckJobsAfter())
+	}
+}

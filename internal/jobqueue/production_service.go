@@ -1228,6 +1228,15 @@ func (manager *Manager) RetryProductionTask(ctx context.Context, projectUUID, ta
 		return ProductionTask{}, taskError(CodeTaskStateConflict, "任务不能重试", "只有 failed、interrupted 或 cancelled 任务可重试。", nil)
 	}
 	now := manager.now().UTC()
+	if record.Kind == KindWebsiteGeneration {
+		var active bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM production_task_runs WHERE project_id=? AND kind=? AND id<>? AND status IN ('queued','running'))`, runtime.projectID, KindWebsiteGeneration, record.ID).Scan(&active); err != nil {
+			return ProductionTask{}, err
+		}
+		if active {
+			return ProductionTask{}, taskError(CodeTaskConflict, "网站正在生成", "请等待当前网站任务完成。", nil)
+		}
+	}
 	if record.Kind == KindComicExport {
 		var retained bool
 		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM comic_exports WHERE task_uuid=? AND status IN ('failed','cancelled') AND expires_at>?)`, taskUUID, now).Scan(&retained); err != nil {
