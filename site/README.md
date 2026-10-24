@@ -2,6 +2,8 @@
 
 此目录是 Lumi 官方网站与使用教程的独立 Hugo 项目，不参与 React 应用、Go 服务或桌面安装包构建。
 
+域名根路径 `https://lumikaka.github.io/` 的静态入口页由仓库中的 [`root-site/`](../root-site/README.md) 单独维护与发布；本目录发布到 `/lumi/`。
+
 站点包含简体中文和英文两套内容：中文首页位于 `/`，英文首页位于 `/en/`；使用教程分别位于 `/docs/` 与 `/en/docs/`。首页视觉参考 [Read Frog](https://www.readfrog.app/) 的留白、胶囊按钮和产品界面叙事，但品牌、文案、截图和实现均为 Lumi 自有内容。
 
 ## 环境要求

@@ -1,0 +1,80 @@
+# Install this workflow in lumikaka/lumikaka.github.io at
+# .github/workflows/root-pages.yml. It runs in the publishing repository.
+name: Root Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Lumi source branch, tag, or commit to publish
+        required: true
+        default: master
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: root-pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: Publish root homepage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout public homepage source
+        uses: actions/checkout@v7
+        with:
+          repository: lumikaka/lumi
+          ref: ${{ inputs.source_ref }}
+          path: source
+          persist-credentials: false
+
+      - name: Prepare static homepage
+        id: source
+        run: |
+          set -euo pipefail
+          test -s source/root-site/index.html
+          test -f source/root-site/.nojekyll
+          test -s source/root-site/assets/lumi-mark.svg
+          test -s source/root-site/assets/lumi-preview.webp
+
+          mkdir -p _site
+          cp source/root-site/index.html source/root-site/.nojekyll _site/
+          cp -R source/root-site/assets _site/assets
+          echo "sha=$(git -C source rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload static homepage
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy root homepage
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Record published source
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.sha }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          {
+            echo '### Root homepage published'
+            echo
+            echo "- Source: https://github.com/lumikaka/lumi/tree/${SOURCE_COMMIT}/root-site"
+            echo "- Website: ${PAGE_URL}"
+          } >> "${GITHUB_STEP_SUMMARY}"
