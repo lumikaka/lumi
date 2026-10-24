@@ -42,9 +42,9 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory root-site
 1. 创建公开仓库 `lumikaka/lumikaka.github.io`，默认分支为 `main`。
 2. 将 `deploy/root-pages.yml` 复制到目标仓库的 `.github/workflows/root-pages.yml` 并提交。目标仓库只保留发布 workflow 与说明，不维护第二份首页源码。
 3. 在目标仓库 **Settings → Pages** 中选择 **GitHub Actions**。
-4. 确保 Lumi 仓库已提交并推送 `root-site/`，然后运行一次 `Root Pages`。
+4. 如果创建仓库时 GitHub 已自动启动默认的 `pages build and deployment`，先等待该运行结束，避免它覆盖新流程的部署。确保 Lumi 仓库已提交并推送 `root-site/`，然后运行一次 `Root Pages`。
 
-当前组织禁用了 Deploy Key，因此采用由发布仓库读取公开源码的方式。自动凭据只用于发布仓库自身的 Pages 部署。若 Lumi 仓库以后改成私有，需先调整源码读取授权。
+发布仓库禁用了 Deploy Key，因此采用由发布仓库读取公开源码的方式。自动凭据只用于发布仓库自身的 Pages 部署。若 Lumi 仓库以后改成私有，需先调整源码读取授权。
 
 ## 管理约定
 
