@@ -37,4 +37,13 @@ if docker image inspect "$image_name" >/dev/null 2>&1; then
   fi
   docker rm "$catalog_container" >/dev/null
 fi
+python3 - <<'PY'
+import os
+from pathlib import Path
+root = Path(os.environ['PI_DIR']) / 'packages/evals/.eval'
+has_cohort = any(p.with_name('protocol.json').is_file() and p.stat().st_size
+                 for p in root.glob('*/observations.jsonl'))
+with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+    stream.write('has_cohort=' + str(has_cohort).lower() + '\n')
+PY
 exit "$status"

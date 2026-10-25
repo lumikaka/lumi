@@ -76,7 +76,7 @@ jobs:
         run: bash evals/ci/run-pi.sh
       - name: Run Lumi reference cases
         id: lumi
-        if: ${{ !cancelled() && steps.pi.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.pi.outputs.has_cohort == 'true' }}
         continue-on-error: true
         env:
           LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
