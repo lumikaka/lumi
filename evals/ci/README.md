@@ -30,7 +30,7 @@ gh run download <RUN_ID> --repo lumikaka/lumi \
 |---|---|
 | pi 源码 | `cfee633b1ba9497b0c12462da97a08b418b5ebf8`，对应提示模板评测 PR 的固定源码；不冒充已合并的 main |
 | 原题 | 添加模型、项目提示模板、用户提示模板；各分有文档和无文档 |
-| pi 入口 | 原 `packages/evals/src/cli.ts`，保留原 Docker 隔离、发现/重复/判分/报告逻辑；构建前补执行上游模型目录生成步骤 |
+| pi 入口 | 原 `packages/evals/src/cli.ts`、Dockerfile、发现/隔离/重复/判分/报告逻辑；构建前补入固定发布包的模型 JSON 数据 |
 | Lumi 入口 | 当前提交的 `cmd/lumi_evals --suite pi-reference`，真实 Agent 核心及现有虚拟测试环境 |
 | 输出上限 | 两边均 4,096 token；pi 仍可根据剩余上下文进一步收缩 |
 | 超时 | pi 保留原始每个 test 300 秒；Lumi 每个 case 300 秒；两者计时范围不完全相同 |
@@ -39,7 +39,7 @@ gh run download <RUN_ID> --repo lumikaka/lumi \
 
 `prepare` 校验固定提交及关键文件 Git blob。在原 harness 中加入一个评测模型注册调用：在内存注册 `lumi-eval` Provider，使用 pi 原生 `openai-completions` 传输。它不创建 `models.json`、不替换题目中的 `openai` Provider、不加载额外扩展，也不改 Agent、工具和 judge。适配源码、差异及散列写入 `pi-adapter/`；注册的模型价格为 0 仅用于禁用估价，不代表免费。凭据来自运行时的临时 `auth.json` 挂载，不进入构建上下文；运行后删除。
 
-上游不把 `packages/ai/src/providers/data` 提交到 Git。干净检出直接执行其 Dockerfile 的 `build:offline` 会失败，因此构建时在 `npm ci` 后先执行上游 `npm run hydrate:model-data`。这一官方生成器读取实时公共模型目录，不是固定历史目录；实际镜像中的 JSON 和上游散列清单会导出到 `pi-model-catalog/`。这段 Dockerfile 差异也保存为补丁。不得把“固定源码”解释为“所有模型元数据都固定在源码提交时”。
+上游不把 `packages/ai/src/providers/data` 提交到 Git。干净检出直接执行原 Dockerfile 的 `build:offline` 会失败，而实时生成模型目录可能与旧版本源码不兼容。本入口从发布的 `@earendil-works/pi-ai@0.99.1` 包中只取模型 JSON 数据，不使用该包的 Agent 代码；tarball 的 SHA-512、版本和目录生成日期固定在 `pi-catalog-lock.json`，并校验 provider 文件集合、上游清单和每个 JSON 的 SHA-256。然后使用原 Dockerfile 构建固定源码。目录生成于 `2026-09-29T18:10:40.924Z`，不是对源码提交日期的推断；实际镜像中的 JSON 和清单还会导出到 `pi-model-catalog/`，便于复查。
 
 原 pi 评测必须使用容器隔离。CI 构建有文档和无文档两种镜像，共享构建层；宿主仅安装报告读取依赖，不重复安装完整 monorepo。没有跨运行 Docker/npm/Go 缓存。使用标准 `ubuntu-24.04`，并保存构建前后磁盘记录。镜像真实大小和首次构建峰值要以首轮 CI 为准；磁盘不足会保存故障证据，不能将其解释为 Agent 低分。
 

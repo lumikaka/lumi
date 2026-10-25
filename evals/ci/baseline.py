@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """CI orchestration and descriptive comparison; never substitutes Agent responses."""
 import collections
+import base64
 import difflib
 import hashlib
+import io
 import json
 import math
 import os
@@ -10,10 +12,13 @@ from pathlib import Path
 import statistics
 import subprocess
 import sys
+import tarfile
 from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'pi-source-lock.json').read_text())
+CATALOG_LOCK = json.loads((HERE / 'pi-catalog-lock.json').read_text())
 SCENARIOS = {
     ('Add model to existing provider', 'adds the model without replacing existing models'): 'pi-add-model',
     ('Create a project prompt template', 'creates, reloads, and invokes /current-time'): 'pi-prompt-template-project',
@@ -21,7 +26,7 @@ SCENARIOS = {
 }
 DIFFERENCES = [
     'Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.',
-    'The pinned pi source hydrates its ignored built-in model catalog from live upstream catalogs before building; the actual generated catalog and hashes are frozen in pi-model-catalog/.',
+    'pi uses the immutable model JSON catalog from the published pi-ai 0.99.1 package, separate from the pinned Agent source commit. The package integrity and actual image catalog are retained.',
     'Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.',
     'System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.',
     'pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.',
@@ -112,26 +117,50 @@ def prepare(pi_dir, out, cfg):
         original.splitlines(True), adapted.splitlines(True), fromfile='a/packages/evals/src/harness.ts',
         tofile='b/packages/evals/src/harness.ts')))
     (evidence / 'lumi-ci-model.ts').write_text(adapter)
-    docker_path = pi_dir / 'packages/evals/docker/Dockerfile'
-    docker_original = docker_path.read_text()
-    build_anchor = '    && npm run build:offline \\\n'
-    if docker_original.count(build_anchor) != 1:
-        raise ValueError('pi Docker build insertion point changed.')
-    docker_adapted = docker_original.replace(build_anchor, '    && npm run hydrate:model-data \\\n' + build_anchor)
-    docker_path.write_text(docker_adapted)
-    (evidence / 'Dockerfile.patch').write_text(''.join(difflib.unified_diff(
-        docker_original.splitlines(True), docker_adapted.splitlines(True),
-        fromfile='a/packages/evals/docker/Dockerfile', tofile='b/packages/evals/docker/Dockerfile')))
+    with urlopen(CATALOG_LOCK['url'], timeout=60) as response:
+        archive = response.read(8_000_001)
+    seed_catalog(pi_dir, archive)
+    dump(evidence / 'published-catalog-lock.json', CATALOG_LOCK)
     dump(evidence / 'source-lock.json', LOCK)
     dump(evidence / 'manifest.json', {
         'revision': LOCK['revision'], 'original_harness_sha256': sha(original.encode()),
         'adapted_harness_sha256': sha(adapted.encode()), 'adapter_sha256': sha(adapter.encode()),
         'model_config': model_config,
-        'original_dockerfile_sha256': sha(docker_original.encode()),
-        'adapted_dockerfile_sha256': sha(docker_adapted.encode()),
-        'scope': 'Evaluator model registration plus official model-data hydration before offline build; no Agent core, task, tool, judge or Docker isolation edits.',
-        'catalog_source': 'Upstream hydrate:model-data reads live public catalogs. The generated data and manifest are exported from the actual image and frozen with the run.',
+        'scope': 'Evaluator model registration plus immutable published model JSON data; no Agent core, task, tool, judge or Dockerfile edits.',
+        'catalog_source': CATALOG_LOCK,
     })
+
+
+def seed_catalog(pi_dir, archive):
+    integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
+    if len(archive) > 8_000_000 or integrity != CATALOG_LOCK['integrity']:
+        raise ValueError('Published pi catalog package integrity mismatch.')
+    providers = pi_dir / 'packages/ai/src/providers'
+    expected = {p.name.removesuffix('.models.ts') + '.json' for p in providers.glob('*.models.ts')}
+    expected.add('.manifest.json')
+    data = {}
+    prefix = 'package/dist/providers/data/'
+    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as package:
+        for entry in package.getmembers():
+            if entry.name.startswith(prefix) and entry.isfile():
+                name = entry.name[len(prefix):]
+                if name not in expected or name in data or entry.size > 4_000_000:
+                    raise ValueError('Unexpected published model catalog file.')
+                data[name] = package.extractfile(entry).read()
+    if set(data) != expected:
+        raise ValueError('Published model catalog does not match pinned source provider shards.')
+    manifest = json.loads(data['.manifest.json'])
+    if manifest['schemaVersion'] != 6 or manifest['generatedAt'] != CATALOG_LOCK['catalog_generated_at']:
+        raise ValueError('Unexpected catalog schema or generation date.')
+    if set(manifest['files']) != expected - {'.manifest.json'}:
+        raise ValueError('Published model catalog manifest inventory mismatch.')
+    for name, digest in manifest['files'].items():
+        if sha(data[name]) != digest:
+            raise ValueError('Published model catalog file digest mismatch.')
+    directory = providers / 'data'
+    directory.mkdir()
+    for name, value in data.items():
+        (directory / name).write_bytes(value)
 
 
 def read(path):

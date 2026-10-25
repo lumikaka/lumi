@@ -1,10 +1,4 @@
-# Embedded Markdown must have identical bytes on every build platform.
-*.md text eol=lf
-
-# Embedded migrations must retain identical directives on every build platform.
-*.sql text eol=lf
-
-# Frontend source assertions must see the same line endings on Windows and macOS.
-*.js text eol=lf
-*.jsx text eol=lf
-*.sass text eol=lf
+# These artifacts carry hashes of their exact bytes; Windows checkout must not rewrite them.
+/evals/baselines/pi/** -text
+/evals/records/** -text
+/internal/agentevals/** text eol=lf
