@@ -1,0 +1,535 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.13kB 0.0s done
+#1 DONE 0.0s
+
+#2 [auth] library/node:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:24-slim
+#3 DONE 0.3s
+
+#4 [builder 1/3] FROM docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#4 resolve docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 done
+#4 sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 23.07MB / 28.25MB 0.1s
+#4 sha256:47e82ed2c7200e6bb57827745085027ba425376a5ed4ba4a8e295a4e3b5d1b40 3.31kB / 3.31kB 0.0s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 10.49MB / 51.08MB 0.1s
+#4 sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d 1.71MB / 1.71MB 0.1s done
+#4 sha256:6d793208473aa7d9ccc02b9de99aee40e4d6e73065d5307d076fad3ba554d580 0B / 450B 0.1s
+#4 sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 3.93kB / 3.93kB done
+#4 sha256:2dd9a4f758e173b65fee15388f7706af6fb01ef50cf7a2c0538711d67a6981ae 1.93kB / 1.93kB done
+#4 sha256:dc1f22974dab4be31a8b56d58cb1f8fc218e83de83ccd831d885b3d7ac1223fb 6.71kB / 6.71kB done
+#4 sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 28.25MB / 28.25MB 0.1s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 41.94MB / 51.08MB 0.2s
+#4 sha256:6d793208473aa7d9ccc02b9de99aee40e4d6e73065d5307d076fad3ba554d580 450B / 450B 0.1s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 51.08MB / 51.08MB 0.2s done
+#4 extracting sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26
+#4 ...
+
+#5 [internal] load build context
+#5 transferring context: 28.64MB 0.4s done
+#5 DONE 0.4s
+
+#4 [builder 1/3] FROM docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#4 extracting sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 1.2s done
+#4 extracting sha256:47e82ed2c7200e6bb57827745085027ba425376a5ed4ba4a8e295a4e3b5d1b40 done
+#4 extracting sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 0.1s
+#4 extracting sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 1.3s done
+#4 extracting sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d 0.0s done
+#4 extracting sha256:6d793208473aa7d9ccc02b9de99aee40e4d6e73065d5307d076fad3ba554d580 done
+#4 DONE 2.9s
+
+#6 [builder 2/3] WORKDIR /work
+#6 DONE 0.0s
+
+#7 [builder 3/3] RUN --mount=type=bind,source=.,target=/repo,rw     --mount=type=cache,target=/root/.npm     cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator
+#7 0.746 npm warn EBADENGINE Unsupported engine {
+#7 0.746 npm warn EBADENGINE   package: 'autoevals@0.3.0',
+#7 0.746 npm warn EBADENGINE   required: {
+#7 0.746 npm warn EBADENGINE     npm: 'please-use-pnpm',
+#7 0.746 npm warn EBADENGINE     pnpm: '>=10.27.0',
+#7 0.746 npm warn EBADENGINE     yarn: 'please-use-pnpm'
+#7 0.746 npm warn EBADENGINE   },
+#7 0.746 npm warn EBADENGINE   current: { node: 'v24.22.1', npm: '11.19.1' }
+#7 0.746 npm warn EBADENGINE }
+#7 1.962 npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+#7 3.609 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#7 11.43 
+#7 11.43 added 342 packages, and audited 366 packages in 11s
+#7 11.43 
+#7 11.43 51 packages are looking for funding
+#7 11.43   run `npm fund` for details
+#7 11.46 
+#7 11.46 13 vulnerabilities (4 moderate, 8 high, 1 critical)
+#7 11.46 
+#7 11.46 To address issues that do not require attention, run:
+#7 11.46   npm audit fix
+#7 11.46 
+#7 11.46 To address all issues possible (including breaking changes), run:
+#7 11.46   npm audit fix --force
+#7 11.46 
+#7 11.46 Some issues need review, and may require choosing
+#7 11.46 a different dependency.
+#7 11.46 
+#7 11.46 Run `npm audit` for details.
+#7 11.46 npm notice
+#7 11.46 npm notice New major version of npm available! 11.19.1 -> 12.2.1
+#7 11.46 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#7 11.46 npm notice To update run: npm install -g npm@12.2.1
+#7 11.46 npm notice
+#7 11.67 
+#7 11.67 > pi-monorepo@0.0.3 build:offline
+#7 11.67 > cd packages/chord && npm run build && cd ../tui && npm run build && cd ../telemetry && npm run build && cd ../codemode && npm run build && cd ../mcp && npm run build && cd ../ai && npm run build:offline && cd ../durable && npm run build && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build
+#7 11.67 
+#7 11.83 
+#7 11.83 > @earendil-works/chord@0.99.1 build
+#7 11.83 > tsc -p tsconfig.build.json
+#7 11.83 
+#7 12.26 
+#7 12.26 > @earendil-works/pi-tui@0.99.1 build
+#7 12.26 > tsc -p tsconfig.build.json
+#7 12.26 
+#7 12.88 
+#7 12.88 > @earendil-works/pi-telemetry@0.99.1 build
+#7 12.88 > tsc -p tsconfig.build.json
+#7 12.88 
+#7 13.13 
+#7 13.13 > @earendil-works/pi-codemode@0.99.1 build
+#7 13.13 > tsc -p tsconfig.build.json
+#7 13.13 
+#7 13.40 
+#7 13.40 > @earendil-works/pi-mcp@0.99.1 build
+#7 13.40 > tsc -p tsconfig.build.json
+#7 13.40 
+#7 13.69 
+#7 13.69 > @earendil-works/pi-ai@0.99.1 build:offline
+#7 13.69 > npm run check:model-data && tsc -p tsconfig.build.json && shx rm -rf dist/providers/data && shx cp -r src/providers/data dist/providers/data
+#7 13.69 
+#7 13.84 
+#7 13.84 > @earendil-works/pi-ai@0.99.1 check:model-data
+#7 13.84 > node scripts/check-model-data.ts
+#7 13.84 
+#7 13.96 Generated model data is valid.
+#7 15.34 
+#7 15.34 > @earendil-works/pi-durable@0.99.1 build
+#7 15.34 > tsc -p tsconfig.build.json
+#7 15.34 
+#7 15.96 
+#7 15.96 > @earendil-works/pi-agent-core@0.99.1 build
+#7 15.96 > tsc -p tsconfig.build.json
+#7 15.96 
+#7 17.96 
+#7 17.96 > @earendil-works/pi-session-backend-sqlite-node@0.99.1 build
+#7 17.96 > tsc -p tsconfig.build.json && node scripts/copy-migrations.mjs
+#7 17.96 
+#7 18.43 
+#7 18.43 > @earendil-works/pi-protocol@0.99.1 build
+#7 18.43 > tsc -p tsconfig.build.json
+#7 18.43 
+#7 18.74 
+#7 18.74 > @earendil-works/pi-client@0.99.1 build
+#7 18.74 > tsc -p tsconfig.build.json
+#7 18.74 
+#7 19.05 
+#7 19.05 > @earendil-works/pi-server@0.99.1 build
+#7 19.05 > tsc -p tsconfig.build.json
+#7 19.05 
+#7 19.51 
+#7 19.51 > @earendil-works/pi-coding-agent@0.99.1 build
+#7 19.51 > npm run build:unbundled && node ../../scripts/build-coding-agent-bundle.mjs
+#7 19.51 
+#7 19.67 
+#7 19.67 > @earendil-works/pi-coding-agent@0.99.1 build:unbundled
+#7 19.67 > tsc -p tsconfig.build.json && shx chmod +x dist/cli.js dist/rpc-entry.js && npm run copy-assets
+#7 19.67 
+#7 22.47 
+#7 22.47 > @earendil-works/pi-coding-agent@0.99.1 copy-assets
+#7 22.47 > shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/modes/interactive/assets && shx cp src/modes/interactive/assets/*.png dist/modes/interactive/assets/ && shx mkdir -p dist/core/export-html/vendor && shx cp src/core/export-html/template.html src/core/export-html/template.css src/core/export-html/template.js dist/core/export-html/ && shx cp src/core/export-html/vendor/*.js dist/core/export-html/vendor/
+#7 22.47 
+#7 23.91 Built packages/coding-agent/dist/bundle (70 files, 8.9 MiB)
+#7 23.98 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 24.98 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 26.07 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 26.58 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 26.95 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 27.33 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 29.68 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 30.35 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 30.78 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 31.16 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 31.57 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 31.99 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 32.35 $ npm pack --ignore-scripts --json --pack-destination /opt/evaluator/tarballs
+#7 33.03 $ npm install --ignore-scripts --omit=dev --no-audit --no-fund
+#7 46.21 npm warn EBADENGINE Unsupported engine {
+#7 46.21 npm warn EBADENGINE   package: 'autoevals@0.3.0',
+#7 46.21 npm warn EBADENGINE   required: {
+#7 46.21 npm warn EBADENGINE     npm: 'please-use-pnpm',
+#7 46.21 npm warn EBADENGINE     pnpm: '>=10.27.0',
+#7 46.21 npm warn EBADENGINE     yarn: 'please-use-pnpm'
+#7 46.21 npm warn EBADENGINE   },
+#7 46.21 npm warn EBADENGINE   current: { node: 'v24.22.1', npm: '11.19.1' }
+#7 46.21 npm warn EBADENGINE }
+#7 49.54 
+#7 49.54 added 126 packages, and changed 2 packages in 8s
+#7 DONE 53.3s
+
+#8 [without-docs-install 1/1] RUN rm -rf     /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/README.md     /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/CHANGELOG.md     /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/docs     /opt/evaluator/install/node_modules/@earendil-works/pi-coding-agent/examples
+#8 DONE 0.2s
+
+#9 [evaluator 2/4] COPY --from=builder /opt/evaluator/root /repo
+#9 DONE 0.0s
+
+#10 [evaluator 3/4] WORKDIR /repo/packages/evals
+#10 DONE 0.0s
+
+#11 [evaluator 4/4] RUN chmod -R go-rwx       /repo/packages/evals/src       /repo/packages/evals/evals       /repo/packages/evals/docker     && chmod go-rwx       /repo/vitest.base.ts       /repo/packages/evals/vitest.evals.config.ts     && mkdir -p /run/pi-eval-secrets     && chmod 0700 /run/pi-eval-secrets
+#11 DONE 0.1s
+
+#12 [without_docs 1/1] COPY --from=without-docs-install /opt/evaluator/install/node_modules /repo/node_modules
+#12 DONE 3.3s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 3.5s done
+#13 writing image sha256:4c78b7cf349957a8aad8622e8f46ceceffb753550494d7eba15c2cf7cc828a66 done
+#13 naming to docker.io/library/pi-evals-b7e738a7ce23-without-docs:local done
+#13 DONE 3.5s
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.13kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:24-slim
+#2 DONE 0.1s
+
+#3 [builder 1/3] FROM docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 8.89MB 0.1s
+#4 transferring context: 28.64MB 0.3s done
+#4 DONE 0.3s
+
+#5 [builder 2/3] WORKDIR /work
+#5 CACHED
+
+#6 [builder 3/3] RUN --mount=type=bind,source=.,target=/repo,rw     --mount=type=cache,target=/root/.npm     cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator
+#6 CACHED
+
+#7 [evaluator 3/4] WORKDIR /repo/packages/evals
+#7 CACHED
+
+#8 [evaluator 2/4] COPY --from=builder /opt/evaluator/root /repo
+#8 CACHED
+
+#9 [evaluator 4/4] RUN chmod -R go-rwx       /repo/packages/evals/src       /repo/packages/evals/evals       /repo/packages/evals/docker     && chmod go-rwx       /repo/vitest.base.ts       /repo/packages/evals/vitest.evals.config.ts     && mkdir -p /run/pi-eval-secrets     && chmod 0700 /run/pi-eval-secrets
+#9 CACHED
+
+#10 [with_docs 1/1] COPY --from=builder /opt/evaluator/install/node_modules /repo/node_modules
+#10 DONE 3.5s
+
+#11 exporting to image
+#11 exporting layers
+#11 exporting layers 3.4s done
+#11 writing image sha256:40e9b26e9c08af8d37b8b01a78fd03ab14eb2b87d7c91ef9f37228387f0e4999 done
+#11 naming to docker.io/library/pi-evals-b7e738a7ce23-with-docs:local done
+#11 DONE 3.4s
+
+[1/18] Add model to existing provider > adds the model without replacing existing models | without_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [261390 tok | 33 tools][22m[33m 84935[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 12:54:55
+[2m   Duration [22m 85.93s[2m (transform 60ms, setup 0ms, import 866ms, tests 84.94s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[2/18] Add model to existing provider > adds the model without replacing existing models | with_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [82922 tok | 10 tools][22m[33m 60312[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 12:56:21
+[2m   Duration [22m 61.31s[2m (transform 73ms, setup 0ms, import 872ms, tests 60.31s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[3/18] Add model to existing provider > adds the model without replacing existing models | with_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [165409 tok | 14 tools][22m[33m 86807[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 12:57:24
+[2m   Duration [22m 87.80s[2m (transform 58ms, setup 0ms, import 865ms, tests 86.81s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[4/18] Add model to existing provider > adds the model without replacing existing models | without_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [31m×[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [1 err][22m[33m 300007[2mms[22m[39m
+[2m   [22m[2mreason [22m [31m[31mTest timed out in 300000ms.[31m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m   Start at [22m 12:58:52
+[2m   Duration [22m 301.01s[2m (transform 60ms, setup 0ms, import 859ms, tests 300.01s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[5/18] Add model to existing provider > adds the model without replacing existing models | without_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [1078627 tok | 33 tools][22m[33m 168189[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 13:03:54
+[2m   Duration [22m 169.18s[2m (transform 62ms, setup 0ms, import 867ms, tests 168.19s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[6/18] Add model to existing provider > adds the model without replacing existing models | with_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/models.docs.eval.ts[2m > [22mAdd model to existing provider > adds the model without replacing existing models[2m [300997 tok | 23 tools][22m[33m 96659[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 13:06:44
+[2m   Duration [22m 97.67s[2m (transform 62ms, setup 0ms, import 866ms, tests 96.66s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[7/18] Create a project prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [8010 tok | 2 tools][22m[33m 14989[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:08:23
+[2m   Duration [22m 16.00s[2m (transform 73ms, setup 0ms, import 883ms, tests 14.99s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[8/18] Create a project prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [28883 tok | 7 tools][22m[33m 27022[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:08:40
+[2m   Duration [22m 28.02s[2m (transform 73ms, setup 0ms, import 875ms, tests 27.02s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[9/18] Create a project prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [13836 tok | 4 tools][22m[33m 18530[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [31m0.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:09:09
+[2m   Duration [22m 19.52s[2m (transform 63ms, setup 0ms, import 859ms, tests 18.53s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[10/18] Create a project prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [12665 tok | 5 tools][22m[33m 22486[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:09:29
+[2m   Duration [22m 23.49s[2m (transform 73ms, setup 0ms, import 876ms, tests 22.49s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[11/18] Create a project prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [12604 tok | 5 tools][22m[33m 19042[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:09:54
+[2m   Duration [22m 20.03s[2m (transform 65ms, setup 0ms, import 863ms, tests 19.04s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[12/18] Create a project prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template > creates, reloads, and invokes /current-time[2m [15062 tok | 4 tools][22m[33m 22372[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [31m0.00[39m
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template[2m > [22mcreates, reloads, and invokes /current-time
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:10:15
+[2m   Duration [22m 23.36s[2m (transform 75ms, setup 0ms, import 866ms, tests 22.37s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[13/18] Create a user prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [135045 tok | 16 tools][22m[33m 55985[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:10:39
+[2m   Duration [22m 56.98s[2m (transform 73ms, setup 0ms, import 870ms, tests 55.99s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[14/18] Create a user prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 1
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [26817 tok | 7 tools][22m[33m 27388[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:11:37
+[2m   Duration [22m 28.37s[2m (transform 69ms, setup 0ms, import 860ms, tests 27.39s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[15/18] Create a user prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [26611 tok | 7 tools][22m[33m 27848[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:12:06
+[2m   Duration [22m 28.87s[2m (transform 70ms, setup 0ms, import 891ms, tests 27.85s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[16/18] Create a user prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 2
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [20113 tok | 9 tools][22m[33m 30501[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [31m0.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:12:36
+[2m   Duration [22m 31.49s[2m (transform 71ms, setup 0ms, import 858ms, tests 30.50s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[17/18] Create a user prompt template > creates, reloads, and invokes /current-time | without_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [16979 tok | 7 tools][22m[33m 30327[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [31m0.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:13:08
+[2m   Duration [22m 31.31s[2m (transform 72ms, setup 0ms, import 858ms, tests 30.33s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+[18/18] Create a user prompt template > creates, reloads, and invokes /current-time | with_docs | lumi-eval/qwen3.7-plus | run 3
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/repo/packages/evals[39m
+
+ [2m[90m↓[39m[22m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a project prompt template[2m > [22mcreates, reloads, and invokes /current-time
+ [32m✓[39m [30m[45m docs [49m[39m evals/prompt-templates.docs.eval.ts[2m > [22mCreate a user prompt template > creates, reloads, and invokes /current-time[2m [13893 tok | 3 tools][22m[33m 20014[2mms[22m[39m
+[2m   [22m[2mscore  [22m StructuredOutputJudge [32m1.00[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 13:13:40
+[2m   Duration [22m 21.01s[2m (transform 69ms, setup 0ms, import 869ms, tests 20.02s, environment 0ms)[22m
+
+JSON report written to /artifacts/vitest.json
+
+Documentation Eval Comparisons
+  Add model to existing provider
+         Pairs  2/3 eligible
+     Pass rate  withheld because pairs are blocked
+        Tokens  -478049.0 (with 191959.5, without 670008.5, 2 pairs)
+         Tools  -16.5 (with 16.5, without 33.0, 2 pairs)
+       Latency  -48075.0ms (with 78476.6ms, without 126551.6ms, 2 pairs)
+     Est. cost  unavailable
+  Create a project prompt template
+         Pairs  3/3 eligible
+     Pass rate  -66.7 pp (with 33.3%, without 100.0%)
+         Flags  negative-delta, control-saturated, flaky
+        Tokens  +8167.3 (with 19260.3, without 11093.0, 3 pairs)
+         Tools  +1.0 (with 5.0, without 4.0, 3 pairs)
+       Latency  +3802.0ms (with 22632.2ms, without 18830.2ms, 3 pairs)
+     Est. cost  unavailable
+  Create a user prompt template
+         Pairs  3/3 eligible
+     Pass rate  +66.7 pp (with 100.0%, without 33.3%)
+         Flags  treatment-saturated, flaky
+        Tokens  -34938.7 (with 22440.3, without 57379.0, 3 pairs)
+         Tools  -5.0 (with 5.7, without 10.7, 3 pairs)
+       Latency  -13854.0ms (with 25074.4ms, without 38928.4ms, 3 pairs)
+     Est. cost  unavailable
+  Operational totals
+    without_docs: 9 runs, 1545433 tokens (8/9 measured), 110 tools (8/9 measured), 426.38s (8/9 measured), unavailable (0/9 measured)
+    with_docs: 9 runs, 674430 tokens, 79 tools, 386.87s, unavailable (0/9 measured)
+  Blocked pairs
+    Add model to existing provider/adds the model without replacing existing models/lumi-eval/qwen3.7-plus/run-2: without_docs: errored
+
+Artifacts: /home/runner/work/_temp/pi-baseline/source/packages/evals/.eval/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9

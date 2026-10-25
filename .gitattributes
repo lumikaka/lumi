@@ -8,3 +8,8 @@
 *.js text eol=lf
 *.jsx text eol=lf
 *.sass text eol=lf
+
+# These artifacts carry hashes of their exact bytes; Windows checkout must not rewrite them.
+/evals/baselines/pi/** -text
+/evals/records/** -text
+/internal/agentevals/** text eol=lf

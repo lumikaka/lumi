@@ -1,0 +1,29 @@
+{
+  "runs": [
+    {
+      "run_id": 40192418734,
+      "url": "https://github.com/lumikaka/lumi/actions/runs/40192418734",
+      "artifact_id": 12598438768,
+      "artifact_zip_sha256": "8dcd4678260cd0d723c6b52a8e50a59e7fee4c63d879dce9a99884ff33e8e899",
+      "conclusion": "failure",
+      "reason": "Pi clean source lacked generated model catalog; Lumi recorded 18 attempts. An empty Agent-created template was incorrectly classified as an environment error; original evidence retained."
+    },
+    {
+      "run_id": 40194463964,
+      "url": "https://github.com/lumikaka/lumi/actions/runs/40194463964",
+      "conclusion": "failure",
+      "reason": "Live model catalog introduced an API unsupported by pinned source; no model evaluation ran.",
+      "artifact_id": 12598664494,
+      "artifact_zip_sha256": "20cc8b3c0ebb92f2174ffbc5863c429d02595aab01c1a6e47738f089448412ac"
+    },
+    {
+      "run_id": 40195053745,
+      "url": "https://github.com/lumikaka/lumi/actions/runs/40195053745",
+      "artifact_id": 12600468991,
+      "artifact_zip_sha256": "10f825e1418a26ceea537c9f171dd558a7f8383932ca8ffa776983b3a3b76fe4",
+      "conclusion": "failure",
+      "reason": "Both real cohorts attempted all 18 runs. Lumi: 10 successes, 8 zero scores. pi: 13 successes, 4 zero scores, 1 native 300-second timeout without a score. The strict evidence check preserves the unscored/blocked pair; it is not a build failure.",
+      "manifest_files_verified": 143
+    }
+  ]
+}

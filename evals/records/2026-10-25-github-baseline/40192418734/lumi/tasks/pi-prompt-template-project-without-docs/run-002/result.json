@@ -1,0 +1,327 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 2
+  },
+  "protocol_digest": "07167443b7a19c16f2fe6422e936b4cdb77dcd99ee3ddd1707c480a53ab7ddcd",
+  "status": "agent_error",
+  "final": "",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 0,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": false,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": null
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      }
+    }
+  ],
+  "issues": [
+    {
+      "kind": "agent",
+      "code": "agent_turn_budget_exceeded",
+      "message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。"
+    }
+  ],
+  "started_at": "2026-10-25T12:25:42.947880014Z",
+  "duration_ms": 14357,
+  "usage": {
+    "input_tokens": 3436,
+    "output_tokens": 587,
+    "cached_input_tokens": 512,
+    "cost_usd": null,
+    "requests": 4
+  },
+  "turns": [
+    {
+      "uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "status": "failed",
+      "error_code": "agent_turn_budget_exceeded",
+      "error_message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。",
+      "started_at": "2026-10-25T12:25:43.388257762Z",
+      "completed_at": "2026-10-25T12:25:57.293179529Z",
+      "created_at": "2026-10-25T12:25:43.386118987Z",
+      "updated_at": "2026-10-25T12:25:57.293179529Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17306-1eda-767d-8040-0062a4dded0e",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:43.386118987Z"
+    },
+    {
+      "uuid": "01a17306-2ad4-77d1-8726-7343bf0fb600",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-2ad4-731b-b524-8c8c0babe687",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17306-1ee0-7242-bb47-7c289d3329b6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:46.45241487Z"
+    },
+    {
+      "uuid": "01a17306-2ad5-7322-a784-7c4df386c197",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-2ad4-74ea-84f3-e85ab87b8983",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17306-1ee0-7242-bb47-7c289d3329b6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:46.45241487Z"
+    },
+    {
+      "uuid": "01a17306-2ad7-7007-9692-6c64a6e7c009",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-2ad4-731b-b524-8c8c0babe687",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17306-1ee0-7242-bb47-7c289d3329b6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:46.454992777Z"
+    },
+    {
+      "uuid": "01a17306-2ad8-7b7a-8644-ea86a2ca3f69",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-2ad4-74ea-84f3-e85ab87b8983",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17306-1ee0-7242-bb47-7c289d3329b6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:46.456741861Z"
+    },
+    {
+      "uuid": "01a17306-3b5b-74e6-8c4c-2c9822eca86e",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-3b5b-71f6-b226-35bd9f9970fd",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17306-2adc-72fe-957d-cff8698bce53"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:50.683216153Z"
+    },
+    {
+      "uuid": "01a17306-3b5d-727f-ae9b-49c661d21a40",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-3b5b-71f6-b226-35bd9f9970fd",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17306-2adc-72fe-957d-cff8698bce53"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:50.685154594Z"
+    },
+    {
+      "uuid": "01a17306-4682-7a08-b305-e6fe5a9c0001",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-4682-76f2-a49f-d55b1cc9e4e2",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17306-3b60-7a0f-ac92-be8dfd2c5384"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:53.538557631Z"
+    },
+    {
+      "uuid": "01a17306-4684-7a5e-bba6-3375e042d5ed",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17306-4682-76f2-a49f-d55b1cc9e4e2",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17306-3b60-7a0f-ac92-be8dfd2c5384"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:53.540669132Z"
+    },
+    {
+      "uuid": "01a17306-552d-72c1-ad95-fe88d2f2a984",
+      "thread_uuid": "01a17306-1ed8-7a25-ad6f-65aee54f0d5f",
+      "turn_uuid": "01a17306-1eda-71d3-bb11-a30ab9736065",
+      "run_uuid": "01a17306-1eda-71d5-95d0-f013aa6ae9ad",
+      "sequence": 10,
+      "item_type": "error",
+      "role": "system",
+      "content": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。",
+      "content_format": "text",
+      "status": "failed",
+      "metadata": {
+        "error_code": "agent_turn_budget_exceeded"
+      },
+      "references": null,
+      "created_at": "2026-10-25T12:25:57.293179529Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T12:25:46.454457194Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T12:25:46.456227979Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T12:25:50.684481036Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T12:25:53.539885437Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {},
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "eec2b33c68ce3e4c5c5eac7602de2bc3a0a67e64850cad64e7f2ece90b73d9bd"
+}

@@ -1,0 +1,167 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.13kB 0.0s done
+#1 DONE 0.0s
+
+#2 [auth] library/node:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:24-slim
+#3 DONE 0.5s
+
+#4 [builder 1/3] FROM docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#4 resolve docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 done
+#4 sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d 0B / 1.71MB 0.1s
+#4 sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 3.93kB / 3.93kB done
+#4 sha256:2dd9a4f758e173b65fee15388f7706af6fb01ef50cf7a2c0538711d67a6981ae 1.93kB / 1.93kB done
+#4 sha256:dc1f22974dab4be31a8b56d58cb1f8fc218e83de83ccd831d885b3d7ac1223fb 6.71kB / 6.71kB done
+#4 sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 16.78MB / 28.25MB 0.1s
+#4 sha256:47e82ed2c7200e6bb57827745085027ba425376a5ed4ba4a8e295a4e3b5d1b40 3.31kB / 3.31kB 0.1s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 1.05MB / 51.08MB 0.1s
+#4 sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d 1.71MB / 1.71MB 0.1s done
+#4 sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 28.25MB / 28.25MB 0.1s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 22.02MB / 51.08MB 0.2s
+#4 sha256:6d793208473aa7d9ccc02b9de99aee40e4d6e73065d5307d076fad3ba554d580 450B / 450B 0.2s done
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 51.08MB / 51.08MB 0.3s
+#4 extracting sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 0.1s
+#4 ...
+
+#5 [internal] load build context
+#5 transferring context: 27.74MB 0.4s done
+#5 DONE 0.4s
+
+#4 [builder 1/3] FROM docker.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#4 sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 51.08MB / 51.08MB 0.3s done
+#4 extracting sha256:11422d7ca1a44390a32bd8d8d9dc5946b4d053b3bbd9507d682e35584ba84a26 1.2s done
+#4 extracting sha256:47e82ed2c7200e6bb57827745085027ba425376a5ed4ba4a8e295a4e3b5d1b40 done
+#4 extracting sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7
+#4 extracting sha256:c0e48fd1aa256850e18f180365b8fa3e55ae2197e85461fd3392cfb5c4c8e5e7 1.3s done
+#4 extracting sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d
+#4 extracting sha256:f2b8e65232e105b573ea2f37c4a2ec56bcf0b63687ae2bbe329cf4252f30bc1d 0.0s done
+#4 extracting sha256:6d793208473aa7d9ccc02b9de99aee40e4d6e73065d5307d076fad3ba554d580 done
+#4 DONE 3.5s
+
+#6 [builder 2/3] WORKDIR /work
+#6 DONE 0.0s
+
+#7 [builder 3/3] RUN --mount=type=bind,source=.,target=/repo,rw     --mount=type=cache,target=/root/.npm     cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator
+#7 0.787 npm warn EBADENGINE Unsupported engine {
+#7 0.787 npm warn EBADENGINE   package: 'autoevals@0.3.0',
+#7 0.787 npm warn EBADENGINE   required: {
+#7 0.787 npm warn EBADENGINE     npm: 'please-use-pnpm',
+#7 0.787 npm warn EBADENGINE     pnpm: '>=10.27.0',
+#7 0.787 npm warn EBADENGINE     yarn: 'please-use-pnpm'
+#7 0.787 npm warn EBADENGINE   },
+#7 0.787 npm warn EBADENGINE   current: { node: 'v24.22.1', npm: '11.19.1' }
+#7 0.787 npm warn EBADENGINE }
+#7 2.340 npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+#7 3.928 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#7 12.41 
+#7 12.41 added 342 packages, and audited 366 packages in 12s
+#7 12.41 
+#7 12.41 51 packages are looking for funding
+#7 12.41   run `npm fund` for details
+#7 12.44 
+#7 12.44 13 vulnerabilities (4 moderate, 8 high, 1 critical)
+#7 12.44 
+#7 12.44 To address issues that do not require attention, run:
+#7 12.44   npm audit fix
+#7 12.44 
+#7 12.44 To address all issues possible (including breaking changes), run:
+#7 12.44   npm audit fix --force
+#7 12.44 
+#7 12.44 Some issues need review, and may require choosing
+#7 12.44 a different dependency.
+#7 12.44 
+#7 12.44 Run `npm audit` for details.
+#7 12.44 npm notice
+#7 12.44 npm notice New major version of npm available! 11.19.1 -> 12.2.1
+#7 12.44 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#7 12.44 npm notice To update run: npm install -g npm@12.2.1
+#7 12.44 npm notice
+#7 12.64 
+#7 12.64 > pi-monorepo@0.0.3 build:offline
+#7 12.64 > cd packages/chord && npm run build && cd ../tui && npm run build && cd ../telemetry && npm run build && cd ../codemode && npm run build && cd ../mcp && npm run build && cd ../ai && npm run build:offline && cd ../durable && npm run build && cd ../agent && npm run build && cd ../session-backends/sqlite-node && npm run build && cd ../../protocol && npm run build && cd ../client && npm run build && cd ../server && npm run build && cd ../coding-agent && npm run build
+#7 12.64 
+#7 12.80 
+#7 12.80 > @earendil-works/chord@0.99.1 build
+#7 12.80 > tsc -p tsconfig.build.json
+#7 12.80 
+#7 13.18 
+#7 13.18 > @earendil-works/pi-tui@0.99.1 build
+#7 13.18 > tsc -p tsconfig.build.json
+#7 13.18 
+#7 13.73 
+#7 13.73 > @earendil-works/pi-telemetry@0.99.1 build
+#7 13.73 > tsc -p tsconfig.build.json
+#7 13.73 
+#7 14.00 
+#7 14.00 > @earendil-works/pi-codemode@0.99.1 build
+#7 14.00 > tsc -p tsconfig.build.json
+#7 14.00 
+#7 14.28 
+#7 14.28 > @earendil-works/pi-mcp@0.99.1 build
+#7 14.28 > tsc -p tsconfig.build.json
+#7 14.28 
+#7 14.59 
+#7 14.59 > @earendil-works/pi-ai@0.99.1 build:offline
+#7 14.59 > npm run check:model-data && tsc -p tsconfig.build.json && shx rm -rf dist/providers/data && shx cp -r src/providers/data dist/providers/data
+#7 14.59 
+#7 14.74 
+#7 14.74 > @earendil-works/pi-ai@0.99.1 check:model-data
+#7 14.74 > node scripts/check-model-data.ts
+#7 14.74 
+#7 14.83 amazon-bedrock.json is not valid JSON: ENOENT: no such file or directory, open '/repo/packages/ai/src/providers/data/amazon-bedrock.json'
+#7 14.83 
+#7 14.83 Model data is missing or stale. Run `npm run hydrate:model-data` from the repository root.
+#7 14.85 npm error Lifecycle script `check:model-data` failed with error:
+#7 14.85 npm error code 1
+#7 14.85 npm error path /repo/packages/ai
+#7 14.85 npm error workspace @earendil-works/pi-ai@0.99.1
+#7 14.85 npm error location /repo/packages/ai
+#7 14.85 npm error command failed
+#7 14.85 npm error command sh -c node scripts/check-model-data.ts
+#7 14.86 npm error Lifecycle script `build:offline` failed with error:
+#7 14.86 npm error code 1
+#7 14.86 npm error path /repo/packages/ai
+#7 14.86 npm error workspace @earendil-works/pi-ai@0.99.1
+#7 14.86 npm error location /repo/packages/ai
+#7 14.86 npm error command failed
+#7 14.86 npm error command sh -c npm run check:model-data && tsc -p tsconfig.build.json && shx rm -rf dist/providers/data && shx cp -r src/providers/data dist/providers/data
+#7 ERROR: process "/bin/sh -c cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator" did not complete successfully: exit code: 1
+------
+ > [builder 3/3] RUN --mount=type=bind,source=.,target=/repo,rw     --mount=type=cache,target=/root/.npm     cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator:
+14.85 npm error location /repo/packages/ai
+14.85 npm error command failed
+14.85 npm error command sh -c node scripts/check-model-data.ts
+14.86 npm error Lifecycle script `build:offline` failed with error:
+14.86 npm error code 1
+14.86 npm error path /repo/packages/ai
+14.86 npm error workspace @earendil-works/pi-ai@0.99.1
+14.86 npm error location /repo/packages/ai
+14.86 npm error command failed
+14.86 npm error command sh -c npm run check:model-data && tsc -p tsconfig.build.json && shx rm -rf dist/providers/data && shx cp -r src/providers/data dist/providers/data
+------
+Dockerfile:5
+--------------------
+   4 |     # /opt/evaluator persist; node_modules and dist created in /repo are discarded.
+   5 | >>> RUN --mount=type=bind,source=.,target=/repo,rw \
+   6 | >>>     --mount=type=cache,target=/root/.npm \
+   7 | >>>     cd /repo \
+   8 | >>>     && npm ci --ignore-scripts \
+   9 | >>>     && npm run build:offline \
+  10 | >>>     && node packages/evals/docker/install-runtime.mjs /opt/evaluator
+  11 |     
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c cd /repo     && npm ci --ignore-scripts     && npm run build:offline     && node packages/evals/docker/install-runtime.mjs /opt/evaluator" did not complete successfully: exit code: 1
+file:///home/runner/work/_temp/pi-baseline/source/packages/evals/src/docker.ts:35
+	if (status !== 0) throw new Error(`${command} exited with status ${status}.`);
+	                        ^
+
+Error: docker exited with status 1.
+    at requireSuccess (file:///home/runner/work/_temp/pi-baseline/source/packages/evals/src/docker.ts:35:26)
+    at buildImages (file:///home/runner/work/_temp/pi-baseline/source/packages/evals/src/docker.ts:45:3)
+    at file:///home/runner/work/_temp/pi-baseline/source/packages/evals/src/cli.ts:131:16
+
+Node.js v24.21.0

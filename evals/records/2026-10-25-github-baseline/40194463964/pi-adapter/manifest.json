@@ -1,0 +1,40 @@
+{
+  "revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "original_harness_sha256": "0bb64d688c31ff6b98d2f698b1aee3e4b116223899ffea35e09f39ba7ab94a4d",
+  "adapted_harness_sha256": "59fdea7d67ce7d7707eca750980c37f6fe1cb2c9b85f96a1189a18bdc797c072",
+  "adapter_sha256": "c5d588e82c1d5617b043a76de93f25ae9ca23501e6d7ec7ba3c3601e7714311e",
+  "model_config": {
+    "baseUrl": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "api": "openai-completions",
+    "models": [
+      {
+        "id": "qwen3.7-plus",
+        "name": "qwen3.7-plus",
+        "reasoning": true,
+        "input": [
+          "text"
+        ],
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "contextWindow": 262144,
+        "maxTokens": 4096,
+        "compat": {
+          "maxTokensField": "max_tokens",
+          "supportsDeveloperRole": false,
+          "supportsStore": false,
+          "supportsReasoningEffort": false,
+          "thinkingFormat": "openai",
+          "supportsUsageInStreaming": true
+        }
+      }
+    ]
+  },
+  "original_dockerfile_sha256": "eb79abf1a9e9b2c84db1f767f04e9271995ca7a0be946542a0334076726b914b",
+  "adapted_dockerfile_sha256": "437c6b4460111b09b17aee8af34347d09b2de2951337fae52cbb3bdf4efa779a",
+  "scope": "Evaluator model registration plus official model-data hydration before offline build; no Agent core, task, tool, judge or Docker isolation edits.",
+  "catalog_source": "Upstream hydrate:model-data reads live public catalogs. The generated data and manifest are exported from the actual image and frozen with the run."
+}

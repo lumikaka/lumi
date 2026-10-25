@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Add model to existing provider > adds the model without replacing existing models",
+    "file": "/repo/packages/evals/evals/models.docs.eval.ts",
+    "projectName": "docs"
+  },
+  {
+    "name": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "file": "/repo/packages/evals/evals/prompt-templates.docs.eval.ts",
+    "projectName": "docs"
+  },
+  {
+    "name": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "file": "/repo/packages/evals/evals/prompt-templates.docs.eval.ts",
+    "projectName": "docs"
+  }
+]

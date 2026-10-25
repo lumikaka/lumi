@@ -1,2 +1,4 @@
 # Preserve captured transcripts/reports byte-for-byte, including Markdown blank quotes.
 ** whitespace=-blank-at-eol,-blank-at-eof
+# Unified diff context lines intentionally prefix source tabs with one space.
+**/*.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

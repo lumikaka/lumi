@@ -1,0 +1,164 @@
+[
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  },
+  {
+    "file": "evals/models.docs.eval.ts",
+    "fullName": "Add model to existing provider > adds the model without replacing existing models",
+    "evalSet": "Add model to existing provider",
+    "caseId": "adds the model without replacing existing models",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a project prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a project prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 1
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 2
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "without_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  },
+  {
+    "file": "evals/prompt-templates.docs.eval.ts",
+    "fullName": "Create a user prompt template > creates, reloads, and invokes /current-time",
+    "evalSet": "Create a user prompt template",
+    "caseId": "creates, reloads, and invokes /current-time",
+    "variant": "with_docs",
+    "model": "lumi-eval/qwen3.7-plus",
+    "runNumber": 3
+  }
+]

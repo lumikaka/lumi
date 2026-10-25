@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """CI orchestration and descriptive comparison; never substitutes Agent responses."""
 import collections
+import base64
 import difflib
 import hashlib
+import io
 import json
 import math
 import os
@@ -10,10 +12,13 @@ from pathlib import Path
 import statistics
 import subprocess
 import sys
+import tarfile
 from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'pi-source-lock.json').read_text())
+CATALOG_LOCK = json.loads((HERE / 'pi-catalog-lock.json').read_text())
 SCENARIOS = {
     ('Add model to existing provider', 'adds the model without replacing existing models'): 'pi-add-model',
     ('Create a project prompt template', 'creates, reloads, and invokes /current-time'): 'pi-prompt-template-project',
@@ -21,6 +26,7 @@ SCENARIOS = {
 }
 DIFFERENCES = [
     'Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.',
+    'pi uses the immutable model JSON catalog from the published pi-ai 0.99.1 package, separate from the pinned Agent source commit. The package integrity and actual image catalog are retained.',
     'Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.',
     'System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.',
     'pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.',
@@ -111,13 +117,50 @@ def prepare(pi_dir, out, cfg):
         original.splitlines(True), adapted.splitlines(True), fromfile='a/packages/evals/src/harness.ts',
         tofile='b/packages/evals/src/harness.ts')))
     (evidence / 'lumi-ci-model.ts').write_text(adapter)
+    with urlopen(CATALOG_LOCK['url'], timeout=60) as response:
+        archive = response.read(8_000_001)
+    seed_catalog(pi_dir, archive)
+    dump(evidence / 'published-catalog-lock.json', CATALOG_LOCK)
     dump(evidence / 'source-lock.json', LOCK)
     dump(evidence / 'manifest.json', {
         'revision': LOCK['revision'], 'original_harness_sha256': sha(original.encode()),
         'adapted_harness_sha256': sha(adapted.encode()), 'adapter_sha256': sha(adapter.encode()),
         'model_config': model_config,
-        'scope': 'Only evaluator model registration; no Agent core, task, tool, judge or Docker isolation edits.',
+        'scope': 'Evaluator model registration plus immutable published model JSON data; no Agent core, task, tool, judge or Dockerfile edits.',
+        'catalog_source': CATALOG_LOCK,
     })
+
+
+def seed_catalog(pi_dir, archive):
+    integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
+    if len(archive) > 8_000_000 or integrity != CATALOG_LOCK['integrity']:
+        raise ValueError('Published pi catalog package integrity mismatch.')
+    providers = pi_dir / 'packages/ai/src/providers'
+    expected = {p.name.removesuffix('.models.ts') + '.json' for p in providers.glob('*.models.ts')}
+    expected.add('.manifest.json')
+    data = {}
+    prefix = 'package/dist/providers/data/'
+    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as package:
+        for entry in package.getmembers():
+            if entry.name.startswith(prefix) and entry.isfile():
+                name = entry.name[len(prefix):]
+                if name not in expected or name in data or entry.size > 4_000_000:
+                    raise ValueError('Unexpected published model catalog file.')
+                data[name] = package.extractfile(entry).read()
+    if set(data) != expected:
+        raise ValueError('Published model catalog does not match pinned source provider shards.')
+    manifest = json.loads(data['.manifest.json'])
+    if manifest['schemaVersion'] != 6 or manifest['generatedAt'] != CATALOG_LOCK['catalog_generated_at']:
+        raise ValueError('Unexpected catalog schema or generation date.')
+    if set(manifest['files']) != expected - {'.manifest.json'}:
+        raise ValueError('Published model catalog manifest inventory mismatch.')
+    for name, digest in manifest['files'].items():
+        if sha(data[name]) != digest:
+            raise ValueError('Published model catalog file digest mismatch.')
+    directory = providers / 'data'
+    directory.mkdir()
+    for name, value in data.items():
+        (directory / name).write_bytes(value)
 
 
 def read(path):
@@ -336,6 +379,24 @@ def seal(out, key):
                                       for p in files if p.name != 'sha256-manifest.json'})
 
 
+def verify(out):
+    out = out.resolve()
+    manifest = read(out / 'sha256-manifest.json')
+    actual = {str(p.relative_to(out)) for p in out.rglob('*') if p.is_file()
+              and p != out / 'sha256-manifest.json'}
+    if set(manifest) != actual:
+        raise ValueError('Artifact file inventory differs from the sealed manifest.')
+    for name, digest in manifest.items():
+        path = out / name
+        if Path(name).is_absolute() or '..' in Path(name).parts or not path.resolve().is_relative_to(out):
+            raise ValueError('Unsafe artifact manifest path.')
+        if any(p.is_symlink() for p in [path, *path.parents]):
+            raise ValueError('Artifact manifest points through a symlink.')
+        if sha(path.read_bytes()) != digest:
+            raise ValueError(f'Artifact digest mismatch: {name}')
+    return len(manifest)
+
+
 def main():
     action = sys.argv[1]
     out = Path(os.environ['OUT'])
@@ -347,6 +408,8 @@ def main():
         report(out)
     elif action == 'seal':
         seal(out, os.environ.get('LUMI_EVAL_API_KEY', ''))
+    elif action == 'verify':
+        print(f'Verified {verify(out)} artifact files.')
     elif action == 'status':
         result = read(out / 'comparison.json')
         if result['blocked']:

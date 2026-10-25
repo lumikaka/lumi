@@ -1,0 +1,1143 @@
+{
+  "schema_version": 1,
+  "execution": {
+    "schema_version": 1,
+    "config": {
+      "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3.7-plus",
+      "repetitions": 3,
+      "max_tokens": 4096,
+      "temperature": null,
+      "reasoning_request_fields": "omitted",
+      "timeout_seconds": 300,
+      "pi_provider_alias": "lumi-eval",
+      "lumi_provider_type": "openai_compatible",
+      "lumi_max_requests_per_turn": 16,
+      "pi_max_requests_per_turn": null
+    },
+    "pi_revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+    "lumi_revision": "e626ebdb68c8d5fb50b425d27ae67a7fdc321593",
+    "workflow_run_url": "https://github.com/lumikaka/lumi/actions/runs/40192418734",
+    "workflow_attempt": "1",
+    "runner_os": "Linux",
+    "differences": [
+      "Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.",
+      "Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.",
+      "System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.",
+      "pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.",
+      "Both cap output at 4096 tokens. pi keeps its native 300-second test timeout and native retry/loop policy; Lumi has 300 seconds per case and 16 requests per turn, including its no-progress policy.",
+      "pi errored/unscored records have no automatic Agent/environment attribution; inspect native Vitest errors and sessions. They are never silently counted as zero.",
+      "No price snapshot is configured. Cost is unavailable; zero model catalog prices only disable estimation and do not mean free inference.",
+      "Three repeats describe observed variation, not statistical significance. Scores do not gate infrastructure acceptance."
+    ]
+  },
+  "blocked": [
+    "pi evidence unavailable or invalid: Expected exactly one pi cohort, found 0.",
+    "pi runner exit status 1; inspect console and native results",
+    "pi-prompt-template-project-without-docs/run-001: environment_error",
+    "Lumi ('pi-prompt-template-project-without-docs', 1): environment_error",
+    "lumi runner exit status 1; inspect console and native results"
+  ],
+  "differences": [
+    "Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.",
+    "Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.",
+    "System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.",
+    "pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.",
+    "Both cap output at 4096 tokens. pi keeps its native 300-second test timeout and native retry/loop policy; Lumi has 300 seconds per case and 16 requests per turn, including its no-progress policy.",
+    "pi errored/unscored records have no automatic Agent/environment attribution; inspect native Vitest errors and sessions. They are never silently counted as zero.",
+    "No price snapshot is configured. Cost is unavailable; zero model catalog prices only disable estimation and do not mean free inference.",
+    "Three repeats describe observed variation, not statistical significance. Scores do not gate infrastructure acceptance."
+  ],
+  "rows": [
+    {
+      "case": "pi-add-model-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 0,
+        "pass_rate": 0.0,
+        "statuses": {
+          "scored": 2,
+          "agent_error": 1
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 0,
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 429811,
+          "mean": 143270.33333333334,
+          "min": 106250,
+          "max": 174448,
+          "stddev": 28146.573105007927
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 182593,
+          "mean": 60864.333333333336,
+          "min": 47783,
+          "max": 69701,
+          "stddev": 9437.958018319194
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 23350,
+          "mean": 7783.333333333333,
+          "min": 5649,
+          "max": 9600,
+          "stddev": 1628.5544373939595
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 145920,
+          "mean": 48640,
+          "min": 33664,
+          "max": 58624,
+          "stddev": 10783.95252215068
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 54,
+          "mean": 18,
+          "min": 16,
+          "max": 20,
+          "stddev": 1.632993161855452
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 174448,
+            "input_tokens": 65109,
+            "output_tokens": 9600,
+            "cached_input_tokens": 53632,
+            "tool_calls": 20,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 149113,
+            "input_tokens": 69701,
+            "output_tokens": 8101,
+            "cached_input_tokens": 58624,
+            "tool_calls": 18,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 106250,
+            "input_tokens": 47783,
+            "output_tokens": 5649,
+            "cached_input_tokens": 33664,
+            "tool_calls": 16,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "budget_limit",
+                "message": "Runtime ended this turn: map[budget_reason:no_progress completion_reason:budget_limit request_ordinal:11 request_uuid:01a1730c-5f4f-72fd-b48a-8d9234f105da]"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    },
+    {
+      "case": "pi-add-model-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 0,
+        "pass_rate": 0.0,
+        "statuses": {
+          "scored": 2,
+          "agent_error": 1
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 0,
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 324392,
+          "mean": 108130.66666666667,
+          "min": 86207,
+          "max": 129380,
+          "stddev": 17631.75215973223
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 65179,
+          "mean": 21726.333333333332,
+          "min": 19107,
+          "max": 25994,
+          "stddev": 3043.62112549436
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 17592,
+          "mean": 5864,
+          "min": 4572,
+          "max": 6977,
+          "stddev": 989.9619521308214
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 44288,
+          "mean": 14762.666666666666,
+          "min": 13440,
+          "max": 16768,
+          "stddev": 1441.8555945570818
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 53,
+          "mean": 17.666666666666668,
+          "min": 17,
+          "max": 18,
+          "stddev": 0.4714045207910317
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 108805,
+            "input_tokens": 19107,
+            "output_tokens": 6043,
+            "cached_input_tokens": 13440,
+            "tool_calls": 18,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 129380,
+            "input_tokens": 25994,
+            "output_tokens": 6977,
+            "cached_input_tokens": 16768,
+            "tool_calls": 18,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "budget_limit",
+                "message": "Runtime ended this turn: map[budget_reason:model_request_limit completion_reason:budget_limit request_ordinal:16 request_uuid:01a17308-6f86-7059-bc96-19172a73a8c1]"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 86207,
+            "input_tokens": 20078,
+            "output_tokens": 4572,
+            "cached_input_tokens": 14080,
+            "tool_calls": 17,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    },
+    {
+      "case": "pi-prompt-template-project-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 75591,
+          "mean": 25197,
+          "min": 20675,
+          "max": 32386,
+          "stddev": 5139.490701097402
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 42018,
+          "mean": 14006,
+          "min": 13288,
+          "max": 15358,
+          "stddev": 956.6232278175144
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3329,
+          "mean": 1109.6666666666667,
+          "min": 891,
+          "max": 1537,
+          "stddev": 302.1978748362661
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 20096,
+          "mean": 6698.666666666667,
+          "min": 6144,
+          "max": 7808,
+          "stddev": 784.4171225962767
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 19,
+          "mean": 6.333333333333333,
+          "min": 6,
+          "max": 7,
+          "stddev": 0.4714045207910317
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 32386,
+            "input_tokens": 15358,
+            "output_tokens": 1537,
+            "cached_input_tokens": 7808,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 20675,
+            "input_tokens": 13288,
+            "output_tokens": 891,
+            "cached_input_tokens": 6144,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 22530,
+            "input_tokens": 13372,
+            "output_tokens": 901,
+            "cached_input_tokens": 6144,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    },
+    {
+      "case": "pi-prompt-template-project-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 2,
+        "successes": 1,
+        "pass_rate": 0.5,
+        "statuses": {
+          "environment_error": 1,
+          "agent_error": 1,
+          "scored": 1
+        },
+        "score": {
+          "available_runs": 2,
+          "total": 1,
+          "mean": 0.5,
+          "min": 0,
+          "max": 1,
+          "stddev": 0.5
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 77990,
+          "mean": 25996.666666666668,
+          "min": 14357,
+          "max": 32311,
+          "stddev": 8240.38471324138
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 20253,
+          "mean": 6751,
+          "min": 3436,
+          "max": 8516,
+          "stddev": 2345.7017429048105
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3662,
+          "mean": 1220.6666666666667,
+          "min": 587,
+          "max": 1602,
+          "stddev": 451.1543219589304
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 9856,
+          "mean": 3285.3333333333335,
+          "min": 512,
+          "max": 4992,
+          "stddev": 1978.37194570575
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 19,
+          "mean": 6.333333333333333,
+          "min": 4,
+          "max": 8,
+          "stddev": 1.699673171197595
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "environment_error",
+            "score": null,
+            "duration_ms": 32311,
+            "input_tokens": 8516,
+            "output_tokens": 1602,
+            "cached_input_tokens": 4992,
+            "tool_calls": 8,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "environment",
+                "code": "runtime_error",
+                "message": "agent_validation_failed"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 14357,
+            "input_tokens": 3436,
+            "output_tokens": 587,
+            "cached_input_tokens": 512,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "agent_turn_budget_exceeded",
+                "message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 31322,
+            "input_tokens": 8301,
+            "output_tokens": 1473,
+            "cached_input_tokens": 4352,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    },
+    {
+      "case": "pi-prompt-template-user-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 58868,
+          "mean": 19622.666666666668,
+          "min": 18180,
+          "max": 20446,
+          "stddev": 1023.5133392172061
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 30445,
+          "mean": 10148.333333333334,
+          "min": 7530,
+          "max": 13391,
+          "stddev": 2433.128895521613
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 2377,
+          "mean": 792.3333333333334,
+          "min": 742,
+          "max": 846,
+          "stddev": 42.52319628417203
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 14208,
+          "mean": 4736,
+          "min": 3200,
+          "max": 6144,
+          "stddev": 1205.2861347691123
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 15,
+          "mean": 5,
+          "min": 4,
+          "max": 6,
+          "stddev": 0.816496580927726
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 20446,
+            "input_tokens": 13391,
+            "output_tokens": 846,
+            "cached_input_tokens": 6144,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 18180,
+            "input_tokens": 7530,
+            "output_tokens": 742,
+            "cached_input_tokens": 3200,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 20242,
+            "input_tokens": 9524,
+            "output_tokens": 789,
+            "cached_input_tokens": 4864,
+            "tool_calls": 5,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    },
+    {
+      "case": "pi-prompt-template-user-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 2,
+        "pass_rate": 0.6666666666666666,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 2,
+          "mean": 0.6666666666666666,
+          "min": 0,
+          "max": 1,
+          "stddev": 0.4714045207910317
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 67313,
+          "mean": 22437.666666666668,
+          "min": 20766,
+          "max": 25040,
+          "stddev": 1864.827844303299
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 18809,
+          "mean": 6269.666666666667,
+          "min": 5360,
+          "max": 6924,
+          "stddev": 663.5361498985735
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 2923,
+          "mean": 974.3333333333334,
+          "min": 831,
+          "max": 1116,
+          "stddev": 116.3567311713804
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 6272,
+          "mean": 2090.6666666666665,
+          "min": 1536,
+          "max": 2688,
+          "stddev": 471.2687367333231
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 13,
+          "mean": 4.333333333333333,
+          "min": 3,
+          "max": 6,
+          "stddev": 1.247219128924647
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 21507,
+            "input_tokens": 5360,
+            "output_tokens": 976,
+            "cached_input_tokens": 1536,
+            "tool_calls": 3,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 25040,
+            "input_tokens": 6924,
+            "output_tokens": 1116,
+            "cached_input_tokens": 2688,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 20766,
+            "input_tokens": 6525,
+            "output_tokens": 831,
+            "cached_input_tokens": 2048,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 0,
+        "scored": 0,
+        "successes": 0,
+        "pass_rate": null,
+        "statuses": {},
+        "score": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "duration_ms": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "output_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cached_input_tokens": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "tool_calls": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": []
+      }
+    }
+  ]
+}

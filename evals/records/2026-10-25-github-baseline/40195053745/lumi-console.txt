@@ -1,0 +1,37 @@
+Running pi-add-model-with-docs/run-001
+  scored; 14 requests; 114.7s
+Running pi-add-model-without-docs/run-001
+  agent_error; 16 requests; 137.9s
+Running pi-prompt-template-project-with-docs/run-001
+  scored; 6 requests; 19.6s
+Running pi-prompt-template-project-without-docs/run-001
+  scored; 7 requests; 28.9s
+Running pi-prompt-template-user-with-docs/run-001
+  scored; 6 requests; 26.9s
+Running pi-prompt-template-user-without-docs/run-001
+  scored; 6 requests; 29.6s
+Running pi-prompt-template-user-without-docs/run-002
+  scored; 6 requests; 27.2s
+Running pi-prompt-template-user-with-docs/run-002
+  scored; 5 requests; 21.1s
+Running pi-prompt-template-project-without-docs/run-002
+  scored; 6 requests; 23.4s
+Running pi-prompt-template-project-with-docs/run-002
+  scored; 7 requests; 28.3s
+Running pi-add-model-without-docs/run-002
+  agent_error; 16 requests; 175.1s
+Running pi-add-model-with-docs/run-002
+  scored; 14 requests; 114.9s
+Running pi-add-model-with-docs/run-003
+  agent_error; 16 requests; 176.9s
+Running pi-add-model-without-docs/run-003
+  scored; 10 requests; 66.0s
+Running pi-prompt-template-project-with-docs/run-003
+  scored; 5 requests; 25.8s
+Running pi-prompt-template-project-without-docs/run-003
+  scored; 5 requests; 18.8s
+Running pi-prompt-template-user-with-docs/run-003
+  scored; 6 requests; 21.1s
+Running pi-prompt-template-user-without-docs/run-003
+  scored; 6 requests; 23.6s
+Report: /home/runner/work/_temp/agent-baseline/lumi/report.md

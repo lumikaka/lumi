@@ -76,7 +76,7 @@ jobs:
         run: bash evals/ci/run-pi.sh
       - name: Run Lumi reference cases
         id: lumi
-        if: ${{ !cancelled() && steps.pi.outcome != 'skipped' }}
+        if: ${{ !cancelled() && steps.pi.outputs.has_cohort == 'true' }}
         continue-on-error: true
         env:
           LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
@@ -107,7 +107,7 @@ jobs:
         run: python3 evals/ci/baseline.py seal
       - name: Save reports and complete execution records
         if: ${{ always() && steps.seal.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: agent-baseline-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.OUT }}/

@@ -431,6 +431,11 @@ func runOne(parent context.Context, cfg Config, protocol string, task Task, c Ca
 		if e.reference {
 			prompt = e.expandReferencePrompt(prompt)
 			trace.event("expanded_prompt", map[string]any{"original": step.Content, "expanded": prompt})
+			if strings.TrimSpace(prompt) == "" {
+				result.Status = "agent_error"
+				result.Issues = append(result.Issues, Issue{Kind: "agent", Code: "empty_prompt_template", Message: "The Agent-created template expanded to an empty prompt."})
+				return
+			}
 		}
 		turn, runErr := session.Prompt(ctx, prompt)
 		result.Turns = append(result.Turns, turn)
