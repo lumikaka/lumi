@@ -1,0 +1,42 @@
+{
+  "slug": "transient-tool",
+  "suite": "recovery",
+  "reference": "Lumi addition: simulated environment failure",
+  "goal": "Recover from one explicitly transient tool error.",
+  "initial_conditions": "The order exists; the first eval_fetch deterministically returns transient_unavailable, the second succeeds.",
+  "observable_result": "recovered answer; retried",
+  "files": {
+    "records/order.json": "{\"total\":42}"
+  },
+  "tools": [
+    "eval_fetch"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Fetch the order record. If the service reports a temporary error, retry. Reply only with the numeric total."
+    }
+  ],
+  "checks": [
+    {
+      "name": "recovered_answer",
+      "kind": "final_equals",
+      "expected": "42",
+      "basis": "recovered answer"
+    },
+    {
+      "name": "retried",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "retried",
+      "tool": "eval_fetch",
+      "arguments": {
+        "key": "order"
+      },
+      "count": 2
+    }
+  ],
+  "faults": {
+    "eval_fetch": 1
+  }
+}

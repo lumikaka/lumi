@@ -1,0 +1,62 @@
+{
+  "slug": "audit-inconclusive",
+  "suite": "audit",
+  "reference": "documentation-audit.eval.ts",
+  "goal": "Audit explicit documentation against the callable implementation path.",
+  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "observable_result": "verdict; read documentation; read implementation; Exactly one submission must include nonempty explanation citing src/names.py and format_name; verdict is checked separately.",
+  "files": {
+    "docs/names.md": "The public format_name function preserves capitalization.",
+    "src/names.py": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n"
+  },
+  "tools": [
+    "eval_read",
+    "eval_list",
+    "eval_search",
+    "eval_submit"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize."
+    }
+  ],
+  "checks": [
+    {
+      "name": "verdict",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "verdict",
+      "tool": "eval_submit",
+      "arguments": {
+        "verdict": "inconclusive"
+      },
+      "count": 1
+    },
+    {
+      "name": "read_documentation",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "read documentation",
+      "tool": "eval_read",
+      "arguments": {
+        "path": "docs/names.md"
+      }
+    },
+    {
+      "name": "read_implementation",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "read implementation",
+      "tool": "eval_read",
+      "arguments": {
+        "path": "src/names.py"
+      }
+    },
+    {
+      "name": "evidence",
+      "kind": "audit_evidence",
+      "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality."
+    }
+  ]
+}

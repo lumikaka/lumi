@@ -1,0 +1,47 @@
+{
+  "slug": "status-footer",
+  "suite": "presentation",
+  "reference": "tui.docs.eval.ts",
+  "goal": "Replace only context usage with a ten-cell bar while preserving the status line.",
+  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "observable_result": "bar correctness; Minimum normalized Levenshtein similarity of the surrounding text across all three renders; independent of bar correctness.",
+  "files": {
+    "docs/footer.md": "config/footer.json controls the simulated footer with prefix (string), suffix (string), width (integer 1..30), clamp (boolean). Each block is █ and each empty cell is ░. The runtime rounds cells and the percentage to nearest integer. Reload and eval_probe target=\"footer\", input=\"\" renders 42.2, 65 and 120 percent. Preserve all text outside the context section.",
+    "config/footer.json": "{\"prefix\": \"workspace | model | \", \"suffix\": \" | $1.008\", \"width\": 5, \"clamp\": false}"
+  },
+  "tools": [
+    "eval_read",
+    "eval_write",
+    "eval_list",
+    "eval_search",
+    "eval_reload",
+    "eval_probe"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Read docs/footer.md and current config. Change the context section to a ten-cell bar and rounded percent; clamp to 0–100%. Preserve every other part of the footer."
+    },
+    {
+      "type": "reload"
+    },
+    {
+      "type": "prompt",
+      "content": "Probe the footer to verify the three fixtures."
+    }
+  ],
+  "checks": [
+    {
+      "name": "bar_correctness",
+      "kind": "footer_bar",
+      "expected": null,
+      "basis": "bar correctness"
+    },
+    {
+      "name": "layout_preservation",
+      "kind": "footer_preservation",
+      "expected": null,
+      "basis": "Minimum normalized Levenshtein similarity of the surrounding text across all three renders; independent of bar correctness."
+    }
+  ]
+}

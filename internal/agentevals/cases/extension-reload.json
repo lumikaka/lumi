@@ -1,0 +1,61 @@
+{
+  "slug": "extension-reload",
+  "suite": "context",
+  "reference": "extensions.docs.eval.ts",
+  "goal": "Create a greeting extension, reload it, and use it in a later turn.",
+  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "observable_result": "greeting; loaded tool; invocation",
+  "files": {
+    "docs/extensions.md": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=<name> invokes it. No executable source is supported."
+  },
+  "tools": [
+    "eval_read",
+    "eval_write",
+    "eval_list",
+    "eval_search",
+    "eval_reload",
+    "eval_probe"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!."
+    },
+    {
+      "type": "reload"
+    },
+    {
+      "type": "prompt",
+      "content": "Invoke the greeting extension for Bob. Respond with exactly its greeting."
+    }
+  ],
+  "checks": [
+    {
+      "name": "greeting",
+      "kind": "final_equals",
+      "expected": "Hello, Bob!",
+      "basis": "greeting"
+    },
+    {
+      "name": "loaded_tool",
+      "kind": "probe",
+      "expected": "Hello, Bob!",
+      "basis": "loaded tool",
+      "path": "hello",
+      "arguments": {
+        "input": "Bob"
+      }
+    },
+    {
+      "name": "invocation",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "invocation",
+      "tool": "eval_probe",
+      "arguments": {
+        "target": "hello",
+        "input": "Bob"
+      }
+    }
+  ]
+}

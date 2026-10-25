@@ -1,0 +1,1043 @@
+{
+  "task": {
+    "case_slug": "pi-add-model-without-docs",
+    "repetition": 1
+  },
+  "protocol_digest": "bd74ae425b8dbb7a739d5c7ae4a44f8ad377b022c91dff59984ca7ff7d70bc0a",
+  "status": "scored",
+  "final": "I've configured the new `openai/fixture-chat` model in the global Pi settings at `/eval/home/.pi/settings.json`. The configuration includes:\n\n- **Model ID**: `openai/fixture-chat`\n- **Display Name**: \"Fixture Chat\"\n- **Input Types**: text\n- **Reasoning Support**: enabled\n- **Context Window**: 32,768 tokens\n- **Maximum Output**: 4,096 tokens\n- **Usage Cost**: $0 (no cost)\n\nThis is set in the user-level settings (not project-local), so it will be available across all your Pi projects.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 0,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "result": {
+          "error": "Model openai/fixture-chat is unavailable after reload."
+        }
+      },
+      "expected": {
+        "result": {
+          "existingModelsPreserved": true,
+          "model": {
+            "contextWindow": 32768,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "fixture-chat",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 4096,
+            "name": "Fixture Chat",
+            "provider": "openai",
+            "reasoning": true
+          }
+        }
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T08:19:26.359246Z",
+  "duration_ms": 102588,
+  "usage": {
+    "input_tokens": 18684,
+    "output_tokens": 5776,
+    "cached_input_tokens": 12800,
+    "cost_usd": null,
+    "requests": 12
+  },
+  "turns": [
+    {
+      "uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Configure this running Pi installation with a new `openai/fixture-chat` model. Do not create project-local configuration. Show it as “Fixture Chat”. It accepts text, supports reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost.",
+      "status": "completed",
+      "started_at": "2026-10-25T08:19:26.637838Z",
+      "completed_at": "2026-10-25T08:21:08.918203Z",
+      "created_at": "2026-10-25T08:19:26.636812Z",
+      "updated_at": "2026-10-25T08:21:08.918203Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17224-a52c-7e34-b7e4-aa53bf89809f",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Configure this running Pi installation with a new `openai/fixture-chat` model. Do not create project-local configuration. Show it as “Fixture Chat”. It accepts text, supports reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:26.636812Z"
+    },
+    {
+      "uuid": "01a17224-b461-7b3e-bf47-2dfd06a7dd06",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-b461-794e-aaac-a55b49e12987",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17224-a52f-7591-97e0-ab0651ee7a8b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:30.529696Z"
+    },
+    {
+      "uuid": "01a17224-b461-7ee4-a3ce-62416452db86",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-b461-7a06-8ed5-c524a5b124a5",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17224-a52f-7591-97e0-ab0651ee7a8b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:30.529696Z"
+    },
+    {
+      "uuid": "01a17224-b466-7ebd-a7dd-8ea116fab86a",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-b461-794e-aaac-a55b49e12987",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17224-a52f-7591-97e0-ab0651ee7a8b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:30.534956Z"
+    },
+    {
+      "uuid": "01a17224-b46c-73d4-b168-ff0b13d396ed",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-b461-7a06-8ed5-c524a5b124a5",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17224-a52f-7591-97e0-ab0651ee7a8b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:30.540245Z"
+    },
+    {
+      "uuid": "01a17224-c06a-748c-b771-1d22af3e8718",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval\", \"pattern\": \"**/*.json\"}",
+      "content_format": "json",
+      "status": "failed",
+      "tool_call_uuid": "01a17224-c06a-742e-bac2-9784a6190bef",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17224-b46d-7dda-aaca-33db0dea4f36",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:33.610274Z"
+    },
+    {
+      "uuid": "01a17224-c06a-75dc-9f46-39402f2f0a73",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"path is outside the virtual roots\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-c06a-742e-bac2-9784a6190bef",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17224-b46d-7dda-aaca-33db0dea4f36",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:33.610274Z"
+    },
+    {
+      "uuid": "01a17224-cbdc-7a02-8f08-43c165858abe",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-cbdc-77b4-b8b4-cf80b5ec2c71",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17224-c06b-7e7e-8364-823611dd6ba8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:36.540616Z"
+    },
+    {
+      "uuid": "01a17224-cbdc-7d23-9ab9-ec6f016f497f",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 9,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-cbdc-78ca-953e-67d86b224516",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17224-c06b-7e7e-8364-823611dd6ba8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:36.540616Z"
+    },
+    {
+      "uuid": "01a17224-cbe1-7918-91df-a5fe2ba348c3",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 10,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-cbdc-77b4-b8b4-cf80b5ec2c71",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17224-c06b-7e7e-8364-823611dd6ba8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:36.54559Z"
+    },
+    {
+      "uuid": "01a17224-cbe6-7b5a-a33e-92223b792bf1",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-cbdc-78ca-953e-67d86b224516",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17224-c06b-7e7e-8364-823611dd6ba8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:36.550735Z"
+    },
+    {
+      "uuid": "01a17224-dcbd-7090-9186-c0765bc04b96",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home\", \"pattern\": \"**/*.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7bea-bdd3-54474f44d15a",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.860969Z"
+    },
+    {
+      "uuid": "01a17224-dcbd-757e-abd7-9808c632d132",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 13,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home\", \"pattern\": \"**/*.yaml\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7d13-8336-99f8aeb79cce",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.860969Z"
+    },
+    {
+      "uuid": "01a17224-dcbd-78cd-9640-5be9eda855c4",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 14,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home\", \"pattern\": \"**/*.yml\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7dde-9565-56b868e77fb5",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.860969Z"
+    },
+    {
+      "uuid": "01a17224-dcc2-7576-9cdb-85a0bcc3518d",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 15,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7bea-bdd3-54474f44d15a",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.866342Z"
+    },
+    {
+      "uuid": "01a17224-dcc7-7547-9b35-9b520fac3253",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 16,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7d13-8336-99f8aeb79cce",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.871338Z"
+    },
+    {
+      "uuid": "01a17224-dccd-729f-b8ad-9811bf5bf4e8",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 17,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17224-dcbc-7dde-9565-56b868e77fb5",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a17224-cbe8-7ad9-8bda-cfeaf9ecac2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:40.877167Z"
+    },
+    {
+      "uuid": "01a17225-09ae-74f5-9edd-e249bf6fea4a",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 18,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\", \"pattern\": \".*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-09ae-719e-8bda-36d610bea195",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a17224-dcd0-717a-9ec0-5147f342cd00"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:52.366275Z"
+    },
+    {
+      "uuid": "01a17225-09ae-788f-842f-d3fc8387dcb3",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 19,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-09ae-7315-a729-5d0ce847e046",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 5,
+        "request_uuid": "01a17224-dcd0-717a-9ec0-5147f342cd00"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:52.366275Z"
+    },
+    {
+      "uuid": "01a17225-09b4-7b4a-9777-7a170d9e8f4e",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 20,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-09ae-719e-8bda-36d610bea195",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a17224-dcd0-717a-9ec0-5147f342cd00"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:52.372706Z"
+    },
+    {
+      "uuid": "01a17225-09ba-72da-88cd-fe51621173ad",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 21,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-09ae-7315-a729-5d0ce847e046",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 5,
+        "request_uuid": "01a17224-dcd0-717a-9ec0-5147f342cd00"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:19:52.378181Z"
+    },
+    {
+      "uuid": "01a17225-3441-78aa-a9b5-aa77ba9bffea",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 22,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home\", \"pattern\": \"**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-3441-75dc-8993-e2bc5f1b116a",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 6,
+        "request_uuid": "01a17225-09bd-715f-a49d-3a6fc0e4eb68"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:03.265514Z"
+    },
+    {
+      "uuid": "01a17225-3441-7c5f-a438-c8a07029f533",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 23,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\", \"pattern\": \"**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-3441-7704-a164-eac61a62e7cf",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 6,
+        "request_uuid": "01a17225-09bd-715f-a49d-3a6fc0e4eb68"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:03.265514Z"
+    },
+    {
+      "uuid": "01a17225-3446-77e7-a804-2f35f353daa5",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 24,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-3441-75dc-8993-e2bc5f1b116a",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 6,
+        "request_uuid": "01a17225-09bd-715f-a49d-3a6fc0e4eb68"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:03.27051Z"
+    },
+    {
+      "uuid": "01a17225-344b-7059-8aae-8f41ea3e4266",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 25,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-3441-7704-a164-eac61a62e7cf",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 6,
+        "request_uuid": "01a17225-09bd-715f-a49d-3a6fc0e4eb68"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:03.275018Z"
+    },
+    {
+      "uuid": "01a17225-70bd-7497-a296-c82cc14c16d5",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 26,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"models\\\": [\\n    {\\n      \\\"id\\\": \\\"openai/fixture-chat\\\",\\n      \\\"name\\\": \\\"Fixture Chat\\\",\\n      \\\"input\\\": [\\\"text\\\"],\\n      \\\"reasoning\\\": true,\\n      \\\"contextWindow\\\": 32768,\\n      \\\"maxOutput\\\": 4096,\\n      \\\"cost\\\": {\\n        \\\"input\\\": 0,\\n        \\\"output\\\": 0\\n      }\\n    }\\n  ]\\n}\\n\", \"path\": \"/eval/home/.pi/settings.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-70bd-7318-884a-ad66d2690adb",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 7,
+        "request_uuid": "01a17225-344f-769f-96ba-6de178eb7245"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:18.749243Z"
+    },
+    {
+      "uuid": "01a17225-70c1-74ab-85a2-05b4063ae611",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 27,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/home/.pi/settings.json\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-70bd-7318-884a-ad66d2690adb",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 7,
+        "request_uuid": "01a17225-344f-769f-96ba-6de178eb7245"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:18.753299Z"
+    },
+    {
+      "uuid": "01a17225-a2e1-78a2-9c5b-ce0c6b67499d",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 28,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-a2e1-7660-98ae-debc9ae2395d",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 8,
+        "request_uuid": "01a17225-70c3-7d0f-9384-b37f648f452e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:31.585487Z"
+    },
+    {
+      "uuid": "01a17225-a2e6-7278-8f70-e2bbe0a955c3",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 29,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-a2e1-7660-98ae-debc9ae2395d",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 8,
+        "request_uuid": "01a17225-70c3-7d0f-9384-b37f648f452e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:31.590157Z"
+    },
+    {
+      "uuid": "01a17225-ac51-7ad1-a302-60b858ff5134",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 30,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-ac51-793f-84be-6d63357da224",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 9,
+        "request_uuid": "01a17225-a2ea-783d-a88f-4528f264c40d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:34.001656Z"
+    },
+    {
+      "uuid": "01a17225-ac55-7ec5-a626-f15161c570c8",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 31,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-ac51-793f-84be-6d63357da224",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 9,
+        "request_uuid": "01a17225-a2ea-783d-a88f-4528f264c40d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:34.005963Z"
+    },
+    {
+      "uuid": "01a17225-ffe7-72e6-98a4-0b3eaaee94bc",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 32,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/settings.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-ffe6-7ef4-97c0-a0e19265ce3c",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 10,
+        "request_uuid": "01a17225-ac58-79a8-8a54-99a0ee98df88"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:55.399099Z"
+    },
+    {
+      "uuid": "01a17225-ffec-7c54-9afb-a35fd2d5ed80",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 33,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\n  \\\"models\\\": [\\n    {\\n      \\\"id\\\": \\\"openai/fixture-chat\\\",\\n      \\\"name\\\": \\\"Fixture Chat\\\",\\n      \\\"input\\\": [\\\"text\\\"],\\n      \\\"reasoning\\\": true,\\n      \\\"contextWindow\\\": 32768,\\n      \\\"maxOutput\\\": 4096,\\n      \\\"cost\\\": {\\n        \\\"input\\\": 0,\\n        \\\"output\\\": 0\\n      }\\n    }\\n  ]\\n}\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17225-ffe6-7ef4-97c0-a0e19265ce3c",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 10,
+        "request_uuid": "01a17225-ac58-79a8-8a54-99a0ee98df88"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:55.404799Z"
+    },
+    {
+      "uuid": "01a17226-0c8d-71d8-a3c2-aa88057eae21",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 34,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17226-0c8d-7055-ba3a-739bc6dad431",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 11,
+        "request_uuid": "01a17225-fff1-77d7-a7eb-0fe8895e14b5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:58.637063Z"
+    },
+    {
+      "uuid": "01a17226-0c91-74af-a5ea-e92aaa81bc01",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 35,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17226-0c8d-7055-ba3a-739bc6dad431",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 11,
+        "request_uuid": "01a17225-fff1-77d7-a7eb-0fe8895e14b5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:20:58.6413Z"
+    },
+    {
+      "uuid": "01a17226-34b6-7324-8ebb-cd68c3ca0852",
+      "thread_uuid": "01a17224-a524-7c3c-a299-570f93db2039",
+      "turn_uuid": "01a17224-a52c-7c6b-a8cb-f20b56d66917",
+      "run_uuid": "01a17224-a52c-7c6f-8cc1-787d8cc2c666",
+      "sequence": 36,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I've configured the new `openai/fixture-chat` model in the global Pi settings at `/eval/home/.pi/settings.json`. The configuration includes:\n\n- **Model ID**: `openai/fixture-chat`\n- **Display Name**: \"Fixture Chat\"\n- **Input Types**: text\n- **Reasoning Support**: enabled\n- **Context Window**: 32,768 tokens\n- **Maximum Output**: 4,096 tokens\n- **Usage Cost**: $0 (no cost)\n\nThis is set in the user-level settings (not project-local), so it will be available across all your Pi projects.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 12,
+        "request_uuid": "01a17226-0c94-7412-9094-f04d4c28f8de"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:21:08.918203Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:30.530651Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:30.535488Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:36.54131Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:36.546351Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/home",
+        "pattern": "**/*.json"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:40.862172Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/home",
+        "pattern": "**/*.yaml"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:40.866986Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/home",
+        "pattern": "**/*.yml"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:40.872051Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/home/.pi",
+        "pattern": ".*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:52.367833Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:19:52.373595Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/home",
+        "pattern": "**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:20:03.266397Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/workspace",
+        "pattern": "**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:20:03.271225Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "{\n  \"models\": [\n    {\n      \"id\": \"openai/fixture-chat\",\n      \"name\": \"Fixture Chat\",\n      \"input\": [\"text\"],\n      \"reasoning\": true,\n      \"contextWindow\": 32768,\n      \"maxOutput\": 4096,\n      \"cost\": {\n        \"input\": 0,\n        \"output\": 0\n      }\n    }\n  ]\n}\n",
+        "path": "/eval/home/.pi/settings.json"
+      },
+      "result": "Successfully wrote /eval/home/.pi/settings.json",
+      "started_at": "2026-10-25T08:20:18.749811Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/runtime"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:20:31.586255Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:20:34.002321Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/home/.pi/settings.json"
+      },
+      "result": "{\n  \"models\": [\n    {\n      \"id\": \"openai/fixture-chat\",\n      \"name\": \"Fixture Chat\",\n      \"input\": [\"text\"],\n      \"reasoning\": true,\n      \"contextWindow\": 32768,\n      \"maxOutput\": 4096,\n      \"cost\": {\n        \"input\": 0,\n        \"output\": 0\n      }\n    }\n  ]\n}\n",
+      "started_at": "2026-10-25T08:20:55.40009Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:20:58.637626Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "home/.pi/settings.json": "{\n  \"models\": [\n    {\n      \"id\": \"openai/fixture-chat\",\n      \"name\": \"Fixture Chat\",\n      \"input\": [\"text\"],\n      \"reasoning\": true,\n      \"contextWindow\": 32768,\n      \"maxOutput\": 4096,\n      \"cost\": {\n        \"input\": 0,\n        \"output\": 0\n      }\n    }\n  ]\n}\n"
+  },
+  "active_configuration": {
+    "extensions": [],
+    "model_registry": {
+      "builtin-fixture": {
+        "id": "builtin-fixture",
+        "name": "Built-in fixture",
+        "provider": "openai"
+      }
+    },
+    "skills": [],
+    "templates": []
+  },
+  "reload_errors": [],
+  "trace_sha256": "55d3c309acef2ee75ba52b236b27cb843a6f00a118a8672062c296a2e20e3412"
+}

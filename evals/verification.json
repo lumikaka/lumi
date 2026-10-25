@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-25T04:07:13.499771+00:00",
+  "model": "qwen3.7-plus",
+  "provider_type": "aliyun_bailian",
+  "full_first_repetition_completed": true,
+  "repetition_mechanism_verified": true,
+  "all_cases_have_at_least_two_graded_observations": true,
+  "case_count": 14,
+  "attempt_count": 32,
+  "model_request_count": 161,
+  "status_counts": {
+    "scored": 27,
+    "agent_error": 1,
+    "environment_error": 4
+  },
+  "runs": [
+    {
+      "path": "evals/records/2026-10-25-qwen3.7-plus",
+      "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+      "recorded": 28,
+      "planned": 28,
+      "blocked": [
+        "custom-stream-provider/run-002: environment_error",
+        "extension-reload/run-002: environment_error"
+      ]
+    },
+    {
+      "path": "evals/records/2026-10-25-qwen3.7-plus-recovery",
+      "protocol_digest": "4cb5d223fe7c702968b6888e8cc5e118d77a088c7d6445cbfb9904a3cd879a61",
+      "recorded": 4,
+      "planned": 4,
+      "blocked": [
+        "custom-stream-provider/run-001: environment_error",
+        "extension-reload/run-001: environment_error"
+      ]
+    }
+  ],
+  "graded_observation_paths": {
+    "add-model": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/add-model/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/add-model/run-002/result.json"
+    ],
+    "audit-inconclusive": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-inconclusive/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-inconclusive/run-002/result.json"
+    ],
+    "audit-match": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-match/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-match/run-002/result.json"
+    ],
+    "audit-mismatch": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-mismatch/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/audit-mismatch/run-002/result.json"
+    ],
+    "batch-task": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/batch-task/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/batch-task/run-002/result.json"
+    ],
+    "configure-provider": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/configure-provider/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/configure-provider/run-002/result.json"
+    ],
+    "context-handoff": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/context-handoff/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/context-handoff/run-002/result.json"
+    ],
+    "custom-stream-provider": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/custom-stream-provider/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus-recovery/tasks/custom-stream-provider/run-002/result.json"
+    ],
+    "extension-reload": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/extension-reload/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus-recovery/tasks/extension-reload/run-002/result.json"
+    ],
+    "missing-resource": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/missing-resource/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/missing-resource/run-002/result.json"
+    ],
+    "repair-config": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/repair-config/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/repair-config/run-002/result.json"
+    ],
+    "smoke": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/smoke/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/smoke/run-002/result.json"
+    ],
+    "status-footer": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/status-footer/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/status-footer/run-002/result.json"
+    ],
+    "transient-tool": [
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/transient-tool/run-001/result.json",
+      "evals/records/2026-10-25-qwen3.7-plus/tasks/transient-tool/run-002/result.json"
+    ]
+  },
+  "agent_core_and_grader_hashes_match_current_source": true,
+  "notes": [
+    "Reports remain separate; no scores or cohorts were overwritten or merged.",
+    "Environment faults are unscored; Agent errors retain observable scores.",
+    "Recorder diagnostics/classification were refined after the full run. Agent core, model configuration, cases, environment and grading are identical in recovery."
+  ]
+}

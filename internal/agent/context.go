@@ -405,6 +405,7 @@ func maxItemSequence(items []contextItem) int64 {
 }
 
 type contextPromptSet struct {
+	FixedSystemPrompt   string `json:"fixed_system_prompt,omitempty"`
 	Assistant           string `json:"assistant"`
 	Scene               string `json:"scene,omitempty"`
 	APIOverview         string `json:"api_overview,omitempty"`
@@ -445,6 +446,11 @@ func loadContextPrompts(ctx context.Context, store *project.Store, thread thread
 }
 
 func (service *Service) loadContextPrompts(ctx context.Context, store *project.Store, thread threadRecord) (contextPromptSet, error) {
+	if service.isolation != nil {
+		return contextPromptSet{FixedSystemPrompt: service.isolation.prompt, Assistant: service.isolation.prompt,
+			Summary: "{{summary}}", LanguageInstruction: "Follow the fixed evaluation prompt.",
+			ProjectUUID: store.ProjectUUID(), ToolMode: ToolModeProjectAPI, ToolProtocol: ToolProtocolProjectAPI}, nil
+	}
 	prompts, err := loadContextPromptsForModeWithRoutes(ctx, store, thread, service.configuredToolMode(thread), service.requestAPIRoutes())
 	if err != nil || store.SetupStatus() != project.SetupStatusDraft {
 		return prompts, err
@@ -715,6 +721,9 @@ func canonicalContextProviderCallIDs(items []contextItem) map[string]string {
 }
 
 func renderSystemPrompt(languageInstruction string, prompts contextPromptSet) string {
+	if prompts.FixedSystemPrompt != "" {
+		return prompts.FixedSystemPrompt
+	}
 	var rendered strings.Builder
 	err := systemPromptTemplate.Execute(&rendered, systemPromptTemplateData{
 		Legacy:              prompts.ToolProtocol != ToolProtocolProjectAPI,

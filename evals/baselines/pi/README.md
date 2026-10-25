@@ -1,0 +1,84 @@
+# pi 历史基线
+
+本目录收集公开历史成绩，供本地 Lumi 评测对照。不安装、不运行 pi，也不把 Lumi 的模型响应当作 pi 的结果。
+
+截至 2026-10-25，已核对 10 个相关 PR，取得 **6 条逐场景比例和 2 条整体比例**。目前全部是作者公开的结果摘要，没有取得完整原始运行包；所有数值都只作为近似参考。没有可直接计算 Agent 能力差值的记录。
+
+已有 [真实运行与验证记录](verification.md) 和 [首批历史对照报告](../../records/2026-10-25-pi-historical-comparison/comparison.md)。
+
+若要重新取得已知模型配置的真实 pi 成绩，使用 [GitHub Actions 对照评测](../../ci/README.md)。它保存新的原始运行包及独立并列报告，不用新结果覆盖这里的历史摘要。
+
+## 已取得的记录
+
+| 来源 | 场景 | with_docs | without_docs | 样本与限制 |
+|---|---|---:|---:|---|
+| [PR #10261](https://github.com/earendil-works/pi/pull/10261) | 项目提示模板 | 66.7% | 100% | 每组 3 次；66.7% 保留原文精度，不反推成功次数 |
+| 同上 | 用户提示模板 | 100% | 100% | 每组 3 次 |
+| 同上 | 给现有 Provider 添加模型 | 100% | 0% | 每组 1 次 |
+| [PR #9898](https://github.com/earendil-works/pi/pull/9898) | 文档评测整体 | 13/15 | 2/15 | 每个变体重复 3 次；没有逐用例分解或完整执行清单 |
+
+两份摘要都没有受测模型、完整参数、实际执行提交、逐次会话、Token、耗时和费用。PR head 是检索时代码版本，不能当作运行版本。#10261 检索时尚未合并，不能称为当前 main 的成绩。
+
+其余来源及不能提取分数的原因保存在 `sources/pr-*.json`。例如 #9706 的 `5/5 pairs eligible` 表示可用于评分，不代表通过；#9280 的文档漂移是在报告被审计文档的问题，不能换算成 Agent 失败率。普通单元测试的通过数量也不进入此基线。
+
+`catalog.json` 保存结构化比例、来源、已知样本数、未知配置及用例映射。`sources/` 是检索时的元数据和事实摘录，不冒充原始模型轨迹。每个快照有 SHA-256，比较时校验；这些散列只保证本地一致性，不是来源真实性签名。
+
+## 手动运行
+
+默认 14 个回归用例保持不变。对照组单独包含三个场景的两个文档变体，共 6 个用例。
+
+```sh
+# 只列出对照组，不请求模型
+make eval-agent-list EVAL_ARGS='--suite pi-reference'
+
+# 仅运行 Lumi；一次固定同一模型，每个用例重复 3 次
+make eval-agent-pi EVAL_ARGS='--lumi-config-dir /absolute/path/to/.lumi_dev --provider aliyun_bailian --model qwen3.7-plus --repeat 3 --timeout 120'
+
+# 从上述命令输出的运行目录生成离线对照报告
+make eval-agent-compare run=evals/results/<run>
+
+# 显式指定历史目录及新输出目录；不读取凭据、不调用模型
+make eval-agent-compare run=evals/results/<run> EVAL_ARGS='--baseline evals/baselines/pi/catalog.json --out evals/results/my-comparison'
+```
+
+`eval-agent-pi` 的名称表示“运行 pi 参考用例”，受测对象始终是 Lumi。它不调用 pi CLI、SDK、容器或生成的 JS。结果中的“Pi installation”是保留的原始题目措辞，模型实际操作的是独立虚拟环境。
+
+输出包含 `comparison.md`、`comparison.json`、冻结的 `baseline.json` 和所引用的 `sources/`。原来的 protocol、result、trace 和 report 均不改写。输出目录必须全新。现有 Lumi 运行若有环境/证据错误，报告仍保存且退出 1；未知 pi 配置、低分或近似分类本身不触发失败。
+
+## 比较含义
+
+- `direct`：已审核的等价映射、对应原始记录、已知执行版本和相同模型/配置；本地证据完整。只有此类行计算百分点差值。当前收集的历史记录没有这一类。
+- `approximate`：对应场景可以并列参考，但环境、证据或模型配置不足以归因。`delta_percentage_points` 为 `null`。
+- `contract_changed`：本地用例或工具/评分代码的散列与已审核映射不同。必须重新核对语义后更新映射，不能仅为消除提示刷新散列。
+- `no_local_match`：本次没有相应本地用例。PR #9898 的整体比例始终单列，不分配给某一例，也不与本地不同题集总分相减。
+- `no_baseline`：没有找到对应的 pi 数值成绩。缺失值显示 N/A，不视为 0 分。
+
+Lumi 的描述性比例是“全部评分项恰好为 1 的有效运行次数 / 有效评分次数”，这与当前三个原始严格结构化判分任务的成功定义相符。它不设统一验收门槛。报告同时列有效数和计划数；环境故障不计作模型 0 分。一次成功、三次重复或四舍五入比例都不能证明稳定性或统计显著性。
+
+运行时间和费用继续查看 Lumi 原报告。pi 这两份历史摘要没有这些指标，因此不计算速度或成本差。
+
+## 用例对齐及边界
+
+原始代码固定为 PR #10261 检索时分支 `cfee633b1ba9497b0c12462da97a08b418b5ebf8`。`reference/` 保存原任务、原 judge、必要文档及 MIT 许可证，`reference-manifest.json` 保存每个源文件的散列。该版本只说明移植依据，不能推断历史运行使用了它。
+
+| 项目 | 本次实现 | 尚未等价的部分 |
+|---|---|---|
+| 任务和步骤 | 保留原始英文请求及 prompt → reload → prompt 顺序；模型任务为 prompt → reload | 不额外提示答案或要求原题没有要求的 probe |
+| 评分 | 保留原严格结构化观察字段及预期值，单一 `upstream_contract` 分数 | 观察对象由 Go 模拟环境产生，不是 Pi 资源加载器 |
+| 模板 | 分开项目/用户目录；Markdown、frontmatter、reload、同名冲突、错误目录和实际无参数展开 | 不实现完整资源发现、包、链接、扩展命令、带参数模板或生成代码执行 |
+| 模型 | 原 `providers.openai.models` 结构、名称、输入、推理、Token 限制、四项价格和旧模型存在检查 | 最小内置目录及加法合并，未复现完整 ModelRuntime 校验、插件 Provider 或全部内置模型 |
+| 文件工具 | read/write/edit/grep/find/ls 六个名字，限制在内存虚拟根目录 | 返回格式、正则/glob、错误消息、截断策略不宣称与 pi 原生工具完全相同 |
+| 文档变体 | 有文档组提供所固定版本的场景文档和 configuration.md；无文档组不提供文档 | 不是 pi 全量 README、CHANGELOG、docs 和 examples 安装环境 |
+| Agent | 当前 Lumi 核心循环、固定真实模型、每例独立数据库 | 固定评测提示词不同于 pi 默认系统提示词；这是已记录的条件差异 |
+
+这轮没有把真实扩展生成、真实流式 Provider 和 TUI 渲染改写后冒充同题，也没有将原 14 个通用用例的满分映射成 pi 分数。
+
+## 增加或更新基线
+
+1. 先保存来源链接、检索日期、执行版本（未知则 null）和事实快照，区分源码版本、PR head 与实际执行版本。
+2. 在 `catalog.json` 新增独立 observation。模型、预算、成功次数和原始轨迹未公开时保留未知，不用 README 示例或其他 PR 的模型补齐。
+3. 原题、初始数据、工具、文档条件、判分和失败处理逐项审核后，才添加本地映射。以 CaseDigest 和 EnvironmentDigest 冻结审核对象；这些散列用于防止后续同名用例发生语义漂移。
+4. 新用例放在 `internal/agentevals/reference_cases/`，继续通过真实 Agent 核心执行。原始 JSON 字段的 camelCase 是被评测配置/观察的一部分；评测元数据仍用 snake_case。
+5. 当前没有自动下载或解析任意 pi 原始运行包的入口。未来取得原始包后需核对真实逐次结果、完整计划和配置，再人工整理成 `run_artifact` 来源；仅修改来源类型或 `equivalence` 字段不能作为等价证据。
+
+执行 `make test-evals` 检查基线快照、映射、模板展开、注册表保留、隔离根目录、缺失指标及对照报告。所有模型替身仅用于离线测试，不作为真实运行证据。

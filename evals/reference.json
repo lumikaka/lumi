@@ -1,0 +1,158 @@
+{
+  "repository": "https://github.com/earendil-works/pi",
+  "commit": "38ff99177fba21e9c57a670f4e95adcf407c99c7",
+  "commit_time": "2026-10-24T20:48:11Z",
+  "reviewed_on": "2026-10-25",
+  "files": [
+    {
+      "path": "packages/evals/.gitignore",
+      "git_blob_sha": "3270c5ed788c22667d237511a8b0368dace27ca6",
+      "size": 7
+    },
+    {
+      "path": "packages/evals/README.md",
+      "git_blob_sha": "74c4904b08b7845ca45cd4b9e07532320335c01a",
+      "size": 6039
+    },
+    {
+      "path": "packages/evals/docker/Dockerfile",
+      "git_blob_sha": "930ba207902ced968e5428f389a86d2fa6be3a00",
+      "size": 1970
+    },
+    {
+      "path": "packages/evals/docker/Dockerfile.dockerignore",
+      "git_blob_sha": "183e68bca039fbeb906136f0128bc468338e6da2",
+      "size": 68
+    },
+    {
+      "path": "packages/evals/docker/entrypoint.ts",
+      "git_blob_sha": "b035b998c9d21d8aadab2418d427e343f7f6536d",
+      "size": 6258
+    },
+    {
+      "path": "packages/evals/docker/install-runtime.mjs",
+      "git_blob_sha": "93f7a37203642036c745d7e08c7210cae3a87544",
+      "size": 3025
+    },
+    {
+      "path": "packages/evals/evals/acme-server.ts",
+      "git_blob_sha": "c3bd4f4b184375bde0baa4a61aa9352ca5e02eb6",
+      "size": 5729
+    },
+    {
+      "path": "packages/evals/evals/configured-runtime.ts",
+      "git_blob_sha": "8aaca0eee71ff71b92809f31f0741995f0332801",
+      "size": 3861
+    },
+    {
+      "path": "packages/evals/evals/custom-provider.docs.eval.ts",
+      "git_blob_sha": "2832128ebf89d0b70b3e201e6b240e8358b5ee2c",
+      "size": 2680
+    },
+    {
+      "path": "packages/evals/evals/documentation-audit.eval.ts",
+      "git_blob_sha": "dc2d6a582a193780655f99d8392500d109e5a585",
+      "size": 3083
+    },
+    {
+      "path": "packages/evals/evals/extensions.docs.eval.ts",
+      "git_blob_sha": "ef21c8f60c5588b352181f670afe3b887ce3352d",
+      "size": 1892
+    },
+    {
+      "path": "packages/evals/evals/models.docs.eval.ts",
+      "git_blob_sha": "7b06b8921aa59e744df2ed29d612ef2cd7151771",
+      "size": 1449
+    },
+    {
+      "path": "packages/evals/evals/openai-provider.docs.eval.ts",
+      "git_blob_sha": "919195e09c920cfcd71b9f1a63b4e4226730e69f",
+      "size": 2299
+    },
+    {
+      "path": "packages/evals/evals/smoke.eval.ts",
+      "git_blob_sha": "bc96cdf9f20cc706fd571f622b609d03bf9d2c86",
+      "size": 681
+    },
+    {
+      "path": "packages/evals/evals/tui.docs.eval.ts",
+      "git_blob_sha": "71988d3a437254aeb4152793bff481f48f7dfc85",
+      "size": 9112
+    },
+    {
+      "path": "packages/evals/package.json",
+      "git_blob_sha": "b36546214cbe17f2e93778efe8fbec2bf49575e4",
+      "size": 631
+    },
+    {
+      "path": "packages/evals/src/cli.ts",
+      "git_blob_sha": "827aa318bc31aa1f371b356d03ac924a71a84272",
+      "size": 7871
+    },
+    {
+      "path": "packages/evals/src/docker.ts",
+      "git_blob_sha": "d3762f1f8a4940dd7bb3372bbd9f7cc7d55c523a",
+      "size": 5940
+    },
+    {
+      "path": "packages/evals/src/harness.ts",
+      "git_blob_sha": "0f8de18102eaf9d8bf6a2c05185187205265aad1",
+      "size": 20636
+    },
+    {
+      "path": "packages/evals/src/plan.ts",
+      "git_blob_sha": "d06ba208f4348917bd3eac6853ad384af684f433",
+      "size": 2215
+    },
+    {
+      "path": "packages/evals/src/report.ts",
+      "git_blob_sha": "7c5e1d09317b1dd835beff0fad3b6ecbb9474dfc",
+      "size": 19038
+    },
+    {
+      "path": "packages/evals/test/acme-server.test.ts",
+      "git_blob_sha": "04f86e0389f139b0a2d536a3366bedbaf72de33e",
+      "size": 4303
+    },
+    {
+      "path": "packages/evals/test/comparison.test.ts",
+      "git_blob_sha": "ba2ad550de7db0d0f2acacf7d830e35835ecf9ff",
+      "size": 4135
+    },
+    {
+      "path": "packages/evals/test/configured-runtime.test.ts",
+      "git_blob_sha": "7b74c94d3e5c33d9fe0f37b1a3a328c0e035a81c",
+      "size": 6307
+    },
+    {
+      "path": "packages/evals/test/harness.test.ts",
+      "git_blob_sha": "e98a6bd1b89e3a87aed7c786da20a7b7c0d22aaf",
+      "size": 4252
+    },
+    {
+      "path": "packages/evals/test/plan.test.ts",
+      "git_blob_sha": "3cf801fc809831b72ac33219a60e0775516c8d6f",
+      "size": 1570
+    },
+    {
+      "path": "packages/evals/test/report.test.ts",
+      "git_blob_sha": "f872ea4f3e0705950f134768b4575d7514a18de4",
+      "size": 6992
+    },
+    {
+      "path": "packages/evals/tsconfig.json",
+      "git_blob_sha": "73cbdcd19a6928034df4727a0df5285e8e2943ce",
+      "size": 265
+    },
+    {
+      "path": "packages/evals/vitest.evals.config.ts",
+      "git_blob_sha": "ced768eaf00f9285927928490e06354609379aba",
+      "size": 1087
+    },
+    {
+      "path": "packages/evals/vitest.test.config.ts",
+      "git_blob_sha": "20aa79309ef02b1617a3ff20c6160c71653eae24",
+      "size": 378
+    }
+  ]
+}

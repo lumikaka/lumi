@@ -1,0 +1,72 @@
+{
+  "task": {
+    "case_slug": "custom-stream-provider",
+    "repetition": 2
+  },
+  "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+  "status": "environment_error",
+  "final": "",
+  "scores": null,
+  "issues": [
+    {
+      "kind": "environment",
+      "code": "llm_network_error",
+      "message": "无法连接 Provider。"
+    },
+    {
+      "kind": "environment",
+      "code": "llm_network_error",
+      "message": "无法连接 Provider。"
+    }
+  ],
+  "started_at": "2026-10-25T03:53:52.449199Z",
+  "duration_ms": 45868,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cached_input_tokens": null,
+    "cost_usd": null,
+    "requests": 1
+  },
+  "turns": [
+    {
+      "uuid": "01a17131-8348-7422-be63-379181e86915",
+      "thread_uuid": "01a17131-8341-720f-9486-539a078f26cd",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "status": "queued",
+      "error_code": "llm_network_error",
+      "error_message": "无法连接 Provider。",
+      "started_at": "2026-10-25T03:53:52.713238Z",
+      "created_at": "2026-10-25T03:53:52.712269Z",
+      "updated_at": "2026-10-25T03:54:38.292739Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17131-8348-760e-bada-86052c5ebd1a",
+      "thread_uuid": "01a17131-8341-720f-9486-539a078f26cd",
+      "turn_uuid": "01a17131-8348-7422-be63-379181e86915",
+      "run_uuid": "01a17131-8348-7426-a247-79ed75678644",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:53:52.712269Z"
+    }
+  ],
+  "tools": null,
+  "files": {
+    "docs/api.md": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\"."
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "928f31d11fcd8b6026fd29a97e3b2f9ca588686b8d689c96d09752825356ac94"
+}

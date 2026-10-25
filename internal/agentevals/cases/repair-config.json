@@ -1,0 +1,52 @@
+{
+  "slug": "repair-config",
+  "suite": "recovery",
+  "reference": "Lumi addition: reload error",
+  "goal": "Use a reload diagnostic to repair malformed configuration.",
+  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "observable_result": "repaired; valid configuration; reload diagnostic",
+  "files": {
+    "config/hello.json": "{\"template\":\"Hello, {name}!\",}",
+    "docs/extensions.md": "config/hello.json must be strict JSON with a template string containing {name}. eval_reload validates it, eval_probe target=\"hello\" input=\"Ada\" invokes it."
+  },
+  "tools": [
+    "eval_read",
+    "eval_write",
+    "eval_list",
+    "eval_search",
+    "eval_reload",
+    "eval_probe"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "First call eval_reload to inspect the existing configuration. Read its error and docs/extensions.md, repair the file, reload again and invoke the greeting for Ada. Return only the greeting."
+    }
+  ],
+  "checks": [
+    {
+      "name": "repaired",
+      "kind": "final_equals",
+      "expected": "Hello, Ada!",
+      "basis": "repaired"
+    },
+    {
+      "name": "valid_configuration",
+      "kind": "probe",
+      "expected": "Hello, Ada!",
+      "basis": "valid configuration",
+      "path": "hello",
+      "arguments": {
+        "input": "Ada"
+      }
+    },
+    {
+      "name": "reload_diagnostic",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "reload diagnostic",
+      "tool": "eval_reload",
+      "count": 2
+    }
+  ]
+}

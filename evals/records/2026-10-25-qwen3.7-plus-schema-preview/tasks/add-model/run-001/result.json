@@ -1,0 +1,621 @@
+{
+  "task": {
+    "case_slug": "add-model",
+    "repetition": 1
+  },
+  "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+  "status": "scored",
+  "final": "The probe confirms the addition is successful. Here's the verification:\n\n**Registry contents (2 entries):**\n\n| Field | `existing` | `fixture-chat` |\n|---|---|---|\n| `name` | `\"existing\"` | `\"fixture-chat\"` ✅ |\n| `display_name` | — | `\"Fixture Chat\"` ✅ |\n| `reasoning` | — | `true` ✅ |\n| `input` | — | `[\"text\"]` ✅ |\n| `context_window` | `8192` | `32768` ✅ |\n| `max_tokens` | — | `4096` ✅ |\n| `cost` | — | `0` ✅ |\n\n**Summary:**\n- The original `existing` entry is **preserved unchanged** with `context_window: 8192`.\n- The new `fixture-chat` entry is present with all fields correctly set: displayed as **\"Fixture Chat\"**, reasoning enabled, text input supported, 32768 context window, 4096 max output tokens, and zero cost.",
+  "scores": [
+    {
+      "name": "registry",
+      "value": 1,
+      "basis": "registry",
+      "observed": {
+        "items": [
+          {
+            "context_window": 8192,
+            "name": "existing"
+          },
+          {
+            "context_window": 32768,
+            "cost": 0,
+            "display_name": "Fixture Chat",
+            "input": [
+              "text"
+            ],
+            "max_tokens": 4096,
+            "name": "fixture-chat",
+            "reasoning": true
+          }
+        ]
+      },
+      "expected": {
+        "items": [
+          {
+            "context_window": 8192,
+            "name": "existing"
+          },
+          {
+            "context_window": 32768,
+            "cost": 0,
+            "display_name": "Fixture Chat",
+            "input": [
+              "text"
+            ],
+            "max_tokens": 4096,
+            "name": "fixture-chat",
+            "reasoning": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "verified",
+      "value": 1,
+      "basis": "verified",
+      "observed": 2,
+      "expected": "at least one matching call"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:41:37.399904Z",
+  "duration_ms": 33579,
+  "usage": {
+    "input_tokens": 9811,
+    "output_tokens": 1591,
+    "cached_input_tokens": 4480,
+    "cost_usd": null,
+    "requests": 8
+  },
+  "turns": [
+    {
+      "uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:41:37.763746Z",
+      "completed_at": "2026-10-25T03:42:01.04805Z",
+      "created_at": "2026-10-25T03:41:37.761543Z",
+      "updated_at": "2026-10-25T03:42:01.04805Z"
+    },
+    {
+      "uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Probe the loaded models and confirm the addition.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:42:01.071877Z",
+      "completed_at": "2026-10-25T03:42:10.884921Z",
+      "created_at": "2026-10-25T03:42:01.071011Z",
+      "updated_at": "2026-10-25T03:42:10.884921Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17126-4c61-7b1f-ab73-f9defc0b3ac5",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:37.761543Z"
+    },
+    {
+      "uuid": "01a17126-58f6-74b7-901a-1406cd5cfe10",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-58f6-72bf-8a6c-f5cfdafc6578",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17126-4c65-78fc-a868-76fe845fdcea"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:40.982251Z"
+    },
+    {
+      "uuid": "01a17126-58ff-78f8-b6a9-5aeba978f277",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"config/models.json\",\"docs/models.md\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-58f6-72bf-8a6c-f5cfdafc6578",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "method": "",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17126-4c65-78fc-a868-76fe845fdcea"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:40.99158Z"
+    },
+    {
+      "uuid": "01a17126-615d-7140-b49c-038f37067513",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"config/models.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-615c-7e8e-b980-697d8ab10da3",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:43.133042Z"
+    },
+    {
+      "uuid": "01a17126-615d-740f-895c-6ce5dff60fa8",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 5,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/models.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-615d-701b-b455-ae5fc80a90b5",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:43.133042Z"
+    },
+    {
+      "uuid": "01a17126-616f-7d04-97f7-117751dd45e8",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 6,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}]}\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-615c-7e8e-b980-697d8ab10da3",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:43.151835Z"
+    },
+    {
+      "uuid": "01a17126-6182-74af-b59f-107c06a9a984",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\\\"text\\\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\\\"models\\\" input=\\\"\\\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-615d-701b-b455-ae5fc80a90b5",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:43.170299Z"
+    },
+    {
+      "uuid": "01a17126-7765-7ef4-91ae-1b44dc17bae1",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}, {\\\"name\\\": \\\"fixture-chat\\\", \\\"display_name\\\": \\\"Fixture Chat\\\", \\\"reasoning\\\": true, \\\"input\\\": [\\\"text\\\"], \\\"context_window\\\": 32768, \\\"max_tokens\\\": 4096, \\\"cost\\\": 0}]}\", \"path\": \"config/models.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-7765-7d79-9f0a-564b2fbc17e5",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17126-618b-749b-a3ef-8ee76bfcd2c6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:48.773928Z"
+    },
+    {
+      "uuid": "01a17126-7772-7ce0-8c98-f152bf05bec9",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-7765-7d79-9f0a-564b2fbc17e5",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17126-618b-749b-a3ef-8ee76bfcd2c6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:48.786832Z"
+    },
+    {
+      "uuid": "01a17126-82c0-76a7-9213-fa934bb930d7",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-82c0-7518-8b8d-6705fec7b04c",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a17126-7775-71e4-aecd-547ac9f7e05c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:51.680389Z"
+    },
+    {
+      "uuid": "01a17126-82d2-722e-8820-5790ce735a9b",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-82c0-7518-8b8d-6705fec7b04c",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a17126-7775-71e4-aecd-547ac9f7e05c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:51.698132Z"
+    },
+    {
+      "uuid": "01a17126-88dd-7733-a154-a66819c9c7e8",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"\", \"target\": \"models\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-88dd-754b-b51d-125eb9cb23d4",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a17126-82de-7efb-96b4-4fda36352b47"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:53.245411Z"
+    },
+    {
+      "uuid": "01a17126-88f4-78d9-b669-cc088e1491ae",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":[\"text\"],\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-88dd-754b-b51d-125eb9cb23d4",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a17126-82de-7efb-96b4-4fda36352b47"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:41:53.268571Z"
+    },
+    {
+      "uuid": "01a17126-a758-70cb-b00f-2ca2f46a3c39",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+      "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The task is complete. Here's what was done:\n\n1. **Read existing config** — `config/models.json` contained one entry: `{\"name\": \"existing\", \"context_window\": 8192}`.\n2. **Read docs** — `docs/models.md` specified the schema: `name`, `display_name`, `reasoning` (boolean), `input` (array of strings), `context_window` (integer), `max_tokens` (integer), `cost` (number).\n3. **Wrote updated config** — Added the new `fixture-chat` entry while preserving the existing one:\n   ```json\n   {\n     \"items\": [\n       {\"name\": \"existing\", \"context_window\": 8192},\n       {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}\n     ]\n   }\n   ```\n4. **Reloaded** — No configuration errors.\n5. **Verified** — The `models` probe confirms both entries are active in the registry with all fields correctly set.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 6,
+        "request_uuid": "01a17126-8901-7e2c-94f6-94d726affad8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:42:01.04805Z"
+    },
+    {
+      "uuid": "01a17126-a76f-723e-aa90-15fbe1ff5b42",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+      "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+      "sequence": 15,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Probe the loaded models and confirm the addition.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:42:01.071011Z"
+    },
+    {
+      "uuid": "01a17126-b15c-76ab-a84d-e2b266e8b5d7",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+      "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+      "sequence": 16,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"\", \"target\": \"models\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-b15c-7566-8ba9-ad5c5ac4f8e7",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17126-a773-71c9-bf81-cc881ed0dd69"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:42:03.612398Z"
+    },
+    {
+      "uuid": "01a17126-b161-7e44-a495-18f7499d902f",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+      "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+      "sequence": 17,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":[\"text\"],\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17126-b15c-7566-8ba9-ad5c5ac4f8e7",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17126-a773-71c9-bf81-cc881ed0dd69"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:42:03.617927Z"
+    },
+    {
+      "uuid": "01a17126-cdc4-7e15-bf72-dc164a4c5f1b",
+      "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+      "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+      "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+      "sequence": 18,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The probe confirms the addition is successful. Here's the verification:\n\n**Registry contents (2 entries):**\n\n| Field | `existing` | `fixture-chat` |\n|---|---|---|\n| `name` | `\"existing\"` | `\"fixture-chat\"` ✅ |\n| `display_name` | — | `\"Fixture Chat\"` ✅ |\n| `reasoning` | — | `true` ✅ |\n| `input` | — | `[\"text\"]` ✅ |\n| `context_window` | `8192` | `32768` ✅ |\n| `max_tokens` | — | `4096` ✅ |\n| `cost` | — | `0` ✅ |\n\n**Summary:**\n- The original `existing` entry is **preserved unchanged** with `context_window: 8192`.\n- The new `fixture-chat` entry is present with all fields correctly set: displayed as **\"Fixture Chat\"**, reasoning enabled, text input supported, 32768 context window, 4096 max output tokens, and zero cost.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 2,
+        "request_uuid": "01a17126-b164-7d0b-850b-31ccb96767a6"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:42:10.884921Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_list",
+      "arguments": {},
+      "result": {
+        "items": [
+          "config/models.json",
+          "docs/models.md"
+        ]
+      },
+      "started_at": "2026-10-25T03:41:40.983208Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "config/models.json"
+      },
+      "result": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}]}",
+      "started_at": "2026-10-25T03:41:43.138446Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/models.md"
+      },
+      "result": "config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\"text\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\"models\" input=\"\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification.",
+      "started_at": "2026-10-25T03:41:43.159349Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+        "path": "config/models.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T03:41:48.774614Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T03:41:51.688165Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "",
+        "target": "models"
+      },
+      "result": {
+        "items": [
+          {
+            "context_window": 8192,
+            "name": "existing"
+          },
+          {
+            "context_window": 32768,
+            "cost": 0,
+            "display_name": "Fixture Chat",
+            "input": [
+              "text"
+            ],
+            "max_tokens": 4096,
+            "name": "fixture-chat",
+            "reasoning": true
+          }
+        ]
+      },
+      "started_at": "2026-10-25T03:41:53.255108Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "",
+        "target": "models"
+      },
+      "result": {
+        "items": [
+          {
+            "context_window": 8192,
+            "name": "existing"
+          },
+          {
+            "context_window": 32768,
+            "cost": 0,
+            "display_name": "Fixture Chat",
+            "input": [
+              "text"
+            ],
+            "max_tokens": 4096,
+            "name": "fixture-chat",
+            "reasoning": true
+          }
+        ]
+      },
+      "started_at": "2026-10-25T03:42:03.613212Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/models.json": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+    "docs/models.md": "config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\"text\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\"models\" input=\"\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification."
+  },
+  "active_configuration": {
+    "config/models.json": {
+      "items": [
+        {
+          "context_window": 8192,
+          "name": "existing"
+        },
+        {
+          "context_window": 32768,
+          "cost": 0,
+          "display_name": "Fixture Chat",
+          "input": [
+            "text"
+          ],
+          "max_tokens": 4096,
+          "name": "fixture-chat",
+          "reasoning": true
+        }
+      ]
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "d9a7421a4aba6ec24d8ebc49e7ce8179b69289eaa4abc415910d907d60f22645"
+}

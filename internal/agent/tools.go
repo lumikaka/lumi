@@ -790,20 +790,24 @@ func (service *Service) executeTool(ctx context.Context, store *project.Store, t
 	var value any
 	var uiRef *agentUIReference
 	var err error
-	switch execution.ToolName {
-	case "request_api":
-		var output requestAPIToolOutput
-		output, err = executeRequestAPIToolWithUIRef(ctx, service, store, tc, execution, args)
-		value, uiRef = output.Data, output.UIRef
-	case "read_agent_doc":
-		value, err = service.readAgentDoc(tc, args)
-	case "image_gen":
-		value, err = service.executeImageGenTool(ctx, store, tc, execution, args)
-	default:
-		if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped {
-			value, err = service.executeLegacyToolRecovery(ctx, store, tc, execution, args)
-		} else {
-			err = domainError(CodeToolNotAllowed, "工具不在 allowlist", "工具未注册。", nil)
+	if service.isolation != nil {
+		value, err = service.isolation.environment.Execute(ctx, execution.ToolName, args)
+	} else {
+		switch execution.ToolName {
+		case "request_api":
+			var output requestAPIToolOutput
+			output, err = executeRequestAPIToolWithUIRef(ctx, service, store, tc, execution, args)
+			value, uiRef = output.Data, output.UIRef
+		case "read_agent_doc":
+			value, err = service.readAgentDoc(tc, args)
+		case "image_gen":
+			value, err = service.executeImageGenTool(ctx, store, tc, execution, args)
+		default:
+			if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped {
+				value, err = service.executeLegacyToolRecovery(ctx, store, tc, execution, args)
+			} else {
+				err = domainError(CodeToolNotAllowed, "工具不在 allowlist", "工具未注册。", nil)
+			}
 		}
 	}
 	if err != nil {

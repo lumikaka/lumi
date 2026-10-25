@@ -1,0 +1,17 @@
+{
+  "number": 10261,
+  "title": "feat(coding-agent): add prompt template documentation eval",
+  "url": "https://github.com/earendil-works/pi/pull/10261",
+  "state": "open",
+  "merged": false,
+  "created_at": "2026-09-30T18:04:04Z",
+  "updated_at": "2026-10-03T21:53:06Z",
+  "head_sha": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "merge_commit_sha": "b3879b8c71b9c3f0da14696783928a537b5f4279",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "作者报告项目模板两组各 3 次：有文档 66.7%，无文档 100%；用户模板两组各 3 次均 100%。模型配置两组各 1 次：有文档 100%，无文档 0%。未提供受测模型、完整配置或逐次原始结果。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

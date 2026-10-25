@@ -26,6 +26,7 @@ import (
 )
 
 type Service struct {
+	isolation              *isolatedRuntime
 	projects               *project.Manager
 	providers              *provider.Service
 	models                 *modelsettings.Resolver
@@ -409,6 +410,9 @@ func (service *Service) createTurnTx(ctx context.Context, tx *sql.Tx, projectUUI
 }
 
 func (service *Service) resolveProvider(ctx context.Context, providerUUID string) (provider.Resolved, error) {
+	if service.isolation != nil {
+		return service.isolation.provider, nil
+	}
 	providerUUID = strings.TrimSpace(providerUUID)
 	if providerUUID == "" {
 		return service.providers.Active(ctx)
@@ -421,6 +425,9 @@ func (service *Service) resolveTextModel(ctx context.Context, store *project.Sto
 }
 
 func (service *Service) resolveProjectModel(ctx context.Context, store *project.Store, settingKey, kind, providerUUID, model string) (provider.Resolved, string, string, error) {
+	if service.isolation != nil {
+		return service.isolation.provider, service.isolation.request.Model, modelsettings.SourceExplicitTask, nil
+	}
 	providerUUID = strings.TrimSpace(providerUUID)
 	model = strings.TrimSpace(model)
 	if providerUUID != "" {

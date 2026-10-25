@@ -1,0 +1,2 @@
+# Preserve captured transcripts/reports byte-for-byte, including Markdown blank quotes.
+** whitespace=-blank-at-eol,-blank-at-eof

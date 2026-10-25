@@ -1,0 +1,485 @@
+{
+  "task": {
+    "case_slug": "extension-reload",
+    "repetition": 2
+  },
+  "protocol_digest": "4cb5d223fe7c702968b6888e8cc5e118d77a088c7d6445cbfb9904a3cd879a61",
+  "status": "scored",
+  "final": "Hello, Bob!",
+  "scores": [
+    {
+      "name": "greeting",
+      "value": 1,
+      "basis": "greeting",
+      "observed": "Hello, Bob!",
+      "expected": "Hello, Bob!"
+    },
+    {
+      "name": "loaded_tool",
+      "value": 1,
+      "basis": "loaded tool",
+      "observed": "Hello, Bob!",
+      "expected": "Hello, Bob!"
+    },
+    {
+      "name": "invocation",
+      "value": 1,
+      "basis": "invocation",
+      "observed": 2,
+      "expected": "at least one matching call"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T04:04:13.614848Z",
+  "duration_ms": 24346,
+  "usage": {
+    "input_tokens": 8205,
+    "output_tokens": 774,
+    "cached_input_tokens": 3712,
+    "cost_usd": null,
+    "requests": 8
+  },
+  "turns": [
+    {
+      "uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "status": "completed",
+      "started_at": "2026-10-25T04:04:13.897849Z",
+      "completed_at": "2026-10-25T04:04:33.512905Z",
+      "created_at": "2026-10-25T04:04:13.896971Z",
+      "updated_at": "2026-10-25T04:04:33.512905Z"
+    },
+    {
+      "uuid": "01a1713b-4a7c-71b1-a875-d6229667d403",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Invoke the greeting extension for Bob. Respond with exactly its greeting.",
+      "status": "completed",
+      "started_at": "2026-10-25T04:04:33.533057Z",
+      "completed_at": "2026-10-25T04:04:37.945525Z",
+      "created_at": "2026-10-25T04:04:33.532107Z",
+      "updated_at": "2026-10-25T04:04:37.945525Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1713a-fdc9-716b-9711-074bf08eb0bb",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:13.896971Z"
+    },
+    {
+      "uuid": "01a1713b-0621-7ee0-bd34-74c60f37ad2e",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/extensions.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-0621-7db3-98fa-1a61e2bacb2a",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a1713a-fdcb-7269-9a0d-8d2844308e9a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:16.033932Z"
+    },
+    {
+      "uuid": "01a1713b-0627-7075-8896-cff6e23c2be4",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"A declarative greeting extension is config/hello.json with {\\\"template\\\":\\\"Hello, {name}!\\\"}. Reload loads the template. eval_probe target=\\\"hello\\\", input=\\u003cname\\u003e invokes it. No executable source is supported.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-0621-7db3-98fa-1a61e2bacb2a",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a1713a-fdcb-7269-9a0d-8d2844308e9a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:16.039021Z"
+    },
+    {
+      "uuid": "01a1713b-1725-74c2-bf52-7e5b7b0ba2be",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-1725-7357-a5a4-1f5e96fd6a81",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "purpose": "eval_list",
+        "request_ordinal": 2,
+        "request_uuid": "01a1713b-0628-789b-ab2d-eee76b77d0c5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:20.389264Z"
+    },
+    {
+      "uuid": "01a1713b-172b-7f17-b1d2-061a1c1aea16",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"docs/extensions.md\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-1725-7357-a5a4-1f5e96fd6a81",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "method": "",
+        "purpose": "eval_list",
+        "request_ordinal": 2,
+        "request_uuid": "01a1713b-0628-789b-ab2d-eee76b77d0c5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:20.395983Z"
+    },
+    {
+      "uuid": "01a1713b-21b1-77df-be91-3892f480adf8",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\\"template\\\":\\\"Hello, {name}!\\\"}\", \"path\": \"config/hello.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-21b1-7664-b0a4-1cbfadecd9ff",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a1713b-172d-7c9e-a471-4f464c937dbb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:23.089467Z"
+    },
+    {
+      "uuid": "01a1713b-21b6-72ce-a39f-8002274e4725",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-21b1-7664-b0a4-1cbfadecd9ff",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a1713b-172d-7c9e-a471-4f464c937dbb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:23.094177Z"
+    },
+    {
+      "uuid": "01a1713b-29e0-76e1-aac0-2336453481c6",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-29e0-759d-9963-7b5622475a5e",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a1713b-21b7-7ee8-a3f5-1bf489f8d095"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:25.184411Z"
+    },
+    {
+      "uuid": "01a1713b-29e6-755b-b443-531c6c9ba02c",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-29e0-759d-9963-7b5622475a5e",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a1713b-21b7-7ee8-a3f5-1bf489f8d095"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:25.190342Z"
+    },
+    {
+      "uuid": "01a1713b-326f-7305-8b62-4c564c09130d",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"Bob\", \"target\": \"hello\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-326f-705d-8b16-8678944bda05",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a1713b-29e8-7518-b585-ad4ac94b3d15"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:27.375121Z"
+    },
+    {
+      "uuid": "01a1713b-3275-76a3-a157-8dc58b5a02a1",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Hello, Bob!\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-326f-705d-8b16-8678944bda05",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a1713b-29e8-7518-b585-ad4ac94b3d15"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:27.381427Z"
+    },
+    {
+      "uuid": "01a1713b-4a68-7dda-9f2f-73a07d090aa6",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713a-fdc8-7ee8-ad54-7647d7348359",
+      "run_uuid": "01a1713a-fdc8-7eec-a291-3c2995d61b6d",
+      "sequence": 12,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The greeting extension has been created and verified. Here's what was done:\n\n1. **Read `docs/extensions.md`** — It documented that a declarative greeting extension is a `config/hello.json` file with a `{\"template\":\"Hello, {name}!\"}` structure.\n2. **Created `config/hello.json`** with the content:\n   ```json\n   {\"template\":\"Hello, {name}!\"}\n   ```\n3. **Reloaded the configuration** — 1 config loaded with no errors.\n4. **Probed with `target=\"hello\"` and `input=\"Bob\"`** — The output was **`Hello, Bob!`** ✅",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 6,
+        "request_uuid": "01a1713b-3277-7981-b5a3-dd506fba8358"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:33.512905Z"
+    },
+    {
+      "uuid": "01a1713b-4a7c-7468-a085-9828810e12a2",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713b-4a7c-71b1-a875-d6229667d403",
+      "run_uuid": "01a1713b-4a7c-71b5-95c3-2882c6bc55ab",
+      "sequence": 13,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Invoke the greeting extension for Bob. Respond with exactly its greeting.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:33.532107Z"
+    },
+    {
+      "uuid": "01a1713b-54cf-7bd3-aae4-d18da1c33bf7",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713b-4a7c-71b1-a875-d6229667d403",
+      "run_uuid": "01a1713b-4a7c-71b5-95c3-2882c6bc55ab",
+      "sequence": 14,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"Bob\", \"target\": \"hello\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-54cf-7ab2-957b-bb99f1e01b1f",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a1713b-4a7f-7c6f-a251-52d6d682c69b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:36.175739Z"
+    },
+    {
+      "uuid": "01a1713b-54d4-7177-9123-6c0a535fbfc1",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713b-4a7c-71b1-a875-d6229667d403",
+      "run_uuid": "01a1713b-4a7c-71b5-95c3-2882c6bc55ab",
+      "sequence": 15,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Hello, Bob!\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1713b-54cf-7ab2-957b-bb99f1e01b1f",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a1713b-4a7f-7c6f-a251-52d6d682c69b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:36.180089Z"
+    },
+    {
+      "uuid": "01a1713b-5bb9-780a-937b-c1efacd2a15c",
+      "thread_uuid": "01a1713a-fdc3-7697-9240-55821e5576da",
+      "turn_uuid": "01a1713b-4a7c-71b1-a875-d6229667d403",
+      "run_uuid": "01a1713b-4a7c-71b5-95c3-2882c6bc55ab",
+      "sequence": 16,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Hello, Bob!",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 2,
+        "request_uuid": "01a1713b-54d6-72f5-903b-3e654cabc9fa"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:04:37.945525Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/extensions.md"
+      },
+      "result": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported.",
+      "started_at": "2026-10-25T04:04:16.03448Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_list",
+      "arguments": {},
+      "result": {
+        "items": [
+          "docs/extensions.md"
+        ]
+      },
+      "started_at": "2026-10-25T04:04:20.389992Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\"template\":\"Hello, {name}!\"}",
+        "path": "config/hello.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T04:04:23.09007Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T04:04:25.184958Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "Bob",
+        "target": "hello"
+      },
+      "result": "Hello, Bob!",
+      "started_at": "2026-10-25T04:04:27.37584Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "Bob",
+        "target": "hello"
+      },
+      "result": "Hello, Bob!",
+      "started_at": "2026-10-25T04:04:36.176232Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/hello.json": "{\"template\":\"Hello, {name}!\"}",
+    "docs/extensions.md": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported."
+  },
+  "active_configuration": {
+    "config/hello.json": {
+      "template": "Hello, {name}!"
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "f37d9f7c68c7e6bb3792bdc4ad1517f7b24e22af8d8c2265c40a2c1b8e02639d"
+}

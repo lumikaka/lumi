@@ -1,0 +1,58 @@
+Running add-model/run-001
+  scored; 9 requests; 37.6s
+Running audit-inconclusive/run-001
+  scored; 4 requests; 20.6s
+Running audit-match/run-001
+  scored; 3 requests; 14.7s
+Running audit-mismatch/run-001
+  scored; 3 requests; 13.4s
+Running batch-task/run-001
+  scored; 5 requests; 12.2s
+Running configure-provider/run-001
+  scored; 8 requests; 27.0s
+Running context-handoff/run-001
+  scored; 8 requests; 17.6s
+Running custom-stream-provider/run-001
+  scored; 8 requests; 24.9s
+Running extension-reload/run-001
+  scored; 8 requests; 19.2s
+Running missing-resource/run-001
+  scored; 2 requests; 4.0s
+Running repair-config/run-001
+  agent_error; 3 requests; 7.7s
+Running smoke/run-001
+  scored; 1 requests; 2.6s
+Running status-footer/run-001
+  scored; 8 requests; 37.0s
+Running transient-tool/run-001
+  scored; 3 requests; 5.5s
+Running transient-tool/run-002
+  scored; 3 requests; 5.1s
+Running status-footer/run-002
+  scored; 9 requests; 48.8s
+Running smoke/run-002
+  scored; 1 requests; 2.5s
+Running repair-config/run-002
+  scored; 6 requests; 13.5s
+Running missing-resource/run-002
+  scored; 2 requests; 4.8s
+Running extension-reload/run-002
+  environment_error; 5 requests; 300.0s
+Running custom-stream-provider/run-002
+  environment_error; 1 requests; 45.9s
+Running context-handoff/run-002
+  scored; 9 requests; 18.8s
+Running configure-provider/run-002
+  scored; 7 requests; 20.8s
+Running batch-task/run-002
+  scored; 5 requests; 13.0s
+Running audit-mismatch/run-002
+  scored; 3 requests; 13.1s
+Running audit-match/run-002
+  scored; 3 requests; 11.1s
+Running audit-inconclusive/run-002
+  scored; 5 requests; 30.5s
+Running add-model/run-002
+  scored; 9 requests; 31.7s
+Report: evals/records/2026-10-25-qwen3.7-plus/report.md
+exit status 1

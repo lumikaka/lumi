@@ -1,0 +1,17 @@
+{
+  "number": 9635,
+  "title": "feat(coding-agent): isolate documentation lift evals",
+  "url": "https://github.com/earendil-works/pi/pull/9635",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-09-15T16:48:33Z",
+  "updated_at": "2026-09-15T16:54:22Z",
+  "head_sha": "631748c1d1b99d03e2ea92cbfee64a73e06811db",
+  "merge_commit_sha": "d7296c063b7971a7298769cfff1a167a9a16f8ed",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "作者报告模型配置和 OpenAI Provider 各执行一轮文档对照，没有提供分数。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

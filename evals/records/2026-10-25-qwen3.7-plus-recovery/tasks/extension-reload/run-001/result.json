@@ -1,0 +1,67 @@
+{
+  "task": {
+    "case_slug": "extension-reload",
+    "repetition": 1
+  },
+  "protocol_digest": "4cb5d223fe7c702968b6888e8cc5e118d77a088c7d6445cbfb9904a3cd879a61",
+  "status": "environment_error",
+  "final": "",
+  "scores": null,
+  "issues": [
+    {
+      "kind": "environment",
+      "code": "llm_network_error",
+      "message": "无法连接 Provider。"
+    }
+  ],
+  "started_at": "2026-10-25T04:03:54.560122Z",
+  "duration_ms": 19042,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cached_input_tokens": null,
+    "cost_usd": null,
+    "requests": 1
+  },
+  "turns": [
+    {
+      "uuid": "01a1713a-b35b-72ea-a572-557504fc8ea0",
+      "thread_uuid": "01a1713a-b355-7952-9de1-70b5a0dbedf5",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "status": "queued",
+      "error_code": "llm_network_error",
+      "error_message": "无法连接 Provider。",
+      "started_at": "2026-10-25T04:03:54.844138Z",
+      "created_at": "2026-10-25T04:03:54.843189Z",
+      "updated_at": "2026-10-25T04:04:13.588879Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1713a-b35b-74b3-955e-f0e4d99ea211",
+      "thread_uuid": "01a1713a-b355-7952-9de1-70b5a0dbedf5",
+      "turn_uuid": "01a1713a-b35b-72ea-a572-557504fc8ea0",
+      "run_uuid": "01a1713a-b35b-72eb-a837-92bd68a053f4",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T04:03:54.843189Z"
+    }
+  ],
+  "tools": null,
+  "files": {
+    "docs/extensions.md": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported."
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "7f62d8eab4b8c69befaa30946e29a95feaefbcf419900fe77e5876e40a23ed8d"
+}

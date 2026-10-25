@@ -75,6 +75,11 @@ func (service *Service) recordActiveDuration(ctx context.Context, store *project
 
 func (service *Service) performChatModelRequest(ctx context.Context, store *project.Store, tc *toolContext, resolved provider.Resolved, messages []llm.ChatMessage, tools []llm.ToolDefinition, contextBytes int, scenario string) (llm.ChatResponse, error) {
 	request := llm.ChatRequest{ProviderType: resolved.ProviderType, BaseURL: resolved.BaseURL, APIKey: resolved.APIKey, Model: tc.Run.Model, Messages: messages, Tools: tools, MaxTokens: 4096}
+	if service.isolation != nil {
+		request.Temperature = service.isolation.request.Temperature
+		request.MaxTokens = service.isolation.request.MaxTokens
+		request.Timeout = service.isolation.request.Timeout
+	}
 	requestPayload, err := llmlog.EncodeChatRequest(request)
 	if err != nil {
 		return llm.ChatResponse{}, err

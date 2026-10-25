@@ -1,0 +1,114 @@
+[
+  {
+    "case_slug": "add-model",
+    "repetition": 1
+  },
+  {
+    "case_slug": "audit-inconclusive",
+    "repetition": 1
+  },
+  {
+    "case_slug": "audit-match",
+    "repetition": 1
+  },
+  {
+    "case_slug": "audit-mismatch",
+    "repetition": 1
+  },
+  {
+    "case_slug": "batch-task",
+    "repetition": 1
+  },
+  {
+    "case_slug": "configure-provider",
+    "repetition": 1
+  },
+  {
+    "case_slug": "context-handoff",
+    "repetition": 1
+  },
+  {
+    "case_slug": "custom-stream-provider",
+    "repetition": 1
+  },
+  {
+    "case_slug": "extension-reload",
+    "repetition": 1
+  },
+  {
+    "case_slug": "missing-resource",
+    "repetition": 1
+  },
+  {
+    "case_slug": "repair-config",
+    "repetition": 1
+  },
+  {
+    "case_slug": "smoke",
+    "repetition": 1
+  },
+  {
+    "case_slug": "status-footer",
+    "repetition": 1
+  },
+  {
+    "case_slug": "transient-tool",
+    "repetition": 1
+  },
+  {
+    "case_slug": "transient-tool",
+    "repetition": 2
+  },
+  {
+    "case_slug": "status-footer",
+    "repetition": 2
+  },
+  {
+    "case_slug": "smoke",
+    "repetition": 2
+  },
+  {
+    "case_slug": "repair-config",
+    "repetition": 2
+  },
+  {
+    "case_slug": "missing-resource",
+    "repetition": 2
+  },
+  {
+    "case_slug": "extension-reload",
+    "repetition": 2
+  },
+  {
+    "case_slug": "custom-stream-provider",
+    "repetition": 2
+  },
+  {
+    "case_slug": "context-handoff",
+    "repetition": 2
+  },
+  {
+    "case_slug": "configure-provider",
+    "repetition": 2
+  },
+  {
+    "case_slug": "batch-task",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-mismatch",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-match",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-inconclusive",
+    "repetition": 2
+  },
+  {
+    "case_slug": "add-model",
+    "repetition": 2
+  }
+]

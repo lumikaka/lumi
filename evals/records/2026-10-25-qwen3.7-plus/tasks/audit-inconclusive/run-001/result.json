@@ -1,0 +1,394 @@
+{
+  "task": {
+    "case_slug": "audit-inconclusive",
+    "repetition": 1
+  },
+  "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+  "status": "scored",
+  "final": "**Summary:** The documentation claims format_name preserves capitalization, but the implementation delegates entirely to an external `normalize` function from `external_formatter` that is not included in the workspace. Without access to that implementation, the claim cannot be verified, resulting in an inconclusive audit.",
+  "scores": [
+    {
+      "name": "verdict",
+      "value": 1,
+      "basis": "verdict",
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "name": "read_documentation",
+      "value": 1,
+      "basis": "read documentation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "read_implementation",
+      "value": 1,
+      "basis": "read implementation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "evidence",
+      "value": 1,
+      "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+      "observed": [
+        "The claim in docs/names.md states: \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The file explicitly notes: \"The external formatter implementation is not included.\" Since the actual behavior of `format_name` depends wholly on the unavailable `external_formatter.normalize` implementation, we cannot verify whether capitalization is preserved. Evidence is unavailable, so the audit is inconclusive."
+      ],
+      "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:44:10.469128Z",
+  "duration_ms": 20646,
+  "usage": {
+    "input_tokens": 3648,
+    "output_tokens": 1003,
+    "cached_input_tokens": 1024,
+    "cost_usd": null,
+    "requests": 4
+  },
+  "turns": [
+    {
+      "uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:44:10.803992Z",
+      "completed_at": "2026-10-25T03:44:31.079915Z",
+      "created_at": "2026-10-25T03:44:10.802722Z",
+      "updated_at": "2026-10-25T03:44:31.079915Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17128-a232-7d61-a9bc-a4c93795fb3b",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:10.802722Z"
+    },
+    {
+      "uuid": "01a17128-b1e4-7c4c-adaf-6e8a5d898a25",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/names.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-b1e4-7971-89fa-e1fd2d26ee89",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17128-a235-7b71-8189-c934aa015cc0"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:14.820761Z"
+    },
+    {
+      "uuid": "01a17128-b1e5-7441-9807-c716c97b0677",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"src/names.py\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-b1e4-7ad1-974f-aedd9cdc8dae",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17128-a235-7b71-8189-c934aa015cc0"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:14.820761Z"
+    },
+    {
+      "uuid": "01a17128-b1ec-7e82-9f1c-a0a19cdecbac",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"The public format_name function preserves capitalization.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-b1e4-7971-89fa-e1fd2d26ee89",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17128-a235-7b71-8189-c934aa015cc0"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:14.828942Z"
+    },
+    {
+      "uuid": "01a17128-b1f4-7e11-b4ab-52187c470f31",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"from external_formatter import normalize\\ndef format_name(name):\\n    return normalize(name)\\n# The external formatter implementation is not included.\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-b1e4-7ad1-974f-aedd9cdc8dae",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17128-a235-7b71-8189-c934aa015cc0"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:14.836915Z"
+    },
+    {
+      "uuid": "01a17128-c52b-7747-a7f0-60184fad90e2",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"query\": \"external_formatter\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-c52b-73bd-874b-198bd724e881",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17128-b1f7-7290-9e40-7c6b3729c23b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:19.755414Z"
+    },
+    {
+      "uuid": "01a17128-c52b-7ee0-a66b-8888820694a0",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 7,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"query\": \"normalize\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-c52b-7514-8cde-d2d86b99333c",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17128-b1f7-7290-9e40-7c6b3729c23b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:19.755414Z"
+    },
+    {
+      "uuid": "01a17128-c533-7474-a81f-8eb24ed6f051",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 8,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"src/names.py:1:from external_formatter import normalize\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-c52b-73bd-874b-198bd724e881",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "method": "",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17128-b1f7-7290-9e40-7c6b3729c23b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:19.763277Z"
+    },
+    {
+      "uuid": "01a17128-c53a-7a0e-a303-bbc3b40c7e01",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"src/names.py:1:from external_formatter import normalize\",\"src/names.py:3:    return normalize(name)\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-c52b-7514-8cde-d2d86b99333c",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "method": "",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17128-b1f7-7290-9e40-7c6b3729c23b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:19.77059Z"
+    },
+    {
+      "uuid": "01a17128-e03e-7966-b7bd-ac0361291a02",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"explanation\": \"The claim in docs/names.md states: \\\"The public format_name function preserves capitalization.\\\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The file explicitly notes: \\\"The external formatter implementation is not included.\\\" Since the actual behavior of `format_name` depends wholly on the unavailable `external_formatter.normalize` implementation, we cannot verify whether capitalization is preserved. Evidence is unavailable, so the audit is inconclusive.\", \"verdict\": \"inconclusive\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-e03e-76c2-9012-2b5aa859a876",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "purpose": "eval_submit",
+        "request_ordinal": 3,
+        "request_uuid": "01a17128-c543-790c-83e9-a2f64a3d3fa8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:26.686516Z"
+    },
+    {
+      "uuid": "01a17128-e046-781a-a6a5-3e699f07de0b",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"explanation\":\"The claim in docs/names.md states: \\\"The public format_name function preserves capitalization.\\\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The file explicitly notes: \\\"The external formatter implementation is not included.\\\" Since the actual behavior of `format_name` depends wholly on the unavailable `external_formatter.normalize` implementation, we cannot verify whether capitalization is preserved. Evidence is unavailable, so the audit is inconclusive.\",\"verdict\":\"inconclusive\"},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17128-e03e-76c2-9012-2b5aa859a876",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "method": "",
+        "purpose": "eval_submit",
+        "request_ordinal": 3,
+        "request_uuid": "01a17128-c543-790c-83e9-a2f64a3d3fa8"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:26.69452Z"
+    },
+    {
+      "uuid": "01a17128-f167-7e01-b61c-9eca3c266532",
+      "thread_uuid": "01a17128-a225-7298-9842-262fbef61f93",
+      "turn_uuid": "01a17128-a232-7b10-9c16-d7645fa0e247",
+      "run_uuid": "01a17128-a232-7b13-bf23-647f5ddc7f4f",
+      "sequence": 12,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "**Summary:** The documentation claims format_name preserves capitalization, but the implementation delegates entirely to an external `normalize` function from `external_formatter` that is not included in the workspace. Without access to that implementation, the claim cannot be verified, resulting in an inconclusive audit.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 4,
+        "request_uuid": "01a17128-e04a-7bbb-abbe-a694dd6b2f2a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:44:31.079915Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/names.md"
+      },
+      "result": "The public format_name function preserves capitalization.",
+      "started_at": "2026-10-25T03:44:14.822717Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "src/names.py"
+      },
+      "result": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n",
+      "started_at": "2026-10-25T03:44:14.830107Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_search",
+      "arguments": {
+        "query": "external_formatter"
+      },
+      "result": {
+        "items": [
+          "src/names.py:1:from external_formatter import normalize"
+        ]
+      },
+      "started_at": "2026-10-25T03:44:19.756779Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_search",
+      "arguments": {
+        "query": "normalize"
+      },
+      "result": {
+        "items": [
+          "src/names.py:1:from external_formatter import normalize",
+          "src/names.py:3:    return normalize(name)"
+        ]
+      },
+      "started_at": "2026-10-25T03:44:19.765497Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_submit",
+      "arguments": {
+        "explanation": "The claim in docs/names.md states: \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The file explicitly notes: \"The external formatter implementation is not included.\" Since the actual behavior of `format_name` depends wholly on the unavailable `external_formatter.normalize` implementation, we cannot verify whether capitalization is preserved. Evidence is unavailable, so the audit is inconclusive.",
+        "verdict": "inconclusive"
+      },
+      "result": {
+        "explanation": "The claim in docs/names.md states: \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The file explicitly notes: \"The external formatter implementation is not included.\" Since the actual behavior of `format_name` depends wholly on the unavailable `external_formatter.normalize` implementation, we cannot verify whether capitalization is preserved. Evidence is unavailable, so the audit is inconclusive.",
+        "verdict": "inconclusive"
+      },
+      "started_at": "2026-10-25T03:44:26.687554Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "docs/names.md": "The public format_name function preserves capitalization.",
+    "src/names.py": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n"
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "3809a9bba6a012dd907b1089c097c1d113457285ba9c3809ab52bd865390aebe"
+}

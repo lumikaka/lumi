@@ -1,0 +1,557 @@
+{
+  "task": {
+    "case_slug": "configure-provider",
+    "repetition": 1
+  },
+  "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+  "status": "scored",
+  "final": "Here is the probe response from the loaded provider runtime:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `chat_completions` |\n| **valid_request_received** | `true` |\n| **input_tokens** | 4 |\n| **output_tokens** | 3 |\n\nThe provider runtime is healthy — it received the `ping` request and responded with `pong`, confirming the Acme provider is correctly configured and operational.",
+  "scores": [
+    {
+      "name": "runtime_request",
+      "value": 1,
+      "basis": "runtime request",
+      "observed": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "chat_completions",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "expected": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "chat_completions",
+        "text": "pong",
+        "valid_request_received": true
+      }
+    },
+    {
+      "name": "verified",
+      "value": 1,
+      "basis": "verified",
+      "observed": 2,
+      "expected": "at least one matching call"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:37:15.813826Z",
+  "duration_ms": 28157,
+  "usage": {
+    "input_tokens": 10194,
+    "output_tokens": 1198,
+    "cached_input_tokens": 4864,
+    "cost_usd": null,
+    "requests": 9
+  },
+  "turns": [
+    {
+      "uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/api.md and configure the provider runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:37:16.11121Z",
+      "completed_at": "2026-10-25T03:37:38.590377Z",
+      "created_at": "2026-10-25T03:37:16.110208Z",
+      "updated_at": "2026-10-25T03:37:38.590377Z"
+    },
+    {
+      "uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Probe the loaded runtime with ping and report the response.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:37:38.622822Z",
+      "completed_at": "2026-10-25T03:37:43.943369Z",
+      "created_at": "2026-10-25T03:37:38.621832Z",
+      "updated_at": "2026-10-25T03:37:43.943369Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17122-4e4e-7553-89d1-4eb231dc290f",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/api.md and configure the provider runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:16.110208Z"
+    },
+    {
+      "uuid": "01a17122-55f2-723e-a2f5-858fd36a7227",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/api.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-55f1-7e30-8aeb-804be83c5334",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17122-4e50-77df-a833-adf073ec85f4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:18.06603Z"
+    },
+    {
+      "uuid": "01a17122-55f8-7e09-a10e-d60ec8c48cdd",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Create config/provider.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"chat_completions\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"provider\\\" input=\\\"ping\\\" sends a simulated request. \",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-55f1-7e30-8aeb-804be83c5334",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17122-4e50-77df-a833-adf073ec85f4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:18.072902Z"
+    },
+    {
+      "uuid": "01a17122-5fd7-7e92-89da-5c52bb60f4e5",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"{}\": \"\"}",
+      "content_format": "json",
+      "status": "failed",
+      "tool_call_uuid": "01a17122-5fd7-7dea-9610-dc94018c2dfc",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "eval_list",
+        "request_ordinal": 2,
+        "request_uuid": "01a17122-55fd-7468-96c3-d090e28747aa",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:20.599913Z"
+    },
+    {
+      "uuid": "01a17122-5fd8-720b-8e2f-264e858646c6",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"unknown field {}\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-5fd7-7dea-9610-dc94018c2dfc",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "eval_list",
+        "request_ordinal": 2,
+        "request_uuid": "01a17122-55fd-7468-96c3-d090e28747aa",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:20.599913Z"
+    },
+    {
+      "uuid": "01a17122-6598-7923-abe7-574b54d81f84",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-6598-762a-8976-325742c91273",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "purpose": "eval_list",
+        "request_ordinal": 3,
+        "request_uuid": "01a17122-5fdd-7d2f-9e72-96b4acb61b5c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:22.072501Z"
+    },
+    {
+      "uuid": "01a17122-65a1-7dee-80a8-1e6d6602a740",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"docs/api.md\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-6598-762a-8976-325742c91273",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "method": "",
+        "purpose": "eval_list",
+        "request_ordinal": 3,
+        "request_uuid": "01a17122-5fdd-7d2f-9e72-96b4acb61b5c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:22.081898Z"
+    },
+    {
+      "uuid": "01a17122-77b4-720b-851d-6b57a1d08dc3",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"endpoint\\\": \\\"fixture://acme\\\",\\n  \\\"protocol\\\": \\\"chat_completions\\\",\\n  \\\"credential_env\\\": \\\"ACME_KEY\\\",\\n  \\\"model\\\": \\\"acme-chat\\\"\\n}\", \"path\": \"config/provider.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-77b3-7d3e-afd3-396418a3d4eb",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 4,
+        "request_uuid": "01a17122-65a5-7c73-acdf-78114945e058"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:26.708004Z"
+    },
+    {
+      "uuid": "01a17122-77c1-7831-ae49-286cde145f19",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-77b3-7d3e-afd3-396418a3d4eb",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 4,
+        "request_uuid": "01a17122-65a5-7c73-acdf-78114945e058"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:26.721516Z"
+    },
+    {
+      "uuid": "01a17122-7ca3-7603-a8dc-b5e3f7684618",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-7ca3-7301-af84-a384697e5d97",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 5,
+        "request_uuid": "01a17122-77c6-7ec5-ad8c-2b2ef7310d7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:27.971284Z"
+    },
+    {
+      "uuid": "01a17122-7caf-7753-bfe0-4d020b836136",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-7ca3-7301-af84-a384697e5d97",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 5,
+        "request_uuid": "01a17122-77c6-7ec5-ad8c-2b2ef7310d7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:27.983467Z"
+    },
+    {
+      "uuid": "01a17122-8d70-7079-aab3-2bb7d04857c6",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"ping\", \"target\": \"provider\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-8d6f-7e1d-a78b-031664ce4072",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 6,
+        "request_uuid": "01a17122-7cb7-7a44-a185-ee0429dcda17"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:32.271975Z"
+    },
+    {
+      "uuid": "01a17122-8d81-722a-af57-daac7e211d0a",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"chat_completions\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-8d6f-7e1d-a78b-031664ce4072",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 6,
+        "request_uuid": "01a17122-7cb7-7a44-a185-ee0429dcda17"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:32.289131Z"
+    },
+    {
+      "uuid": "01a17122-a61e-75c8-9502-c0f88fd5ea90",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+      "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The provider runtime for Acme has been configured and verified. Here's a summary of what was done:\n\n1. **Read `docs/api.md`** — it specified the required configuration values.\n2. **Created `config/provider.json`** with the following configuration:\n   - `\"endpoint\": \"fixture://acme\"`\n   - `\"protocol\": \"chat_completions\"`\n   - `\"credential_env\": \"ACME_KEY\"` — references the environment variable (no literal credential is stored in the file)\n   - `\"model\": \"acme-chat\"`\n3. **Reloaded the configuration** — loaded successfully with zero errors.\n4. **Probed the provider** (`target=\"provider\"`, `input=\"ping\"`) — received a valid response (`\"pong\"`) confirming the provider runtime is operational with the `acme-chat` model using the `chat_completions` protocol.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 7,
+        "request_uuid": "01a17122-8d86-7ec5-beab-ad9efc8d1d12"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:38.590377Z"
+    },
+    {
+      "uuid": "01a17122-a63d-7edc-8b56-c539b90dd810",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+      "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+      "sequence": 15,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Probe the loaded runtime with ping and report the response.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:38.621832Z"
+    },
+    {
+      "uuid": "01a17122-af8d-7c87-b732-70ec3c9539c9",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+      "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+      "sequence": 16,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"ping\", \"target\": \"provider\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-af8d-7985-889f-3c8c76f458f3",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17122-a641-737e-9867-37c082def850"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:41.005725Z"
+    },
+    {
+      "uuid": "01a17122-af94-7d52-af4f-ec577f212779",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+      "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+      "sequence": 17,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"chat_completions\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17122-af8d-7985-889f-3c8c76f458f3",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17122-a641-737e-9867-37c082def850"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:41.012855Z"
+    },
+    {
+      "uuid": "01a17122-bb07-75b1-bc37-6890cfade608",
+      "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+      "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+      "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+      "sequence": 18,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Here is the probe response from the loaded provider runtime:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `chat_completions` |\n| **valid_request_received** | `true` |\n| **input_tokens** | 4 |\n| **output_tokens** | 3 |\n\nThe provider runtime is healthy — it received the `ping` request and responded with `pong`, confirming the Acme provider is correctly configured and operational.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 2,
+        "request_uuid": "01a17122-af9b-716b-bc93-f2ae854b93cc"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:37:43.943369Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/api.md"
+      },
+      "result": "Create config/provider.json with endpoint=\"fixture://acme\", protocol=\"chat_completions\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"provider\" input=\"ping\" sends a simulated request. ",
+      "started_at": "2026-10-25T03:37:18.067418Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_list",
+      "arguments": {},
+      "result": {
+        "items": [
+          "docs/api.md"
+        ]
+      },
+      "started_at": "2026-10-25T03:37:22.073634Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"chat_completions\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\"\n}",
+        "path": "config/provider.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T03:37:26.710693Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T03:37:27.972889Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "ping",
+        "target": "provider"
+      },
+      "result": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "chat_completions",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "started_at": "2026-10-25T03:37:32.275197Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "ping",
+        "target": "provider"
+      },
+      "result": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "chat_completions",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "started_at": "2026-10-25T03:37:41.007281Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/provider.json": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"chat_completions\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\"\n}",
+    "docs/api.md": "Create config/provider.json with endpoint=\"fixture://acme\", protocol=\"chat_completions\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"provider\" input=\"ping\" sends a simulated request. "
+  },
+  "active_configuration": {
+    "config/provider.json": {
+      "credential_env": "ACME_KEY",
+      "endpoint": "fixture://acme",
+      "model": "acme-chat",
+      "protocol": "chat_completions"
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "0fa3587658b38ad3f0a2480002d29b40a9638b36be4633a66bf4c579604ec236"
+}

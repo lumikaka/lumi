@@ -1,0 +1,330 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-project-with-docs",
+    "repetition": 2
+  },
+  "protocol_digest": "bd74ae425b8dbb7a739d5c7ae4a44f8ad377b022c91dff59984ca7ff7d70bc0a",
+  "status": "agent_error",
+  "final": "",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 0,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": false,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": null
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      }
+    }
+  ],
+  "issues": [
+    {
+      "kind": "agent",
+      "code": "agent_turn_budget_exceeded",
+      "message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。"
+    }
+  ],
+  "started_at": "2026-10-25T08:23:38.889363Z",
+  "duration_ms": 6805,
+  "usage": {
+    "input_tokens": 2412,
+    "output_tokens": 263,
+    "cached_input_tokens": 512,
+    "cost_usd": null,
+    "requests": 3
+  },
+  "turns": [
+    {
+      "uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "status": "failed",
+      "error_code": "agent_turn_budget_exceeded",
+      "error_message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。",
+      "started_at": "2026-10-25T08:23:39.176913Z",
+      "completed_at": "2026-10-25T08:23:45.680656Z",
+      "created_at": "2026-10-25T08:23:39.17539Z",
+      "updated_at": "2026-10-25T08:23:45.680656Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17228-7fa7-77c0-87b6-16c0c6de78c2",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:39.17539Z"
+    },
+    {
+      "uuid": "01a17228-88d5-7d2f-bf70-4479c1a69928",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-88d5-7b79-8ba9-df0c32994575",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-7faa-75a9-b839-a57a755ca7ae"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:41.525832Z"
+    },
+    {
+      "uuid": "01a17228-88d6-70a0-8c89-95d1403a12da",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-88d5-7c25-b31f-53be3f3f522b",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-7faa-75a9-b839-a57a755ca7ae"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:41.525832Z"
+    },
+    {
+      "uuid": "01a17228-88da-7353-8515-6396f932d1c1",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-88d5-7b79-8ba9-df0c32994575",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-7faa-75a9-b839-a57a755ca7ae"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:41.530207Z"
+    },
+    {
+      "uuid": "01a17228-88df-7e21-8527-c653fef9549d",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-88d5-7c25-b31f-53be3f3f522b",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-7faa-75a9-b839-a57a755ca7ae"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:41.53591Z"
+    },
+    {
+      "uuid": "01a17228-9036-7904-8750-4ae2ebced613",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-9036-771c-9357-ed5763364bbe",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-88e3-7651-a44d-0192de0d5725"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:43.414554Z"
+    },
+    {
+      "uuid": "01a17228-9036-7c50-a5cb-47b53662e876",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 7,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-9036-77e7-aa18-4f61e8501dac",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-88e3-7651-a44d-0192de0d5725"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:43.414554Z"
+    },
+    {
+      "uuid": "01a17228-903a-7b4a-b16d-00457fa5f387",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 8,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-9036-771c-9357-ed5763364bbe",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-88e3-7651-a44d-0192de0d5725"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:43.418734Z"
+    },
+    {
+      "uuid": "01a17228-903e-7d65-a5f5-8c4a2f8714ef",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-9036-77e7-aa18-4f61e8501dac",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-88e3-7651-a44d-0192de0d5725"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:43.422867Z"
+    },
+    {
+      "uuid": "01a17228-9910-7a06-a1cc-6353ffd35238",
+      "thread_uuid": "01a17228-7f9e-79a0-8730-20d78795c616",
+      "turn_uuid": "01a17228-7fa7-75fb-b84c-cca04d823b65",
+      "run_uuid": "01a17228-7fa7-75fc-97f5-aa37131c45c3",
+      "sequence": 10,
+      "item_type": "error",
+      "role": "system",
+      "content": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。",
+      "content_format": "text",
+      "status": "failed",
+      "metadata": {
+        "error_code": "agent_turn_budget_exceeded"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:45.680656Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:41.526446Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:41.530789Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:43.415307Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:43.419211Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "runtime/docs/configuration.md": "# Configuration\n\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\n\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\n\n## Agent directory\n\nThe agent directory is shown as `\u003cagent-dir\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\n\n| Path | Responsibility |\n|---|---|\n| `\u003cagent-dir\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\n| `\u003cagent-dir\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\n| `\u003cagent-dir\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\n| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n| `\u003cagent-dir\u003e/auth.json` | Saved API keys and OAuth credentials. |\n| `\u003cagent-dir\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\n| `\u003cagent-dir\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\n| `\u003cagent-dir\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\n| `\u003cagent-dir\u003e/extensions/` | User [extensions](extensions.md). |\n| `\u003cagent-dir\u003e/skills/` | User [skills](skills.md) and supporting files. |\n| `\u003cagent-dir\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\n| `\u003cagent-dir\u003e/themes/` | User [theme](themes.md) files. |\n\n## Project `.pi` directory\n\n| Path | Responsibility |\n|---|---|\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\n| `.pi/extensions/` | Project extensions. |\n| `.pi/skills/` | Project skills and supporting files. |\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\n| `.pi/themes/` | Project theme files. |\n\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n\n## Context files\n\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n\nContext-file discovery does not require project trust.\n",
+    "runtime/docs/prompt-templates.md": "# Prompt Templates\n\nPrompt templates turn Markdown files into reusable `/` commands. Use one when you want to reuse the same prompt without adding executable behavior or a larger set of supporting instructions.\n\nA template can accept arguments and appear in command completion. Pi can load templates from personal configuration, project configuration, an explicit path, or a Pi package. Project configuration loads only after project trust is granted.\n\n## Create a template\n\nCreate `~/.pi/agent/prompts/review.md`:\n\n```markdown\n---\ndescription: Review staged git changes\nargument-hint: \"[focus]\"\n---\nReview the staged changes. Focus on ${1:-correctness, security, and error handling}.\n```\n\nThe filename becomes the command name, so this template is available as `/review`. The `description` appears in command completion. If it is omitted, Pi uses the first non-empty line.\n\n`argument-hint` is optional. Use `\u003cangle brackets\u003e` for required arguments and `[square brackets]` for optional arguments.\n\nRun `/reload` after adding or changing a template in an active session.\n\n\u003ca id=\"invoke-a-template\"\u003e\u003c/a\u003e\n\n## Use a template\n\nType the template command in the editor:\n\n```text\n/review\n/review concurrency\n```\n\nPi expands the template before the resulting text enters the agent. Extensions receive the raw input first through the `input` event unless an extension command with the same name handles it.\n\nTemplates support these substitutions:\n\n| Syntax | Result |\n|---|---|\n| `$1`, `$2`, … | One positional argument |\n| `$@` or `$ARGUMENTS` | All arguments joined with spaces |\n| `${1:-default}` | First argument, or a default value |\n| `${@:-default}` | All arguments, or a default value |\n| `${@:N}` | Arguments starting at position `N` |\n| `${@:N:L}` | `L` arguments starting at position `N` |\n\nArguments follow shell-like quoting, so `/review \"API compatibility\"` supplies one argument containing a space.\n\n\u003ca id=\"choose-where-it-loads\"\u003e\u003c/a\u003e\n\n## Add it to Pi\n\nPlace the template in your user or project prompt directory. Conventional prompt directories load direct `.md` children only.\n\nSettings and packages can select nested Markdown files; a package manifest can narrow discovery with explicit paths and globs. See [Settings](settings.md#resources) and [Pi Packages](packages.md) for these options.\n\nProject templates become commands in the editor after trust is granted. Review their content before trusting an unfamiliar project. See [Security](security.md#understand-project-trust).\n"
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "28c5a444c5632cddf62911e21161228911d7b2be279c7bb362f6eb2119585d5b"
+}

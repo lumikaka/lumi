@@ -34,3 +34,7 @@
 # Editors
 .idea/
 .vscode/
+
+# Manual Agent eval outputs (reviewed delivery records live in evals/records/)
+/evals/results/
+/evals/ci/__pycache__/

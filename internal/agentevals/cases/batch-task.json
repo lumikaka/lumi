@@ -1,0 +1,59 @@
+{
+  "slug": "batch-task",
+  "suite": "task",
+  "reference": "Lumi addition: dependent tool interactions",
+  "goal": "Read independent records and write their aggregate without altering sources.",
+  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "observable_result": "aggregate; source a preserved; source b preserved; verification",
+  "files": {
+    "records/a.json": "{\"amount\":12}",
+    "records/b.json": "{\"amount\":30}"
+  },
+  "tools": [
+    "eval_read",
+    "eval_write",
+    "eval_list"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Read both records, sum their amounts, and write summary.json as a JSON object with total and count. Do not change the source files. Then read summary.json to verify it."
+    }
+  ],
+  "checks": [
+    {
+      "name": "aggregate",
+      "kind": "file_json",
+      "expected": {
+        "total": 42,
+        "count": 2
+      },
+      "basis": "aggregate",
+      "path": "summary.json"
+    },
+    {
+      "name": "source_a_preserved",
+      "kind": "file_equals",
+      "expected": "{\"amount\":12}",
+      "basis": "source a preserved",
+      "path": "records/a.json"
+    },
+    {
+      "name": "source_b_preserved",
+      "kind": "file_equals",
+      "expected": "{\"amount\":30}",
+      "basis": "source b preserved",
+      "path": "records/b.json"
+    },
+    {
+      "name": "verification",
+      "kind": "tool_call",
+      "expected": null,
+      "basis": "verification",
+      "tool": "eval_read",
+      "arguments": {
+        "path": "summary.json"
+      }
+    }
+  ]
+}

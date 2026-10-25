@@ -1,0 +1,10 @@
+Running custom-stream-provider/run-001
+  environment_error; 3 requests; 300.0s
+Running extension-reload/run-001
+  environment_error; 1 requests; 19.0s
+Running extension-reload/run-002
+  scored; 8 requests; 24.3s
+Running custom-stream-provider/run-002
+  scored; 8 requests; 29.9s
+Report: evals/records/2026-10-25-qwen3.7-plus-recovery/report.md
+exit status 1

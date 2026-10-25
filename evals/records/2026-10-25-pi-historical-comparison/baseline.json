@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "id": "pi-public-history-2026-10-25",
+  "retrieved_on": "2026-10-25",
+  "sources": [
+    {
+      "id": "pr-10261",
+      "url": "https://github.com/earendil-works/pi/pull/10261",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-10261.json",
+      "sha256": "f7d4723ab1dbfee826fd09926a317ed9114cb198e458601039fcc8b4814fe5b1"
+    },
+    {
+      "id": "pr-7085",
+      "url": "https://github.com/earendil-works/pi/pull/7085",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-7085.json",
+      "sha256": "ef3a4578df497e08d847f4a29faf3b8812e8d3d7701a41239b0e845bdf520ae4"
+    },
+    {
+      "id": "pr-7117",
+      "url": "https://github.com/earendil-works/pi/pull/7117",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-7117.json",
+      "sha256": "1e197013b80ed47fdd521a9a88366aaf307af1c6aec0d91cf7a18bdca2ec424a"
+    },
+    {
+      "id": "pr-7289",
+      "url": "https://github.com/earendil-works/pi/pull/7289",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-7289.json",
+      "sha256": "20e6b5b433dca64c58bbf5529667cdefd53bbced937fc2db0bb753898958c1da"
+    },
+    {
+      "id": "pr-9280",
+      "url": "https://github.com/earendil-works/pi/pull/9280",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9280.json",
+      "sha256": "9c757976e4bb6b36c0bc68a23369951776c028f97cc2ec28cbb5e86bab3a8e73"
+    },
+    {
+      "id": "pr-9491",
+      "url": "https://github.com/earendil-works/pi/pull/9491",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9491.json",
+      "sha256": "245d06734ab26adda58a8a2847965e4c08192762c6334f09327755d626099d71"
+    },
+    {
+      "id": "pr-9635",
+      "url": "https://github.com/earendil-works/pi/pull/9635",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9635.json",
+      "sha256": "aa28aee9be141059f2e9fa3e3d0a36f9cf0131e0e6c88fb300f600334b78620c"
+    },
+    {
+      "id": "pr-9705",
+      "url": "https://github.com/earendil-works/pi/pull/9705",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9705.json",
+      "sha256": "cdf2ea931e66f5b7317ac41b27e7d57ba63629b85b74824cd56a319368af5d40"
+    },
+    {
+      "id": "pr-9706",
+      "url": "https://github.com/earendil-works/pi/pull/9706",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9706.json",
+      "sha256": "d7a6413edad4bd97ee33561a7aba9f9bf47c01b497fb3b2e2e3918f60664771e"
+    },
+    {
+      "id": "pr-9898",
+      "url": "https://github.com/earendil-works/pi/pull/9898",
+      "kind": "pr_summary",
+      "snapshot": "sources/pr-9898.json",
+      "sha256": "9abcdbfc66a927bb73dcfd8f1e5ab4ad25a1dfa13d6ad904b14de29015c1f49d"
+    }
+  ],
+  "observations": [
+    {
+      "id": "pr-10261-project-with_docs",
+      "source_id": "pr-10261",
+      "case": "Create a project prompt template",
+      "variant": "with_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 0.667,
+      "sample_count": 3,
+      "successes": null,
+      "rounded": true,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-prompt-template-project-with-docs",
+          "case_sha256": "1f04ec77f27b4fc49e17e0771e3762d09d0ce6b4a3db77b2f08eefd205c3effb",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "只模拟本场景的模板加载、无参数展开和目录检查；不执行扩展、包资源或完整 pi 资源加载器。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-10261-project-without_docs",
+      "source_id": "pr-10261",
+      "case": "Create a project prompt template",
+      "variant": "without_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 1,
+      "sample_count": 3,
+      "successes": 3,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-prompt-template-project-without-docs",
+          "case_sha256": "d128c59c1499358d2e21c4e9b85d20b303afba51fa9c4f953247b4805a09c7c0",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "只模拟本场景的模板加载、无参数展开和目录检查；不执行扩展、包资源或完整 pi 资源加载器。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-10261-user-with_docs",
+      "source_id": "pr-10261",
+      "case": "Create a user prompt template",
+      "variant": "with_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 1,
+      "sample_count": 3,
+      "successes": 3,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-prompt-template-user-with-docs",
+          "case_sha256": "3bbafe071dea7250c9b26784cefa0ec6a92637520d72d28aea0fd92a8f081e45",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "只模拟本场景的模板加载、无参数展开和目录检查；不执行扩展、包资源或完整 pi 资源加载器。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-10261-user-without_docs",
+      "source_id": "pr-10261",
+      "case": "Create a user prompt template",
+      "variant": "without_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 1,
+      "sample_count": 3,
+      "successes": 3,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-prompt-template-user-without-docs",
+          "case_sha256": "0c44730d4d63fdadf493bd048b01ba3503b8c3d58984e7412e65977108af1ec9",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "只模拟本场景的模板加载、无参数展开和目录检查；不执行扩展、包资源或完整 pi 资源加载器。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-10261-model-with_docs",
+      "source_id": "pr-10261",
+      "case": "Add model to existing provider",
+      "variant": "with_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 1,
+      "sample_count": 1,
+      "successes": 1,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-add-model-with-docs",
+          "case_sha256": "6e2d0a5f0e06e368450fee334036ed3d96c6017297aee17afc603792407048e3",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "模型注册表使用隔离的最小内置目录及加法合并；未执行 pi ModelRuntime 的完整配置验证。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-10261-model-without_docs",
+      "source_id": "pr-10261",
+      "case": "Add model to existing provider",
+      "variant": "without_docs",
+      "scope": "case",
+      "metric": "pass_rate",
+      "value": 0,
+      "sample_count": 1,
+      "successes": 0,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [
+        {
+          "slug": "pi-add-model-without-docs",
+          "case_sha256": "46818163c88689a4d2acab5c90b451e87d51a7ef97774b444b3898bcc159a098",
+          "environment_sha256": "d7b80becae9e292cf8c1a8b2a7abf361374bb4d258deac7199a8d4886c03a4b2",
+          "equivalence": "adapted",
+          "differences": [
+            "任务原文、步骤顺序及严格评分字段沿用 PR #10261 分支源码；实际运行提交未报告。",
+            "使用固定评测提示词，未复现 pi 默认系统提示词。",
+            "Go 虚拟文件和工具接口模拟；工具返回格式、检索行为及边界与 pi 原生工具未证明等价。",
+            "仅提供场景相关文档快照，未安装 pi 全部文档、示例和运行时。",
+            "模型注册表使用隔离的最小内置目录及加法合并；未执行 pi ModelRuntime 的完整配置验证。"
+          ]
+        }
+      ],
+      "notes": [
+        "作者报告的 PR 摘要；没有逐次结果、Token、耗时或费用。",
+        "PR 检索时仍未合并，不能当作当前 main 的成绩。"
+      ]
+    },
+    {
+      "id": "pr-9898-documentation-with_docs",
+      "source_id": "pr-9898",
+      "case": "Documentation evals (reported aggregate)",
+      "variant": "with_docs",
+      "scope": "cohort",
+      "metric": "pass_rate",
+      "value": 0.8666666666666667,
+      "sample_count": 15,
+      "successes": 13,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [],
+      "notes": [
+        "每个变体重复 3 次，作者报告该组总计 15 次；没有逐用例成绩或完整清单。",
+        "不将总体通过率分配给某个用例，也不与当前 14 例或新 3 个场景的总分相减。"
+      ]
+    },
+    {
+      "id": "pr-9898-documentation-without_docs",
+      "source_id": "pr-9898",
+      "case": "Documentation evals (reported aggregate)",
+      "variant": "without_docs",
+      "scope": "cohort",
+      "metric": "pass_rate",
+      "value": 0.13333333333333333,
+      "sample_count": 15,
+      "successes": 2,
+      "rounded": false,
+      "execution_revision": null,
+      "config": null,
+      "mappings": [],
+      "notes": [
+        "每个变体重复 3 次，作者报告该组总计 15 次；没有逐用例成绩或完整清单。",
+        "不将总体通过率分配给某个用例，也不与当前 14 例或新 3 个场景的总分相减。"
+      ]
+    }
+  ],
+  "limitations": [
+    "本目录收集到 6 条逐场景摘要和 2 条整体摘要，尚未取得完整原始运行包。",
+    "模型、执行提交和预算未公开，不推断为 README 示例配置。",
+    "eligible pairs、普通单元测试通过和文档漂移都不是 Agent 通过率。",
+    "目前没有可直接计算能力差值的基线；近似结果仅并列展示，不输出差值。"
+  ]
+}

@@ -1,0 +1,4787 @@
+{
+  "schema_version": 1,
+  "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+  "config": {
+    "provider_type": "aliyun_bailian",
+    "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.7-plus",
+    "temperature": null,
+    "max_tokens": 4096,
+    "max_requests_per_turn": 16,
+    "timeout_seconds_per_case": 180,
+    "repetitions": 2
+  },
+  "planned": 28,
+  "recorded": 9,
+  "blocked": [
+    "add-model/run-002: expected one result, found 0",
+    "audit-inconclusive/run-002: expected one result, found 0",
+    "audit-match/run-002: expected one result, found 0",
+    "audit-mismatch/run-002: expected one result, found 0",
+    "batch-task/run-002: expected one result, found 0",
+    "configure-provider/run-002: expected one result, found 0",
+    "context-handoff/run-002: expected one result, found 0",
+    "custom-stream-provider/run-002: expected one result, found 0",
+    "extension-reload/run-001: environment_error",
+    "extension-reload/run-002: expected one result, found 0",
+    "missing-resource/run-001: expected one result, found 0",
+    "missing-resource/run-002: expected one result, found 0",
+    "repair-config/run-001: expected one result, found 0",
+    "repair-config/run-002: expected one result, found 0",
+    "smoke/run-001: expected one result, found 0",
+    "smoke/run-002: expected one result, found 0",
+    "status-footer/run-001: expected one result, found 0",
+    "status-footer/run-002: expected one result, found 0",
+    "transient-tool/run-001: expected one result, found 0",
+    "transient-tool/run-002: expected one result, found 0"
+  ],
+  "results": [
+    {
+      "task": {
+        "case_slug": "add-model",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "The probe confirms the model registry is loaded correctly with both entries:\n\n| # | `name` | `display_name` | `reasoning` | `input` | `context_window` | `max_tokens` | `cost` |\n|---|--------|----------------|-------------|---------|------------------|--------------|--------|\n| 1 | `existing` | *(not set)* | *(not set)* | *(not set)* | 8192 | *(not set)* | *(not set)* |\n| 2 | `fixture-chat` | **Fixture Chat** | ✅ `true` | `text` | 32768 | 4096 | 0 |\n\n**Confirmation details:**\n\n- ✅ **Existing entry preserved** – `existing` with `context_window: 8192` is intact.\n- ✅ **New entry added** – `fixture-chat` appears with all specified fields:\n  - Displayed as **\"Fixture Chat\"**\n  - Supports **reasoning** (`true`) and **text input**\n  - Context window: **32768**\n  - Max output tokens: **4096**\n  - Cost: **0**\n- ✅ **No configuration errors** – The registry loaded cleanly with no issues.\n\nThe addition is fully confirmed.",
+      "scores": [
+        {
+          "name": "registry",
+          "value": 0,
+          "basis": "registry",
+          "observed": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": "text",
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "expected": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": [
+                  "text"
+                ],
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "verified",
+          "value": 1,
+          "basis": "verified",
+          "observed": 2,
+          "expected": "at least one matching call"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:35:44.338864Z",
+      "duration_ms": 29445,
+      "usage": {
+        "input_tokens": 9415,
+        "output_tokens": 1395,
+        "cached_input_tokens": 4352,
+        "cost_usd": null,
+        "requests": 8
+      },
+      "turns": [
+        {
+          "uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:35:44.606842Z",
+          "completed_at": "2026-10-25T03:36:05.620752Z",
+          "created_at": "2026-10-25T03:35:44.60591Z",
+          "updated_at": "2026-10-25T03:36:05.620752Z"
+        },
+        {
+          "uuid": "01a17121-3b08-7a68-b25f-17f14e440d12",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Probe the loaded models and confirm the addition.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:36:05.641529Z",
+          "completed_at": "2026-10-25T03:36:13.768071Z",
+          "created_at": "2026-10-25T03:36:05.64068Z",
+          "updated_at": "2026-10-25T03:36:13.768071Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17120-e8de-7069-970e-46c5d76a0368",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:44.60591Z"
+        },
+        {
+          "uuid": "01a17120-f3c5-7376-977b-c5e5a39f89ae",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-f3c5-7249-98f7-bd591bd8b706",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17120-e8e0-73f3-84a8-a8833aa8a1a4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:47.397191Z"
+        },
+        {
+          "uuid": "01a17120-f3ca-7510-b571-caef9ee3f675",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"config/models.json\",\"docs/models.md\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-f3c5-7249-98f7-bd591bd8b706",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17120-e8e0-73f3-84a8-a8833aa8a1a4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:47.402318Z"
+        },
+        {
+          "uuid": "01a17120-fb75-78aa-9efe-c44ff232e3ca",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"config/models.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-fb75-7664-a46d-a1a11f4f5b32",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17120-f3cc-70c7-8650-6a3734ca761a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:49.365527Z"
+        },
+        {
+          "uuid": "01a17120-fb75-7bbf-9b6e-0f28a8d5bad2",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 5,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/models.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-fb75-7785-a3dc-ee76f5f7501b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17120-f3cc-70c7-8650-6a3734ca761a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:49.365527Z"
+        },
+        {
+          "uuid": "01a17120-fb7a-79b8-8ad8-308bffd2dafc",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 6,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}]}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-fb75-7664-a46d-a1a11f4f5b32",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17120-f3cc-70c7-8650-6a3734ca761a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:49.370629Z"
+        },
+        {
+          "uuid": "01a17120-fb7f-76f9-a146-21eafe0cf997",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"config/models.json has an items array. Preserve existing entries. Entries use name, display_name, reasoning, input, context_window, max_tokens, cost. Reload, then eval_probe target=models input=\\\"\\\" returns the active registry.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17120-fb75-7785-a3dc-ee76f5f7501b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17120-f3cc-70c7-8650-6a3734ca761a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:49.375451Z"
+        },
+        {
+          "uuid": "01a17121-0e66-7075-bc32-f290c9196465",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}, {\\\"name\\\": \\\"fixture-chat\\\", \\\"display_name\\\": \\\"Fixture Chat\\\", \\\"reasoning\\\": true, \\\"input\\\": \\\"text\\\", \\\"context_window\\\": 32768, \\\"max_tokens\\\": 4096, \\\"cost\\\": 0}]}\", \"path\": \"config/models.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-0e65-7e50-8caa-fb6d22172a2c",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17120-fb81-72c6-950f-92068af08983"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:54.213983Z"
+        },
+        {
+          "uuid": "01a17121-0e6b-709c-81f1-e0c43e1dedf3",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-0e65-7e50-8caa-fb6d22172a2c",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17120-fb81-72c6-950f-92068af08983"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:54.219034Z"
+        },
+        {
+          "uuid": "01a17121-19c1-7320-8479-b3ec0d02a7f4",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-19c1-71bd-ac88-ad9601bff562",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17121-0e6c-7c9e-bc18-9056e4016463"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:57.121156Z"
+        },
+        {
+          "uuid": "01a17121-19c6-76ae-b0ab-399b5ccb1585",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-19c1-71bd-ac88-ad9601bff562",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "method": "",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17121-0e6c-7c9e-bc18-9056e4016463"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:57.126429Z"
+        },
+        {
+          "uuid": "01a17121-20f0-7007-9f49-c04ecf8c4a52",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"\", \"target\": \"models\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-20ef-7e05-a34b-bfda3f258f62",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17121-19c8-764d-be06-cf6cc4a1c545"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:58.959958Z"
+        },
+        {
+          "uuid": "01a17121-20f5-7399-9c66-6624f1076bc7",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 13,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":\"text\",\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-20ef-7e05-a34b-bfda3f258f62",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17121-19c8-764d-be06-cf6cc4a1c545"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:35:58.965231Z"
+        },
+        {
+          "uuid": "01a17121-3af4-7b89-b79e-77944fe9d277",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17120-e8dd-7dea-ac75-969df040b1a3",
+          "run_uuid": "01a17120-e8dd-7deb-93c8-0955986ce4e9",
+          "sequence": 14,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The task is complete. Here's a summary of what was done:\n\n1. **Read `docs/models.md`** – Confirmed the expected schema: entries use `name`, `display_name`, `reasoning`, `input`, `context_window`, `max_tokens`, `cost`.\n\n2. **Preserved the existing entry** – The original `{\"name\": \"existing\", \"context_window\": 8192}` was kept intact.\n\n3. **Added the new entry** – `fixture-chat` with:\n   - `display_name`: \"Fixture Chat\"\n   - `reasoning`: true\n   - `input`: \"text\"\n   - `context_window`: 32768\n   - `max_tokens`: 4096\n   - `cost`: 0\n\n4. **Reloaded configuration** – No errors; configuration loaded successfully.\n\n5. **Verified via `eval_probe`** – The active model registry now contains both entries, confirming everything is working correctly.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 6,
+            "request_uuid": "01a17121-20f7-7251-8f1e-f5769472803c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:05.620752Z"
+        },
+        {
+          "uuid": "01a17121-3b08-7c77-9692-af8970a6e6d1",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17121-3b08-7a68-b25f-17f14e440d12",
+          "run_uuid": "01a17121-3b08-7a6b-bddd-7bf25a92dc9e",
+          "sequence": 15,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Probe the loaded models and confirm the addition.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:05.64068Z"
+        },
+        {
+          "uuid": "01a17121-4425-795e-9c00-14ef4f5a914c",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17121-3b08-7a68-b25f-17f14e440d12",
+          "run_uuid": "01a17121-3b08-7a6b-bddd-7bf25a92dc9e",
+          "sequence": 16,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"\", \"target\": \"models\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-4425-7850-b570-4c99678aeb17",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-3b0b-77ef-a8ec-63b7e58afdae"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:07.97358Z"
+        },
+        {
+          "uuid": "01a17121-4429-7aa2-9a52-e39c0e9ad89f",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17121-3b08-7a68-b25f-17f14e440d12",
+          "run_uuid": "01a17121-3b08-7a6b-bddd-7bf25a92dc9e",
+          "sequence": 17,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":\"text\",\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-4425-7850-b570-4c99678aeb17",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-3b0b-77ef-a8ec-63b7e58afdae"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:07.977692Z"
+        },
+        {
+          "uuid": "01a17121-5ac8-711d-8471-f818df1ccb56",
+          "thread_uuid": "01a17120-e8d8-713c-bae3-ad4ffcae13cd",
+          "turn_uuid": "01a17121-3b08-7a68-b25f-17f14e440d12",
+          "run_uuid": "01a17121-3b08-7a6b-bddd-7bf25a92dc9e",
+          "sequence": 18,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The probe confirms the model registry is loaded correctly with both entries:\n\n| # | `name` | `display_name` | `reasoning` | `input` | `context_window` | `max_tokens` | `cost` |\n|---|--------|----------------|-------------|---------|------------------|--------------|--------|\n| 1 | `existing` | *(not set)* | *(not set)* | *(not set)* | 8192 | *(not set)* | *(not set)* |\n| 2 | `fixture-chat` | **Fixture Chat** | ✅ `true` | `text` | 32768 | 4096 | 0 |\n\n**Confirmation details:**\n\n- ✅ **Existing entry preserved** – `existing` with `context_window: 8192` is intact.\n- ✅ **New entry added** – `fixture-chat` appears with all specified fields:\n  - Displayed as **\"Fixture Chat\"**\n  - Supports **reasoning** (`true`) and **text input**\n  - Context window: **32768**\n  - Max output tokens: **4096**\n  - Cost: **0**\n- ✅ **No configuration errors** – The registry loaded cleanly with no issues.\n\nThe addition is fully confirmed.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-442b-7ec5-8baf-8873b079930d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:13.768071Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "config/models.json",
+              "docs/models.md"
+            ]
+          },
+          "started_at": "2026-10-25T03:35:47.397708Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "config/models.json"
+          },
+          "result": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}]}",
+          "started_at": "2026-10-25T03:35:49.366264Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/models.md"
+          },
+          "result": "config/models.json has an items array. Preserve existing entries. Entries use name, display_name, reasoning, input, context_window, max_tokens, cost. Reload, then eval_probe target=models input=\"\" returns the active registry.",
+          "started_at": "2026-10-25T03:35:49.37119Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": \"text\", \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+            "path": "config/models.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:35:54.214525Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_reload",
+          "arguments": {},
+          "result": {
+            "errors": [],
+            "loaded": 1
+          },
+          "started_at": "2026-10-25T03:35:57.121703Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "",
+            "target": "models"
+          },
+          "result": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": "text",
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "started_at": "2026-10-25T03:35:58.960496Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "",
+            "target": "models"
+          },
+          "result": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": "text",
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "started_at": "2026-10-25T03:36:07.974055Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "config/models.json": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": \"text\", \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+        "docs/models.md": "config/models.json has an items array. Preserve existing entries. Entries use name, display_name, reasoning, input, context_window, max_tokens, cost. Reload, then eval_probe target=models input=\"\" returns the active registry."
+      },
+      "active_configuration": {
+        "config/models.json": {
+          "items": [
+            {
+              "context_window": 8192,
+              "name": "existing"
+            },
+            {
+              "context_window": 32768,
+              "cost": 0,
+              "display_name": "Fixture Chat",
+              "input": "text",
+              "max_tokens": 4096,
+              "name": "fixture-chat",
+              "reasoning": true
+            }
+          ]
+        }
+      },
+      "reload_errors": [],
+      "trace_sha256": "4b336adc861293032615d1750e1349928ec1f6b5b97e844ffe27f210778397f7"
+    },
+    {
+      "task": {
+        "case_slug": "audit-inconclusive",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "**Summary:** The documentation claims `format_name` preserves capitalization, but the implementation delegates to an external `normalize` function whose source is unavailable. Without access to that implementation, the claim cannot be verified, resulting in an inconclusive verdict.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "docs/names.md claims \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The source file itself notes: \"The external formatter implementation is not included.\" Because the behavior of `normalize` is unknown — its implementation is not available in the workspace — there is no evidence to confirm or refute whether capitalization is preserved. The claim cannot be verified against the implementation."
+          ],
+          "expected": "one explanation citing src/names.py and format_name"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:36:13.80421Z",
+      "duration_ms": 19710,
+      "usage": {
+        "input_tokens": 3648,
+        "output_tokens": 918,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 4
+      },
+      "turns": [
+        {
+          "uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:36:14.072859Z",
+          "completed_at": "2026-10-25T03:36:33.489238Z",
+          "created_at": "2026-10-25T03:36:14.07194Z",
+          "updated_at": "2026-10-25T03:36:33.489238Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17121-5bf8-70fa-b909-8c153eff1644",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:14.07194Z"
+        },
+        {
+          "uuid": "01a17121-64cd-742e-892d-91bf35a7abd6",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-64cd-727c-9d7e-953c7147ab98",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-5bfa-71f4-83ad-e795cd381900"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:16.333239Z"
+        },
+        {
+          "uuid": "01a17121-64cd-76c6-868c-71bd4b422b41",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-64cd-7320-8613-01d348d3c7f2",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-5bfa-71f4-83ad-e795cd381900"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:16.333239Z"
+        },
+        {
+          "uuid": "01a17121-64d2-76ed-92a4-16531be951c1",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function preserves capitalization.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-64cd-727c-9d7e-953c7147ab98",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-5bfa-71f4-83ad-e795cd381900"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:16.338449Z"
+        },
+        {
+          "uuid": "01a17121-64d7-76a7-9f45-79fe42f026f0",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"from external_formatter import normalize\\ndef format_name(name):\\n    return normalize(name)\\n# The external formatter implementation is not included.\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-64cd-7320-8613-01d348d3c7f2",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-5bfa-71f4-83ad-e795cd381900"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:16.343431Z"
+        },
+        {
+          "uuid": "01a17121-73dc-75fb-a96c-4478a0fd8c79",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"query\": \"normalize\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-73dc-7403-93a1-dab7cde71e17",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-64d8-7de2-9802-29c967469862"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:20.188352Z"
+        },
+        {
+          "uuid": "01a17121-73dc-794e-8942-009043af9a26",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 7,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"query\": \"external_formatter\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-73dc-74ce-99ec-d3382eda3538",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-64d8-7de2-9802-29c967469862"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:20.188352Z"
+        },
+        {
+          "uuid": "01a17121-73e9-7c67-8d44-c8a1a546903e",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 8,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"src/names.py:1:from external_formatter import normalize\",\"src/names.py:3:    return normalize(name)\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-73dc-7403-93a1-dab7cde71e17",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "method": "",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-64d8-7de2-9802-29c967469862"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:20.201805Z"
+        },
+        {
+          "uuid": "01a17121-73f8-753b-97b9-28a30faece71",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"src/names.py:1:from external_formatter import normalize\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-73dc-74ce-99ec-d3382eda3538",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "method": "",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-64d8-7de2-9802-29c967469862"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:20.216338Z"
+        },
+        {
+          "uuid": "01a17121-96f8-782d-a983-40108909bcdf",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"explanation\": \"docs/names.md claims \\\"The public format_name function preserves capitalization.\\\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The source file itself notes: \\\"The external formatter implementation is not included.\\\" Because the behavior of `normalize` is unknown — its implementation is not available in the workspace — there is no evidence to confirm or refute whether capitalization is preserved. The claim cannot be verified against the implementation.\", \"verdict\": \"inconclusive\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-96f8-76f5-a99c-d26eceb0fbd9",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 3,
+            "request_uuid": "01a17121-73fa-7290-b232-be7d573daad8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:29.176496Z"
+        },
+        {
+          "uuid": "01a17121-9701-7451-b5b1-b6894f96435c",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"docs/names.md claims \\\"The public format_name function preserves capitalization.\\\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The source file itself notes: \\\"The external formatter implementation is not included.\\\" Because the behavior of `normalize` is unknown — its implementation is not available in the workspace — there is no evidence to confirm or refute whether capitalization is preserved. The claim cannot be verified against the implementation.\",\"verdict\":\"inconclusive\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-96f8-76f5-a99c-d26eceb0fbd9",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 3,
+            "request_uuid": "01a17121-73fa-7290-b232-be7d573daad8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:29.185273Z"
+        },
+        {
+          "uuid": "01a17121-a7d1-73b9-96eb-4803e280efdd",
+          "thread_uuid": "01a17121-5bf1-79a8-9978-76361de2a40b",
+          "turn_uuid": "01a17121-5bf7-7e5f-9ce5-8529ce205c2c",
+          "run_uuid": "01a17121-5bf7-7e60-8854-d7932d9015f3",
+          "sequence": 12,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "**Summary:** The documentation claims `format_name` preserves capitalization, but the implementation delegates to an external `normalize` function whose source is unavailable. Without access to that implementation, the claim cannot be verified, resulting in an inconclusive verdict.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 4,
+            "request_uuid": "01a17121-9703-7543-9193-9238abc07261"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:33.489238Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function preserves capitalization.",
+          "started_at": "2026-10-25T03:36:16.333897Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n",
+          "started_at": "2026-10-25T03:36:16.338996Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_search",
+          "arguments": {
+            "query": "normalize"
+          },
+          "result": {
+            "items": [
+              "src/names.py:1:from external_formatter import normalize",
+              "src/names.py:3:    return normalize(name)"
+            ]
+          },
+          "started_at": "2026-10-25T03:36:20.18914Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_search",
+          "arguments": {
+            "query": "external_formatter"
+          },
+          "result": {
+            "items": [
+              "src/names.py:1:from external_formatter import normalize"
+            ]
+          },
+          "started_at": "2026-10-25T03:36:20.202411Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "docs/names.md claims \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The source file itself notes: \"The external formatter implementation is not included.\" Because the behavior of `normalize` is unknown — its implementation is not available in the workspace — there is no evidence to confirm or refute whether capitalization is preserved. The claim cannot be verified against the implementation.",
+            "verdict": "inconclusive"
+          },
+          "result": {
+            "explanation": "docs/names.md claims \"The public format_name function preserves capitalization.\" In src/names.py, format_name is defined as `def format_name(name): return normalize(name)`, delegating entirely to `normalize` imported from `external_formatter`. The source file itself notes: \"The external formatter implementation is not included.\" Because the behavior of `normalize` is unknown — its implementation is not available in the workspace — there is no evidence to confirm or refute whether capitalization is preserved. The claim cannot be verified against the implementation.",
+            "verdict": "inconclusive"
+          },
+          "started_at": "2026-10-25T03:36:29.177375Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function preserves capitalization.",
+        "src/names.py": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "8ea5daf9fde975aeb1f72906946e33c46452a40eceba226d42b27fcfdee49e86"
+    },
+    {
+      "task": {
+        "case_slug": "audit-match",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "**Summary:** The documentation claim that format_name trims whitespace and lowercases names matches the implementation. The function delegates to normalize(), which applies strip().lower() - exactly as documented.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string. The function is public (no underscore prefix). All explicit user-visible claims in the documentation are accurately reflected by the implementation."
+          ],
+          "expected": "one explanation citing src/names.py and format_name"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:36:33.538278Z",
+      "duration_ms": 13885,
+      "usage": {
+        "input_tokens": 2529,
+        "output_tokens": 702,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 3
+      },
+      "turns": [
+        {
+          "uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:36:33.82909Z",
+          "completed_at": "2026-10-25T03:36:47.399167Z",
+          "created_at": "2026-10-25T03:36:33.828103Z",
+          "updated_at": "2026-10-25T03:36:47.399167Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17121-a924-7353-9ad0-67b337534cfd",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:33.828103Z"
+        },
+        {
+          "uuid": "01a17121-b2c2-7347-9079-521726a8be89",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-b2c1-7cf0-a614-95212b20a12b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-a926-76d2-8264-2c53f54c57c0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:36.290106Z"
+        },
+        {
+          "uuid": "01a17121-b2c2-7b5e-8755-4a73f5df95b6",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-b2c1-7f07-b316-b08136fef8d0",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-a926-76d2-8264-2c53f54c57c0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:36.290106Z"
+        },
+        {
+          "uuid": "01a17121-b2c9-7816-8f23-7a112c4f684a",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function trims whitespace and lowercases names.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-b2c1-7cf0-a614-95212b20a12b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-a926-76d2-8264-2c53f54c57c0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:36.297514Z"
+        },
+        {
+          "uuid": "01a17121-b2cf-7572-a75c-922af41e4c0e",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-b2c1-7f07-b316-b08136fef8d0",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-a926-76d2-8264-2c53f54c57c0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:36.303345Z"
+        },
+        {
+          "uuid": "01a17121-d2db-763d-9e7a-853e6ce85e6a",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"verdict\": \"match\", \"explanation\": \"docs/names.md claims: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string. The function is public (no underscore prefix). All explicit user-visible claims in the documentation are accurately reflected by the implementation.\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-d2db-7207-aeb6-54a94d5917ad",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-b2d4-707d-ae39-40ba362c95dd"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:44.50729Z"
+        },
+        {
+          "uuid": "01a17121-d2e9-79fa-a81a-79dd61913b92",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"docs/names.md claims: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string. The function is public (no underscore prefix). All explicit user-visible claims in the documentation are accurately reflected by the implementation.\",\"verdict\":\"match\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-d2db-7207-aeb6-54a94d5917ad",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-b2d4-707d-ae39-40ba362c95dd"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:44.521628Z"
+        },
+        {
+          "uuid": "01a17121-de27-72a3-a0b7-8da29bffc4ea",
+          "thread_uuid": "01a17121-a91e-7186-a668-194923349799",
+          "turn_uuid": "01a17121-a924-7196-a146-abd81e9cc4fe",
+          "run_uuid": "01a17121-a924-719a-8411-f2984bc8a38c",
+          "sequence": 8,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "**Summary:** The documentation claim that format_name trims whitespace and lowercases names matches the implementation. The function delegates to normalize(), which applies strip().lower() - exactly as documented.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 3,
+            "request_uuid": "01a17121-d2ef-7f1f-bd87-1dc4f9066256"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:47.399167Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function trims whitespace and lowercases names.",
+          "started_at": "2026-10-25T03:36:36.292059Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+          "started_at": "2026-10-25T03:36:36.298888Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string. The function is public (no underscore prefix). All explicit user-visible claims in the documentation are accurately reflected by the implementation.",
+            "verdict": "match"
+          },
+          "result": {
+            "explanation": "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string. The function is public (no underscore prefix). All explicit user-visible claims in the documentation are accurately reflected by the implementation.",
+            "verdict": "match"
+          },
+          "started_at": "2026-10-25T03:36:44.509592Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function trims whitespace and lowercases names.",
+        "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "38477d34b09879066d322f501ef9212e42f1fc84ef735f48a56d6dced718d253"
+    },
+    {
+      "task": {
+        "case_slug": "audit-mismatch",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "**Summary:** The documentation in `docs/names.md` claims `format_name` \"trims whitespace and preserves capitalization.\" However, the implementation in `src/names.py` shows `format_name` calls `normalize()`, which applies `.strip().lower()`. While whitespace trimming is correct, `.lower()` destroys original capitalization instead of preserving it. Verdict: **mismatch**.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize(value), which returns value.strip().lower(). The .strip() call correctly trims whitespace, matching the first part of the claim. However, the .lower() call converts all characters to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name lowercases the input rather than preserving its original capitalization."
+          ],
+          "expected": "one explanation citing src/names.py and format_name"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:36:47.443922Z",
+      "duration_ms": 14210,
+      "usage": {
+        "input_tokens": 2563,
+        "output_tokens": 704,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 3
+      },
+      "turns": [
+        {
+          "uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:36:47.735484Z",
+          "completed_at": "2026-10-25T03:37:01.636388Z",
+          "created_at": "2026-10-25T03:36:47.734489Z",
+          "updated_at": "2026-10-25T03:37:01.636388Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17121-df76-791f-b09f-a5f5afa6dcbc",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:47.734489Z"
+        },
+        {
+          "uuid": "01a17121-e738-7a9e-a979-e679bb43274d",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-e738-748c-a3f6-850ee7ae57cc",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-df78-7c11-a676-8cc5bbf32bdf"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:49.72057Z"
+        },
+        {
+          "uuid": "01a17121-e739-74e5-bd5f-5c5781c02453",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-e738-76e5-99aa-bf96fae58534",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-df78-7c11-a676-8cc5bbf32bdf"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:49.72057Z"
+        },
+        {
+          "uuid": "01a17121-e73f-72b7-9609-6dc1c65f8ba3",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function trims whitespace and preserves capitalization.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-e738-748c-a3f6-850ee7ae57cc",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-df78-7c11-a676-8cc5bbf32bdf"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:49.727159Z"
+        },
+        {
+          "uuid": "01a17121-e745-77b4-af1e-d89f1744d69f",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17121-e738-76e5-99aa-bf96fae58534",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17121-df78-7c11-a676-8cc5bbf32bdf"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:49.733483Z"
+        },
+        {
+          "uuid": "01a17122-0c3e-7718-a867-2a5aab25fb04",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"explanation\": \"docs/names.md claims that format_name \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, format_name delegates to normalize(value), which returns value.strip().lower(). The .strip() call correctly trims whitespace, matching the first part of the claim. However, the .lower() call converts all characters to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name lowercases the input rather than preserving its original capitalization.\", \"verdict\": \"mismatch\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-0c3e-75b4-8a1c-68d627c384e4",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-e74b-72bb-8c62-31cc7b6d26d6"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:59.198419Z"
+        },
+        {
+          "uuid": "01a17122-0c43-753b-b8e9-7f9d2a72d91b",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"docs/names.md claims that format_name \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, format_name delegates to normalize(value), which returns value.strip().lower(). The .strip() call correctly trims whitespace, matching the first part of the claim. However, the .lower() call converts all characters to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name lowercases the input rather than preserving its original capitalization.\",\"verdict\":\"mismatch\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-0c3e-75b4-8a1c-68d627c384e4",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17121-e74b-72bb-8c62-31cc7b6d26d6"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:36:59.203334Z"
+        },
+        {
+          "uuid": "01a17122-15c4-7603-9dd5-9499e2f6184f",
+          "thread_uuid": "01a17121-df6d-713c-88f8-ad6f5fc36aa4",
+          "turn_uuid": "01a17121-df76-777a-afa6-40c2223d8ec6",
+          "run_uuid": "01a17121-df76-777d-9149-e4d7ac1a6ed3",
+          "sequence": 8,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "**Summary:** The documentation in `docs/names.md` claims `format_name` \"trims whitespace and preserves capitalization.\" However, the implementation in `src/names.py` shows `format_name` calls `normalize()`, which applies `.strip().lower()`. While whitespace trimming is correct, `.lower()` destroys original capitalization instead of preserving it. Verdict: **mismatch**.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-0c45-741a-a67d-c771acf879fb"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:01.636388Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function trims whitespace and preserves capitalization.",
+          "started_at": "2026-10-25T03:36:49.722685Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+          "started_at": "2026-10-25T03:36:49.728861Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize(value), which returns value.strip().lower(). The .strip() call correctly trims whitespace, matching the first part of the claim. However, the .lower() call converts all characters to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name lowercases the input rather than preserving its original capitalization.",
+            "verdict": "mismatch"
+          },
+          "result": {
+            "explanation": "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize(value), which returns value.strip().lower(). The .strip() call correctly trims whitespace, matching the first part of the claim. However, the .lower() call converts all characters to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name lowercases the input rather than preserving its original capitalization.",
+            "verdict": "mismatch"
+          },
+          "started_at": "2026-10-25T03:36:59.198959Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function trims whitespace and preserves capitalization.",
+        "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "a2179fb69ed320837cbc64ea6fe7e904292862e967079ea8de1e09fa132dcf7b"
+    },
+    {
+      "task": {
+        "case_slug": "batch-task",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "All done. Here's a summary of what was accomplished:\n\n- **Record A** (`records/a.json`): amount = 12\n- **Record B** (`records/b.json`): amount = 30\n- **Sum**: 12 + 30 = **42**\n- **Count**: 2 records\n\n**`summary.json`** was written and verified with the contents:\n```json\n{\"total\": 42, \"count\": 2}\n```\n\nThe source files (`records/a.json` and `records/b.json`) remain unchanged.",
+      "scores": [
+        {
+          "name": "aggregate",
+          "value": 1,
+          "basis": "aggregate",
+          "observed": {
+            "count": 2,
+            "total": 42
+          },
+          "expected": {
+            "count": 2,
+            "total": 42
+          }
+        },
+        {
+          "name": "source_a_preserved",
+          "value": 1,
+          "basis": "source a preserved",
+          "observed": "{\"amount\":12}",
+          "expected": "{\"amount\":12}"
+        },
+        {
+          "name": "source_b_preserved",
+          "value": 1,
+          "basis": "source b preserved",
+          "observed": "{\"amount\":30}",
+          "expected": "{\"amount\":30}"
+        },
+        {
+          "name": "verification",
+          "value": 1,
+          "basis": "verification",
+          "observed": 1,
+          "expected": "at least one matching call"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:37:01.672186Z",
+      "duration_ms": 14112,
+      "usage": {
+        "input_tokens": 4412,
+        "output_tokens": 549,
+        "cached_input_tokens": 2048,
+        "cost_usd": null,
+        "requests": 6
+      },
+      "turns": [
+        {
+          "uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read both records, sum their amounts, and write summary.json as a JSON object with total and count. Do not change the source files. Then read summary.json to verify it.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:01.939129Z",
+          "completed_at": "2026-10-25T03:37:15.768733Z",
+          "created_at": "2026-10-25T03:37:01.938251Z",
+          "updated_at": "2026-10-25T03:37:15.768733Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17122-16f2-758d-afcc-726196300343",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read both records, sum their amounts, and write summary.json as a JSON object with total and count. Do not change the source files. Then read summary.json to verify it.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:01.938251Z"
+        },
+        {
+          "uuid": "01a17122-1b93-762a-b630-75fc8f27d153",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-1b93-7246-84c4-077eccf10859",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-16f4-7484-8bd2-f588de14ccf7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:03.123275Z"
+        },
+        {
+          "uuid": "01a17122-1b9a-7e30-9319-7121a29647cc",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"records/a.json\",\"records/b.json\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-1b93-7246-84c4-077eccf10859",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-16f4-7484-8bd2-f588de14ccf7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:03.130912Z"
+        },
+        {
+          "uuid": "01a17122-22f4-737e-916a-973fd2e834a6",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/a.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-22f3-7f23-929e-961c390d7693",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-1b9e-778d-a32b-8e90535a93f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:05.012159Z"
+        },
+        {
+          "uuid": "01a17122-22f4-78be-bc49-fd766675b34c",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 5,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/b.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-22f4-714c-a19f-3022e055bc8d",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-1b9e-778d-a32b-8e90535a93f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:05.012159Z"
+        },
+        {
+          "uuid": "01a17122-22fa-7a41-99a2-dc64702df213",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 6,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":12}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-22f3-7f23-929e-961c390d7693",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-1b9e-778d-a32b-8e90535a93f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:05.018663Z"
+        },
+        {
+          "uuid": "01a17122-2300-7989-bfbf-d5335b310284",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":30}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-22f4-714c-a19f-3022e055bc8d",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-1b9e-778d-a32b-8e90535a93f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:05.024617Z"
+        },
+        {
+          "uuid": "01a17122-2b61-7278-b019-17ae4f2e9b69",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\\"total\\\":42,\\\"count\\\":2}\", \"path\": \"summary.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-2b60-7f3e-9d6a-7467d138679e",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-2303-775e-a1db-fbcef5662cf0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:07.169077Z"
+        },
+        {
+          "uuid": "01a17122-2b66-7b33-96a4-a4302acfd64c",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-2b60-7f3e-9d6a-7467d138679e",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-2303-775e-a1db-fbcef5662cf0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:07.17472Z"
+        },
+        {
+          "uuid": "01a17122-3114-7ad1-9dc8-faecd6b17e00",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"summary.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-3114-794e-86c4-d774451169db",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 4,
+            "request_uuid": "01a17122-2b69-7e82-a65c-c6c376914b7d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:08.628663Z"
+        },
+        {
+          "uuid": "01a17122-3119-7b5e-8715-c9b929f09a26",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"total\\\":42,\\\"count\\\":2}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-3114-794e-86c4-d774451169db",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 4,
+            "request_uuid": "01a17122-2b69-7e82-a65c-c6c376914b7d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:08.63374Z"
+        },
+        {
+          "uuid": "01a17122-415d-7a64-a122-02829810a036",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/a.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-415d-77d3-ad40-a5ffcc4a7a76",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-311b-7557-9be7-ae2d2db46fd0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:12.797633Z"
+        },
+        {
+          "uuid": "01a17122-415d-7d98-95c0-21dcee69811f",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 13,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/b.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-415d-78f1-937d-248603653c46",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-311b-7557-9be7-ae2d2db46fd0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:12.797633Z"
+        },
+        {
+          "uuid": "01a17122-4165-761a-beea-e404f5afea11",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 14,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":12}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-415d-77d3-ad40-a5ffcc4a7a76",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-311b-7557-9be7-ae2d2db46fd0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:12.805392Z"
+        },
+        {
+          "uuid": "01a17122-416d-75bc-9edc-8f067cec761c",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 15,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":30}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-415d-78f1-937d-248603653c46",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-311b-7557-9be7-ae2d2db46fd0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:12.813354Z"
+        },
+        {
+          "uuid": "01a17122-4cf8-7b37-871c-cae33aeffa1a",
+          "thread_uuid": "01a17122-16ec-7b8d-8e00-48074a20c0a1",
+          "turn_uuid": "01a17122-16f2-73dc-861b-e1423a787c34",
+          "run_uuid": "01a17122-16f2-73dd-908a-36a4b101f2fa",
+          "sequence": 16,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "All done. Here's a summary of what was accomplished:\n\n- **Record A** (`records/a.json`): amount = 12\n- **Record B** (`records/b.json`): amount = 30\n- **Sum**: 12 + 30 = **42**\n- **Count**: 2 records\n\n**`summary.json`** was written and verified with the contents:\n```json\n{\"total\": 42, \"count\": 2}\n```\n\nThe source files (`records/a.json` and `records/b.json`) remain unchanged.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 6,
+            "request_uuid": "01a17122-4170-75ad-9442-b3b0ce7b91fa"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:15.768733Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "records/a.json",
+              "records/b.json"
+            ]
+          },
+          "started_at": "2026-10-25T03:37:03.125645Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/a.json"
+          },
+          "result": "{\"amount\":12}",
+          "started_at": "2026-10-25T03:37:05.013439Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/b.json"
+          },
+          "result": "{\"amount\":30}",
+          "started_at": "2026-10-25T03:37:05.019689Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\"total\":42,\"count\":2}",
+            "path": "summary.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:37:07.170322Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "summary.json"
+          },
+          "result": "{\"total\":42,\"count\":2}",
+          "started_at": "2026-10-25T03:37:08.629253Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/a.json"
+          },
+          "result": "{\"amount\":12}",
+          "started_at": "2026-10-25T03:37:12.798448Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/b.json"
+          },
+          "result": "{\"amount\":30}",
+          "started_at": "2026-10-25T03:37:12.806117Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "records/a.json": "{\"amount\":12}",
+        "records/b.json": "{\"amount\":30}",
+        "summary.json": "{\"total\":42,\"count\":2}"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "59d324d4a03676d7dc1ecda7561f2ef25b5a181a69680b58dc44e09b79ed5ec7"
+    },
+    {
+      "task": {
+        "case_slug": "configure-provider",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "Here is the probe response from the loaded provider runtime:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `chat_completions` |\n| **valid_request_received** | `true` |\n| **input_tokens** | 4 |\n| **output_tokens** | 3 |\n\nThe provider runtime is healthy — it received the `ping` request and responded with `pong`, confirming the Acme provider is correctly configured and operational.",
+      "scores": [
+        {
+          "name": "runtime_request",
+          "value": 1,
+          "basis": "runtime request",
+          "observed": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "chat_completions",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "expected": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "chat_completions",
+            "text": "pong",
+            "valid_request_received": true
+          }
+        },
+        {
+          "name": "verified",
+          "value": 1,
+          "basis": "verified",
+          "observed": 2,
+          "expected": "at least one matching call"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:37:15.813826Z",
+      "duration_ms": 28157,
+      "usage": {
+        "input_tokens": 10194,
+        "output_tokens": 1198,
+        "cached_input_tokens": 4864,
+        "cost_usd": null,
+        "requests": 9
+      },
+      "turns": [
+        {
+          "uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/api.md and configure the provider runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:16.11121Z",
+          "completed_at": "2026-10-25T03:37:38.590377Z",
+          "created_at": "2026-10-25T03:37:16.110208Z",
+          "updated_at": "2026-10-25T03:37:38.590377Z"
+        },
+        {
+          "uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Probe the loaded runtime with ping and report the response.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:38.622822Z",
+          "completed_at": "2026-10-25T03:37:43.943369Z",
+          "created_at": "2026-10-25T03:37:38.621832Z",
+          "updated_at": "2026-10-25T03:37:43.943369Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17122-4e4e-7553-89d1-4eb231dc290f",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/api.md and configure the provider runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:16.110208Z"
+        },
+        {
+          "uuid": "01a17122-55f2-723e-a2f5-858fd36a7227",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/api.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-55f1-7e30-8aeb-804be83c5334",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-4e50-77df-a833-adf073ec85f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:18.06603Z"
+        },
+        {
+          "uuid": "01a17122-55f8-7e09-a10e-d60ec8c48cdd",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"Create config/provider.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"chat_completions\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"provider\\\" input=\\\"ping\\\" sends a simulated request. \",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-55f1-7e30-8aeb-804be83c5334",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-4e50-77df-a833-adf073ec85f4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:18.072902Z"
+        },
+        {
+          "uuid": "01a17122-5fd7-7e92-89da-5c52bb60f4e5",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"{}\": \"\"}",
+          "content_format": "json",
+          "status": "failed",
+          "tool_call_uuid": "01a17122-5fd7-7dea-9610-dc94018c2dfc",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "error_code": "agent_tool_validation_failed",
+            "purpose": "eval_list",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-55fd-7468-96c3-d090e28747aa",
+            "validation_repair": true
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:20.599913Z"
+        },
+        {
+          "uuid": "01a17122-5fd8-720b-8e2f-264e858646c6",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"unknown field {}\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-5fd7-7dea-9610-dc94018c2dfc",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "error_code": "agent_tool_validation_failed",
+            "purpose": "eval_list",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-55fd-7468-96c3-d090e28747aa",
+            "validation_repair": true
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:20.599913Z"
+        },
+        {
+          "uuid": "01a17122-6598-7923-abe7-574b54d81f84",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-6598-762a-8976-325742c91273",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-5fdd-7d2f-9e72-96b4acb61b5c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:22.072501Z"
+        },
+        {
+          "uuid": "01a17122-65a1-7dee-80a8-1e6d6602a740",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"docs/api.md\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-6598-762a-8976-325742c91273",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-5fdd-7d2f-9e72-96b4acb61b5c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:22.081898Z"
+        },
+        {
+          "uuid": "01a17122-77b4-720b-851d-6b57a1d08dc3",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\n  \\\"endpoint\\\": \\\"fixture://acme\\\",\\n  \\\"protocol\\\": \\\"chat_completions\\\",\\n  \\\"credential_env\\\": \\\"ACME_KEY\\\",\\n  \\\"model\\\": \\\"acme-chat\\\"\\n}\", \"path\": \"config/provider.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-77b3-7d3e-afd3-396418a3d4eb",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 4,
+            "request_uuid": "01a17122-65a5-7c73-acdf-78114945e058"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:26.708004Z"
+        },
+        {
+          "uuid": "01a17122-77c1-7831-ae49-286cde145f19",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-77b3-7d3e-afd3-396418a3d4eb",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 4,
+            "request_uuid": "01a17122-65a5-7c73-acdf-78114945e058"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:26.721516Z"
+        },
+        {
+          "uuid": "01a17122-7ca3-7603-a8dc-b5e3f7684618",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-7ca3-7301-af84-a384697e5d97",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "purpose": "eval_reload",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-77c6-7ec5-ad8c-2b2ef7310d7a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:27.971284Z"
+        },
+        {
+          "uuid": "01a17122-7caf-7753-bfe0-4d020b836136",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-7ca3-7301-af84-a384697e5d97",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "method": "",
+            "purpose": "eval_reload",
+            "request_ordinal": 5,
+            "request_uuid": "01a17122-77c6-7ec5-ad8c-2b2ef7310d7a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:27.983467Z"
+        },
+        {
+          "uuid": "01a17122-8d70-7079-aab3-2bb7d04857c6",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"ping\", \"target\": \"provider\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-8d6f-7e1d-a78b-031664ce4072",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 6,
+            "request_uuid": "01a17122-7cb7-7a44-a185-ee0429dcda17"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:32.271975Z"
+        },
+        {
+          "uuid": "01a17122-8d81-722a-af57-daac7e211d0a",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 13,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"chat_completions\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-8d6f-7e1d-a78b-031664ce4072",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 6,
+            "request_uuid": "01a17122-7cb7-7a44-a185-ee0429dcda17"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:32.289131Z"
+        },
+        {
+          "uuid": "01a17122-a61e-75c8-9502-c0f88fd5ea90",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-4e4e-7334-b43b-5687c0077513",
+          "run_uuid": "01a17122-4e4e-7335-b11f-62d2ef3922dd",
+          "sequence": 14,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The provider runtime for Acme has been configured and verified. Here's a summary of what was done:\n\n1. **Read `docs/api.md`** — it specified the required configuration values.\n2. **Created `config/provider.json`** with the following configuration:\n   - `\"endpoint\": \"fixture://acme\"`\n   - `\"protocol\": \"chat_completions\"`\n   - `\"credential_env\": \"ACME_KEY\"` — references the environment variable (no literal credential is stored in the file)\n   - `\"model\": \"acme-chat\"`\n3. **Reloaded the configuration** — loaded successfully with zero errors.\n4. **Probed the provider** (`target=\"provider\"`, `input=\"ping\"`) — received a valid response (`\"pong\"`) confirming the provider runtime is operational with the `acme-chat` model using the `chat_completions` protocol.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 7,
+            "request_uuid": "01a17122-8d86-7ec5-beab-ad9efc8d1d12"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:38.590377Z"
+        },
+        {
+          "uuid": "01a17122-a63d-7edc-8b56-c539b90dd810",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+          "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+          "sequence": 15,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Probe the loaded runtime with ping and report the response.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:38.621832Z"
+        },
+        {
+          "uuid": "01a17122-af8d-7c87-b732-70ec3c9539c9",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+          "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+          "sequence": 16,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"ping\", \"target\": \"provider\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-af8d-7985-889f-3c8c76f458f3",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-a641-737e-9867-37c082def850"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:41.005725Z"
+        },
+        {
+          "uuid": "01a17122-af94-7d52-af4f-ec577f212779",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+          "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+          "sequence": 17,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"chat_completions\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-af8d-7985-889f-3c8c76f458f3",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-a641-737e-9867-37c082def850"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:41.012855Z"
+        },
+        {
+          "uuid": "01a17122-bb07-75b1-bc37-6890cfade608",
+          "thread_uuid": "01a17122-4e3c-7aa2-9136-9026ba121791",
+          "turn_uuid": "01a17122-a63d-7cb9-a585-3740a2252c32",
+          "run_uuid": "01a17122-a63d-7cba-a187-01dff499df74",
+          "sequence": 18,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "Here is the probe response from the loaded provider runtime:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `chat_completions` |\n| **valid_request_received** | `true` |\n| **input_tokens** | 4 |\n| **output_tokens** | 3 |\n\nThe provider runtime is healthy — it received the `ping` request and responded with `pong`, confirming the Acme provider is correctly configured and operational.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-af9b-716b-bc93-f2ae854b93cc"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:43.943369Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/api.md"
+          },
+          "result": "Create config/provider.json with endpoint=\"fixture://acme\", protocol=\"chat_completions\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"provider\" input=\"ping\" sends a simulated request. ",
+          "started_at": "2026-10-25T03:37:18.067418Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "docs/api.md"
+            ]
+          },
+          "started_at": "2026-10-25T03:37:22.073634Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"chat_completions\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\"\n}",
+            "path": "config/provider.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:37:26.710693Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_reload",
+          "arguments": {},
+          "result": {
+            "errors": [],
+            "loaded": 1
+          },
+          "started_at": "2026-10-25T03:37:27.972889Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "ping",
+            "target": "provider"
+          },
+          "result": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "chat_completions",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "started_at": "2026-10-25T03:37:32.275197Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "ping",
+            "target": "provider"
+          },
+          "result": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "chat_completions",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "started_at": "2026-10-25T03:37:41.007281Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "config/provider.json": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"chat_completions\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\"\n}",
+        "docs/api.md": "Create config/provider.json with endpoint=\"fixture://acme\", protocol=\"chat_completions\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"provider\" input=\"ping\" sends a simulated request. "
+      },
+      "active_configuration": {
+        "config/provider.json": {
+          "credential_env": "ACME_KEY",
+          "endpoint": "fixture://acme",
+          "model": "acme-chat",
+          "protocol": "chat_completions"
+        }
+      },
+      "reload_errors": [],
+      "trace_sha256": "0fa3587658b38ad3f0a2480002d29b40a9638b36be4633a66bf4c579604ec236"
+    },
+    {
+      "task": {
+        "case_slug": "context-handoff",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "ALPHA-17:south",
+      "scores": [
+        {
+          "name": "continuity",
+          "value": 1,
+          "basis": "continuity",
+          "observed": "ALPHA-17:south",
+          "expected": "ALPHA-17:south"
+        },
+        {
+          "name": "updated_state",
+          "value": 1,
+          "basis": "updated state",
+          "observed": {
+            "code": "ALPHA-17",
+            "destination": "south"
+          },
+          "expected": {
+            "code": "ALPHA-17",
+            "destination": "south"
+          }
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:37:43.993448Z",
+      "duration_ms": 22638,
+      "usage": {
+        "input_tokens": 7176,
+        "output_tokens": 942,
+        "cached_input_tokens": 2048,
+        "cost_usd": null,
+        "requests": 9
+      },
+      "turns": [
+        {
+          "uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Remember the delivery code ALPHA-17 and destination north. Save these facts in notes.json as code and destination.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:44.273487Z",
+          "completed_at": "2026-10-25T03:37:53.295723Z",
+          "created_at": "2026-10-25T03:37:44.27255Z",
+          "updated_at": "2026-10-25T03:37:53.295723Z"
+        },
+        {
+          "uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Correction: destination is now south. Update notes.json, preserving the code.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:53.311191Z",
+          "completed_at": "2026-10-25T03:37:59.588438Z",
+          "created_at": "2026-10-25T03:37:53.308544Z",
+          "updated_at": "2026-10-25T03:37:59.588438Z"
+        },
+        {
+          "uuid": "01a17122-f831-7046-a79e-e7793198cdd5",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "source_type": "prompt",
+          "queue_sequence": 3,
+          "input_text": "Read notes.json and reply with exactly ALPHA-17:south.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:37:59.601928Z",
+          "completed_at": "2026-10-25T03:38:06.604284Z",
+          "created_at": "2026-10-25T03:37:59.601005Z",
+          "updated_at": "2026-10-25T03:38:06.604284Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17122-bc50-7a16-9b06-afbca7227ebf",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Remember the delivery code ALPHA-17 and destination north. Save these facts in notes.json as code and destination.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:44.27255Z"
+        },
+        {
+          "uuid": "01a17122-c5ee-701b-9dc6-b1921e412aca",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-c5ed-7c54-baa9-8f9f99caf4d9",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-bc52-7b1f-846a-3dcd294c5d1a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:46.733907Z"
+        },
+        {
+          "uuid": "01a17122-c5f4-79fa-9294-584045e4899a",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":null,\"error\":{\"code\":\"not_found\",\"details\":\"\",\"message\":\"File does not exist\"},\"success\":false}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-c5ed-7c54-baa9-8f9f99caf4d9",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-bc52-7b1f-846a-3dcd294c5d1a"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:46.74064Z"
+        },
+        {
+          "uuid": "01a17122-d008-7543-a928-c4e9e247e9ef",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"north\\\"\\n}\", \"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-d008-7101-807b-bdf241ff3fb4",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-c5f8-703e-b05b-3077dac0a1e3"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:49.32018Z"
+        },
+        {
+          "uuid": "01a17122-d010-761a-9962-316b0071cab3",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-d008-7101-807b-bdf241ff3fb4",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-c5f8-703e-b05b-3077dac0a1e3"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:49.328356Z"
+        },
+        {
+          "uuid": "01a17122-d6ac-700b-950d-7531dd771d27",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-d6ab-7c5c-b01d-e87e6a76c8d1",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-d015-7991-ba95-9217245ba1e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:51.019905Z"
+        },
+        {
+          "uuid": "01a17122-d6b1-79d3-972f-ff9498e3db8b",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"north\\\"\\n}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-d6ab-7c5c-b01d-e87e6a76c8d1",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-d015-7991-ba95-9217245ba1e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:51.025633Z"
+        },
+        {
+          "uuid": "01a17122-df8f-7b27-9395-d51e8816c273",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-bc50-786c-9831-6eff406a8992",
+          "run_uuid": "01a17122-bc50-786d-bf19-c924a90bfcd9",
+          "sequence": 8,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The file `notes.json` has been created with the following contents:\n\n```json\n{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"north\"\n}\n```\n\nBoth facts — delivery code **ALPHA-17** and destination **north** — have been saved successfully.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 4,
+            "request_uuid": "01a17122-d6b4-7d27-9a23-5d8e282198d2"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:53.295723Z"
+        },
+        {
+          "uuid": "01a17122-df9d-70f2-8b30-d87a43d045a3",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 9,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Correction: destination is now south. Update notes.json, preserving the code.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:53.308544Z"
+        },
+        {
+          "uuid": "01a17122-ea57-79ee-a1d2-9a3b1adf8134",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\", \"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-ea57-7595-b62f-5b4ac83de135",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-dfa3-71ff-b361-8cc0454d9c38"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:56.055547Z"
+        },
+        {
+          "uuid": "01a17122-ea5d-7b13-a7a3-813d8f3cfb31",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-ea57-7595-b62f-5b4ac83de135",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-dfa3-71ff-b361-8cc0454d9c38"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:56.061712Z"
+        },
+        {
+          "uuid": "01a17122-ef28-791c-aae7-96bf7c3c023b",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-ef28-758d-b34a-8b3a39c7cb6e",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-ea61-7f03-80b6-bd7819ff8030"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:57.288479Z"
+        },
+        {
+          "uuid": "01a17122-ef2e-7e21-97fc-b8d38f083512",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 13,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17122-ef28-758d-b34a-8b3a39c7cb6e",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17122-ea61-7f03-80b6-bd7819ff8030"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:57.294896Z"
+        },
+        {
+          "uuid": "01a17122-f824-76c6-8036-8a0446956477",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-df9c-786c-aca9-ad4298a379de",
+          "run_uuid": "01a17122-df9c-7870-8e08-454e6e5b3a1c",
+          "sequence": 14,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "Done. The destination has been updated to **south** while the code **ALPHA-17** remains unchanged. The file now contains:\n\n```json\n{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}\n```",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 3,
+            "request_uuid": "01a17122-ef35-7d42-804d-d0a659acfdef"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:59.588438Z"
+        },
+        {
+          "uuid": "01a17122-f831-72af-a937-f183d11fa468",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-f831-7046-a79e-e7793198cdd5",
+          "run_uuid": "01a17122-f831-704a-81e8-4c48cb477c4c",
+          "sequence": 15,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read notes.json and reply with exactly ALPHA-17:south.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:37:59.601005Z"
+        },
+        {
+          "uuid": "01a17123-0d52-7659-b4a5-333a7c1df969",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-f831-7046-a79e-e7793198cdd5",
+          "run_uuid": "01a17122-f831-704a-81e8-4c48cb477c4c",
+          "sequence": 16,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"notes.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-0d51-75dc-89b7-d03ebf595a2b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-f833-7b13-ac17-666f65c05852"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:05.010027Z"
+        },
+        {
+          "uuid": "01a17123-0d58-7f1b-9b1c-4969b97c5537",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-f831-7046-a79e-e7793198cdd5",
+          "run_uuid": "01a17122-f831-704a-81e8-4c48cb477c4c",
+          "sequence": 17,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-0d51-75dc-89b7-d03ebf595a2b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17122-f833-7b13-ac17-666f65c05852"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:05.016972Z"
+        },
+        {
+          "uuid": "01a17123-138c-7478-892c-b34f896db8ba",
+          "thread_uuid": "01a17122-bc4b-75bc-af06-6ec5357b1413",
+          "turn_uuid": "01a17122-f831-7046-a79e-e7793198cdd5",
+          "run_uuid": "01a17122-f831-704a-81e8-4c48cb477c4c",
+          "sequence": 18,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "ALPHA-17:south",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-0d5e-7651-a05f-4bdfeca93c56"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:06.604284Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "notes.json"
+          },
+          "result": null,
+          "error": "not_found",
+          "started_at": "2026-10-25T03:37:46.735192Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"north\"\n}",
+            "path": "notes.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:37:49.321991Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "notes.json"
+          },
+          "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"north\"\n}",
+          "started_at": "2026-10-25T03:37:51.021152Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+            "path": "notes.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:37:56.056902Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "notes.json"
+          },
+          "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+          "started_at": "2026-10-25T03:37:57.28994Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "notes.json"
+          },
+          "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+          "started_at": "2026-10-25T03:38:05.011882Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "notes.json": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "cf49775ee51ad6e4aeb40b2271a066d7255a70d3170b2250d062268031a1291c"
+    },
+    {
+      "task": {
+        "case_slug": "custom-stream-provider",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "scored",
+      "final": "The stream runtime probe succeeded. Here's the response:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `event_stream` |\n| **valid_request_received** | `true` |\n| **input_tokens** | `4` |\n| **output_tokens** | `3` |\n\nThe runtime correctly received the `ping` input, processed it through the `event_stream` protocol using the `acme-chat` model, and returned `pong` — confirming everything is working as expected.",
+      "scores": [
+        {
+          "name": "runtime_request",
+          "value": 1,
+          "basis": "runtime request",
+          "observed": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "event_stream",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "expected": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "event_stream",
+            "text": "pong",
+            "valid_request_received": true
+          }
+        },
+        {
+          "name": "verified",
+          "value": 1,
+          "basis": "verified",
+          "observed": 2,
+          "expected": "at least one matching call"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:38:06.657396Z",
+      "duration_ms": 23208,
+      "usage": {
+        "input_tokens": 9495,
+        "output_tokens": 1013,
+        "cached_input_tokens": 4992,
+        "cost_usd": null,
+        "requests": 8
+      },
+      "turns": [
+        {
+          "uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:38:06.948671Z",
+          "completed_at": "2026-10-25T03:38:24.393717Z",
+          "created_at": "2026-10-25T03:38:06.947715Z",
+          "updated_at": "2026-10-25T03:38:24.393717Z"
+        },
+        {
+          "uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Probe the loaded runtime with ping and report the response.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:38:24.41465Z",
+          "completed_at": "2026-10-25T03:38:29.847736Z",
+          "created_at": "2026-10-25T03:38:24.413809Z",
+          "updated_at": "2026-10-25T03:38:29.847736Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17123-14e3-7ce4-8270-eb6c981bb38a",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:06.947715Z"
+        },
+        {
+          "uuid": "01a17123-1d37-74be-9b0c-9fab1dee67e0",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/api.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-1d36-7e44-83fa-fc30f9145ed8",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:09.079198Z"
+        },
+        {
+          "uuid": "01a17123-1d37-7e8e-9612-0063eab2e9a0",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-1d37-7153-91c5-d625495b3180",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:09.079198Z"
+        },
+        {
+          "uuid": "01a17123-1d3e-7991-ad4d-a9177431f0da",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"Create config/stream.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"event_stream\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"stream\\\" input=\\\"ping\\\" sends a simulated request. Events contain {\\\"delta\\\":{\\\"text\\\":\\\"po\\\"}}, {\\\"delta\\\":{\\\"text\\\":\\\"ng\\\"}}, then event complete. Configure text_field=\\\"delta.text\\\" and done_event=\\\"complete\\\".\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-1d36-7e44-83fa-fc30f9145ed8",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:09.086608Z"
+        },
+        {
+          "uuid": "01a17123-1d45-77cc-b7c3-692abc233fd6",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"docs/api.md\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-1d37-7153-91c5-d625495b3180",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:09.09349Z"
+        },
+        {
+          "uuid": "01a17123-3902-792f-8a2a-1b0447784af6",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\n  \\\"endpoint\\\": \\\"fixture://acme\\\",\\n  \\\"protocol\\\": \\\"event_stream\\\",\\n  \\\"credential_env\\\": \\\"ACME_KEY\\\",\\n  \\\"model\\\": \\\"acme-chat\\\",\\n  \\\"text_field\\\": \\\"delta.text\\\",\\n  \\\"done_event\\\": \\\"complete\\\"\\n}\", \"path\": \"config/stream.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-3902-772b-9c1f-a6e716d48f69",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-1d4a-79cb-b2f3-4226f4783695"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:16.194537Z"
+        },
+        {
+          "uuid": "01a17123-3908-7298-b0b9-43d780b9acd7",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-3902-772b-9c1f-a6e716d48f69",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-1d4a-79cb-b2f3-4226f4783695"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:16.20016Z"
+        },
+        {
+          "uuid": "01a17123-3f55-7d07-8e20-979580f5ab42",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"config/stream.json\"}",
+          "content_format": "json",
+          "status": "failed",
+          "tool_call_uuid": "01a17123-3f55-7c77-9768-2744f72be95d",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "error_code": "agent_tool_validation_failed",
+            "purpose": "eval_reload",
+            "request_ordinal": 3,
+            "request_uuid": "01a17123-390b-760e-9f12-1ca8d5b34673",
+            "validation_repair": true
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:17.813819Z"
+        },
+        {
+          "uuid": "01a17123-3f56-740f-bb7c-3a29c05dd6ed",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"unknown field path\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-3f55-7c77-9768-2744f72be95d",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "error_code": "agent_tool_validation_failed",
+            "purpose": "eval_reload",
+            "request_ordinal": 3,
+            "request_uuid": "01a17123-390b-760e-9f12-1ca8d5b34673",
+            "validation_repair": true
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:17.813819Z"
+        },
+        {
+          "uuid": "01a17123-4543-7d59-9af5-9909bce0a1b1",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-4543-7a16-8be5-e87e7142ca5b",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17123-3f5c-76c6-97e7-c387e5280ba4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:19.33176Z"
+        },
+        {
+          "uuid": "01a17123-4549-727c-bb6f-6ee2dda35637",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-4543-7a16-8be5-e87e7142ca5b",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "method": "",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17123-3f5c-76c6-97e7-c387e5280ba4"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:19.337155Z"
+        },
+        {
+          "uuid": "01a17123-4b59-7b1f-b43c-aba763e535c7",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"ping\", \"target\": \"stream\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-4b59-77ac-aaad-b44eb1a89583",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17123-454b-768f-a610-516e2775430e"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:20.889612Z"
+        },
+        {
+          "uuid": "01a17123-4b5f-7b5e-b656-e9a471965e20",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 13,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"event_stream\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-4b59-77ac-aaad-b44eb1a89583",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17123-454b-768f-a610-516e2775430e"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:20.895721Z"
+        },
+        {
+          "uuid": "01a17123-5909-7afc-b986-7625ed40a213",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+          "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+          "sequence": 14,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The stream runtime for Acme is now configured and verified. Here's a summary:\n\n**Configuration written to `config/stream.json`:**\n- **endpoint**: `fixture://acme`\n- **protocol**: `event_stream`\n- **credential_env**: `ACME_KEY` (environment reference — no literal credential stored)\n- **model**: `acme-chat`\n- **text_field**: `delta.text`\n- **done_event**: `complete`\n\n**Verification results:**\n- ✅ Config reloaded successfully (0 errors)\n- ✅ Probe with `target=\"stream\"` and `input=\"ping\"` returned `text: \"pong\"` with `valid_request_received: true`, confirming the stream runtime is operational.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 6,
+            "request_uuid": "01a17123-4b6e-72de-b4c6-e80bafb02e4c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:24.393717Z"
+        },
+        {
+          "uuid": "01a17123-591d-7e92-9433-2b2ae544b7ef",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+          "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+          "sequence": 15,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Probe the loaded runtime with ping and report the response.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:24.413809Z"
+        },
+        {
+          "uuid": "01a17123-60f5-7301-b936-f116ce104fd0",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+          "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+          "sequence": 16,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"ping\", \"target\": \"stream\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-60f5-7046-a239-9cf9ef0d29d4",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-5920-7a93-96e5-202b59fef3a7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:26.42111Z"
+        },
+        {
+          "uuid": "01a17123-60fb-7e1d-8b29-30ee5d79993c",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+          "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+          "sequence": 17,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"event_stream\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-60f5-7046-a239-9cf9ef0d29d4",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-5920-7a93-96e5-202b59fef3a7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:26.42789Z"
+        },
+        {
+          "uuid": "01a17123-6e57-7b52-aff1-681b4d589ef6",
+          "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+          "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+          "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+          "sequence": 18,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The stream runtime probe succeeded. Here's the response:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `event_stream` |\n| **valid_request_received** | `true` |\n| **input_tokens** | `4` |\n| **output_tokens** | `3` |\n\nThe runtime correctly received the `ping` input, processed it through the `event_stream` protocol using the `acme-chat` model, and returned `pong` — confirming everything is working as expected.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-6102-75c8-9d37-d9de0f6c9c15"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:29.847736Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/api.md"
+          },
+          "result": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\".",
+          "started_at": "2026-10-25T03:38:09.081302Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "docs/api.md"
+            ]
+          },
+          "started_at": "2026-10-25T03:38:09.088138Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"event_stream\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\",\n  \"text_field\": \"delta.text\",\n  \"done_event\": \"complete\"\n}",
+            "path": "config/stream.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:38:16.195378Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_reload",
+          "arguments": {},
+          "result": {
+            "errors": [],
+            "loaded": 1
+          },
+          "started_at": "2026-10-25T03:38:19.332928Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "ping",
+            "target": "stream"
+          },
+          "result": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "event_stream",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "started_at": "2026-10-25T03:38:20.890926Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "ping",
+            "target": "stream"
+          },
+          "result": {
+            "input_tokens": 4,
+            "model": "acme-chat",
+            "output_tokens": 3,
+            "protocol": "event_stream",
+            "text": "pong",
+            "valid_request_received": true
+          },
+          "started_at": "2026-10-25T03:38:26.422365Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "config/stream.json": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"event_stream\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\",\n  \"text_field\": \"delta.text\",\n  \"done_event\": \"complete\"\n}",
+        "docs/api.md": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\"."
+      },
+      "active_configuration": {
+        "config/stream.json": {
+          "credential_env": "ACME_KEY",
+          "done_event": "complete",
+          "endpoint": "fixture://acme",
+          "model": "acme-chat",
+          "protocol": "event_stream",
+          "text_field": "delta.text"
+        }
+      },
+      "reload_errors": [],
+      "trace_sha256": "290f4ececc931ec3349762060c90a0b0d7e47f6507a08fc6125b5865dd609978"
+    },
+    {
+      "task": {
+        "case_slug": "extension-reload",
+        "repetition": 1
+      },
+      "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+      "status": "environment_error",
+      "final": "",
+      "scores": null,
+      "issues": [
+        {
+          "kind": "environment",
+          "code": "case_timeout_or_cancelled",
+          "message": "context canceled"
+        },
+        {
+          "kind": "environment",
+          "code": "cancelled",
+          "message": "请求已取消。"
+        }
+      ],
+      "started_at": "2026-10-25T03:38:29.884076Z",
+      "duration_ms": 77447,
+      "usage": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_input_tokens": null,
+        "cost_usd": null,
+        "requests": 6
+      },
+      "turns": [
+        {
+          "uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:38:30.169785Z",
+          "completed_at": "2026-10-25T03:38:42.662908Z",
+          "created_at": "2026-10-25T03:38:30.168889Z",
+          "updated_at": "2026-10-25T03:38:42.662908Z"
+        },
+        {
+          "uuid": "01a17123-a07c-761a-a0b0-c0b860b9d7eb",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Invoke the greeting extension for Bob. Respond with exactly its greeting.",
+          "status": "failed",
+          "error_code": "llm_cancelled",
+          "error_message": "请求已取消。",
+          "started_at": "2026-10-25T03:38:42.685308Z",
+          "completed_at": "2026-10-25T03:39:47.289216Z",
+          "created_at": "2026-10-25T03:38:42.684396Z",
+          "updated_at": "2026-10-25T03:39:47.289216Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17123-6f99-7042-bcd0-3c7bc43e7fe7",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:30.168889Z"
+        },
+        {
+          "uuid": "01a17123-7708-7e63-8686-bb9480683408",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/extensions.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-7708-7b69-9aa6-f657085f839e",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-6f9b-7255-88a5-530db5f1e72d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:32.072843Z"
+        },
+        {
+          "uuid": "01a17123-770f-7290-a603-fe5758eba115",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"A declarative greeting extension is config/hello.json with {\\\"template\\\":\\\"Hello, {name}!\\\"}. Reload loads the template. eval_probe target=\\\"hello\\\", input=\\u003cname\\u003e invokes it. No executable source is supported.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-7708-7b69-9aa6-f657085f839e",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17123-6f9b-7255-88a5-530db5f1e72d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:32.079141Z"
+        },
+        {
+          "uuid": "01a17123-82d0-707d-8e15-954315ac2766",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\\"template\\\":\\\"Hello, {name}!\\\"}\", \"path\": \"config/hello.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-82cf-7ea2-a0f7-7f42ff19b2b8",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-7713-7c8a-90e7-cc6a98872a11"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:35.087995Z"
+        },
+        {
+          "uuid": "01a17123-82d4-7660-a726-d79fadab98ff",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-82cf-7ea2-a0f7-7f42ff19b2b8",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 2,
+            "request_uuid": "01a17123-7713-7c8a-90e7-cc6a98872a11"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:35.092405Z"
+        },
+        {
+          "uuid": "01a17123-8af2-7714-999f-e3f155034b44",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-8af2-73a1-8768-ed014d0f6c72",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "purpose": "eval_reload",
+            "request_ordinal": 3,
+            "request_uuid": "01a17123-82d6-70de-bef4-51fc84c2cba5"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:37.170349Z"
+        },
+        {
+          "uuid": "01a17123-8af8-7dee-b79b-e62f4c96abcd",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-8af2-73a1-8768-ed014d0f6c72",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "method": "",
+            "purpose": "eval_reload",
+            "request_ordinal": 3,
+            "request_uuid": "01a17123-82d6-70de-bef4-51fc84c2cba5"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:37.176892Z"
+        },
+        {
+          "uuid": "01a17123-9118-7d8c-a01b-c088a3fa4f4a",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"Bob\", \"target\": \"hello\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-9118-79e7-b66b-3aacd82bc781",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 4,
+            "request_uuid": "01a17123-8afd-7aaa-aff7-acb87f046614"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:38.744765Z"
+        },
+        {
+          "uuid": "01a17123-911e-7849-8740-2fc716990d65",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"Hello, Bob!\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17123-9118-79e7-b66b-3aacd82bc781",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 4,
+            "request_uuid": "01a17123-8afd-7aaa-aff7-acb87f046614"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:38.750529Z"
+        },
+        {
+          "uuid": "01a17123-a066-7dea-91a2-fb3c3931b9c5",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-6f98-7d98-9a46-a525fdf87b1d",
+          "run_uuid": "01a17123-6f98-7d9c-b97d-a5c07335b983",
+          "sequence": 10,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The greeting extension has been created and verified. Here's what was done:\n\n1. **Read `docs/extensions.md`** — it specified that a declarative greeting extension is a `config/hello.json` file with `{\"template\":\"Hello, {name}!\"}`.\n2. **Created `config/hello.json`** with the template `{\"template\":\"Hello, {name}!\"}`.\n3. **Reloaded the configuration** — loaded successfully with no errors.\n4. **Verified** — `eval_probe` with `target=\"hello\"` and `input=\"Bob\"` returned **`Hello, Bob!`** ✅",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 5,
+            "request_uuid": "01a17123-9122-77a5-8a9d-12615ef88782"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:42.662908Z"
+        },
+        {
+          "uuid": "01a17123-a07c-78f1-ac5d-d0ff986c61ed",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-a07c-761a-a0b0-c0b860b9d7eb",
+          "run_uuid": "01a17123-a07c-761e-8df5-011da28cd88d",
+          "sequence": 11,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Invoke the greeting extension for Bob. Respond with exactly its greeting.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:38:42.684396Z"
+        },
+        {
+          "uuid": "01a17124-9cd9-734f-b969-a6d65b73feea",
+          "thread_uuid": "01a17123-6f92-76d2-b96d-edb9bc9d52f9",
+          "turn_uuid": "01a17123-a07c-761a-a0b0-c0b860b9d7eb",
+          "run_uuid": "01a17123-a07c-761e-8df5-011da28cd88d",
+          "sequence": 12,
+          "item_type": "error",
+          "role": "system",
+          "content": "请求已取消。",
+          "content_format": "text",
+          "status": "failed",
+          "metadata": {
+            "error_code": "llm_cancelled"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:39:47.289216Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/extensions.md"
+          },
+          "result": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported.",
+          "started_at": "2026-10-25T03:38:32.074361Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\"template\":\"Hello, {name}!\"}",
+            "path": "config/hello.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:38:35.088481Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_reload",
+          "arguments": {},
+          "result": {
+            "errors": [],
+            "loaded": 1
+          },
+          "started_at": "2026-10-25T03:38:37.171849Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "Bob",
+            "target": "hello"
+          },
+          "result": "Hello, Bob!",
+          "started_at": "2026-10-25T03:38:38.746091Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "config/hello.json": "{\"template\":\"Hello, {name}!\"}",
+        "docs/extensions.md": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported."
+      },
+      "active_configuration": {
+        "config/hello.json": {
+          "template": "Hello, {name}!"
+        }
+      },
+      "reload_errors": [],
+      "trace_sha256": "a73605acc2a6f6a62c88ff743b9c8d0e649c1ba187af72183a935154db329074"
+    }
+  ],
+  "cases": [
+    {
+      "slug": "add-model",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "registry": {
+          "n": 1,
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": null
+        },
+        "verified": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 29445,
+        "min": 29445,
+        "max": 29445,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 9415,
+        "min": 9415,
+        "max": 9415,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 1395,
+        "min": 1395,
+        "max": 1395,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-inconclusive",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 19710,
+        "min": 19710,
+        "max": 19710,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 3648,
+        "min": 3648,
+        "max": 3648,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 918,
+        "min": 918,
+        "max": 918,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-match",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 13885,
+        "min": 13885,
+        "max": 13885,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 2529,
+        "min": 2529,
+        "max": 2529,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 702,
+        "min": 702,
+        "max": 702,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-mismatch",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 14210,
+        "min": 14210,
+        "max": 14210,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 2563,
+        "min": 2563,
+        "max": 2563,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 704,
+        "min": 704,
+        "max": 704,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "batch-task",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "aggregate": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "source_a_preserved": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "source_b_preserved": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verification": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 14112,
+        "min": 14112,
+        "max": 14112,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 4412,
+        "min": 4412,
+        "max": 4412,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 549,
+        "min": 549,
+        "max": 549,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "configure-provider",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "runtime_request": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verified": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 28157,
+        "min": 28157,
+        "max": 28157,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 10194,
+        "min": 10194,
+        "max": 10194,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 1198,
+        "min": 1198,
+        "max": 1198,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "context-handoff",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "continuity": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "updated_state": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 22638,
+        "min": 22638,
+        "max": 22638,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 7176,
+        "min": 7176,
+        "max": 7176,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 942,
+        "min": 942,
+        "max": 942,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "custom-stream-provider",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "runtime_request": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verified": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 23208,
+        "min": 23208,
+        "max": 23208,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 9495,
+        "min": 9495,
+        "max": 9495,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 1013,
+        "min": 1013,
+        "max": 1013,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "extension-reload",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "greeting": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "invocation": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "loaded_tool": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 77447,
+        "min": 77447,
+        "max": 77447,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "missing-resource",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "honest_failure": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "single_attempt": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "repair-config",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "reload_diagnostic": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "repaired": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "valid_configuration": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "smoke",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "answer": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "status-footer",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "bar_correctness": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "layout_preservation": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "transient-tool",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "recovered_answer": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "retried": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    }
+  ]
+}
