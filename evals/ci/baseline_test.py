@@ -128,6 +128,18 @@ class BaselineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             b.config({'EVAL_BASE_URL': 'https://example.invalid', 'EVAL_MODEL': 'model', 'EVAL_REPETITIONS': '11'})
 
+    def test_downloaded_artifact_integrity(self):
+        (self.out / 'record.json').write_text('{"score":0}')
+        b.seal(self.out, '')
+        self.assertEqual(b.verify(self.out), 1)
+        (self.out / 'record.json').write_text('{"score":1}')
+        with self.assertRaisesRegex(ValueError, 'digest mismatch'):
+            b.verify(self.out)
+        (self.out / 'record.json').write_text('{"score":0}')
+        (self.out / 'extra.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'inventory'):
+            b.verify(self.out)
+
     def test_variation_and_invalid_metrics(self):
         stats = b.summarize([{'score': 0, 'status': 'scored'}, {'score': 1, 'status': 'scored'}], 2)
         self.assertEqual(stats['score']['stddev'], 0.5)

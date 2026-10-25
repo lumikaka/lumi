@@ -21,6 +21,7 @@ SCENARIOS = {
 }
 DIFFERENCES = [
     'Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.',
+    'The pinned pi source hydrates its ignored built-in model catalog from live upstream catalogs before building; the actual generated catalog and hashes are frozen in pi-model-catalog/.',
     'Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.',
     'System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.',
     'pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.',
@@ -111,12 +112,25 @@ def prepare(pi_dir, out, cfg):
         original.splitlines(True), adapted.splitlines(True), fromfile='a/packages/evals/src/harness.ts',
         tofile='b/packages/evals/src/harness.ts')))
     (evidence / 'lumi-ci-model.ts').write_text(adapter)
+    docker_path = pi_dir / 'packages/evals/docker/Dockerfile'
+    docker_original = docker_path.read_text()
+    build_anchor = '    && npm run build:offline \\\n'
+    if docker_original.count(build_anchor) != 1:
+        raise ValueError('pi Docker build insertion point changed.')
+    docker_adapted = docker_original.replace(build_anchor, '    && npm run hydrate:model-data \\\n' + build_anchor)
+    docker_path.write_text(docker_adapted)
+    (evidence / 'Dockerfile.patch').write_text(''.join(difflib.unified_diff(
+        docker_original.splitlines(True), docker_adapted.splitlines(True),
+        fromfile='a/packages/evals/docker/Dockerfile', tofile='b/packages/evals/docker/Dockerfile')))
     dump(evidence / 'source-lock.json', LOCK)
     dump(evidence / 'manifest.json', {
         'revision': LOCK['revision'], 'original_harness_sha256': sha(original.encode()),
         'adapted_harness_sha256': sha(adapted.encode()), 'adapter_sha256': sha(adapter.encode()),
         'model_config': model_config,
-        'scope': 'Only evaluator model registration; no Agent core, task, tool, judge or Docker isolation edits.',
+        'original_dockerfile_sha256': sha(docker_original.encode()),
+        'adapted_dockerfile_sha256': sha(docker_adapted.encode()),
+        'scope': 'Evaluator model registration plus official model-data hydration before offline build; no Agent core, task, tool, judge or Docker isolation edits.',
+        'catalog_source': 'Upstream hydrate:model-data reads live public catalogs. The generated data and manifest are exported from the actual image and frozen with the run.',
     })
 
 
@@ -336,6 +350,24 @@ def seal(out, key):
                                       for p in files if p.name != 'sha256-manifest.json'})
 
 
+def verify(out):
+    out = out.resolve()
+    manifest = read(out / 'sha256-manifest.json')
+    actual = {str(p.relative_to(out)) for p in out.rglob('*') if p.is_file()
+              and p != out / 'sha256-manifest.json'}
+    if set(manifest) != actual:
+        raise ValueError('Artifact file inventory differs from the sealed manifest.')
+    for name, digest in manifest.items():
+        path = out / name
+        if Path(name).is_absolute() or '..' in Path(name).parts or not path.resolve().is_relative_to(out):
+            raise ValueError('Unsafe artifact manifest path.')
+        if any(p.is_symlink() for p in [path, *path.parents]):
+            raise ValueError('Artifact manifest points through a symlink.')
+        if sha(path.read_bytes()) != digest:
+            raise ValueError(f'Artifact digest mismatch: {name}')
+    return len(manifest)
+
+
 def main():
     action = sys.argv[1]
     out = Path(os.environ['OUT'])
@@ -347,6 +379,8 @@ def main():
         report(out)
     elif action == 'seal':
         seal(out, os.environ.get('LUMI_EVAL_API_KEY', ''))
+    elif action == 'verify':
+        print(f'Verified {verify(out)} artifact files.')
     elif action == 'status':
         result = read(out / 'comparison.json')
         if result['blocked']:

@@ -28,6 +28,29 @@ func toolResponse(callID, name, args string) llm.ChatResponse {
 func finalResponse(text string) llm.ChatResponse {
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: text}, Usage: llm.Usage{InputKnown: true, OutputKnown: true, InputTokens: 10, OutputTokens: 2}}
 }
+
+func TestEmptyAgentTemplateRetainsGradeInsteadOfEnvironmentFailure(t *testing.T) {
+	var c Case
+	for _, candidate := range referenceCases(t) {
+		if candidate.Slug == "pi-prompt-template-project-without-docs" {
+			c = candidate
+		}
+	}
+	calls := 0
+	r := runOne(context.Background(), testConfig(), "digest", Task{CaseSlug: c.Slug, Repetition: 1}, c, filepath.Join(t.TempDir(), "run"), modelFunc(func(context.Context, llm.ChatRequest) (llm.ChatResponse, error) {
+		calls++
+		if calls == 1 {
+			return toolResponse("empty", "write", `{"path":"/eval/workspace/.pi/prompts/current-time.md","content":""}`), nil
+		}
+		return finalResponse("Done"), nil
+	}))
+	if r.Status != "agent_error" || len(r.Scores) != 1 || r.Scores[0].Value != 0 || len(r.Turns) != 1 || calls != 2 {
+		t.Fatalf("Empty model output was not preserved as a graded task failure: %+v", r)
+	}
+	if len(r.Issues) != 1 || r.Issues[0].Code != "empty_prompt_template" {
+		t.Fatalf("Missing explicit failure evidence: %+v", r.Issues)
+	}
+}
 func findCase(t *testing.T, slug string) Case {
 	t.Helper()
 	cases, err := LoadCases("", slug)

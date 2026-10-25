@@ -20,4 +20,21 @@ node --experimental-strip-types "$PI_DIR/packages/evals/src/cli.ts" \
   2>&1 | tee "$OUT/pi-console.txt"
 status=${PIPESTATUS[0]}
 echo "$status" > "$OUT/pi-exit-code.txt"
+# Freeze the actual built-in catalog, which the upstream checkout does not track.
+# Creating this container does not execute its entrypoint or any Agent code.
+prefix=$(python3 - <<'PY'
+import hashlib, os
+print('pi-evals-' + hashlib.sha256(os.environ['PI_DIR'].encode()).hexdigest()[:12])
+PY
+)
+image_name="${prefix}-with-docs:local"
+if docker image inspect "$image_name" >/dev/null 2>&1; then
+  catalog_container=$(docker create --entrypoint /bin/true "$image_name")
+  if ! docker cp "$catalog_container:/repo/node_modules/@earendil-works/pi-ai/dist/providers/data" "$OUT/pi-model-catalog"; then
+    echo 'Unable to preserve the native model catalog.' >&2
+    status=1
+    echo "$status" > "$OUT/pi-exit-code.txt"
+  fi
+  docker rm "$catalog_container" >/dev/null
+fi
 exit "$status"
