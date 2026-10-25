@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-25",
+  "commands": [
+    {
+      "command": "go test ./...",
+      "exit_code": 0,
+      "log": "go-test.txt",
+      "log_sha256": "0da323796211109622e0c87de680f8d35a3dd08bb2de665eb74c1bb5210126de"
+    },
+    {
+      "command": "go test ./internal/agentevals ./cmd/lumi_evals",
+      "exit_code": 0,
+      "note": "Re-run after final protocol and comparison changes."
+    },
+    {
+      "command": "go vet ./internal/agentevals ./internal/agent ./cmd/lumi_evals",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "main_real_run": "../2026-10-25-pi-reference-qwen3.7-plus",
+  "main_run_exit_code": 0,
+  "protocol_validation_run": "../2026-10-25-pi-reference-protocol-check",
+  "protocol_validation_exit_code": 0,
+  "comparison": "../2026-10-25-pi-historical-comparison",
+  "comparison_exit_code": 0,
+  "offline_rebuild_equal_except_relative_link": true,
+  "original_evidence_unchanged": true,
+  "pi_executed": false,
+  "rust_commands_executed": false,
+  "strict_agent_capability_delta_available": false
+}

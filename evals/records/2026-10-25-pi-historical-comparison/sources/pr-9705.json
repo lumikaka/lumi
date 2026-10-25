@@ -1,0 +1,17 @@
+{
+  "number": 9705,
+  "title": "feat(coding-agent): add TUI context footer eval",
+  "url": "https://github.com/earendil-works/pi/pull/9705",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-09-17T12:15:18Z",
+  "updated_at": "2026-09-17T12:21:33Z",
+  "head_sha": "1e3ead2f2bb941b56ebace206e1d781f58890c57",
+  "merge_commit_sha": "42cd371ba49ac2cd398de6a37bb06542792cf613",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "报告了离线检查和测试，没有公开该 TUI 用例的 Agent 分数。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

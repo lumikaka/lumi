@@ -1,0 +1,559 @@
+{
+  "task": {
+    "case_slug": "custom-stream-provider",
+    "repetition": 1
+  },
+  "protocol_digest": "79a74331ac2a3711e591d2fcbb520ca65436456027be0e2b641ea4a9f82e69f2",
+  "status": "scored",
+  "final": "The stream runtime probe succeeded. Here's the response:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `event_stream` |\n| **valid_request_received** | `true` |\n| **input_tokens** | `4` |\n| **output_tokens** | `3` |\n\nThe runtime correctly received the `ping` input, processed it through the `event_stream` protocol using the `acme-chat` model, and returned `pong` — confirming everything is working as expected.",
+  "scores": [
+    {
+      "name": "runtime_request",
+      "value": 1,
+      "basis": "runtime request",
+      "observed": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "event_stream",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "expected": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "event_stream",
+        "text": "pong",
+        "valid_request_received": true
+      }
+    },
+    {
+      "name": "verified",
+      "value": 1,
+      "basis": "verified",
+      "observed": 2,
+      "expected": "at least one matching call"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:38:06.657396Z",
+  "duration_ms": 23208,
+  "usage": {
+    "input_tokens": 9495,
+    "output_tokens": 1013,
+    "cached_input_tokens": 4992,
+    "cost_usd": null,
+    "requests": 8
+  },
+  "turns": [
+    {
+      "uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:38:06.948671Z",
+      "completed_at": "2026-10-25T03:38:24.393717Z",
+      "created_at": "2026-10-25T03:38:06.947715Z",
+      "updated_at": "2026-10-25T03:38:24.393717Z"
+    },
+    {
+      "uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Probe the loaded runtime with ping and report the response.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:38:24.41465Z",
+      "completed_at": "2026-10-25T03:38:29.847736Z",
+      "created_at": "2026-10-25T03:38:24.413809Z",
+      "updated_at": "2026-10-25T03:38:29.847736Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17123-14e3-7ce4-8270-eb6c981bb38a",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:06.947715Z"
+    },
+    {
+      "uuid": "01a17123-1d37-74be-9b0c-9fab1dee67e0",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/api.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-1d36-7e44-83fa-fc30f9145ed8",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:09.079198Z"
+    },
+    {
+      "uuid": "01a17123-1d37-7e8e-9612-0063eab2e9a0",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-1d37-7153-91c5-d625495b3180",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:09.079198Z"
+    },
+    {
+      "uuid": "01a17123-1d3e-7991-ad4d-a9177431f0da",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Create config/stream.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"event_stream\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"stream\\\" input=\\\"ping\\\" sends a simulated request. Events contain {\\\"delta\\\":{\\\"text\\\":\\\"po\\\"}}, {\\\"delta\\\":{\\\"text\\\":\\\"ng\\\"}}, then event complete. Configure text_field=\\\"delta.text\\\" and done_event=\\\"complete\\\".\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-1d36-7e44-83fa-fc30f9145ed8",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:09.086608Z"
+    },
+    {
+      "uuid": "01a17123-1d45-77cc-b7c3-692abc233fd6",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"docs/api.md\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-1d37-7153-91c5-d625495b3180",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "method": "",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-14e6-74a3-b784-61bbd19b36ca"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:09.09349Z"
+    },
+    {
+      "uuid": "01a17123-3902-792f-8a2a-1b0447784af6",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"endpoint\\\": \\\"fixture://acme\\\",\\n  \\\"protocol\\\": \\\"event_stream\\\",\\n  \\\"credential_env\\\": \\\"ACME_KEY\\\",\\n  \\\"model\\\": \\\"acme-chat\\\",\\n  \\\"text_field\\\": \\\"delta.text\\\",\\n  \\\"done_event\\\": \\\"complete\\\"\\n}\", \"path\": \"config/stream.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-3902-772b-9c1f-a6e716d48f69",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17123-1d4a-79cb-b2f3-4226f4783695"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:16.194537Z"
+    },
+    {
+      "uuid": "01a17123-3908-7298-b0b9-43d780b9acd7",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-3902-772b-9c1f-a6e716d48f69",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17123-1d4a-79cb-b2f3-4226f4783695"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:16.20016Z"
+    },
+    {
+      "uuid": "01a17123-3f55-7d07-8e20-979580f5ab42",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"config/stream.json\"}",
+      "content_format": "json",
+      "status": "failed",
+      "tool_call_uuid": "01a17123-3f55-7c77-9768-2744f72be95d",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "eval_reload",
+        "request_ordinal": 3,
+        "request_uuid": "01a17123-390b-760e-9f12-1ca8d5b34673",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:17.813819Z"
+    },
+    {
+      "uuid": "01a17123-3f56-740f-bb7c-3a29c05dd6ed",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"unknown field path\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-3f55-7c77-9768-2744f72be95d",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "eval_reload",
+        "request_ordinal": 3,
+        "request_uuid": "01a17123-390b-760e-9f12-1ca8d5b34673",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:17.813819Z"
+    },
+    {
+      "uuid": "01a17123-4543-7d59-9af5-9909bce0a1b1",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-4543-7a16-8be5-e87e7142ca5b",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a17123-3f5c-76c6-97e7-c387e5280ba4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:19.33176Z"
+    },
+    {
+      "uuid": "01a17123-4549-727c-bb6f-6ee2dda35637",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-4543-7a16-8be5-e87e7142ca5b",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a17123-3f5c-76c6-97e7-c387e5280ba4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:19.337155Z"
+    },
+    {
+      "uuid": "01a17123-4b59-7b1f-b43c-aba763e535c7",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"ping\", \"target\": \"stream\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-4b59-77ac-aaad-b44eb1a89583",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a17123-454b-768f-a610-516e2775430e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:20.889612Z"
+    },
+    {
+      "uuid": "01a17123-4b5f-7b5e-b656-e9a471965e20",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"event_stream\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-4b59-77ac-aaad-b44eb1a89583",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a17123-454b-768f-a610-516e2775430e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:20.895721Z"
+    },
+    {
+      "uuid": "01a17123-5909-7afc-b986-7625ed40a213",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-14e3-7aec-a061-3deb9ea3c4a6",
+      "run_uuid": "01a17123-14e3-7aed-90c9-ad5bc81cb18b",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The stream runtime for Acme is now configured and verified. Here's a summary:\n\n**Configuration written to `config/stream.json`:**\n- **endpoint**: `fixture://acme`\n- **protocol**: `event_stream`\n- **credential_env**: `ACME_KEY` (environment reference — no literal credential stored)\n- **model**: `acme-chat`\n- **text_field**: `delta.text`\n- **done_event**: `complete`\n\n**Verification results:**\n- ✅ Config reloaded successfully (0 errors)\n- ✅ Probe with `target=\"stream\"` and `input=\"ping\"` returned `text: \"pong\"` with `valid_request_received: true`, confirming the stream runtime is operational.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 6,
+        "request_uuid": "01a17123-4b6e-72de-b4c6-e80bafb02e4c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:24.393717Z"
+    },
+    {
+      "uuid": "01a17123-591d-7e92-9433-2b2ae544b7ef",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+      "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+      "sequence": 15,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Probe the loaded runtime with ping and report the response.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:24.413809Z"
+    },
+    {
+      "uuid": "01a17123-60f5-7301-b936-f116ce104fd0",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+      "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+      "sequence": 16,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"ping\", \"target\": \"stream\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-60f5-7046-a239-9cf9ef0d29d4",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-5920-7a93-96e5-202b59fef3a7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:26.42111Z"
+    },
+    {
+      "uuid": "01a17123-60fb-7e1d-8b29-30ee5d79993c",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+      "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+      "sequence": 17,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"input_tokens\":4,\"model\":\"acme-chat\",\"output_tokens\":3,\"protocol\":\"event_stream\",\"text\":\"pong\",\"valid_request_received\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17123-60f5-7046-a239-9cf9ef0d29d4",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 1,
+        "request_uuid": "01a17123-5920-7a93-96e5-202b59fef3a7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:26.42789Z"
+    },
+    {
+      "uuid": "01a17123-6e57-7b52-aff1-681b4d589ef6",
+      "thread_uuid": "01a17123-14dd-7616-90e1-d6c49db6b507",
+      "turn_uuid": "01a17123-591d-7c67-b06d-1cec2b6b75bd",
+      "run_uuid": "01a17123-591d-7c6b-be58-0f39df7d4af9",
+      "sequence": 18,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The stream runtime probe succeeded. Here's the response:\n\n| Field | Value |\n|---|---|\n| **text** | `pong` |\n| **model** | `acme-chat` |\n| **protocol** | `event_stream` |\n| **valid_request_received** | `true` |\n| **input_tokens** | `4` |\n| **output_tokens** | `3` |\n\nThe runtime correctly received the `ping` input, processed it through the `event_stream` protocol using the `acme-chat` model, and returned `pong` — confirming everything is working as expected.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 2,
+        "request_uuid": "01a17123-6102-75c8-9d37-d9de0f6c9c15"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:38:29.847736Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/api.md"
+      },
+      "result": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\".",
+      "started_at": "2026-10-25T03:38:09.081302Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_list",
+      "arguments": {},
+      "result": {
+        "items": [
+          "docs/api.md"
+        ]
+      },
+      "started_at": "2026-10-25T03:38:09.088138Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"event_stream\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\",\n  \"text_field\": \"delta.text\",\n  \"done_event\": \"complete\"\n}",
+        "path": "config/stream.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T03:38:16.195378Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T03:38:19.332928Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "ping",
+        "target": "stream"
+      },
+      "result": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "event_stream",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "started_at": "2026-10-25T03:38:20.890926Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "ping",
+        "target": "stream"
+      },
+      "result": {
+        "input_tokens": 4,
+        "model": "acme-chat",
+        "output_tokens": 3,
+        "protocol": "event_stream",
+        "text": "pong",
+        "valid_request_received": true
+      },
+      "started_at": "2026-10-25T03:38:26.422365Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/stream.json": "{\n  \"endpoint\": \"fixture://acme\",\n  \"protocol\": \"event_stream\",\n  \"credential_env\": \"ACME_KEY\",\n  \"model\": \"acme-chat\",\n  \"text_field\": \"delta.text\",\n  \"done_event\": \"complete\"\n}",
+    "docs/api.md": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\"."
+  },
+  "active_configuration": {
+    "config/stream.json": {
+      "credential_env": "ACME_KEY",
+      "done_event": "complete",
+      "endpoint": "fixture://acme",
+      "model": "acme-chat",
+      "protocol": "event_stream",
+      "text_field": "delta.text"
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "290f4ececc931ec3349762060c90a0b0d7e47f6507a08fc6125b5865dd609978"
+}

@@ -1,0 +1,24 @@
+{
+  "slug": "smoke",
+  "suite": "task",
+  "reference": "smoke.eval.ts",
+  "goal": "Answer a simple prompt with exact formatting.",
+  "initial_conditions": "No files, no tools, a fresh conversation.",
+  "observable_result": "answer",
+  "files": {},
+  "tools": [],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "What is the capital of France? Respond with only the city name."
+    }
+  ],
+  "checks": [
+    {
+      "name": "answer",
+      "kind": "final_equals",
+      "expected": "Paris",
+      "basis": "answer"
+    }
+  ]
+}

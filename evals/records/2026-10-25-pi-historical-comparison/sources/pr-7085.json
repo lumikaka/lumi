@@ -1,0 +1,17 @@
+{
+  "number": 7085,
+  "title": "feat(coding-agent): add vitest eval harness",
+  "url": "https://github.com/earendil-works/pi/pull/7085",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-07-24T19:56:19Z",
+  "updated_at": "2026-07-25T06:22:50Z",
+  "head_sha": "6a2668f0709855d8b799d0593370a866bbdc93c7",
+  "merge_commit_sha": "eafe11fb94fe7fcb89487da621a578278a6a67f1",
+  "comments": 1,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "创建评测框架，未提供可用的真实模型成绩。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

@@ -1,0 +1,17 @@
+{
+  "number": 7117,
+  "title": "feat(coding-agent): add extension creation eval",
+  "url": "https://github.com/earendil-works/pi/pull/7117",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-07-25T20:13:09Z",
+  "updated_at": "2026-07-27T15:05:11Z",
+  "head_sha": "b0864a66cdd758f80c2b8e1186b7f1710f66efd5",
+  "merge_commit_sha": "a597371bda2af70372d1323d550483b5f4a0ae36",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "作者报告执行 smoke 和扩展评测命令，没有公开分数与用量。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

@@ -1,0 +1,391 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 2
+  },
+  "protocol_digest": "bd74ae425b8dbb7a739d5c7ae4a44f8ad377b022c91dff59984ca7ff7d70bc0a",
+  "status": "scored",
+  "final": "I'm sorry, but I don't have access to any tools that can determine the current time or timezone. The available tools are limited to file operations (read, write, edit, find, grep, ls) and there is no shell execution or system clock access available in this environment.\n\nTo get the current time and timezone, you would need to check your local system clock or use a tool outside of this workspace environment.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 1,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T08:23:21.48225Z",
+  "duration_ms": 17391,
+  "usage": {
+    "input_tokens": 5477,
+    "output_tokens": 772,
+    "cached_input_tokens": 1536,
+    "cost_usd": null,
+    "requests": 5
+  },
+  "turns": [
+    {
+      "uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T08:23:21.759738Z",
+      "completed_at": "2026-10-25T08:23:35.269538Z",
+      "created_at": "2026-10-25T08:23:21.758793Z",
+      "updated_at": "2026-10-25T08:23:35.269538Z"
+    },
+    {
+      "uuid": "01a17228-7079-7a83-82b5-b45c05a28f31",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T08:23:35.290467Z",
+      "completed_at": "2026-10-25T08:23:38.861032Z",
+      "created_at": "2026-10-25T08:23:35.289687Z",
+      "updated_at": "2026-10-25T08:23:38.861032Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17228-3b9e-7dde-b1a7-d8ddda019f6d",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:21.758793Z"
+    },
+    {
+      "uuid": "01a17228-45fb-7e9a-8255-a3c9d98ebec8",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-45fb-7cd1-9a20-fb1a06fecc9e",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-3ba1-7426-972c-c8f431b704ff"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:24.411925Z"
+    },
+    {
+      "uuid": "01a17228-45fc-721e-b8e2-240c6b7991dc",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-45fb-7d8c-8ed5-37e57558f8fc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-3ba1-7426-972c-c8f431b704ff"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:24.411925Z"
+    },
+    {
+      "uuid": "01a17228-4602-741e-8a91-f2ecdf200c9c",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-45fb-7cd1-9a20-fb1a06fecc9e",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-3ba1-7426-972c-c8f431b704ff"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:24.418264Z"
+    },
+    {
+      "uuid": "01a17228-4607-70e6-ae80-523d44ee8470",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-45fb-7d8c-8ed5-37e57558f8fc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-3ba1-7426-972c-c8f431b704ff"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:24.423054Z"
+    },
+    {
+      "uuid": "01a17228-578b-7cbd-926e-6cc22204d124",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"Tell me the current time and timezone.\", \"path\": \"/eval/workspace/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-578b-7b8d-88a1-f7245a6b24f5",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-4608-7eb9-93ef-51d063286270"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:28.907796Z"
+    },
+    {
+      "uuid": "01a17228-5790-70cf-857c-329d5c92a7aa",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/workspace/.pi/prompts/current-time.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-578b-7b8d-88a1-f7245a6b24f5",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17228-4608-7eb9-93ef-51d063286270"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:28.912047Z"
+    },
+    {
+      "uuid": "01a17228-6328-7e53-a5e0-b62675a596a2",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-6328-7cec-80e1-bab29fb3ca6f",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 3,
+        "request_uuid": "01a17228-5791-7dcb-9071-bef01947c1d4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:31.88089Z"
+    },
+    {
+      "uuid": "01a17228-632d-739d-bb2f-94432927a43c",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Tell me the current time and timezone.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17228-6328-7cec-80e1-bab29fb3ca6f",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 3,
+        "request_uuid": "01a17228-5791-7dcb-9071-bef01947c1d4"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:31.88523Z"
+    },
+    {
+      "uuid": "01a17228-7065-783d-9433-4351cdfc1aa9",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-3b9e-7c2d-968d-800302a6a96f",
+      "run_uuid": "01a17228-3b9e-7c2e-8044-2a8523ec9156",
+      "sequence": 10,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I've created the `/current-time` prompt template at `/eval/workspace/.pi/prompts/current-time.md` with the exact content:\n\n```\nTell me the current time and timezone.\n```\n\nThis prompt template will be available as `/current-time` for this project.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 4,
+        "request_uuid": "01a17228-632f-7386-84d1-2c9372ab2117"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:35.269538Z"
+    },
+    {
+      "uuid": "01a17228-7079-7c3c-8f0f-4ccb1a852bc7",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-7079-7a83-82b5-b45c05a28f31",
+      "run_uuid": "01a17228-7079-7a87-bca5-af66c8e26d17",
+      "sequence": 11,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:35.289687Z"
+    },
+    {
+      "uuid": "01a17228-7e6d-7080-b1e7-be398e86598a",
+      "thread_uuid": "01a17228-3b96-759d-a7cc-3ad1435e9769",
+      "turn_uuid": "01a17228-7079-7a83-82b5-b45c05a28f31",
+      "run_uuid": "01a17228-7079-7a87-bca5-af66c8e26d17",
+      "sequence": 12,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I'm sorry, but I don't have access to any tools that can determine the current time or timezone. The available tools are limited to file operations (read, write, edit, find, grep, ls) and there is no shell execution or system clock access available in this environment.\n\nTo get the current time and timezone, you would need to check your local system clock or use a tool outside of this workspace environment.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 1,
+        "request_uuid": "01a17228-707c-73e8-ba51-7a7bf336676e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T08:23:38.861032Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:24.412657Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T08:23:24.418814Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "Tell me the current time and timezone.",
+        "path": "/eval/workspace/.pi/prompts/current-time.md"
+      },
+      "result": "Successfully wrote /eval/workspace/.pi/prompts/current-time.md",
+      "started_at": "2026-10-25T08:23:28.908317Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/workspace/.pi/prompts/current-time.md"
+      },
+      "result": "Tell me the current time and timezone.",
+      "started_at": "2026-10-25T08:23:31.881467Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "workspace/.pi/prompts/current-time.md": "Tell me the current time and timezone."
+  },
+  "active_configuration": {
+    "extensions": [],
+    "model_registry": {
+      "builtin-fixture": {
+        "id": "builtin-fixture",
+        "name": "Built-in fixture",
+        "provider": "openai"
+      }
+    },
+    "skills": [],
+    "templates": [
+      {
+        "body": "Tell me the current time and timezone.",
+        "name": "current-time",
+        "path": "workspace/.pi/prompts/current-time.md",
+        "scope": "project"
+      }
+    ]
+  },
+  "reload_errors": [],
+  "trace_sha256": "c6c7d70753c411de20403163f3533206f968073a16e3657e84e14c130efffc92"
+}

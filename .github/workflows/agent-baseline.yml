@@ -1,0 +1,120 @@
+name: Agent baseline (Lumi and pi)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "同一个 OpenAI-compatible 模型 ID"
+        required: true
+        default: qwen3.7-plus
+        type: string
+      base_url:
+        description: "API 地址；留空使用仓库变量 LUMI_EVAL_BASE_URL"
+        type: string
+      repetitions:
+        description: "每个场景、每个文档变体的重复次数（1–10）"
+        required: true
+        default: "3"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      PI_REVISION: cfee633b1ba9497b0c12462da97a08b418b5ebf8
+      EVAL_MODEL: ${{ inputs.model }}
+      EVAL_BASE_URL: ${{ inputs.base_url || vars.LUMI_EVAL_BASE_URL }}
+      EVAL_REPETITIONS: ${{ inputs.repetitions }}
+    steps:
+      - name: Set temporary output paths
+        run: |
+          echo "OUT=$RUNNER_TEMP/agent-baseline" >> "$GITHUB_ENV"
+          echo "PI_DIR=$RUNNER_TEMP/pi-baseline/source" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate configuration and record run
+        env:
+          LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
+        run: python3 evals/ci/baseline.py init
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check eval infrastructure
+        run: |
+          python3 -m unittest discover -s evals/ci -p '*_test.py'
+          go test ./internal/agentevals ./cmd/lumi_evals
+          go build -o "$RUNNER_TEMP/lumi-evals" ./cmd/lumi_evals
+      - name: Fetch pinned pi source and configure evaluator model
+        run: |
+          git init "$PI_DIR"
+          git -C "$PI_DIR" remote add origin https://github.com/earendil-works/pi.git
+          git -C "$PI_DIR" fetch --depth=1 origin "$PI_REVISION"
+          git -C "$PI_DIR" checkout --detach FETCH_HEAD
+          python3 evals/ci/baseline.py prepare
+          # The host CLI only needs the report reader; the full monorepo is
+          # installed/built once inside Docker, not duplicated on the host.
+          npm install --prefix "$(dirname "$PI_DIR")" --ignore-scripts --no-audit --no-fund @vitest-evals/core@0.15.0
+          cp "$(dirname "$PI_DIR")/package-lock.json" "$OUT/pi-adapter/host-package-lock.json"
+      - name: Run original pi evals in isolated containers
+        id: pi
+        continue-on-error: true
+        env:
+          LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
+        run: bash evals/ci/run-pi.sh
+      - name: Run Lumi reference cases
+        id: lumi
+        if: ${{ !cancelled() && steps.pi.outcome != 'skipped' }}
+        continue-on-error: true
+        env:
+          LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
+        run: |
+          set +e
+          "$RUNNER_TEMP/lumi-evals" --suite pi-reference \
+            --provider openai_compatible --base-url "$EVAL_BASE_URL" --model "$EVAL_MODEL" \
+            --repeat "$EVAL_REPETITIONS" --timeout 300 --max-tokens 4096 --max-requests 16 \
+            --out "$OUT/lumi" 2>&1 | tee "$OUT/lumi-console.txt"
+          status=${PIPESTATUS[0]}
+          echo "$status" > "$OUT/lumi-exit-code.txt"
+          exit "$status"
+      - name: Collect pi evidence and write comparison
+        if: ${{ always() }}
+        run: |
+          mkdir -p "$OUT/pi"
+          if [ -d "$PI_DIR/packages/evals/.eval" ]; then
+            cp -a "$PI_DIR/packages/evals/.eval/." "$OUT/pi/"
+          fi
+          df -h > "$OUT/disk-after.txt"
+          docker system df > "$OUT/docker-disk.txt"
+          python3 evals/ci/baseline.py report
+      - name: Check artifact safety and seal evidence
+        id: seal
+        if: ${{ always() }}
+        env:
+          LUMI_EVAL_API_KEY: ${{ secrets.LUMI_EVAL_API_KEY }}
+        run: python3 evals/ci/baseline.py seal
+      - name: Save reports and complete execution records
+        if: ${{ always() && steps.seal.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.OUT }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+          include-hidden-files: true
+      - name: Report infrastructure status
+        if: ${{ always() }}
+        run: python3 evals/ci/baseline.py status

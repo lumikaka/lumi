@@ -1,0 +1,45 @@
+{
+  "slug": "context-handoff",
+  "suite": "context",
+  "reference": "extensions.docs.eval.ts (multi-prompt pattern)",
+  "goal": "Retain a user correction and a saved artifact across three turns.",
+  "initial_conditions": "Empty virtual workspace and fresh conversation; later turns share only this case history.",
+  "observable_result": "continuity; updated state",
+  "files": {},
+  "tools": [
+    "eval_write",
+    "eval_read"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Remember the delivery code ALPHA-17 and destination north. Save these facts in notes.json as code and destination."
+    },
+    {
+      "type": "prompt",
+      "content": "Correction: destination is now south. Update notes.json, preserving the code."
+    },
+    {
+      "type": "prompt",
+      "content": "Read notes.json and reply with exactly ALPHA-17:south."
+    }
+  ],
+  "checks": [
+    {
+      "name": "continuity",
+      "kind": "final_equals",
+      "expected": "ALPHA-17:south",
+      "basis": "continuity"
+    },
+    {
+      "name": "updated_state",
+      "kind": "file_json",
+      "expected": {
+        "code": "ALPHA-17",
+        "destination": "south"
+      },
+      "basis": "updated state",
+      "path": "notes.json"
+    }
+  ]
+}

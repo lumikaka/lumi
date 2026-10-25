@@ -1,0 +1,84 @@
+{
+  "task": {
+    "case_slug": "smoke",
+    "repetition": 2
+  },
+  "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+  "status": "scored",
+  "final": "Paris",
+  "scores": [
+    {
+      "name": "answer",
+      "value": 1,
+      "basis": "answer",
+      "observed": "Paris",
+      "expected": "Paris"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:48:31.456924Z",
+  "duration_ms": 2518,
+  "usage": {
+    "input_tokens": 113,
+    "output_tokens": 91,
+    "cached_input_tokens": 0,
+    "cost_usd": null,
+    "requests": 1
+  },
+  "turns": [
+    {
+      "uuid": "01a1712c-9d74-7d5d-8305-7a466cb717b8",
+      "thread_uuid": "01a1712c-9d70-72c6-a0be-af3bc8eb28a0",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "What is the capital of France? Respond with only the city name.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:48:31.733707Z",
+      "completed_at": "2026-10-25T03:48:33.947723Z",
+      "created_at": "2026-10-25T03:48:31.732875Z",
+      "updated_at": "2026-10-25T03:48:33.947723Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1712c-9d74-7ee8-a425-f2853c6c785d",
+      "thread_uuid": "01a1712c-9d70-72c6-a0be-af3bc8eb28a0",
+      "turn_uuid": "01a1712c-9d74-7d5d-8305-7a466cb717b8",
+      "run_uuid": "01a1712c-9d74-7d61-8558-9603fb73105a",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "What is the capital of France? Respond with only the city name.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:31.732875Z"
+    },
+    {
+      "uuid": "01a1712c-a61b-7b10-8b1c-a89464336234",
+      "thread_uuid": "01a1712c-9d70-72c6-a0be-af3bc8eb28a0",
+      "turn_uuid": "01a1712c-9d74-7d5d-8305-7a466cb717b8",
+      "run_uuid": "01a1712c-9d74-7d61-8558-9603fb73105a",
+      "sequence": 2,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Paris",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 1,
+        "request_uuid": "01a1712c-9d76-7bcf-972a-4bfa675a0727"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:33.947723Z"
+    }
+  ],
+  "tools": null,
+  "files": {},
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "8bbd55fa93762f0e8c9930487244d76bc9ce3e5a75bf379b8adbbbdb891fe439"
+}

@@ -67,7 +67,16 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 	if err != nil {
 		return intent, err
 	}
-	args, validationErr := validateToolArgumentsForProtocol(call.Name, call.Arguments, tc.ToolMode, tc.ToolProtocol)
+	var args map[string]any
+	var validationErr error
+	if service.isolation != nil {
+		args, validationErr = service.isolation.environment.Validate(call.Name, call.Arguments)
+		if validationErr != nil {
+			validationErr = domainError(CodeToolValidation, "Invalid evaluation tool arguments", validationErr.Error(), nil)
+		}
+	} else {
+		args, validationErr = validateToolArgumentsForProtocol(call.Name, call.Arguments, tc.ToolMode, tc.ToolProtocol)
+	}
 	if validationErr != nil {
 		if found {
 			return intent, domainError(CodeStateConflict, "Provider Tool Call ID 重用冲突", "既有 Provider Tool Call ID 不能改为无效或无法配对的 arguments，整批未持久化。", validationErr)
@@ -86,7 +95,7 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 		}
 		return intent, nil
 	}
-	if !toolAllowedForThreadMode(call.Name, tc.Thread, tc.ToolMode) {
+	if service.isolation == nil && !toolAllowedForThreadMode(call.Name, tc.Thread, tc.ToolMode) {
 		return intent, domainError(CodeToolNotAllowed, "工具不适用于当前 Run", "当前冻结的 Tool Mode 无法使用该工具。", nil)
 	}
 	if normalizedToolMode(tc.ToolMode) == ToolModeLegacyTyped {
@@ -94,7 +103,9 @@ func (service *Service) prepareToolIntent(ctx context.Context, store *project.St
 			return intent, err
 		}
 	}
-	if call.Name == "request_api" {
+	if service.isolation != nil {
+		// The injected allowlist is the only tool authority in an isolated session.
+	} else if call.Name == "request_api" {
 		intent.APIRequest, err = service.parseAgentAPIRequest(tc, args)
 		if err != nil {
 			return intent, err

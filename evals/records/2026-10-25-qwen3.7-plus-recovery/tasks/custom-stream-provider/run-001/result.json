@@ -1,0 +1,241 @@
+{
+  "task": {
+    "case_slug": "custom-stream-provider",
+    "repetition": 1
+  },
+  "protocol_digest": "4cb5d223fe7c702968b6888e8cc5e118d77a088c7d6445cbfb9904a3cd879a61",
+  "status": "environment_error",
+  "final": "",
+  "scores": null,
+  "issues": [
+    {
+      "kind": "environment",
+      "code": "case_timeout_or_cancelled",
+      "message": "context deadline exceeded"
+    },
+    {
+      "kind": "environment",
+      "code": "timeout",
+      "message": "Provider 请求超时。"
+    }
+  ],
+  "started_at": "2026-10-25T03:58:54.510964Z",
+  "duration_ms": 300037,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cached_input_tokens": null,
+    "cost_usd": null,
+    "requests": 3
+  },
+  "turns": [
+    {
+      "uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "status": "queued",
+      "error_code": "llm_timeout",
+      "error_message": "Provider 请求超时。",
+      "started_at": "2026-10-25T03:58:54.821859Z",
+      "created_at": "2026-10-25T03:58:54.820773Z",
+      "updated_at": "2026-10-25T04:03:54.52797Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17136-1f64-7e9a-a518-d322b3afc97b",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/api.md and configure the stream runtime for Acme. Use the environment credential reference; do not invent or expose a credential. Write the configuration.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:58:54.820773Z"
+    },
+    {
+      "uuid": "01a17136-27dd-7f03-a59f-c01e814c6080",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/api.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-27dd-7d2f-9a07-a257e301f3a7",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17136-1f67-7728-8c6f-e3f89bfd003c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:58:56.989949Z"
+    },
+    {
+      "uuid": "01a17136-27de-72d2-b8f0-30d15216e802",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-27dd-7dea-b2b8-9f4f45fcb1c0",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17136-1f67-7728-8c6f-e3f89bfd003c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:58:56.989949Z"
+    },
+    {
+      "uuid": "01a17136-27e3-7065-a2d0-b524baa8418a",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Create config/stream.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"event_stream\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"stream\\\" input=\\\"ping\\\" sends a simulated request. Events contain {\\\"delta\\\":{\\\"text\\\":\\\"po\\\"}}, {\\\"delta\\\":{\\\"text\\\":\\\"ng\\\"}}, then event complete. Configure text_field=\\\"delta.text\\\" and done_event=\\\"complete\\\".\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-27dd-7d2f-9a07-a257e301f3a7",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a17136-1f67-7728-8c6f-e3f89bfd003c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:58:56.995021Z"
+    },
+    {
+      "uuid": "01a17136-27e9-729f-b515-cd9742529d13",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"docs/api.md\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-27dd-7dea-b2b8-9f4f45fcb1c0",
+      "tool_name": "eval_list",
+      "metadata": {
+        "action": "eval_list",
+        "method": "",
+        "purpose": "eval_list",
+        "request_ordinal": 1,
+        "request_uuid": "01a17136-1f67-7728-8c6f-e3f89bfd003c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:58:57.00116Z"
+    },
+    {
+      "uuid": "01a17136-3543-7ef0-bf85-59eedff7635d",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"query\": \"config\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-3543-7db3-b180-03f6aae850a9",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17136-27ea-7eec-955e-a2891153a689"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:59:00.419938Z"
+    },
+    {
+      "uuid": "01a17136-3549-7c96-b377-41e32a12f8ef",
+      "thread_uuid": "01a17136-1f5d-7831-8833-a8fed7e13baa",
+      "turn_uuid": "01a17136-1f64-7bd7-941f-2711427b826d",
+      "run_uuid": "01a17136-1f64-7bdb-a609-eb3008009f5c",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"items\":[\"docs/api.md:1:Create config/stream.json with endpoint=\\\"fixture://acme\\\", protocol=\\\"event_stream\\\", credential_env=\\\"ACME_KEY\\\", model=\\\"acme-chat\\\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\\\"stream\\\" input=\\\"ping\\\" sends a simulated request. Events contain {\\\"delta\\\":{\\\"text\\\":\\\"po\\\"}}, {\\\"delta\\\":{\\\"text\\\":\\\"ng\\\"}}, then event complete. Configure text_field=\\\"delta.text\\\" and done_event=\\\"complete\\\".\"]},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17136-3543-7db3-b180-03f6aae850a9",
+      "tool_name": "eval_search",
+      "metadata": {
+        "action": "eval_search",
+        "method": "",
+        "purpose": "eval_search",
+        "request_ordinal": 2,
+        "request_uuid": "01a17136-27ea-7eec-955e-a2891153a689"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:59:00.425819Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/api.md"
+      },
+      "result": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\".",
+      "started_at": "2026-10-25T03:58:56.990664Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_list",
+      "arguments": {},
+      "result": {
+        "items": [
+          "docs/api.md"
+        ]
+      },
+      "started_at": "2026-10-25T03:58:56.995899Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_search",
+      "arguments": {
+        "query": "config"
+      },
+      "result": {
+        "items": [
+          "docs/api.md:1:Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\"."
+        ]
+      },
+      "started_at": "2026-10-25T03:59:00.420471Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "docs/api.md": "Create config/stream.json with endpoint=\"fixture://acme\", protocol=\"event_stream\", credential_env=\"ACME_KEY\", model=\"acme-chat\". Credentials are provided only inside the simulated service. Do not put literal credentials into files. Reload then eval_probe target=\"stream\" input=\"ping\" sends a simulated request. Events contain {\"delta\":{\"text\":\"po\"}}, {\"delta\":{\"text\":\"ng\"}}, then event complete. Configure text_field=\"delta.text\" and done_event=\"complete\"."
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "22b059d66b2018f483bdcf8b049dc382e7db3d5553f89aeae3f6d4e3a044114d"
+}

@@ -1,0 +1,2492 @@
+{
+  "schema_version": 1,
+  "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+  "config": {
+    "provider_type": "aliyun_bailian",
+    "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.7-plus",
+    "temperature": null,
+    "max_tokens": 4096,
+    "max_requests_per_turn": 16,
+    "timeout_seconds_per_case": 300,
+    "repetitions": 2
+  },
+  "planned": 28,
+  "recorded": 5,
+  "blocked": [
+    "add-model/run-002: expected one result, found 0",
+    "audit-inconclusive/run-002: expected one result, found 0",
+    "audit-match/run-002: expected one result, found 0",
+    "audit-mismatch/run-002: expected one result, found 0",
+    "batch-task/run-001: environment_error",
+    "batch-task/run-002: expected one result, found 0",
+    "configure-provider/run-001: expected one result, found 0",
+    "configure-provider/run-002: expected one result, found 0",
+    "context-handoff/run-001: expected one result, found 0",
+    "context-handoff/run-002: expected one result, found 0",
+    "custom-stream-provider/run-001: expected one result, found 0",
+    "custom-stream-provider/run-002: expected one result, found 0",
+    "extension-reload/run-001: expected one result, found 0",
+    "extension-reload/run-002: expected one result, found 0",
+    "missing-resource/run-001: expected one result, found 0",
+    "missing-resource/run-002: expected one result, found 0",
+    "repair-config/run-001: expected one result, found 0",
+    "repair-config/run-002: expected one result, found 0",
+    "smoke/run-001: expected one result, found 0",
+    "smoke/run-002: expected one result, found 0",
+    "status-footer/run-001: expected one result, found 0",
+    "status-footer/run-002: expected one result, found 0",
+    "transient-tool/run-001: expected one result, found 0",
+    "transient-tool/run-002: expected one result, found 0"
+  ],
+  "results": [
+    {
+      "task": {
+        "case_slug": "add-model",
+        "repetition": 1
+      },
+      "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+      "status": "scored",
+      "final": "The probe confirms the addition is successful. Here's the verification:\n\n**Registry contents (2 entries):**\n\n| Field | `existing` | `fixture-chat` |\n|---|---|---|\n| `name` | `\"existing\"` | `\"fixture-chat\"` ✅ |\n| `display_name` | — | `\"Fixture Chat\"` ✅ |\n| `reasoning` | — | `true` ✅ |\n| `input` | — | `[\"text\"]` ✅ |\n| `context_window` | `8192` | `32768` ✅ |\n| `max_tokens` | — | `4096` ✅ |\n| `cost` | — | `0` ✅ |\n\n**Summary:**\n- The original `existing` entry is **preserved unchanged** with `context_window: 8192`.\n- The new `fixture-chat` entry is present with all fields correctly set: displayed as **\"Fixture Chat\"**, reasoning enabled, text input supported, 32768 context window, 4096 max output tokens, and zero cost.",
+      "scores": [
+        {
+          "name": "registry",
+          "value": 1,
+          "basis": "registry",
+          "observed": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": [
+                  "text"
+                ],
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "expected": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": [
+                  "text"
+                ],
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "verified",
+          "value": 1,
+          "basis": "verified",
+          "observed": 2,
+          "expected": "at least one matching call"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:41:37.399904Z",
+      "duration_ms": 33579,
+      "usage": {
+        "input_tokens": 9811,
+        "output_tokens": 1591,
+        "cached_input_tokens": 4480,
+        "cost_usd": null,
+        "requests": 8
+      },
+      "turns": [
+        {
+          "uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:41:37.763746Z",
+          "completed_at": "2026-10-25T03:42:01.04805Z",
+          "created_at": "2026-10-25T03:41:37.761543Z",
+          "updated_at": "2026-10-25T03:42:01.04805Z"
+        },
+        {
+          "uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "source_type": "prompt",
+          "queue_sequence": 2,
+          "input_text": "Probe the loaded models and confirm the addition.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:42:01.071877Z",
+          "completed_at": "2026-10-25T03:42:10.884921Z",
+          "created_at": "2026-10-25T03:42:01.071011Z",
+          "updated_at": "2026-10-25T03:42:10.884921Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17126-4c61-7b1f-ab73-f9defc0b3ac5",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Add fixture-chat to the model registry, displayed as Fixture Chat. It supports reasoning and text input, context 32768, max output 4096, cost 0. Preserve existing entries; read docs/models.md. Write configuration.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:37.761543Z"
+        },
+        {
+          "uuid": "01a17126-58f6-74b7-901a-1406cd5cfe10",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-58f6-72bf-8a6c-f5cfdafc6578",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-4c65-78fc-a868-76fe845fdcea"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:40.982251Z"
+        },
+        {
+          "uuid": "01a17126-58ff-78f8-b6a9-5aeba978f277",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"config/models.json\",\"docs/models.md\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-58f6-72bf-8a6c-f5cfdafc6578",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-4c65-78fc-a868-76fe845fdcea"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:40.99158Z"
+        },
+        {
+          "uuid": "01a17126-615d-7140-b49c-038f37067513",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"config/models.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-615c-7e8e-b980-697d8ab10da3",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:43.133042Z"
+        },
+        {
+          "uuid": "01a17126-615d-740f-895c-6ce5dff60fa8",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 5,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/models.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-615d-701b-b455-ae5fc80a90b5",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:43.133042Z"
+        },
+        {
+          "uuid": "01a17126-616f-7d04-97f7-117751dd45e8",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 6,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}]}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-615c-7e8e-b980-697d8ab10da3",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:43.151835Z"
+        },
+        {
+          "uuid": "01a17126-6182-74af-b59f-107c06a9a984",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\\\"text\\\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\\\"models\\\" input=\\\"\\\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-615d-701b-b455-ae5fc80a90b5",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-5901-7641-93d7-80ff827b71c7"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:43.170299Z"
+        },
+        {
+          "uuid": "01a17126-7765-7ef4-91ae-1b44dc17bae1",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"content\": \"{\\\"items\\\": [{\\\"name\\\": \\\"existing\\\", \\\"context_window\\\": 8192}, {\\\"name\\\": \\\"fixture-chat\\\", \\\"display_name\\\": \\\"Fixture Chat\\\", \\\"reasoning\\\": true, \\\"input\\\": [\\\"text\\\"], \\\"context_window\\\": 32768, \\\"max_tokens\\\": 4096, \\\"cost\\\": 0}]}\", \"path\": \"config/models.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-7765-7d79-9f0a-564b2fbc17e5",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17126-618b-749b-a3ef-8ee76bfcd2c6"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:48.773928Z"
+        },
+        {
+          "uuid": "01a17126-7772-7ce0-8c98-f152bf05bec9",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"written\":true},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-7765-7d79-9f0a-564b2fbc17e5",
+          "tool_name": "eval_write",
+          "metadata": {
+            "action": "eval_write",
+            "method": "",
+            "purpose": "eval_write",
+            "request_ordinal": 3,
+            "request_uuid": "01a17126-618b-749b-a3ef-8ee76bfcd2c6"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:48.786832Z"
+        },
+        {
+          "uuid": "01a17126-82c0-76a7-9213-fa934bb930d7",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 10,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-82c0-7518-8b8d-6705fec7b04c",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17126-7775-71e4-aecd-547ac9f7e05c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:51.680389Z"
+        },
+        {
+          "uuid": "01a17126-82d2-722e-8820-5790ce735a9b",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 11,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-82c0-7518-8b8d-6705fec7b04c",
+          "tool_name": "eval_reload",
+          "metadata": {
+            "action": "eval_reload",
+            "method": "",
+            "purpose": "eval_reload",
+            "request_ordinal": 4,
+            "request_uuid": "01a17126-7775-71e4-aecd-547ac9f7e05c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:51.698132Z"
+        },
+        {
+          "uuid": "01a17126-88dd-7733-a154-a66819c9c7e8",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 12,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"\", \"target\": \"models\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-88dd-754b-b51d-125eb9cb23d4",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17126-82de-7efb-96b4-4fda36352b47"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:53.245411Z"
+        },
+        {
+          "uuid": "01a17126-88f4-78d9-b669-cc088e1491ae",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 13,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":[\"text\"],\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-88dd-754b-b51d-125eb9cb23d4",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 5,
+            "request_uuid": "01a17126-82de-7efb-96b4-4fda36352b47"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:41:53.268571Z"
+        },
+        {
+          "uuid": "01a17126-a758-70cb-b00f-2ca2f46a3c39",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-4c61-7854-a4f0-ff93c5cdbdf7",
+          "run_uuid": "01a17126-4c61-7858-88f4-97d7b2e6edce",
+          "sequence": 14,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The task is complete. Here's what was done:\n\n1. **Read existing config** — `config/models.json` contained one entry: `{\"name\": \"existing\", \"context_window\": 8192}`.\n2. **Read docs** — `docs/models.md` specified the schema: `name`, `display_name`, `reasoning` (boolean), `input` (array of strings), `context_window` (integer), `max_tokens` (integer), `cost` (number).\n3. **Wrote updated config** — Added the new `fixture-chat` entry while preserving the existing one:\n   ```json\n   {\n     \"items\": [\n       {\"name\": \"existing\", \"context_window\": 8192},\n       {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}\n     ]\n   }\n   ```\n4. **Reloaded** — No configuration errors.\n5. **Verified** — The `models` probe confirms both entries are active in the registry with all fields correctly set.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 6,
+            "request_uuid": "01a17126-8901-7e2c-94f6-94d726affad8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:01.04805Z"
+        },
+        {
+          "uuid": "01a17126-a76f-723e-aa90-15fbe1ff5b42",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+          "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+          "sequence": 15,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Probe the loaded models and confirm the addition.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:01.071011Z"
+        },
+        {
+          "uuid": "01a17126-b15c-76ab-a84d-e2b266e8b5d7",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+          "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+          "sequence": 16,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"input\": \"\", \"target\": \"models\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-b15c-7566-8ba9-ad5c5ac4f8e7",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-a773-71c9-bf81-cc881ed0dd69"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:03.612398Z"
+        },
+        {
+          "uuid": "01a17126-b161-7e44-a495-18f7499d902f",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+          "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+          "sequence": 17,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[{\"context_window\":8192,\"name\":\"existing\"},{\"context_window\":32768,\"cost\":0,\"display_name\":\"Fixture Chat\",\"input\":[\"text\"],\"max_tokens\":4096,\"name\":\"fixture-chat\",\"reasoning\":true}]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-b15c-7566-8ba9-ad5c5ac4f8e7",
+          "tool_name": "eval_probe",
+          "metadata": {
+            "action": "eval_probe",
+            "method": "",
+            "purpose": "eval_probe",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-a773-71c9-bf81-cc881ed0dd69"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:03.617927Z"
+        },
+        {
+          "uuid": "01a17126-cdc4-7e15-bf72-dc164a4c5f1b",
+          "thread_uuid": "01a17126-4c57-7cc1-a2be-8412436ba76c",
+          "turn_uuid": "01a17126-a76f-703a-8168-31d0492ed5f5",
+          "run_uuid": "01a17126-a76f-703e-b989-02bab32a06ae",
+          "sequence": 18,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "The probe confirms the addition is successful. Here's the verification:\n\n**Registry contents (2 entries):**\n\n| Field | `existing` | `fixture-chat` |\n|---|---|---|\n| `name` | `\"existing\"` | `\"fixture-chat\"` ✅ |\n| `display_name` | — | `\"Fixture Chat\"` ✅ |\n| `reasoning` | — | `true` ✅ |\n| `input` | — | `[\"text\"]` ✅ |\n| `context_window` | `8192` | `32768` ✅ |\n| `max_tokens` | — | `4096` ✅ |\n| `cost` | — | `0` ✅ |\n\n**Summary:**\n- The original `existing` entry is **preserved unchanged** with `context_window: 8192`.\n- The new `fixture-chat` entry is present with all fields correctly set: displayed as **\"Fixture Chat\"**, reasoning enabled, text input supported, 32768 context window, 4096 max output tokens, and zero cost.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-b164-7d0b-850b-31ccb96767a6"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:10.884921Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "config/models.json",
+              "docs/models.md"
+            ]
+          },
+          "started_at": "2026-10-25T03:41:40.983208Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "config/models.json"
+          },
+          "result": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}]}",
+          "started_at": "2026-10-25T03:41:43.138446Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/models.md"
+          },
+          "result": "config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\"text\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\"models\" input=\"\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification.",
+          "started_at": "2026-10-25T03:41:43.159349Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_write",
+          "arguments": {
+            "content": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+            "path": "config/models.json"
+          },
+          "result": {
+            "written": true
+          },
+          "started_at": "2026-10-25T03:41:48.774614Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_reload",
+          "arguments": {},
+          "result": {
+            "errors": [],
+            "loaded": 1
+          },
+          "started_at": "2026-10-25T03:41:51.688165Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "",
+            "target": "models"
+          },
+          "result": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": [
+                  "text"
+                ],
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "started_at": "2026-10-25T03:41:53.255108Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_probe",
+          "arguments": {
+            "input": "",
+            "target": "models"
+          },
+          "result": {
+            "items": [
+              {
+                "context_window": 8192,
+                "name": "existing"
+              },
+              {
+                "context_window": 32768,
+                "cost": 0,
+                "display_name": "Fixture Chat",
+                "input": [
+                  "text"
+                ],
+                "max_tokens": 4096,
+                "name": "fixture-chat",
+                "reasoning": true
+              }
+            ]
+          },
+          "started_at": "2026-10-25T03:42:03.613212Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "config/models.json": "{\"items\": [{\"name\": \"existing\", \"context_window\": 8192}, {\"name\": \"fixture-chat\", \"display_name\": \"Fixture Chat\", \"reasoning\": true, \"input\": [\"text\"], \"context_window\": 32768, \"max_tokens\": 4096, \"cost\": 0}]}",
+        "docs/models.md": "config/models.json is an object with an items array. Preserve existing entries exactly. Each new entry uses name (string), display_name (string), reasoning (boolean), input (array of input-kind strings, e.g. [\"text\"]), context_window (integer), max_tokens (integer), cost (number). Reload, then eval_probe target=\"models\" input=\"\" returns the active registry. The registry accepts JSON structurally; verify field types yourself against this specification."
+      },
+      "active_configuration": {
+        "config/models.json": {
+          "items": [
+            {
+              "context_window": 8192,
+              "name": "existing"
+            },
+            {
+              "context_window": 32768,
+              "cost": 0,
+              "display_name": "Fixture Chat",
+              "input": [
+                "text"
+              ],
+              "max_tokens": 4096,
+              "name": "fixture-chat",
+              "reasoning": true
+            }
+          ]
+        }
+      },
+      "reload_errors": [],
+      "trace_sha256": "d9a7421a4aba6ec24d8ebc49e7ce8179b69289eaa4abc415910d907d60f22645"
+    },
+    {
+      "task": {
+        "case_slug": "audit-inconclusive",
+        "repetition": 1
+      },
+      "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+      "status": "scored",
+      "final": "## Summary\n\n**Claim:** `format_name` preserves capitalization (docs/names.md).\n\n**Implementation:** `src/names.py` defines `format_name` as a thin wrapper that delegates to `normalize` from `external_formatter`. The external formatter's source is not present in the workspace, so the actual transformation applied to the name cannot be inspected.\n\n**Verdict:** `inconclusive` — the claim cannot be confirmed or refuted from the available code.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "Claim (docs/names.md): \"The public format_name function preserves capitalization.\" Implementation (src/names.py): format_name delegates entirely to `normalize` imported from `external_formatter` (`return normalize(name)`). The external formatter's implementation is not included in the workspace (the file itself notes: \"The external formatter implementation is not included.\"), and no other file in the workspace defines `external_formatter`. Because the actual behavior of `normalize` is unavailable, we cannot determine whether capitalization is preserved. Verdict: inconclusive — evidence for the claim is not present in the codebase."
+          ],
+          "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:42:11.01892Z",
+      "duration_ms": 17484,
+      "usage": {
+        "input_tokens": 3549,
+        "output_tokens": 796,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 4
+      },
+      "turns": [
+        {
+          "uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:42:11.392233Z",
+          "completed_at": "2026-10-25T03:42:28.487044Z",
+          "created_at": "2026-10-25T03:42:11.391012Z",
+          "updated_at": "2026-10-25T03:42:28.487044Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17126-cfbf-7461-97a6-5f72a5268aa7",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:11.391012Z"
+        },
+        {
+          "uuid": "01a17126-d816-7c35-a13c-fede4ac5a6b9",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-d816-7a29-a4a8-8c67fba7b31b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-cfc1-7a73-9d22-a562eedc3685"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:13.526752Z"
+        },
+        {
+          "uuid": "01a17126-d817-7382-bb19-a758c63a7c3b",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-d816-7aec-bc60-5be71e239d92",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-cfc1-7a73-9d22-a562eedc3685"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:13.526752Z"
+        },
+        {
+          "uuid": "01a17126-d843-7f1f-8684-a9e4370740f2",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function preserves capitalization.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-d816-7a29-a4a8-8c67fba7b31b",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-cfc1-7a73-9d22-a562eedc3685"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:13.571982Z"
+        },
+        {
+          "uuid": "01a17126-d87a-71f7-a987-c79b15007755",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"from external_formatter import normalize\\ndef format_name(name):\\n    return normalize(name)\\n# The external formatter implementation is not included.\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-d816-7aec-bc60-5be71e239d92",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17126-cfc1-7a73-9d22-a562eedc3685"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:13.626121Z"
+        },
+        {
+          "uuid": "01a17126-e7e5-7e40-8757-3565bbf497b2",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"query\": \"external_formatter\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-e7e5-7c06-9530-4fc11cc64ab3",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-d892-7480-9d23-7909a63c947c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:17.573876Z"
+        },
+        {
+          "uuid": "01a17126-e7f7-7e05-b690-779d3eb855fb",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"src/names.py:1:from external_formatter import normalize\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-e7e5-7c06-9530-4fc11cc64ab3",
+          "tool_name": "eval_search",
+          "metadata": {
+            "action": "eval_search",
+            "method": "",
+            "purpose": "eval_search",
+            "request_ordinal": 2,
+            "request_uuid": "01a17126-d892-7480-9d23-7909a63c947c"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:17.591909Z"
+        },
+        {
+          "uuid": "01a17126-fe4f-7128-a80b-e2ee4d16f17a",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 8,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"explanation\": \"Claim (docs/names.md): \\\"The public format_name function preserves capitalization.\\\" Implementation (src/names.py): format_name delegates entirely to `normalize` imported from `external_formatter` (`return normalize(name)`). The external formatter's implementation is not included in the workspace (the file itself notes: \\\"The external formatter implementation is not included.\\\"), and no other file in the workspace defines `external_formatter`. Because the actual behavior of `normalize` is unavailable, we cannot determine whether capitalization is preserved. Verdict: inconclusive — evidence for the claim is not present in the codebase.\", \"verdict\": \"inconclusive\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-fe4e-7f1f-8050-32b69def171f",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 3,
+            "request_uuid": "01a17126-e800-7daf-a932-9ead51bdaf37"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:23.311034Z"
+        },
+        {
+          "uuid": "01a17126-fe53-7eec-a618-df97683ed033",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 9,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"Claim (docs/names.md): \\\"The public format_name function preserves capitalization.\\\" Implementation (src/names.py): format_name delegates entirely to `normalize` imported from `external_formatter` (`return normalize(name)`). The external formatter's implementation is not included in the workspace (the file itself notes: \\\"The external formatter implementation is not included.\\\"), and no other file in the workspace defines `external_formatter`. Because the actual behavior of `normalize` is unavailable, we cannot determine whether capitalization is preserved. Verdict: inconclusive — evidence for the claim is not present in the codebase.\",\"verdict\":\"inconclusive\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17126-fe4e-7f1f-8050-32b69def171f",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 3,
+            "request_uuid": "01a17126-e800-7daf-a932-9ead51bdaf37"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:23.315962Z"
+        },
+        {
+          "uuid": "01a17127-1287-70b3-8f30-12d394631bf1",
+          "thread_uuid": "01a17126-cfad-7a87-8c68-b5253551bd87",
+          "turn_uuid": "01a17126-cfbf-703a-8c3f-24f6c2663bf6",
+          "run_uuid": "01a17126-cfbf-703e-84ff-35db488b9115",
+          "sequence": 10,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "## Summary\n\n**Claim:** `format_name` preserves capitalization (docs/names.md).\n\n**Implementation:** `src/names.py` defines `format_name` as a thin wrapper that delegates to `normalize` from `external_formatter`. The external formatter's source is not present in the workspace, so the actual transformation applied to the name cannot be inspected.\n\n**Verdict:** `inconclusive` — the claim cannot be confirmed or refuted from the available code.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 4,
+            "request_uuid": "01a17126-fe56-748c-8c1a-9cc38a10b3b0"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:28.487044Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function preserves capitalization.",
+          "started_at": "2026-10-25T03:42:13.541813Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n",
+          "started_at": "2026-10-25T03:42:13.588154Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_search",
+          "arguments": {
+            "query": "external_formatter"
+          },
+          "result": {
+            "items": [
+              "src/names.py:1:from external_formatter import normalize"
+            ]
+          },
+          "started_at": "2026-10-25T03:42:17.582714Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "Claim (docs/names.md): \"The public format_name function preserves capitalization.\" Implementation (src/names.py): format_name delegates entirely to `normalize` imported from `external_formatter` (`return normalize(name)`). The external formatter's implementation is not included in the workspace (the file itself notes: \"The external formatter implementation is not included.\"), and no other file in the workspace defines `external_formatter`. Because the actual behavior of `normalize` is unavailable, we cannot determine whether capitalization is preserved. Verdict: inconclusive — evidence for the claim is not present in the codebase.",
+            "verdict": "inconclusive"
+          },
+          "result": {
+            "explanation": "Claim (docs/names.md): \"The public format_name function preserves capitalization.\" Implementation (src/names.py): format_name delegates entirely to `normalize` imported from `external_formatter` (`return normalize(name)`). The external formatter's implementation is not included in the workspace (the file itself notes: \"The external formatter implementation is not included.\"), and no other file in the workspace defines `external_formatter`. Because the actual behavior of `normalize` is unavailable, we cannot determine whether capitalization is preserved. Verdict: inconclusive — evidence for the claim is not present in the codebase.",
+            "verdict": "inconclusive"
+          },
+          "started_at": "2026-10-25T03:42:23.311618Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function preserves capitalization.",
+        "src/names.py": "from external_formatter import normalize\ndef format_name(name):\n    return normalize(name)\n# The external formatter implementation is not included.\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "adf8833dd922b5764b904c7662a6932673dc27b7c1cfffcd5a4991cbc72e5687"
+    },
+    {
+      "task": {
+        "case_slug": "audit-match",
+        "repetition": 1
+      },
+      "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+      "status": "scored",
+      "final": "**Summary:** The documentation in `docs/names.md` claims that `format_name` trims whitespace and lowercases names. The implementation in `src/names.py` confirms this: `format_name` delegates to `normalize`, which calls `value.strip().lower()`. Both claimed behaviors are faithfully implemented. Verdict: **match**.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) calls normalize(name), which returns value.strip().lower(). str.strip() trims leading/trailing whitespace and str.lower() lowercases the string. Both explicit user-visible claims (trim whitespace, lowercase) are correctly implemented."
+          ],
+          "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:42:28.515818Z",
+      "duration_ms": 11612,
+      "usage": {
+        "input_tokens": 2513,
+        "output_tokens": 549,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 3
+      },
+      "turns": [
+        {
+          "uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:42:28.911915Z",
+          "completed_at": "2026-10-25T03:42:40.107859Z",
+          "created_at": "2026-10-25T03:42:28.91093Z",
+          "updated_at": "2026-10-25T03:42:40.107859Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17127-142f-70fa-87e9-5cfc4b420327",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:28.91093Z"
+        },
+        {
+          "uuid": "01a17127-1c1e-7bcb-86f8-25351b3f9e15",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-1c1e-79eb-a40c-b008519c24fb",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-143a-77b0-8d48-590a764de322"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:30.942735Z"
+        },
+        {
+          "uuid": "01a17127-1c1e-7e92-adc3-1786c976cb7c",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-1c1e-7aa2-914a-0de128e4007d",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-143a-77b0-8d48-590a764de322"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:30.942735Z"
+        },
+        {
+          "uuid": "01a17127-1c26-7232-8988-81b6614d08ae",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function trims whitespace and lowercases names.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-1c1e-79eb-a40c-b008519c24fb",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-143a-77b0-8d48-590a764de322"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:30.950137Z"
+        },
+        {
+          "uuid": "01a17127-1c2d-7226-bf5d-f3bffeb94c43",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-1c1e-7aa2-914a-0de128e4007d",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-143a-77b0-8d48-590a764de322"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:30.957136Z"
+        },
+        {
+          "uuid": "01a17127-35a4-7a1d-8815-00bdbf57071d",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"explanation\": \"docs/names.md claims: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) calls normalize(name), which returns value.strip().lower(). str.strip() trims leading/trailing whitespace and str.lower() lowercases the string. Both explicit user-visible claims (trim whitespace, lowercase) are correctly implemented.\", \"verdict\": \"match\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-35a4-787f-a7d2-cc9ac6a6c934",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-1c2e-7a9e-a37d-d6d78f5bf8a5"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:37.47662Z"
+        },
+        {
+          "uuid": "01a17127-35ac-7046-9ba0-e503abb34e16",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"docs/names.md claims: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) calls normalize(name), which returns value.strip().lower(). str.strip() trims leading/trailing whitespace and str.lower() lowercases the string. Both explicit user-visible claims (trim whitespace, lowercase) are correctly implemented.\",\"verdict\":\"match\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-35a4-787f-a7d2-cc9ac6a6c934",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-1c2e-7a9e-a37d-d6d78f5bf8a5"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:37.484005Z"
+        },
+        {
+          "uuid": "01a17127-3feb-7d23-bbb3-42c5e9be8db3",
+          "thread_uuid": "01a17127-1424-7aaa-8b7b-195acaaf3e43",
+          "turn_uuid": "01a17127-142e-7e38-81fe-e6934c84f9df",
+          "run_uuid": "01a17127-142e-7e3c-b28a-34df63f00592",
+          "sequence": 8,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "**Summary:** The documentation in `docs/names.md` claims that `format_name` trims whitespace and lowercases names. The implementation in `src/names.py` confirms this: `format_name` delegates to `normalize`, which calls `value.strip().lower()`. Both claimed behaviors are faithfully implemented. Verdict: **match**.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 3,
+            "request_uuid": "01a17127-35ae-7ae5-8090-b90f82081e6d"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:40.107859Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function trims whitespace and lowercases names.",
+          "started_at": "2026-10-25T03:42:30.943461Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+          "started_at": "2026-10-25T03:42:30.95068Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) calls normalize(name), which returns value.strip().lower(). str.strip() trims leading/trailing whitespace and str.lower() lowercases the string. Both explicit user-visible claims (trim whitespace, lowercase) are correctly implemented.",
+            "verdict": "match"
+          },
+          "result": {
+            "explanation": "docs/names.md claims: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) calls normalize(name), which returns value.strip().lower(). str.strip() trims leading/trailing whitespace and str.lower() lowercases the string. Both explicit user-visible claims (trim whitespace, lowercase) are correctly implemented.",
+            "verdict": "match"
+          },
+          "started_at": "2026-10-25T03:42:37.477345Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function trims whitespace and lowercases names.",
+        "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "61494a8156592548262f99afba675bb5036f376fcb8eafe0b28b3b9c0ff51487"
+    },
+    {
+      "task": {
+        "case_slug": "audit-mismatch",
+        "repetition": 1
+      },
+      "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+      "status": "scored",
+      "final": "**Summary:** Documentation mismatch found. The docs claim `format_name` \"trims whitespace and preserves capitalization,\" but the implementation in src/names.py shows it calls `normalize()` which applies `.strip().lower()`. While whitespace trimming is correct, the function lowercases all input rather than preserving capitalization.",
+      "scores": [
+        {
+          "name": "verdict",
+          "value": 1,
+          "basis": "verdict",
+          "observed": 1,
+          "expected": 1
+        },
+        {
+          "name": "read_documentation",
+          "value": 1,
+          "basis": "read documentation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "read_implementation",
+          "value": 1,
+          "basis": "read implementation",
+          "observed": 1,
+          "expected": "at least one matching call"
+        },
+        {
+          "name": "evidence",
+          "value": 1,
+          "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+          "observed": [
+            "The documentation (docs/names.md) claims that the public `format_name` function \"trims whitespace and preserves capitalization.\" In src/names.py, `format_name(name)` delegates to `normalize(name)`, which returns `value.strip().lower()`. While `.strip()` does trim whitespace (matching the first part of the claim), `.lower()` converts the entire string to lowercase, which directly contradicts the claim that capitalization is preserved. The actual behavior is that `format_name` trims whitespace AND lowercases the input, so the \"preserves capitalization\" claim is incorrect."
+          ],
+          "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+        }
+      ],
+      "issues": [],
+      "started_at": "2026-10-25T03:42:40.152612Z",
+      "duration_ms": 13395,
+      "usage": {
+        "input_tokens": 2609,
+        "output_tokens": 669,
+        "cached_input_tokens": 1536,
+        "cost_usd": null,
+        "requests": 3
+      },
+      "turns": [
+        {
+          "uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "status": "completed",
+          "started_at": "2026-10-25T03:42:40.601509Z",
+          "completed_at": "2026-10-25T03:42:53.526326Z",
+          "created_at": "2026-10-25T03:42:40.600064Z",
+          "updated_at": "2026-10-25T03:42:53.526326Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17127-41d8-731c-9ca5-a703d497fe73",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:40.600064Z"
+        },
+        {
+          "uuid": "01a17127-495b-7da4-a435-78cadef507e3",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"docs/names.md\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-495b-7b6d-97ca-4ef9c3fb8b75",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-41db-739d-a895-228e743a84e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:42.523854Z"
+        },
+        {
+          "uuid": "01a17127-495c-71a1-9e70-fa81c3ea1c3f",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 3,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"src/names.py\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-495b-7c48-bbe0-2691a252aef5",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-41db-739d-a895-228e743a84e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:42.523854Z"
+        },
+        {
+          "uuid": "01a17127-4971-7065-a6a9-3a1a1c0b4988",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 4,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"The public format_name function trims whitespace and preserves capitalization.\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-495b-7b6d-97ca-4ef9c3fb8b75",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-41db-739d-a895-228e743a84e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:42.545019Z"
+        },
+        {
+          "uuid": "01a17127-4978-7cdc-a3ea-607a7618d992",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 5,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-495b-7c48-bbe0-2691a252aef5",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-41db-739d-a895-228e743a84e8"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:42.552838Z"
+        },
+        {
+          "uuid": "01a17127-62c0-7403-b7c7-9507467a751c",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 6,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"explanation\": \"The documentation (docs/names.md) claims that the public `format_name` function \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, `format_name(name)` delegates to `normalize(name)`, which returns `value.strip().lower()`. While `.strip()` does trim whitespace (matching the first part of the claim), `.lower()` converts the entire string to lowercase, which directly contradicts the claim that capitalization is preserved. The actual behavior is that `format_name` trims whitespace AND lowercases the input, so the \\\"preserves capitalization\\\" claim is incorrect.\", \"verdict\": \"mismatch\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-62c0-72a7-9a8d-3d4a4390553c",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-497a-760e-8549-a1402c4ff1be"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:49.024222Z"
+        },
+        {
+          "uuid": "01a17127-62c7-7f1f-9164-790e34329a41",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"explanation\":\"The documentation (docs/names.md) claims that the public `format_name` function \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, `format_name(name)` delegates to `normalize(name)`, which returns `value.strip().lower()`. While `.strip()` does trim whitespace (matching the first part of the claim), `.lower()` converts the entire string to lowercase, which directly contradicts the claim that capitalization is preserved. The actual behavior is that `format_name` trims whitespace AND lowercases the input, so the \\\"preserves capitalization\\\" claim is incorrect.\",\"verdict\":\"mismatch\"},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-62c0-72a7-9a8d-3d4a4390553c",
+          "tool_name": "eval_submit",
+          "metadata": {
+            "action": "eval_submit",
+            "method": "",
+            "purpose": "eval_submit",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-497a-760e-8549-a1402c4ff1be"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:49.031982Z"
+        },
+        {
+          "uuid": "01a17127-7456-7509-9613-233c87498f00",
+          "thread_uuid": "01a17127-41d1-7ce0-a8f0-fe794ccca2e3",
+          "turn_uuid": "01a17127-41d8-710d-bf08-6853e9e976ca",
+          "run_uuid": "01a17127-41d8-710e-81a0-4cd5c381f342",
+          "sequence": 8,
+          "item_type": "assistant_message",
+          "role": "assistant",
+          "content": "**Summary:** Documentation mismatch found. The docs claim `format_name` \"trims whitespace and preserves capitalization,\" but the implementation in src/names.py shows it calls `normalize()` which applies `.strip().lower()`. While whitespace trimming is correct, the function lowercases all input rather than preserving capitalization.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "request_ordinal": 3,
+            "request_uuid": "01a17127-62ca-7367-9505-1526866eb410"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:53.526326Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "docs/names.md"
+          },
+          "result": "The public format_name function trims whitespace and preserves capitalization.",
+          "started_at": "2026-10-25T03:42:42.537771Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "src/names.py"
+          },
+          "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+          "started_at": "2026-10-25T03:42:42.5459Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_submit",
+          "arguments": {
+            "explanation": "The documentation (docs/names.md) claims that the public `format_name` function \"trims whitespace and preserves capitalization.\" In src/names.py, `format_name(name)` delegates to `normalize(name)`, which returns `value.strip().lower()`. While `.strip()` does trim whitespace (matching the first part of the claim), `.lower()` converts the entire string to lowercase, which directly contradicts the claim that capitalization is preserved. The actual behavior is that `format_name` trims whitespace AND lowercases the input, so the \"preserves capitalization\" claim is incorrect.",
+            "verdict": "mismatch"
+          },
+          "result": {
+            "explanation": "The documentation (docs/names.md) claims that the public `format_name` function \"trims whitespace and preserves capitalization.\" In src/names.py, `format_name(name)` delegates to `normalize(name)`, which returns `value.strip().lower()`. While `.strip()` does trim whitespace (matching the first part of the claim), `.lower()` converts the entire string to lowercase, which directly contradicts the claim that capitalization is preserved. The actual behavior is that `format_name` trims whitespace AND lowercases the input, so the \"preserves capitalization\" claim is incorrect.",
+            "verdict": "mismatch"
+          },
+          "started_at": "2026-10-25T03:42:49.024956Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "docs/names.md": "The public format_name function trims whitespace and preserves capitalization.",
+        "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "d008e7719a36935ecb836ceaffbc074fa35891963e998891b8fdd08629cecf48"
+    },
+    {
+      "task": {
+        "case_slug": "batch-task",
+        "repetition": 1
+      },
+      "protocol_digest": "805ba05526eacc51d4c3dcdeb2939a0c2a1389c8d45700b576c9850bedf68eab",
+      "status": "environment_error",
+      "final": "",
+      "scores": null,
+      "issues": [
+        {
+          "kind": "environment",
+          "code": "case_timeout_or_cancelled",
+          "message": "context canceled"
+        },
+        {
+          "kind": "environment",
+          "code": "cancelled",
+          "message": "请求已取消。"
+        }
+      ],
+      "started_at": "2026-10-25T03:42:53.579519Z",
+      "duration_ms": 7255,
+      "usage": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "cached_input_tokens": null,
+        "cost_usd": null,
+        "requests": 3
+      },
+      "turns": [
+        {
+          "uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "source_type": "prompt",
+          "queue_sequence": 1,
+          "input_text": "Read both records, sum their amounts, and write summary.json as a JSON object with total and count. Do not change the source files. Then read summary.json to verify it.",
+          "status": "failed",
+          "error_code": "llm_cancelled",
+          "error_message": "请求已取消。",
+          "started_at": "2026-10-25T03:42:54.122021Z",
+          "completed_at": "2026-10-25T03:43:00.814798Z",
+          "created_at": "2026-10-25T03:42:54.119631Z",
+          "updated_at": "2026-10-25T03:43:00.814798Z"
+        }
+      ],
+      "items": [
+        {
+          "uuid": "01a17127-76a7-7d88-9f96-ee2bda7ee601",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 1,
+          "item_type": "user_message",
+          "role": "user",
+          "content": "Read both records, sum their amounts, and write summary.json as a JSON object with total and count. Do not change the source files. Then read summary.json to verify it.",
+          "content_format": "text",
+          "status": "completed",
+          "metadata": {
+            "source_type": "prompt"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:54.119631Z"
+        },
+        {
+          "uuid": "01a17127-7f36-733c-b3ca-36c33e086fc9",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 2,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-7f36-71f7-9cd0-12a742e77ef1",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-76ad-7449-aac5-0cee6d86a672"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:56.310174Z"
+        },
+        {
+          "uuid": "01a17127-7f3d-780e-905d-b60aab8bdbb9",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 3,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":{\"items\":[\"records/a.json\",\"records/b.json\"]},\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-7f36-71f7-9cd0-12a742e77ef1",
+          "tool_name": "eval_list",
+          "metadata": {
+            "action": "eval_list",
+            "method": "",
+            "purpose": "eval_list",
+            "request_ordinal": 1,
+            "request_uuid": "01a17127-76ad-7449-aac5-0cee6d86a672"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:56.317522Z"
+        },
+        {
+          "uuid": "01a17127-8703-7261-893e-c1f0667961cd",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 4,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/a.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-8702-7f13-91bb-89701420dd71",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-7f3f-72c6-924c-964a6f78fbf9"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:58.307112Z"
+        },
+        {
+          "uuid": "01a17127-8703-759d-95ca-d3cd093ebdcf",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 5,
+          "item_type": "tool_call",
+          "role": "assistant",
+          "content": "{\"path\": \"records/b.json\"}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-8703-70da-bbec-77fae23963d8",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-7f3f-72c6-924c-964a6f78fbf9"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:58.307112Z"
+        },
+        {
+          "uuid": "01a17127-8708-7ad9-86f0-0dd70b171783",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 6,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":12}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-8702-7f13-91bb-89701420dd71",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-7f3f-72c6-924c-964a6f78fbf9"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:58.312703Z"
+        },
+        {
+          "uuid": "01a17127-870f-710d-9798-724bc64e0e96",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 7,
+          "item_type": "tool_result",
+          "role": "tool",
+          "content": "{\"data\":\"{\\\"amount\\\":30}\",\"success\":true}",
+          "content_format": "json",
+          "status": "completed",
+          "tool_call_uuid": "01a17127-8703-70da-bbec-77fae23963d8",
+          "tool_name": "eval_read",
+          "metadata": {
+            "action": "eval_read",
+            "method": "",
+            "purpose": "eval_read",
+            "request_ordinal": 2,
+            "request_uuid": "01a17127-7f3f-72c6-924c-964a6f78fbf9"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:42:58.319062Z"
+        },
+        {
+          "uuid": "01a17127-90ce-7c38-99d1-c878997dc635",
+          "thread_uuid": "01a17127-769f-78a6-991c-54411fc2b7fd",
+          "turn_uuid": "01a17127-76a7-79b0-a2d3-474b0d345023",
+          "run_uuid": "01a17127-76a7-79b4-8be7-0c31fa20ab5d",
+          "sequence": 8,
+          "item_type": "error",
+          "role": "system",
+          "content": "请求已取消。",
+          "content_format": "text",
+          "status": "failed",
+          "metadata": {
+            "error_code": "llm_cancelled"
+          },
+          "references": null,
+          "created_at": "2026-10-25T03:43:00.814798Z"
+        }
+      ],
+      "tools": [
+        {
+          "name": "eval_list",
+          "arguments": {},
+          "result": {
+            "items": [
+              "records/a.json",
+              "records/b.json"
+            ]
+          },
+          "started_at": "2026-10-25T03:42:56.310881Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/a.json"
+          },
+          "result": "{\"amount\":12}",
+          "started_at": "2026-10-25T03:42:58.308102Z",
+          "duration_ms": 0
+        },
+        {
+          "name": "eval_read",
+          "arguments": {
+            "path": "records/b.json"
+          },
+          "result": "{\"amount\":30}",
+          "started_at": "2026-10-25T03:42:58.313316Z",
+          "duration_ms": 0
+        }
+      ],
+      "files": {
+        "records/a.json": "{\"amount\":12}",
+        "records/b.json": "{\"amount\":30}"
+      },
+      "active_configuration": {},
+      "reload_errors": null,
+      "trace_sha256": "d0ae4ba6e5e6adc7181b8e1874823a5ad27c5519fbc783bcf5b0c40d0d6f118d"
+    }
+  ],
+  "cases": [
+    {
+      "slug": "add-model",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "registry": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verified": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 33579,
+        "min": 33579,
+        "max": 33579,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 9811,
+        "min": 9811,
+        "max": 9811,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 1591,
+        "min": 1591,
+        "max": 1591,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-inconclusive",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 17484,
+        "min": 17484,
+        "max": 17484,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 3549,
+        "min": 3549,
+        "max": 3549,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 796,
+        "min": 796,
+        "max": 796,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-match",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 11612,
+        "min": 11612,
+        "max": 11612,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 2513,
+        "min": 2513,
+        "max": 2513,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 549,
+        "min": 549,
+        "max": 549,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "audit-mismatch",
+      "planned": 2,
+      "scored": 1,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "evidence": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_documentation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "read_implementation": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        },
+        "verdict": {
+          "n": 1,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 13395,
+        "min": 13395,
+        "max": 13395,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 1,
+        "mean": 2609,
+        "min": 2609,
+        "max": 2609,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 1,
+        "mean": 669,
+        "min": 669,
+        "max": 669,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "batch-task",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "aggregate": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "source_a_preserved": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "source_b_preserved": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "verification": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 1,
+        "mean": 7255,
+        "min": 7255,
+        "max": 7255,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "configure-provider",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "runtime_request": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "verified": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "context-handoff",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "continuity": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "updated_state": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "custom-stream-provider",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "runtime_request": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "verified": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "extension-reload",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "greeting": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "invocation": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "loaded_tool": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "missing-resource",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "honest_failure": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "single_attempt": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "repair-config",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "reload_diagnostic": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "repaired": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "valid_configuration": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "smoke",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "answer": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "status-footer",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "bar_correctness": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "layout_preservation": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    },
+    {
+      "slug": "transient-tool",
+      "planned": 2,
+      "scored": 0,
+      "complete": false,
+      "observed_variation": false,
+      "scores": {
+        "recovered_answer": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "retried": {
+          "n": 0,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        }
+      },
+      "duration_ms": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "input_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      },
+      "output_tokens": {
+        "n": 0,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "stddev": null
+      }
+    }
+  ]
+}

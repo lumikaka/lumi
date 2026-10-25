@@ -1,0 +1,58 @@
+{
+  "slug": "pi-add-model-without-docs",
+  "suite": "pi-reference",
+  "reference": "https://github.com/earendil-works/pi/blob/cfee633b1ba9497b0c12462da97a08b418b5ebf8/packages/evals/evals/models.docs.eval.ts",
+  "goal": "Add the original fixture model to the existing provider.",
+  "initial_conditions": "Isolated virtual workspace; without_docs; trusted project; fixed user and workspace roots; no generated-code execution.",
+  "observable_result": "The original upstream structured-output fields must match exactly; this is a Go environment adaptation, not a Pi runtime execution.",
+  "files": {},
+  "tools": [
+    "read",
+    "write",
+    "edit",
+    "grep",
+    "find",
+    "ls"
+  ],
+  "steps": [
+    {
+      "type": "prompt",
+      "content": "Configure this running Pi installation with a new `openai/fixture-chat` model. Do not create project-local configuration. Show it as “Fixture Chat”. It accepts text, supports reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost."
+    },
+    {
+      "type": "reload"
+    }
+  ],
+  "checks": [
+    {
+      "name": "upstream_contract",
+      "kind": "pi_reference",
+      "path": "model",
+      "expected": {
+        "result": {
+          "model": {
+            "id": "fixture-chat",
+            "name": "Fixture Chat",
+            "provider": "openai",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 32768,
+            "maxTokens": 4096
+          },
+          "existingModelsPreserved": true
+        }
+      },
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog."
+    }
+  ],
+  "environment": "pi-reference-v1",
+  "system_prompt": "You are a coding assistant operating a virtual Pi-compatible workspace. Complete the user's task using the supplied tools. The current working directory is /eval/workspace, HOME is /eval/home, and the agent directory is /eval/home/.pi/agent. The project is already trusted. Files under /eval/runtime are read-only. All file tools operate on isolated virtual files; no shell, network or generated code execution is available. Report errors honestly. Configuration and prompt templates become active when the harness reloads them."
+}

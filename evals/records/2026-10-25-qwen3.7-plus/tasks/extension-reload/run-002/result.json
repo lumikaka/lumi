@@ -1,0 +1,299 @@
+{
+  "task": {
+    "case_slug": "extension-reload",
+    "repetition": 2
+  },
+  "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+  "status": "environment_error",
+  "final": "",
+  "scores": null,
+  "issues": [
+    {
+      "kind": "environment",
+      "code": "case_timeout_or_cancelled",
+      "message": "context deadline exceeded"
+    },
+    {
+      "kind": "environment",
+      "code": "timeout",
+      "message": "Provider 请求超时。"
+    }
+  ],
+  "started_at": "2026-10-25T03:48:52.372996Z",
+  "duration_ms": 300047,
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "cached_input_tokens": null,
+    "cost_usd": null,
+    "requests": 5
+  },
+  "turns": [
+    {
+      "uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "status": "queued",
+      "error_code": "llm_timeout",
+      "error_message": "Provider 请求超时。",
+      "started_at": "2026-10-25T03:48:52.650504Z",
+      "created_at": "2026-10-25T03:48:52.649588Z",
+      "updated_at": "2026-10-25T03:53:52.404652Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1712c-ef29-7ad1-8d45-9918e5dcbecb",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/extensions.md. Create a greeting extension so Bob receives Hello, Bob!.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:52.649588Z"
+    },
+    {
+      "uuid": "01a1712c-f490-7d00-b5d5-02471c4a8af1",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/extensions.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-f490-7bbf-8bf8-900ace7d7d4a",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a1712c-ef2b-7d27-918d-a7e62237d6b9"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:54.032809Z"
+    },
+    {
+      "uuid": "01a1712c-f496-7455-b79e-83fce51100fc",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"A declarative greeting extension is config/hello.json with {\\\"template\\\":\\\"Hello, {name}!\\\"}. Reload loads the template. eval_probe target=\\\"hello\\\", input=\\u003cname\\u003e invokes it. No executable source is supported.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-f490-7bbf-8bf8-900ace7d7d4a",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a1712c-ef2b-7d27-918d-a7e62237d6b9"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:54.038277Z"
+    },
+    {
+      "uuid": "01a1712d-0614-7288-96e6-368008061111",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\\"template\\\":\\\"Hello, {name}!\\\"}\", \"path\": \"config/hello.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-0614-712c-b406-7cb50528f1ce",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-f498-719a-a682-0d5ebe753819"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:58.51612Z"
+    },
+    {
+      "uuid": "01a1712d-0619-79c7-a1de-76324e2f4162",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-0614-712c-b406-7cb50528f1ce",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-f498-719a-a682-0d5ebe753819"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:58.521635Z"
+    },
+    {
+      "uuid": "01a1712d-0c83-7d4a-82f8-6c076d92f701",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-0c83-7ab2-b559-2a74b2e81611",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 3,
+        "request_uuid": "01a1712d-061c-7ef8-b461-4dca2260d651"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:49:00.163801Z"
+    },
+    {
+      "uuid": "01a1712d-0c89-740f-bffb-1f5b485574b6",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-0c83-7ab2-b559-2a74b2e81611",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 3,
+        "request_uuid": "01a1712d-061c-7ef8-b461-4dca2260d651"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:49:00.169259Z"
+    },
+    {
+      "uuid": "01a1712d-1346-7f3a-9cfb-7653e4c87971",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"Bob\", \"target\": \"hello\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-1346-7dde-9617-5f5275707ac8",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 4,
+        "request_uuid": "01a1712d-0c8c-7468-85ed-95c6b72e431e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:49:01.894951Z"
+    },
+    {
+      "uuid": "01a1712d-134b-757e-ac17-b5e01b18911b",
+      "thread_uuid": "01a1712c-ef23-7da0-8772-127c1d320c25",
+      "turn_uuid": "01a1712c-ef29-78fc-909c-70a433c1df12",
+      "run_uuid": "01a1712c-ef29-7900-af62-611658f6e74c",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Hello, Bob!\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712d-1346-7dde-9617-5f5275707ac8",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 4,
+        "request_uuid": "01a1712d-0c8c-7468-85ed-95c6b72e431e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:49:01.899352Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/extensions.md"
+      },
+      "result": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported.",
+      "started_at": "2026-10-25T03:48:54.033378Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\"template\":\"Hello, {name}!\"}",
+        "path": "config/hello.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T03:48:58.516675Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T03:49:00.164408Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "Bob",
+        "target": "hello"
+      },
+      "result": "Hello, Bob!",
+      "started_at": "2026-10-25T03:49:01.895488Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/hello.json": "{\"template\":\"Hello, {name}!\"}",
+    "docs/extensions.md": "A declarative greeting extension is config/hello.json with {\"template\":\"Hello, {name}!\"}. Reload loads the template. eval_probe target=\"hello\", input=\u003cname\u003e invokes it. No executable source is supported."
+  },
+  "active_configuration": {
+    "config/hello.json": {
+      "template": "Hello, {name}!"
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "12a49db57d1084032d6c3654fab6fe89e7dd27c7b20578375ea58ef2c5fb053c"
+}

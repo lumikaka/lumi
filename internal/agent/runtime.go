@@ -66,11 +66,14 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	if tc.Run.LimitReason != "" && tc.Run.FinalizationAttemptedAt != nil {
 		return service.failBudgetRun(context.WithoutCancel(ctx), store, tc)
 	}
-	resolved, err := service.providers.Resolve(ctx, tc.Run.ProviderUUID)
+	resolved, err := service.resolveProvider(ctx, tc.Run.ProviderUUID)
 	if err != nil {
 		return service.failOrRetryRun(context.WithoutCancel(ctx), store, tc, err)
 	}
 	tools := llmToolDefinitionsForContext(tc)
+	if service.isolation != nil {
+		tools = service.isolation.environment.Tools()
+	}
 	var lastContextThrough int64
 runLoop:
 	for {

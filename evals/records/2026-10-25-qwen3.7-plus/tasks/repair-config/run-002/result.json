@@ -1,0 +1,438 @@
+{
+  "task": {
+    "case_slug": "repair-config",
+    "repetition": 2
+  },
+  "protocol_digest": "20e6eebd46c54755341de6ab0039655a7722c41273eb2d165b18fedbc9470928",
+  "status": "scored",
+  "final": "Hello, Ada!",
+  "scores": [
+    {
+      "name": "repaired",
+      "value": 1,
+      "basis": "repaired",
+      "observed": "Hello, Ada!",
+      "expected": "Hello, Ada!"
+    },
+    {
+      "name": "valid_configuration",
+      "value": 1,
+      "basis": "valid configuration",
+      "observed": "Hello, Ada!",
+      "expected": "Hello, Ada!"
+    },
+    {
+      "name": "reload_diagnostic",
+      "value": 1,
+      "basis": "reload diagnostic",
+      "observed": 2,
+      "expected": 2
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T03:48:33.996671Z",
+  "duration_ms": 13483,
+  "usage": {
+    "input_tokens": 5853,
+    "output_tokens": 480,
+    "cached_input_tokens": 2048,
+    "cost_usd": null,
+    "requests": 6
+  },
+  "turns": [
+    {
+      "uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "First call eval_reload to inspect the existing configuration. Read its error and docs/extensions.md, repair the file, reload again and invoke the greeting for Ada. Return only the greeting.",
+      "status": "completed",
+      "started_at": "2026-10-25T03:48:34.291876Z",
+      "completed_at": "2026-10-25T03:48:47.464987Z",
+      "created_at": "2026-10-25T03:48:34.290964Z",
+      "updated_at": "2026-10-25T03:48:47.464987Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1712c-a773-7109-8007-11d115232ed8",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "First call eval_reload to inspect the existing configuration. Read its error and docs/extensions.md, repair the file, reload again and invoke the greeting for Ada. Return only the greeting.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:34.290964Z"
+    },
+    {
+      "uuid": "01a1712c-b0a5-75d4-b6d9-c46e297c1c2d",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b0a5-74b7-b4d6-5768743d9190",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 1,
+        "request_uuid": "01a1712c-a775-71e0-b5f7-d39f3bef2d21"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:36.645346Z"
+    },
+    {
+      "uuid": "01a1712c-b0aa-78a2-9b83-6234b5419347",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[\"config/hello.json: invalid JSON\"],\"loaded\":0},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b0a5-74b7-b4d6-5768743d9190",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 1,
+        "request_uuid": "01a1712c-a775-71e0-b5f7-d39f3bef2d21"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:36.650561Z"
+    },
+    {
+      "uuid": "01a1712c-b877-7c44-bf00-fcac4c2ce24b",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"config/hello.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b877-7a29-a224-a8c411c014f4",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-b0ab-7eec-a70d-8fed6fe5b857"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:38.647761Z"
+    },
+    {
+      "uuid": "01a1712c-b877-7efb-b910-f6b031b6f2c8",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 5,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/extensions.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b877-7b00-aef3-32c2e8c75395",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-b0ab-7eec-a70d-8fed6fe5b857"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:38.647761Z"
+    },
+    {
+      "uuid": "01a1712c-b884-748f-bbd5-245cb8bd6558",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 6,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\\"template\\\":\\\"Hello, {name}!\\\",}\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b877-7a29-a224-a8c411c014f4",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-b0ab-7eec-a70d-8fed6fe5b857"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:38.660293Z"
+    },
+    {
+      "uuid": "01a1712c-b893-70da-bca3-41cc077aa804",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"config/hello.json must be strict JSON with a template string containing {name}. eval_reload validates it, eval_probe target=\\\"hello\\\" input=\\\"Ada\\\" invokes it.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-b877-7b00-aef3-32c2e8c75395",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1712c-b0ab-7eec-a70d-8fed6fe5b857"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:38.675051Z"
+    },
+    {
+      "uuid": "01a1712c-c168-7c0d-a470-a20db46267bc",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\\"template\\\":\\\"Hello, {name}!\\\"}\", \"path\": \"config/hello.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-c168-77b8-a5f5-7ed8070d17b3",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a1712c-b89c-77b4-8e1d-81d38b93aa33"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:40.936642Z"
+    },
+    {
+      "uuid": "01a1712c-c170-71ad-b560-1396d4949f91",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-c168-77b8-a5f5-7ed8070d17b3",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 3,
+        "request_uuid": "01a1712c-b89c-77b4-8e1d-81d38b93aa33"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:40.944086Z"
+    },
+    {
+      "uuid": "01a1712c-c6bf-757e-ac59-7308d8817a2c",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-c6bf-743d-b353-772f7c716163",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a1712c-c175-79c0-8de2-e50877ab31c5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:42.303316Z"
+    },
+    {
+      "uuid": "01a1712c-c6c4-7c06-8475-b91725864698",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"errors\":[],\"loaded\":1},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-c6bf-743d-b353-772f7c716163",
+      "tool_name": "eval_reload",
+      "metadata": {
+        "action": "eval_reload",
+        "method": "",
+        "purpose": "eval_reload",
+        "request_ordinal": 4,
+        "request_uuid": "01a1712c-c175-79c0-8de2-e50877ab31c5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:42.308782Z"
+    },
+    {
+      "uuid": "01a1712c-d633-7055-a5b6-92d3030b5d62",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"input\": \"Ada\", \"target\": \"hello\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-d632-7dcb-ab41-d156dee3681e",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a1712c-c6c6-7a12-8312-5108530df597"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:46.25896Z"
+    },
+    {
+      "uuid": "01a1712c-d638-706d-93b2-ce7c4d85e48f",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Hello, Ada!\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1712c-d632-7dcb-ab41-d156dee3681e",
+      "tool_name": "eval_probe",
+      "metadata": {
+        "action": "eval_probe",
+        "method": "",
+        "purpose": "eval_probe",
+        "request_ordinal": 5,
+        "request_uuid": "01a1712c-c6c6-7a12-8312-5108530df597"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:46.264022Z"
+    },
+    {
+      "uuid": "01a1712c-dae8-7f1b-9579-d36d44ce0e20",
+      "thread_uuid": "01a1712c-a76c-7e25-8130-e5c71a62ef59",
+      "turn_uuid": "01a1712c-a772-7eb9-aa07-d7455ea05a9e",
+      "run_uuid": "01a1712c-a772-7ebd-a811-c1d2a5e17273",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Hello, Ada!",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 6,
+        "request_uuid": "01a1712c-d63a-77e3-aaba-40d8ee3b9547"
+      },
+      "references": null,
+      "created_at": "2026-10-25T03:48:47.464987Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [
+          "config/hello.json: invalid JSON"
+        ],
+        "loaded": 0
+      },
+      "started_at": "2026-10-25T03:48:36.645848Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "config/hello.json"
+      },
+      "result": "{\"template\":\"Hello, {name}!\",}",
+      "started_at": "2026-10-25T03:48:38.65188Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/extensions.md"
+      },
+      "result": "config/hello.json must be strict JSON with a template string containing {name}. eval_reload validates it, eval_probe target=\"hello\" input=\"Ada\" invokes it.",
+      "started_at": "2026-10-25T03:48:38.664445Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\"template\":\"Hello, {name}!\"}",
+        "path": "config/hello.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-25T03:48:40.938632Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_reload",
+      "arguments": {},
+      "result": {
+        "errors": [],
+        "loaded": 1
+      },
+      "started_at": "2026-10-25T03:48:42.303839Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_probe",
+      "arguments": {
+        "input": "Ada",
+        "target": "hello"
+      },
+      "result": "Hello, Ada!",
+      "started_at": "2026-10-25T03:48:46.259559Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "config/hello.json": "{\"template\":\"Hello, {name}!\"}",
+    "docs/extensions.md": "config/hello.json must be strict JSON with a template string containing {name}. eval_reload validates it, eval_probe target=\"hello\" input=\"Ada\" invokes it."
+  },
+  "active_configuration": {
+    "config/hello.json": {
+      "template": "Hello, {name}!"
+    }
+  },
+  "reload_errors": [],
+  "trace_sha256": "b485ac9936792e1b4025414eb6214c089b1169e0f98d8f258ce448c8f8a64d5e"
+}

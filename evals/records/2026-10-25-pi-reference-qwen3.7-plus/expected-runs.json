@@ -1,0 +1,74 @@
+[
+  {
+    "case_slug": "pi-add-model-with-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-add-model-without-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-prompt-template-project-with-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-prompt-template-user-with-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-prompt-template-user-without-docs",
+    "repetition": 1
+  },
+  {
+    "case_slug": "pi-prompt-template-user-without-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-prompt-template-user-with-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-prompt-template-project-with-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-add-model-without-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-add-model-with-docs",
+    "repetition": 2
+  },
+  {
+    "case_slug": "pi-add-model-with-docs",
+    "repetition": 3
+  },
+  {
+    "case_slug": "pi-add-model-without-docs",
+    "repetition": 3
+  },
+  {
+    "case_slug": "pi-prompt-template-project-with-docs",
+    "repetition": 3
+  },
+  {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 3
+  },
+  {
+    "case_slug": "pi-prompt-template-user-with-docs",
+    "repetition": 3
+  },
+  {
+    "case_slug": "pi-prompt-template-user-without-docs",
+    "repetition": 3
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "number": 9706,
+  "title": "fix(coding-agent): validate eval prompts from transcripts",
+  "url": "https://github.com/earendil-works/pi/pull/9706",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-09-17T13:11:40Z",
+  "updated_at": "2026-09-17T13:12:13Z",
+  "head_sha": "910e03d2555314e2fd95ad462be62f062457a247",
+  "merge_commit_sha": "5a3a03a7f5db43692915d6ae45e6d96497ea248d",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "作者报告重新运行后有 5/5 对可评分。eligible 表示证据可用，不是 100% 通过率。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

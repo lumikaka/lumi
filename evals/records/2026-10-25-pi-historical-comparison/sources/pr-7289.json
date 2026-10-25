@@ -1,0 +1,17 @@
+{
+  "number": 7289,
+  "title": "feat(coding-agent): add comparative Pi eval harness",
+  "url": "https://github.com/earendil-works/pi/pull/7289",
+  "state": "closed",
+  "merged": true,
+  "created_at": "2026-07-29T22:18:25Z",
+  "updated_at": "2026-07-30T08:46:48Z",
+  "head_sha": "743e1595c40e6eeacd206b9372fb859765770135",
+  "merge_commit_sha": "7659e1c98df9338229a9b0cc7b7e75922f95163f",
+  "comments": 0,
+  "review_comments": 0,
+  "retrieved_on": "2026-10-25",
+  "execution_revision": null,
+  "summary": "已实现比较报告；作者建议增加付费扩展评测重复次数后再解释 lift。没有公开数值基线。",
+  "note": "head_sha 是检索时 PR 分支版本，不能当作评测执行版本。"
+}

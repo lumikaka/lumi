@@ -101,6 +101,10 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 <summary><strong>开发与技术细节</strong></summary>
 
+### Agent 行为评测
+
+独立评测入口、配置、用例扩展及真实运行记录见 [Agent evals](evals/README.md)。可用 `make eval-agent-list` 列出用例；真实模型运行需显式执行 `make eval-agent`，不包含在普通测试中。
+
 ### 技术栈
 
 - 后端：Go 1.25、Echo v4、GORM v2、纯 Go SQLite

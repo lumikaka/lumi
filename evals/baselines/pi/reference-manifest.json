@@ -1,0 +1,40 @@
+{
+  "repository": "https://github.com/earendil-works/pi",
+  "code_revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "execution_revision": null,
+  "note": "代码快照版本不等于已确认的评测执行版本。",
+  "files": [
+    {
+      "path": "reference/LICENSE",
+      "sha256": "4f6a1985796db5225e3b1e59972bd47e07a27a0748427cb3d3c8fbf39f9311f0"
+    },
+    {
+      "path": "reference/packages/coding-agent/docs/configuration.md",
+      "sha256": "fc48d1ce7d885c5253222415fb7a4b46d75f80e6431eb924174657ff775099eb"
+    },
+    {
+      "path": "reference/packages/coding-agent/docs/models.md",
+      "sha256": "7132c6c5130a83b0c427db105e8b35fe38390f1e0d43afca0d3bb5898ad0bd71"
+    },
+    {
+      "path": "reference/packages/coding-agent/docs/prompt-templates.md",
+      "sha256": "ad5113cce0d05ef0ac77b3c71f9ebe41ea68c072275f9273b9616e4924feda42"
+    },
+    {
+      "path": "reference/packages/coding-agent/src/core/model-config.ts",
+      "sha256": "fda5acc6e80ed31750efd33cacb417f012f19ff22b2e24fcc1bed2d03261513c"
+    },
+    {
+      "path": "reference/packages/evals/evals/configured-runtime.ts",
+      "sha256": "72ed9e9cd7bd8fb9fd96bad2ecf93f07016e1a99e8114a7d628b320b82959720"
+    },
+    {
+      "path": "reference/packages/evals/evals/models.docs.eval.ts",
+      "sha256": "47189327141959588997b91a23063b9cba495f2788b33145a48b3379c364b64a"
+    },
+    {
+      "path": "reference/packages/evals/evals/prompt-templates.docs.eval.ts",
+      "sha256": "d188826e4e5131542f9e9d1a82e70fda3ea29d2fe08811213a84cc82313fe61d"
+    }
+  ]
+}
