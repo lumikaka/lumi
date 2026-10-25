@@ -1,0 +1,1372 @@
+{
+  "task": {
+    "case_slug": "pi-add-model-with-docs",
+    "repetition": 3
+  },
+  "protocol_digest": "32ac27da1040ddedc6fa18835f571983fe4342220e12e603f06b546186009419",
+  "status": "agent_error",
+  "final": "I've configured the new `openai/fixture-chat` model in the user-level `models.json` at `/eval/home/.pi/agent/models.json`. Here's what was set:\n\n- **Model ID**: `openai/fixture-chat`\n- **Display name**: \"Fixture Chat\"\n- **Input**: text only (`[\"text\"]`)\n- **Reasoning**: supported (`true`)\n- **Context window**: 32,768 tokens\n- **Max output**: 4,096 tokens\n- **Cost**: no cost (omitted, which defaults to no cost per the documentation)\n\nThe configuration is in the agent directory (`~/.pi/agent/models.json`), not project-local, as requested. The `openai` provider's `models` array adds this model to Pi's catalog. Per the docs, models without an explicit catalog price report tokens at no cost.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 0,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "result": {
+          "error": "Model openai/fixture-chat is unavailable after reload."
+        }
+      },
+      "expected": {
+        "result": {
+          "existingModelsPreserved": true,
+          "model": {
+            "contextWindow": 32768,
+            "cost": {
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "input": 0,
+              "output": 0
+            },
+            "id": "fixture-chat",
+            "input": [
+              "text"
+            ],
+            "maxTokens": 4096,
+            "name": "Fixture Chat",
+            "provider": "openai",
+            "reasoning": true
+          }
+        }
+      }
+    }
+  ],
+  "issues": [
+    {
+      "kind": "agent",
+      "code": "budget_limit",
+      "message": "Runtime ended this turn: map[budget_reason:model_request_limit completion_reason:budget_limit request_ordinal:16 request_uuid:01a17340-2813-78ac-8311-07bc34d43433]"
+    }
+  ],
+  "started_at": "2026-10-25T13:26:29.997022633Z",
+  "duration_ms": 176892,
+  "usage": {
+    "input_tokens": 81466,
+    "output_tokens": 9787,
+    "cached_input_tokens": 67328,
+    "cost_usd": null,
+    "requests": 16
+  },
+  "turns": [
+    {
+      "uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Configure this running Pi installation with a new `openai/fixture-chat` model. Do not create project-local configuration. Show it as “Fixture Chat”. It accepts text, supports reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:26:30.430637447Z",
+      "completed_at": "2026-10-25T13:29:26.873556101Z",
+      "created_at": "2026-10-25T13:26:30.427591223Z",
+      "updated_at": "2026-10-25T13:29:26.873556101Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a1733d-c51b-7d78-b83e-98f5ddf81f1a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Configure this running Pi installation with a new `openai/fixture-chat` model. Do not create project-local configuration. Show it as “Fixture Chat”. It accepts text, supports reasoning, has a 32,768-token context window and a 4,096-token maximum output, and has no usage cost.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:30.427591223Z"
+    },
+    {
+      "uuid": "01a1733d-d667-77d4-a364-4affbf1be590",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-d667-7309-8ef0-d0c7c0693b61",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a1733d-c521-7cf1-9444-00d9160ec826"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:34.855431424Z"
+    },
+    {
+      "uuid": "01a1733d-d668-71c3-971e-86c4eb4ede79",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-d667-7509-a103-4ef7780315cc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a1733d-c521-7cf1-9444-00d9160ec826"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:34.855431424Z"
+    },
+    {
+      "uuid": "01a1733d-d669-7bf5-9106-1e7be31e23e7",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"configuration.md\\nmodels.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-d667-7309-8ef0-d0c7c0693b61",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a1733d-c521-7cf1-9444-00d9160ec826"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:34.857774626Z"
+    },
+    {
+      "uuid": "01a1733d-d66b-78ee-87ad-2062760228a2",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-d667-7509-a103-4ef7780315cc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a1733d-c521-7cf1-9444-00d9160ec826"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:34.859576032Z"
+    },
+    {
+      "uuid": "01a1733d-dd87-7a61-99ea-4d326f9ec1ae",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs/models.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-dd87-75ad-b96a-059dbb3f5306",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1733d-d66f-706a-afe6-caf74dac92ce"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:36.679579544Z"
+    },
+    {
+      "uuid": "01a1733d-dd88-724d-a2c1-c1f4e452d5b3",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 7,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs/configuration.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-dd87-77a3-b2c7-bb900a1130a3",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1733d-d66f-706a-afe6-caf74dac92ce"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:36.679579544Z"
+    },
+    {
+      "uuid": "01a1733d-dd8a-713c-ac5b-cd4495062f3a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 8,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"# Choose a Model\\n\\nFor a built-in provider, start with `/login`, then choose a model with `/model`. Use custom model configuration only when Pi does not already include the provider or endpoint you need.\\n\\n## Choose a connection\\n\\n| What you have | Recommended setup |\\n|---|---|\\n| A supported subscription | Sign in through `/login` |\\n| A provider API key | Store it through `/login` or set its environment variable |\\n| A local GGUF model | Connect Pi to the llama.cpp router |\\n| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |\\n| A provider with a custom protocol or authentication flow | Build or install a provider extension |\\n\\nBrowse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Pi starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `pi update --models` to force a refresh.\\n\\n## Authenticate\\n\\nRun `/login` and select a provider. Pi stores credentials in [`auth.json`](configuration.md#agent-directory). Run `/logout` to remove stored credentials for a provider.\\n\\nYou can instead provide an API key through the provider's environment variable. This is useful in CI and other environments where Pi should not write credentials. [Provider Authentication](providers.md) lists the variables and cloud-provider setup.\\n\\nWhen several credential sources are configured, Pi uses a runtime `--api-key` first, then a stored `auth.json` credential, an `apiKey` from `models.json`, and finally the provider's environment variables or ambient cloud credentials. Provider extensions can define their own authentication behavior.\\n\\nKeep `auth.json` and any credential commands private. Project settings and extensions can execute inside the Pi process after you trust a project. Review [Security](security.md) before loading configuration from an untrusted directory.\\n\\n## Select a model\\n\\nRun `/model` to search available models. The picker shows models whose providers have usable authentication. Press `Ctrl+S` on a model to save it as the default for new sessions.\\n\\nRun `/thinking` to select the thinking level for the current model. Press `Ctrl+S` there to save the startup level. Pi limits the choices to levels supported by the selected model.\\n\\n`Ctrl+P` cycles through available models. Use `/scoped-models` to control that cycle and save the selection, or configure model patterns through [Settings](settings.md#model-cycling).\\n\\nA session records model and thinking-level changes. Resuming the session restores them without changing defaults for new sessions.\\n\\n## Connect local models\\n\\nPi integrates directly with the llama.cpp router. The router discovers GGUF files and loads models on demand. Pi's `/llama` command manages the router, while `/model` selects one of its loaded models.\\n\\nFollow [Local Models with llama.cpp](llama-cpp.md) for server startup, model layout, downloads, and connection troubleshooting.\\n\\nFor Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.\\n\\n## Configure a compatible endpoint\\n\\nUse [`models.json`](configuration.md#agent-directory) when an endpoint speaks an API Pi already supports. This includes most Ollama, LM Studio, vLLM, SGLang, and proxy deployments.\\n\\n```json\\n{\\n  \\\"providers\\\": {\\n    \\\"ollama\\\": {\\n      \\\"baseUrl\\\": \\\"http://localhost:11434/v1\\\",\\n      \\\"api\\\": \\\"openai-completions\\\",\\n      \\\"apiKey\\\": \\\"ollama\\\",\\n      \\\"models\\\": [\\n        { \\\"id\\\": \\\"qwen2.5-coder:7b\\\" }\\n      ]\\n    }\\n  }\\n}\\n```\\n\\nThe dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.\\n\\nOpening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.\\n\\n### Describe model input and caching\\n\\nUse `inputLimits.images.resize` to control how Pi encodes new image attachments, `read` results, and tool-result images before storing them in conversation history:\\n\\n```json\\n{\\n  \\\"id\\\": \\\"vision-model\\\",\\n  \\\"input\\\": [\\\"text\\\", \\\"image\\\"],\\n  \\\"inputLimits\\\": {\\n    \\\"images\\\": {\\n      \\\"resize\\\": {\\n        \\\"maxWidth\\\": 1568,\\n        \\\"maxHeight\\\": 1568,\\n        \\\"maxBytes\\\": 524288,\\n        \\\"jpegQuality\\\": 75\\n      }\\n    }\\n  }\\n}\\n```\\n\\n`maxBytes` limits the base64-encoded payload. Omitted resize fields use conservative defaults of 2000 by 2000 pixels, 4.5 MiB encoded, and JPEG quality 80. Images are encoded once; changing models does not rewrite historical images. The catalog can also describe hard request limits with `inputLimits.maxRequestBytes`, `images.maxPerMessage`, and `images.maxPerRequest`, but Pi does not yet rewrite or reject history based on them.\\n\\n\\u003ca id=\\\"prompt-cache-lifetimes\\\"\\u003e\\u003c/a\\u003e\\n\\nUse `promptCache` to declare the provider's best-effort cache lifetime in seconds for the `short` or `long` retention tier:\\n\\n```json\\n{ \\\"id\\\": \\\"claude-sonnet-5\\\", \\\"promptCache\\\": { \\\"short\\\": 300, \\\"long\\\": 3600 } }\\n```\\n\\nChoose the conservative end of any published range. A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model, including a model accessed through a validated proxy. See [`cacheWarming`](settings.md#model-and-thinking).\\n\\nCompatibility settings should describe verified differences in the endpoint's request or response behavior. Do not enable them based only on an endpoint advertising OpenAI or Anthropic compatibility.\\n\\n## Use classifier models\\n\\nClassifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. Pi includes TypeSafe's Jev model from these providers:\\n\\n| Provider | Model IDs | Authentication |\\n|---|---|---|\\n| `typesafe` | `jev-latest` | `TYPESAFE_API_KEY` |\\n| `openrouter` | `typesafe/jev-1.13`, `~typesafe/jev-latest` | `OPENROUTER_API_KEY` or `/login` |\\n| `cloudflare-workers-ai` | `typesafe/jev` | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |\\n| `vercel-ai-gateway` | `typesafe-ai/jev` | `AI_GATEWAY_API_KEY` |\\n| `opencode` | `jev-1.13`, `jev-1.13-free` | `OPENCODE_API_KEY` |\\n\\nChat models on a [llama.cpp router](llama-cpp.md#classification) are also listed as classifier models.\\n\\nClassifier models do not appear in `/model`. The model reaches them through the [`codemode`](cli.md#enable-codemode) tool, which is off unless an MCP server turned it on. Enable it with `\\\"defaultTools\\\": [\\\"+codemode\\\"]` in [settings](settings.md#tools). Scripts then list classifier models with `models.getAvailableOfType(\\\"classifier\\\")` and call `models.classify(model, { state, questions })`:\\n\\n```js\\nconst jev = await models.getModelOfType(\\\"classifier\\\", \\\"typesafe\\\", \\\"jev-latest\\\");\\nconst result = await models.classify(jev, {\\n  state: { message: \\\"The change works, thanks.\\\" },\\n  questions: {\\n    approved: {\\n      type: \\\"bool\\\",\\n      instructions: \\\"Does the user approve of the result?\\\",\\n      criteria: { true: \\\"Approval\\\", false: \\\"No approval\\\" },\\n    },\\n  },\\n});\\nreturn result.answers;\\n```\\n\\nWhen the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\\n\\nExtensions call classifiers through `ctx.modelRegistry.classify()`, without codemode. [Virtual models](virtual-models.md#route-requests) can use them to route requests; see the `jev-router.ts` example.\\n\\n## Add a custom provider\\n\\nUse an extension when the provider needs custom streaming, model discovery, or authentication behavior. See [Custom Providers](custom-provider.md) for the extension workflow.\\n\\n## Troubleshooting\\n\\n### A model does not appear\\n\\nConfirm that its provider has usable authentication. Custom models can load from `models.json` but remain unavailable in `/model` until Pi can resolve credentials. For llama.cpp, only models currently loaded by the router appear.\\n\\n### Authentication works in one shell only\\n\\nCheck whether the key came from an environment variable rather than `auth.json`. Environment variables must be present in the process that starts Pi.\\n\\n### Sign-in opens a browser on a remote machine\\n\\nComplete the provider's headless authentication flow when available. Some providers let you paste the final redirect URL or authorization code back into Pi. See [Authenticate interactively](providers.md#authenticate-interactively).\\n\\n### A compatible endpoint rejects requests\\n\\nCheck its API type and compatibility settings in `models.json`. The upstream server must support the corresponding request fields and behavior.\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-dd87-75ad-b96a-059dbb3f5306",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1733d-d66f-706a-afe6-caf74dac92ce"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:36.68207092Z"
+    },
+    {
+      "uuid": "01a1733d-dd8c-7495-bb63-290b3273f012",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"# Configuration\\n\\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\\n\\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\\n\\n## Agent directory\\n\\nThe agent directory is shown as `\\u003cagent-dir\\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\\n\\n| Path | Responsibility |\\n|---|---|\\n| `\\u003cagent-dir\\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\\n| `\\u003cagent-dir\\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\\n| `\\u003cagent-dir\\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\\n| `\\u003cagent-dir\\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\\n| `\\u003cagent-dir\\u003e/auth.json` | Saved API keys and OAuth credentials. |\\n| `\\u003cagent-dir\\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\\n| `\\u003cagent-dir\\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\\n| `\\u003cagent-dir\\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\\n| `\\u003cagent-dir\\u003e/extensions/` | User [extensions](extensions.md). |\\n| `\\u003cagent-dir\\u003e/skills/` | User [skills](skills.md) and supporting files. |\\n| `\\u003cagent-dir\\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\\n| `\\u003cagent-dir\\u003e/themes/` | User [theme](themes.md) files. |\\n\\n## Project `.pi` directory\\n\\n| Path | Responsibility |\\n|---|---|\\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\\n| `.pi/extensions/` | Project extensions. |\\n| `.pi/skills/` | Project skills and supporting files. |\\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\\n| `.pi/themes/` | Project theme files. |\\n\\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\\n\\n## Context files\\n\\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\\n\\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\\n\\nContext-file discovery does not require project trust.\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-dd87-77a3-b2c7-bb900a1130a3",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a1733d-d66f-706a-afe6-caf74dac92ce"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:36.68428897Z"
+    },
+    {
+      "uuid": "01a1733d-eeaa-7cd3-b6ce-84a5dc5fc054",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-eeaa-7951-a243-a52f9f03f6cc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a1733d-dd96-73aa-a883-4563b972698a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:41.06672302Z"
+    },
+    {
+      "uuid": "01a1733d-eeae-7d83-a82b-b900d0859601",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733d-eeaa-7951-a243-a52f9f03f6cc",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a1733d-dd96-73aa-a883-4563b972698a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:26:41.070876363Z"
+    },
+    {
+      "uuid": "01a1733e-5085-7407-bdf2-264e3aed512f",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs\", \"pattern\": \"reasoning|contextWindow|maxOutput|cost\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-5084-7db5-9c28-e893d0bb74c6",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 4,
+        "request_uuid": "01a1733d-eeba-7611-a37a-9c2dc05bb2ef"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:06.117161488Z"
+    },
+    {
+      "uuid": "01a1733e-5085-7ab0-8433-f4bda273f2b5",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 13,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"*.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-5085-70ff-8419-d01a6a6898f9",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a1733d-eeba-7611-a37a-9c2dc05bb2ef"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:06.117161488Z"
+    },
+    {
+      "uuid": "01a1733e-5088-7074-bd3c-d07e93eee517",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 14,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-5084-7db5-9c28-e893d0bb74c6",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 4,
+        "request_uuid": "01a1733d-eeba-7611-a37a-9c2dc05bb2ef"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:06.120019612Z"
+    },
+    {
+      "uuid": "01a1733e-5089-7b5e-9dbb-2dc9162b2fcb",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 15,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-5085-70ff-8419-d01a6a6898f9",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 4,
+        "request_uuid": "01a1733d-eeba-7611-a37a-9c2dc05bb2ef"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:06.121735829Z"
+    },
+    {
+      "uuid": "01a1733e-614c-736c-b07a-5fdb9b4fe512",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 16,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"contextWindow|maxOutput|reasoning|modelOverrides\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-614b-7ce4-8e9a-3167b4c914a7",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a1733e-5094-7ec9-a1b5-8617aecae4ac"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:10.412106415Z"
+    },
+    {
+      "uuid": "01a1733e-614c-7c67-80cf-b7514fc024b5",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 17,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"models\\\\.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-614c-7023-b674-772c3f8c687d",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a1733e-5094-7ec9-a1b5-8617aecae4ac"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:10.412106415Z"
+    },
+    {
+      "uuid": "01a1733e-6150-7289-8823-c7f3f7f3f9a0",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 18,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md:66:Opening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.\\n/eval/runtime/docs/models.md:99:Choose the conservative end of any published range. A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model, including a model accessed through a validated proxy. See [`cacheWarming`](settings.md#model-and-thinking).\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-614b-7ce4-8e9a-3167b4c914a7",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a1733e-5094-7ec9-a1b5-8617aecae4ac"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:10.41615608Z"
+    },
+    {
+      "uuid": "01a1733e-6152-70ec-b2e8-f4012670920a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 19,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/configuration.md:16:| `\\u003cagent-dir\\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\\n/eval/runtime/docs/models.md:12:| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |\\n/eval/runtime/docs/models.md:146:Confirm that its provider has usable authentication. Custom models can load from `models.json` but remain unavailable in `/model` until Pi can resolve credentials. For llama.cpp, only models currently loaded by the router appear.\\n/eval/runtime/docs/models.md:158:Check its API type and compatibility settings in `models.json`. The upstream server must support the corresponding request fields and behavior.\\n/eval/runtime/docs/models.md:23:When several credential sources are configured, Pi uses a runtime `--api-key` first, then a stored `auth.json` credential, an `apiKey` from `models.json`, and finally the provider's environment variables or ambient cloud credentials. Provider extensions can define their own authentication behavior.\\n/eval/runtime/docs/models.md:43:For Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.\\n/eval/runtime/docs/models.md:47:Use [`models.json`](configuration.md#agent-directory) when an endpoint speaks an API Pi already supports. This includes most Ollama, LM Studio, vLLM, SGLang, and proxy deployments.\\n/eval/runtime/docs/models.md:64:The dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-614c-7023-b674-772c3f8c687d",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 5,
+        "request_uuid": "01a1733e-5094-7ec9-a1b5-8617aecae4ac"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:10.418042636Z"
+    },
+    {
+      "uuid": "01a1733e-7107-7353-bbda-f93526846fa0",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 20,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"\\\\\\\"name\\\\\\\"|\\\\\\\"input\\\\\\\"|\\\\\\\"reasoning\\\\\\\"|\\\\\\\"context\\\\\\\"|\\\\\\\"maxOutput\\\\\\\"|\\\\\\\"cost\\\\\\\"|\\\\\\\"noCost\\\\\\\"|\\\\\\\"free\\\\\\\"\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-7106-7ee8-b034-e734cc460238",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 6,
+        "request_uuid": "01a1733e-615e-7cf6-8d2d-c8fae786a937"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:14.439098596Z"
+    },
+    {
+      "uuid": "01a1733e-7108-7dce-b1df-c6b9600a3cce",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 21,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md:75:  \\\"input\\\": [\\\"text\\\", \\\"image\\\"],\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-7106-7ee8-b034-e734cc460238",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 6,
+        "request_uuid": "01a1733e-615e-7cf6-8d2d-c8fae786a937"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:14.44089406Z"
+    },
+    {
+      "uuid": "01a1733e-7a69-7339-b290-4750d966151a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 22,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"*model*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-7a69-700b-adc3-01f0f4a1a7f4",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 7,
+        "request_uuid": "01a1733e-7115-79fc-8add-1065fcbf6deb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:16.841100971Z"
+    },
+    {
+      "uuid": "01a1733e-7a6a-7d36-af26-6285bca876e4",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 23,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-7a69-700b-adc3-01f0f4a1a7f4",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 7,
+        "request_uuid": "01a1733e-7115-79fc-8add-1065fcbf6deb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:16.842856381Z"
+    },
+    {
+      "uuid": "01a1733e-8562-7eb4-b0c7-1f31a44e60d4",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 24,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"*catalog*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-8562-78f8-a005-68037cb75ae9",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 8,
+        "request_uuid": "01a1733e-7a78-718e-8758-ad9ee4130188"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:19.650836476Z"
+    },
+    {
+      "uuid": "01a1733e-8563-768d-9455-7934b377a168",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 25,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-8562-7b56-8e59-4d2a9e6d4b1e",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 8,
+        "request_uuid": "01a1733e-7a78-718e-8758-ad9ee4130188"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:19.650836476Z"
+    },
+    {
+      "uuid": "01a1733e-8565-70f6-9052-a998d84efb9a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 26,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-8562-78f8-a005-68037cb75ae9",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 8,
+        "request_uuid": "01a1733e-7a78-718e-8758-ad9ee4130188"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:19.653053954Z"
+    },
+    {
+      "uuid": "01a1733e-8566-7d99-ac06-62ea8a9ee1d9",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 27,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"docs/\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-8562-7b56-8e59-4d2a9e6d4b1e",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 8,
+        "request_uuid": "01a1733e-7a78-718e-8758-ad9ee4130188"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:19.654882219Z"
+    },
+    {
+      "uuid": "01a1733e-b66b-7cc9-a797-da9b200a9c63",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 28,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"contextWindow|maxOutput|reasoning|cost\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-b66b-771f-97c5-534a52285e0f",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 9,
+        "request_uuid": "01a1733e-8574-77a9-a41a-930036c5865d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:32.203714973Z"
+    },
+    {
+      "uuid": "01a1733e-b66c-74a7-8bc6-8496391589ac",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 29,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-b66b-7973-a260-d22c364f5c92",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 9,
+        "request_uuid": "01a1733e-8574-77a9-a41a-930036c5865d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:32.203714973Z"
+    },
+    {
+      "uuid": "01a1733e-b66e-7abd-9855-402e582c05bb",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 30,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-b66b-771f-97c5-534a52285e0f",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 9,
+        "request_uuid": "01a1733e-8574-77a9-a41a-930036c5865d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:32.206694357Z"
+    },
+    {
+      "uuid": "01a1733e-b670-789b-9e88-9d9a90366b1a",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 31,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/configuration.md\\n/eval/runtime/docs/models.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-b66b-7973-a260-d22c364f5c92",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 9,
+        "request_uuid": "01a1733e-8574-77a9-a41a-930036c5865d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:32.208554652Z"
+    },
+    {
+      "uuid": "01a1733e-d905-726a-b52f-c3fd2d1401f5",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 32,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval\", \"pattern\": \"contextWindow|maxOutput|reasoning|\\\\\\\"name\\\\\\\"|\\\\\\\"displayName\\\\\\\"\"}",
+      "content_format": "json",
+      "status": "failed",
+      "tool_call_uuid": "01a1733e-d905-7218-a119-519a04e8c8ca",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "grep",
+        "request_ordinal": 10,
+        "request_uuid": "01a1733e-b67e-7d9e-bd21-efe77f53c95f",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:41.061137736Z"
+    },
+    {
+      "uuid": "01a1733e-d905-75a7-b8bd-5babf95318d7",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 33,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"agent_tool_validation_failed\",\"details\":\"path is outside the virtual roots\",\"message\":\"Invalid evaluation tool arguments\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733e-d905-7218-a119-519a04e8c8ca",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "error_code": "agent_tool_validation_failed",
+        "purpose": "grep",
+        "request_ordinal": 10,
+        "request_uuid": "01a1733e-b67e-7d9e-bd21-efe77f53c95f",
+        "validation_repair": true
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:41.061137736Z"
+    },
+    {
+      "uuid": "01a1733f-124f-7819-b277-fb95a25a4850",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 34,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-124f-7268-a7a9-264e263feca6",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 11,
+        "request_uuid": "01a1733e-d914-7345-8a00-da6ff6a4d0a5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:55.727408498Z"
+    },
+    {
+      "uuid": "01a1733f-1250-70f7-9dcc-862c00cc551e",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 35,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\", \"pattern\": \"contextWindow|maxOutput|reasoning|name\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-124f-74c9-a021-4d525887d817",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 11,
+        "request_uuid": "01a1733e-d914-7345-8a00-da6ff6a4d0a5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:55.727408498Z"
+    },
+    {
+      "uuid": "01a1733f-1251-7ac5-bf04-6400d4c360ed",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 36,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-124f-7268-a7a9-264e263feca6",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 11,
+        "request_uuid": "01a1733e-d914-7345-8a00-da6ff6a4d0a5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:55.729696527Z"
+    },
+    {
+      "uuid": "01a1733f-1253-7655-9c8f-dc9e6f1b53eb",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 37,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-124f-74c9-a021-4d525887d817",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 11,
+        "request_uuid": "01a1733e-d914-7345-8a00-da6ff6a4d0a5"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:55.73140528Z"
+    },
+    {
+      "uuid": "01a1733f-1fe3-7640-a656-837e581cecaf",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 38,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"context|window|token|output|reason|cost|price|name|display\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-1fe3-7258-ae7a-445d7d59b0cb",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 12,
+        "request_uuid": "01a1733f-1262-7955-a82f-a3f5a4bc62bb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:59.20327329Z"
+    },
+    {
+      "uuid": "01a1733f-1fe7-7097-8aa4-7a75b0a4e558",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 39,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/configuration.md:39:For `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\\n/eval/runtime/docs/configuration.md:43:Context files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\\n/eval/runtime/docs/configuration.md:45:An `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\\n/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\\n/eval/runtime/docs/models.md:15:Browse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Pi starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `pi update --models` to force a refresh.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-1fe3-7258-ae7a-445d7d59b0cb",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 12,
+        "request_uuid": "01a1733f-1262-7955-a82f-a3f5a4bc62bb"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:27:59.207022613Z"
+    },
+    {
+      "uuid": "01a1733f-2e75-77d4-91dd-e939a80e8a01",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 40,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-2e75-71b0-be9c-ecb640ce408d",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 13,
+        "request_uuid": "01a1733f-1ff6-7429-a302-45b911e87b9d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:28:02.933369269Z"
+    },
+    {
+      "uuid": "01a1733f-2e76-7058-a678-a71ab2a949ac",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 41,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime\", \"pattern\": \"contextWindow|maxOutput|reasoning|\\\\\\\"name\\\\\\\"|\\\\\\\"displayName\\\\\\\"|\\\\\\\"cost\\\\\\\"|\\\\\\\"pricing\\\\\\\"|\\\\\\\"noCost\\\\\\\"|\\\\\\\"free\\\\\\\"|\\\\\\\"input\\\\\\\"|\\\\\\\"supports\\\\\\\"\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-2e75-7453-a144-692d23ad7aa0",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "purpose": "grep",
+        "request_ordinal": 13,
+        "request_uuid": "01a1733f-1ff6-7429-a302-45b911e87b9d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:28:02.933369269Z"
+    },
+    {
+      "uuid": "01a1733f-2e77-7aec-a028-4a25c533f68f",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 42,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/configuration.md\\n/eval/runtime/docs/models.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-2e75-71b0-be9c-ecb640ce408d",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 13,
+        "request_uuid": "01a1733f-1ff6-7429-a302-45b911e87b9d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:28:02.935705698Z"
+    },
+    {
+      "uuid": "01a1733f-2e7a-7105-a367-1e858b4f250c",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 43,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"/eval/runtime/docs/models.md:75:  \\\"input\\\": [\\\"text\\\", \\\"image\\\"],\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a1733f-2e75-7453-a144-692d23ad7aa0",
+      "tool_name": "grep",
+      "metadata": {
+        "action": "grep",
+        "method": "",
+        "purpose": "grep",
+        "request_ordinal": 13,
+        "request_uuid": "01a1733f-1ff6-7429-a302-45b911e87b9d"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:28:02.938056073Z"
+    },
+    {
+      "uuid": "01a17340-20cf-735c-8e4e-9ecac03d15eb",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 44,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"providers\\\": {\\n    \\\"openai\\\": {\\n      \\\"models\\\": [\\n        {\\n          \\\"id\\\": \\\"fixture-chat\\\",\\n          \\\"name\\\": \\\"Fixture Chat\\\",\\n          \\\"input\\\": [\\\"text\\\"],\\n          \\\"reasoning\\\": true,\\n          \\\"contextWindow\\\": 32768,\\n          \\\"maxOutput\\\": 4096\\n        }\\n      ]\\n    }\\n  }\\n}\\n\", \"path\": \"/eval/home/.pi/agent/models.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17340-20ce-7eb2-b160-e281ffa0befa",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 14,
+        "request_uuid": "01a1733f-2e8a-755e-845b-13b808f9ee2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:29:04.975080143Z"
+    },
+    {
+      "uuid": "01a17340-20d0-7bda-83bf-0de04ff7a067",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 45,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/home/.pi/agent/models.json\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17340-20ce-7eb2-b160-e281ffa0befa",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 14,
+        "request_uuid": "01a1733f-2e8a-755e-845b-13b808f9ee2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:29:04.976764251Z"
+    },
+    {
+      "uuid": "01a17340-2802-7c67-a668-ebf0fdcf9aea",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 46,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent/models.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17340-2802-788c-b305-c99490fb1fba",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 15,
+        "request_uuid": "01a17340-20e1-778f-b435-d9686b37d2d7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:29:06.81866969Z"
+    },
+    {
+      "uuid": "01a17340-2804-771f-93e8-aac3db217888",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 47,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\n  \\\"providers\\\": {\\n    \\\"openai\\\": {\\n      \\\"models\\\": [\\n        {\\n          \\\"id\\\": \\\"fixture-chat\\\",\\n          \\\"name\\\": \\\"Fixture Chat\\\",\\n          \\\"input\\\": [\\\"text\\\"],\\n          \\\"reasoning\\\": true,\\n          \\\"contextWindow\\\": 32768,\\n          \\\"maxOutput\\\": 4096\\n        }\\n      ]\\n    }\\n  }\\n}\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17340-2802-788c-b305-c99490fb1fba",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 15,
+        "request_uuid": "01a17340-20e1-778f-b435-d9686b37d2d7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:29:06.820457872Z"
+    },
+    {
+      "uuid": "01a17340-7659-7889-ad1b-08d763669e04",
+      "thread_uuid": "01a1733d-c519-7d99-ae32-6f3c961ffe9c",
+      "turn_uuid": "01a1733d-c51b-7909-b440-be0fc1ed1bd2",
+      "run_uuid": "01a1733d-c51b-790e-981b-18a865f8c1c3",
+      "sequence": 48,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I've configured the new `openai/fixture-chat` model in the user-level `models.json` at `/eval/home/.pi/agent/models.json`. Here's what was set:\n\n- **Model ID**: `openai/fixture-chat`\n- **Display name**: \"Fixture Chat\"\n- **Input**: text only (`[\"text\"]`)\n- **Reasoning**: supported (`true`)\n- **Context window**: 32,768 tokens\n- **Max output**: 4,096 tokens\n- **Cost**: no cost (omitted, which defaults to no cost per the documentation)\n\nThe configuration is in the agent directory (`~/.pi/agent/models.json`), not project-local, as requested. The `openai` provider's `models` array adds this model to Pi's catalog. Per the docs, models without an explicit catalog price report tokens at no cost.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "budget_reason": "model_request_limit",
+        "completion_reason": "budget_limit",
+        "request_ordinal": 16,
+        "request_uuid": "01a17340-2813-78ac-8311-07bc34d43433"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:29:26.873556101Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/runtime/docs"
+      },
+      "result": "configuration.md\nmodels.md",
+      "started_at": "2026-10-25T13:26:34.857245293Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:26:34.859071866Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/runtime/docs/models.md"
+      },
+      "result": "# Choose a Model\n\nFor a built-in provider, start with `/login`, then choose a model with `/model`. Use custom model configuration only when Pi does not already include the provider or endpoint you need.\n\n## Choose a connection\n\n| What you have | Recommended setup |\n|---|---|\n| A supported subscription | Sign in through `/login` |\n| A provider API key | Store it through `/login` or set its environment variable |\n| A local GGUF model | Connect Pi to the llama.cpp router |\n| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |\n| A provider with a custom protocol or authentication flow | Build or install a provider extension |\n\nBrowse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Pi starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `pi update --models` to force a refresh.\n\n## Authenticate\n\nRun `/login` and select a provider. Pi stores credentials in [`auth.json`](configuration.md#agent-directory). Run `/logout` to remove stored credentials for a provider.\n\nYou can instead provide an API key through the provider's environment variable. This is useful in CI and other environments where Pi should not write credentials. [Provider Authentication](providers.md) lists the variables and cloud-provider setup.\n\nWhen several credential sources are configured, Pi uses a runtime `--api-key` first, then a stored `auth.json` credential, an `apiKey` from `models.json`, and finally the provider's environment variables or ambient cloud credentials. Provider extensions can define their own authentication behavior.\n\nKeep `auth.json` and any credential commands private. Project settings and extensions can execute inside the Pi process after you trust a project. Review [Security](security.md) before loading configuration from an untrusted directory.\n\n## Select a model\n\nRun `/model` to search available models. The picker shows models whose providers have usable authentication. Press `Ctrl+S` on a model to save it as the default for new sessions.\n\nRun `/thinking` to select the thinking level for the current model. Press `Ctrl+S` there to save the startup level. Pi limits the choices to levels supported by the selected model.\n\n`Ctrl+P` cycles through available models. Use `/scoped-models` to control that cycle and save the selection, or configure model patterns through [Settings](settings.md#model-cycling).\n\nA session records model and thinking-level changes. Resuming the session restores them without changing defaults for new sessions.\n\n## Connect local models\n\nPi integrates directly with the llama.cpp router. The router discovers GGUF files and loads models on demand. Pi's `/llama` command manages the router, while `/model` selects one of its loaded models.\n\nFollow [Local Models with llama.cpp](llama-cpp.md) for server startup, model layout, downloads, and connection troubleshooting.\n\nFor Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.\n\n## Configure a compatible endpoint\n\nUse [`models.json`](configuration.md#agent-directory) when an endpoint speaks an API Pi already supports. This includes most Ollama, LM Studio, vLLM, SGLang, and proxy deployments.\n\n```json\n{\n  \"providers\": {\n    \"ollama\": {\n      \"baseUrl\": \"http://localhost:11434/v1\",\n      \"api\": \"openai-completions\",\n      \"apiKey\": \"ollama\",\n      \"models\": [\n        { \"id\": \"qwen2.5-coder:7b\" }\n      ]\n    }\n  }\n}\n```\n\nThe dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.\n\nOpening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.\n\n### Describe model input and caching\n\nUse `inputLimits.images.resize` to control how Pi encodes new image attachments, `read` results, and tool-result images before storing them in conversation history:\n\n```json\n{\n  \"id\": \"vision-model\",\n  \"input\": [\"text\", \"image\"],\n  \"inputLimits\": {\n    \"images\": {\n      \"resize\": {\n        \"maxWidth\": 1568,\n        \"maxHeight\": 1568,\n        \"maxBytes\": 524288,\n        \"jpegQuality\": 75\n      }\n    }\n  }\n}\n```\n\n`maxBytes` limits the base64-encoded payload. Omitted resize fields use conservative defaults of 2000 by 2000 pixels, 4.5 MiB encoded, and JPEG quality 80. Images are encoded once; changing models does not rewrite historical images. The catalog can also describe hard request limits with `inputLimits.maxRequestBytes`, `images.maxPerMessage`, and `images.maxPerRequest`, but Pi does not yet rewrite or reject history based on them.\n\n\u003ca id=\"prompt-cache-lifetimes\"\u003e\u003c/a\u003e\n\nUse `promptCache` to declare the provider's best-effort cache lifetime in seconds for the `short` or `long` retention tier:\n\n```json\n{ \"id\": \"claude-sonnet-5\", \"promptCache\": { \"short\": 300, \"long\": 3600 } }\n```\n\nChoose the conservative end of any published range. A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model, including a model accessed through a validated proxy. See [`cacheWarming`](settings.md#model-and-thinking).\n\nCompatibility settings should describe verified differences in the endpoint's request or response behavior. Do not enable them based only on an endpoint advertising OpenAI or Anthropic compatibility.\n\n## Use classifier models\n\nClassifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. Pi includes TypeSafe's Jev model from these providers:\n\n| Provider | Model IDs | Authentication |\n|---|---|---|\n| `typesafe` | `jev-latest` | `TYPESAFE_API_KEY` |\n| `openrouter` | `typesafe/jev-1.13`, `~typesafe/jev-latest` | `OPENROUTER_API_KEY` or `/login` |\n| `cloudflare-workers-ai` | `typesafe/jev` | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |\n| `vercel-ai-gateway` | `typesafe-ai/jev` | `AI_GATEWAY_API_KEY` |\n| `opencode` | `jev-1.13`, `jev-1.13-free` | `OPENCODE_API_KEY` |\n\nChat models on a [llama.cpp router](llama-cpp.md#classification) are also listed as classifier models.\n\nClassifier models do not appear in `/model`. The model reaches them through the [`codemode`](cli.md#enable-codemode) tool, which is off unless an MCP server turned it on. Enable it with `\"defaultTools\": [\"+codemode\"]` in [settings](settings.md#tools). Scripts then list classifier models with `models.getAvailableOfType(\"classifier\")` and call `models.classify(model, { state, questions })`:\n\n```js\nconst jev = await models.getModelOfType(\"classifier\", \"typesafe\", \"jev-latest\");\nconst result = await models.classify(jev, {\n  state: { message: \"The change works, thanks.\" },\n  questions: {\n    approved: {\n      type: \"bool\",\n      instructions: \"Does the user approve of the result?\",\n      criteria: { true: \"Approval\", false: \"No approval\" },\n    },\n  },\n});\nreturn result.answers;\n```\n\nWhen the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\n\nExtensions call classifiers through `ctx.modelRegistry.classify()`, without codemode. [Virtual models](virtual-models.md#route-requests) can use them to route requests; see the `jev-router.ts` example.\n\n## Add a custom provider\n\nUse an extension when the provider needs custom streaming, model discovery, or authentication behavior. See [Custom Providers](custom-provider.md) for the extension workflow.\n\n## Troubleshooting\n\n### A model does not appear\n\nConfirm that its provider has usable authentication. Custom models can load from `models.json` but remain unavailable in `/model` until Pi can resolve credentials. For llama.cpp, only models currently loaded by the router appear.\n\n### Authentication works in one shell only\n\nCheck whether the key came from an environment variable rather than `auth.json`. Environment variables must be present in the process that starts Pi.\n\n### Sign-in opens a browser on a remote machine\n\nComplete the provider's headless authentication flow when available. Some providers let you paste the final redirect URL or authorization code back into Pi. See [Authenticate interactively](providers.md#authenticate-interactively).\n\n### A compatible endpoint rejects requests\n\nCheck its API type and compatibility settings in `models.json`. The upstream server must support the corresponding request fields and behavior.\n",
+      "started_at": "2026-10-25T13:26:36.681299618Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/runtime/docs/configuration.md"
+      },
+      "result": "# Configuration\n\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\n\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\n\n## Agent directory\n\nThe agent directory is shown as `\u003cagent-dir\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\n\n| Path | Responsibility |\n|---|---|\n| `\u003cagent-dir\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\n| `\u003cagent-dir\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\n| `\u003cagent-dir\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\n| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n| `\u003cagent-dir\u003e/auth.json` | Saved API keys and OAuth credentials. |\n| `\u003cagent-dir\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\n| `\u003cagent-dir\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\n| `\u003cagent-dir\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\n| `\u003cagent-dir\u003e/extensions/` | User [extensions](extensions.md). |\n| `\u003cagent-dir\u003e/skills/` | User [skills](skills.md) and supporting files. |\n| `\u003cagent-dir\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\n| `\u003cagent-dir\u003e/themes/` | User [theme](themes.md) files. |\n\n## Project `.pi` directory\n\n| Path | Responsibility |\n|---|---|\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\n| `.pi/extensions/` | Project extensions. |\n| `.pi/skills/` | Project skills and supporting files. |\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\n| `.pi/themes/` | Project theme files. |\n\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n\n## Context files\n\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n\nContext-file discovery does not require project trust.\n",
+      "started_at": "2026-10-25T13:26:36.683514461Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:26:41.068010441Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime/docs",
+        "pattern": "reasoning|contextWindow|maxOutput|cost"
+      },
+      "result": "/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.",
+      "started_at": "2026-10-25T13:27:06.118755148Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "*.json"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:27:06.121164679Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "contextWindow|maxOutput|reasoning|modelOverrides"
+      },
+      "result": "/eval/runtime/docs/models.md:66:Opening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.\n/eval/runtime/docs/models.md:99:Choose the conservative end of any published range. A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model, including a model accessed through a validated proxy. See [`cacheWarming`](settings.md#model-and-thinking).",
+      "started_at": "2026-10-25T13:27:10.414233488Z",
+      "duration_ms": 1
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "models\\.json"
+      },
+      "result": "/eval/runtime/docs/configuration.md:16:| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n/eval/runtime/docs/models.md:12:| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |\n/eval/runtime/docs/models.md:146:Confirm that its provider has usable authentication. Custom models can load from `models.json` but remain unavailable in `/model` until Pi can resolve credentials. For llama.cpp, only models currently loaded by the router appear.\n/eval/runtime/docs/models.md:158:Check its API type and compatibility settings in `models.json`. The upstream server must support the corresponding request fields and behavior.\n/eval/runtime/docs/models.md:23:When several credential sources are configured, Pi uses a runtime `--api-key` first, then a stored `auth.json` credential, an `apiKey` from `models.json`, and finally the provider's environment variables or ambient cloud credentials. Provider extensions can define their own authentication behavior.\n/eval/runtime/docs/models.md:43:For Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.\n/eval/runtime/docs/models.md:47:Use [`models.json`](configuration.md#agent-directory) when an endpoint speaks an API Pi already supports. This includes most Ollama, LM Studio, vLLM, SGLang, and proxy deployments.\n/eval/runtime/docs/models.md:64:The dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.",
+      "started_at": "2026-10-25T13:27:10.417397066Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "\\\"name\\\"|\\\"input\\\"|\\\"reasoning\\\"|\\\"context\\\"|\\\"maxOutput\\\"|\\\"cost\\\"|\\\"noCost\\\"|\\\"free\\\""
+      },
+      "result": "/eval/runtime/docs/models.md:75:  \"input\": [\"text\", \"image\"],",
+      "started_at": "2026-10-25T13:27:14.440319363Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "*model*"
+      },
+      "result": "/eval/runtime/docs/models.md",
+      "started_at": "2026-10-25T13:27:16.84230677Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "*catalog*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:27:19.65251896Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/runtime"
+      },
+      "result": "docs/",
+      "started_at": "2026-10-25T13:27:19.654306039Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "contextWindow|maxOutput|reasoning|cost"
+      },
+      "result": "/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.",
+      "started_at": "2026-10-25T13:27:32.205400864Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "*"
+      },
+      "result": "/eval/runtime/docs/configuration.md\n/eval/runtime/docs/models.md",
+      "started_at": "2026-10-25T13:27:32.208017715Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:27:55.729217848Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/workspace",
+        "pattern": "contextWindow|maxOutput|reasoning|name"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:27:55.730853977Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "context|window|token|output|reason|cost|price|name|display"
+      },
+      "result": "/eval/runtime/docs/configuration.md:39:For `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n/eval/runtime/docs/configuration.md:43:Context files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n/eval/runtime/docs/configuration.md:45:An `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n/eval/runtime/docs/models.md:134:When the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\n/eval/runtime/docs/models.md:15:Browse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Pi starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `pi update --models` to force a refresh.",
+      "started_at": "2026-10-25T13:27:59.204572713Z",
+      "duration_ms": 1
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "**/*"
+      },
+      "result": "/eval/runtime/docs/configuration.md\n/eval/runtime/docs/models.md",
+      "started_at": "2026-10-25T13:28:02.935054188Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "grep",
+      "arguments": {
+        "path": "/eval/runtime",
+        "pattern": "contextWindow|maxOutput|reasoning|\\\"name\\\"|\\\"displayName\\\"|\\\"cost\\\"|\\\"pricing\\\"|\\\"noCost\\\"|\\\"free\\\"|\\\"input\\\"|\\\"supports\\\""
+      },
+      "result": "/eval/runtime/docs/models.md:75:  \"input\": [\"text\", \"image\"],",
+      "started_at": "2026-10-25T13:28:02.936886341Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "{\n  \"providers\": {\n    \"openai\": {\n      \"models\": [\n        {\n          \"id\": \"fixture-chat\",\n          \"name\": \"Fixture Chat\",\n          \"input\": [\"text\"],\n          \"reasoning\": true,\n          \"contextWindow\": 32768,\n          \"maxOutput\": 4096\n        }\n      ]\n    }\n  }\n}\n",
+        "path": "/eval/home/.pi/agent/models.json"
+      },
+      "result": "Successfully wrote /eval/home/.pi/agent/models.json",
+      "started_at": "2026-10-25T13:29:04.976258271Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/home/.pi/agent/models.json"
+      },
+      "result": "{\n  \"providers\": {\n    \"openai\": {\n      \"models\": [\n        {\n          \"id\": \"fixture-chat\",\n          \"name\": \"Fixture Chat\",\n          \"input\": [\"text\"],\n          \"reasoning\": true,\n          \"contextWindow\": 32768,\n          \"maxOutput\": 4096\n        }\n      ]\n    }\n  }\n}\n",
+      "started_at": "2026-10-25T13:29:06.819918661Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "home/.pi/agent/models.json": "{\n  \"providers\": {\n    \"openai\": {\n      \"models\": [\n        {\n          \"id\": \"fixture-chat\",\n          \"name\": \"Fixture Chat\",\n          \"input\": [\"text\"],\n          \"reasoning\": true,\n          \"contextWindow\": 32768,\n          \"maxOutput\": 4096\n        }\n      ]\n    }\n  }\n}\n",
+    "runtime/docs/configuration.md": "# Configuration\n\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\n\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\n\n## Agent directory\n\nThe agent directory is shown as `\u003cagent-dir\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\n\n| Path | Responsibility |\n|---|---|\n| `\u003cagent-dir\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\n| `\u003cagent-dir\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\n| `\u003cagent-dir\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\n| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n| `\u003cagent-dir\u003e/auth.json` | Saved API keys and OAuth credentials. |\n| `\u003cagent-dir\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\n| `\u003cagent-dir\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\n| `\u003cagent-dir\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\n| `\u003cagent-dir\u003e/extensions/` | User [extensions](extensions.md). |\n| `\u003cagent-dir\u003e/skills/` | User [skills](skills.md) and supporting files. |\n| `\u003cagent-dir\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\n| `\u003cagent-dir\u003e/themes/` | User [theme](themes.md) files. |\n\n## Project `.pi` directory\n\n| Path | Responsibility |\n|---|---|\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\n| `.pi/extensions/` | Project extensions. |\n| `.pi/skills/` | Project skills and supporting files. |\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\n| `.pi/themes/` | Project theme files. |\n\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n\n## Context files\n\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n\nContext-file discovery does not require project trust.\n",
+    "runtime/docs/models.md": "# Choose a Model\n\nFor a built-in provider, start with `/login`, then choose a model with `/model`. Use custom model configuration only when Pi does not already include the provider or endpoint you need.\n\n## Choose a connection\n\n| What you have | Recommended setup |\n|---|---|\n| A supported subscription | Sign in through `/login` |\n| A provider API key | Store it through `/login` or set its environment variable |\n| A local GGUF model | Connect Pi to the llama.cpp router |\n| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json` |\n| A provider with a custom protocol or authentication flow | Build or install a provider extension |\n\nBrowse the [model catalog](https://pi.dev/models) for current providers, model IDs, capabilities, context limits, and pricing. Pi starts with its bundled catalog and can overlay newer catalog data from pi.dev. Cached catalog data remains available offline; run `pi update --models` to force a refresh.\n\n## Authenticate\n\nRun `/login` and select a provider. Pi stores credentials in [`auth.json`](configuration.md#agent-directory). Run `/logout` to remove stored credentials for a provider.\n\nYou can instead provide an API key through the provider's environment variable. This is useful in CI and other environments where Pi should not write credentials. [Provider Authentication](providers.md) lists the variables and cloud-provider setup.\n\nWhen several credential sources are configured, Pi uses a runtime `--api-key` first, then a stored `auth.json` credential, an `apiKey` from `models.json`, and finally the provider's environment variables or ambient cloud credentials. Provider extensions can define their own authentication behavior.\n\nKeep `auth.json` and any credential commands private. Project settings and extensions can execute inside the Pi process after you trust a project. Review [Security](security.md) before loading configuration from an untrusted directory.\n\n## Select a model\n\nRun `/model` to search available models. The picker shows models whose providers have usable authentication. Press `Ctrl+S` on a model to save it as the default for new sessions.\n\nRun `/thinking` to select the thinking level for the current model. Press `Ctrl+S` there to save the startup level. Pi limits the choices to levels supported by the selected model.\n\n`Ctrl+P` cycles through available models. Use `/scoped-models` to control that cycle and save the selection, or configure model patterns through [Settings](settings.md#model-cycling).\n\nA session records model and thinking-level changes. Resuming the session restores them without changing defaults for new sessions.\n\n## Connect local models\n\nPi integrates directly with the llama.cpp router. The router discovers GGUF files and loads models on demand. Pi's `/llama` command manages the router, while `/model` selects one of its loaded models.\n\nFollow [Local Models with llama.cpp](llama-cpp.md) for server startup, model layout, downloads, and connection troubleshooting.\n\nFor Ollama, LM Studio, vLLM, SGLang, and other compatible servers, [configure a compatible endpoint](#configure-a-compatible-endpoint) in `models.json`.\n\n## Configure a compatible endpoint\n\nUse [`models.json`](configuration.md#agent-directory) when an endpoint speaks an API Pi already supports. This includes most Ollama, LM Studio, vLLM, SGLang, and proxy deployments.\n\n```json\n{\n  \"providers\": {\n    \"ollama\": {\n      \"baseUrl\": \"http://localhost:11434/v1\",\n      \"api\": \"openai-completions\",\n      \"apiKey\": \"ollama\",\n      \"models\": [\n        { \"id\": \"qwen2.5-coder:7b\" }\n      ]\n    }\n  }\n}\n```\n\nThe dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.\n\nOpening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.\n\n### Describe model input and caching\n\nUse `inputLimits.images.resize` to control how Pi encodes new image attachments, `read` results, and tool-result images before storing them in conversation history:\n\n```json\n{\n  \"id\": \"vision-model\",\n  \"input\": [\"text\", \"image\"],\n  \"inputLimits\": {\n    \"images\": {\n      \"resize\": {\n        \"maxWidth\": 1568,\n        \"maxHeight\": 1568,\n        \"maxBytes\": 524288,\n        \"jpegQuality\": 75\n      }\n    }\n  }\n}\n```\n\n`maxBytes` limits the base64-encoded payload. Omitted resize fields use conservative defaults of 2000 by 2000 pixels, 4.5 MiB encoded, and JPEG quality 80. Images are encoded once; changing models does not rewrite historical images. The catalog can also describe hard request limits with `inputLimits.maxRequestBytes`, `images.maxPerMessage`, and `images.maxPerRequest`, but Pi does not yet rewrite or reject history based on them.\n\n\u003ca id=\"prompt-cache-lifetimes\"\u003e\u003c/a\u003e\n\nUse `promptCache` to declare the provider's best-effort cache lifetime in seconds for the `short` or `long` retention tier:\n\n```json\n{ \"id\": \"claude-sonnet-5\", \"promptCache\": { \"short\": 300, \"long\": 3600 } }\n```\n\nChoose the conservative end of any published range. A model without a lifetime for the active tier is not eligible for cache warming. A `modelOverrides` entry can set `inputLimits` or `promptCache` for a built-in or extension model, including a model accessed through a validated proxy. See [`cacheWarming`](settings.md#model-and-thinking).\n\nCompatibility settings should describe verified differences in the endpoint's request or response behavior. Do not enable them based only on an endpoint advertising OpenAI or Anthropic compatibility.\n\n## Use classifier models\n\nClassifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. Pi includes TypeSafe's Jev model from these providers:\n\n| Provider | Model IDs | Authentication |\n|---|---|---|\n| `typesafe` | `jev-latest` | `TYPESAFE_API_KEY` |\n| `openrouter` | `typesafe/jev-1.13`, `~typesafe/jev-latest` | `OPENROUTER_API_KEY` or `/login` |\n| `cloudflare-workers-ai` | `typesafe/jev` | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |\n| `vercel-ai-gateway` | `typesafe-ai/jev` | `AI_GATEWAY_API_KEY` |\n| `opencode` | `jev-1.13`, `jev-1.13-free` | `OPENCODE_API_KEY` |\n\nChat models on a [llama.cpp router](llama-cpp.md#classification) are also listed as classifier models.\n\nClassifier models do not appear in `/model`. The model reaches them through the [`codemode`](cli.md#enable-codemode) tool, which is off unless an MCP server turned it on. Enable it with `\"defaultTools\": [\"+codemode\"]` in [settings](settings.md#tools). Scripts then list classifier models with `models.getAvailableOfType(\"classifier\")` and call `models.classify(model, { state, questions })`:\n\n```js\nconst jev = await models.getModelOfType(\"classifier\", \"typesafe\", \"jev-latest\");\nconst result = await models.classify(jev, {\n  state: { message: \"The change works, thanks.\" },\n  questions: {\n    approved: {\n      type: \"bool\",\n      instructions: \"Does the user approve of the result?\",\n      criteria: { true: \"Approval\", false: \"No approval\" },\n    },\n  },\n});\nreturn result.answers;\n```\n\nWhen the service reports token counts, as all System One services do, `result.usage` carries them with their cost. Pi adds the usage of a script's classifier calls to the `codemode` tool result, so it counts toward the session cost in the footer and `/session`. The cost uses the model's catalog price; models without one, such as TypeSafe's direct `jev-latest`, report tokens at no cost.\n\nExtensions call classifiers through `ctx.modelRegistry.classify()`, without codemode. [Virtual models](virtual-models.md#route-requests) can use them to route requests; see the `jev-router.ts` example.\n\n## Add a custom provider\n\nUse an extension when the provider needs custom streaming, model discovery, or authentication behavior. See [Custom Providers](custom-provider.md) for the extension workflow.\n\n## Troubleshooting\n\n### A model does not appear\n\nConfirm that its provider has usable authentication. Custom models can load from `models.json` but remain unavailable in `/model` until Pi can resolve credentials. For llama.cpp, only models currently loaded by the router appear.\n\n### Authentication works in one shell only\n\nCheck whether the key came from an environment variable rather than `auth.json`. Environment variables must be present in the process that starts Pi.\n\n### Sign-in opens a browser on a remote machine\n\nComplete the provider's headless authentication flow when available. Some providers let you paste the final redirect URL or authorization code back into Pi. See [Authenticate interactively](providers.md#authenticate-interactively).\n\n### A compatible endpoint rejects requests\n\nCheck its API type and compatibility settings in `models.json`. The upstream server must support the corresponding request fields and behavior.\n"
+  },
+  "active_configuration": {},
+  "reload_errors": null,
+  "trace_sha256": "3b97d294fc6111fab6f1198b7589c540853feb4a4c220c82f8eb5351684cc0a7"
+}

@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 3,
+  "protocolDigest": "4d23f7c55120830ec462b4b4afc0507eed4e5682af5f0b8e4090586512e75d96",
+  "control": "without_docs",
+  "treatment": "with_docs",
+  "comparisons": [
+    {
+      "evalSet": "Add model to existing provider",
+      "totalPairs": 3,
+      "eligiblePairs": 2,
+      "blockedPairs": 1,
+      "controlPassRate": null,
+      "treatmentPassRate": null,
+      "lift": null,
+      "flags": [],
+      "totalTokens": {
+        "eligiblePairs": 2,
+        "controlMean": 670008.5,
+        "treatmentMean": 191959.5,
+        "meanDelta": -478049
+      },
+      "toolCalls": {
+        "eligiblePairs": 2,
+        "controlMean": 33,
+        "treatmentMean": 16.5,
+        "meanDelta": -16.5
+      },
+      "totalMs": {
+        "eligiblePairs": 2,
+        "controlMean": 126551.6268775,
+        "treatmentMean": 78476.5835215,
+        "meanDelta": -48075.043356
+      },
+      "estimatedCostUsd": {
+        "eligiblePairs": 0,
+        "controlMean": null,
+        "treatmentMean": null,
+        "meanDelta": null
+      }
+    },
+    {
+      "evalSet": "Create a project prompt template",
+      "totalPairs": 3,
+      "eligiblePairs": 3,
+      "blockedPairs": 0,
+      "controlPassRate": 1,
+      "treatmentPassRate": 0.3333333333333333,
+      "lift": -0.666666666666667,
+      "flags": [
+        "negative-delta",
+        "control-saturated",
+        "flaky"
+      ],
+      "totalTokens": {
+        "eligiblePairs": 3,
+        "controlMean": 11093,
+        "treatmentMean": 19260.333333333332,
+        "meanDelta": 8167.33333333333
+      },
+      "toolCalls": {
+        "eligiblePairs": 3,
+        "controlMean": 4,
+        "treatmentMean": 5,
+        "meanDelta": 1
+      },
+      "totalMs": {
+        "eligiblePairs": 3,
+        "controlMean": 18830.163099333335,
+        "treatmentMean": 22632.160114,
+        "meanDelta": 3801.99701466666
+      },
+      "estimatedCostUsd": {
+        "eligiblePairs": 0,
+        "controlMean": null,
+        "treatmentMean": null,
+        "meanDelta": null
+      }
+    },
+    {
+      "evalSet": "Create a user prompt template",
+      "totalPairs": 3,
+      "eligiblePairs": 3,
+      "blockedPairs": 0,
+      "controlPassRate": 0.3333333333333333,
+      "treatmentPassRate": 1,
+      "lift": 0.666666666666667,
+      "flags": [
+        "treatment-saturated",
+        "flaky"
+      ],
+      "totalTokens": {
+        "eligiblePairs": 3,
+        "controlMean": 57379,
+        "treatmentMean": 22440.333333333332,
+        "meanDelta": -34938.6666666667
+      },
+      "toolCalls": {
+        "eligiblePairs": 3,
+        "controlMean": 10.666666666666666,
+        "treatmentMean": 5.666666666666667,
+        "meanDelta": -5
+      },
+      "totalMs": {
+        "eligiblePairs": 3,
+        "controlMean": 38928.391343,
+        "treatmentMean": 25074.430669333335,
+        "meanDelta": -13853.9606736667
+      },
+      "estimatedCostUsd": {
+        "eligiblePairs": 0,
+        "controlMean": null,
+        "treatmentMean": null,
+        "meanDelta": null
+      }
+    }
+  ],
+  "blockedPairs": [
+    {
+      "evalSet": "Add model to existing provider",
+      "caseId": "adds the model without replacing existing models",
+      "model": "lumi-eval/qwen3.7-plus",
+      "runNumber": 2,
+      "reasons": [
+        "without_docs: errored"
+      ]
+    }
+  ],
+  "operationalTotals": [
+    {
+      "variant": "without_docs",
+      "runs": 9,
+      "inputTokens": {
+        "availableRuns": 8,
+        "total": 219768
+      },
+      "outputTokens": {
+        "availableRuns": 8,
+        "total": 14689
+      },
+      "cacheReadTokens": {
+        "availableRuns": 8,
+        "total": 1310976
+      },
+      "cacheWriteTokens": {
+        "availableRuns": 8,
+        "total": 0
+      },
+      "totalTokens": {
+        "availableRuns": 8,
+        "total": 1545433
+      },
+      "toolCalls": {
+        "availableRuns": 8,
+        "total": 110
+      },
+      "totalMs": {
+        "availableRuns": 8,
+        "total": 426378.917082
+      },
+      "estimatedCostUsd": {
+        "availableRuns": 0,
+        "total": null
+      }
+    },
+    {
+      "variant": "with_docs",
+      "runs": 9,
+      "inputTokens": {
+        "availableRuns": 9,
+        "total": 142256
+      },
+      "outputTokens": {
+        "availableRuns": 9,
+        "total": 15054
+      },
+      "cacheReadTokens": {
+        "availableRuns": 9,
+        "total": 517120
+      },
+      "cacheWriteTokens": {
+        "availableRuns": 9,
+        "total": 0
+      },
+      "totalTokens": {
+        "availableRuns": 9,
+        "total": 674430
+      },
+      "toolCalls": {
+        "availableRuns": 9,
+        "total": 79
+      },
+      "totalMs": {
+        "availableRuns": 9,
+        "total": 386870.735924
+      },
+      "estimatedCostUsd": {
+        "availableRuns": 0,
+        "total": null
+      }
+    }
+  ]
+}

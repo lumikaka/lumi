@@ -2,6 +2,8 @@
 
 [手动工作流](../../.github/workflows/agent-baseline.yml) 在 GitHub 的 Ubuntu 临时机器上运行两边的真实 Agent。本机不安装 pi、不构建 Docker 镜像、不编译 Rust；只需要下载结果包。工作流不会随 push 或 PR 自动调用付费模型，也不会发布镜像。
 
+已完成首轮真实双引擎运行，见 [2026-10-25 实测记录与解释](../records/2026-10-25-github-baseline/README.md)。两边各 18 次尝试；pi 有一次原生超时，故保留未评分和工作流完整性检查失败，不将其改成零分或隐藏。
+
 ## 首次配置
 
 1. 将工作流及依赖代码合入仓库默认分支。GitHub 要求 `workflow_dispatch` 工作流先存在于默认分支，之后才能选择其他已包含工作流的分支运行。

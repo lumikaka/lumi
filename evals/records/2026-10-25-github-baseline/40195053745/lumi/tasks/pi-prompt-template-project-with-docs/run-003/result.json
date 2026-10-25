@@ -1,0 +1,447 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-project-with-docs",
+    "repetition": 3
+  },
+  "protocol_digest": "32ac27da1040ddedc6fa18835f571983fe4342220e12e603f06b546186009419",
+  "status": "scored",
+  "final": "I don't have access to a real-time clock or your local timezone settings in this environment. Because I don't have shell execution or network access to fetch live time data, I'm unable to tell you the current time and timezone.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 1,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T13:30:32.916035485Z",
+  "duration_ms": 25767,
+  "usage": {
+    "input_tokens": 10358,
+    "output_tokens": 1215,
+    "cached_input_tokens": 3840,
+    "cost_usd": null,
+    "requests": 5
+  },
+  "turns": [
+    {
+      "uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:30:33.345618934Z",
+      "completed_at": "2026-10-25T13:30:46.664924575Z",
+      "created_at": "2026-10-25T13:30:33.343677667Z",
+      "updated_at": "2026-10-25T13:30:46.664924575Z"
+    },
+    {
+      "uuid": "01a17341-ae11-7ae7-a4c7-001c801e538d",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:30:46.67548318Z",
+      "completed_at": "2026-10-25T13:30:58.672778229Z",
+      "created_at": "2026-10-25T13:30:46.673713382Z",
+      "updated_at": "2026-10-25T13:30:58.672778229Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17341-79ff-7ecf-99cd-5e19ee28a457",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:33.343677667Z"
+    },
+    {
+      "uuid": "01a17341-8536-73e7-895f-8f5379369216",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-8535-7de4-a129-2328df2e80d2",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17341-7a04-79f6-835e-e1aae014ae2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:36.214148878Z"
+    },
+    {
+      "uuid": "01a17341-8536-7a16-9f2b-e38a3707b4fa",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-8536-7100-ab9e-2bbbaec6b14b",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17341-7a04-79f6-835e-e1aae014ae2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:36.214148878Z"
+    },
+    {
+      "uuid": "01a17341-8538-7480-b13e-720ddfe94153",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-8535-7de4-a129-2328df2e80d2",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17341-7a04-79f6-835e-e1aae014ae2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:36.216286039Z"
+    },
+    {
+      "uuid": "01a17341-853a-7002-bab4-c22029051e93",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"configuration.md\\nprompt-templates.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-8536-7100-ab9e-2bbbaec6b14b",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17341-7a04-79f6-835e-e1aae014ae2b"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:36.217974847Z"
+    },
+    {
+      "uuid": "01a17341-903c-74ad-a868-32d5b9fcaff9",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs/prompt-templates.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-903b-7e2f-a5d2-d98857f671cc",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17341-853e-70c5-84d0-06ffea3261a1"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:39.036200574Z"
+    },
+    {
+      "uuid": "01a17341-903c-7c8e-8dcc-802128bfa292",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 7,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/runtime/docs/configuration.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-903c-7177-bc51-c14e4c1eb2fb",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17341-853e-70c5-84d0-06ffea3261a1"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:39.036200574Z"
+    },
+    {
+      "uuid": "01a17341-903e-79b7-8410-910e4813fd07",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 8,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"# Prompt Templates\\n\\nPrompt templates turn Markdown files into reusable `/` commands. Use one when you want to reuse the same prompt without adding executable behavior or a larger set of supporting instructions.\\n\\nA template can accept arguments and appear in command completion. Pi can load templates from personal configuration, project configuration, an explicit path, or a Pi package. Project configuration loads only after project trust is granted.\\n\\n## Create a template\\n\\nCreate `~/.pi/agent/prompts/review.md`:\\n\\n```markdown\\n---\\ndescription: Review staged git changes\\nargument-hint: \\\"[focus]\\\"\\n---\\nReview the staged changes. Focus on ${1:-correctness, security, and error handling}.\\n```\\n\\nThe filename becomes the command name, so this template is available as `/review`. The `description` appears in command completion. If it is omitted, Pi uses the first non-empty line.\\n\\n`argument-hint` is optional. Use `\\u003cangle brackets\\u003e` for required arguments and `[square brackets]` for optional arguments.\\n\\nRun `/reload` after adding or changing a template in an active session.\\n\\n\\u003ca id=\\\"invoke-a-template\\\"\\u003e\\u003c/a\\u003e\\n\\n## Use a template\\n\\nType the template command in the editor:\\n\\n```text\\n/review\\n/review concurrency\\n```\\n\\nPi expands the template before the resulting text enters the agent. Extensions receive the raw input first through the `input` event unless an extension command with the same name handles it.\\n\\nTemplates support these substitutions:\\n\\n| Syntax | Result |\\n|---|---|\\n| `$1`, `$2`, … | One positional argument |\\n| `$@` or `$ARGUMENTS` | All arguments joined with spaces |\\n| `${1:-default}` | First argument, or a default value |\\n| `${@:-default}` | All arguments, or a default value |\\n| `${@:N}` | Arguments starting at position `N` |\\n| `${@:N:L}` | `L` arguments starting at position `N` |\\n\\nArguments follow shell-like quoting, so `/review \\\"API compatibility\\\"` supplies one argument containing a space.\\n\\n\\u003ca id=\\\"choose-where-it-loads\\\"\\u003e\\u003c/a\\u003e\\n\\n## Add it to Pi\\n\\nPlace the template in your user or project prompt directory. Conventional prompt directories load direct `.md` children only.\\n\\nSettings and packages can select nested Markdown files; a package manifest can narrow discovery with explicit paths and globs. See [Settings](settings.md#resources) and [Pi Packages](packages.md) for these options.\\n\\nProject templates become commands in the editor after trust is granted. Review their content before trusting an unfamiliar project. See [Security](security.md#understand-project-trust).\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-903b-7e2f-a5d2-d98857f671cc",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17341-853e-70c5-84d0-06ffea3261a1"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:39.038627644Z"
+    },
+    {
+      "uuid": "01a17341-9040-7864-ae11-7efd693470fc",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"# Configuration\\n\\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\\n\\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\\n\\n## Agent directory\\n\\nThe agent directory is shown as `\\u003cagent-dir\\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\\n\\n| Path | Responsibility |\\n|---|---|\\n| `\\u003cagent-dir\\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\\n| `\\u003cagent-dir\\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\\n| `\\u003cagent-dir\\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\\n| `\\u003cagent-dir\\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\\n| `\\u003cagent-dir\\u003e/auth.json` | Saved API keys and OAuth credentials. |\\n| `\\u003cagent-dir\\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\\n| `\\u003cagent-dir\\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\\n| `\\u003cagent-dir\\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\\n| `\\u003cagent-dir\\u003e/extensions/` | User [extensions](extensions.md). |\\n| `\\u003cagent-dir\\u003e/skills/` | User [skills](skills.md) and supporting files. |\\n| `\\u003cagent-dir\\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\\n| `\\u003cagent-dir\\u003e/themes/` | User [theme](themes.md) files. |\\n\\n## Project `.pi` directory\\n\\n| Path | Responsibility |\\n|---|---|\\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\\n| `.pi/extensions/` | Project extensions. |\\n| `.pi/skills/` | Project skills and supporting files. |\\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\\n| `.pi/themes/` | Project theme files. |\\n\\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\\n\\n## Context files\\n\\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\\n\\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\\n\\nContext-file discovery does not require project trust.\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-903c-7177-bc51-c14e4c1eb2fb",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 2,
+        "request_uuid": "01a17341-853e-70c5-84d0-06ffea3261a1"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:39.040540559Z"
+    },
+    {
+      "uuid": "01a17341-9db6-7614-b0a7-243baa8091e5",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"Tell me the current time and timezone.\\n\", \"path\": \"/eval/workspace/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-9db6-730d-80e6-a473762c3588",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17341-9047-7a04-8704-8c5eee56ad1e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:42.486290243Z"
+    },
+    {
+      "uuid": "01a17341-9db8-70f9-b435-611cf595beee",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/workspace/.pi/prompts/current-time.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17341-9db6-730d-80e6-a473762c3588",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17341-9047-7a04-8704-8c5eee56ad1e"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:42.488053699Z"
+    },
+    {
+      "uuid": "01a17341-ae08-7e22-99e5-4fff81df3eed",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-79ff-7a5c-aa95-8aa3749c37bf",
+      "run_uuid": "01a17341-79ff-7a5f-a5db-d28e9f430897",
+      "sequence": 12,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I've created the `/current-time` prompt template at `.pi/prompts/current-time.md` with the exact content you specified. Since the project is already trusted, the template will be available as a slash command. You can use it by typing `/current-time` in the editor, or run `/reload` to refresh if needed.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 4,
+        "request_uuid": "01a17341-9dbf-7164-b461-3d425e7b33c7"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:46.664924575Z"
+    },
+    {
+      "uuid": "01a17341-ae12-700b-b75e-06da6826530e",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-ae11-7ae7-a4c7-001c801e538d",
+      "run_uuid": "01a17341-ae11-7aea-b213-295ab2758fff",
+      "sequence": 13,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:46.673713382Z"
+    },
+    {
+      "uuid": "01a17341-dcf0-7be6-9134-55f30f7ec98e",
+      "thread_uuid": "01a17341-79fe-726b-8c71-4a44041c961f",
+      "turn_uuid": "01a17341-ae11-7ae7-a4c7-001c801e538d",
+      "run_uuid": "01a17341-ae11-7aea-b213-295ab2758fff",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I don't have access to a real-time clock or your local timezone settings in this environment. Because I don't have shell execution or network access to fetch live time data, I'm unable to tell you the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 1,
+        "request_uuid": "01a17341-ae1a-70d5-aaff-afdf50b2e86a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:30:58.672778229Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:30:36.215764741Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/runtime/docs"
+      },
+      "result": "configuration.md\nprompt-templates.md",
+      "started_at": "2026-10-25T13:30:36.217484507Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/runtime/docs/prompt-templates.md"
+      },
+      "result": "# Prompt Templates\n\nPrompt templates turn Markdown files into reusable `/` commands. Use one when you want to reuse the same prompt without adding executable behavior or a larger set of supporting instructions.\n\nA template can accept arguments and appear in command completion. Pi can load templates from personal configuration, project configuration, an explicit path, or a Pi package. Project configuration loads only after project trust is granted.\n\n## Create a template\n\nCreate `~/.pi/agent/prompts/review.md`:\n\n```markdown\n---\ndescription: Review staged git changes\nargument-hint: \"[focus]\"\n---\nReview the staged changes. Focus on ${1:-correctness, security, and error handling}.\n```\n\nThe filename becomes the command name, so this template is available as `/review`. The `description` appears in command completion. If it is omitted, Pi uses the first non-empty line.\n\n`argument-hint` is optional. Use `\u003cangle brackets\u003e` for required arguments and `[square brackets]` for optional arguments.\n\nRun `/reload` after adding or changing a template in an active session.\n\n\u003ca id=\"invoke-a-template\"\u003e\u003c/a\u003e\n\n## Use a template\n\nType the template command in the editor:\n\n```text\n/review\n/review concurrency\n```\n\nPi expands the template before the resulting text enters the agent. Extensions receive the raw input first through the `input` event unless an extension command with the same name handles it.\n\nTemplates support these substitutions:\n\n| Syntax | Result |\n|---|---|\n| `$1`, `$2`, … | One positional argument |\n| `$@` or `$ARGUMENTS` | All arguments joined with spaces |\n| `${1:-default}` | First argument, or a default value |\n| `${@:-default}` | All arguments, or a default value |\n| `${@:N}` | Arguments starting at position `N` |\n| `${@:N:L}` | `L` arguments starting at position `N` |\n\nArguments follow shell-like quoting, so `/review \"API compatibility\"` supplies one argument containing a space.\n\n\u003ca id=\"choose-where-it-loads\"\u003e\u003c/a\u003e\n\n## Add it to Pi\n\nPlace the template in your user or project prompt directory. Conventional prompt directories load direct `.md` children only.\n\nSettings and packages can select nested Markdown files; a package manifest can narrow discovery with explicit paths and globs. See [Settings](settings.md#resources) and [Pi Packages](packages.md) for these options.\n\nProject templates become commands in the editor after trust is granted. Review their content before trusting an unfamiliar project. See [Security](security.md#understand-project-trust).\n",
+      "started_at": "2026-10-25T13:30:39.038059889Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/runtime/docs/configuration.md"
+      },
+      "result": "# Configuration\n\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\n\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\n\n## Agent directory\n\nThe agent directory is shown as `\u003cagent-dir\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\n\n| Path | Responsibility |\n|---|---|\n| `\u003cagent-dir\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\n| `\u003cagent-dir\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\n| `\u003cagent-dir\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\n| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n| `\u003cagent-dir\u003e/auth.json` | Saved API keys and OAuth credentials. |\n| `\u003cagent-dir\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\n| `\u003cagent-dir\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\n| `\u003cagent-dir\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\n| `\u003cagent-dir\u003e/extensions/` | User [extensions](extensions.md). |\n| `\u003cagent-dir\u003e/skills/` | User [skills](skills.md) and supporting files. |\n| `\u003cagent-dir\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\n| `\u003cagent-dir\u003e/themes/` | User [theme](themes.md) files. |\n\n## Project `.pi` directory\n\n| Path | Responsibility |\n|---|---|\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\n| `.pi/extensions/` | Project extensions. |\n| `.pi/skills/` | Project skills and supporting files. |\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\n| `.pi/themes/` | Project theme files. |\n\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n\n## Context files\n\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n\nContext-file discovery does not require project trust.\n",
+      "started_at": "2026-10-25T13:30:39.039856898Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "Tell me the current time and timezone.\n",
+        "path": "/eval/workspace/.pi/prompts/current-time.md"
+      },
+      "result": "Successfully wrote /eval/workspace/.pi/prompts/current-time.md",
+      "started_at": "2026-10-25T13:30:42.487515159Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "runtime/docs/configuration.md": "# Configuration\n\nPi supports user-level and project configuration. User-level configuration lives in the agent directory, which defaults to `~/.pi/agent`. Project configuration lives in `.pi` under the working directory and loads after [project trust](security.md#understand-project-trust) is granted. The only exception is `sessionDir`, which Pi reads before resolving trust so it can locate sessions.\n\nIn interactive mode, use `/settings` to change common preferences. For other options, ask Pi to update the configuration or edit the relevant files directly. Run `/reload` after manually changing settings, keybindings, instructions, or resources.\n\n## Agent directory\n\nThe agent directory is shown as `\u003cagent-dir\u003e` below. Set its location with the `PI_CODING_AGENT_DIR` environment variable or the SDK's [`agentDir`](sdk.md) option.\n\n| Path | Responsibility |\n|---|---|\n| `\u003cagent-dir\u003e/settings.json` | User-level [settings](settings.md), including preferences, defaults, resource paths, and Pi package declarations. |\n| `\u003cagent-dir\u003e/keybindings.json` | Custom terminal UI and application [keybindings](keybindings.md). |\n| `\u003cagent-dir\u003e/mcp.json` | [MCP servers](mcp.md) available in every project. |\n| `\u003cagent-dir\u003e/models.json` | [Compatible endpoints, models, and model overrides](models.md#configure-a-compatible-endpoint). |\n| `\u003cagent-dir\u003e/auth.json` | Saved API keys and OAuth credentials. |\n| `\u003cagent-dir\u003e/AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, or `CLAUDE.MD` | User instructions applied across working directories. |\n| `\u003cagent-dir\u003e/SYSTEM.md` | Replaces Pi’s default system prompt. |\n| `\u003cagent-dir\u003e/APPEND_SYSTEM.md` | Adds instructions to Pi’s system prompt. |\n| `\u003cagent-dir\u003e/extensions/` | User [extensions](extensions.md). |\n| `\u003cagent-dir\u003e/skills/` | User [skills](skills.md) and supporting files. |\n| `\u003cagent-dir\u003e/prompts/` | User [prompt templates](prompt-templates.md) exposed as slash commands. |\n| `\u003cagent-dir\u003e/themes/` | User [theme](themes.md) files. |\n\n## Project `.pi` directory\n\n| Path | Responsibility |\n|---|---|\n| `.pi/settings.json` | Project-level [settings](settings.md), resource paths, and Pi package declarations. |\n| `.pi/mcp.json` | Project [MCP servers](mcp.md). |\n| `.pi/SYSTEM.md` | Replaces the system prompt for the project. |\n| `.pi/APPEND_SYSTEM.md` | Adds project-specific instructions to the system prompt. |\n| `.pi/extensions/` | Project extensions. |\n| `.pi/skills/` | Project skills and supporting files. |\n| `.pi/prompts/` | Project prompt templates exposed as slash commands. |\n| `.pi/themes/` | Project theme files. |\n\nFor `SYSTEM.md` and `APPEND_SYSTEM.md`, the trusted project file takes precedence over the corresponding agent-directory file. Files with the same name are not combined.\n\n## Context files\n\nContext files are separate from project `.pi` configuration. Pi loads them from the agent directory, the working directory, and its parent directories. A context file applies whenever Pi runs in its directory or anywhere below it.\n\nAn `AGENTS.override.md` replaces `AGENTS.md` or `CLAUDE.md` only in the same directory. It does not suppress context files from the agent directory or other directories.\n\nContext-file discovery does not require project trust.\n",
+    "runtime/docs/prompt-templates.md": "# Prompt Templates\n\nPrompt templates turn Markdown files into reusable `/` commands. Use one when you want to reuse the same prompt without adding executable behavior or a larger set of supporting instructions.\n\nA template can accept arguments and appear in command completion. Pi can load templates from personal configuration, project configuration, an explicit path, or a Pi package. Project configuration loads only after project trust is granted.\n\n## Create a template\n\nCreate `~/.pi/agent/prompts/review.md`:\n\n```markdown\n---\ndescription: Review staged git changes\nargument-hint: \"[focus]\"\n---\nReview the staged changes. Focus on ${1:-correctness, security, and error handling}.\n```\n\nThe filename becomes the command name, so this template is available as `/review`. The `description` appears in command completion. If it is omitted, Pi uses the first non-empty line.\n\n`argument-hint` is optional. Use `\u003cangle brackets\u003e` for required arguments and `[square brackets]` for optional arguments.\n\nRun `/reload` after adding or changing a template in an active session.\n\n\u003ca id=\"invoke-a-template\"\u003e\u003c/a\u003e\n\n## Use a template\n\nType the template command in the editor:\n\n```text\n/review\n/review concurrency\n```\n\nPi expands the template before the resulting text enters the agent. Extensions receive the raw input first through the `input` event unless an extension command with the same name handles it.\n\nTemplates support these substitutions:\n\n| Syntax | Result |\n|---|---|\n| `$1`, `$2`, … | One positional argument |\n| `$@` or `$ARGUMENTS` | All arguments joined with spaces |\n| `${1:-default}` | First argument, or a default value |\n| `${@:-default}` | All arguments, or a default value |\n| `${@:N}` | Arguments starting at position `N` |\n| `${@:N:L}` | `L` arguments starting at position `N` |\n\nArguments follow shell-like quoting, so `/review \"API compatibility\"` supplies one argument containing a space.\n\n\u003ca id=\"choose-where-it-loads\"\u003e\u003c/a\u003e\n\n## Add it to Pi\n\nPlace the template in your user or project prompt directory. Conventional prompt directories load direct `.md` children only.\n\nSettings and packages can select nested Markdown files; a package manifest can narrow discovery with explicit paths and globs. See [Settings](settings.md#resources) and [Pi Packages](packages.md) for these options.\n\nProject templates become commands in the editor after trust is granted. Review their content before trusting an unfamiliar project. See [Security](security.md#understand-project-trust).\n",
+    "workspace/.pi/prompts/current-time.md": "Tell me the current time and timezone.\n"
+  },
+  "active_configuration": {
+    "extensions": [],
+    "model_registry": {
+      "builtin-fixture": {
+        "id": "builtin-fixture",
+        "name": "Built-in fixture",
+        "provider": "openai"
+      }
+    },
+    "skills": [],
+    "templates": [
+      {
+        "body": "Tell me the current time and timezone.\n",
+        "name": "current-time",
+        "path": "workspace/.pi/prompts/current-time.md",
+        "scope": "project"
+      }
+    ]
+  },
+  "reload_errors": [],
+  "trace_sha256": "51f98088d6b6c1f9e05160362bdf9c132d70142a00da969e2e7d7ec013c2e1bc"
+}

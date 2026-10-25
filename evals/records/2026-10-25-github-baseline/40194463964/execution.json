@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "config": {
+    "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.7-plus",
+    "repetitions": 3,
+    "max_tokens": 4096,
+    "temperature": null,
+    "reasoning_request_fields": "omitted",
+    "timeout_seconds": 300,
+    "pi_provider_alias": "lumi-eval",
+    "lumi_provider_type": "openai_compatible",
+    "lumi_max_requests_per_turn": 16,
+    "pi_max_requests_per_turn": null
+  },
+  "pi_revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "lumi_revision": "e74cf4d8becf8fa39bf0e23f9fee74feb70dc9b2",
+  "workflow_run_url": "https://github.com/lumikaka/lumi/actions/runs/40194463964",
+  "workflow_attempt": "1",
+  "runner_os": "Linux",
+  "differences": [
+    "Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.",
+    "The pinned pi source hydrates its ignored built-in model catalog from live upstream catalogs before building; the actual generated catalog and hashes are frozen in pi-model-catalog/.",
+    "Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.",
+    "System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.",
+    "pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.",
+    "Both cap output at 4096 tokens. pi keeps its native 300-second test timeout and native retry/loop policy; Lumi has 300 seconds per case and 16 requests per turn, including its no-progress policy.",
+    "pi errored/unscored records have no automatic Agent/environment attribution; inspect native Vitest errors and sessions. They are never silently counted as zero.",
+    "No price snapshot is configured. Cost is unavailable; zero model catalog prices only disable estimation and do not mean free inference.",
+    "Three repeats describe observed variation, not statistical significance. Scores do not gate infrastructure acceptance."
+  ]
+}

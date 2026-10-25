@@ -1,0 +1,16 @@
+{
+  "comparison.json": "f5ea6bbc04c42f92cd3bb1f6667a44458979618a5ddd9a5306ad96fc31f2c203",
+  "comparison.md": "3a3ebe85ced9893383da7622e153ab988814407d751ae3ca0661099d8faa9140",
+  "disk-after.txt": "bd3b06713393fec3441f273e69ab59bcfd499489c7614992bcfc98404638f015",
+  "disk-before.txt": "5a355758579cc45dfdbfab4b34b44390149942dd1ca67b2500de0099767d2324",
+  "docker-disk.txt": "01f1af6d5ec1628a872f0fecae0f56e50c0eb4c649137792b2154628acb4c223",
+  "execution.json": "652125c47f64bc86ca44945d8328eb013b40a26684ab69975467b88273322379",
+  "pi-adapter/Dockerfile.patch": "43e53c13c9d1ff88e341f9d966ded17bf5a1261852941d923df1abfadf232960",
+  "pi-adapter/harness.patch": "8d62d05e0ef3f4b8c37dc41ba42bc7ec0eabe2bcf217683685fa3b9d6f61648a",
+  "pi-adapter/host-package-lock.json": "5f0a5f3369e3e4c65e12a4734501cf888809de0a999b212fd757685e768bc1e4",
+  "pi-adapter/lumi-ci-model.ts": "c5d588e82c1d5617b043a76de93f25ae9ca23501e6d7ec7ba3c3601e7714311e",
+  "pi-adapter/manifest.json": "e91c65c000caa7e9e9db3806b9630ea26cc58320a7f20c1d6247587c791113c5",
+  "pi-adapter/source-lock.json": "df87b5c234d20b4aeae8cc69a9c0f63e92122a8d6e4c463e82f5ebac9f5054b7",
+  "pi-console.txt": "85a88aef40b892cce4a903e82d04943e59ebdad0d45a1163538db48da289b7d0",
+  "pi-exit-code.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+}

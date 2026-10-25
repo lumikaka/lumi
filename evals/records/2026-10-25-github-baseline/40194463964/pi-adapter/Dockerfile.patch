@@ -1,0 +1,10 @@
+--- a/packages/evals/docker/Dockerfile
++++ b/packages/evals/docker/Dockerfile
+@@ -6,6 +6,7 @@
+     --mount=type=cache,target=/root/.npm \
+     cd /repo \
+     && npm ci --ignore-scripts \
++    && npm run hydrate:model-data \
+     && npm run build:offline \
+     && node packages/evals/docker/install-runtime.mjs /opt/evaluator
+ 

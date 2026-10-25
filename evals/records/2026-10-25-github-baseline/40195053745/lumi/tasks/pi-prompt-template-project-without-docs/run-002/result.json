@@ -1,0 +1,556 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-project-without-docs",
+    "repetition": 2
+  },
+  "protocol_digest": "32ac27da1040ddedc6fa18835f571983fe4342220e12e603f06b546186009419",
+  "status": "scored",
+  "final": "I don't have access to any tools that can retrieve the current time or timezone information. The tools available to me in this workspace are limited to file operations (reading, writing, editing, searching, and listing files). I cannot query the system clock or timezone settings.\n\nTo get the current time and timezone, you would need to check your local system clock or run a command like `date` in your terminal.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 1,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "project"
+        }
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T13:20:48.268606125Z",
+  "duration_ms": 23406,
+  "usage": {
+    "input_tokens": 7153,
+    "output_tokens": 1045,
+    "cached_input_tokens": 3840,
+    "cost_usd": null,
+    "requests": 6
+  },
+  "turns": [
+    {
+      "uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:20:48.702251738Z",
+      "completed_at": "2026-10-25T13:21:07.595382687Z",
+      "created_at": "2026-10-25T13:20:48.699745092Z",
+      "updated_at": "2026-10-25T13:21:07.595382687Z"
+    },
+    {
+      "uuid": "01a17338-d80e-7e28-9e71-adfdb63fcdcd",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:21:07.600751774Z",
+      "completed_at": "2026-10-25T13:21:11.665376129Z",
+      "created_at": "2026-10-25T13:21:07.598927153Z",
+      "updated_at": "2026-10-25T13:21:11.665376129Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17338-8e3c-711e-b6a0-82bbd3ed82ae",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "This project is already trusted. Add a /current-time prompt template for this project containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:48.699745092Z"
+    },
+    {
+      "uuid": "01a17338-97f0-7b3e-965b-84dd3b837fd1",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-97f0-7688-8a07-56431fea2e93",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17338-8e41-7955-80fb-74263bf6b588"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:51.184650547Z"
+    },
+    {
+      "uuid": "01a17338-97f1-7503-b6f7-64899b056938",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-97f0-7872-9392-ae873be4f635",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17338-8e41-7955-80fb-74263bf6b588"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:51.184650547Z"
+    },
+    {
+      "uuid": "01a17338-97f3-70a8-ac99-12189806e0c4",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-97f0-7688-8a07-56431fea2e93",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17338-8e41-7955-80fb-74263bf6b588"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:51.187033716Z"
+    },
+    {
+      "uuid": "01a17338-97f4-7c3b-8ea6-dfacf34ace23",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-97f0-7872-9392-ae873be4f635",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17338-8e41-7955-80fb-74263bf6b588"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:51.188792704Z"
+    },
+    {
+      "uuid": "01a17338-a843-76c7-9879-7c1d692a3f34",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\", \"pattern\": \".pi/**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7031-b895-762393ac1565",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.36335666Z"
+    },
+    {
+      "uuid": "01a17338-a843-7dba-bd1d-475ea168af11",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 7,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace\", \"pattern\": \"**/.pi/**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7238-ad8f-ca2ac722ee6b",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.36335666Z"
+    },
+    {
+      "uuid": "01a17338-a844-753b-9f4f-edba8a47c973",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\", \"pattern\": \"**/*\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7420-b8ce-5707c6669a37",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.36335666Z"
+    },
+    {
+      "uuid": "01a17338-a846-7146-9ba5-ad704b6129dc",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 9,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7031-b895-762393ac1565",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.366074059Z"
+    },
+    {
+      "uuid": "01a17338-a847-7c71-a644-43cb5c64f466",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 10,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7238-ad8f-ca2ac722ee6b",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.367806258Z"
+    },
+    {
+      "uuid": "01a17338-a849-7807-b728-423dcf6a0263",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-a843-7420-b8ce-5707c6669a37",
+      "tool_name": "find",
+      "metadata": {
+        "action": "find",
+        "method": "",
+        "purpose": "find",
+        "request_ordinal": 2,
+        "request_uuid": "01a17338-97f8-7274-b62d-1055e6b9975c"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:55.369516506Z"
+    },
+    {
+      "uuid": "01a17338-b907-70a9-b634-259a8698e8fc",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"Tell me the current time and timezone.\\n\", \"path\": \"/eval/workspace/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-b906-7ca1-b3a2-4fb0841c2a84",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17338-a84d-74fc-8de5-642136da9859"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:59.654921675Z"
+    },
+    {
+      "uuid": "01a17338-b908-7b53-920c-3dc7ad307d77",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/workspace/.pi/prompts/current-time.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-b906-7ca1-b3a2-4fb0841c2a84",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 3,
+        "request_uuid": "01a17338-a84d-74fc-8de5-642136da9859"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:20:59.656730326Z"
+    },
+    {
+      "uuid": "01a17338-c2e1-7ad0-b92d-cd4cb78c8d53",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 14,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/workspace/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-c2e1-77f5-9fe2-d9a4fdc7331b",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 4,
+        "request_uuid": "01a17338-b90d-7797-b0a9-f3004c542675"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:21:02.177615101Z"
+    },
+    {
+      "uuid": "01a17338-c2e3-761b-8324-a90451d5842e",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 15,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Tell me the current time and timezone.\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17338-c2e1-77f5-9fe2-d9a4fdc7331b",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 4,
+        "request_uuid": "01a17338-b90d-7797-b0a9-f3004c542675"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:21:02.179390881Z"
+    },
+    {
+      "uuid": "01a17338-d80b-75e0-9f69-9b64bc1ef9fa",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-8e3b-7b62-a162-025825747445",
+      "run_uuid": "01a17338-8e3b-7b66-9937-01873125332c",
+      "sequence": 16,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I've created the `/current-time` prompt template at `/eval/workspace/.pi/prompts/current-time.md` with the exact content:\n\n```\nTell me the current time and timezone.\n```\n\nThis prompt template is now available for the project and can be invoked using `/current-time`.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 5,
+        "request_uuid": "01a17338-c2e7-757f-b2f3-29e4f69d9669"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:21:07.595382687Z"
+    },
+    {
+      "uuid": "01a17338-d80f-7321-8a75-ac0d426c4c94",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-d80e-7e28-9e71-adfdb63fcdcd",
+      "run_uuid": "01a17338-d80e-7e2a-87bf-96f3805ef348",
+      "sequence": 17,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:21:07.598927153Z"
+    },
+    {
+      "uuid": "01a17338-e7f1-75c5-930e-06f5f515cca2",
+      "thread_uuid": "01a17338-8e3a-7476-af54-1bccfa908c9a",
+      "turn_uuid": "01a17338-d80e-7e28-9e71-adfdb63fcdcd",
+      "run_uuid": "01a17338-d80e-7e2a-87bf-96f3805ef348",
+      "sequence": 18,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I don't have access to any tools that can retrieve the current time or timezone information. The tools available to me in this workspace are limited to file operations (reading, writing, editing, searching, and listing files). I cannot query the system clock or timezone settings.\n\nTo get the current time and timezone, you would need to check your local system clock or run a command like `date` in your terminal.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 1,
+        "request_uuid": "01a17338-d814-7ae5-bda9-bd82d0a39213"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:21:11.665376129Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:20:51.186451474Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/workspace"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:20:51.18825771Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/workspace",
+        "pattern": ".pi/**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:20:55.365523376Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/workspace",
+        "pattern": "**/.pi/**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:20:55.367268248Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "find",
+      "arguments": {
+        "path": "/eval/home/.pi",
+        "pattern": "**/*"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:20:55.369042145Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "Tell me the current time and timezone.\n",
+        "path": "/eval/workspace/.pi/prompts/current-time.md"
+      },
+      "result": "Successfully wrote /eval/workspace/.pi/prompts/current-time.md",
+      "started_at": "2026-10-25T13:20:59.656202455Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/workspace/.pi/prompts/current-time.md"
+      },
+      "result": "Tell me the current time and timezone.\n",
+      "started_at": "2026-10-25T13:21:02.178876966Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "workspace/.pi/prompts/current-time.md": "Tell me the current time and timezone.\n"
+  },
+  "active_configuration": {
+    "extensions": [],
+    "model_registry": {
+      "builtin-fixture": {
+        "id": "builtin-fixture",
+        "name": "Built-in fixture",
+        "provider": "openai"
+      }
+    },
+    "skills": [],
+    "templates": [
+      {
+        "body": "Tell me the current time and timezone.\n",
+        "name": "current-time",
+        "path": "workspace/.pi/prompts/current-time.md",
+        "scope": "project"
+      }
+    ]
+  },
+  "reload_errors": [],
+  "trace_sha256": "409d8489e62eac8dcf6bf2399185d7215f324804a7104a1d426a375efa8917c6"
+}

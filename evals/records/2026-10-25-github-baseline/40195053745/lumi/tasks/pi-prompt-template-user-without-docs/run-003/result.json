@@ -1,0 +1,489 @@
+{
+  "task": {
+    "case_slug": "pi-prompt-template-user-without-docs",
+    "repetition": 3
+  },
+  "protocol_digest": "32ac27da1040ddedc6fa18835f571983fe4342220e12e603f06b546186009419",
+  "status": "scored",
+  "final": "I don't have access to a clock or system time through my available tools, so I'm unable to tell you the current time and timezone. \n\nIf you need this functionality, you could check your system clock directly, or if there's a way to extend the toolset with a time-related tool, the `/current-time` prompt would then be able to use it.",
+  "scores": [
+    {
+      "name": "upstream_contract",
+      "value": 0,
+      "basis": "Strict equality of the structured observation in the pinned upstream judge; runtime differences are recorded in the baseline catalog.",
+      "observed": {
+        "expandedToTimeRequest": false,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": null
+      },
+      "expected": {
+        "expandedToTimeRequest": true,
+        "extensionErrors": [],
+        "extensions": [],
+        "otherScopeTemplateExists": false,
+        "promptDiagnostics": [],
+        "skills": [],
+        "template": {
+          "atExpectedPath": true,
+          "scope": "user"
+        }
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-25T13:31:38.692167203Z",
+  "duration_ms": 23639,
+  "usage": {
+    "input_tokens": 6894,
+    "output_tokens": 1063,
+    "cached_input_tokens": 2688,
+    "cost_usd": null,
+    "requests": 6
+  },
+  "turns": [
+    {
+      "uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Make a /current-time prompt template available in all my Pi sessions containing exactly: Tell me the current time and timezone.",
+      "status": "completed",
+      "started_at": "2026-10-25T13:31:39.12182267Z",
+      "completed_at": "2026-10-25T13:31:58.79544252Z",
+      "created_at": "2026-10-25T13:31:39.119641317Z",
+      "updated_at": "2026-10-25T13:31:58.79544252Z"
+    },
+    {
+      "uuid": "01a17342-c7ce-7bb9-af98-68ce3d041702",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "/current-time",
+      "status": "completed",
+      "started_at": "2026-10-25T13:31:58.800440445Z",
+      "completed_at": "2026-10-25T13:32:02.321862216Z",
+      "created_at": "2026-10-25T13:31:58.798767457Z",
+      "updated_at": "2026-10-25T13:32:02.321862216Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a17342-7aef-7e53-95b2-4e85a9d823ee",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Make a /current-time prompt template available in all my Pi sessions containing exactly: Tell me the current time and timezone.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:39.119641317Z"
+    },
+    {
+      "uuid": "01a17342-88de-7bab-bd4b-f83205424c11",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-88de-7731-ab54-c4d46c25acba",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17342-7af4-7ddd-abb6-e525b2357b7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:42.686670003Z"
+    },
+    {
+      "uuid": "01a17342-88df-74ce-a000-48f3ad0a11d3",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-88de-78f3-a9fb-adb66c4d10ac",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17342-7af4-7ddd-abb6-e525b2357b7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:42.686670003Z"
+    },
+    {
+      "uuid": "01a17342-88e1-72e7-9e7c-623b5b157994",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-88de-7731-ab54-c4d46c25acba",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17342-7af4-7ddd-abb6-e525b2357b7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:42.689181339Z"
+    },
+    {
+      "uuid": "01a17342-88e2-7da1-bb06-5d6b2da45581",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-88de-78f3-a9fb-adb66c4d10ac",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 1,
+        "request_uuid": "01a17342-7af4-7ddd-abb6-e525b2357b7a"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:42.690883983Z"
+    },
+    {
+      "uuid": "01a17342-9e11-7590-8722-4adb63f76e00",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"Tell me the current time and timezone.\", \"path\": \"/eval/home/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-9e11-728c-8d21-c1f95c9b7b26",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "purpose": "write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17342-88e7-7025-bc44-0a5f1bc56b6f"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:48.113265074Z"
+    },
+    {
+      "uuid": "01a17342-9e13-7470-9992-cc4c3c819351",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Successfully wrote /eval/home/.pi/prompts/current-time.md\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-9e11-728c-8d21-c1f95c9b7b26",
+      "tool_name": "write",
+      "metadata": {
+        "action": "write",
+        "method": "",
+        "purpose": "write",
+        "request_ordinal": 2,
+        "request_uuid": "01a17342-88e7-7025-bc44-0a5f1bc56b6f"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:48.115281285Z"
+    },
+    {
+      "uuid": "01a17342-a663-70ba-a9a9-e19518bd0b0b",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 8,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/agent\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-a662-7ac3-b41f-0d87ed55a7c6",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17342-9e16-788a-acab-80d9a2cb1d85"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:50.242920973Z"
+    },
+    {
+      "uuid": "01a17342-a663-77a8-82bd-3be0fedec349",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 9,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-a662-7cd7-b040-2f1c80cb550d",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17342-9e16-788a-acab-80d9a2cb1d85"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:50.242920973Z"
+    },
+    {
+      "uuid": "01a17342-a665-72d1-837d-ed64c5cca055",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 10,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-a662-7ac3-b41f-0d87ed55a7c6",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17342-9e16-788a-acab-80d9a2cb1d85"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:50.245174435Z"
+    },
+    {
+      "uuid": "01a17342-a666-7c6e-b416-f20a3e9f8038",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"prompts/\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-a662-7cd7-b040-2f1c80cb550d",
+      "tool_name": "ls",
+      "metadata": {
+        "action": "ls",
+        "method": "",
+        "purpose": "ls",
+        "request_ordinal": 3,
+        "request_uuid": "01a17342-9e16-788a-acab-80d9a2cb1d85"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:50.24680587Z"
+    },
+    {
+      "uuid": "01a17342-b085-7bed-8f8b-699a0628b68e",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"/eval/home/.pi/prompts/current-time.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-b085-7904-bef6-d73d6127623b",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "purpose": "read",
+        "request_ordinal": 4,
+        "request_uuid": "01a17342-a66a-793c-aa27-0a58d9682ca2"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:52.837671757Z"
+    },
+    {
+      "uuid": "01a17342-b087-7769-aaf3-7d95550ec66d",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"Tell me the current time and timezone.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a17342-b085-7904-bef6-d73d6127623b",
+      "tool_name": "read",
+      "metadata": {
+        "action": "read",
+        "method": "",
+        "purpose": "read",
+        "request_ordinal": 4,
+        "request_uuid": "01a17342-a66a-793c-aa27-0a58d9682ca2"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:52.839476591Z"
+    },
+    {
+      "uuid": "01a17342-c7cb-76c8-a84b-fee150191ec5",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-7aef-79cd-851d-a9a097d97a29",
+      "run_uuid": "01a17342-7aef-79d0-a09f-e2efa4974b4a",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "The prompt template has been created successfully. Here's what was done:\n\n- **File created:** `~/.pi/prompts/current-time.md`\n- **Content:** `Tell me the current time and timezone.`\n\nSince it's placed in the global `~/.pi/prompts/` directory, the `/current-time` prompt template will be available in all your Pi sessions. You can invoke it by typing `/current-time` in any session.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 5,
+        "request_uuid": "01a17342-b08c-7afb-8646-7323dd5b0848"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:58.79544252Z"
+    },
+    {
+      "uuid": "01a17342-c7cf-7079-84da-27c46d89f953",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-c7ce-7bb9-af98-68ce3d041702",
+      "run_uuid": "01a17342-c7ce-7bbb-abf2-fd7e762860fe",
+      "sequence": 15,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "/current-time",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:31:58.798767457Z"
+    },
+    {
+      "uuid": "01a17342-d591-7d2e-a26c-57729ee15137",
+      "thread_uuid": "01a17342-7aee-7291-9cc3-f7b84ce96050",
+      "turn_uuid": "01a17342-c7ce-7bb9-af98-68ce3d041702",
+      "run_uuid": "01a17342-c7ce-7bbb-abf2-fd7e762860fe",
+      "sequence": 16,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "I don't have access to a clock or system time through my available tools, so I'm unable to tell you the current time and timezone. \n\nIf you need this functionality, you could check your system clock directly, or if there's a way to extend the toolset with a time-related tool, the `/current-time` prompt would then be able to use it.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 1,
+        "request_uuid": "01a17342-c7d4-732d-9a54-0179664d85ec"
+      },
+      "references": null,
+      "created_at": "2026-10-25T13:32:02.321862216Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:31:42.688491708Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:31:42.690345662Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "write",
+      "arguments": {
+        "content": "Tell me the current time and timezone.",
+        "path": "/eval/home/.pi/prompts/current-time.md"
+      },
+      "result": "Successfully wrote /eval/home/.pi/prompts/current-time.md",
+      "started_at": "2026-10-25T13:31:48.114536569Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi/agent"
+      },
+      "result": "",
+      "started_at": "2026-10-25T13:31:50.244587573Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "ls",
+      "arguments": {
+        "path": "/eval/home/.pi"
+      },
+      "result": "prompts/",
+      "started_at": "2026-10-25T13:31:50.246289259Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "/eval/home/.pi/prompts/current-time.md"
+      },
+      "result": "Tell me the current time and timezone.",
+      "started_at": "2026-10-25T13:31:52.838917652Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "home/.pi/prompts/current-time.md": "Tell me the current time and timezone."
+  },
+  "active_configuration": {
+    "extensions": [],
+    "model_registry": {
+      "builtin-fixture": {
+        "id": "builtin-fixture",
+        "name": "Built-in fixture",
+        "provider": "openai"
+      }
+    },
+    "skills": [],
+    "templates": []
+  },
+  "reload_errors": [],
+  "trace_sha256": "deb6bf60c1d334d06de90eb3602976ee2c33d428b472dff3654b17ca26d9cebd"
+}

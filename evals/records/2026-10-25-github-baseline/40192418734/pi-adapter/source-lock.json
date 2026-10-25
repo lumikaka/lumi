@@ -1,0 +1,14 @@
+{
+  "revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "blobs": {
+    "packages/evals/docker/Dockerfile": "930ba207902ced968e5428f389a86d2fa6be3a00",
+    "packages/evals/docker/entrypoint.ts": "099408e81a8de843ed46d9f8b68e91d7428fc7a5",
+    "packages/evals/evals/configured-runtime.ts": "c343634d59f8646450fa8b00b13c1315b26192df",
+    "packages/evals/evals/models.docs.eval.ts": "7b06b8921aa59e744df2ed29d612ef2cd7151771",
+    "packages/evals/evals/prompt-templates.docs.eval.ts": "08edd2238ef0ded43aea3c68df049fe900a56f3c",
+    "packages/evals/src/cli.ts": "827aa318bc31aa1f371b356d03ac924a71a84272",
+    "packages/evals/src/docker.ts": "d3762f1f8a4940dd7bb3372bbd9f7cc7d55c523a",
+    "packages/evals/src/harness.ts": "0f8de18102eaf9d8bf6a2c05185187205265aad1",
+    "packages/evals/src/report.ts": "cd7192d396ebb50e998f993f2645fbb59518123c"
+  }
+}

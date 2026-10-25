@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "validated_source_commit": "0382d92bce5906d8fabffe4d992272dd2c8c7803",
+  "remote_model_run_commit": "feec880d8e5be58216730ca4a24f74eeb62fd49c",
+  "difference_from_remote_model_run": "Only .gitattributes: restore pre-existing checkout rules; no evaluator or Agent source/configuration changes.",
+  "local_checks": [
+    {
+      "command": "python3 -m unittest discover -s evals/ci -p '*_test.py'",
+      "result": "passed, 11 tests",
+      "runtime": "Python 3.10.16"
+    },
+    {
+      "command": "go test ./internal/agentevals ./cmd/lumi_evals",
+      "result": "passed",
+      "runtime": "go1.25.0 darwin/arm64"
+    },
+    {
+      "command": "bash -n evals/ci/run-pi.sh",
+      "result": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "windows_ci": {
+    "run_id": 40195149495,
+    "url": "https://github.com/lumikaka/lumi/actions/runs/40195149495",
+    "job_id": 121174284926,
+    "conclusion": "success",
+    "source_head": "0382d92bce5906d8fabffe4d992272dd2c8c7803"
+  },
+  "source_sha256": {
+    ".github/workflows/agent-baseline.yml": "0a16ee4318296d17b2a2800796544af3c9ada631eddb7ab976d9fb894b29eedc",
+    "evals/ci/baseline.py": "c70067d3774d2a5206e84eee19c2a396daff2e08866dbb5bee1c9fcb82147fb3",
+    "evals/ci/baseline_test.py": "126b8d07a947f6a9c267a85251c2673fd8028132caf2917c75a10a7177886180",
+    "evals/ci/run-pi.sh": "0a0ae35ee0b1cca65c0d7b2ef7e70e627d3ad258e2ab81d4c343707af89d83ac",
+    "evals/ci/pi-source-lock.json": "df87b5c234d20b4aeae8cc69a9c0f63e92122a8d6e4c463e82f5ebac9f5054b7",
+    "evals/ci/pi-catalog-lock.json": "5317cfb88c958804d416071af7b31ff0cfdfc3127c185ea0aa1cfb8a54ffa187",
+    "internal/agentevals/runner.go": "9ca5e284ad8686ddf0f9bb416f3b3a40bb39be92cf912eb1e603ca0d245c5db2",
+    "internal/agentevals/evals_test.go": "bbdbe6bd987cbda2b8ae9b893e539404bf4230d8805ecaf624ce3fd80fee3d62",
+    ".gitattributes": "d86cb99c8f6d47a6994d5eafb94b49e29ad659a63d80e21f780738f5ed73d4f6"
+  },
+  "local_pi_docker_or_rust_execution": false
+}

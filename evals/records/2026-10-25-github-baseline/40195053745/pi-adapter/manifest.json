@@ -1,0 +1,46 @@
+{
+  "revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "original_harness_sha256": "0bb64d688c31ff6b98d2f698b1aee3e4b116223899ffea35e09f39ba7ab94a4d",
+  "adapted_harness_sha256": "59fdea7d67ce7d7707eca750980c37f6fe1cb2c9b85f96a1189a18bdc797c072",
+  "adapter_sha256": "c5d588e82c1d5617b043a76de93f25ae9ca23501e6d7ec7ba3c3601e7714311e",
+  "model_config": {
+    "baseUrl": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "api": "openai-completions",
+    "models": [
+      {
+        "id": "qwen3.7-plus",
+        "name": "qwen3.7-plus",
+        "reasoning": true,
+        "input": [
+          "text"
+        ],
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "contextWindow": 262144,
+        "maxTokens": 4096,
+        "compat": {
+          "maxTokensField": "max_tokens",
+          "supportsDeveloperRole": false,
+          "supportsStore": false,
+          "supportsReasoningEffort": false,
+          "thinkingFormat": "openai",
+          "supportsUsageInStreaming": true
+        }
+      }
+    ]
+  },
+  "scope": "Evaluator model registration plus immutable published model JSON data; no Agent core, task, tool, judge or Dockerfile edits.",
+  "catalog_source": {
+    "package": "@earendil-works/pi-ai",
+    "version": "0.99.1",
+    "git_head": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "url": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.99.1.tgz",
+    "integrity": "sha512-4nV9JKc94iPX8bwdGPc2nTuVPKIPsffhnp3WoN9NYCNqbtoOF8LhYcIs/+Sn/alroqJK/5QRu6/Z6Ck+n0hyBA==",
+    "catalog_generated_at": "2026-09-29T18:10:40.924Z",
+    "note": "Only the immutable published model JSON catalog is used. Agent and evaluator code are built from the separately pinned pi source."
+  }
+}

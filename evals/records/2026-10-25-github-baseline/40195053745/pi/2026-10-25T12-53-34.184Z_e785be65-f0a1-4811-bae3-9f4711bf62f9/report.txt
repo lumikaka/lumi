@@ -1,0 +1,29 @@
+Documentation Eval Comparisons
+  Add model to existing provider
+         Pairs  2/3 eligible
+     Pass rate  withheld because pairs are blocked
+        Tokens  -478049.0 (with 191959.5, without 670008.5, 2 pairs)
+         Tools  -16.5 (with 16.5, without 33.0, 2 pairs)
+       Latency  -48075.0ms (with 78476.6ms, without 126551.6ms, 2 pairs)
+     Est. cost  unavailable
+  Create a project prompt template
+         Pairs  3/3 eligible
+     Pass rate  -66.7 pp (with 33.3%, without 100.0%)
+         Flags  negative-delta, control-saturated, flaky
+        Tokens  +8167.3 (with 19260.3, without 11093.0, 3 pairs)
+         Tools  +1.0 (with 5.0, without 4.0, 3 pairs)
+       Latency  +3802.0ms (with 22632.2ms, without 18830.2ms, 3 pairs)
+     Est. cost  unavailable
+  Create a user prompt template
+         Pairs  3/3 eligible
+     Pass rate  +66.7 pp (with 100.0%, without 33.3%)
+         Flags  treatment-saturated, flaky
+        Tokens  -34938.7 (with 22440.3, without 57379.0, 3 pairs)
+         Tools  -5.0 (with 5.7, without 10.7, 3 pairs)
+       Latency  -13854.0ms (with 25074.4ms, without 38928.4ms, 3 pairs)
+     Est. cost  unavailable
+  Operational totals
+    without_docs: 9 runs, 1545433 tokens (8/9 measured), 110 tools (8/9 measured), 426.38s (8/9 measured), unavailable (0/9 measured)
+    with_docs: 9 runs, 674430 tokens, 79 tools, 386.87s, unavailable (0/9 measured)
+  Blocked pairs
+    Add model to existing provider/adds the model without replacing existing models/lumi-eval/qwen3.7-plus/run-2: without_docs: errored

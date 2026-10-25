@@ -1,0 +1,1388 @@
+{
+  "schema_version": 1,
+  "execution": {
+    "schema_version": 1,
+    "config": {
+      "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3.7-plus",
+      "repetitions": 3,
+      "max_tokens": 4096,
+      "temperature": null,
+      "reasoning_request_fields": "omitted",
+      "timeout_seconds": 300,
+      "pi_provider_alias": "lumi-eval",
+      "lumi_provider_type": "openai_compatible",
+      "lumi_max_requests_per_turn": 16,
+      "pi_max_requests_per_turn": null
+    },
+    "pi_revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+    "lumi_revision": "feec880d8e5be58216730ca4a24f74eeb62fd49c",
+    "workflow_run_url": "https://github.com/lumikaka/lumi/actions/runs/40195053745",
+    "workflow_attempt": "1",
+    "runner_os": "Linux",
+    "differences": [
+      "Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.",
+      "pi uses the immutable model JSON catalog from the published pi-ai 0.99.1 package, separate from the pinned Agent source commit. The package integrity and actual image catalog are retained.",
+      "Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.",
+      "System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.",
+      "pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.",
+      "Both cap output at 4096 tokens. pi keeps its native 300-second test timeout and native retry/loop policy; Lumi has 300 seconds per case and 16 requests per turn, including its no-progress policy.",
+      "pi errored/unscored records have no automatic Agent/environment attribution; inspect native Vitest errors and sessions. They are never silently counted as zero.",
+      "No price snapshot is configured. Cost is unavailable; zero model catalog prices only disable estimation and do not mean free inference.",
+      "Three repeats describe observed variation, not statistical significance. Scores do not gate infrastructure acceptance."
+    ]
+  },
+  "blocked": [
+    "pi native report blocked 1 pairs; inspect raw errors",
+    "pi Add model to existing provider/without_docs/2: errored, attribution unavailable",
+    "pi runner exit status 1; inspect console and native results"
+  ],
+  "differences": [
+    "Same endpoint and requested model ID; the service may route a mutable model alias to different backend revisions.",
+    "pi uses the immutable model JSON catalog from the published pi-ai 0.99.1 package, separate from the pinned Agent source commit. The package integrity and actual image catalog are retained.",
+    "Original pi tasks/judges run against real pi resources; Lumi uses the reviewed virtual filesystem/runtime adaptation.",
+    "System prompts, tool schemas/results, and available documentation differ. This is not an isolated Agent-core experiment.",
+    "pi uses streaming Chat Completions; Lumi uses non-streaming Chat Completions. Both omit temperature and reasoning request fields.",
+    "Both cap output at 4096 tokens. pi keeps its native 300-second test timeout and native retry/loop policy; Lumi has 300 seconds per case and 16 requests per turn, including its no-progress policy.",
+    "pi errored/unscored records have no automatic Agent/environment attribution; inspect native Vitest errors and sessions. They are never silently counted as zero.",
+    "No price snapshot is configured. Cost is unavailable; zero model catalog prices only disable estimation and do not mean free inference.",
+    "Three repeats describe observed variation, not statistical significance. Scores do not gate infrastructure acceptance."
+  ],
+  "rows": [
+    {
+      "case": "pi-add-model-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 0,
+        "pass_rate": 0.0,
+        "statuses": {
+          "scored": 2,
+          "agent_error": 1
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 0,
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 406525,
+          "mean": 135508.33333333334,
+          "min": 114748,
+          "max": 176892,
+          "stddev": 29262.72478009448
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 214163,
+          "mean": 71387.66666666667,
+          "min": 63788,
+          "max": 81466,
+          "stddev": 7426.787656106029
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 21592,
+          "mean": 7197.333333333333,
+          "min": 5858,
+          "max": 9787,
+          "stddev": 1831.5312961805728
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 175872,
+          "mean": 58624,
+          "min": 51968,
+          "max": 67328,
+          "stddev": 6435.740206067986
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 56,
+          "mean": 18.666666666666668,
+          "min": 14,
+          "max": 22,
+          "stddev": 3.39934634239519
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 114748,
+            "input_tokens": 63788,
+            "output_tokens": 5947,
+            "cached_input_tokens": 51968,
+            "tool_calls": 14,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 114885,
+            "input_tokens": 68909,
+            "output_tokens": 5858,
+            "cached_input_tokens": 56576,
+            "tool_calls": 20,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 176892,
+            "input_tokens": 81466,
+            "output_tokens": 9787,
+            "cached_input_tokens": 67328,
+            "tool_calls": 22,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "budget_limit",
+                "message": "Runtime ended this turn: map[budget_reason:model_request_limit completion_reason:budget_limit request_ordinal:16 request_uuid:01a17340-2813-78ac-8311-07bc34d43433]"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-add-model-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 243750.963574,
+          "mean": 81250.32119133334,
+          "min": 60303.551943,
+          "max": 96649.6151,
+          "stddev": 15347.96270381003
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 110700,
+          "mean": 36900,
+          "min": 15496,
+          "max": 68747,
+          "stddev": 22959.52143810203
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 10212,
+          "mean": 3404,
+          "min": 2530,
+          "max": 4026,
+          "stddev": 636.2033217978877
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 428416,
+          "mean": 142805.33333333334,
+          "min": 64896,
+          "max": 228224,
+          "stddev": 66889.46833562232
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 47,
+          "mean": 15.666666666666666,
+          "min": 10,
+          "max": 23,
+          "stddev": 5.436502143433364
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 60303.551943,
+            "input_tokens": 15496,
+            "output_tokens": 2530,
+            "cached_input_tokens": 64896,
+            "tool_calls": 10,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/8ec4b03c2616150fbef4633e4a2b09a80f7f43340d5a832296a2dd2f3a34fe5d",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/8ec4b03c2616150fbef4633e4a2b09a80f7f43340d5a832296a2dd2f3a34fe5d/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 86797.796531,
+            "input_tokens": 26457,
+            "output_tokens": 3656,
+            "cached_input_tokens": 135296,
+            "tool_calls": 14,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/9783f2ce240d935ed2ca2bae3f102bd04425991ceda74c529c0c64ca5c52fd87",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/9783f2ce240d935ed2ca2bae3f102bd04425991ceda74c529c0c64ca5c52fd87/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 96649.6151,
+            "input_tokens": 68747,
+            "output_tokens": 4026,
+            "cached_input_tokens": 228224,
+            "tool_calls": 23,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/7a432b1c55902e0f1e706da3137a13935ef89827b570920a98bb8dfde1449949",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/7a432b1c55902e0f1e706da3137a13935ef89827b570920a98bb8dfde1449949/session.jsonl"
+          }
+        ]
+      }
+    },
+    {
+      "case": "pi-add-model-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 0,
+        "pass_rate": 0.0,
+        "statuses": {
+          "agent_error": 2,
+          "scored": 1
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 0,
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 378940,
+          "mean": 126313.33333333333,
+          "min": 65980,
+          "max": 175077,
+          "stddev": 45283.7847529947
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 70131,
+          "mean": 23377,
+          "min": 14336,
+          "max": 27936,
+          "stddev": 6393.029693867115
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 20694,
+          "mean": 6898,
+          "min": 3299,
+          "max": 9924,
+          "stddev": 2734.8251619923835
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 47232,
+          "mean": 15744,
+          "min": 8960,
+          "max": 19200,
+          "stddev": 4797.297016723758
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 55,
+          "mean": 18.333333333333332,
+          "min": 10,
+          "max": 23,
+          "stddev": 5.90668171555645
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 137883,
+            "input_tokens": 27936,
+            "output_tokens": 7471,
+            "cached_input_tokens": 19200,
+            "tool_calls": 22,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "agent_turn_budget_exceeded",
+                "message": "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "agent_error",
+            "score": 0,
+            "duration_ms": 175077,
+            "input_tokens": 27859,
+            "output_tokens": 9924,
+            "cached_input_tokens": 19072,
+            "tool_calls": 23,
+            "cost_usd": null,
+            "issues": [
+              {
+                "kind": "agent",
+                "code": "budget_limit",
+                "message": "Runtime ended this turn: map[budget_reason:model_request_limit completion_reason:budget_limit request_ordinal:16 request_uuid:01a1733b-e071-7638-84b7-021973b00d74]"
+              }
+            ],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 65980,
+            "input_tokens": 14336,
+            "output_tokens": 3299,
+            "cached_input_tokens": 8960,
+            "tool_calls": 10,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-add-model-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 2,
+        "successes": 2,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 2,
+          "errored": 1
+        },
+        "score": {
+          "available_runs": 2,
+          "total": 2,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 2,
+          "total": 253103.253755,
+          "mean": 126551.6268775,
+          "min": 84924.763483,
+          "max": 168178.490272,
+          "stddev": 41626.8633945
+        },
+        "input_tokens": {
+          "available_runs": 2,
+          "total": 146904,
+          "mean": 73452,
+          "min": 39940,
+          "max": 106964,
+          "stddev": 33512.0
+        },
+        "output_tokens": {
+          "available_runs": 2,
+          "total": 8473,
+          "mean": 4236.5,
+          "min": 2954,
+          "max": 5519,
+          "stddev": 1282.5
+        },
+        "cached_input_tokens": {
+          "available_runs": 2,
+          "total": 1184640,
+          "mean": 592320,
+          "min": 218496,
+          "max": 966144,
+          "stddev": 373824.0
+        },
+        "tool_calls": {
+          "available_runs": 2,
+          "total": 66,
+          "mean": 33,
+          "min": 33,
+          "max": 33,
+          "stddev": 0.0
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 84924.763483,
+            "input_tokens": 39940,
+            "output_tokens": 2954,
+            "cached_input_tokens": 218496,
+            "tool_calls": 33,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/d45d2d162a0b9610e784cf92f65e63a56dfa02f4b37da4fcb47ff70742048dca",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/d45d2d162a0b9610e784cf92f65e63a56dfa02f4b37da4fcb47ff70742048dca/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "errored",
+            "score": null,
+            "duration_ms": null,
+            "input_tokens": null,
+            "output_tokens": null,
+            "cached_input_tokens": null,
+            "tool_calls": null,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/cf606096ecdabe8b8026a578c34c08dc522a02bd70e94650866acaccad36ca52",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/cf606096ecdabe8b8026a578c34c08dc522a02bd70e94650866acaccad36ca52/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 168178.490272,
+            "input_tokens": 106964,
+            "output_tokens": 5519,
+            "cached_input_tokens": 966144,
+            "tool_calls": 33,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/5d561fd4983653634348718151a6080fa9044d5ca9336040412e650714c8a0d2",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/5d561fd4983653634348718151a6080fa9044d5ca9336040412e650714c8a0d2/session.jsonl"
+          }
+        ]
+      }
+    },
+    {
+      "case": "pi-prompt-template-project-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 73697,
+          "mean": 24565.666666666668,
+          "min": 19638,
+          "max": 28292,
+          "stddev": 3633.669433995827
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 37062,
+          "mean": 12354,
+          "min": 10358,
+          "max": 15107,
+          "stddev": 2011.3075349135447
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3270,
+          "mean": 1090,
+          "min": 796,
+          "max": 1259,
+          "stddev": 208.66400424286567
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 15488,
+          "mean": 5162.666666666667,
+          "min": 3840,
+          "max": 7808,
+          "stddev": 1870.5331384988137
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 17,
+          "mean": 5.666666666666667,
+          "min": 5,
+          "max": 6,
+          "stddev": 0.4714045207910317
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 19638,
+            "input_tokens": 11597,
+            "output_tokens": 796,
+            "cached_input_tokens": 3840,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 28292,
+            "input_tokens": 15107,
+            "output_tokens": 1259,
+            "cached_input_tokens": 7808,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 25767,
+            "input_tokens": 10358,
+            "output_tokens": 1215,
+            "cached_input_tokens": 3840,
+            "tool_calls": 5,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 1,
+        "pass_rate": 0.3333333333333333,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 1,
+          "mean": 0.3333333333333333,
+          "min": 0,
+          "max": 1,
+          "stddev": 0.4714045207910317
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 67896.480342,
+          "mean": 22632.160114,
+          "min": 18521.069976,
+          "max": 27012.437450999998,
+          "stddev": 3471.808050564918
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 17571,
+          "mean": 5857,
+          "min": 3667,
+          "max": 9213,
+          "stddev": 2409.5913899801903
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 2322,
+          "mean": 774,
+          "min": 569,
+          "max": 982,
+          "stddev": 168.61988811129802
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 37888,
+          "mean": 12629.333333333334,
+          "min": 9600,
+          "max": 18688,
+          "stddev": 4284.124284948896
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 15,
+          "mean": 5,
+          "min": 4,
+          "max": 7,
+          "stddev": 1.4142135623730951
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 27012.437450999998,
+            "input_tokens": 9213,
+            "output_tokens": 982,
+            "cached_input_tokens": 18688,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/95f75941d613583c02b3993acc77a01e5154b3dd8b5c98c11d6eda92aa153de6",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/95f75941d613583c02b3993acc77a01e5154b3dd8b5c98c11d6eda92aa153de6/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 18521.069976,
+            "input_tokens": 3667,
+            "output_tokens": 569,
+            "cached_input_tokens": 9600,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/06e87d698a5a86ff623a54511074bab0a5546e9f84556658fadda871a3dfd3cb",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/06e87d698a5a86ff623a54511074bab0a5546e9f84556658fadda871a3dfd3cb/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 22362.972915,
+            "input_tokens": 4691,
+            "output_tokens": 771,
+            "cached_input_tokens": 9600,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/14a39b3976e5de3096814e7f095133d8733a384b953fff5f49ed827ed6b365a5",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/14a39b3976e5de3096814e7f095133d8733a384b953fff5f49ed827ed6b365a5/session.jsonl"
+          }
+        ]
+      }
+    },
+    {
+      "case": "pi-prompt-template-project-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 71108,
+          "mean": 23702.666666666668,
+          "min": 18795,
+          "max": 28907,
+          "stddev": 4133.533140331915
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 20742,
+          "mean": 6914,
+          "min": 5461,
+          "max": 8128,
+          "stddev": 1101.835740934192
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3178,
+          "mean": 1059.3333333333333,
+          "min": 822,
+          "max": 1311,
+          "stddev": 199.8905255939416
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 9728,
+          "mean": 3242.6666666666665,
+          "min": 1536,
+          "max": 4352,
+          "stddev": 1224.763741389425
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 18,
+          "mean": 6,
+          "min": 4,
+          "max": 7,
+          "stddev": 1.4142135623730951
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 28907,
+            "input_tokens": 8128,
+            "output_tokens": 1311,
+            "cached_input_tokens": 4352,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 23406,
+            "input_tokens": 7153,
+            "output_tokens": 1045,
+            "cached_input_tokens": 3840,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 18795,
+            "input_tokens": 5461,
+            "output_tokens": 822,
+            "cached_input_tokens": 1536,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-project-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 56490.489298,
+          "mean": 18830.163099333335,
+          "min": 14980.382161000001,
+          "max": 22476.795132,
+          "stddev": 3063.7671763532585
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 10427,
+          "mean": 3475.6666666666665,
+          "min": 3407,
+          "max": 3515,
+          "stddev": 48.72599123899094
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 1988,
+          "mean": 662.6666666666666,
+          "min": 527,
+          "max": 810,
+          "stddev": 115.82841716186155
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 20864,
+          "mean": 6954.666666666667,
+          "min": 3968,
+          "max": 8448,
+          "stddev": 2111.892253143822
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 12,
+          "mean": 4,
+          "min": 2,
+          "max": 5,
+          "stddev": 1.4142135623730951
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 14980.382161000001,
+            "input_tokens": 3515,
+            "output_tokens": 527,
+            "cached_input_tokens": 3968,
+            "tool_calls": 2,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/75aa2786ba2f7646709ca7cab474a103e938a887d6bfa0543cc83a522d92025d",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/75aa2786ba2f7646709ca7cab474a103e938a887d6bfa0543cc83a522d92025d/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 22476.795132,
+            "input_tokens": 3407,
+            "output_tokens": 810,
+            "cached_input_tokens": 8448,
+            "tool_calls": 5,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/890556702cfc75e5af69cc3cfdad364cab17673baa2c06d815eec68419827f96",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/890556702cfc75e5af69cc3cfdad364cab17673baa2c06d815eec68419827f96/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 19033.312005,
+            "input_tokens": 3505,
+            "output_tokens": 651,
+            "cached_input_tokens": 8448,
+            "tool_calls": 5,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/8e10ad3e06e34b6c27c3f593e99b6ba0158806bf1ec8ea8caad04dffdee7ab86",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/8e10ad3e06e34b6c27c3f593e99b6ba0158806bf1ec8ea8caad04dffdee7ab86/session.jsonl"
+          }
+        ]
+      }
+    },
+    {
+      "case": "pi-prompt-template-user-with-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 69132,
+          "mean": 23044,
+          "min": 21125,
+          "max": 26869,
+          "stddev": 2704.6886450507877
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 34238,
+          "mean": 11412.666666666666,
+          "min": 7547,
+          "max": 13377,
+          "stddev": 2733.5601125435105
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3111,
+          "mean": 1037,
+          "min": 886,
+          "max": 1217,
+          "stddev": 136.67723536370886
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 15488,
+          "mean": 5162.666666666667,
+          "min": 3200,
+          "max": 6144,
+          "stddev": 1387.8149092087972
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 16,
+          "mean": 5.333333333333333,
+          "min": 4,
+          "max": 6,
+          "stddev": 0.9428090415820634
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 26869,
+            "input_tokens": 13377,
+            "output_tokens": 1217,
+            "cached_input_tokens": 6144,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 21125,
+            "input_tokens": 7547,
+            "output_tokens": 1008,
+            "cached_input_tokens": 3200,
+            "tool_calls": 4,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 21138,
+            "input_tokens": 13314,
+            "output_tokens": 886,
+            "cached_input_tokens": 6144,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-with-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 3,
+        "pass_rate": 1.0,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 3,
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "stddev": 0.0
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 75223.29200799999,
+          "mean": 25074.43066933333,
+          "min": 20005.580304,
+          "max": 27838.925386,
+          "stddev": 3589.1377804035214
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 13985,
+          "mean": 4661.666666666667,
+          "min": 3554,
+          "max": 5371,
+          "stddev": 793.4625945114797
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 2520,
+          "mean": 840,
+          "min": 739,
+          "max": 893,
+          "stddev": 71.4469500165449
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 50816,
+          "mean": 16938.666666666668,
+          "min": 9600,
+          "max": 20864,
+          "stddev": 5193.429010671936
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 17,
+          "mean": 5.666666666666667,
+          "min": 3,
+          "max": 7,
+          "stddev": 1.8856180831641267
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 27378.786318,
+            "input_tokens": 5060,
+            "output_tokens": 893,
+            "cached_input_tokens": 20864,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/a099939e515e7462a9c330115ede4a227ee7c054310dc3170623bde6496c6747",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/a099939e515e7462a9c330115ede4a227ee7c054310dc3170623bde6496c6747/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 27838.925386,
+            "input_tokens": 5371,
+            "output_tokens": 888,
+            "cached_input_tokens": 20352,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/71506dfe2dd0b990eb7c184118529b03d99fda5bc75e82effdc75cacc556469b",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/71506dfe2dd0b990eb7c184118529b03d99fda5bc75e82effdc75cacc556469b/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 20005.580304,
+            "input_tokens": 3554,
+            "output_tokens": 739,
+            "cached_input_tokens": 9600,
+            "tool_calls": 3,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/73e14d2444d03ad9a081638f3ef30dfcc237bd974f2d75e3c1e15452c5dda0e2",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/with_docs/sessions/73e14d2444d03ad9a081638f3ef30dfcc237bd974f2d75e3c1e15452c5dda0e2/session.jsonl"
+          }
+        ]
+      }
+    },
+    {
+      "case": "pi-prompt-template-user-without-docs",
+      "comparison": "descriptive_adapted",
+      "delta_percentage_points": null,
+      "lumi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 1,
+        "pass_rate": 0.3333333333333333,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 1,
+          "mean": 0.3333333333333333,
+          "min": 0,
+          "max": 1,
+          "stddev": 0.4714045207910317
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 80452,
+          "mean": 26817.333333333332,
+          "min": 23639,
+          "max": 29573,
+          "stddev": 2440.9116238724328
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 20688,
+          "mean": 6896,
+          "min": 6803,
+          "max": 6991,
+          "stddev": 76.7637067022344
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 3733,
+          "mean": 1244.3333333333333,
+          "min": 1063,
+          "max": 1432,
+          "stddev": 150.7101707103922
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 9088,
+          "mean": 3029.3333333333335,
+          "min": 2688,
+          "max": 3200,
+          "stddev": 241.35911464500822
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 17,
+          "mean": 5.666666666666667,
+          "min": 5,
+          "max": 6,
+          "stddev": 0.4714045207910317
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 29573,
+            "input_tokens": 6803,
+            "output_tokens": 1432,
+            "cached_input_tokens": 3200,
+            "tool_calls": 5,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-001"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 27240,
+            "input_tokens": 6991,
+            "output_tokens": 1238,
+            "cached_input_tokens": 3200,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-002"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 23639,
+            "input_tokens": 6894,
+            "output_tokens": 1063,
+            "cached_input_tokens": 2688,
+            "tool_calls": 6,
+            "cost_usd": null,
+            "issues": [],
+            "evidence": "lumi/tasks/pi-prompt-template-user-without-docs/run-003"
+          }
+        ]
+      },
+      "pi": {
+        "planned": 3,
+        "recorded": 3,
+        "scored": 3,
+        "successes": 1,
+        "pass_rate": 0.3333333333333333,
+        "statuses": {
+          "scored": 3
+        },
+        "score": {
+          "available_runs": 3,
+          "total": 1,
+          "mean": 0.3333333333333333,
+          "min": 0,
+          "max": 1,
+          "stddev": 0.4714045207910317
+        },
+        "duration_ms": {
+          "available_runs": 3,
+          "total": 116785.174029,
+          "mean": 38928.391343,
+          "min": 30318.144921,
+          "max": 55975.404691,
+          "stddev": 12054.26679227597
+        },
+        "input_tokens": {
+          "available_runs": 3,
+          "total": 62437,
+          "mean": 20812.333333333332,
+          "min": 4900,
+          "max": 51892,
+          "stddev": 21978.74755808943
+        },
+        "output_tokens": {
+          "available_runs": 3,
+          "total": 4228,
+          "mean": 1409.3333333333333,
+          "min": 1028,
+          "max": 1873,
+          "stddev": 349.8479034602831
+        },
+        "cached_input_tokens": {
+          "available_runs": 3,
+          "total": 105472,
+          "mean": 35157.333333333336,
+          "min": 10752,
+          "max": 81280,
+          "stddev": 32632.107106685926
+        },
+        "tool_calls": {
+          "available_runs": 3,
+          "total": 32,
+          "mean": 10.666666666666666,
+          "min": 7,
+          "max": 16,
+          "stddev": 3.858612300930075
+        },
+        "cost_usd": {
+          "available_runs": 0,
+          "total": null,
+          "mean": null,
+          "min": null,
+          "max": null,
+          "stddev": null
+        },
+        "runs": [
+          {
+            "repetition": 1,
+            "status": "scored",
+            "score": 1,
+            "duration_ms": 55975.404691,
+            "input_tokens": 51892,
+            "output_tokens": 1873,
+            "cached_input_tokens": 81280,
+            "tool_calls": 16,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/543fbe00c5a3e945ea98464aa5aacb491c2730712d626688a7bc3d1d04e83dc5",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/543fbe00c5a3e945ea98464aa5aacb491c2730712d626688a7bc3d1d04e83dc5/session.jsonl"
+          },
+          {
+            "repetition": 2,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 30491.624417,
+            "input_tokens": 5645,
+            "output_tokens": 1028,
+            "cached_input_tokens": 13440,
+            "tool_calls": 9,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/c183cde83d037133d8cd33d8cbc1a369fbfcf4992fe60b3f0cb768c727ef1ae0",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/c183cde83d037133d8cd33d8cbc1a369fbfcf4992fe60b3f0cb768c727ef1ae0/session.jsonl"
+          },
+          {
+            "repetition": 3,
+            "status": "scored",
+            "score": 0,
+            "duration_ms": 30318.144921,
+            "input_tokens": 4900,
+            "output_tokens": 1327,
+            "cached_input_tokens": 10752,
+            "tool_calls": 7,
+            "cost_usd": null,
+            "evidence": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/tasks/7accd210bed5b52a973ad747a789cbd4701716e177db9c6c6f2821b75073bb7c",
+            "session": "pi/2026-10-25T12-53-34.184Z_e785be65-f0a1-4811-bae3-9f4711bf62f9/without_docs/sessions/7accd210bed5b52a973ad747a789cbd4701716e177db9c6c6f2821b75073bb7c/session.jsonl"
+          }
+        ]
+      }
+    }
+  ]
+}
