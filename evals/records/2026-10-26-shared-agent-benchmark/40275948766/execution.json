@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "suite": "regression",
+  "config": {
+    "base_url": "https://ws-ie8ia23er4o7fynb.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3.7-plus",
+    "repetitions": 3,
+    "max_tokens": 4096,
+    "temperature": null,
+    "reasoning_request_fields": "omitted",
+    "timeout_seconds": 300,
+    "lumi_max_requests_per_turn": 16
+  },
+  "case_slugs": [
+    "audit-inconclusive",
+    "audit-match",
+    "audit-mismatch",
+    "batch-task",
+    "context-handoff",
+    "missing-resource",
+    "smoke",
+    "transient-tool"
+  ],
+  "lumi_revision": "2945231d2a9ce02e5f1cf22ed3f7a9d2ee3cd742",
+  "workflow_run_url": "https://github.com/lumikaka/lumi/actions/runs/40275948766",
+  "workflow_attempt": "1",
+  "pi_comparison": "shared-comparison.json (smoke and three document audits)"
+}

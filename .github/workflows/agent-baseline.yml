@@ -75,6 +75,7 @@ jobs:
           npm --prefix "$PI_DIR/packages/ai" run build:offline
           npm --prefix "$PI_DIR/packages/agent" run build
           python3 evals/ci/pi_runtime.py seal-runtime
+          node evals/ci/pi-shared.mjs --check-runtime
       - name: Run general Lumi cases
         continue-on-error: true
         env:

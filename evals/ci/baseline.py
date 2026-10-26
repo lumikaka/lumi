@@ -298,7 +298,7 @@ def main():
     action = sys.argv[1]
     out = Path(os.environ['OUT'])
     if action in ('init', 'prepare'):
-        raise ValueError('The pi-specific suite is retired. Use agent-evals.yml for Lumi regression; baseline.py only reads historical pi evidence.')
+        raise ValueError('The pi-specific suite is retired. Use agent-baseline.yml for the general/shared benchmark; baseline.py only reads historical pi evidence.')
     elif action == 'report':
         report(out)
     elif action == 'seal':

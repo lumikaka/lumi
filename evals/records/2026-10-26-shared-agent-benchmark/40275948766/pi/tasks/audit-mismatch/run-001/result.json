@@ -1,0 +1,28 @@
+{
+  "task": {
+    "case_slug": "audit-mismatch",
+    "repetition": 1
+  },
+  "protocol_digest": "8a8a5f09a6ea7820f7746e220f0d84148fed77932628f0549d88f02f9c93062c",
+  "status": "environment_error",
+  "scores": null,
+  "final": "",
+  "tools": null,
+  "files": null,
+  "issues": [
+    {
+      "kind": "environment",
+      "code": "adapter_process",
+      "message": "pi adapter exited 1"
+    }
+  ],
+  "duration_ms": 64,
+  "usage": {
+    "requests": null,
+    "input_tokens": null,
+    "output_tokens": null,
+    "cached_input_tokens": null,
+    "cost_usd": null
+  },
+  "trace_sha256": "afdc723e559ebdab586c500baeb579c45b0aa47debc1dc99d9e8695052086c23"
+}

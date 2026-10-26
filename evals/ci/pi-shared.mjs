@@ -2,20 +2,25 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 
+// The pinned packages export ESM only; CommonJS require.resolve cannot select
+// their import export condition. Load the verified checkout's built ESM files.
+const { Agent } = await import(pathToFileURL(path.join(process.env.PI_DIR, 'packages/agent/dist/index.js')));
+const { stream } = await import(pathToFileURL(path.join(process.env.PI_DIR, 'packages/ai/dist/api/openai-completions.js')));
+if (process.argv[2] === '--check-runtime') {
+  if (typeof Agent !== 'function' || typeof stream !== 'function') throw new Error('Invalid pi runtime exports');
+  console.log('Pinned pi Agent and model transport imported successfully; no model request made.');
+  process.exit(0);
+}
 const [protocolPath, slug, repetition, directory] = process.argv.slice(2);
 const rawProtocol = readFileSync(protocolPath);
 const protocol = JSON.parse(rawProtocol);
 const cfg = protocol.config;
 const secret = process.env.LUMI_EVAL_API_KEY;
 if (!secret) throw new Error('Missing evaluation credential');
-const requirePi = createRequire(path.join(process.env.PI_DIR, 'package.json'));
-const { Agent } = await import(pathToFileURL(requirePi.resolve('@earendil-works/pi-agent-core')));
-const { stream } = await import(pathToFileURL(requirePi.resolve('@earendil-works/pi-ai/api/openai-completions')));
 const redact = value => JSON.stringify(value).replaceAll(secret, '[REDACTED]');
 const tracePath = path.join(directory, 'trace.jsonl');
 const record = (type, data) => appendFileSync(tracePath, redact({time: new Date().toISOString(), type, data}) + '\n');

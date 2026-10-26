@@ -1,0 +1,12 @@
+{
+  "revision": "cfee633b1ba9497b0c12462da97a08b418b5ebf8",
+  "catalog": {
+    "package": "@earendil-works/pi-ai",
+    "version": "0.99.1",
+    "git_head": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "url": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.99.1.tgz",
+    "integrity": "sha512-4nV9JKc94iPX8bwdGPc2nTuVPKIPsffhnp3WoN9NYCNqbtoOF8LhYcIs/+Sn/alroqJK/5QRu6/Z6Ck+n0hyBA==",
+    "catalog_generated_at": "2026-09-29T18:10:40.924Z",
+    "note": "Only the immutable published model JSON catalog is used. Agent and evaluator code are built from the separately pinned pi source."
+  }
+}
