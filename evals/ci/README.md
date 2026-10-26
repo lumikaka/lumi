@@ -69,3 +69,5 @@ make eval-agent-list
 ```
 
 以上离线检查不调用模型，也不运行 pi。
+
+当前真实共有基准见 [2026-10-26 完整运行与差异证据](../records/2026-10-26-shared-agent-benchmark/README.md)：每项重复 3 次，Lumi 24 条、pi 12 条，无环境故障。

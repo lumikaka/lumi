@@ -1,0 +1,277 @@
+{
+  "task": {
+    "case_slug": "audit-match",
+    "repetition": 2
+  },
+  "protocol_digest": "bbce47b5165d9b148058e0785c4903d5e0ec45203374ea0e3e8a3e41c3fe073b",
+  "status": "scored",
+  "final": "**Summary:** The documentation claim that `format_name` trims whitespace and lowercases names is accurate. The implementation shows `format_name` calls `normalize`, which applies `.strip().lower()` to the input, exactly matching the documented behavior. Verdict: match.",
+  "scores": [
+    {
+      "name": "verdict",
+      "value": 1,
+      "basis": "verdict",
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "name": "read_documentation",
+      "value": 1,
+      "basis": "read documentation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "read_implementation",
+      "value": 1,
+      "basis": "read implementation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "evidence",
+      "value": 1,
+      "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+      "observed": [
+        "The docs/names.md claim states: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string, exactly matching the documented behavior."
+      ],
+      "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-26T05:58:14.834908683Z",
+  "duration_ms": 12377,
+  "usage": {
+    "input_tokens": 2494,
+    "output_tokens": 523,
+    "cached_input_tokens": 1024,
+    "cost_usd": null,
+    "requests": 3
+  },
+  "turns": [
+    {
+      "uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:58:15.267558373Z",
+      "completed_at": "2026-10-26T05:58:27.203981164Z",
+      "created_at": "2026-10-26T05:58:15.265352285Z",
+      "updated_at": "2026-10-26T05:58:27.203981164Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a176c9-bde1-79ef-905d-44887dd7bb2d",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:15.265352285Z"
+    },
+    {
+      "uuid": "01a176c9-c7aa-7995-847c-da0d33e8823f",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/names.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-c7aa-7294-a33c-10802ba0cab4",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-bde6-788e-aebd-c9ee48fb5950"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:17.770542426Z"
+    },
+    {
+      "uuid": "01a176c9-c7ab-75ef-b125-388254544a26",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"src/names.py\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-c7aa-74d0-94e0-0b73e587a2b6",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-bde6-788e-aebd-c9ee48fb5950"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:17.770542426Z"
+    },
+    {
+      "uuid": "01a176c9-c7ad-71cc-8b29-987881259212",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"The public format_name function trims whitespace and lowercases names.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-c7aa-7294-a33c-10802ba0cab4",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-bde6-788e-aebd-c9ee48fb5950"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:17.773101907Z"
+    },
+    {
+      "uuid": "01a176c9-c7ae-7d5c-80c3-0debb2dce351",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-c7aa-74d0-94e0-0b73e587a2b6",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-bde6-788e-aebd-c9ee48fb5950"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:17.774866907Z"
+    },
+    {
+      "uuid": "01a176c9-ddf3-72f5-8f23-a326353ba6c2",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"verdict\": \"match\", \"explanation\": \"The docs/names.md claim states: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string, exactly matching the documented behavior.\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-ddf3-7019-9b13-7df27310a539",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "purpose": "eval_submit",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c9-c7b2-7203-a807-4ceb979a62de"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:23.475089906Z"
+    },
+    {
+      "uuid": "01a176c9-ddf5-72d1-840e-ed360b091079",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"explanation\":\"The docs/names.md claim states: \\\"The public format_name function trims whitespace and lowercases names.\\\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string, exactly matching the documented behavior.\",\"verdict\":\"match\"},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-ddf3-7019-9b13-7df27310a539",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "method": "",
+        "purpose": "eval_submit",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c9-c7b2-7203-a807-4ceb979a62de"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:23.477173059Z"
+    },
+    {
+      "uuid": "01a176c9-ec83-7f00-8a32-8ef2708b2b1d",
+      "thread_uuid": "01a176c9-bde0-70f2-9c7f-e289f02c75f0",
+      "turn_uuid": "01a176c9-bde1-7563-96a8-e1d9ab3c0524",
+      "run_uuid": "01a176c9-bde1-7566-9907-656ccb7aa839",
+      "sequence": 8,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "**Summary:** The documentation claim that `format_name` trims whitespace and lowercases names is accurate. The implementation shows `format_name` calls `normalize`, which applies `.strip().lower()` to the input, exactly matching the documented behavior. Verdict: match.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 3,
+        "request_uuid": "01a176c9-ddf9-7d9b-830a-aead023e708e"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:58:27.203981164Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/names.md"
+      },
+      "result": "The public format_name function trims whitespace and lowercases names.",
+      "started_at": "2026-10-26T05:58:17.772551461Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "src/names.py"
+      },
+      "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+      "started_at": "2026-10-26T05:58:17.774345365Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_submit",
+      "arguments": {
+        "explanation": "The docs/names.md claim states: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string, exactly matching the documented behavior.",
+        "verdict": "match"
+      },
+      "result": {
+        "explanation": "The docs/names.md claim states: \"The public format_name function trims whitespace and lowercases names.\" In src/names.py, format_name(name) delegates to normalize(name), which returns value.strip().lower(). strip() trims leading/trailing whitespace and lower() lowercases the string, exactly matching the documented behavior.",
+        "verdict": "match"
+      },
+      "started_at": "2026-10-26T05:58:23.476455451Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "docs/names.md": "The public format_name function trims whitespace and lowercases names.",
+    "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+  },
+  "active_configuration": null,
+  "reload_errors": null,
+  "trace_sha256": "ba4c69739288f2e877fffc1d559c0116234cc732d9df795494addefba5ad20d0"
+}

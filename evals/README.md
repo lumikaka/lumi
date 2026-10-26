@@ -20,3 +20,5 @@ make eval-agent EVAL_ARGS='--lumi-config-dir /absolute/path/to/.lumi_dev --repea
 ```
 
 默认输出位于忽略的 `evals/results/`；本次验收的审阅记录保存在 `evals/records/`。本地运行命令不会上传结果；任务提示与模拟工具输出会发送给所选模型 Provider。单独手动触发的 GitHub Actions 将结果保存为 14 天的 artifact。评测使用独立命令，不加入普通测试、应用 UI、Hugo 或桌面打包流程。
+
+当前真实共有基准见 [2026-10-26 完整运行与差异证据](records/2026-10-26-shared-agent-benchmark/README.md)：每项重复 3 次，Lumi 24 条、pi 12 条，无环境故障。

@@ -1,0 +1,205 @@
+{
+  "task": {
+    "case_slug": "transient-tool",
+    "repetition": 1
+  },
+  "protocol_digest": "bbce47b5165d9b148058e0785c4903d5e0ec45203374ea0e3e8a3e41c3fe073b",
+  "status": "scored",
+  "final": "42",
+  "scores": [
+    {
+      "name": "recovered_answer",
+      "value": 1,
+      "basis": "recovered answer",
+      "observed": "42",
+      "expected": "42"
+    },
+    {
+      "name": "retried",
+      "value": 1,
+      "basis": "retried",
+      "observed": 2,
+      "expected": 2
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-26T05:56:58.895815481Z",
+  "duration_ms": 7587,
+  "usage": {
+    "input_tokens": 1406,
+    "output_tokens": 294,
+    "cached_input_tokens": 0,
+    "cost_usd": null,
+    "requests": 3
+  },
+  "turns": [
+    {
+      "uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Fetch the order record. If the service reports a temporary error, retry. Reply only with the numeric total.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:56:59.326296785Z",
+      "completed_at": "2026-10-26T05:57:06.47535659Z",
+      "created_at": "2026-10-26T05:56:59.324360766Z",
+      "updated_at": "2026-10-26T05:57:06.47535659Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a176c8-953c-7924-935c-a4f9226bd883",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Fetch the order record. If the service reports a temporary error, retry. Reply only with the numeric total.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:59.324360766Z"
+    },
+    {
+      "uuid": "01a176c8-a584-7019-95f9-a033651d4b94",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"key\": \"order\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-a583-7c9f-af0c-922dc81e1e88",
+      "tool_name": "eval_fetch",
+      "metadata": {
+        "action": "eval_fetch",
+        "purpose": "eval_fetch",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c8-9541-72aa-84e9-e70aa068bdfa"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:03.491924988Z"
+    },
+    {
+      "uuid": "01a176c8-a585-7d48-a024-1dffbd4cafb0",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"transient_unavailable\",\"details\":\"\",\"message\":\"Fixture service is temporarily unavailable. Retry the same operation.\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-a583-7c9f-af0c-922dc81e1e88",
+      "tool_name": "eval_fetch",
+      "metadata": {
+        "action": "eval_fetch",
+        "method": "",
+        "purpose": "eval_fetch",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c8-9541-72aa-84e9-e70aa068bdfa"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:03.49386121Z"
+    },
+    {
+      "uuid": "01a176c8-ab54-7144-93b1-dd7c881c2ffd",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"key\": \"order\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-ab53-7d99-8ea3-647add587bcb",
+      "tool_name": "eval_fetch",
+      "metadata": {
+        "action": "eval_fetch",
+        "purpose": "eval_fetch",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c8-a588-7c72-8164-026269578e58"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:04.97999089Z"
+    },
+    {
+      "uuid": "01a176c8-ab55-7ea5-b1d3-32f698d241e9",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"total\":42},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-ab53-7d99-8ea3-647add587bcb",
+      "tool_name": "eval_fetch",
+      "metadata": {
+        "action": "eval_fetch",
+        "method": "",
+        "purpose": "eval_fetch",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c8-a588-7c72-8164-026269578e58"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:04.981950525Z"
+    },
+    {
+      "uuid": "01a176c8-b12b-7577-a95f-bc2cd23ce09e",
+      "thread_uuid": "01a176c8-953b-71e5-9c88-435966fa95f8",
+      "turn_uuid": "01a176c8-953c-7585-9e53-6ee85d3b30fa",
+      "run_uuid": "01a176c8-953c-7588-9c7e-c979dcc43575",
+      "sequence": 6,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "42",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 3,
+        "request_uuid": "01a176c8-ab59-7ad7-9310-311c63dba438"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:06.47535659Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_fetch",
+      "arguments": {
+        "key": "order"
+      },
+      "result": null,
+      "error": "transient_unavailable",
+      "started_at": "2026-10-26T05:57:03.493272372Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_fetch",
+      "arguments": {
+        "key": "order"
+      },
+      "result": {
+        "total": 42
+      },
+      "started_at": "2026-10-26T05:57:04.981221555Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "records/order.json": "{\"total\":42}"
+  },
+  "active_configuration": null,
+  "reload_errors": null,
+  "trace_sha256": "adcdeac765703fa6fac06389989ce9b3a3f795299ca7094dd378c8d6b3fa13ba"
+}
