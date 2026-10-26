@@ -1,12 +1,12 @@
 # pi 历史基线
 
-本目录收集公开历史成绩，供本地 Lumi 评测对照。不安装、不运行 pi，也不把 Lumi 的模型响应当作 pi 的结果。
+本目录保留公开历史成绩及离线比较能力。2026-10-26，模型注册和提示模板任务已退出当前题集；所有旧记录只供历史复查，不代表 Lumi 当前产品能力。
 
 截至 2026-10-25，已核对 10 个相关 PR，取得 **6 条逐场景比例和 2 条整体比例**。目前全部是作者公开的结果摘要，没有取得完整原始运行包；所有数值都只作为近似参考。没有可直接计算 Agent 能力差值的记录。
 
 已有 [真实运行与验证记录](verification.md) 和 [首批历史对照报告](../../records/2026-10-25-pi-historical-comparison/comparison.md)。
 
-若要重新取得已知模型配置的真实 pi 成绩，使用 [GitHub Actions 对照评测](../../ci/README.md)。它保存新的原始运行包及独立并列报告，不用新结果覆盖这里的历史摘要。
+另有 [2026-10-25 真实双引擎运行](../../records/2026-10-25-github-baseline/README.md)。[当前 CI](../../ci/README.md) 已用通用任务替换旧工作流内容，执行 8 项 Lumi 回归与 4 项共有核心对照；这些新结果与本目录的历史成绩分别保存。
 
 ## 已取得的记录
 
@@ -23,25 +23,14 @@
 
 `catalog.json` 保存结构化比例、来源、已知样本数、未知配置及用例映射。`sources/` 是检索时的元数据和事实摘录，不冒充原始模型轨迹。每个快照有 SHA-256，比较时校验；这些散列只保证本地一致性，不是来源真实性签名。
 
-## 手动运行
+## 离线复查历史记录
 
-默认 14 个回归用例保持不变。对照组单独包含三个场景的两个文档变体，共 6 个用例。
+当前仅提供 8 个通用回归用例。`eval-agent-pi` 目标已移除，`--suite pi-reference` 会在请求模型前报错；旧任务不能通过自定义目录重新启用。历史运行的协议已经完整保存原用例，无需保留可执行副本。
 
 ```sh
-# 只列出对照组，不请求模型
-make eval-agent-list EVAL_ARGS='--suite pi-reference'
-
-# 仅运行 Lumi；一次固定同一模型，每个用例重复 3 次
-make eval-agent-pi EVAL_ARGS='--lumi-config-dir /absolute/path/to/.lumi_dev --provider aliyun_bailian --model qwen3.7-plus --repeat 3 --timeout 120'
-
-# 从上述命令输出的运行目录生成离线对照报告
-make eval-agent-compare run=evals/results/<run>
-
-# 显式指定历史目录及新输出目录；不读取凭据、不调用模型
-make eval-agent-compare run=evals/results/<run> EVAL_ARGS='--baseline evals/baselines/pi/catalog.json --out evals/results/my-comparison'
+make eval-agent-compare run=evals/records/2026-10-25-pi-reference-qwen3.7-plus
+make eval-agent-compare run=evals/records/2026-10-25-pi-reference-qwen3.7-plus EVAL_ARGS='--out evals/results/historical-review'
 ```
-
-`eval-agent-pi` 的名称表示“运行 pi 参考用例”，受测对象始终是 Lumi。它不调用 pi CLI、SDK、容器或生成的 JS。结果中的“Pi installation”是保留的原始题目措辞，模型实际操作的是独立虚拟环境。
 
 输出包含 `comparison.md`、`comparison.json`、冻结的 `baseline.json` 和所引用的 `sources/`。原来的 protocol、result、trace 和 report 均不改写。输出目录必须全新。现有 Lumi 运行若有环境/证据错误，报告仍保存且退出 1；未知 pi 配置、低分或近似分类本身不触发失败。
 
@@ -57,7 +46,7 @@ Lumi 的描述性比例是“全部评分项恰好为 1 的有效运行次数 / 
 
 运行时间和费用继续查看 Lumi 原报告。pi 这两份历史摘要没有这些指标，因此不计算速度或成本差。
 
-## 用例对齐及边界
+## 已退役用例的历史对齐及边界
 
 原始代码固定为 PR #10261 检索时分支 `cfee633b1ba9497b0c12462da97a08b418b5ebf8`。`reference/` 保存原任务、原 judge、必要文档及 MIT 许可证，`reference-manifest.json` 保存每个源文件的散列。该版本只说明移植依据，不能推断历史运行使用了它。
 
@@ -78,7 +67,7 @@ Lumi 的描述性比例是“全部评分项恰好为 1 的有效运行次数 / 
 1. 先保存来源链接、检索日期、执行版本（未知则 null）和事实快照，区分源码版本、PR head 与实际执行版本。
 2. 在 `catalog.json` 新增独立 observation。模型、预算、成功次数和原始轨迹未公开时保留未知，不用 README 示例或其他 PR 的模型补齐。
 3. 原题、初始数据、工具、文档条件、判分和失败处理逐项审核后，才添加本地映射。以 CaseDigest 和 EnvironmentDigest 冻结审核对象；这些散列用于防止后续同名用例发生语义漂移。
-4. 新用例放在 `internal/agentevals/reference_cases/`，继续通过真实 Agent 核心执行。原始 JSON 字段的 camelCase 是被评测配置/观察的一部分；评测元数据仍用 snake_case。
+4. 新的共有用例使用双方都能执行的通用任务，放在当前用例目录。不要恢复已删除的 pi 专有环境；旧 `reference_cases/` 已移除。
 5. 当前没有自动下载或解析任意 pi 原始运行包的入口。未来取得原始包后需核对真实逐次结果、完整计划和配置，再人工整理成 `run_artifact` 来源；仅修改来源类型或 `equivalence` 字段不能作为等价证据。
 
-执行 `make test-evals` 检查基线快照、映射、模板展开、注册表保留、隔离根目录、缺失指标及对照报告。所有模型替身仅用于离线测试，不作为真实运行证据。
+执行 `make test-evals` 检查历史基线快照和冻结映射、旧执行入口拒绝、历史报告兼容、通用工具隔离及缺失指标。所有模型替身仅用于离线测试，不作为真实运行证据。

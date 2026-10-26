@@ -36,9 +36,6 @@ func grade(c Case, e *Environment, final string) []Score {
 		s := Score{Name: ch.Name, Basis: ch.Basis, Expected: ch.Expected}
 		ok := false
 		switch ch.Kind {
-		case "pi_reference":
-			s.Observed = e.referenceObservation(ch.Path)
-			ok = equal(s.Observed, ch.Expected)
 		case "final_equals":
 			s.Observed = strings.TrimSpace(final)
 			ok = equal(s.Observed, ch.Expected)
@@ -82,42 +79,6 @@ func grade(c Case, e *Environment, final string) []Score {
 			s.Observed = texts
 			s.Expected = "one explanation citing src/names.py and format_name, submitted as the final tool action"
 			ok = len(texts) == 1 && strings.Contains(texts[0], "src/names.py") && strings.Contains(texts[0], "format_name") && len(e.events) > 0 && e.events[len(e.events)-1].Name == "eval_submit"
-		case "probe":
-			input, _ := ch.Arguments["input"].(string)
-			v, err := e.probe(ch.Path, input)
-			s.Observed = v
-			if err != nil {
-				s.Observed = err.Error()
-			}
-			ok = err == nil && equal(v, ch.Expected)
-		case "footer_bar":
-			lines := e.footer()
-			bars := []string{"████░░░░░░ 42%", "███████░░░ 65%", "██████████ 100%"}
-			s.Observed = lines
-			s.Expected = bars
-			ok = len(lines) == 3
-			for i, line := range lines {
-				if !strings.Contains(line, bars[i]) {
-					ok = false
-				}
-			}
-		case "footer_preservation":
-			s.Value = 1
-			lines := e.footer()
-			s.Observed = lines
-			s.Expected = "workspace | model | {context} | $1.008"
-			for _, line := range lines {
-				start := strings.IndexAny(line, "█░")
-				end := strings.Index(line, "%")
-				if start < 0 || end < start {
-					s.Value = 0
-					continue
-				}
-				surrounding := line[:start] + "{context}" + line[end+1:]
-				s.Value = min(s.Value, similarity(surrounding, s.Expected.(string)))
-			}
-			out = append(out, s)
-			continue
 		default:
 			panic(fmt.Sprintf("unvalidated check: %s", ch.Kind))
 		}
@@ -127,28 +88,4 @@ func grade(c Case, e *Environment, final string) []Score {
 		out = append(out, s)
 	}
 	return out
-}
-func similarity(a, b string) float64 {
-	ar, br := []rune(a), []rune(b)
-	n := max(len(ar), len(br))
-	if n == 0 {
-		return 1
-	}
-	prev := make([]int, len(br)+1)
-	for j := range prev {
-		prev[j] = j
-	}
-	for i, x := range ar {
-		next := make([]int, len(br)+1)
-		next[0] = i + 1
-		for j, y := range br {
-			cost := 0
-			if x != y {
-				cost = 1
-			}
-			next[j+1] = min(next[j]+1, prev[j+1]+1, prev[j]+cost)
-		}
-		prev = next
-	}
-	return 1 - float64(prev[len(br)])/float64(n)
 }

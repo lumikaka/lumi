@@ -113,16 +113,13 @@ migrate-version:
 	go run ./cmd/lumi_ctl migrate app version
 
 # Real-model evaluations are opt-in and are never part of make test.
-.PHONY: eval-agent eval-agent-list eval-agent-report eval-agent-pi eval-agent-compare test-evals
+.PHONY: eval-agent eval-agent-list eval-agent-report eval-agent-compare test-evals
 EVAL_ARGS ?=
 eval-agent:
 	go run ./cmd/lumi_evals $(EVAL_ARGS)
 
 eval-agent-list:
 	go run ./cmd/lumi_evals --list $(EVAL_ARGS)
-
-eval-agent-pi:
-	go run ./cmd/lumi_evals --suite pi-reference $(EVAL_ARGS)
 
 eval-agent-compare:
 	@test -n "$(run)" || (echo "usage: make eval-agent-compare run=evals/results/<run>" >&2; exit 1)

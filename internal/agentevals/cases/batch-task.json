@@ -3,7 +3,7 @@
   "suite": "task",
   "reference": "Lumi addition: dependent tool interactions",
   "goal": "Read independent records and write their aggregate without altering sources.",
-  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "initial_conditions": "Fresh isolated virtual workspace containing only the listed fixtures.",
   "observable_result": "aggregate; source a preserved; source b preserved; verification",
   "files": {
     "records/a.json": "{\"amount\":12}",

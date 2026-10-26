@@ -6,10 +6,12 @@
 - [pi 参考版本与逐项适配清单](adaptation.md)
 - [参考文件版本清单](reference.json)
 - [验收记录及环境故障补跑](verification.md)
-- [Agent 表现证据与建议](findings.md)
-- [pi 历史成绩基线及本地对照运行](baselines/pi/README.md)
-- [GitHub Actions 真实 pi / Lumi 对照](ci/README.md)
+- [首批历史表现证据与建议](findings.md)
+- [pi 历史成绩基线（只读复查）](baselines/pi/README.md)
+- [GitHub Actions：8 项回归 + 4 项 pi 共有对照](ci/README.md)
 - [首批真实运行记录](records/2026-10-25-qwen3.7-plus/report.md)
+
+当前保留 **8 例**：`smoke`、`audit-match`、`audit-mismatch`、`audit-inconclusive`、`batch-task`、`context-handoff`、`transient-tool`、`missing-resource`。pi 专有功能模拟已移除，原始报告和执行记录保留。`smoke` 与三类审计通过 GitHub Actions 同时在真实 Lumi 和 pi Agent 核心运行，共享任务、工具和评分；其余 4 项仅做 Lumi 回归。具体运行证据见 CI 文档。
 
 ```sh
 make eval-agent-list

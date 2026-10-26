@@ -3,7 +3,7 @@
   "suite": "audit",
   "reference": "documentation-audit.eval.ts",
   "goal": "Audit explicit documentation against the callable implementation path.",
-  "initial_conditions": "Fresh virtual workspace containing only the listed fixtures; configuration is inactive until reloaded.",
+  "initial_conditions": "Fresh isolated virtual workspace containing only the listed fixtures.",
   "observable_result": "verdict; read documentation; read implementation; Exactly one submission must include nonempty explanation citing src/names.py and format_name; verdict is checked separately.",
   "files": {
     "docs/names.md": "The public format_name function trims whitespace and lowercases names.",

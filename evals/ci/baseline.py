@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
-"""CI orchestration and descriptive comparison; never substitutes Agent responses."""
+"""Offline readers for retired pi baseline evidence; no new pi runs."""
 import collections
-import base64
-import difflib
 import hashlib
-import io
 import json
 import math
 import os
@@ -12,13 +9,9 @@ from pathlib import Path
 import statistics
 import subprocess
 import sys
-import tarfile
 from urllib.parse import urlsplit
-from urllib.request import urlopen
 
 HERE = Path(__file__).resolve().parent
-LOCK = json.loads((HERE / 'pi-source-lock.json').read_text())
-CATALOG_LOCK = json.loads((HERE / 'pi-catalog-lock.json').read_text())
 SCENARIOS = {
     ('Add model to existing provider', 'adds the model without replacing existing models'): 'pi-add-model',
     ('Create a project prompt template', 'creates, reloads, and invokes /current-time'): 'pi-prompt-template-project',
@@ -65,102 +58,6 @@ def config(env):
                 temperature=None, reasoning_request_fields='omitted', timeout_seconds=300,
                 pi_provider_alias='lumi-eval', lumi_provider_type='openai_compatible',
                 lumi_max_requests_per_turn=16, pi_max_requests_per_turn=None)
-
-
-def init(out):
-    out.mkdir(parents=True, exist_ok=True)
-    (out / 'disk-before.txt').write_text(command('df', '-h') + '\n')
-    cfg = config(os.environ)
-    if not os.environ.get('LUMI_EVAL_API_KEY'):
-        raise ValueError('Configure the repository Secret LUMI_EVAL_API_KEY.')
-    dump(out / 'execution.json', {
-        'schema_version': 1, 'config': cfg, 'pi_revision': LOCK['revision'],
-        'lumi_revision': command('git', 'rev-parse', 'HEAD'),
-        'workflow_run_url': f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
-        'workflow_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
-        'runner_os': os.environ.get('RUNNER_OS'), 'differences': DIFFERENCES,
-    })
-
-
-def prepare(pi_dir, out, cfg):
-    if command('git', '-C', str(pi_dir), 'rev-parse', 'HEAD') != LOCK['revision']:
-        raise ValueError('Unexpected pi revision; re-review and update the source lock first.')
-    for name, expected in LOCK['blobs'].items():
-        if command('git', 'hash-object', str(pi_dir / name)) != expected:
-            raise ValueError(f'Pinned pi source changed: {name}')
-    harness_path = pi_dir / 'packages/evals/src/harness.ts'
-    original = harness_path.read_text()
-    anchor = '\t\tconst modelRuntime = await ModelRuntime.create({ credentials });'
-    if original.count(anchor) != 1:
-        raise ValueError('pi harness adapter insertion point changed.')
-    adapted = 'import { configureEvaluationModel } from "./lumi-ci-model.ts";\n' + original.replace(
-        anchor, anchor + '\n\t\tconfigureEvaluationModel(modelRuntime);')
-    # In-memory provider registration does not pre-create models.json or alter the
-    # openai provider whose configuration the task must discover and edit.
-    model_config = {
-        'baseUrl': cfg['base_url'], 'api': 'openai-completions',
-        'models': [{'id': cfg['model'], 'name': cfg['model'], 'reasoning': True,
-                    'input': ['text'], 'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0},
-                    'contextWindow': 262144, 'maxTokens': cfg['max_tokens'],
-                    'compat': {'maxTokensField': 'max_tokens', 'supportsDeveloperRole': False,
-                               'supportsStore': False, 'supportsReasoningEffort': False,
-                               'thinkingFormat': 'openai', 'supportsUsageInStreaming': True}}],
-    }
-    adapter = ('import type { ModelRuntime } from "@earendil-works/pi-coding-agent";\n'
-               'export function configureEvaluationModel(runtime: ModelRuntime): void {\n'
-               '  runtime.registerProvider("lumi-eval", ' + json.dumps(model_config, ensure_ascii=False) + ');\n}\n')
-    harness_path.write_text(adapted)
-    (harness_path.parent / 'lumi-ci-model.ts').write_text(adapter)
-    evidence = out / 'pi-adapter'
-    evidence.mkdir(parents=True, exist_ok=True)
-    (evidence / 'harness.patch').write_text(''.join(difflib.unified_diff(
-        original.splitlines(True), adapted.splitlines(True), fromfile='a/packages/evals/src/harness.ts',
-        tofile='b/packages/evals/src/harness.ts')))
-    (evidence / 'lumi-ci-model.ts').write_text(adapter)
-    with urlopen(CATALOG_LOCK['url'], timeout=60) as response:
-        archive = response.read(8_000_001)
-    seed_catalog(pi_dir, archive)
-    dump(evidence / 'published-catalog-lock.json', CATALOG_LOCK)
-    dump(evidence / 'source-lock.json', LOCK)
-    dump(evidence / 'manifest.json', {
-        'revision': LOCK['revision'], 'original_harness_sha256': sha(original.encode()),
-        'adapted_harness_sha256': sha(adapted.encode()), 'adapter_sha256': sha(adapter.encode()),
-        'model_config': model_config,
-        'scope': 'Evaluator model registration plus immutable published model JSON data; no Agent core, task, tool, judge or Dockerfile edits.',
-        'catalog_source': CATALOG_LOCK,
-    })
-
-
-def seed_catalog(pi_dir, archive):
-    integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
-    if len(archive) > 8_000_000 or integrity != CATALOG_LOCK['integrity']:
-        raise ValueError('Published pi catalog package integrity mismatch.')
-    providers = pi_dir / 'packages/ai/src/providers'
-    expected = {p.name.removesuffix('.models.ts') + '.json' for p in providers.glob('*.models.ts')}
-    expected.add('.manifest.json')
-    data = {}
-    prefix = 'package/dist/providers/data/'
-    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as package:
-        for entry in package.getmembers():
-            if entry.name.startswith(prefix) and entry.isfile():
-                name = entry.name[len(prefix):]
-                if name not in expected or name in data or entry.size > 4_000_000:
-                    raise ValueError('Unexpected published model catalog file.')
-                data[name] = package.extractfile(entry).read()
-    if set(data) != expected:
-        raise ValueError('Published model catalog does not match pinned source provider shards.')
-    manifest = json.loads(data['.manifest.json'])
-    if manifest['schemaVersion'] != 6 or manifest['generatedAt'] != CATALOG_LOCK['catalog_generated_at']:
-        raise ValueError('Unexpected catalog schema or generation date.')
-    if set(manifest['files']) != expected - {'.manifest.json'}:
-        raise ValueError('Published model catalog manifest inventory mismatch.')
-    for name, digest in manifest['files'].items():
-        if sha(data[name]) != digest:
-            raise ValueError('Published model catalog file digest mismatch.')
-    directory = providers / 'data'
-    directory.mkdir()
-    for name, value in data.items():
-        (directory / name).write_bytes(value)
 
 
 def read(path):
@@ -400,10 +297,8 @@ def verify(out):
 def main():
     action = sys.argv[1]
     out = Path(os.environ['OUT'])
-    if action == 'init':
-        init(out)
-    elif action == 'prepare':
-        prepare(Path(os.environ['PI_DIR']), out, config(os.environ))
+    if action in ('init', 'prepare'):
+        raise ValueError('The pi-specific suite is retired. Use agent-evals.yml for Lumi regression; baseline.py only reads historical pi evidence.')
     elif action == 'report':
         report(out)
     elif action == 'seal':

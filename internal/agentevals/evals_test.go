@@ -29,28 +29,6 @@ func finalResponse(text string) llm.ChatResponse {
 	return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", Content: text}, Usage: llm.Usage{InputKnown: true, OutputKnown: true, InputTokens: 10, OutputTokens: 2}}
 }
 
-func TestEmptyAgentTemplateRetainsGradeInsteadOfEnvironmentFailure(t *testing.T) {
-	var c Case
-	for _, candidate := range referenceCases(t) {
-		if candidate.Slug == "pi-prompt-template-project-without-docs" {
-			c = candidate
-		}
-	}
-	calls := 0
-	r := runOne(context.Background(), testConfig(), "digest", Task{CaseSlug: c.Slug, Repetition: 1}, c, filepath.Join(t.TempDir(), "run"), modelFunc(func(context.Context, llm.ChatRequest) (llm.ChatResponse, error) {
-		calls++
-		if calls == 1 {
-			return toolResponse("empty", "write", `{"path":"/eval/workspace/.pi/prompts/current-time.md","content":""}`), nil
-		}
-		return finalResponse("Done"), nil
-	}))
-	if r.Status != "agent_error" || len(r.Scores) != 1 || r.Scores[0].Value != 0 || len(r.Turns) != 1 || calls != 2 {
-		t.Fatalf("Empty model output was not preserved as a graded task failure: %+v", r)
-	}
-	if len(r.Issues) != 1 || r.Issues[0].Code != "empty_prompt_template" {
-		t.Fatalf("Missing explicit failure evidence: %+v", r.Issues)
-	}
-}
 func findCase(t *testing.T, slug string) Case {
 	t.Helper()
 	cases, err := LoadCases("", slug)
@@ -135,30 +113,27 @@ func TestRealRuntimeInjectionRepairAndIsolation(t *testing.T) {
 	}
 }
 func TestEnvironmentBoundariesAndGrading(t *testing.T) {
-	c := findCase(t, "extension-reload")
+	c := findCase(t, "context-handoff")
 	e := newEnvironment(c)
-	for _, raw := range []string{`{"path":"/etc/passwd"}`, `{"path":"../x"}`, `{"path":"docs/extensions.md","extra":"x"}`, `null`} {
+	for _, raw := range []string{`{"path":"/etc/passwd"}`, `{"path":"../x"}`, `{"path":"notes.json","extra":"x"}`, `null`} {
 		if _, err := e.Validate("eval_read", raw); err == nil {
 			t.Fatal(raw)
 		}
 	}
-	if _, err := e.Validate("request_api", `{}`); err == nil {
-		t.Fatal("business tool allowed")
+	for _, name := range []string{"request_api", "eval_reload", "eval_probe"} {
+		if _, err := e.Validate(name, `{}`); err == nil {
+			t.Fatalf("unsupported tool allowed: %s", name)
+		}
 	}
-	e.files["config/hello.json"] = `{"template":"Hello, {name}!"}`
-	if _, err := e.probe("hello", "Bob"); err == nil {
-		t.Fatal("write took effect before reload")
-	}
-	e.reload()
-	if v, err := e.probe("hello", "Bob"); err != nil || v != "Hello, Bob!" {
-		t.Fatalf("probe %v %v", v, err)
-	}
-	c = findCase(t, "add-model")
-	e = newEnvironment(c)
-	e.reload()
-	for _, s := range grade(c, e, "I did everything successfully") {
-		if s.Value != 0 {
+	for _, score := range grade(c, e, "I did everything successfully") {
+		if score.Value != 0 {
 			t.Fatal("self report incorrectly graded as completion")
+		}
+	}
+	e.files["notes.json"] = `{"code":"ALPHA-17","destination":"south"}`
+	for _, score := range grade(c, e, "ALPHA-17:south") {
+		if score.Value != 1 {
+			t.Fatal("actual updated state not graded")
 		}
 	}
 }
@@ -265,15 +240,22 @@ func TestPlanReportEvidenceAndVariability(t *testing.T) {
 }
 func TestCaseValidationAndFixedCohort(t *testing.T) {
 	cases, err := LoadCases("", "")
-	if err != nil || len(cases) != 14 {
+	if err != nil || len(cases) != 8 {
 		t.Fatalf("cohort %d %v", len(cases), err)
+	}
+	var slugs []string
+	for _, c := range cases {
+		slugs = append(slugs, c.Slug)
+	}
+	if strings.Join(slugs, ",") != "audit-inconclusive,audit-match,audit-mismatch,batch-task,context-handoff,missing-resource,smoke,transient-tool" {
+		t.Fatalf("unexpected runnable cohort: %v", slugs)
 	}
 	cfg := testConfig()
 	p, err := Plan(cfg, cases, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(p.Tasks) != 28 || p.Tasks[14].CaseSlug != p.Tasks[13].CaseSlug {
+	if len(p.Tasks) != 16 || p.Tasks[8].CaseSlug != p.Tasks[7].CaseSlug {
 		t.Fatal("repetition order")
 	}
 	c := cases[0]

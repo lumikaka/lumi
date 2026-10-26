@@ -22,7 +22,9 @@ func main() { os.Exit(run()) }
 func run() int {
 	flags := flag.NewFlagSet("lumi_evals", flag.ContinueOnError)
 	list := flags.Bool("list", false, "list matching cases without a model request")
-	suite := flags.String("suite", "regression", "regression or pi-reference")
+	exportShared := flags.String("export-shared", "", "export the common pi/Lumi task and tool specification; no model requests")
+	bridgeCase := flags.String("bridge-case", "", "serve one shared case's tools and grader over stdin/stdout JSONL; no model requests")
+	suite := flags.String("suite", "regression", "regression (8 general cases); pi-reference is retired")
 	compareDir := flags.String("compare", "", "compare an existing run with a historical baseline; no model requests")
 	baseline := flags.String("baseline", "evals/baselines/pi/catalog.json", "historical baseline catalog for --compare")
 	reportDir := flags.String("report", "", "rebuild a saved report; no model requests")
@@ -44,6 +46,21 @@ func run() int {
 	if len(flags.Args()) > 0 {
 		fmt.Fprintln(os.Stderr, "unexpected positional arguments")
 		return 2
+	}
+	if *exportShared != "" || *bridgeCase != "" {
+		var err error
+		if *exportShared != "" && *bridgeCase != "" {
+			err = fmt.Errorf("choose only one shared adapter operation")
+		} else if *exportShared != "" {
+			err = agentevals.ExportSharedSpec(*exportShared)
+		} else {
+			err = agentevals.ServeSharedCase(*bridgeCase, os.Stdin, os.Stdout)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
+		return 0
 	}
 	if *compareDir != "" {
 		if *reportDir != "" || *list {
@@ -76,16 +93,13 @@ func run() int {
 		}
 		return 0
 	}
-	if *suite != "regression" && *suite != "pi-reference" {
-		fmt.Fprintln(os.Stderr, "unknown suite")
+	if *suite == "pi-reference" {
+		fmt.Fprintln(os.Stderr, "pi-reference was retired: model/provider, template, extension and TUI simulations are no longer evaluated; use --suite regression or --compare for historical evidence")
 		return 2
 	}
-	if *suite == "pi-reference" {
-		if *casesDir != "" {
-			fmt.Fprintln(os.Stderr, "--suite pi-reference cannot be combined with --cases")
-			return 2
-		}
-		*casesDir = "@pi-reference"
+	if *suite != "regression" {
+		fmt.Fprintln(os.Stderr, "unknown suite")
+		return 2
 	}
 	cases, err := agentevals.LoadCases(*casesDir, *filter)
 	if err != nil {
