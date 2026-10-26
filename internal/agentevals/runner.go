@@ -271,17 +271,6 @@ func Plan(cfg Config, cases []Case, source map[string]string) (Protocol, error) 
 	if p.PromptMode == "per_case" {
 		p.SystemPrompt = ""
 	}
-	if cases[0].Environment == "pi-reference-v1" {
-		allReference := true
-		for _, c := range cases {
-			if c.Environment != "pi-reference-v1" {
-				allReference = false
-			}
-		}
-		if allReference {
-			p.ReferenceCommit = "cfee633b1ba9497b0c12462da97a08b418b5ebf8"
-		}
-	}
 	// Reverse case order on even repetitions to reduce simple ordering bias.
 	for rep := 1; rep <= cfg.Repetitions; rep++ {
 		for index := range cases {
@@ -363,8 +352,6 @@ func runOne(parent context.Context, cfg Config, protocol string, task Task, c Ca
 		}
 		result.Tools = e.events
 		result.Files = e.files
-		result.ActiveConfiguration = e.active
-		result.ReloadErrors = e.reloadErrors
 		if recorder != nil {
 			result.Usage = recorder.usage
 			result.Issues = append(result.Issues, recorder.issues...)
@@ -414,29 +401,16 @@ func runOne(parent context.Context, cfg Config, protocol string, task Task, c Ca
 	recorder = &recordingClient{inner: model, trace: trace}
 	ctx, cancel := context.WithTimeout(parent, time.Duration(cfg.TimeoutSeconds)*time.Second)
 	defer cancel()
-	session, err = agent.NewIsolatedSession(ctx, agent.IsolatedConfig{Request: cfg.request(), SystemPrompt: c.systemPrompt(), MaxRequests: cfg.MaxRequests, Environment: e, ReferenceFileTools: e.reference}, recorder)
+	session, err = agent.NewIsolatedSession(ctx, agent.IsolatedConfig{Request: cfg.request(), SystemPrompt: c.systemPrompt(), MaxRequests: cfg.MaxRequests, Environment: e}, recorder)
 	if err != nil {
 		fail("session_setup", err)
 		return
 	}
 	for _, step := range c.Steps {
 		trace.event("step", step)
-		if step.Type == "reload" {
-			trace.event("reload", e.reload())
-			continue
-		}
 		before := len(recorder.issues)
 		result.Final = ""
 		prompt := step.Content
-		if e.reference {
-			prompt = e.expandReferencePrompt(prompt)
-			trace.event("expanded_prompt", map[string]any{"original": step.Content, "expanded": prompt})
-			if strings.TrimSpace(prompt) == "" {
-				result.Status = "agent_error"
-				result.Issues = append(result.Issues, Issue{Kind: "agent", Code: "empty_prompt_template", Message: "The Agent-created template expanded to an empty prompt."})
-				return
-			}
-		}
 		turn, runErr := session.Prompt(ctx, prompt)
 		result.Turns = append(result.Turns, turn)
 		trace.event("turn", turn)

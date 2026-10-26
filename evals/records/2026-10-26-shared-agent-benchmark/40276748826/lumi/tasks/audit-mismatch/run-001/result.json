@@ -1,0 +1,277 @@
+{
+  "task": {
+    "case_slug": "audit-mismatch",
+    "repetition": 1
+  },
+  "protocol_digest": "bbce47b5165d9b148058e0785c4903d5e0ec45203374ea0e3e8a3e41c3fe073b",
+  "status": "scored",
+  "final": "**Summary:** The documentation (`docs/names.md`) claims `format_name` \"trims whitespace and preserves capitalization.\" However, the implementation in `src/names.py` shows that `format_name` calls `normalize`, which applies both `.strip()` (trims whitespace ✓) and `.lower()` (converts to lowercase ✗). The capitalization claim is false — the function actually lowercases the input rather than preserving its original case. Verdict: **mismatch**.",
+  "scores": [
+    {
+      "name": "verdict",
+      "value": 1,
+      "basis": "verdict",
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "name": "read_documentation",
+      "value": 1,
+      "basis": "read documentation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "read_implementation",
+      "value": 1,
+      "basis": "read implementation",
+      "observed": 1,
+      "expected": "at least one matching call"
+    },
+    {
+      "name": "evidence",
+      "value": 1,
+      "basis": "One explanation cites src/names.py and format_name, and submission is the final tool action. This is a mechanical evidence check, not a semantic proof of explanation quality.",
+      "observed": [
+        "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize, which applies value.strip().lower(). While .strip() correctly trims whitespace (matching the first part of the claim), .lower() converts the entire string to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name both trims whitespace AND lowercases the input."
+      ],
+      "expected": "one explanation citing src/names.py and format_name, submitted as the final tool action"
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-26T05:55:59.117622941Z",
+  "duration_ms": 13676,
+  "usage": {
+    "input_tokens": 2546,
+    "output_tokens": 669,
+    "cached_input_tokens": 1536,
+    "cost_usd": null,
+    "requests": 3
+  },
+  "turns": [
+    {
+      "uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:55:59.54767806Z",
+      "completed_at": "2026-10-26T05:56:12.785330612Z",
+      "created_at": "2026-10-26T05:55:59.545549808Z",
+      "updated_at": "2026-10-26T05:56:12.785330612Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a176c7-abb9-7d21-9982-083e18bd2623",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read docs/names.md and src/names.py. Audit only explicit user-visible claims, following the implementation. Use inconclusive if evidence is unavailable. Call eval_submit exactly once with verdict match, mismatch or inconclusive and an explanation citing the claim, src/names.py and format_name; for a mismatch explain the actual behavior. Then briefly summarize.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:55:59.545549808Z"
+    },
+    {
+      "uuid": "01a176c7-b44d-795b-b241-15d4883d7a7f",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"docs/names.md\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-b44c-7f21-bf61-76a2484e194b",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c7-abbe-78de-95d3-6a266f7a0385"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:01.741510904Z"
+    },
+    {
+      "uuid": "01a176c7-b44e-78fa-850c-8bc42d44d1e2",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 3,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"src/names.py\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-b44d-7639-81d3-510dc7c21cc7",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c7-abbe-78de-95d3-6a266f7a0385"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:01.741510904Z"
+    },
+    {
+      "uuid": "01a176c7-b450-759e-abb8-dc4b8b22b934",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 4,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"The public format_name function trims whitespace and preserves capitalization.\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-b44c-7f21-bf61-76a2484e194b",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c7-abbe-78de-95d3-6a266f7a0385"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:01.744354679Z"
+    },
+    {
+      "uuid": "01a176c7-b452-7230-a6f4-a3018955ed11",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"def format_name(name):\\n    return normalize(name)\\ndef normalize(value):\\n    return value.strip().lower()\\n\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-b44d-7639-81d3-510dc7c21cc7",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c7-abbe-78de-95d3-6a266f7a0385"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:01.746134783Z"
+    },
+    {
+      "uuid": "01a176c7-d2fb-72d3-b098-fbd1effc781c",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"verdict\": \"mismatch\", \"explanation\": \"docs/names.md claims that format_name \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, format_name delegates to normalize, which applies value.strip().lower(). While .strip() correctly trims whitespace (matching the first part of the claim), .lower() converts the entire string to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name both trims whitespace AND lowercases the input.\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-d2fa-7f10-aeb3-2574d3b70797",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "purpose": "eval_submit",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c7-b455-7659-9045-97d7e463584c"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:09.595087258Z"
+    },
+    {
+      "uuid": "01a176c7-d2fc-7f3e-8a5b-2cc8014e61de",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"explanation\":\"docs/names.md claims that format_name \\\"trims whitespace and preserves capitalization.\\\" In src/names.py, format_name delegates to normalize, which applies value.strip().lower(). While .strip() correctly trims whitespace (matching the first part of the claim), .lower() converts the entire string to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name both trims whitespace AND lowercases the input.\",\"verdict\":\"mismatch\"},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c7-d2fa-7f10-aeb3-2574d3b70797",
+      "tool_name": "eval_submit",
+      "metadata": {
+        "action": "eval_submit",
+        "method": "",
+        "purpose": "eval_submit",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c7-b455-7659-9045-97d7e463584c"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:09.596986988Z"
+    },
+    {
+      "uuid": "01a176c7-df71-7512-9b87-dd265f8e9364",
+      "thread_uuid": "01a176c7-abb8-73d1-a7b5-b886fd9668b0",
+      "turn_uuid": "01a176c7-abb9-7867-807c-bed06adc455d",
+      "run_uuid": "01a176c7-abb9-786a-b924-17f7f2f59afc",
+      "sequence": 8,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "**Summary:** The documentation (`docs/names.md`) claims `format_name` \"trims whitespace and preserves capitalization.\" However, the implementation in `src/names.py` shows that `format_name` calls `normalize`, which applies both `.strip()` (trims whitespace ✓) and `.lower()` (converts to lowercase ✗). The capitalization claim is false — the function actually lowercases the input rather than preserving its original case. Verdict: **mismatch**.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 3,
+        "request_uuid": "01a176c7-d301-7657-8f94-530167e77925"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:56:12.785330612Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "docs/names.md"
+      },
+      "result": "The public format_name function trims whitespace and preserves capitalization.",
+      "started_at": "2026-10-26T05:56:01.743809993Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "src/names.py"
+      },
+      "result": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n",
+      "started_at": "2026-10-26T05:56:01.745609244Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_submit",
+      "arguments": {
+        "explanation": "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize, which applies value.strip().lower(). While .strip() correctly trims whitespace (matching the first part of the claim), .lower() converts the entire string to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name both trims whitespace AND lowercases the input.",
+        "verdict": "mismatch"
+      },
+      "result": {
+        "explanation": "docs/names.md claims that format_name \"trims whitespace and preserves capitalization.\" In src/names.py, format_name delegates to normalize, which applies value.strip().lower(). While .strip() correctly trims whitespace (matching the first part of the claim), .lower() converts the entire string to lowercase, which contradicts the claim that capitalization is preserved. The actual behavior is that format_name both trims whitespace AND lowercases the input.",
+        "verdict": "mismatch"
+      },
+      "started_at": "2026-10-26T05:56:09.596436202Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "docs/names.md": "The public format_name function trims whitespace and preserves capitalization.",
+    "src/names.py": "def format_name(name):\n    return normalize(name)\ndef normalize(value):\n    return value.strip().lower()\n"
+  },
+  "active_configuration": null,
+  "reload_errors": null,
+  "trace_sha256": "6a5b229aaafb72a54831098c2e01c6b6f87f037990095a6eea6c0d76c9636699"
+}

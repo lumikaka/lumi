@@ -1,5 +1,7 @@
 # Agent evals 验证记录
 
+> 历史记录说明：下文为 2026-10-25 题集的观察。相关 pi 专有模拟任务已退役，不作为当前产品能力结论；新题集与真实对照见 [2026-10-26 记录](records/2026-10-26-shared-agent-benchmark/README.md)。
+
 日期：2026-10-25（Asia/Shanghai）。参考版本及适配范围见 [adaptation.md](adaptation.md)。
 
 ## 代码检查

@@ -1,0 +1,525 @@
+{
+  "task": {
+    "case_slug": "context-handoff",
+    "repetition": 2
+  },
+  "protocol_digest": "bbce47b5165d9b148058e0785c4903d5e0ec45203374ea0e3e8a3e41c3fe073b",
+  "status": "scored",
+  "final": "ALPHA-17:south",
+  "scores": [
+    {
+      "name": "continuity",
+      "value": 1,
+      "basis": "continuity",
+      "observed": "ALPHA-17:south",
+      "expected": "ALPHA-17:south"
+    },
+    {
+      "name": "updated_state",
+      "value": 1,
+      "basis": "updated state",
+      "observed": {
+        "code": "ALPHA-17",
+        "destination": "south"
+      },
+      "expected": {
+        "code": "ALPHA-17",
+        "destination": "south"
+      }
+    }
+  ],
+  "issues": [],
+  "started_at": "2026-10-26T05:57:21.48487117Z",
+  "duration_ms": 26505,
+  "usage": {
+    "input_tokens": 6837,
+    "output_tokens": 1089,
+    "cached_input_tokens": 2048,
+    "cost_usd": null,
+    "requests": 9
+  },
+  "turns": [
+    {
+      "uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "source_type": "prompt",
+      "queue_sequence": 1,
+      "input_text": "Remember the delivery code ALPHA-17 and destination north. Save these facts in notes.json as code and destination.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:57:21.912693683Z",
+      "completed_at": "2026-10-26T05:57:31.833633647Z",
+      "created_at": "2026-10-26T05:57:21.910542223Z",
+      "updated_at": "2026-10-26T05:57:31.833633647Z"
+    },
+    {
+      "uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "source_type": "prompt",
+      "queue_sequence": 2,
+      "input_text": "Correction: destination is now south. Update notes.json, preserving the code.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:57:31.837896864Z",
+      "completed_at": "2026-10-26T05:57:41.041726332Z",
+      "created_at": "2026-10-26T05:57:31.836080738Z",
+      "updated_at": "2026-10-26T05:57:41.041726332Z"
+    },
+    {
+      "uuid": "01a176c9-3834-7f03-bd26-9fd958bb4764",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "source_type": "prompt",
+      "queue_sequence": 3,
+      "input_text": "Read notes.json and reply with exactly ALPHA-17:south.",
+      "status": "completed",
+      "started_at": "2026-10-26T05:57:41.047089718Z",
+      "completed_at": "2026-10-26T05:57:47.975097357Z",
+      "created_at": "2026-10-26T05:57:41.04498253Z",
+      "updated_at": "2026-10-26T05:57:47.975097357Z"
+    }
+  ],
+  "items": [
+    {
+      "uuid": "01a176c8-ed76-7d42-8778-1a50a630d097",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 1,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Remember the delivery code ALPHA-17 and destination north. Save these facts in notes.json as code and destination.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:21.910542223Z"
+    },
+    {
+      "uuid": "01a176c8-f68c-7db2-96a5-a3c0f421836b",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 2,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-f68c-7a41-b9d4-b1b8e75fe349",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c8-ed7b-7909-b99e-f7ae5e91b512"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:24.236794042Z"
+    },
+    {
+      "uuid": "01a176c8-f68e-7b50-9f41-8f6c13edc99d",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 3,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":null,\"error\":{\"code\":\"not_found\",\"details\":\"\",\"message\":\"File does not exist\"},\"success\":false}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c8-f68c-7a41-b9d4-b1b8e75fe349",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c8-ed7b-7909-b99e-f7ae5e91b512"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:24.238732225Z"
+    },
+    {
+      "uuid": "01a176c9-01f9-7309-b854-f992f9e7eecf",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 4,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"north\\\"\\n}\", \"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-01f9-7014-a51e-40a2790c878e",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c8-f692-78cf-bc78-e727644cb1fe"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:27.161104992Z"
+    },
+    {
+      "uuid": "01a176c9-01fa-7e5b-a12f-61686a8781cf",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 5,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-01f9-7014-a51e-40a2790c878e",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c8-f692-78cf-bc78-e727644cb1fe"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:27.162930105Z"
+    },
+    {
+      "uuid": "01a176c9-07e0-76db-8523-c7ee611f05f8",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 6,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-07e0-741d-98ab-013a190f6834",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 3,
+        "request_uuid": "01a176c9-01fd-7f25-bd61-a5902230f398"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:28.67234769Z"
+    },
+    {
+      "uuid": "01a176c9-07e2-72a8-9368-e878fb0613a9",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 7,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"north\\\"\\n}\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-07e0-741d-98ab-013a190f6834",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 3,
+        "request_uuid": "01a176c9-01fd-7f25-bd61-a5902230f398"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:28.674165399Z"
+    },
+    {
+      "uuid": "01a176c9-1439-79ba-9560-40adc19bf90c",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c8-ed76-784b-bb94-4982b4f5c901",
+      "run_uuid": "01a176c8-ed76-784f-b5a0-d5fc81718184",
+      "sequence": 8,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Done. I've saved the delivery information in notes.json:\n- **code**: \"ALPHA-17\"\n- **destination**: \"north\"",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 4,
+        "request_uuid": "01a176c9-07e6-7459-8f0f-91c8530f2ffb"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:31.833633647Z"
+    },
+    {
+      "uuid": "01a176c9-143c-74ff-9c70-c74718d81d93",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 9,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Correction: destination is now south. Update notes.json, preserving the code.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:31.836080738Z"
+    },
+    {
+      "uuid": "01a176c9-1f78-7374-9bad-df3b0d89d377",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 10,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"content\": \"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\", \"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-1f78-70a6-b422-fe8ff32c9392",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "purpose": "eval_write",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-1441-714d-b492-c55e34ee3c76"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:34.712141414Z"
+    },
+    {
+      "uuid": "01a176c9-1f7a-7034-9c39-88dbfb2e6121",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 11,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":{\"written\":true},\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-1f78-70a6-b422-fe8ff32c9392",
+      "tool_name": "eval_write",
+      "metadata": {
+        "action": "eval_write",
+        "method": "",
+        "purpose": "eval_write",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-1441-714d-b492-c55e34ee3c76"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:34.714003074Z"
+    },
+    {
+      "uuid": "01a176c9-26d3-785f-8565-47cefedac05a",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 12,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-26d3-7575-a9d1-42838cf72365",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c9-1f7e-72f0-a3b2-90b7a4b95873"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:36.595450749Z"
+    },
+    {
+      "uuid": "01a176c9-26d5-73d0-849a-e474a0bbc511",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 13,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-26d3-7575-a9d1-42838cf72365",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 2,
+        "request_uuid": "01a176c9-1f7e-72f0-a3b2-90b7a4b95873"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:36.597239374Z"
+    },
+    {
+      "uuid": "01a176c9-3831-7b1d-95b1-8f033c85a442",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-143c-713f-a28a-4a9ef1839c4a",
+      "run_uuid": "01a176c9-143c-7142-987f-b4e843137c56",
+      "sequence": 14,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "Done. I've updated notes.json with the corrected destination:\n- **code**: \"ALPHA-17\" (preserved)\n- **destination**: \"south\" (updated)",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 3,
+        "request_uuid": "01a176c9-26d9-706b-83c7-e08100cb4116"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:41.041726332Z"
+    },
+    {
+      "uuid": "01a176c9-3835-74ae-88f1-c48116eacd1b",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-3834-7f03-bd26-9fd958bb4764",
+      "run_uuid": "01a176c9-3834-7f06-ace7-add5b04b2611",
+      "sequence": 15,
+      "item_type": "user_message",
+      "role": "user",
+      "content": "Read notes.json and reply with exactly ALPHA-17:south.",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "source_type": "prompt"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:41.04498253Z"
+    },
+    {
+      "uuid": "01a176c9-4b41-7c16-b38e-2bb3956d1739",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-3834-7f03-bd26-9fd958bb4764",
+      "run_uuid": "01a176c9-3834-7f06-ace7-add5b04b2611",
+      "sequence": 16,
+      "item_type": "tool_call",
+      "role": "assistant",
+      "content": "{\"path\": \"notes.json\"}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-4b41-7911-b8d0-2fb20aacb2b0",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-383a-7c19-ac7a-2ad3afc6a8cf"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:45.921692388Z"
+    },
+    {
+      "uuid": "01a176c9-4b43-77b7-9d17-0dde59dc9095",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-3834-7f03-bd26-9fd958bb4764",
+      "run_uuid": "01a176c9-3834-7f06-ace7-add5b04b2611",
+      "sequence": 17,
+      "item_type": "tool_result",
+      "role": "tool",
+      "content": "{\"data\":\"{\\n  \\\"code\\\": \\\"ALPHA-17\\\",\\n  \\\"destination\\\": \\\"south\\\"\\n}\",\"success\":true}",
+      "content_format": "json",
+      "status": "completed",
+      "tool_call_uuid": "01a176c9-4b41-7911-b8d0-2fb20aacb2b0",
+      "tool_name": "eval_read",
+      "metadata": {
+        "action": "eval_read",
+        "method": "",
+        "purpose": "eval_read",
+        "request_ordinal": 1,
+        "request_uuid": "01a176c9-383a-7c19-ac7a-2ad3afc6a8cf"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:45.92349631Z"
+    },
+    {
+      "uuid": "01a176c9-5347-7184-b021-2e086a543208",
+      "thread_uuid": "01a176c8-ed75-7343-b7cf-a1eddf45fc69",
+      "turn_uuid": "01a176c9-3834-7f03-bd26-9fd958bb4764",
+      "run_uuid": "01a176c9-3834-7f06-ace7-add5b04b2611",
+      "sequence": 18,
+      "item_type": "assistant_message",
+      "role": "assistant",
+      "content": "ALPHA-17:south",
+      "content_format": "text",
+      "status": "completed",
+      "metadata": {
+        "request_ordinal": 2,
+        "request_uuid": "01a176c9-4b47-787a-b1ee-58285da1dd68"
+      },
+      "references": null,
+      "created_at": "2026-10-26T05:57:47.975097357Z"
+    }
+  ],
+  "tools": [
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "notes.json"
+      },
+      "result": null,
+      "error": "not_found",
+      "started_at": "2026-10-26T05:57:24.238191096Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"north\"\n}",
+        "path": "notes.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-26T05:57:27.162324546Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "notes.json"
+      },
+      "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"north\"\n}",
+      "started_at": "2026-10-26T05:57:28.673600065Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_write",
+      "arguments": {
+        "content": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+        "path": "notes.json"
+      },
+      "result": {
+        "written": true
+      },
+      "started_at": "2026-10-26T05:57:34.713412423Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "notes.json"
+      },
+      "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+      "started_at": "2026-10-26T05:57:36.596677756Z",
+      "duration_ms": 0
+    },
+    {
+      "name": "eval_read",
+      "arguments": {
+        "path": "notes.json"
+      },
+      "result": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}",
+      "started_at": "2026-10-26T05:57:45.922883818Z",
+      "duration_ms": 0
+    }
+  ],
+  "files": {
+    "notes.json": "{\n  \"code\": \"ALPHA-17\",\n  \"destination\": \"south\"\n}"
+  },
+  "active_configuration": null,
+  "reload_errors": null,
+  "trace_sha256": "cc7e3350a61120ff93d752b7ff24e2d7638ca7027ea2dc7f66608bcb5e1257d3"
+}

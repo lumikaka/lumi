@@ -1,0 +1,98 @@
+[
+  {
+    "case_slug": "audit-inconclusive",
+    "repetition": 1
+  },
+  {
+    "case_slug": "audit-match",
+    "repetition": 1
+  },
+  {
+    "case_slug": "audit-mismatch",
+    "repetition": 1
+  },
+  {
+    "case_slug": "batch-task",
+    "repetition": 1
+  },
+  {
+    "case_slug": "context-handoff",
+    "repetition": 1
+  },
+  {
+    "case_slug": "missing-resource",
+    "repetition": 1
+  },
+  {
+    "case_slug": "smoke",
+    "repetition": 1
+  },
+  {
+    "case_slug": "transient-tool",
+    "repetition": 1
+  },
+  {
+    "case_slug": "transient-tool",
+    "repetition": 2
+  },
+  {
+    "case_slug": "smoke",
+    "repetition": 2
+  },
+  {
+    "case_slug": "missing-resource",
+    "repetition": 2
+  },
+  {
+    "case_slug": "context-handoff",
+    "repetition": 2
+  },
+  {
+    "case_slug": "batch-task",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-mismatch",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-match",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-inconclusive",
+    "repetition": 2
+  },
+  {
+    "case_slug": "audit-inconclusive",
+    "repetition": 3
+  },
+  {
+    "case_slug": "audit-match",
+    "repetition": 3
+  },
+  {
+    "case_slug": "audit-mismatch",
+    "repetition": 3
+  },
+  {
+    "case_slug": "batch-task",
+    "repetition": 3
+  },
+  {
+    "case_slug": "context-handoff",
+    "repetition": 3
+  },
+  {
+    "case_slug": "missing-resource",
+    "repetition": 3
+  },
+  {
+    "case_slug": "smoke",
+    "repetition": 3
+  },
+  {
+    "case_slug": "transient-tool",
+    "repetition": 3
+  }
+]

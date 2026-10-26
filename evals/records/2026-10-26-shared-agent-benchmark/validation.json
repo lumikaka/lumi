@@ -1,0 +1,47 @@
+{
+  "run_id": 40276748826,
+  "sealed_files": 144,
+  "shared_model_requests_checked": {
+    "lumi": 33,
+    "pi": 35
+  },
+  "all_requested_model_ids": "qwen3.7-plus",
+  "max_tokens": 4096,
+  "temperature_and_reasoning_fields": "absent",
+  "initial_system_prompt_user_prompt_and_tool_schemas": "equal to shared specification on all 24 shared attempts",
+  "native_lumi_and_shared_report_rebuild": "same observations, scores and completeness; only sub-1e-12 cross-platform standard-deviation rounding differences",
+  "shared_markdown_rebuild": "byte-identical",
+  "rounding_differences": [
+    {
+      "path": "lumi/cases/0/input_tokens/stddev",
+      "linux_value": 65.38263445968578,
+      "local_value": 65.38263445968576
+    },
+    {
+      "path": "lumi/cases/2/input_tokens/stddev",
+      "linux_value": 9.463379711052259,
+      "local_value": 9.46337971105226
+    },
+    {
+      "path": "lumi/cases/3/output_tokens/stddev",
+      "linux_value": 16.77961726487096,
+      "local_value": 16.779617264870957
+    },
+    {
+      "path": "lumi/cases/7/output_tokens/stddev",
+      "linux_value": 55.93051244376563,
+      "local_value": 55.930512443765636
+    },
+    {
+      "path": "shared/metrics/lumi/audit-inconclusive/input_tokens/stddev",
+      "linux_value": 65.38263445968578,
+      "local_value": 65.38263445968576
+    },
+    {
+      "path": "shared/metrics/pi/audit-inconclusive/duration_ms/stddev",
+      "linux_value": 3496.2517389659206,
+      "local_value": 3496.25173896592
+    }
+  ],
+  "scope": "Only offline verification locally. No local pi execution or model requests. Original artifacts unchanged."
+}

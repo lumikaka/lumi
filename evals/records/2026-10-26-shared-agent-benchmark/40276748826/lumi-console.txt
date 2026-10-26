@@ -1,0 +1,49 @@
+Running audit-inconclusive/run-001
+  scored; 4 requests; 17.9s
+Running audit-match/run-001
+  scored; 3 requests; 11.6s
+Running audit-mismatch/run-001
+  scored; 3 requests; 13.7s
+Running batch-task/run-001
+  scored; 5 requests; 14.7s
+Running context-handoff/run-001
+  scored; 9 requests; 22.5s
+Running missing-resource/run-001
+  scored; 2 requests; 4.4s
+Running smoke/run-001
+  scored; 1 requests; 4.5s
+Running transient-tool/run-001
+  scored; 3 requests; 7.6s
+Running transient-tool/run-002
+  scored; 3 requests; 6.0s
+Running smoke/run-002
+  scored; 1 requests; 2.8s
+Running missing-resource/run-002
+  scored; 2 requests; 6.2s
+Running context-handoff/run-002
+  scored; 9 requests; 26.5s
+Running batch-task/run-002
+  scored; 5 requests; 15.4s
+Running audit-mismatch/run-002
+  scored; 3 requests; 11.4s
+Running audit-match/run-002
+  scored; 3 requests; 12.4s
+Running audit-inconclusive/run-002
+  scored; 4 requests; 16.8s
+Running audit-inconclusive/run-003
+  scored; 4 requests; 16.2s
+Running audit-match/run-003
+  scored; 3 requests; 11.6s
+Running audit-mismatch/run-003
+  scored; 3 requests; 10.7s
+Running batch-task/run-003
+  scored; 5 requests; 15.5s
+Running context-handoff/run-003
+  scored; 10 requests; 22.7s
+Running missing-resource/run-003
+  scored; 2 requests; 5.5s
+Running smoke/run-003
+  scored; 1 requests; 3.1s
+Running transient-tool/run-003
+  scored; 3 requests; 8.9s
+Report: /home/runner/work/_temp/agent-evals/lumi/report.md

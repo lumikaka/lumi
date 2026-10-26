@@ -1,0 +1,38 @@
+[
+  {
+    "run_id": 40275948766,
+    "workflow_url": "https://github.com/lumikaka/lumi/actions/runs/40275948766",
+    "source_revision": "2945231d2a9ce02e5f1cf22ed3f7a9d2ee3cd742",
+    "artifact_id": 12630317437,
+    "artifact_zip_sha256": "2373a19b0382ba2b2262a828cee94d0143e51ac26b7131fb435616d6575ff33b",
+    "sealed_files": 144,
+    "outcome": "environment_error",
+    "lumi_recorded": 24,
+    "lumi_all_dimensions_one": 24,
+    "pi_recorded": 12,
+    "pi_model_requests": 0,
+    "cause": "CommonJS require.resolve cannot resolve the ESM-only pi package exports. All pi startup failures are unscored; no model response was substituted."
+  },
+  {
+    "run_id": 40276748826,
+    "workflow_url": "https://github.com/lumikaka/lumi/actions/runs/40276748826",
+    "source_revision": "51c1f80be906d7031b92bc849b7a124c19a27422",
+    "artifact_id": 12629879844,
+    "artifact_zip_sha256": "7cdae240b54a8aeefd00434015d332d35f44c565498c31f8ac237a5c9b3d3917",
+    "sealed_files": 144,
+    "outcome": "success",
+    "model": "qwen3.7-plus",
+    "repetitions": 3,
+    "lumi_recorded": 24,
+    "lumi_all_dimensions_one": 23,
+    "shared_lumi_recorded": 12,
+    "shared_lumi_all_dimensions_one": 11,
+    "pi_recorded": 12,
+    "pi_all_dimensions_one": 12,
+    "shared_model_requests": {
+      "lumi": 33,
+      "pi": 35
+    },
+    "cause": null
+  }
+]
