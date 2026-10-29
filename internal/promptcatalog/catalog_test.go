@@ -370,8 +370,8 @@ func TestPictureBookStoryboardPromptsGuideLevelTwoHeadings(t *testing.T) {
 
 func TestVerticalStripPromptSuiteSHA256Canary(t *testing.T) {
 	expected := map[string]string{
-		LanguageChinese: "0ae3dc33e542a69ad2ea22c9b28a537026f4e26a11886599e41f20cfb7061692",
-		LanguageEnglish: "8e1476e039fe7a94315df92756b5c3ea1b7d75445bbd93981d4e03dd38332945",
+		LanguageChinese: "db2e5f4f13467c0d0c7c709198289bfcd0e60850fd0e105ff423053431f39cbd",
+		LanguageEnglish: "5fd8701f6045140960a94d157094e03753ecc6502535af347912356a13da8b32",
 	}
 	for _, language := range []string{LanguageChinese, LanguageEnglish} {
 		hasher := sha256.New()
