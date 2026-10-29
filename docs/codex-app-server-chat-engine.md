@@ -50,6 +50,8 @@ ChatArea ──REST/WS──▶ agent.Service ──River chat_turn job──▶
 | agentMessage（增量/完成） | `assistant_message` |
 | reasoning summary | `reasoning`（折叠展示） |
 | mcpToolCall started / completed | `tool_call` / `tool_result` |
+| dynamicToolCall（若采用 dynamic tools） | `tool_call` / `tool_result` |
+| imageGeneration（若启用原生生图） | 暂存生成图，并记录一条图片 item |
 | plan / todo | `plan`，或先映射为 message |
 | 用户输入请求 | 复用 `codex_questions_v1`（`internal/agent/user_input_protocol.go` 已按 Codex 对齐） |
 | 命令执行 / 文件修改审批请求 | 按策略拒绝，记录一条说明 item |
@@ -57,14 +59,71 @@ ChatArea ──REST/WS──▶ agent.Service ──River chat_turn job──▶
 ## 权限与沙箱
 
 - **线程专属 grant**：创建 Codex thread 时，Lumi 内部调用 `mcpserver.CreateGrant`，绑定当前项目与「编辑与生成」权限，名称标注来源 thread。发起者就是 Lumi 用户本人，因此不经过 OAuth 授权页。token 通过 app-server config override 注入 `mcp_servers.lumi`：HTTP 加 bearer env，或复用 `lumi_web --mcp` stdio 桥。thread 归档或删除时撤销 grant。
-- **禁用 Codex 本地副作用**：sandbox 设为 `read-only`，cwd 指向 Lumi 数据目录下的空 scratch 目录；approval policy 要求 shell 与 apply_patch 审批，Lumi 收到 `commandExecution` / `fileChange` 审批请求时一律拒绝。Codex 唯一的副作用通道是 Lumi MCP。
+- **禁用 Codex 本地副作用**：sandbox 设为 `read-only`，cwd 指向 Lumi 数据目录下的空 scratch 目录；approval policy 要求 shell 与 apply_patch 审批，Lumi 收到 `commandExecution` / `fileChange` 审批请求时一律拒绝。Codex 唯一的副作用通道是 Lumi 提供的工具（MCP 或 dynamic tools）；启用原生生图时，生成的图片也只由 Lumi 接收和入库。
 - **危险操作**：MCP 返回 `pending_confirmation` 时，当前需要到 MCP 设置页处理。Codex thread 应在聊天内展示确认（`internal/mcpserver/activity.go` 已能把调用关联到线程），确认后由下一个 turn 或续跑通过 `get_call` 读取结果。客户端的 `confirmed=true` 仍不授予权限。
+
+## 工具通道：MCP 与 dynamic tools
+
+MCP 不是唯一的接入方式。app-server 还提供实验性的 dynamic tools（codex-cli 0.163.0 需要 `generate-json-schema --experimental` 才会导出）：
+
+- `thread/start` 的 `dynamicTools` 声明工具，格式为 `{ type: "function", name, description, inputSchema }`，也可以用 `namespace` 分组。
+- 模型调用工具时，app-server 在同一条 stdio JSON-RPC 连接上向 Lumi 发送 `item/tool/call` 请求，参数为 `threadId / turnId / callId / tool / arguments`。Lumi 在进程内执行，返回 `DynamicToolCallResponse`，内容可以是文本或图片。
+- `initialize` 时需要声明 `capabilities.experimentalApi`。
+
+与 MCP 对比：
+
+| | MCP | dynamic tools |
+|---|---|---|
+| 传输 | HTTP `/mcp` 或 stdio 桥 | 复用 app-server 的 JSON-RPC 连接 |
+| 凭据 | 线程专属 grant，需要注入和撤销 | 不需要 |
+| 线程关联 | 依靠 grant 与 `activity.go` 反查 | 请求自带 `threadId` / `turnId` |
+| 能力范围 | `external_routes` 白名单 | 可以复用内置 Agent 的工具，缓解能力不对等 |
+| 危险操作确认 | 下一个 turn 通过 `get_call` 读取 | 可以挂起当前调用，用户确认后再返回 |
+| 协议稳定性 | 稳定，Codex 插件已在使用 | experimental，变化风险更高 |
+
+dynamic tools 只替换传输层，不放宽权限边界：工具实现仍然经过 `ExternalProjectAPI` 或同等的白名单、幂等键、projector 裁剪与结果大小限制。
+
+待验证：`ThreadResumeParams`、`TurnStartParams` 与 `ThreadForkParams` 都没有 `dynamicTools` 字段，无法从 schema 判断 `thread/resume` 之后工具声明是否会从 rollout 恢复。这直接影响 Lumi 重启后的多轮会话。
+
+建议第一版使用 MCP。Spike 阶段同时验证 dynamic tools 的 resume 行为；验证通过的话，P2 之后可以把 Lumi 工具迁移到 dynamic tools。
+
+## 图片生成
+
+默认继续经 MCP generation 路由由 Lumi Provider 执行：文本推理消耗 Codex 账号额度，生图消耗 Lumi 配置的服务商。
+
+Codex 原生生图可以作为可选项。codex-cli 0.163.0 中 `image_generation` feature 为 stable 且默认开启，app-server 会产出 `imageGeneration` thread item：
+
+```
+{ type: "imageGeneration", id, status, result, revisedPrompt?, savedPath?, transparentBackground?, failure? }
+```
+
+`failure` 目前只有 `usageLimitExceeded`（`limitId`、`resetsAt`），说明这条路消耗的是 Codex 账号自身的额度。
+
+接入方式：
+
+1. CodexEngine 在 `item/completed` 收到图片后，把 `result` 或 `savedPath` 指向的文件经 Lumi 内部媒体流程写入线程级暂存区，以 item `id` 为键，并在聊天中展示。
+2. 原生生图不知道目标业务对象。模型需要再调用一个 Lumi 工具（例如 `attach_generated_image(image_item_id, target_uuid, slot)`）把图片挂载到具体对象上，挂载仍经过权限、版本保护与审计。
+3. 未挂载的暂存图在线程归档时清理，或保留在聊天中供用户手动选用。
+
+与 Lumi Provider 对比：
+
+| | Codex 原生生图 | Lumi Provider |
+|---|---|---|
+| 费用 | Codex 账号额度，无需配置服务商 | Lumi 配置的服务商 |
+| 模型与参数 | 由 OpenAI 托管工具决定，尺寸、模型、种子基本不可控 | Lumi 完全控制 |
+| 提示词套件与风格一致性 | 绕过 prompt suite，只能依靠模型自行遵守 | 套件、参考图与风格约束全部生效 |
+| 任务持久化与恢复 | 同步嵌在 turn 中，重启即 interrupted | 按持久化任务运行，可恢复 |
+| 批量与异步 | 不支持 | 支持 |
+
+建议默认关闭，提供线程或项目级开关，适合未配置服务商或草图探索的场景。关闭时通过 app-server config override 禁用 `image_generation` feature，避免模型绕过 Lumi 的生成路由。UI 需要标注每张图的费用来源。
+
+待验证：`result` 的编码（schema 只标注为 string，推测是 base64）；`savedPath` 的写入位置，以及 sandbox 为 `read-only` 时它是否受影响。
 
 ## 上下文与提示词
 
 - 历史与压缩由 Codex 自行管理，Lumi 的 `MaxContextBytes` 与上下文组装不作用于该引擎。
 - 首个 turn 通过 developer instructions 注入精简的 Lumi agent prompt：先 `read_agent_doc` overview，再操作授权项目，写法与 `codex-plugins` 中的技能一致，并写入项目 UUID。
-- 图片生成仍经 MCP generation 路由由 Lumi Provider 执行：文本推理消耗 Codex 账号额度，生图消耗 Lumi 配置的服务商。
+- 图片生成的路由见[图片生成](#图片生成)。
 
 ## 进程、认证与可用性
 
@@ -80,7 +139,7 @@ ChatArea ──REST/WS──▶ agent.Service ──River chat_turn job──▶
 
 ## 分期建议
 
-1. **Spike**：Go JSON-RPC 客户端加 schema 契约测试（`codex app-server generate-json-schema`），从命令行驱动单个 turn，跑通 MCP 只读调用。
+1. **Spike**：Go JSON-RPC 客户端加 schema 契约测试（`codex app-server generate-json-schema`），从命令行驱动单个 turn，跑通 MCP 只读调用；同时验证 dynamic tools 在 `thread/resume` 后是否可用，以及原生生图 `result` / `savedPath` 的格式与位置。
 2. **P1 只读**：`engine` 字段、引擎状态接口、前端选择器；grant 仅「只读」；消息、推理和工具调用落库并实时展示。
 3. **P2 编辑**：编辑权限 grant、聊天内危险操作确认、用户输入映射、取消与 interrupt。
 4. **P3**：恢复、usage 与成本展示；把 Codex 引擎接入 `evals` 的 shared agent benchmark，与内置 Agent 对比。
@@ -93,5 +152,6 @@ ChatArea ──REST/WS──▶ agent.Service ──River chat_turn job──▶
 
 ## 未采用的替代方案
 
+- **让 Codex 通过 shell 调用 Lumi CLI 或 REST**：需要开放 sandbox 网络并批准 `commandExecution`，破坏「拒绝一切本地副作用」的隔离前提。
 - **`codex exec --json`**：没有双向审批、中断与 resume，不适合多轮聊天。
 - **让 Codex 直接操作项目文件或 SQLite**：绕过 Lumi 的业务校验、版本保护与审计，违背本地 MCP 的边界设计。
