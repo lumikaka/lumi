@@ -77,7 +77,7 @@ test('task events distinguish story work from asset maintenance', () => {
   assert.deepEqual(keyNames(asset), ['asset-maintenance-tasks', 'asset-scans'])
 
   const legacy = projectRealtimeInvalidation(projectUuid, 'task:completed', {})
-  assert.deepEqual(keyNames(legacy), ['story-tasks', 'asset-maintenance-tasks'])
+	assert.deepEqual(keyNames(legacy), ['project-initialization', 'story-tasks', 'asset-maintenance-tasks'])
 })
 
 test('production, asset and LLM events invalidate exact and aggregate queries', () => {

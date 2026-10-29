@@ -244,6 +244,92 @@ func TestWorkflowStepWaitRejectsForeignTaskWithoutParkingTheStep(t *testing.T) {
 	}
 }
 
+func TestWorkflowStepConsumedWaitRecoveryPreservesWakeupIdentity(t *testing.T) {
+	f := newWorkflowStepWaitFixture(t)
+	task := executionFixture(t, f.runtime, "production_task_runs", StatusCompleted, taskexecution.Binding{})
+	if err := f.harness.queue.SuspendWorkflowStep(f.ctx, f.runtime.projectUUID, f.step.UUID, "setting", []agent.DomainTask{waitDependency(task)}); err != nil {
+		t.Fatal(err)
+	}
+	waitUUID := f.assertWait(t, "ready", "queued", 2)
+	before := readExecutionFixture(t, f.runtime, "workflow_steps", f.step.UUID)
+	if _, err := f.runtime.sqlDB.ExecContext(t.Context(), `UPDATE workflow_step_waits SET status='consumed' WHERE uuid=?`, waitUUID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.runtime.sqlDB.ExecContext(t.Context(), `UPDATE workflow_steps SET status='running' WHERE id=?`, f.step.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.runtime.client.JobDelete(t.Context(), before.JobID.Int64); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := f.runtime.reconcileExecutionBindings(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.runtime.reconcileWorkflowStepWaits(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.agents.ReconcileWithEnqueue(t.Context(), f.runtime.store, f.runtime.enqueueAgentTx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.assertWait(t, "consumed", "queued", 2)
+	after := readExecutionFixture(t, f.runtime, "workflow_steps", f.step.UUID)
+	job, err := f.runtime.client.JobGet(t.Context(), after.JobID.Int64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := executionIdentityFor(job)
+	if err != nil || identity.WakeupUUID != waitUUID || after.binding() == before.binding() {
+		t.Fatalf("consumed recovery identity=%+v before=%+v after=%+v error=%v", identity, before.binding(), after.binding(), err)
+	}
+	if _, err := f.runtime.executionContext(t.Context(), job); err != nil {
+		t.Fatalf("recovered execution rejected: %v", err)
+	}
+}
+
+func TestWorkflowStepNewWaitIgnoresPreviousDependencyAndLateCancellation(t *testing.T) {
+	f := newWorkflowStepWaitFixture(t)
+	first := executionFixture(t, f.runtime, "production_task_runs", StatusCompleted, taskexecution.Binding{})
+	if err := f.harness.queue.SuspendWorkflowStep(f.ctx, f.runtime.projectUUID, f.step.UUID, "setting", []agent.DomainTask{waitDependency(first)}); err != nil {
+		t.Fatal(err)
+	}
+	oldWait := f.assertWait(t, "ready", "queued", 2)
+	current := readExecutionFixture(t, f.runtime, "workflow_steps", f.step.UUID)
+	job, err := f.runtime.client.JobGet(t.Context(), current.JobID.Int64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := f.runtime.executionContext(t.Context(), job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.runtime.sqlDB.ExecContext(t.Context(), `UPDATE workflow_step_waits SET status='consumed' WHERE uuid=?`, oldWait); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.runtime.sqlDB.ExecContext(t.Context(), `UPDATE workflow_steps SET status='running' WHERE id=?`, f.step.ID); err != nil {
+		t.Fatal(err)
+	}
+	second := executionFixture(t, f.runtime, "production_task_runs", StatusRunning, taskexecution.Binding{})
+	if err := f.harness.queue.SuspendWorkflowStep(ctx, f.runtime.projectUUID, f.step.UUID, "breakdown", []agent.DomainTask{waitDependency(second)}); err != nil {
+		t.Fatal(err)
+	}
+	newWait := f.assertWait(t, "waiting", "waiting", 2)
+	if newWait == oldWait {
+		t.Fatal("separate phases shared a wakeup identity")
+	}
+	f.settle(t, first, StatusCompleted)
+	f.assertWait(t, "waiting", "waiting", 2)
+	var workflowUUID string
+	if err := f.runtime.sqlDB.QueryRowContext(t.Context(), `SELECT w.uuid FROM workflows w JOIN workflow_steps s ON s.workflow_id=w.id WHERE s.id=?`, f.step.ID).Scan(&workflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.agents.CancelWorkflow(t.Context(), f.runtime.projectUUID, workflowUUID); err != nil {
+		t.Fatal(err)
+	}
+	f.settle(t, second, StatusCompleted)
+	f.assertWait(t, "cancelled", "cancelled", 2)
+}
+
 func TestWorkflowStepWaitDoesNotResumeDuringAutomaticStoryRetry(t *testing.T) {
 	f := newWorkflowStepWaitFixture(t)
 	task := executionFixture(t, f.runtime, "task_runs", StatusRunning, taskexecution.Binding{})

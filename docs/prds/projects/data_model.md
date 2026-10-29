@@ -22,6 +22,17 @@ projects ──< actors
 
 `projects` 的产品称呼为“项目”或“绘本项目”。`project_picture_book_profiles.format` 同时决定下级资源的用户称呼：普通绘本形式使用“绘本 / 页面 / 页面脚本”，`vertical_strip` 使用“章节 / 画面段落 / 分镜脚本”。
 
+## 表：project_initialization_handoffs
+
+项目库中对特定未成功 YOLO 的显式手动接管事实。
+
+- `id` — INTEGER PRIMARY KEY AUTOINCREMENT，仅内部使用。
+- `uuid` — TEXT NOT NULL UNIQUE，UUIDv7。
+- `workflow_id` — INTEGER NOT NULL UNIQUE，外键关联 `workflows.id`，随 Workflow 级联删除。
+- `created_at` — 接管时间。
+
+初始化锁由既有 YOLO 状态和接管事实派生，不新增另一套状态机。活动 YOLO 优先保持限制；成功开放；失败、取消、中断需明确接管且关联子任务全部结束。重试同一 Workflow 时删除原接管事实，重新限制编辑。
+
 ## 表：recent_projects
 
 应用库的最近项目发现索引，不保存项目业务数据。
@@ -117,6 +128,7 @@ projects ──< actors
 - `original_input` — TEXT NOT NULL，逐字保存的首页原始需求
 - `project_name` / `generation_language` / `overall_style` — 可空草稿资料
 - `generation_brief` — 可空、1–4000 字符的 revisioned 自动生成 Brief；新建与历史迁移默认由修剪后的 `original_input` 回填
+- `generation_scope` — 非空，`project_only|premise|first_image`，默认 `first_image`；定稿后决定 bootstrap 是否启动 YOLO 及其步骤前缀，新建与历史迁移来源均为 `system_default`
 - `format` / `aspect_ratio_mode` / `aspect_width` / `aspect_height` — 可空草稿绘本形式与规范比例
 - `large_image_minimal_text` / `interaction_mode` / `comic_layout` — 由绘本形式约束的可空草稿专属设置
 - `field_sources_json` / `missing_fields_json` — 合法 JSON object/array，记录 `system_default|agent_proposed|user_confirmed` 和缺失项

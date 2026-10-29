@@ -37,6 +37,19 @@ Workflow、Step 与 Event 的内部关联使用 bigint `id`；外部 API 和实�
 
 `first_section_image` 是为旧 Workflow 保留的稳定 step key。v5 中它使用可恢复的批量任务生成封面与第一张正文页的缺失图片，`vertical_strip` 则仍只生成第一个 `body` 图片。旧主字段 `section_uuid|image_variant_uuid` 仍指向首个 `body`；新输出使用 `body_section_uuid|body_image_variant_uuid`、普通绘本的 `cover_section_uuid|cover_image_variant_uuid`、本步骤目标按装订顺序排列的 `section_uuids|image_variant_uuids` 和批量 `task_uuids`。存在正文页图片任务时，兼容字段 `task_uuid` 仍指向该任务。
 
+## 表：workflow_step_waits 与 workflow_step_wait_dependencies
+
+YOLO Step 对领域任务的等待与父 Chat 的 `workflow_awaits` 分别记录。
+
+- `workflow_step_waits.id` — INTEGER PRIMARY KEY AUTOINCREMENT，内部 64-bit 主键；`uuid` 为唯一 UUIDv7，用作续跑的 `wakeup_uuid`。
+- `workflow_step_id` — 内部外键；`phase_key` 标记阶段，`generation` 在同一步骤内递增且联合唯一。
+- `status` — `waiting|ready|consumed|cancelled`；每个步骤最多存在一个 `waiting|ready` 轮次。
+- `river_job_id` / `execution_uuid` — 内部续跑绑定；保留创建、更新、就绪、消费、取消时间。
+- `workflow_steps.current_wait_id` — 可空内部外键，指向当前等待轮次。
+- `workflow_step_wait_dependencies` 使用自增 `id`、`wait_id`，并在 `task_run_id` 与 `production_task_run_id` 中恰有一个非空；均为内部外键，同轮次的同一任务唯一。
+
+登记完整依赖与检查就绪同事务提交；全部任务终态与 `ready`、唯一续跑 Job 和 Step 新执行绑定同事务提交。恢复中仍活动的依赖不入队，缺失的续跑按原等待 UUID 重建；消费后的续跑重建也保留该 UUID。取消轮次不能被迟到终态唤醒。
+
 ## 表：workflow_awaits
 
 Chat Tool 异步调用的持久恢复边界。

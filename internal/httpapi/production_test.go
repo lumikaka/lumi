@@ -64,6 +64,7 @@ func productionAPIHarness(t *testing.T) (*echo.Echo, *project.Manager, string, s
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots", handler.ListSnapshots)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-snapshots/:snapshot_uuid", handler.ShowSnapshot)
 	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections", handler.ListSections)
+	e.GET("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid", handler.ShowSection)
 	e.POST("/api/v1/projects/:project_uuid/chapters/:chapter_uuid/comic-sections/:section_uuid/storyboard-variants", handler.CreateStoryboard)
 	e.GET("/api/v1/projects/:project_uuid/comic-exports/readiness", handler.ExportReadiness)
 	e.GET("/api/v1/projects/:project_uuid/comic-exports", handler.ListExports)
@@ -245,6 +246,34 @@ func TestProductionAPIUsesEnvelopesAndPublicUUIDs(t *testing.T) {
 	e.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusUnprocessableEntity || !strings.Contains(recorder.Body.String(), `"success":false`) {
 		t.Fatalf("permanent delete validation status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestProductionAPIComicSectionHasStoryboardContract(t *testing.T) {
+	e, _, projectUUID, chapter := productionAPIHarness(t)
+	base := "/api/v1/projects/" + projectUUID + "/chapters/" + chapter.UUID + "/comic-sections"
+	for _, script := range []string{"", "Current storyboard"} {
+		created := requestJSON(t, e, http.MethodPost, base, map[string]any{"title": "Page", "storyboard_md": script})
+		if created.Code != http.StatusCreated {
+			t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+		}
+		section := envelopeData(t, created)
+		want := script != ""
+		if section["has_storyboard"] != want || (section["current_storyboard"] != nil) != want {
+			t.Fatalf("created section=%+v want=%v", section, want)
+		}
+		detail := requestJSON(t, e, http.MethodGet, base+"/"+section["uuid"].(string), nil)
+		if detail.Code != http.StatusOK || envelopeData(t, detail)["has_storyboard"] != want {
+			t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
+		}
+	}
+	listed := requestJSON(t, e, http.MethodGet, base, nil)
+	if listed.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listed.Code, listed.Body.String())
+	}
+	items := envelopeData(t, listed)["items"].([]any)
+	if len(items) != 2 || items[0].(map[string]any)["has_storyboard"] != false || items[1].(map[string]any)["has_storyboard"] != true {
+		t.Fatalf("listed sections=%+v", items)
 	}
 }
 

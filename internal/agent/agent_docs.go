@@ -127,13 +127,13 @@ func agentGuideDefinitions() []agentGuideDefinition {
 			Path:          agentDocBasePath + "/guides/管理设定资产回收站.md",
 		},
 		{
-			Description:   "为章节生成漫画分镜并跟踪任务。",
+			Description:   "基于章节剧情创建绘本、生成整章正文页的完整可用分镜；统一委托异步 Workflow。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID 与分镜生成要求。",
 			Path:          agentDocBasePath + "/guides/生成漫画分镜.md",
 		},
 		{
-			Description:   "创建、修改、排序或删除封面、正文页、封底或画面段落。",
+			Description:   "单页手工创建或修改封面、正文页、封底或画面段落，以及重排或删除；整章从剧情创建绘本请用《生成漫画分镜》。",
 			RequiredTools: []string{"read_agent_doc", "request_api", "request_user_input"},
 			Prerequisites: "目标 Chapter UUID；修改或删除时需要 Section UUID 与最新 revision。",
 			Path:          agentDocBasePath + "/guides/管理漫画段落.md",

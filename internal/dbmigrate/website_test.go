@@ -30,7 +30,9 @@ func TestWebsiteMigrationPreservesTaskChildrenAndGuardsLossyDown(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, migrate := range []func() error{runner.Up, func() error { return runner.Down(1) }, runner.Up} {
+	// Exercise this migration's down guard even after later migrations exist.
+	upWebsite := func() error { return runner.migrator.Migrate(20261023000046) }
+	for _, migrate := range []func() error{upWebsite, func() error { return runner.Down(1) }, upWebsite} {
 		if err = migrate(); err != nil {
 			t.Fatal(err)
 		}

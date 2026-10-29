@@ -103,6 +103,7 @@ type ComicSection struct {
 	PageRole          string                  `json:"page_role"`
 	Title             string                  `json:"title"`
 	DescriptionMD     string                  `json:"description_md"`
+	HasStoryboard     bool                    `json:"has_storyboard"`
 	CurrentStoryboard *StoryboardVariant      `json:"current_storyboard"`
 	CurrentImage      *ImageVariant           `json:"current_image"`
 	PremiseAssets     []PremiseAssetReference `json:"premise_assets"`

@@ -215,3 +215,44 @@ func TestProjectSetupReferencePlanIsRevisionedAndFreezesAtFinalization(t *testin
 		t.Fatalf("ready reference update error=%v", err)
 	}
 }
+
+func TestProjectSetupGenerationScopeDefaultsValidatesAndFreezes(t *testing.T) {
+	ctx := context.Background()
+	manager, _ := testManager(t)
+	parent := filepath.Join(t.TempDir(), "Documents", "Lumi")
+	previousResolver := resolveDefaultProjectParentDir
+	resolveDefaultProjectParentDir = func() (string, error) { return parent, nil }
+	t.Cleanup(func() { resolveDefaultProjectParentDir = previousResolver })
+	root, err := manager.PlanDraftProjectRoot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectUUID := setupTestUUID(t)
+	if _, err := manager.CreateDraftAt(ctx, DraftCreateInput{
+		ProjectUUID: projectUUID, SetupUUID: setupTestUUID(t), RootPath: root,
+		InitialInput: "先建一个空项目。", GenerationLanguage: GenerationLanguageSimplifiedChinese,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	store := openStoreForTest(t, manager, projectUUID)
+	initial, err := store.ProjectSetup(ctx)
+	if err != nil || initial.DraftValues.GenerationScope != GenerationScopeFirstImage || initial.FieldSources["generation_scope"] != SetupSourceSystemDefault {
+		t.Fatalf("initial scope=%q sources=%v err=%v", initial.DraftValues.GenerationScope, initial.FieldSources, err)
+	}
+	invalid := "storyboard"
+	if _, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{ExpectedRevision: initial.Revision, GenerationScope: &invalid}); errorCode(err) != CodeProjectSetupInvalid {
+		t.Fatalf("invalid scope error=%v", err)
+	}
+	name, style, scope := "空项目", "水彩", GenerationScopeProjectOnly
+	updated, err := store.UpdateProjectSetupDraft(ctx, SetupDraftPatchInput{
+		ExpectedRevision: initial.Revision, ProjectName: &name, OverallStyle: &style, GenerationScope: &scope,
+		PictureBook: &PictureBookInput{Format: PictureBookVertical},
+	})
+	if err != nil || updated.DraftValues.GenerationScope != GenerationScopeProjectOnly || updated.FieldSources["generation_scope"] != SetupSourceAgentProposed || updated.Status != SetupDraftStatusPendingConfirmation {
+		t.Fatalf("updated=%+v err=%v", updated, err)
+	}
+	finalized, err := store.FinalizeProjectSetup(ctx, updated.Revision)
+	if err != nil || finalized.DraftValues.GenerationScope != GenerationScopeProjectOnly || finalized.FieldSources["generation_scope"] != SetupSourceUserConfirmed {
+		t.Fatalf("finalized=%+v err=%v", finalized, err)
+	}
+}

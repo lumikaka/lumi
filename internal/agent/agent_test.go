@@ -428,7 +428,7 @@ func TestYoloV6VerticalStripKeepsBodyOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 6 {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 7 {
 		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
 	}
 	output, wait, err := harness.service.runYoloComic(ctx, harness.store, workflow, step, snapshot)
@@ -590,7 +590,7 @@ func TestYoloV6InitialImageBatchUsesFrozenModels(t *testing.T) {
 		t.Fatal(err)
 	}
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 6 {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 7 {
 		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
 	}
 	output, wait, err := harness.service.runYoloFirstImage(ctx, harness.store, workflow, step, snapshot)
@@ -3059,5 +3059,54 @@ func TestRealtimePayloadDropsInternalAndInvalidIdentifiers(t *testing.T) {
 		if _, exists := payload[forbidden]; exists {
 			t.Fatalf("realtime payload retained %s: %+v", forbidden, payload)
 		}
+	}
+}
+
+func TestYoloPremiseScopeCreatesPrefixAndCompletesAfterPremise(t *testing.T) {
+	harness := newAgentHarness(t)
+	ctx := context.Background()
+	for _, scope := range []string{project.GenerationScopeProjectOnly, "storyboard"} {
+		if _, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{Title: "范围", StoryPrompt: "小狐狸。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "scope-invalid-" + scope, GenerationScope: scope}); errorCode(err) != CodeValidation {
+			t.Fatalf("scope %q error=%v", scope, err)
+		}
+	}
+	workflow, err := harness.service.CreateYoloWorkflow(ctx, harness.project.UUID, CreateYoloInput{Title: "只到设定", StoryPrompt: "小狐狸替月亮送信。", ProviderUUID: harness.provider.UUID, IdempotencyKey: "scope-premise", GenerationScope: project.GenerationScopePremise})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(workflow.Steps) != 4 || workflow.Steps[3].StepKey != "premise" {
+		t.Fatalf("premise scope steps=%+v", workflow.Steps)
+	}
+	var snapshot yoloSnapshot
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || snapshot.Version != 7 || snapshot.GenerationScope != project.GenerationScopePremise {
+		t.Fatalf("snapshot=%+v err=%v", snapshot, err)
+	}
+	chapterUUID := mustAgentUUID(t)
+	harness.withStore(t, func(store *project.Store) {
+		storyOutput, _ := json.Marshal(map[string]any{"chapter_uuid": chapterUUID, "story_uuid": mustAgentUUID(t)})
+		if err := store.DB().Exec(`UPDATE workflow_steps SET status=CASE WHEN position<4 THEN 'completed' ELSE 'running' END,output_json=CASE WHEN step_key='story' THEN ? ELSE output_json END WHERE workflow_id=(SELECT id FROM workflows WHERE uuid=?)`, string(storyOutput), workflow.UUID).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := store.DB().Exec(`UPDATE workflows SET status='running',current_step_key='premise' WHERE uuid=?`, workflow.UUID).Error; err != nil {
+			t.Fatal(err)
+		}
+		row, step, threadUUID, err := harness.service.loadWorkflowStep(ctx, store, workflow.Steps[3].UUID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := harness.service.completeWorkflowStep(ctx, store, row, step, threadUUID, map[string]any{"setting_image_uuid": mustAgentUUID(t)}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	completed, err := harness.service.GetWorkflow(ctx, harness.project.UUID, workflow.UUID)
+	if err != nil || completed.Status != WorkflowCompleted {
+		t.Fatalf("completed=%+v err=%v", completed, err)
+	}
+	var message string
+	if err := harness.store.DB().Table("chat_items").Select("content").Where("thread_id=(SELECT id FROM chat_threads WHERE uuid=?)", workflow.ThreadUUID).Order("id DESC").Limit(1).Scan(&message).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(message, "@project/chapters/"+chapterUUID+"/body") || !strings.Contains(message, "@project/premise") || strings.Contains(message, "首图") {
+		t.Fatalf("premise completion message=%q", message)
 	}
 }

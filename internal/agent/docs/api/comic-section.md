@@ -22,13 +22,14 @@
 | `data.page_role` | string | `front_cover`、`body` 或 `back_cover`。 |
 | `data.title` | string | Section 标题。 |
 | `data.description_md` | string | Section 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 当前 revision，供后续更新、删除、导入或选择版本使用。 |
 
 ### request_api 示例
 
 ```json
-{"method":"GET","url":"/api/v1/projects/<project_uuid>/chapters/<chapter_uuid>/comic-sections/<section_uuid>","response_filter":".data | {uuid,page_role,title,current_storyboard:{uuid,version_no,content_md},revision}"}
+{"method":"GET","url":"/api/v1/projects/<project_uuid>/chapters/<chapter_uuid>/comic-sections/<section_uuid>","response_filter":".data | {uuid,page_role,title,has_storyboard,revision}"}
 ```
 
 ### 接口约束

@@ -8,7 +8,7 @@ import (
 func TestYoloCompletionMessageUsesInlineProjectReferences(t *testing.T) {
 	chapterUUID := mustAgentUUID(t)
 	sectionUUID := mustAgentUUID(t)
-	message, err := yoloCompletionMessage(map[string]any{
+	message, err := yoloFinalImageCompletionMessage(map[string]any{
 		"chapter_uuid": chapterUUID,
 		"section_uuid": sectionUUID,
 	})
@@ -32,7 +32,7 @@ func TestYoloCompletionMessageUsesSegmentTermsForVerticalV5(t *testing.T) {
 	chapterUUID := mustAgentUUID(t)
 	bodyUUID := mustAgentUUID(t)
 	bodyImageUUID := mustAgentUUID(t)
-	message, err := yoloCompletionMessage(map[string]any{
+	message, err := yoloFinalImageCompletionMessage(map[string]any{
 		"chapter_uuid": chapterUUID, "section_uuid": bodyUUID,
 		"body_section_uuid": bodyUUID, "body_image_variant_uuid": bodyImageUUID,
 	})
@@ -53,7 +53,7 @@ func TestYoloCompletionMessageLinksCoverAndFirstBodyPage(t *testing.T) {
 	chapterUUID := mustAgentUUID(t)
 	coverUUID := mustAgentUUID(t)
 	bodyUUID := mustAgentUUID(t)
-	message, err := yoloCompletionMessage(map[string]any{
+	message, err := yoloFinalImageCompletionMessage(map[string]any{
 		"chapter_uuid": chapterUUID, "section_uuid": bodyUUID,
 		"body_section_uuid": bodyUUID, "cover_section_uuid": coverUUID,
 	})
@@ -72,7 +72,7 @@ func TestYoloCompletionMessageLinksCoverAndFirstBodyPage(t *testing.T) {
 }
 
 func TestYoloCompletionMessageRejectsInvalidResourceUUID(t *testing.T) {
-	if _, err := yoloCompletionMessage(map[string]any{
+	if _, err := yoloFinalImageCompletionMessage(map[string]any{
 		"chapter_uuid": "550e8400-e29b-41d4-a716-446655440000",
 		"section_uuid": mustAgentUUID(t),
 	}); err == nil {

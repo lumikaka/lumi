@@ -449,7 +449,6 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 	}
 
 	seen := make(map[string]struct{}, len(input.SectionUUIDs))
-	prepared := make([]preparedComicImageGeneration, 0, len(input.SectionUUIDs))
 	for _, sectionUUID := range input.SectionUUIDs {
 		if !isUUIDv7(sectionUUID) {
 			return result, taskError(CodeInvalidTask, "Section UUID 无效", "section_uuids 只能包含公开 UUIDv7。", nil)
@@ -462,9 +461,13 @@ func (manager *Manager) createComicImageGenerationBatch(ctx context.Context, pro
 		if !exists {
 			return result, taskError(CodeInvalidTask, "Section 不属于目标章节", "所有 section_uuids 都必须引用目标章节中的 active Section。", nil)
 		}
-		if section.CurrentStoryboard == nil {
-			return result, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "所有目标 Section 都必须先创建或选择 storyboard 版本。", nil)
+		if section.CurrentStoryboard == nil || strings.TrimSpace(section.CurrentStoryboard.ContentMD) == "" {
+			return result, missingComicStoryboardError(projectUUID, chapterUUID, sectionUUID)
 		}
+	}
+
+	prepared := make([]preparedComicImageGeneration, 0, len(input.SectionUUIDs))
+	for _, sectionUUID := range input.SectionUUIDs {
 		item, prepareErr := manager.prepareComicImageGeneration(ctx, runtime, projectUUID, chapterUUID, sectionUUID, CreateProductionGenerationInput{
 			ProviderUUID: input.ProviderUUID, Model: input.Model, EnableThinking: input.EnableThinking, PromptExtend: input.PromptExtend,
 			SelectionProviderUUID: input.SelectionProviderUUID, SelectionModel: input.SelectionModel,
@@ -657,8 +660,8 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	if err != nil {
 		return preparedComicImageGeneration{}, err
 	}
-	if section.CurrentStoryboard == nil {
-		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 尚无 Storyboard", "先创建或选择 storyboard 版本。", nil)
+	if section.CurrentStoryboard == nil || strings.TrimSpace(section.CurrentStoryboard.ContentMD) == "" {
+		return preparedComicImageGeneration{}, missingComicStoryboardError(projectUUID, chapterUUID, sectionUUID)
 	}
 	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true, input.EnableThinking, input.PromptExtend)
 	if err != nil {
@@ -768,6 +771,12 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
 		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, ImageAPIMode: resolved.ImageAPIMode, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
 	return preparedComicImageGeneration{Section: section, Snapshot: snapshot}, nil
+}
+
+func missingComicStoryboardError(projectUUID, chapterUUID, sectionUUID string) error {
+	path := fmt.Sprintf("/api/v1/projects/%s/chapters/%s/comic-sections/%s", projectUUID, chapterUUID, sectionUUID)
+	return taskError(CodeInvalidTask, "Section 尚无 Storyboard", fmt.Sprintf(
+		"Section %s 缺少可用分镜，未创建图片任务。先 GET %s 读取最新 revision，再 POST %s/storyboard-variants，提交完整 content_md 和 expected_revision 后重试出图。整章从剧情生成请使用 comic-storyboard-generations Workflow；不要默认覆盖已有脚本，也不要因缺分镜调用 request_user_input。", sectionUUID, path, path), nil)
 }
 
 type ComicExportOperation struct {

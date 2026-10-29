@@ -487,6 +487,55 @@ func TestProjectSetupGenerationBriefMigrationBackfillsAndRoundTrips(t *testing.T
 	}
 }
 
+func TestProjectSetupGenerationScopeMigrationDefaultsAndRoundTrips(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "project-setup-generation-scope.sqlite") + "?_pragma=foreign_keys(1)"
+	runner, err := OpenProject(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runner.Close() })
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.migrator.Migrate(20261028000048); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if tableHasColumn(t, db, "project_setup_drafts", "generation_scope") {
+		t.Fatal("generation_scope survived rollback")
+	}
+	const now = "2026-10-29T00:00:00Z"
+	if _, err := db.Exec(`INSERT INTO projects(id,uuid,name,format_version,schema_version,setup_status,created_at,updated_at) VALUES(1,'01a06500-0000-7000-8000-000000000011','Scope migration',1,48,'draft',?,?)`, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO project_setup_drafts(uuid,project_id,status,revision,original_input,generation_language,generation_brief,field_sources_json,missing_fields_json,error_code,error_message,created_at,updated_at) VALUES('01a06500-0000-7000-8000-000000000012',1,'draft',1,'原始输入','zh-Hans','原始输入','{"generation_language":"system_default"}','[]','','',?,?)`, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Up(); err != nil {
+		t.Fatal(err)
+	}
+	var scope, source string
+	if err := db.QueryRow(`SELECT generation_scope,json_extract(field_sources_json,'$.generation_scope') FROM project_setup_drafts WHERE project_id=1`).Scan(&scope, &source); err != nil {
+		t.Fatal(err)
+	}
+	if scope != "first_image" || source != "system_default" {
+		t.Fatalf("backfilled scope=%q source=%q", scope, source)
+	}
+	if _, err := db.Exec(`UPDATE project_setup_drafts SET generation_scope='storyboard' WHERE project_id=1`); err == nil {
+		t.Fatal("generation_scope constraint accepted an unknown value")
+	}
+	if err := runner.migrator.Migrate(20261028000048); err != nil {
+		t.Fatal(err)
+	}
+	if tableHasColumn(t, db, "project_setup_drafts", "generation_scope") {
+		t.Fatal("generation_scope survived second rollback")
+	}
+}
+
 func TestComicSectionPageRoleMigrationBackfillsAndConstrainsSpecialPages(t *testing.T) {
 	dsn := "file:" + filepath.Join(t.TempDir(), "comic-section-page-roles.sqlite") + "?_pragma=foreign_keys(1)"
 	runner, err := OpenProject(dsn)

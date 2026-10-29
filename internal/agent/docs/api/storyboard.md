@@ -57,6 +57,7 @@
 | `data.page_role` | string | `front_cover`、`body` 或 `back_cover`。 |
 | `data.title` | string | Section 标题。 |
 | `data.description_md` | string | Section 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object | 新当前版本；含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 创建版本后的 Section revision。 |
 
@@ -94,6 +95,7 @@
 | `data.page_role` | string | 页面角色。 |
 | `data.title` | string | Section 标题。 |
 | `data.description_md` | string | Section 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object | 复制出的新 `restore` 版本；含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 恢复后的 Section revision。 |
 

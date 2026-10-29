@@ -142,18 +142,18 @@ func (service *Service) ReconcileWithEnqueue(ctx context.Context, store *project
 			}
 		}
 	}
-	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id WHERE s.river_job_id IS NULL AND s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? AND NOT EXISTS(SELECT 1 FROM workflow_step_waits a WHERE a.id=s.current_wait_id AND a.status IN ('waiting','ready')) ORDER BY w.id,s.position`, WorkflowYolo)
+	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid,COALESCE(a.uuid,'') FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id LEFT JOIN workflow_step_waits a ON a.id=s.current_wait_id AND a.status='consumed' WHERE s.river_job_id IS NULL AND s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? AND NOT EXISTS(SELECT 1 FROM workflow_step_waits pending WHERE pending.id=s.current_wait_id AND pending.status IN ('waiting','ready')) ORDER BY w.id,s.position`, WorkflowYolo)
 	if err != nil {
 		return err
 	}
 	type queuedStep struct {
-		ID                   int64
-		StepUUID, ThreadUUID string
+		ID                               int64
+		StepUUID, ThreadUUID, WakeupUUID string
 	}
 	var steps []queuedStep
 	for stepRows.Next() {
 		var row queuedStep
-		if err := stepRows.Scan(&row.ID, &row.StepUUID, &row.ThreadUUID); err != nil {
+		if err := stepRows.Scan(&row.ID, &row.StepUUID, &row.ThreadUUID, &row.WakeupUUID); err != nil {
 			stepRows.Close()
 			return err
 		}
@@ -163,12 +163,17 @@ func (service *Service) ReconcileWithEnqueue(ctx context.Context, store *project
 		return err
 	}
 	for _, row := range steps {
-		jobID, err := enqueue(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: row.StepUUID, ThreadUUID: row.ThreadUUID})
+		jobID, err := enqueue(ctx, store.ProjectUUID(), tx, JobSpec{Version: 1, ProjectUUID: store.ProjectUUID(), JobKind: JobWorkflowStep, ResourceUUID: row.StepUUID, ThreadUUID: row.ThreadUUID, WakeupUUID: row.WakeupUUID})
 		if err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET river_job_id=?,execution_uuid=?,updated_at=? WHERE id=?`, jobID.JobID, jobID.NullableUUID(), now, row.ID); err != nil {
 			return err
+		}
+		if row.WakeupUUID != "" {
+			if _, err := tx.ExecContext(ctx, `UPDATE workflow_step_waits SET river_job_id=?,execution_uuid=?,updated_at=? WHERE workflow_step_id=? AND uuid=? AND status='consumed'`, jobID.JobID, jobID.NullableUUID(), now, row.ID, row.WakeupUUID); err != nil {
+				return err
+			}
 		}
 	}
 	threadRows, err := tx.QueryContext(ctx, `SELECT id FROM chat_threads ORDER BY id`)

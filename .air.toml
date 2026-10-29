@@ -5,8 +5,8 @@ env_files = [".env"]
 [build]
 cmd = "go build -o ./tmp/lumi_web ./cmd/lumi_web"
 entrypoint = ["./tmp/lumi_web"]
-include_ext = ["go"]
-exclude_dir = ["tmp", "web"]
+include_ext = ["go", "md"]
+exclude_dir = ["tmp", "web", "docs", "site", ".pnpm-store"]
 exclude_regex = ["_test\\.go"]
 stop_on_error = true
 send_interrupt = true

@@ -920,7 +920,7 @@ function NewThreadDraft({ projectUuid, pictureBook, draft, pending, error, overl
     <div className="chat-panel chat-panel--detail">
       <header className="chat-detail-header">
         <button className="chat-back" type="button" onClick={onBack} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
-        <div><p>{t('chat.title')}</p><h2>{t('chat.thread.new')}</h2></div>
+        <div className="chat-detail-title"><p>{t('chat.title')}</p><h2>{t('chat.thread.new')}</h2></div>
         <div className="chat-detail-actions"><span className="chat-status chat-status--idle">{t('chat.thread.draft')}</span><CollapseButton overlay={overlay} onToggle={onToggle} /></div>
       </header>
       <div className="chat-detail-body">
@@ -1358,7 +1358,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
       <div className="chat-panel chat-panel--detail">
         <header className="chat-detail-header">
           {!initializationBlocked ? <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button> : null}
-		  <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) : t('chat.threads')}</h2></div>
+          <div className="chat-detail-title"><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) : t('chat.threads')}</h2></div>
           <div className="chat-detail-actions">
             {isMCPThread ? <span className="chat-muted">{t('chat.mcp.source')}</span> : <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>}
             {selectedThread && !isMCPThread ? (

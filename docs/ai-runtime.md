@@ -86,6 +86,10 @@ River client 和类型只出现在 `internal/jobqueue`。domain、HTTP 和 React
 
 聊天等待输入或 Workflow 依赖时，业务可以仍为活动状态，而对应 job 已成功结束并释放绑定。合法唤醒创建新执行，仍以 `wakeup_uuid` 去重；Turn 和 Await 的新绑定在同一事务提交。旧执行的终态通知只释放匹配自己的引用。
 
+YOLO Step 等待子任务也释放执行位：完整依赖以 `workflow_step_waits` / `workflow_step_wait_dependencies` 持久化，登记时重读事实，全部子任务真正终态时原子投递唯一续跑。设定图和拆分分轮等待，多图按全部结束处理。有效等待不因重启重复入队；消费后的执行丢失时仍用原等待 UUID 恢复。历史提前排队或 FIFO 尚未就绪的聊天 Job 退回队列让出执行位，不在 worker 内循环检查。
+
+YOLO 初始化期间当前绘本禁止新聊天和手动生产编辑；成功自动开放，失败、取消或中断后由用户选择重试或手动接管。接管须等待关联子任务收尾，随后保存绑定特定 Workflow 的接管事实。HTTP、Agent 和外部 MCP 共用该限制；其他项目独立运行。
+
 关联回归使用真实 River/SQLite：`execution_bindings_test.go` 覆盖编号复用、旧版 args、duplicate、错误归属取消、显式重试、回滚、丢失事件、重复恢复与聊天等待；`internal/taskexecution` 测试 SQL、GORM 和 `RETURNING` 写回的执行隔离。队列与 Agent 的并发用例同时运行 Go race 检查。
 
 异步 Generation 的调用来源由进程内可信 `DomainInvocationContext` 指定，不能从 User-Agent、请求头或公开 JSON 推断。`direct_ui` 使用 `dedicated_thread` 且不等待 Chat；`chat_tool` 使用 `inline`、携带当前 Thread/Turn/Run/Tool Execution 的公开 UUIDv7 并等待完成；`workflow_step` 使用 `none`，避免嵌套业务步骤再创建展示 Thread。bootstrap YOLO route 显式注入 `chat_tool + inline + await_completion=true`，公开 YOLO 与章节 Generation HTTP 端点仍显式使用 `direct_ui`，请求体保持兼容。

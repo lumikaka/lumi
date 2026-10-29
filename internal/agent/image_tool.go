@@ -79,6 +79,9 @@ func (service *Service) executeImageGenTool(ctx context.Context, store *project.
 		return result, nil
 	}
 
+	if err := requireAgentInitializationWriteAvailable(ctx, store, tc, agentAPIRequest{Method: "POST"}); err != nil {
+		return nil, err
+	}
 	var selectedReferences []selectedImageReference
 	if legacyV2 {
 		selectedReferences, err = service.resolveProjectAPIV2ImageReferences(ctx, store, tc, stringSliceArg(args, "reference_file_uuids"))

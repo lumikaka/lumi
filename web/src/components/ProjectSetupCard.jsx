@@ -69,6 +69,7 @@ export default function ProjectSetupCard({ projectUuid, enabled }) {
     { key: 'generation_language', sourceKey: 'generation_language', label: t('chat.setup.field.generation_language'), value: draftValues.generation_language ? t(`common.language.${draftValues.generation_language === 'zh-Hans' ? 'zh_hans' : 'en'}`) : '' },
     { key: 'overall_style', sourceKey: 'overall_style', label: t('chat.setup.field.overall_style'), value: draftValues.overall_style },
     { key: 'generation_brief', sourceKey: 'generation_brief', label: t('chat.setup.field.generation_brief'), value: draftValues.generation_brief },
+    { key: 'generation_scope', sourceKey: 'generation_scope', label: t('chat.setup.field.generation_scope'), value: draftValues.generation_scope ? t(`chat.setup.generation_scope.${draftValues.generation_scope}`) : '' },
     ...pictureBookFields(draftValues, t),
   ]
   const statusKey = setup.status

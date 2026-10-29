@@ -173,6 +173,14 @@ func workflowTerminalToolResultBase(state workflowResumeState) json.RawMessage {
 			"current_step_key":  currentStepKey,
 			"steps":             steps,
 		}
+		var snapshot struct {
+			GenerationScope string `json:"generation_scope"`
+		}
+		_ = json.Unmarshal([]byte(state.InputSnapshot), &snapshot)
+		data["generation_scope"] = project.GenerationScopeFirstImage
+		if snapshot.GenerationScope != "" {
+			data["generation_scope"] = snapshot.GenerationScope
+		}
 		if state.WorkflowStatus == WorkflowCompleted {
 			encoded, _ := json.Marshal(map[string]any{"success": true, "data": data})
 			return encoded

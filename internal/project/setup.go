@@ -24,10 +24,29 @@ const (
 	SetupSourceSystemDefault = "system_default"
 	SetupSourceAgentProposed = "agent_proposed"
 	SetupSourceUserConfirmed = "user_confirmed"
+
+	// GenerationScope* name how far YOLO initialization runs after setup is
+	// finalized. project_only never starts generation.
+	GenerationScopeProjectOnly = "project_only"
+	GenerationScopePremise     = "premise"
+	GenerationScopeFirstImage  = "first_image"
 )
 
+func NormalizeGenerationScope(value string) (string, bool) {
+	switch strings.TrimSpace(value) {
+	case GenerationScopeProjectOnly:
+		return GenerationScopeProjectOnly, true
+	case GenerationScopePremise:
+		return GenerationScopePremise, true
+	case GenerationScopeFirstImage:
+		return GenerationScopeFirstImage, true
+	default:
+		return "", false
+	}
+}
+
 var setupDraftFields = []string{
-	"project_name", "generation_language", "overall_style", "generation_brief", "format", "aspect_ratio",
+	"project_name", "generation_language", "overall_style", "generation_brief", "generation_scope", "format", "aspect_ratio",
 	"large_image_minimal_text", "interaction_mode", "comic_layout",
 }
 
@@ -48,6 +67,7 @@ type setupDraftRecord struct {
 	GenerationLanguage    *string
 	OverallStyle          *string
 	GenerationBrief       *string
+	GenerationScope       string
 	Format                *string
 	AspectRatioMode       *string
 	AspectWidth           *int
@@ -73,6 +93,7 @@ type SetupDraftValues struct {
 	GenerationLanguage string              `json:"generation_language,omitempty"`
 	OverallStyle       string              `json:"overall_style,omitempty"`
 	GenerationBrief    string              `json:"generation_brief,omitempty"`
+	GenerationScope    string              `json:"generation_scope,omitempty"`
 	PictureBook        *PictureBookProfile `json:"picture_book,omitempty"`
 }
 
@@ -127,6 +148,7 @@ type SetupDraftPatchInput struct {
 	GenerationLanguage *string
 	OverallStyle       *string
 	GenerationBrief    *string
+	GenerationScope    *string
 	PictureBook        *PictureBookInput
 }
 
@@ -141,12 +163,12 @@ func createSetupDraftRecord(tx *gorm.DB, projectID int64, input SetupDraftInitia
 	}
 	briefRunes := []rune(strings.TrimSpace(original))
 	brief := string(briefRunes[:min(len(briefRunes), 4000)])
-	sources, _ := json.Marshal(map[string]string{"generation_language": SetupSourceSystemDefault, "generation_brief": SetupSourceSystemDefault})
+	sources, _ := json.Marshal(map[string]string{"generation_language": SetupSourceSystemDefault, "generation_brief": SetupSourceSystemDefault, "generation_scope": SetupSourceSystemDefault})
 	missing, _ := json.Marshal([]string{"project_name", "overall_style", "picture_book.format"})
 	record := setupDraftRecord{
 		UUID: input.UUID, ProjectID: projectID, Status: SetupDraftStatusDraft, Revision: 1,
 		OriginalInput: original, GenerationLanguage: &language, GenerationBrief: &brief,
-		FieldSourcesJSON: string(sources), MissingFieldsJSON: string(missing), CreatedAt: now, UpdatedAt: now,
+		GenerationScope: GenerationScopeFirstImage, FieldSourcesJSON: string(sources), MissingFieldsJSON: string(missing), CreatedAt: now, UpdatedAt: now,
 	}
 	return tx.Create(&record).Error
 }
@@ -204,6 +226,10 @@ func setupState(projectRecord Project, record *setupDraftRecord, profile *Pictur
 	}
 	if record.GenerationBrief != nil {
 		state.DraftValues.GenerationBrief = *record.GenerationBrief
+	}
+	state.DraftValues.GenerationScope = record.GenerationScope
+	if _, valid := NormalizeGenerationScope(state.DraftValues.GenerationScope); !valid {
+		state.DraftValues.GenerationScope = GenerationScopeFirstImage
 	}
 	return state
 }
@@ -446,6 +472,13 @@ func (store *Store) UpdateProjectSetupDraft(ctx context.Context, input SetupDraf
 			}
 			record.GenerationBrief, sources["generation_brief"], changed = &value, SetupSourceAgentProposed, true
 		}
+		if input.GenerationScope != nil {
+			value, valid := NormalizeGenerationScope(*input.GenerationScope)
+			if !valid {
+				return projectError(CodeProjectSetupInvalid, "自动生成范围无效", "generation_scope 只支持 project_only、premise 或 first_image。", nil)
+			}
+			record.GenerationScope, sources["generation_scope"], changed = value, SetupSourceAgentProposed, true
+		}
 		if input.PictureBook != nil {
 			if strings.TrimSpace(input.PictureBook.Format) == "" {
 				return projectError(CodeProjectSetupInvalid, "绘本形式缺失", "picture_book.format 不能为空。", nil)
@@ -500,7 +533,7 @@ func (store *Store) UpdateProjectSetupDraft(ctx context.Context, input SetupDraf
 		}
 		result := tx.Model(&setupDraftRecord{}).Where("id = ? AND revision = ?", record.ID, input.ExpectedRevision).Updates(map[string]any{
 			"status": status, "revision": gorm.Expr("revision + 1"), "project_name": record.ProjectName,
-			"generation_language": record.GenerationLanguage, "overall_style": record.OverallStyle, "generation_brief": record.GenerationBrief, "format": record.Format,
+			"generation_language": record.GenerationLanguage, "overall_style": record.OverallStyle, "generation_brief": record.GenerationBrief, "generation_scope": record.GenerationScope, "format": record.Format,
 			"aspect_ratio_mode": record.AspectRatioMode, "aspect_width": record.AspectWidth, "aspect_height": record.AspectHeight,
 			"large_image_minimal_text": record.LargeImageMinimalText, "interaction_mode": record.InteractionMode, "comic_layout": record.ComicLayout,
 			"field_sources_json": string(sourcesJSON), "missing_fields_json": string(missingJSON), "error_code": "", "error_message": "", "updated_at": now,

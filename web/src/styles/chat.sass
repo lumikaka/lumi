@@ -48,8 +48,10 @@
 
 .chat-panel
   height: 100%
+  min-width: 0
   min-height: 0
   display: grid
+  grid-template-columns: minmax(0, 1fr)
   grid-template-rows: auto minmax(0, 1fr)
 
 .chat-panel__header,
@@ -115,11 +117,14 @@
     background: $color-accent-muted
 
 .chat-detail-header
-  display: grid
-  grid-template-columns: auto minmax(0, 1fr) auto
+  min-width: 0
 
-  > div:nth-child(2)
+  > .chat-detail-title
+    flex: 1 1 0
     min-width: 0
+
+  > .chat-detail-actions
+    flex: 0 0 auto
 
   h2
     min-width: 0
@@ -286,12 +291,15 @@
   background: rgba($color-danger, .06)
 
 .chat-detail-body
+  min-width: 0
   min-height: 0
   display: grid
+  grid-template-columns: minmax(0, 1fr)
   grid-template-rows: minmax(0, 1fr) auto
   overflow: hidden
 
 .chat-messages
+  min-width: 0
   min-height: 0
   padding: 14px 12px
   overflow: auto

@@ -295,7 +295,8 @@
 
 - Chapter 必须处于 active 状态并有非空当前正文。
 - 任务成功时会生成或替换 `body` Section 规划，但不删除已有 `front_cover` 或 `back_cover`；创建任务前需要确认。
-- 接口只创建异步 Task，并使用 Tool Execution 幂等键。
+- 每个 `body` 必须包含非空可用分镜；所有页面与脚本原子保存，缺失任一页脚本则拒绝整份结果，不创建空壳页。
+- 接口使用 Tool Execution 幂等键创建异步 Task。Chat 调用在当前 Turn 内等待 Workflow 终态，期间不轮询；恢复同一 Run 后再重读 Section 列表核验。仅排队或等待覆盖确认都不表示完成。
 
 ## `POST /api/v1/projects/{project_uuid}/chapters/{chapter_uuid}/comic-sections/{section_uuid}/image-generations`
 
@@ -340,6 +341,7 @@
 ### 接口约束
 
 - Section 必须属于路径中的 Chapter、处于 active 状态并有当前 Storyboard；同一 Section 不能已有活动图片任务。
+- 缺少可用分镜时返回 `invalid_task`，details 含目标 UUID、读取 revision 和写入完整分镜的 REST 路径，且不创建图片任务。按《生成、导入与选择漫画图片》返回可执行说明，不要因此调用 `request_user_input`。
 - `premise_asset_uuids` 必须互不重复，所有项须属于当前项目且有可用图片版本。
 - 此接口用于单个 Section；生成多个 Section 时使用批量接口。
 - 接口按 Tool Execution 幂等键原子创建异步 Task 和 Workflow；重复恢复复用同一 Task、Workflow 和 await。
@@ -392,6 +394,7 @@
 ### 接口约束
 
 - 所有 Section 必须属于路径中的 active Chapter、处于 active 状态、有当前 Storyboard，且没有活动图片任务；任一项失败则整批不创建任务。
+- 缺少可用分镜时返回 `invalid_task` 和具体目标的补分镜步骤；不要因此调用 `request_user_input`，也不要循环重试同一出图请求。
 - 服务端为每个 Section 固化当前 Storyboard、项目画风、设定引用和项目图片模型；本接口不接收 prompt、model 或 Premise 引用。
 - 输入 UUID 不得重复；创建使用批次幂等键，重放同一 intent 不得复制任务。
 - Chat Agent 调用会以内联 Workflow 等待整批终态；直接 UI 调用创建独立 Workflow Thread，父 Workflow Step 调用不额外展示。

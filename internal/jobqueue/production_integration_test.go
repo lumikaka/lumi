@@ -1512,6 +1512,32 @@ func TestParentWorkflowComicImageBatchCreatesUnpresentedChildWorkflow(t *testing
 	}
 }
 
+func TestComicImageSingleMissingStoryboardReturnsActionableErrorWithoutTask(t *testing.T) {
+	h := newQueueHarness(t)
+	ctx := context.Background()
+	chapter := h.createChapter(t, "vol01.ch01")
+	section, err := production.NewService(h.runtime(t).store, nil).CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Empty page"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.queue.CreateComicImageGeneration(ctx, h.project.UUID, chapter.UUID, section.UUID, CreateProductionGenerationInput{Prompt: "Generate this page", IdempotencyKey: "missing-storyboard-single"})
+	var taskErr *Error
+	if !errors.As(err, &taskErr) || taskErr.Code != CodeInvalidTask {
+		t.Fatalf("error=%v", err)
+	}
+	for _, required := range []string{section.UUID, "GET /api/v1/projects/", "/storyboard-variants", "content_md", "expected_revision"} {
+		if !strings.Contains(taskErr.Details, required) {
+			t.Fatalf("missing recovery step %q: %s", required, taskErr.Details)
+		}
+	}
+	for _, table := range []string{"production_task_runs", "workflows", "chat_user_input_requests"} {
+		var count int64
+		if err := h.runtime(t).store.DB().Table(table).Count(&count).Error; err != nil || count != 0 {
+			t.Fatalf("unexpected %s rows=%d err=%v", table, count, err)
+		}
+	}
+}
+
 func TestComicImageBatchPreflightRejectsEveryTargetBeforeCreatingTasks(t *testing.T) {
 	harness := newQueueHarness(t)
 	ctx := context.Background()
@@ -1559,6 +1585,13 @@ func TestComicImageBatchPreflightRejectsEveryTargetBeforeCreatingTasks(t *testin
 			var taskErr *Error
 			if !errors.As(err, &taskErr) || taskErr.Code != CodeInvalidTask {
 				t.Fatalf("error=%v", err)
+			}
+			if test.name == "missing storyboard" {
+				for _, required := range []string{missingStoryboard.UUID, "GET /api/v1/projects/", "/storyboard-variants", "content_md", "expected_revision", "不要因缺分镜调用 request_user_input"} {
+					if !strings.Contains(taskErr.Details, required) {
+						t.Fatalf("missing actionable recovery %q: %s", required, taskErr.Details)
+					}
+				}
 			}
 			var count int64
 			if err := harness.runtime(t).store.DB().Table("production_task_runs").Where("kind=?", KindComicImageGeneration).Count(&count).Error; err != nil || count != 0 {

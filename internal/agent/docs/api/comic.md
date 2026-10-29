@@ -57,13 +57,14 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.items[].page_role` | string | `front_cover`、`body` 或 `back_cover`。 |
 | `data.items[].title` | string | Section 标题。 |
 | `data.items[].description_md` | string | Section 描述 Markdown。 |
+| `data.items[].has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.items[].current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.items[].revision` | integer | Section 当前 revision。 |
 
 ### request_api 示例
 
 ```json
-{"method":"GET","url":"/api/v1/projects/<project_uuid>/chapters/<chapter_uuid>/comic-sections","response_filter":".data.items[] | {uuid,section_no,page_role,title,revision}"}
+{"method":"GET","url":"/api/v1/projects/<project_uuid>/chapters/<chapter_uuid>/comic-sections","response_filter":".data.items[] | {uuid,section_no,page_role,title,has_storyboard,revision}"}
 ```
 
 ### 接口约束
@@ -95,6 +96,7 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.page_role` | string | 最终页面角色。 |
 | `data.title` | string | 标题。 |
 | `data.description_md` | string | 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 新 Section revision。 |
 
@@ -134,6 +136,7 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.page_role` | string | 最终页面角色。 |
 | `data.title` | string | 最终标题。 |
 | `data.description_md` | string | 最终描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 更新后的 revision。 |
 
@@ -171,6 +174,7 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.items[].page_role` | string | 页面角色。 |
 | `data.items[].title` | string | 标题。 |
 | `data.items[].description_md` | string | 描述 Markdown。 |
+| `data.items[].has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.items[].current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.items[].revision` | integer | Section revision；被重排的正文页会推进 revision。 |
 
@@ -238,6 +242,7 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.page_role` | string | 页面角色。 |
 | `data.title` | string | 标题。 |
 | `data.description_md` | string | 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 导入后的 revision。 |
 
@@ -309,6 +314,7 @@ Comic 的 `section_no` 是包含封面和封底的绝对装订顺序。`page_rol
 | `data.page_role` | string | 页面角色。 |
 | `data.title` | string | 标题。 |
 | `data.description_md` | string | 描述 Markdown。 |
+| `data.has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.revision` | integer | 选择后的 revision。 |
 

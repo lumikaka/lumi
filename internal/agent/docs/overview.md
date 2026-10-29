@@ -26,6 +26,18 @@
 
 单对象直接放在 `data`，不得再包一层 `item`；列表放在 `data.items`。页码分页同时返回 `data.pagination={per_page,current_page,last_page,total}`；Cursor 分页同时返回 `data.cursor_pagination={per_page,next_cursor,prev_cursor,has_more}`。领域文档只描述 `data` 内部字段，不重复本节信封。
 
+## response_filter
+
+`response_filter` 必填，仅用于字段投影，不是完整 jq。支持 `.data` 字段路径、`[]` 数组展开、直接字段选择及一层嵌套对象投影；字段须来自目标 Route Contract。不支持计算、比较、别名、函数（如 `select()`、`map()`）或多段管道。Reviewed Route 禁止数组下标；对象和列表必须窄投影，只有 `data=null` 使用 `.data`。其他 Route 按其 Contract。
+
+```text
+.data | {uuid,revision}
+.data.items[] | {uuid,section_no,page_role,title,has_storyboard,revision}
+.data | {uuid,current_storyboard:{uuid,version_no},revision}
+```
+
+Section 是否有当前分镜直接读取 `has_storyboard`；需要版本或全文时再选择 `current_storyboard`。
+
 ## 公开标识规则
 
 URL、请求 JSON、响应 JSON、Agent 工具参数及实时 payload 只允许使用公开 UUIDv7，字段名使用 `uuid` 或带语义的 `*_uuid`。数据库内部自增 `id`、外键 ID、Provider 合成 call ID 和其他内部标识不得出现在公开 Contract，也不得通过 `response_filter` 探测。

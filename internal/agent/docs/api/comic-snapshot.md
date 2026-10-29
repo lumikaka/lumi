@@ -97,6 +97,7 @@
 | `data.items[].page_role` | string | `front_cover`、`body` 或 `back_cover`。 |
 | `data.items[].title` | string | Section 标题。 |
 | `data.items[].description_md` | string | Section 描述 Markdown。 |
+| `data.items[].has_storyboard` | boolean | 是否存在可读取的当前分镜版本；始终返回，包括 `false`，不表示图片已生成。 |
 | `data.items[].current_storyboard` | object 或 null | 当前分镜；非空时含 `uuid:string(UUIDv7)`、`version_no:integer`、`content_md:string`、`source_type:string`、`created_at:string(date-time)`。 |
 | `data.items[].revision` | integer | 恢复后的 Section revision。 |
 

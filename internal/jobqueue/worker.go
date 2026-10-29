@@ -205,6 +205,10 @@ func parseStoryChapterResponse(raw string, snapshot storyGenerationSnapshot) (co
 	output.Title = strings.TrimSpace(output.Title)
 	output.Content = strings.TrimSpace(output.Content)
 	output.ContentFormat = strings.ToLower(strings.TrimSpace(output.ContentFormat))
+	// txt is the only accepted format, so a model that omits the field is unambiguous.
+	if output.ContentFormat == "" {
+		output.ContentFormat = "txt"
+	}
 	if output.ChapterCode == "" || output.ChapterCode != snapshot.ChapterCode {
 		return "", "", "", &llm.Error{Code: llm.CodeInvalidContent, SafeMessage: "模型返回的 chapter_code 与任务快照不一致。", Retryable: false}
 	}

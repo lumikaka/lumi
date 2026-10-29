@@ -536,6 +536,11 @@ func TestWorkflowExecutionRecoveryAndForeignCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// This Turn was queued before initialization acquired the project.
+	turn, err := agents.CreateTurn(t.Context(), r.projectUUID, thread.UUID, agent.CreateTurnInput{InputText: "独立 Turn"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	workflowUUID, _ := newUUIDv7()
 	stepUUID, _ := newUUIDv7()
 	now := time.Now().UTC()
@@ -557,18 +562,18 @@ func TestWorkflowExecutionRecoveryAndForeignCancellation(t *testing.T) {
 		t.Fatalf("missing Workflow execution: %+v", step)
 	}
 	jobs, err := r.client.JobList(t.Context(), river.NewJobListParams())
-	if err != nil || len(jobs.Jobs) != 1 {
+	if err != nil || len(jobs.Jobs) != 2 {
 		t.Fatalf("Workflow repeated recovery: %+v / %v", jobs, err)
 	}
-	if _, err := r.executionContext(t.Context(), jobs.Jobs[0]); err != nil {
+	stepJob, err := r.client.JobGet(t.Context(), step.JobID.Int64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.executionContext(t.Context(), stepJob); err != nil {
 		t.Fatal(err)
 	}
 	// Same River kind, but a different business owner: repair only the stale
 	// Turn. Do not cancel the Workflow Step's job.
-	turn, err := agents.CreateTurn(t.Context(), r.projectUUID, thread.UUID, agent.CreateTurnInput{InputText: "独立 Turn"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	_, err = r.sqlDB.ExecContext(t.Context(), `UPDATE chat_turns SET river_job_id=?,execution_uuid=? WHERE uuid=?`, step.JobID.Int64, step.ExecutionUUID.String, turn.UUID)
 	if err != nil {
 		t.Fatal(err)

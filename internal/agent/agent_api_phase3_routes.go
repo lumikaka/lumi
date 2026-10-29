@@ -100,6 +100,7 @@ func projectSetupDraftUpdateBodySchema() map[string]any {
 		"generation_language": apiEnum("生成语言。", "zh-Hans", "en"),
 		"overall_style":       apiLimitedString("初始化草稿中的整体画风。", 12000),
 		"generation_brief":    apiLimitedString("基于原始需求、用户补充和明确展示建议整理的生成 Brief。", 4000),
+		"generation_scope":    apiEnum("定稿后自动生成的范围：project_only 只建空项目不生成；premise 生成到第一章正文、Story Profile 与 Premise 设定；first_image 生成到第一本绘本的首图（默认）。只能根据用户明确表达的意图设置。", "project_only", "premise", "first_image"),
 		"picture_book":        setupPictureBook,
 	}, "expected_revision")
 }

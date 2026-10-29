@@ -38,8 +38,17 @@ func executePhase3AgentAPIRoute(ctx context.Context, service *Service, store *pr
 			// durable bootstrap lineage and exact confirmation request.
 			creationSessionUUID = runtimeSessionUUID
 		}
+		// Scope is a finalized setup field; the model-facing body cannot carry it.
+		setup, err := store.ProjectSetup(ctx)
+		if err != nil {
+			return nil, true, err
+		}
+		if setup.DraftValues.GenerationScope == project.GenerationScopeProjectOnly {
+			return nil, true, domainError(CodeValidation, "项目未启用自动生成", "已定稿的 generation_scope 为 project_only，不启动自动生成流程。", nil)
+		}
 		workflow, err := service.CreateYoloWorkflow(ctx, tc.ProjectUUID, CreateYoloInput{
-			Title: projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
+			GenerationScope: setup.DraftValues.GenerationScope,
+			Title:           projectDetail.Name, StoryPrompt: stringArg(args, "story_prompt"), ProviderUUID: tc.Run.ProviderUUID,
 			Model: stringArg(args, "model"), IdempotencyKey: bootstrapYoloIdempotencyPrefix + creationSessionUUID,
 			Invocation: chatToolInvocationContext(tc, execution), CreationSessionUUID: creationSessionUUID,
 		})

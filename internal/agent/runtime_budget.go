@@ -443,5 +443,8 @@ func (service *Service) finalizeBudget(ctx context.Context, store *project.Store
 }
 
 func (service *Service) failBudgetRun(ctx context.Context, store *project.Store, tc toolContext) error {
+	if reconciled, err := service.reconcileBudgetComicArtifacts(ctx, store, tc); err != nil || reconciled {
+		return err
+	}
 	return service.failRun(ctx, store, tc, CodeTurnBudget, "Agent 已达到本轮安全预算，且未能生成可靠的最终说明。")
 }

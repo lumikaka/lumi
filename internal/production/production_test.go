@@ -281,7 +281,7 @@ func TestCreateGeneratedSectionsSupportsContractMaximum(t *testing.T) {
 		t.Fatalf("generated sections=%d, want %d", len(sections), MaxGeneratedComicSections)
 	}
 	for index, section := range sections {
-		if section.SectionNo != index+1 || section.Title != generated[index].Title || section.CurrentStoryboard == nil || section.CurrentStoryboard.ContentMD != generated[index].StoryboardMD {
+		if section.SectionNo != index+1 || section.Title != generated[index].Title || !section.HasStoryboard || section.CurrentStoryboard == nil || section.CurrentStoryboard.ContentMD != generated[index].StoryboardMD {
 			t.Fatalf("section %d=%+v", index+1, section)
 		}
 	}

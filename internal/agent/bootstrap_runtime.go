@@ -65,6 +65,11 @@ func (service *Service) reconcileBootstrapLifecycle(ctx context.Context, store *
 	if setup.SetupStatus != project.SetupStatusReady {
 		return false, nil
 	}
+	// The user chose an empty project: finalization is the terminal bootstrap
+	// transition and no generation Workflow is started.
+	if setup.DraftValues.GenerationScope == project.GenerationScopeProjectOnly {
+		return false, nil
+	}
 
 	creationSessionUUID := originSessionUUID
 	allowThreadEvidence := false

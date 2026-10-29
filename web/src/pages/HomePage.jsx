@@ -157,6 +157,7 @@ export default function HomePage() {
   const [parentPath, setParentPath] = useState('')
   const [parentPathDirty, setParentPathDirty] = useState(false)
   const [generationLanguage, setGenerationLanguage] = useState('zh-Hans')
+  const [generationScope, setGenerationScope] = useState('first_image')
   const [overallStyle, setOverallStyle] = useState('')
   const [overallStyleDirty, setOverallStyleDirty] = useState(false)
   const [pictureBookDraft, setPictureBookDraft] = useState(defaultPictureBookDraft)
@@ -228,6 +229,7 @@ export default function HomePage() {
   const resetCreationFields = () => {
     const resetLanguage = 'zh-Hans'
     setCreateMode('yolo')
+    setGenerationScope('first_image')
     setName('')
     setParentPath(defaultProjectParentPath)
     setParentPathDirty(false)
@@ -269,6 +271,7 @@ export default function HomePage() {
       const workflow = await createYoloWorkflow(project.uuid, {
         title: name,
         story_prompt: storyPrompt,
+        generation_scope: generationScope,
         idempotency_key: `yolo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       })
       return { project, workflow }
@@ -731,6 +734,7 @@ export default function HomePage() {
             {currentCreateErrors.parentPath ? <p className="project-field-error" id="new-project-parent-path-error" role="alert">{t(currentCreateErrors.parentPath)}</p> : null}
           </div>
 		  <label>{t('projects.field.generation_language')}<select value={generationLanguage} onChange={(event) => setGenerationLanguage(event.target.value)}><option value="zh-Hans">{t('common.language.zh_hans')}</option><option value="en">{t('common.language.en')}</option></select></label>
+		  {createMode === 'yolo' ? <label>{t('projects.field.generation_scope')}<select value={generationScope} onChange={(event) => setGenerationScope(event.target.value)}><option value="first_image">{t('projects.field.generation_scope_first_image')}</option><option value="premise">{t('projects.field.generation_scope_premise')}</option></select></label> : null}
 		  <details ref={overallStyleDetailsRef} className="project-overall-style">
 		    <summary><span>{t('projects.field.overall_style')}</span><small>{t(usingDefaultOverallStyle ? 'projects.field.overall_style_default' : 'projects.field.overall_style_custom')}</small></summary>
 		    <div className="project-overall-style__editor">

@@ -589,6 +589,7 @@ type CreateYoloInput struct {
 	ProviderUUID        string                  `json:"-"`
 	Model               string                  `json:"model"`
 	IdempotencyKey      string                  `json:"idempotency_key"`
+	GenerationScope     string                  `json:"generation_scope"`
 	Invocation          DomainInvocationContext `json:"-"`
 	CreationSessionUUID string                  `json:"-"`
 }

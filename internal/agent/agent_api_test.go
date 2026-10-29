@@ -9,6 +9,7 @@ import (
 
 	agentprompts "lumi/internal/agent/prompts"
 	"lumi/internal/llm"
+	"lumi/internal/production"
 	"lumi/internal/story"
 )
 
@@ -674,6 +675,55 @@ func TestAgentAPIProjectorsAreComplete(t *testing.T) {
 	}
 }
 
+func TestComicSectionHasStoryboardProjection(t *testing.T) {
+	h := newAgentHarness(t)
+	ctx := context.Background()
+	chapter, err := story.NewService(h.store).CreateChapter(ctx, story.CreateChapterInput{ChapterCode: "vol01.ch01", Title: "Storyboard presence"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := production.NewService(h.store, nil)
+	want := map[string]bool{}
+	for _, script := range []string{"", "Full storyboard must not be included in the presence projection"} {
+		section, err := service.CreateSection(ctx, chapter.UUID, production.CreateSectionInput{Title: "Page", StoryboardMD: script})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want[section.UUID] = script != ""
+	}
+	tc := toolContext{ProjectUUID: h.project.UUID, ToolMode: ToolModeProjectAPI, Thread: threadRecord{UUID: mustAgentUUID(t), Scope: ThreadScopeProject}}
+	base := "/api/v1/projects/" + h.project.UUID + "/chapters/" + chapter.UUID + "/comic-sections"
+	value, err := executeRequestAPITool(ctx, h.service, h.store, tc, toolExecutionRecord{}, map[string]any{
+		"method": "GET", "url": base,
+		"response_filter": ".data.items[] | {uuid,page_role,has_storyboard,revision}",
+	})
+	items, ok := value.([]any)
+	if err != nil || !ok || len(items) != len(want) {
+		t.Fatalf("presence projection=%+v err=%v", value, err)
+	}
+	for _, item := range items {
+		section := item.(map[string]any)
+		uuid := section["uuid"].(string)
+		if section["has_storyboard"] != want[uuid] || len(section) != 4 {
+			t.Fatalf("presence projection=%+v want=%v", section, want[uuid])
+		}
+		detail, err := executeRequestAPITool(ctx, h.service, h.store, tc, toolExecutionRecord{}, map[string]any{
+			"method": "GET", "url": base + "/" + uuid,
+			"response_filter": ".data | {uuid,has_storyboard,revision}",
+		})
+		if err != nil || detail.(map[string]any)["has_storyboard"] != want[uuid] {
+			t.Fatalf("presence detail=%+v err=%v", detail, err)
+		}
+	}
+	for _, route := range agentAPIRoutes() {
+		if route.Projector == "comic_section" || route.Projector == "comic_section_list" {
+			if !strings.Contains(recommendedAgentAPIResponseFilter(route), "has_storyboard") {
+				t.Errorf("route %s does not recommend has_storyboard", route.ID)
+			}
+		}
+	}
+}
+
 func TestResponseFilterAllowsOnlyFiniteDataProjection(t *testing.T) {
 	envelope := map[string]any{"success": true, "data": map[string]any{"items": []any{map[string]any{"uuid": "u1", "title": "one"}, map[string]any{"uuid": "u2", "title": "two"}}, "pagination": map[string]any{"total": float64(2)}}}
 	value, err := runResponseFilter(envelope, ".data.items[] | {uuid,title}")
@@ -685,7 +735,11 @@ func TestResponseFilterAllowsOnlyFiniteDataProjection(t *testing.T) {
 	if err != nil || value != "one" {
 		t.Fatalf("indexed path value=%+v err=%v", value, err)
 	}
-	for _, expression := range []string{".items", ".data..items", ".data | map(.)", ".data | $x", ".data; system", ".data | {uuid", ".data.items[-1]"} {
+	for _, expression := range []string{".items", ".data..items", ".data | map(.)", ".data | $x", ".data; system", ".data | {uuid", ".data.items[-1]",
+		".data.items[] | {has_storyboard:(.current_storyboard != null)}",
+		".data.items[] | {storyboard_version:.current_storyboard.version_no}",
+		".data.items[] | select(.section_no >= 5) | {uuid}",
+	} {
 		if _, err := runResponseFilter(envelope, expression); err == nil || errorCode(err) != CodeToolValidation {
 			t.Errorf("unsafe filter accepted: %q err=%v", expression, err)
 		}

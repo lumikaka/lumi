@@ -214,6 +214,7 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 				GenerationLanguage *string                   `json:"generation_language"`
 				OverallStyle       *string                   `json:"overall_style"`
 				GenerationBrief    *string                   `json:"generation_brief"`
+				GenerationScope    *string                   `json:"generation_scope"`
 				PictureBook        *project.PictureBookInput `json:"picture_book"`
 			}
 			if decodeErr := json.Unmarshal(encoded, &request); decodeErr != nil {
@@ -222,8 +223,8 @@ func installProjectSetupDispatcherForTest(t *testing.T, harness *agentHarness) {
 			state, err = harness.store.UpdateProjectSetupDraft(ctx, project.SetupDraftPatchInput{
 				ExpectedRevision: request.ExpectedRevision, ProjectName: request.ProjectName,
 				GenerationLanguage: request.GenerationLanguage, OverallStyle: request.OverallStyle,
-				GenerationBrief: request.GenerationBrief,
-				PictureBook:     request.PictureBook,
+				GenerationBrief: request.GenerationBrief, GenerationScope: request.GenerationScope,
+				PictureBook: request.PictureBook,
 			})
 		case input.Method == "POST" && strings.HasSuffix(input.Path, "/project-setup-finalizations"):
 			state, err = harness.store.FinalizeProjectSetup(ctx, intArg(input.Body, "expected_revision"))
@@ -485,7 +486,7 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 	if err := json.Unmarshal([]byte(snapshotJSON), &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 6 || snapshot.CreationSessionUUID != sessionUUID || len(snapshot.CreationReferences) != 2 {
+	if snapshot.Version != 7 || snapshot.GenerationScope != "first_image" || snapshot.CreationSessionUUID != sessionUUID || len(snapshot.CreationReferences) != 2 {
 		t.Fatalf("creation reference snapshot=%+v", snapshot)
 	}
 	if got := snapshot.CreationReferences[0]; got.ReferenceUUID != includedReferenceUUID || got.FileUUID != includedFileUUID || got.ReferenceRole != "character" || got.Title != "月光邮差" || got.Instruction != "保持角色轮廓和服装层次" || !got.IncludeInYolo || got.PlanSource != project.SetupSourceUserConfirmed {
@@ -521,6 +522,9 @@ func TestReadyBootstrapTurnOnlyAllowsReadsAndAuthorizedYolo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := harness.execute(t, thread.UUID, turn.UUID, JobChatResume); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := harness.store.TakeOverInitialization(ctx, workflow.UUID); err != nil {
 		t.Fatal(err)
 	}
 	secondTurn, err := harness.service.CreateTurn(ctx, harness.project.UUID, thread.UUID, CreateTurnInput{InputText: "现在手工补一个章节"})
@@ -893,5 +897,52 @@ func TestBootstrapExplicitLaterTurnAutoFinalizesPendingSetupAndStartsWorkflow(t 
 	}
 	if err := harness.store.DB().Table("workflows").Select("idempotency_key").Where("kind=?", WorkflowYolo).Take(&idempotencyKey).Error; err != nil || idempotencyKey != bootstrapYoloIdempotencyPrefix+creationSessionUUID {
 		t.Fatalf("recovered workflow idempotency_key=%q err=%v", idempotencyKey, err)
+	}
+}
+
+func TestBootstrapProjectOnlyScopeFinalizesWithoutStartingWorkflow(t *testing.T) {
+	harness := newAgentHarness(t)
+	installProjectSetupDispatcherForTest(t, harness)
+	ctx := context.Background()
+	creationSessionUUID := mustAgentUUID(t)
+	makeHarnessProjectDraft(t, harness, mustAgentUUID(t), "先帮我建一个空的绘本项目，讲小狐狸送信。")
+	bootstrap, err := harness.service.BootstrapConversation(ctx, harness.project.UUID, creationSessionUUID, "先帮我建一个空的绘本项目，讲小狐狸送信。", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setupPatch := map[string]any{
+		"method": "PATCH", "url": "/api/v1/projects/" + harness.project.UUID + "/project-setup",
+		"request_body": map[string]any{
+			"expected_revision": float64(1), "project_name": "月光邮差", "generation_language": "zh-Hans",
+			"overall_style": "温暖透明水彩", "generation_brief": "小狐狸给月亮送信。", "generation_scope": "project_only",
+			"picture_book": map[string]any{"format": "vertical_strip"},
+		},
+		"response_filter": ".data | {uuid,setup_status,status,revision,draft_values,field_sources,missing_information}",
+	}
+	encoded, _ := json.Marshal(setupPatch)
+	harness.model.respond = func(call int, request llm.ChatRequest) (llm.ChatResponse, error) {
+		switch call {
+		case 1:
+			return llm.ChatResponse{Message: llm.ChatMessage{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "setup-patch", Name: "request_api", Arguments: string(encoded)}}}, FinishReason: "tool_calls"}, nil
+		case 2:
+			return finalResponse("空项目已就绪。"), nil
+		default:
+			t.Fatalf("unexpected model call %d", call)
+			return finalResponse("unexpected"), nil
+		}
+	}
+	if err := harness.execute(t, bootstrap.Thread.UUID, bootstrap.Turn.UUID, JobChatTurn); err != nil {
+		t.Fatalf("project_only bootstrap should finish the turn: %v", err)
+	}
+	if harness.store.SetupStatus() != project.SetupStatusReady {
+		t.Fatalf("setup status=%s", harness.store.SetupStatus())
+	}
+	setup, err := harness.store.ProjectSetup(ctx)
+	if err != nil || setup.DraftValues.GenerationScope != project.GenerationScopeProjectOnly || setup.FieldSources["generation_scope"] != project.SetupSourceUserConfirmed {
+		t.Fatalf("setup scope=%q sources=%v err=%v", setup.DraftValues.GenerationScope, setup.FieldSources, err)
+	}
+	var workflows int64
+	if err := harness.store.DB().Table("workflows").Where("kind=?", WorkflowYolo).Count(&workflows).Error; err != nil || workflows != 0 {
+		t.Fatalf("project_only started workflows=%d err=%v", workflows, err)
 	}
 }

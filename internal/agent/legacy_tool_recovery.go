@@ -73,6 +73,20 @@ func (service *Service) executeLegacyToolRecovery(ctx context.Context, store *pr
 	if normalizedToolMode(tc.ToolMode) != ToolModeLegacyTyped || !legacyRecoveryToolAllowed(execution.ToolName, tc.Thread) {
 		return nil, domainError(CodeToolNotAllowed, "Legacy Tool recovery 越界", "只有冻结的 legacy Run snapshot 可以恢复旧 Tool。", nil)
 	}
+	switch execution.ToolName {
+	case "get_story_profile", "list_chapters", "get_chapter", "get_premise", "list_premise_assets", "get_premise_asset", "get_comic_section":
+		// Frozen read intents remain available during initialization.
+	case currentProjectAPIToolName:
+		if stringArg(args, "method") != "GET" {
+			if err := requireAgentInitializationWriteAvailable(ctx, store, tc, agentAPIRequest{Method: "POST"}); err != nil {
+				return nil, err
+			}
+		}
+	default:
+		if err := requireAgentInitializationWriteAvailable(ctx, store, tc, agentAPIRequest{Method: "POST"}); err != nil {
+			return nil, err
+		}
+	}
 	storyService := story.NewService(store)
 	productionService := production.NewService(store, service.hub)
 	switch execution.ToolName {

@@ -44,6 +44,24 @@ type yoloSnapshot struct {
 	OutputSize            string                      `json:"output_size,omitempty"`
 	CreationSessionUUID   string                      `json:"creation_session_uuid,omitempty"`
 	CreationReferences    []yoloCreationReference     `json:"creation_references,omitempty"`
+	GenerationScope       string                      `json:"generation_scope,omitempty"`
+}
+
+// yoloScopeFinalStep is the last YOLO step created for each generation scope.
+// Steps are always a prefix of YoloStepKeys so recovery keeps one topology.
+var yoloScopeFinalStep = map[string]string{
+	project.GenerationScopePremise:    "premise",
+	project.GenerationScopeFirstImage: "first_section_image",
+}
+
+func yoloStepKeysForScope(scope string) []string {
+	final := yoloScopeFinalStep[scope]
+	for index, stepKey := range YoloStepKeys {
+		if stepKey == final {
+			return YoloStepKeys[:index+1]
+		}
+	}
+	return YoloStepKeys
 }
 
 type yoloCreationReference struct {
@@ -117,6 +135,14 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 	creationSessionUUID := strings.TrimSpace(input.CreationSessionUUID)
 	if len(key) < 8 || len(key) > 160 || (strings.TrimSpace(input.ProviderUUID) != "" && !isUUIDv7(strings.TrimSpace(input.ProviderUUID))) || (creationSessionUUID != "" && !isUUIDv7(creationSessionUUID)) {
 		return Workflow{}, domainError(CodeValidation, "自动生成参数无效", "idempotency_key 需要 8 到 160 字符。", nil)
+	}
+	scope := project.GenerationScopeFirstImage
+	if strings.TrimSpace(input.GenerationScope) != "" {
+		normalized, valid := project.NormalizeGenerationScope(input.GenerationScope)
+		if !valid || yoloScopeFinalStep[normalized] == "" {
+			return Workflow{}, domainError(CodeValidation, "自动生成范围无效", "generation_scope 只支持 premise 或 first_image；project_only 不启动自动生成。", nil)
+		}
+		scope = normalized
 	}
 	invocation, err := normalizeYoloInvocation(input.Invocation)
 	if err != nil {
@@ -225,7 +251,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		if err != nil {
 			return err
 		}
-		snapshot, _ := json.Marshal(yoloSnapshot{Version: 6, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, ImageEnableThinking: imageResolved.ImageEnableThinking, ImagePromptExtend: imageResolved.ImagePromptExtend, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String(), CreationSessionUUID: creationSessionUUID, CreationReferences: creationReferences})
+		snapshot, _ := json.Marshal(yoloSnapshot{Version: 7, GenerationScope: scope, ProjectUUID: projectUUID, GenerationLanguage: detail.GenerationLanguage, StoryPrompt: prompt, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, ImageProviderUUID: imageResolved.UUID, ImageModel: imageModel, ImageModelSource: imageModelSource, ImageEnableThinking: imageResolved.ImageEnableThinking, ImagePromptExtend: imageResolved.ImagePromptExtend, SelectionProviderUUID: selectionResolved.UUID, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource, Prompts: frozenPrompts, PictureBook: &pictureBook, OutputSize: outputSize.String(), CreationSessionUUID: creationSessionUUID, CreationReferences: creationReferences})
 		result, err := tx.ExecContext(ctx, `INSERT INTO workflows(uuid,project_id,thread_id,kind,title,status,input_version,input_snapshot,idempotency_key,provider_uuid,model,model_source,created_at,updated_at) VALUES(?,?,?,? ,?,'queued',1,?,?,?,?,?,?,?)`, workflowUUID, pid, threadID, WorkflowYolo, title, string(snapshot), key, resolved.UUID, model, modelSource, now, now)
 		if err != nil {
 			return err
@@ -235,7 +261,7 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 			return err
 		}
 		var firstStepUUID string
-		for index, stepKey := range YoloStepKeys {
+		for index, stepKey := range yoloStepKeysForScope(scope) {
 			stepUUID, err := newUUIDv7()
 			if err != nil {
 				return err
@@ -614,7 +640,7 @@ func (service *Service) markWorkflowStepWaiting(ctx context.Context, store *proj
 
 func (service *Service) runYoloStep(ctx context.Context, store *project.Store, workflow workflowRecord, step workflowStepRecord) (map[string]any, bool, error) {
 	var snapshot yoloSnapshot
-	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5 && snapshot.Version != 6) || snapshot.ProjectUUID != store.ProjectUUID() {
+	if err := json.Unmarshal([]byte(workflow.InputSnapshot), &snapshot); err != nil || (snapshot.Version != 1 && snapshot.Version != 2 && snapshot.Version != 3 && snapshot.Version != 4 && snapshot.Version != 5 && snapshot.Version != 6 && snapshot.Version != 7) || snapshot.ProjectUUID != store.ProjectUUID() {
 		return nil, false, domainError(CodeStateConflict, "自动生成输入快照损坏", "workflow 无法安全恢复。", err)
 	}
 	// Older workflows predate this option and always enabled prompt extension.
@@ -1770,7 +1796,7 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 				return err
 			}
 			if threadType == ThreadTypeWorkflow {
-				completionMessage, err := yoloCompletionMessage(output)
+				completionMessage, err := yoloCompletionMessageTx(ctx, tx, workflow, step, output)
 				if err != nil {
 					return err
 				}
@@ -1839,7 +1865,27 @@ func (service *Service) completeWorkflowStep(ctx context.Context, store *project
 	return nil
 }
 
-func yoloCompletionMessage(output map[string]any) (string, error) {
+func yoloCompletionMessageTx(ctx context.Context, tx *sql.Tx, workflow workflowRecord, step workflowStepRecord, output map[string]any) (string, error) {
+	if step.StepKey == "premise" {
+		var raw string
+		if err := tx.QueryRowContext(ctx, `SELECT output_json FROM workflow_steps WHERE workflow_id=? AND step_key='story' AND status='completed'`, workflow.ID).Scan(&raw); err != nil {
+			return "", domainError(CodeStateConflict, "自动生成完成资源无效", "story 步骤输出缺失。", err)
+		}
+		var storyOutput map[string]any
+		_ = json.Unmarshal([]byte(raw), &storyOutput)
+		chapterUUID, _ := storyOutput["chapter_uuid"].(string)
+		if !isCanonicalUUIDv7(chapterUUID) {
+			return "", domainError(CodeStateConflict, "自动生成完成资源无效", "story 步骤没有返回规范的 Chapter UUIDv7。", nil)
+		}
+		return fmt.Sprintf(
+			"自动生成已完成：[第一章正文](@project/chapters/%s/body)、[Story Profile](@project/story-profile)和[Premise](@project/premise)均已就绪。按本次设定的生成范围，未继续生成页面脚本和画面。",
+			chapterUUID,
+		), nil
+	}
+	return yoloFinalImageCompletionMessage(output)
+}
+
+func yoloFinalImageCompletionMessage(output map[string]any) (string, error) {
 	chapterUUID, _ := output["chapter_uuid"].(string)
 	bodyUUID, _ := output["body_section_uuid"].(string)
 	if bodyUUID == "" {

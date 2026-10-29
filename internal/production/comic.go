@@ -1720,6 +1720,7 @@ func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, 
 			result.CurrentStoryboard = &dto
 		}
 	}
+	result.HasStoryboard = result.CurrentStoryboard != nil
 	if row.CurrentImageVariantID != nil {
 		var variant imageVariantRecord
 		if err := service.store.DB().WithContext(ctx).First(&variant, *row.CurrentImageVariantID).Error; err == nil {

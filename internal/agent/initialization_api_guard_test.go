@@ -31,7 +31,7 @@ func TestInitializationBlocksAgentProductionWritesBeforeDispatch(t *testing.T) {
 				"method": test.method, "url": test.path, "request_body": test.body, "response_filter": ".data | {uuid}",
 			})
 			if errorCode(err) != project.CodeProjectInitializing {
-				t.Fatalf("write escaped initialization guard: %v", err)
+				t.Fatalf("write escaped initialization guard: %#v", err)
 			}
 		})
 	}
@@ -100,7 +100,7 @@ func TestExternalInitializationGuardAllowsAcceptedTaskRecovery(t *testing.T) {
 	api := NewExternalProjectAPI(nil, queue)
 	request, err := api.Prepare(projectUUID, map[string]any{"method": "POST", "url": "/api/v1/projects/" + projectUUID + "/chapters/" + chapterUUID + "/generations", "request_body": map[string]any{"prompt_key": "story_chapter", "prompt": "生成章节"}, "response_filter": ".data | {uuid,status}"})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("prepare: %#v", err)
 	}
 	guarded := false
 	guard := func() error {
@@ -113,5 +113,26 @@ func TestExternalInitializationGuardAllowsAcceptedTaskRecovery(t *testing.T) {
 	queue.task = DomainTask{}
 	if _, err := api.ExecuteGuarded(t.Context(), request, mustAgentUUID(t), guard); err == nil || !guarded || len(queue.requests) != 0 {
 		t.Fatalf("new external task escaped guard: guarded=%v err=%v", guarded, err)
+	}
+}
+
+func TestInitializationBlocksImageAndLegacyWritesFromPreviouslyStartedRun(t *testing.T) {
+	h := newAgentHarness(t)
+	thread := h.createThread(t)
+	tc := toolContext{ProjectUUID: h.project.UUID, Thread: threadRecord{UUID: thread.UUID, Scope: ThreadScopeProject, Scene: legacySceneProjectAssistant}, ToolMode: ToolModeLegacyTyped}
+	h.service.WithImageClient(&imageClientFake{})
+	if _, err := h.service.CreateYoloWorkflow(t.Context(), h.project.UUID, CreateYoloInput{Title: "初始化", StoryPrompt: "生成绘本", IdempotencyKey: "initialization-inflight-tools"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := h.service.executeImageGenTool(t.Context(), h.store, tc, toolExecutionRecord{UUID: mustAgentUUID(t)}, map[string]any{"prompt": "生成新图片"})
+	if errorCode(err) != project.CodeProjectInitializing {
+		t.Fatalf("image tool escaped initialization: %#v", err)
+	}
+	_, err = h.service.executeLegacyToolRecovery(t.Context(), h.store, tc, toolExecutionRecord{ToolName: "update_story_profile"}, map[string]any{"story_md": "不应写入"})
+	if errorCode(err) != project.CodeProjectInitializing {
+		t.Fatalf("legacy write escaped initialization: %#v", err)
+	}
+	if _, err := h.service.executeLegacyToolRecovery(t.Context(), h.store, tc, toolExecutionRecord{ToolName: "get_story_profile"}, nil); err != nil {
+		t.Fatalf("legacy read blocked: %v", err)
 	}
 }

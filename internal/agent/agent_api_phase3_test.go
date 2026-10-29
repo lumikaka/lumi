@@ -259,6 +259,9 @@ func TestEveryPhase3RouteExecutesItsInProcessSuccessPath(t *testing.T) {
 	if _, err := harness.service.CancelWorkflow(ctx, harness.project.UUID, stringArg(yoloWorkflow, "uuid")); err != nil {
 		t.Fatalf("cancel inline Yolo route fixture: %v", err)
 	}
+	if _, err := harness.store.TakeOverInitialization(ctx, stringArg(yoloWorkflow, "uuid")); err != nil {
+		t.Fatal(err)
+	}
 	if resumed, err := harness.service.resumeWorkflowAwait(ctx, harness.store, tc); err != nil || !resumed {
 		t.Fatalf("resume inline Yolo route fixture: resumed=%v err=%v", resumed, err)
 	}

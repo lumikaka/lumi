@@ -4,7 +4,7 @@
 
 ## `POST /api/v1/projects/{project_uuid}/workflows`
 
-在已由 bootstrap 运行时自动定稿的 Setup 上启动自动生成流程，并把当前 Chat Run 持久挂起至 Workflow 终态。运行时从 Setup 中已定稿的 `generation_brief` 生成 `story_prompt`。
+在已由 bootstrap 运行时自动定稿的 Setup 上启动自动生成流程，并把当前 Chat Run 持久挂起至 Workflow 终态。运行时从 Setup 中已定稿的 `generation_brief` 生成 `story_prompt`，并按已定稿的 `generation_scope` 决定创建的步骤：`premise` 只创建到 `premise` 步骤，`first_image` 创建完整步骤；`project_only` 不启动本接口。请求体不接受 `generation_scope`。
 
 ### 请求字段
 
