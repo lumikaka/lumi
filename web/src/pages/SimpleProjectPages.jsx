@@ -606,7 +606,12 @@ function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate,
   const { t } = useI18n()
   const location = useLocation()
   const [exportRequest, setExportRequest] = useState(null)
+  const exportButtonRef = useRef(null)
   const bookTitle = chapterTitle || t('projects.unnamed_picture_book')
+  const closeExport = () => {
+    setExportRequest(null)
+    window.requestAnimationFrame(() => exportButtonRef.current?.focus())
+  }
 
   return (
     <>
@@ -620,12 +625,12 @@ function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate,
         </nav>
         <div className="simple-page-view__actions">
           {children}
-          <button className="simple-button simple-button--secondary" type="button" aria-haspopup="dialog" onClick={() => setExportRequest(comicExportDialogRequest('chapter', chapterUuid, bookTitle))}>
-            <Download size={15} aria-hidden="true" />{t('simple.book.export')}
+          <button ref={exportButtonRef} className="simple-button simple-button--secondary simple-page-view__export" type="button" aria-label={t('simple.book.export')} title={t('simple.book.export')} aria-haspopup="dialog" onClick={() => setExportRequest(comicExportDialogRequest('chapter', chapterUuid, bookTitle))}>
+            <Download size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
-      {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={() => setExportRequest(null)} /> : null}
+      {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={closeExport} /> : null}
     </>
   )
 }
