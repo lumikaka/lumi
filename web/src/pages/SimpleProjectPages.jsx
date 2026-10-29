@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
+  Download,
   GripVertical,
   HelpCircle,
   History,
@@ -86,6 +87,8 @@ import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import { projectRoute } from '../projectRoutes.js'
 import MarkdownEditor from '../components/MarkdownEditor.jsx'
+import ComicExportDialog from '../components/ComicExportDialog.jsx'
+import { comicExportDialogRequest } from './comicExportState.js'
 import {
   COMIC_PAGE_ROLES,
   comicBodyReorderUuids,
@@ -599,6 +602,34 @@ export function SimpleChapterRedirect({ projectUuid }) {
   return <Navigate replace to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}`, location.search)} />
 }
 
+function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate, children }) {
+  const { t } = useI18n()
+  const location = useLocation()
+  const [exportRequest, setExportRequest] = useState(null)
+  const bookTitle = chapterTitle || t('projects.unnamed_picture_book')
+
+  return (
+    <>
+      <div className="simple-page-view__toolbar">
+        <nav className="simple-page-view__breadcrumb" aria-label={t('simple.page.breadcrumb')}>
+          <ol>
+            <li><Link to={projectRoute(projectUuid, '', location.search)} onClick={onNavigate}>{t('simple.shell.page.home')}</Link></li>
+            <li><ChevronRight size={13} aria-hidden="true" /><Link to={projectRoute(projectUuid, 'chapters', location.search)} onClick={onNavigate}>{t('simple.shell.page.books')}</Link></li>
+            <li><ChevronRight size={13} aria-hidden="true" /><span aria-current="location" title={bookTitle} data-user-content>{bookTitle}</span></li>
+          </ol>
+        </nav>
+        <div className="simple-page-view__actions">
+          {children}
+          <button className="simple-button simple-button--secondary" type="button" aria-haspopup="dialog" onClick={() => setExportRequest(comicExportDialogRequest('chapter', chapterUuid, bookTitle))}>
+            <Download size={15} aria-hidden="true" />{t('simple.book.export')}
+          </button>
+        </div>
+      </div>
+      {exportRequest ? <ComicExportDialog projectUuid={projectUuid} request={exportRequest} onClose={() => setExportRequest(null)} /> : null}
+    </>
+  )
+}
+
 export function SimplePagesPage({ project, projectUuid }) {
   const { t } = useI18n()
   const { chapterUuid } = useParams()
@@ -633,15 +664,18 @@ export function SimplePagesPage({ project, projectUuid }) {
   const activeTaskCount = (tasksQuery.data?.items || []).filter((task) => task.kind === 'comic_image_generation' && ACTIVE_TASK_STATUSES.has(task.status) && sections.some((section) => section.uuid === task.resource_uuid)).length
   if (chaptersQuery.isLoading || chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
   return (
-    <div className="simple-project-page simple-pages-page">
-      <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
-      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
-      <SimpleError error={chaptersQuery.error || chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chaptersQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
-      {activeTaskCount ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTaskCount })}</p> : null}
-      {sections.length ? <div className="simple-page-grid">{sections.map((section, index) => <SimpleManagedPageCard key={section.uuid} projectUuid={projectUuid} chapterUuid={chapterUuid} section={section} sections={sections} index={index} pending={remove.isPending || reorder.isPending} onDelete={() => setDeleting(section)} onMove={move} />)}</div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} actions={<button className="simple-button" type="button" onClick={() => setCreating(true)}>{t('simple.pages.add')}</button>} />}
-      {trashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
-      {creating ? <SimpleDialog title={t('simple.pages.add_title')} onClose={() => !create.isPending && setCreating(false)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); create.mutate() }}><label>{t('simple.page.role')}<select value={newPage.role} onChange={(event) => setNewPage((value) => ({ ...value, role: event.target.value }))}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover')}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover')}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input autoFocus maxLength={160} value={newPage.title} onChange={(event) => setNewPage((value) => ({ ...value, title: event.target.value }))} /></label><label>{t('simple.page.text')}<textarea value={newPage.text} onChange={(event) => setNewPage((value) => ({ ...value, text: event.target.value }))} /></label><label>{t('simple.page.visual_direction')}<textarea value={newPage.direction} onChange={(event) => setNewPage((value) => ({ ...value, direction: event.target.value }))} /></label><SimpleDialogActions pending={create.isPending} submitDisabled={false} onCancel={() => setCreating(false)} /></form></SimpleDialog> : null}
-      {deleting ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deleting) })} pending={remove.isPending} onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)} /> : null}
+    <div className="simple-book-workspace">
+      <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={chapterQuery.data?.title} />
+      <div className="simple-project-page simple-pages-page">
+        <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
+        <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
+        <SimpleError error={chaptersQuery.error || chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chaptersQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
+        {activeTaskCount ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTaskCount })}</p> : null}
+        {sections.length ? <div className="simple-page-grid">{sections.map((section, index) => <SimpleManagedPageCard key={section.uuid} projectUuid={projectUuid} chapterUuid={chapterUuid} section={section} sections={sections} index={index} pending={remove.isPending || reorder.isPending} onDelete={() => setDeleting(section)} onMove={move} />)}</div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} actions={<button className="simple-button" type="button" onClick={() => setCreating(true)}>{t('simple.pages.add')}</button>} />}
+        {trashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
+        {creating ? <SimpleDialog title={t('simple.pages.add_title')} onClose={() => !create.isPending && setCreating(false)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); create.mutate() }}><label>{t('simple.page.role')}<select value={newPage.role} onChange={(event) => setNewPage((value) => ({ ...value, role: event.target.value }))}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover')}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover')}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input autoFocus maxLength={160} value={newPage.title} onChange={(event) => setNewPage((value) => ({ ...value, title: event.target.value }))} /></label><label>{t('simple.page.text')}<textarea value={newPage.text} onChange={(event) => setNewPage((value) => ({ ...value, text: event.target.value }))} /></label><label>{t('simple.page.visual_direction')}<textarea value={newPage.direction} onChange={(event) => setNewPage((value) => ({ ...value, direction: event.target.value }))} /></label><SimpleDialogActions pending={create.isPending} submitDisabled={false} onCancel={() => setCreating(false)} /></form></SimpleDialog> : null}
+        {deleting ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deleting) })} pending={remove.isPending} onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)} /> : null}
+      </div>
     </div>
   )
 }
@@ -1091,16 +1125,10 @@ export function SimplePageView({ project, projectUuid }) {
   const pageItemMenuKeepsRequiredBody = Boolean(pageItemMenuPage) && project?.picture_book?.format !== 'vertical_strip' && comicPageRole(pageItemMenuPage) === 'body' && bodyPageCount <= 1
   return (
     <div className="simple-project-page simple-page-view">
-      <div className="simple-page-view__toolbar">
-        <nav className="simple-page-view__breadcrumb" aria-label={t('simple.page.breadcrumb')}>
-          <ol>
-            <li><Link to={projectRoute(projectUuid, '', location.search)} onClick={confirmBreadcrumbNavigation}>{t('simple.shell.page.home')}</Link></li>
-            <li><ChevronRight size={13} aria-hidden="true" /><Link to={projectRoute(projectUuid, 'chapters', location.search)} onClick={confirmBreadcrumbNavigation}>{t('simple.shell.page.books')}</Link></li>
-            <li><ChevronRight size={13} aria-hidden="true" /><span aria-current="location" title={bookTitle} data-user-content>{bookTitle}</span></li>
-          </ol>
-        </nav>
-        <div className="simple-page-view__actions"><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link><button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button></div>
-      </div>
+      <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={bookTitle} onNavigate={confirmBreadcrumbNavigation}>
+        <Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
+        <button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button>
+      </SimpleBookToolbar>
       <SimpleFeedback feedback={feedback} floating autoDismiss onDismiss={() => setFeedback(null)} />
       <SimpleError error={chapterQuery.error || sectionsQuery.error || storyboardsQuery.error || imagesQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); storyboardsQuery.refetch(); imagesQuery.refetch(); tasksQuery.refetch() }} />
       <div className="simple-page-editor-layout">
@@ -1432,12 +1460,15 @@ export function SimpleBookView({ projectUuid }) {
   }
   if (chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
   return (
-    <div className="simple-project-page simple-book-view">
-      <SimplePageHeading title={t('simple.book.title')} eyebrow={chapterQuery.data?.title} description={t('simple.book.description_manage')} backLabel={t('simple.book.back')} backTo={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}`, location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" disabled={!missing.length || activeTasks.length > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missing.length })}</button><button className="simple-button" type="button" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={15} aria-hidden="true" /> : <Maximize2 size={15} aria-hidden="true" />}{t(fullscreen ? 'simple.book.exit_fullscreen' : 'simple.book.fullscreen')}</button></>} />
-      <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
-      <SimpleError error={chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
-      {activeTasks.length ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTasks.length })}</p> : null}
-      {sections.length ? <div className={`simple-book-reader${fullscreen ? ' is-fullscreen' : ''}`} ref={readerRef} aria-label={t('simple.book.reader')}><header><strong data-user-content>{chapterQuery.data?.title}</strong>{fullscreen ? <button type="button" onClick={toggleFullscreen}><Minimize2 size={18} aria-hidden="true" />{t('simple.book.exit_fullscreen')}</button> : null}</header><div className="simple-book-grid">{sections.map((section) => { const label = comicPageLabel(t, sections, section); const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label); return <article key={section.uuid}><Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)} aria-label={t('simple.book.open_page', { page: label })}><SimpleImage asset={section.current_image?.asset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} /><span>{label}</span></Link><Link className="simple-book-grid__agent" to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`).pathname, search: chatSearch }}><Bot size={13} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link></article> })}</div></div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} />}
+    <div className="simple-book-workspace">
+      <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={chapterQuery.data?.title} />
+      <div className="simple-project-page simple-book-view">
+        <SimplePageHeading title={t('simple.book.title')} eyebrow={chapterQuery.data?.title} description={t('simple.book.description_manage')} backLabel={t('simple.book.back')} backTo={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}`, location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" disabled={!missing.length || activeTasks.length > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missing.length })}</button><button className="simple-button" type="button" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={15} aria-hidden="true" /> : <Maximize2 size={15} aria-hidden="true" />}{t(fullscreen ? 'simple.book.exit_fullscreen' : 'simple.book.fullscreen')}</button></>} />
+        <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
+        <SimpleError error={chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
+        {activeTasks.length ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTasks.length })}</p> : null}
+        {sections.length ? <div className={`simple-book-reader${fullscreen ? ' is-fullscreen' : ''}`} ref={readerRef} aria-label={t('simple.book.reader')}><header><strong data-user-content>{chapterQuery.data?.title}</strong>{fullscreen ? <button type="button" onClick={toggleFullscreen}><Minimize2 size={18} aria-hidden="true" />{t('simple.book.exit_fullscreen')}</button> : null}</header><div className="simple-book-grid">{sections.map((section) => { const label = comicPageLabel(t, sections, section); const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label); return <article key={section.uuid}><Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)} aria-label={t('simple.book.open_page', { page: label })}><SimpleImage asset={section.current_image?.asset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} /><span>{label}</span></Link><Link className="simple-book-grid__agent" to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`).pathname, search: chatSearch }}><Bot size={13} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link></article> })}</div></div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} />}
+      </div>
     </div>
   )
 }

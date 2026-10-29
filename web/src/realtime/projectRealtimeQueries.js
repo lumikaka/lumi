@@ -40,6 +40,7 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   const addPremise = () => premiseKeys.forEach((name) => add(name))
 
   if (/^(website:|story:|production_task:|production:|comic:|asset\/|integrity_scan\/)/.test(event)) add('project-website')
+  if (/^(task|production_task):(completed|failed|cancelled|interrupted)$/.test(event)) add('project-initialization')
 
   let matched = true
   if (event.startsWith('website:')) {
@@ -54,6 +55,7 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     addChat()
     if (payload.workflow_uuid) addWorkflow()
   } else if (event.startsWith('workflow:')) {
+    add('project-initialization')
     addWorkflow()
     if (payload.thread_uuid) addChat()
   } else if (event.startsWith('task:')) {
@@ -121,6 +123,11 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
     add('project-setup')
     add('story-project')
     queryKeys.push(['recent-projects'], ['open-projects'])
+  } else if (event === 'project:initialization_changed') {
+    add('project-initialization')
+    add('story-project')
+    addWorkflow()
+    addChat()
   } else {
     matched = false
   }

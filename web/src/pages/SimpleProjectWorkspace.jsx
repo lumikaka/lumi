@@ -15,10 +15,12 @@ import { listRecentProjects } from '../api/projects.js'
 import { getChapter } from '../api/story.js'
 import { getPremiseAsset, listComicSections } from '../api/production.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
+import { useProjectInitialization } from '../api/useProjectInitialization.js'
 import { projectRoute } from '../projectRoutes.js'
 import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from '../components/ChatArea.jsx'
 import DraftProjectWorkspace from '../components/DraftProjectWorkspace.jsx'
+import ProjectInitializationGate from '../components/ProjectInitializationGate.jsx'
 import GlobalSidebar, { useGlobalSidebarState } from '../components/GlobalSidebar.jsx'
 import { useProjectDashboardMode } from '../components/ProjectDashboardModeContext.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -46,6 +48,8 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
+  const initializationQuery = useProjectInitialization(projectUuid)
+  const initializationBlocked = !initializationQuery.data || initializationQuery.data.locked
   const { selectMode } = useProjectDashboardMode()
   const routeState = useMemo(() => simpleProjectRouteState(location.pathname, projectUuid), [location.pathname, projectUuid])
   const [sidebarCollapsed, setSidebarCollapsed] = useGlobalSidebarState()
@@ -75,10 +79,10 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     : referenceSections[0]
   const chatReference = simpleProjectChatReference(routeState, { asset: referenceAssetQuery.data, chapter: referenceChapterQuery.data, section: referenceSection })
   const project = projectQuery.data
-  const trajectoryView = routeState.key === 'trajectory'
+  const trajectoryView = routeState.key === 'trajectory' && !initializationBlocked
   const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book', trajectory: 'trajectory.title' }[routeState.key] || 'simple.shell.page.home')
   const chatOpen = !trajectoryView && (compact ? chatOverlayOpen : !chatCollapsed)
-  const pageEditorActive = project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
+  const pageEditorActive = !initializationBlocked && project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
   useProjectRealtimeSync(projectUuid)
 
@@ -106,6 +110,10 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   }, [trajectoryView])
 
   useEffect(() => {
+    if (initializationQuery.data?.locked && !compact) setChatCollapsed(false)
+  }, [initializationQuery.data?.locked, compact])
+
+  useEffect(() => {
     if (!chatOverlayOpen) return undefined
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -131,6 +139,11 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
     setChatCollapsed((collapsed) => !collapsed)
   }
 
+  const openInitializationChat = () => {
+    if (compact) setChatOverlayOpen(true)
+    else setChatCollapsed(false)
+  }
+
   return (
     <main className={`simple-project-shell${sidebarCollapsed ? ' global-sidebar-collapsed' : ''}`}>
       <GlobalSidebar collapsed={sidebarCollapsed} mobileOpen={mobileNavigationOpen} onClose={() => setMobileNavigationOpen(false)} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} recentProjects={recentQuery.data?.items || []} recentProjectsLoading={recentQuery.isLoading} onSwitchProject={switchProject} />
@@ -147,7 +160,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
       />
       <div className={`simple-project-workbench${trajectoryView ? ' simple-project-workbench--solo' : !compact && chatCollapsed ? ' is-chat-collapsed' : ''}`}>
         <section className={`simple-project-content${pageEditorActive ? ' simple-project-content--page-editor' : ''}${trajectoryView ? ' simple-project-content--trajectory' : ''}`} aria-label={t('projects.workspace')}>
-          {project?.setup_status === 'draft' ? <DraftProjectWorkspace /> : (
+          {initializationBlocked ? <ProjectInitializationGate projectUuid={projectUuid} query={initializationQuery} onOpenChat={openInitializationChat} /> : project?.setup_status === 'draft' ? <DraftProjectWorkspace /> : (
             <Routes>
               <Route index element={<SimpleHomePage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
               <Route path="settings" element={<SimpleProjectSettingsPage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
@@ -165,9 +178,9 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
             </Routes>
           )}
         </section>
-        {!compact && !trajectoryView ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!chatCollapsed} onToggle={() => setChatCollapsed((value) => !value)} newThreadReference={chatReference} /> : null}
+        {!compact && !trajectoryView ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!chatCollapsed} onToggle={() => setChatCollapsed((value) => !value)} newThreadReference={chatReference} initialization={initializationQuery.data} initializationPending={!initializationQuery.data} /> : null}
       </div>
-      {compact && !trajectoryView && chatOverlayOpen ? <div className="simple-project-overlay" role="dialog" aria-modal="true" aria-label={t('chat.project')}><button className="simple-project-overlay__backdrop" type="button" aria-label={t('simple.shell.close_chat')} onClick={() => setChatOverlayOpen(false)} /><div className="simple-project-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded overlay onToggle={() => setChatOverlayOpen(false)} newThreadReference={chatReference} /></div></div> : null}
+      {compact && !trajectoryView && chatOverlayOpen ? <div className="simple-project-overlay" role="dialog" aria-modal="true" aria-label={t('chat.project')}><button className="simple-project-overlay__backdrop" type="button" aria-label={t('simple.shell.close_chat')} onClick={() => setChatOverlayOpen(false)} /><div className="simple-project-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded overlay onToggle={() => setChatOverlayOpen(false)} newThreadReference={chatReference} initialization={initializationQuery.data} initializationPending={!initializationQuery.data} /></div></div> : null}
     </main>
   )
 }
@@ -246,7 +259,7 @@ function SimpleProjectTopbar({ pageTitle, project, projectUuid, search, chatOpen
               <Link role="menuitem" to={projectRoute(projectUuid, 'settings', search)} onClick={() => setProjectActionsOpen(false)}><Settings size={16} aria-hidden="true" /><span>{t('projects.configuration')}</span></Link>
               <button type="button" role="menuitem" onClick={() => closeAndRun(onSwitchWorkspaceMode)}><LayoutDashboard size={16} aria-hidden="true" /><span>{t('simple.shell.switch_workspace_mode')}</span></button>
               <Link role="menuitem" to={projectRoute(projectUuid, 'llm-logs', search)} onClick={() => setProjectActionsOpen(false)}><Activity size={16} aria-hidden="true" /><span>{t('settings.llm_logs')}</span></Link>
-              <Link role="menuitem" to={projectRoute(projectUuid, 'exports', search)} onClick={() => setProjectActionsOpen(false)}><Download size={16} aria-hidden="true" /><span>{t('projects.tab.exports')}</span></Link>
+              <Link role="menuitem" to={projectRoute(projectUuid, 'exports', search)} onClick={() => setProjectActionsOpen(false)}><Download size={16} aria-hidden="true" /><span>{t('simple.shell.export_history')}</span></Link>
             </div>
           ) : null}
         </div>

@@ -94,7 +94,7 @@ func (service *Service) ReconcileWithEnqueue(ctx context.Context, store *project
 	if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',updated_at=?,error_code='agent_interrupted',error_message='应用重启后从安全步骤恢复。' WHERE status='running' AND workflow_id IN (SELECT id FROM workflows WHERE kind=?)`, now, WorkflowYolo); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',updated_at=?,error_code='agent_interrupted',error_message='应用重启后从安全步骤恢复。' WHERE status='running' AND kind=?`, now, WorkflowYolo); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',updated_at=?,error_code='agent_interrupted',error_message='应用重启后从安全步骤恢复。' WHERE status='running' AND kind=? AND NOT EXISTS(SELECT 1 FROM workflow_steps s JOIN workflow_step_waits a ON a.id=s.current_wait_id WHERE s.workflow_id=workflows.id AND a.status='waiting')`, now, WorkflowYolo); err != nil {
 		return err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT t.id,t.uuid,th.uuid,CASE
@@ -142,7 +142,7 @@ func (service *Service) ReconcileWithEnqueue(ctx context.Context, store *project
 			}
 		}
 	}
-	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id WHERE s.river_job_id IS NULL AND s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? ORDER BY w.id,s.position`, WorkflowYolo)
+	stepRows, err := tx.QueryContext(ctx, `SELECT s.id,s.uuid,th.uuid FROM workflow_steps s JOIN workflows w ON w.id=s.workflow_id JOIN chat_threads th ON th.id=w.thread_id WHERE s.river_job_id IS NULL AND s.status IN ('queued','waiting') AND w.status IN ('queued','running') AND w.kind=? AND NOT EXISTS(SELECT 1 FROM workflow_step_waits a WHERE a.id=s.current_wait_id AND a.status IN ('waiting','ready')) ORDER BY w.id,s.position`, WorkflowYolo)
 	if err != nil {
 		return err
 	}

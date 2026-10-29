@@ -90,4 +90,7 @@ var (
 	ErrJobNotReady     = errors.New("agent job is not ready")
 	ErrWaitingInput    = errors.New("agent waiting for user input")
 	ErrWaitingWorkflow = errors.New("agent waiting for workflow")
+	// The queue has durably recorded a Workflow step dependency. The current
+	// execution can finish; only a persisted dependency wakeup may resume it.
+	ErrWaitingDependencies = errors.New("workflow step waiting for dependencies")
 )

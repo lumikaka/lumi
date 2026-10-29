@@ -787,7 +787,16 @@
     flex-direction: column
     overflow: hidden
 
+  .simple-book-workspace
+    min-height: 100%
+
+    > .simple-project-page
+      min-height: 0
+
   .simple-page-view__toolbar
+    position: sticky
+    top: 0
+    z-index: 20
     flex: 0 0 auto
     min-height: 54px
     padding: 9px 22px
@@ -848,7 +857,12 @@
     .simple-page-view__actions
       flex: 0 0 auto
       display: flex
+      flex-wrap: wrap
+      justify-content: flex-end
       gap: 8px
+
+      > .simple-button
+        white-space: nowrap
 
   .simple-page-editor-layout
     flex: 1 1 auto
@@ -2937,6 +2951,9 @@
     .simple-project-page
       padding: 24px 18px 48px
 
+    .simple-page-view
+      padding: 0
+
     .simple-project-settings-card
       grid-template-columns: 1fr
 
@@ -2988,10 +3005,13 @@
     .simple-page-heading,
     .simple-page-view__toolbar
       display: grid
+      grid-template-columns: minmax(0, 1fr)
 
-    .simple-page-heading__actions,
-    .simple-page-view__actions
+    .simple-page-heading__actions
       justify-content: flex-start
+
+    .simple-page-view__actions
+      justify-content: flex-end
 
     .simple-story-layout
       grid-template-columns: 1fr

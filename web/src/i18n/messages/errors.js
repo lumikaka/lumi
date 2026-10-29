@@ -1,6 +1,8 @@
 import { defineMessages } from './defineMessages.js'
 
 export const errors = defineMessages({
+  'errors.code.project_initializing': ['此项目的自动初始化尚未完成。请查看初始化进度、重试，或在停止后手动接管。', 'Automatic initialization has not finished. View its progress, retry, or take over manually after it stops.'],
+  'errors.code.initialization_handoff_conflict': ['初始化状态已变化，或后台任务仍在收尾。请等待状态更新后再接管。', 'Initialization has changed or background tasks are still finishing. Wait for the updated state before taking over.'],
   'errors.code.agent_cancellation_pending': ['本轮已停止，部分后台任务仍在取消中。后台会继续处理，也可在工作流卡片重试取消。', 'This turn has stopped. Some background tasks are still being cancelled. Cancellation will be retried automatically; you can also retry from the workflow card.'],
   "errors.code.model_price_invalid": ["计价配置或筛选无效，请检查价格档位、地域和所需用量。", "Invalid pricing or filters. Check tiers, region, and required usage."],
   "errors.code.model_price_conflict": ["价格已被更新，请刷新后重试。", "The price was updated. Refresh and try again."],

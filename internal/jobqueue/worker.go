@@ -386,14 +386,61 @@ func (runtime *projectRuntime) handleWorkError(ctx context.Context, record taskR
 		_ = runtime.cancelTaskProjection(context.WithoutCancel(ctx), record, code, message)
 		return err
 	}
-	_ = runtime.failTask(context.WithoutCancel(ctx), record, code, message, retryable, attempt)
+	if retryable && attempt < maxAttempts {
+		if persistErr := runtime.retryTaskFailure(context.WithoutCancel(ctx), record, code, message, attempt); persistErr != nil {
+			return errors.Join(err, persistErr)
+		}
+		return err
+	}
+	if persistErr := runtime.failTask(context.WithoutCancel(ctx), record, code, message, retryable, attempt); persistErr != nil {
+		return errors.Join(err, persistErr)
+	}
 	if !retryable {
 		return river.JobCancel(err)
 	}
-	if attempt >= maxAttempts {
+	return err
+}
+
+// An individual failed attempt is not a terminal task. Keep the business row
+// queued while River backs off, so durable dependants cannot observe a brief
+// failed state and resume before the automatic retry completes.
+func (runtime *projectRuntime) retryTaskFailure(ctx context.Context, record taskRecord, code, message string, attempt int) error {
+	tx, err := taskexecution.Begin(ctx, runtime.sqlDB)
+	if err != nil {
 		return err
 	}
-	return err
+	defer tx.Rollback()
+	now := runtime.manager.now().UTC()
+	result, err := tx.ExecContext(ctx, `UPDATE task_runs SET status='queued',progress=0,attempt=?,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE id=? AND status='running' AND cancel_requested_at IS NULL`, attempt, now, record.ID)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil || changed != 1 {
+		return err
+	}
+	if err := appendTaskEventTx(ctx, tx, record.ID, "retry_scheduled", map[string]any{
+		"project_uuid": runtime.projectUUID, "task_uuid": record.UUID, "chapter_uuid": record.ResourceUUID,
+		"status": StatusQueued, "attempt": attempt, "error_code": code, "error_message": message,
+	}, now); err != nil {
+		return err
+	}
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		if err := queueStoryTaskWorkflowTx(ctx, tx, record.UUID, now); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	task := record.DTO()
+	task.Status, task.Progress, task.Attempt, task.ErrorCode, task.ErrorMessage = StatusQueued, 0, attempt, "", ""
+	task.CompletedAt, task.UpdatedAt = nil, now
+	runtime.broadcast("task:queued", task)
+	if isProjectedStoryTaskWorkflow(record.Kind) {
+		runtime.broadcastStoryTaskWorkflow("workflow:queued", record.UUID)
+	}
+	return nil
 }
 
 func (runtime *projectRuntime) pauseTask(ctx context.Context, record taskRecord, attempt int) error {

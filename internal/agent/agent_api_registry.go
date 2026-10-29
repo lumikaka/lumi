@@ -679,6 +679,9 @@ func routeTargetUUID(request agentAPIRequest, thread threadRecord) string {
 }
 
 func executeAgentAPIRoute(ctx context.Context, service *Service, store *project.Store, tc toolContext, execution toolExecutionRecord, request agentAPIRequest) (any, error) {
+	if err := requireAgentInitializationWriteAvailable(ctx, store, tc, request); err != nil {
+		return nil, err
+	}
 	if request.UseDispatcher {
 		return service.executeDiscoveredProjectAPIRoute(ctx, request, execution)
 	}

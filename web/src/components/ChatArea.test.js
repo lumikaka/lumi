@@ -9,7 +9,7 @@ const messagesSource = readFileSync(new URL('../i18n/messages/chat.js', import.m
 
 test('new thread opens a composer draft and persists the first message without a title form', () => {
   assert.match(source, /function NewThreadDraft[\s\S]*?<ChatComposer/)
-  assert.match(source, /if \(showCreate\)[\s\S]*?<NewThreadDraft/)
+  assert.match(source, /if \(showCreate && !initializationBlocked\)[\s\S]*?<NewThreadDraft/)
   assert.match(source, /const createThreadMutation = useMutation\(\{[\s\S]*?suggestedChatThreadTitle\(text\)[\s\S]*?createChatTurn\(projectUuid, thread\.uuid/)
   assert.doesNotMatch(source, /NewThreadDetail|chat\.thread\.title_field/)
   assert.match(source, /createChatThread\(projectUuid, \{[\s\S]*?title: suggestedChatThreadTitle\(text\),[\s\S]*?\}\)/)
@@ -197,8 +197,8 @@ test('thread list rows are single hoverable targets without secondary actions', 
 
 test('dedicated workflow threads replace chat input with a notice and explicit new conversation navigation', () => {
   assert.match(source, /isWorkflowThread = selectedThread\?\.thread_type === 'workflow'/)
-  assert.match(source, /canAcceptChatInput = selectedThread\?\.thread_type === 'conversation'/)
-  const footer = source.slice(source.indexOf('{isWorkflowThread ? <div'))
+  assert.match(source, /canAcceptChatInput = !initializationBlocked && selectedThread\?\.thread_type === 'conversation'/)
+  const footer = source.slice(source.indexOf(': isWorkflowThread ? <div'))
   assert.match(footer, /chat\.workflow\.read_only[\s\S]*?onClick=\{startNewThread\}[\s\S]*?: canAcceptChatInput \? \([\s\S]*?<FollowUpQueue[\s\S]*?<ChatComposer[\s\S]*?\) : null}/)
   assert.doesNotMatch(footer.split(': canAcceptChatInput')[0], /ChatComposer|FollowUpQueue|AttachmentPicker|\.mutate/)
   assert.match(source, /const send = [\s\S]*?if \(!canAcceptChatInput \|\|/)

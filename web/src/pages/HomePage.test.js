@@ -109,7 +109,7 @@ test('home conversation composer preserves input, retry identity, and public nav
   assert.match(source, /creationMutation\.mutate\(\{ inputText: creationInput, idempotencyKey: checkpoint\.idempotencyKey, referenceFiles:/)
   assert.match(source, /creationCheckpoint\?\.inputText === creationInput/)
   assert.match(source, /window\.sessionStorage\.setItem\(CREATION_CHECKPOINT_KEY/)
-  assert.match(source, /disabled=\{creationPending \|\| !creationInput\.trim\(\)/)
+  assert.match(source, /disabled=\{creationPending \|\| creationProjectBlocked \|\| !creationInput\.trim\(\)/)
   assert.match(source, /const creationPending = creationMutation\.isPending/)
   assert.match(source, /creationSession\?\.status === 'failed'/)
   assert.match(source, /creationError \? <div className="project-creation-composer__failure"/)

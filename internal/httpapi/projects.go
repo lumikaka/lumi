@@ -298,7 +298,7 @@ func ProjectAPIError(err error) error {
 		status = http.StatusForbidden
 	case project.CodeProjectNotOpen, project.CodeIdentityMismatch, project.CodeFormatTooNew, project.CodeProjectDirectoryNameExhausted:
 		status = http.StatusConflict
-	case project.CodeProjectSetupIncomplete, project.CodeProjectSetupConflict, project.CodePictureBookImmutable:
+	case project.CodeProjectSetupIncomplete, project.CodeProjectSetupConflict, project.CodePictureBookImmutable, project.CodeProjectInitializing, project.CodeInitializationHandoffConflict:
 		status = http.StatusConflict
 	case project.CodeMigrationFailed:
 		status = http.StatusInternalServerError

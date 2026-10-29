@@ -47,6 +47,11 @@ func (manager *Manager) awaitDomainTask(ctx context.Context, projectUUID string,
 // Workflow terminal boundary and inserts exactly one active Chat Resume job in
 // the same SQLite/River transaction.
 func readyWorkflowAwaitsTx(ctx context.Context, runtime *projectRuntime, tx *sql.Tx, taskUUID string, now time.Time) error {
+	if runtime != nil {
+		if err := runtime.readyWorkflowStepWaitsTx(ctx, tx, taskUUID, now); err != nil {
+			return err
+		}
+	}
 	rows, err := tx.QueryContext(ctx, `SELECT a.id,a.chat_thread_id,a.chat_turn_id,a.chat_run_id,a.uuid,th.uuid,t.uuid
 		FROM workflow_awaits a
 		JOIN workflows w ON w.id=a.workflow_id

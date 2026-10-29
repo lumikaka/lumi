@@ -229,6 +229,10 @@ func (manager *Manager) openRuntime(ctx context.Context, store *project.Store) (
 		cancel()
 		return nil, err
 	}
+	if err := runtime.reconcileWorkflowStepWaits(ctx); err != nil {
+		cancel()
+		return nil, err
+	}
 	if manager.agents != nil {
 		if err := manager.agents.ReconcileWithEnqueue(ctx, store, runtime.enqueueAgentTx); err != nil {
 			cancel()
@@ -357,6 +361,7 @@ func (runtime *projectRuntime) broadcast(event string, task Task) {
 		return
 	}
 	runtime.manager.hub.Broadcast(realtime.ProjectTopic(runtime.projectUUID), event, taskRealtimePayload(runtime.projectUUID, task))
+	runtime.broadcastWaitingWorkflowTask(task.UUID)
 }
 
 // taskRealtimePayload stays independent from River's job row so the public

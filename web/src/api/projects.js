@@ -46,6 +46,14 @@ export async function getProjectSetup(projectUuid) {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/project-setup`)
 }
 
+export async function getProjectInitialization(projectUuid) {
+  return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/initialization`)
+}
+
+export async function handoffProjectInitialization(projectUuid, workflowUuid) {
+  return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/initialization/handoffs`, jsonRequest('POST', { workflow_uuid: workflowUuid }))
+}
+
 export async function previewProjectDirectoryName(projectUuid, name) {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/directory-name-preview?name=${encodeURIComponent(name)}`)
 }

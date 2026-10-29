@@ -6,10 +6,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { listRecentProjects } from '../api/projects.js'
 import { getChapter } from '../api/story.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
+import { useProjectInitialization } from '../api/useProjectInitialization.js'
 import { projectChapterUuidFromPath } from '../pages/projectChatAttachments.js'
 import { projectChatControlKey } from '../pages/projectReferences.js'
 import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import ChatArea from './ChatArea.jsx'
+import ProjectInitializationGate from './ProjectInitializationGate.jsx'
 import GlobalSidebar, { useGlobalSidebarState } from './GlobalSidebar.jsx'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import { useI18n } from '../i18n/useI18n.js'
@@ -25,6 +27,9 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
   const { selectMode } = useProjectDashboardMode()
   const location = useLocation()
   const navigate = useNavigate()
+  const initializationQuery = useProjectInitialization(projectUuid)
+  const initializationBlocked = !initializationQuery.data || initializationQuery.data.locked
+  hideChat = hideChat && !initializationBlocked
   const chatOverlayId = useId()
   const [compact, setCompact] = useState(readCompact)
 	const [collapsed, setCollapsed] = useState(() => readCollapsed(projectUuid))
@@ -51,6 +56,11 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
   } : null
   useProjectRealtimeSync(projectUuid)
 
+  const openInitializationChat = () => {
+    if (compact) setOverlayOpen(true)
+    else setCollapsed(false)
+  }
+
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return undefined
     const media = window.matchMedia(COMPACT_CHAT_QUERY)
@@ -69,6 +79,10 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
 	if (compact) setOverlayOpen(true)
 	else setCollapsed(false)
 	}, [chatControlKey, compact])
+
+  useEffect(() => {
+    if (initializationQuery.data?.locked && !compact) setCollapsed(false)
+  }, [initializationQuery.data?.locked, compact])
 
   useEffect(() => {
     if (!overlayOpen) return undefined
@@ -134,14 +148,14 @@ export default function ProjectWorkspaceLayout({ project, projectUuid, activeSec
       <div className={`project-workbench ${hideChat ? 'project-workbench--solo' : !compact && collapsed ? 'project-workbench--chat-collapsed' : ''}`}>
         <section className="project-workbench__content" aria-label={t('projects.workspace')}>
           {forcedExpert ? <div className="workspace-notice project-mode-notice" role="status"><span>{t('projects.dashboard_mode.expert_page_notice')}</span><button type="button" className="button-secondary" onClick={() => selectMode(PROJECT_DASHBOARD_MODE_EXPERT)}>{t('projects.dashboard_mode.make_expert_default')}</button></div> : null}
-          {children}
+          {initializationBlocked ? <ProjectInitializationGate projectUuid={projectUuid} query={initializationQuery} onOpenChat={openInitializationChat} /> : children}
         </section>
-        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} /> : null}
+        {!compact && !hideChat ? <ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded={!collapsed} onToggle={() => setCollapsed((value) => !value)} newThreadReference={newThreadReference} initialization={initializationQuery.data} initializationPending={!initializationQuery.data} /> : null}
       </div>
       {compact && !hideChat && overlayOpen ? (
         <div className="project-chat-overlay" id={chatOverlayId} role="dialog" aria-modal="true" aria-label={t('chat.project')}>
           <button className="project-chat-overlay__backdrop" type="button" aria-label={t('chat.close')} onClick={() => setOverlayOpen(false)} />
-          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded onToggle={() => setOverlayOpen(false)} overlay newThreadReference={newThreadReference} /></div>
+          <div className="project-chat-overlay__panel"><ChatArea projectUuid={projectUuid} pictureBook={project?.picture_book} expanded onToggle={() => setOverlayOpen(false)} overlay newThreadReference={newThreadReference} initialization={initializationQuery.data} initializationPending={!initializationQuery.data} /></div>
         </div>
       ) : null}
     </main>

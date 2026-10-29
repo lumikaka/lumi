@@ -67,17 +67,12 @@ func (worker *agentWorker) Work(ctx context.Context, job *river.Job[agentArgs]) 
 			return river.JobCancel(err)
 		}
 		if errors.Is(err, agent.ErrJobNotReady) {
-			// River promotes snoozed jobs on its maintenance cadence, which is too
-			// coarse for an Agent polling a task running on another queue. Keep the
-			// single Agent worker claimed and poll the persisted task state instead.
-			select {
-			case <-workCtx.Done():
-				return workCtx.Err()
-			case <-time.After(300 * time.Millisecond):
-				continue
-			}
+			// Legacy/FIFO jobs may already have been queued before their owner is
+			// runnable. Release the slot so the preceding turn can resume. New
+			// Workflow dependencies use durable wakeups, never this fallback.
+			return river.JobSnooze(time.Second)
 		}
-		if errors.Is(err, agent.ErrWaitingInput) || errors.Is(err, agent.ErrWaitingWorkflow) {
+		if errors.Is(err, agent.ErrWaitingInput) || errors.Is(err, agent.ErrWaitingWorkflow) || errors.Is(err, agent.ErrWaitingDependencies) {
 			return nil
 		}
 		if err == nil {

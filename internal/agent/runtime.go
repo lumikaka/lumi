@@ -41,6 +41,23 @@ func (service *Service) ExecuteJob(ctx context.Context, store *project.Store, sp
 	if err := requireConversationInput(tc.Thread); err != nil {
 		return service.finishRunWithStatus(ctx, store, tc, TurnCancelled, CodeWorkflowThreadReadOnly, safeMessage(err))
 	}
+	initialization, err := store.InitializationState(ctx)
+	if err != nil {
+		return err
+	}
+	if initialization.Locked {
+		// A message queued before initialization started must not run alongside
+		// it. Only the owning Workflow's terminal resume can finish its chat.
+		var ownsResume bool
+		if spec.JobKind == JobChatResume && spec.ThreadUUID == initialization.ThreadUUID {
+			if err := store.DB().WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM workflow_awaits a JOIN workflows w ON w.id=a.workflow_id WHERE w.uuid=? AND a.chat_turn_id=? AND a.status IN ('ready','resuming','resumed') AND (?='' OR a.uuid=?))`, initialization.WorkflowUUID, tc.Turn.ID, spec.WakeupUUID, spec.WakeupUUID).Scan(&ownsResume).Error; err != nil {
+				return err
+			}
+		}
+		if !ownsResume {
+			return ErrJobNotReady
+		}
+	}
 	if ready, err := service.turnFIFOReady(ctx, store, tc); err != nil {
 		return err
 	} else if !ready {
@@ -810,8 +827,15 @@ func (service *Service) promoteNextFollowUpTx(ctx context.Context, tx *sql.Tx, p
 	if thread.ThreadType != ThreadTypeConversation {
 		return nil
 	}
+	initialization, err := project.InitializationStateTx(ctx, tx, thread.ProjectID)
+	if err != nil {
+		return err
+	}
+	if initialization.Locked {
+		return nil
+	}
 	var follow followUpRecord
-	err := tx.QueryRowContext(ctx, `SELECT id,uuid,thread_id,input_text,position,status,promoted_turn_id,created_at,updated_at,deleted_at FROM chat_follow_ups WHERE thread_id=? AND status='queued' AND deleted_at IS NULL ORDER BY position,id LIMIT 1`, thread.ID).Scan(&follow.ID, &follow.UUID, &follow.ThreadID, &follow.InputText, &follow.Position, &follow.Status, &follow.PromotedTurnID, &follow.CreatedAt, &follow.UpdatedAt, &follow.DeletedAt)
+	err = tx.QueryRowContext(ctx, `SELECT id,uuid,thread_id,input_text,position,status,promoted_turn_id,created_at,updated_at,deleted_at FROM chat_follow_ups WHERE thread_id=? AND status='queued' AND deleted_at IS NULL ORDER BY position,id LIMIT 1`, thread.ID).Scan(&follow.ID, &follow.UUID, &follow.ThreadID, &follow.InputText, &follow.Position, &follow.Status, &follow.PromotedTurnID, &follow.CreatedAt, &follow.UpdatedAt, &follow.DeletedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}

@@ -131,6 +131,13 @@ func (api *ExternalProjectAPI) ReadDoc(args map[string]any) (map[string]any, err
 // Execute is only called after the application has durably authorized this exact
 // request. REST handlers retain transactions, revision checks and events.
 func (api *ExternalProjectAPI) Execute(ctx context.Context, r ExternalRequest, callUUID string) (any, error) {
+	return api.ExecuteGuarded(ctx, r, callUUID, nil)
+}
+
+// ExecuteGuarded checks current project admission immediately before a write.
+// Recovering an already accepted asynchronous task is a read and remains safe
+// while initialization owns the project.
+func (api *ExternalProjectAPI) ExecuteGuarded(ctx context.Context, r ExternalRequest, callUUID string, beforeWrite func() error) (any, error) {
 	req := r.request
 	body := map[string]any{}
 	for k, v := range req.Body {
@@ -158,10 +165,20 @@ func (api *ExternalProjectAPI) Execute(ctx context.Context, r ExternalRequest, c
 			task, found, taskErr = recovery.RecoverExternalTask(ctx, req.Params["project_uuid"], kinds[req.Route.ID], "mcp:"+callUUID)
 		}
 		if taskErr == nil && !found {
+			if beforeWrite != nil {
+				if err := beforeWrite(); err != nil {
+					return nil, err
+				}
+			}
 			task, taskErr = api.queue.StartDomainTask(ctx, req.Params["project_uuid"], DomainTaskRequest{Kind: kinds[req.Route.ID], ResourceUUID: resource, ChapterUUID: req.Params["chapter_uuid"], PromptKey: stringArg(body, "prompt_key"), Prompt: stringArg(body, "prompt"), Model: stringArg(body, "model"), PremiseAssetUUIDs: externalStringSlice(body["premise_asset_uuids"]), IdempotencyKey: "mcp:" + callUUID, Invocation: ExternalInvocationContext(callUUID)})
 		}
 		data, err = task, taskErr
 	} else {
+		if !r.ReadOnly() && beforeWrite != nil {
+			if err := beforeWrite(); err != nil {
+				return nil, err
+			}
+		}
 		query, hasBody := req.Query, req.HasBody
 		// Reviewed Agent contracts use a revision body for soft deletion; REST
 		// transports that same revision in query parameters.

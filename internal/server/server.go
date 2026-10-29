@@ -171,6 +171,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	filesHandler := httpapi.NewFilesHandler(projects, realtimeHub, taskManager)
 	agentHandler := httpapi.NewAgentHandler(agentService)
 	projectSetupHandler := httpapi.NewProjectSetupHandler(projects, modelResolver, realtimeHub)
+	initializationHandler := httpapi.NewInitializationHandler(projects, realtimeHub)
 	priceHandler := httpapi.NewModelPriceHandler(providerService, projects, realtimeHub)
 	api.GET("/model-prices", priceHandler.Index)
 	api.POST("/model-prices", priceHandler.Create)
@@ -208,6 +209,8 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	api.PATCH("/projects/:project_uuid/project-setup", projectSetupHandler.Update)
 	api.PATCH("/projects/:project_uuid/project-setup/references/:reference_uuid", projectSetupHandler.UpdateReference)
 	api.POST("/projects/:project_uuid/project-setup-finalizations", projectSetupHandler.Finalize)
+	api.GET("/projects/:project_uuid/initialization", initializationHandler.Show)
+	api.POST("/projects/:project_uuid/initialization/handoffs", initializationHandler.TakeOver)
 	api.POST("/projects/:project_uuid/image-generation-preflights", projectImagePreflightHandler.Create)
 	api.GET("/projects/:project_uuid/llm-logs", llmLogHandler.Index)
 	api.GET("/projects/:project_uuid/llm-logs/:log_uuid", llmLogHandler.Show)
@@ -454,6 +457,16 @@ func projectRequestLease(projects *project.Manager) echo.MiddlewareFunc {
 					handlerErr = httpapi.NewError(http.StatusConflict, project.CodeProjectSetupIncomplete, "项目设置尚未定稿", "请先在 ChatArea 中确认绘本规格。", nil)
 					return nil
 				}
+				if c.Request().Method != http.MethodGet && c.Request().Method != http.MethodHead && c.Request().Method != http.MethodOptions {
+					state, err := store.InitializationState(c.Request().Context())
+					if err != nil {
+						return err
+					}
+					if state.Locked && !initializationRequestAllowed(c, state) {
+						handlerErr = httpapi.ProjectAPIError(project.InitializationLockedError())
+						return nil
+					}
+				}
 				handlerErr = next(c)
 				return nil
 			}); err != nil {
@@ -462,6 +475,24 @@ func projectRequestLease(projects *project.Manager) echo.MiddlewareFunc {
 			return handlerErr
 		}
 	}
+}
+
+func initializationRequestAllowed(c echo.Context, state project.InitializationState) bool {
+	if c.Request().Method != http.MethodPost {
+		return false
+	}
+	switch c.Path() {
+	case "/api/v1/projects/:project_uuid/initialization/handoffs":
+		return true // The handler validates the exact workflow and settled children.
+	case "/api/v1/projects/:project_uuid/workflows":
+		return true // Preserve idempotent creation replay; creation itself is guarded.
+	case "/api/v1/projects/:project_uuid/workflows/:workflow_uuid/cancellations",
+		"/api/v1/projects/:project_uuid/workflows/:workflow_uuid/retries":
+		return c.Param("workflow_uuid") == state.WorkflowUUID
+	case "/api/v1/projects/:project_uuid/chat_threads/:thread_uuid/cancellations":
+		return c.Param("thread_uuid") == state.ThreadUUID
+	}
+	return false
 }
 
 func draftProjectRequestAllowed(method, path string) bool {

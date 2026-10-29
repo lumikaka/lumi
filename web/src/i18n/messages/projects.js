@@ -1,6 +1,19 @@
 import { defineMessages } from './defineMessages.js'
 
 export const projects = defineMessages({
+  'projects.initialization.eyebrow': ['项目初始化', 'Project initialization'],
+  'projects.initialization.loading': ['正在读取初始化状态…', 'Checking initialization…'],
+  'projects.initialization.running_title': ['正在自动生成项目', 'Your project is being generated'],
+  'projects.initialization.running_body': ['生成期间可查看初始化对话和进度，或取消生成。完成后将自动开放编辑和新对话。', 'View the initialization conversation and progress, or cancel generation. Editing and new conversations will open automatically when it completes.'],
+  'projects.initialization.stopped_title': ['初始化已停止', 'Initialization has stopped'],
+  'projects.initialization.stopped_body': ['已完成的内容已保留。可以从停止的位置重试，或手动接管后继续创作。', 'Completed work has been saved. Retry from where it stopped, or take over to continue creating manually.'],
+  'projects.initialization.open_chat': ['查看初始化对话', 'View initialization conversation'],
+  'projects.initialization.take_over': ['手动接管', 'Take over manually'],
+  'projects.initialization.take_over_hint': ['接管后开放编辑和新对话，保留已有内容，结束本次自动初始化。', 'Taking over opens editing and new conversations, keeps existing work, and ends this automatic initialization.'],
+  'projects.initialization.finishing_tasks': ['后台任务正在收尾，完成后即可手动接管。', 'Background tasks are finishing. Manual takeover will be available when they stop.'],
+  'projects.initialization.other_projects_hint': ['其他项目仍可正常使用。', 'You can continue working in other projects.'],
+  'projects.initialization.chat_read_only': ['初始化对话当前只读。完成生成或手动接管后可继续聊天。', 'This initialization conversation is read-only until generation completes or you take over manually.'],
+  'projects.initialization.home_locked': ['此项目正在初始化，暂不能新建对话。请进入项目查看进度或手动接管。', 'This project is being initialized and cannot start a new conversation yet. Open the project to view progress or take over manually.'],
   'website.title': ['Website', 'Website'],
   'website.description': ['生成可独立部署的静态阅读网站，支持手机和桌面。', 'Generate a standalone reading website for mobile and desktop.'],
   'website.changed': ['有更新', 'Updates available'],

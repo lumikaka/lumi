@@ -70,7 +70,9 @@ func (runtime *projectRuntime) executionRecordsTx(ctx context.Context, tx *sql.T
 		`SELECT 'production_task_runs',t.id,t.uuid,p.uuid,t.kind,t.resource_uuid,'','',t.status,t.river_job_id,t.execution_uuid FROM production_task_runs t JOIN projects p ON p.id=t.project_id`,
 		`SELECT 'asset_maintenance_runs',t.id,t.uuid,p.uuid,t.kind,t.resource_uuid,'','',t.status,t.river_job_id,t.execution_uuid FROM asset_maintenance_runs t JOIN projects p ON p.id=t.project_id`,
 		`SELECT 'chat_turns',t.id,t.uuid,p.uuid,'',t.uuid,th.uuid,'',t.status,t.river_job_id,t.execution_uuid FROM chat_turns t JOIN chat_threads th ON th.id=t.thread_id JOIN projects p ON p.id=th.project_id`,
-		`SELECT 'workflow_steps',t.id,t.uuid,p.uuid,'workflow_step',t.uuid,COALESCE(th.uuid,''),'',t.status,t.river_job_id,t.execution_uuid FROM workflow_steps t JOIN workflows w ON w.id=t.workflow_id JOIN projects p ON p.id=w.project_id LEFT JOIN chat_threads th ON th.id=w.thread_id`,
+		`SELECT 'workflow_steps',t.id,t.uuid,p.uuid,'workflow_step',t.uuid,COALESCE(th.uuid,''),COALESCE(
+			(SELECT a.uuid FROM workflow_step_waits a WHERE a.workflow_step_id=t.id AND a.river_job_id=t.river_job_id AND COALESCE(a.execution_uuid,'')=COALESCE(t.execution_uuid,'') ORDER BY a.generation DESC LIMIT 1),
+			(SELECT a.uuid FROM workflow_step_waits a WHERE a.id=t.current_wait_id AND a.status IN ('ready','consumed')),''),t.status,t.river_job_id,t.execution_uuid FROM workflow_steps t JOIN workflows w ON w.id=t.workflow_id JOIN projects p ON p.id=w.project_id LEFT JOIN chat_threads th ON th.id=w.thread_id`,
 		`SELECT 'workflow_awaits',t.id,t.uuid,p.uuid,'chat_resume',ct.uuid,th.uuid,t.uuid,t.status,t.river_job_id,t.execution_uuid FROM workflow_awaits t JOIN chat_turns ct ON ct.id=t.chat_turn_id JOIN chat_threads th ON th.id=t.chat_thread_id JOIN projects p ON p.id=th.project_id`,
 	}
 	var records []executionRecord
@@ -133,7 +135,7 @@ func (record executionRecord) owns(job *rivertype.JobRow, checkBinding bool) boo
 	case "chat_turns":
 		return job.Kind == (agentArgs{}).Kind() && (identity.JobKind == agent.JobChatTurn || identity.JobKind == agent.JobChatResume) && identity.ResourceUUID == record.UUID && identity.ThreadUUID == record.ThreadUUID
 	case "workflow_steps":
-		return job.Kind == (agentArgs{}).Kind() && identity.JobKind == agent.JobWorkflowStep && identity.ResourceUUID == record.UUID && identity.ThreadUUID == record.ThreadUUID
+		return job.Kind == (agentArgs{}).Kind() && identity.JobKind == agent.JobWorkflowStep && identity.ResourceUUID == record.UUID && identity.ThreadUUID == record.ThreadUUID && identity.WakeupUUID == record.WakeupUUID
 	case "workflow_awaits":
 		return job.Kind == (agentArgs{}).Kind() && identity.JobKind == agent.JobChatResume && identity.ResourceUUID == record.ResourceUUID && identity.ThreadUUID == record.ThreadUUID && identity.WakeupUUID == record.UUID
 	}

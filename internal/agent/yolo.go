@@ -187,6 +187,9 @@ func (service *Service) CreateYoloWorkflow(ctx context.Context, projectUUID stri
 		} else if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
+			return err
+		}
 		creationReferences, err := loadYoloCreationReferences(ctx, tx, pid, creationSessionUUID)
 		if err != nil {
 			return err
@@ -490,6 +493,15 @@ func (service *Service) executeWorkflowStepAttempt(ctx context.Context, store *p
 	if workflow.CancelRequestedAt != nil {
 		return service.finishWorkflowCancelled(context.WithoutCancel(ctx), store, workflow, step, threadUUID)
 	}
+	var awaitingTasks bool
+	if err := store.DB().WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM workflow_steps s JOIN workflow_step_waits a ON a.id=s.current_wait_id WHERE s.id=? AND a.status='waiting')`, step.ID).Scan(&awaitingTasks).Error; err != nil {
+		return err
+	}
+	if awaitingTasks {
+		// A crash may replay the execution that committed the wait but had not
+		// yet returned to River. Only the dependency transaction can wake it.
+		return ErrWaitingDependencies
+	}
 	if ready, err := service.workflowStepReady(ctx, store, step); err != nil {
 		return err
 	} else if !ready {
@@ -505,6 +517,9 @@ func (service *Service) executeWorkflowStepAttempt(ctx context.Context, store *p
 	workflow.Status, workflow.CurrentStepKey = WorkflowRunning, step.StepKey
 	step.Status = "running"
 	output, wait, err := service.runYoloStep(ctx, store, workflow, step)
+	if errors.Is(err, ErrWaitingDependencies) || errors.Is(err, taskexecution.ErrSuperseded) {
+		return err
+	}
 	if err != nil {
 		if retryableWorkflowRequest(err) && ctx.Err() == nil && attempt > 0 && attempt < min(maxAttempts, WorkflowMaxAttempts) {
 			return service.retryWorkflowStep(ctx, store, workflow, step, threadUUID, err, attempt)
@@ -564,6 +579,9 @@ func (service *Service) markWorkflowStepRunning(ctx context.Context, store *proj
 		}
 		if result.RowsAffected != 1 {
 			return errWorkflowTransitionInactive
+		}
+		if err := tx.Exec(`UPDATE workflow_step_waits SET status='consumed',consumed_at=COALESCE(consumed_at,?),updated_at=? WHERE id=(SELECT current_wait_id FROM workflow_steps WHERE id=?) AND status='ready'`, now, now, step.ID).Error; err != nil {
+			return err
 		}
 		return appendWorkflowEventGormTx(ctx, tx, workflow.ID, &step.ID, "step_running", map[string]any{"project_uuid": store.ProjectUUID(), "workflow_uuid": workflow.UUID, "step_uuid": step.UUID, "step_key": step.StepKey, "status": "running"}, now)
 	})
@@ -694,7 +712,7 @@ func (service *Service) runYoloStory(ctx context.Context, store *project.Store, 
 		return nil, false, err
 	}
 	if task.Status == "queued" || task.Status == "running" || task.Status == "waiting_for_input" {
-		return nil, true, nil
+		return service.waitForWorkflowTasks(ctx, store, step, "chapter", []DomainTask{task})
 	}
 	if task.Status != "completed" {
 		return nil, false, domainError(task.ErrorCode, "Story 生成失败", task.ErrorMessage, nil)
@@ -809,7 +827,7 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 			return nil, false, err
 		}
 		if task.Status == "queued" || task.Status == "running" {
-			return nil, true, nil
+			return service.waitForWorkflowTasks(ctx, store, step, "setting", []DomainTask{task})
 		}
 		if task.Status != "completed" {
 			return nil, false, domainError(task.ErrorCode, "Premise 设置图生成失败", task.ErrorMessage, nil)
@@ -835,7 +853,7 @@ func (service *Service) runYoloPremise(ctx context.Context, store *project.Store
 			return nil, false, err
 		}
 		if task.Status == "queued" || task.Status == "running" {
-			return nil, true, nil
+			return service.waitForWorkflowTasks(ctx, store, step, "breakdown", []DomainTask{task})
 		}
 		if task.Status != "completed" {
 			return nil, false, domainError(task.ErrorCode, "Premise 拆分失败", task.ErrorMessage, nil)
@@ -1174,7 +1192,7 @@ func (service *Service) runYoloLegacyFirstImage(ctx context.Context, store *proj
 		return nil, false, err
 	}
 	if task.Status == "queued" || task.Status == "running" {
-		return nil, true, nil
+		return service.waitForWorkflowTasks(ctx, store, step, "image", []DomainTask{task})
 	}
 	if task.Status != "completed" {
 		return nil, false, domainError(task.ErrorCode, "首图生成失败", task.ErrorMessage, nil)
@@ -1249,7 +1267,7 @@ func (service *Service) runYoloInitialPageImages(ctx context.Context, store *pro
 		}
 		active, failed := yoloInitialImageBatchState(batch.Tasks)
 		if active {
-			return nil, true, nil
+			return service.waitForWorkflowTasks(ctx, store, step, "images", batch.Tasks)
 		}
 		if failed != nil {
 			code := strings.TrimSpace(failed.ErrorCode)
@@ -1881,6 +1899,9 @@ func (service *Service) failWorkflowStep(ctx context.Context, store *project.Sto
 		if result.RowsAffected != 1 {
 			return errWorkflowTransitionInactive
 		}
+		if err := tx.Exec(`UPDATE workflow_step_waits SET status='cancelled',cancelled_at=COALESCE(cancelled_at,?),updated_at=? WHERE workflow_step_id=? AND status IN ('waiting','ready')`, now, now, step.ID).Error; err != nil {
+			return err
+		}
 		result = tx.Model(&workflowRecord{}).Where("id=? AND status IN ('queued','running','interrupted')", workflow.ID).Updates(map[string]any{"status": WorkflowFailed, "error_code": code, "error_message": message, "completed_at": now, "updated_at": now})
 		if result.Error != nil {
 			return result.Error
@@ -2070,6 +2091,18 @@ func (service *Service) CancelWorkflow(ctx context.Context, projectUUID, workflo
 								}
 							}
 						}
+					}
+				}
+			}
+			if err := tx.Exec(`UPDATE workflow_step_waits SET status='cancelled',cancelled_at=COALESCE(cancelled_at,?),updated_at=? WHERE workflow_step_id IN (SELECT id FROM workflow_steps WHERE workflow_id=?) AND status IN ('waiting','ready')`, now, now, row.ID).Error; err != nil {
+				return err
+			}
+			// Persist the cancellation command before dispatching it. If dispatch
+			// fails or the app exits, task recovery still sees the user's intent.
+			if len(currentTaskUUIDs) > 0 {
+				for _, table := range []string{"task_runs", "production_task_runs"} {
+					if err := tx.Table(table).Where("project_id=? AND uuid IN ? AND status IN ('queued','running','waiting_for_input')", row.ProjectID, currentTaskUUIDs).Updates(map[string]any{"cancel_requested_at": gorm.Expr("COALESCE(cancel_requested_at,?)", now), "updated_at": now}).Error; err != nil {
+						return err
 					}
 				}
 			}
@@ -2268,13 +2301,19 @@ func (service *Service) RetryWorkflow(ctx context.Context, projectUUID, workflow
 			return domainError(CodeStateConflict, "Workflow 没有可重试步骤", "所有步骤已经完成。", err)
 		}
 		now := service.now().UTC()
+		if _, err := tx.ExecContext(ctx, `DELETE FROM project_initialization_handoffs WHERE workflow_id=?`, row.ID); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET status='queued',current_step_key=?,cancel_requested_at=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, step.StepKey, now, row.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, step.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_step_waits SET status='cancelled',cancelled_at=COALESCE(cancelled_at,?),updated_at=? WHERE workflow_step_id=? AND status IN ('waiting','ready')`, now, now, step.ID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='pending',river_job_id=NULL,execution_uuid=NULL,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE workflow_id=? AND position>? AND status IN ('cancelled','failed','interrupted')`, now, row.ID, step.Position); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='queued',current_wait_id=NULL,completed_at=NULL,error_code='',error_message='',updated_at=? WHERE id=?`, now, step.ID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE workflow_steps SET status='pending',current_wait_id=NULL,river_job_id=NULL,execution_uuid=NULL,error_code='',error_message='',completed_at=NULL,updated_at=? WHERE workflow_id=? AND position>? AND status IN ('cancelled','failed','interrupted')`, now, row.ID, step.Position); err != nil {
 			return err
 		}
 		var threadUUID string

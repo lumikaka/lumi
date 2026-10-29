@@ -39,7 +39,25 @@ test('every batch workflow lifecycle hint rereads persisted workflow facts', () 
     })
     assert.equal(result.invalidateAll, false, event)
     assert.ok(result.queryKeys.some((key) => key[0] === 'workflows' && key[1] === projectUuid), event)
+    assert.ok(result.queryKeys.some((key) => key[0] === 'project-initialization' && key[1] === projectUuid), event)
     assert.ok(result.queryKeys.some((key) => key[0] === 'workflow' && key[2] === 'workflow-uuid'), event)
+  }
+})
+
+test('initialization handoff hints reread only their project and never trust the supplied lock state', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'project:initialization_changed', {
+    workflow_uuid: 'workflow-uuid', thread_uuid: 'thread-uuid', locked: false,
+  })
+  assert.equal(result.invalidateAll, false)
+  assert.ok(result.queryKeys.some((key) => key[0] === 'project-initialization' && key[1] === projectUuid))
+  assert.ok(result.queryKeys.some((key) => key[0] === 'workflows' && key[1] === projectUuid))
+  assert.ok(result.queryKeys.every((key) => key[1] === projectUuid))
+})
+
+test('child task termination refreshes whether manual takeover is now safe', () => {
+  for (const event of ['task:completed', 'task:failed', 'task:cancelled', 'production_task:completed', 'production_task:failed', 'production_task:cancelled', 'production_task:interrupted']) {
+    const result = projectRealtimeInvalidation(projectUuid, event, { task_uuid: 'task-uuid' })
+    assert.ok(result.queryKeys.some((key) => key[0] === 'project-initialization' && key[1] === projectUuid), event)
   }
 })
 

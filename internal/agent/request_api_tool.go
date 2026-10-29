@@ -39,6 +39,9 @@ func executeRequestAPIToolWithUIRef(ctx context.Context, service *Service, store
 			return requestAPIToolOutput{}, bootstrapProductionRequiresYoloError()
 		}
 	}
+	if err := requireAgentInitializationWriteAvailable(ctx, store, tc, request); err != nil {
+		return requestAPIToolOutput{}, err
+	}
 	if !runtimeBootstrapFinalizationSkipsConfirmation(tc, execution, request) {
 		if err := authorizeDangerousAgentAPIRequest(ctx, store, tc, request); err != nil {
 			return requestAPIToolOutput{}, err

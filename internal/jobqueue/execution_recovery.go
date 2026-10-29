@@ -262,6 +262,11 @@ func (runtime *projectRuntime) reconcileExecutionBindings(ctx context.Context) e
 		if job != nil || !recoverableExecutionStatus(record) {
 			continue
 		}
+		if waiting, err := runtime.workflowStepWaitingTx(ctx, tx, record); err != nil {
+			return err
+		} else if waiting {
+			continue
+		}
 		recoverable = append(recoverable, record)
 	}
 	// Clear all stale owners before adopting or creating any execution. An
@@ -276,6 +281,11 @@ func (runtime *projectRuntime) reconcileExecutionBindings(ctx context.Context) e
 			return err
 		}
 		if record.JobID.Valid || !recoverableExecutionStatus(record) {
+			continue
+		}
+		if waiting, err := runtime.workflowStepWaitingTx(ctx, tx, record); err != nil {
+			return err
+		} else if waiting {
 			continue
 		}
 		repairedUUIDs = append(repairedUUIDs, record.UUID)
@@ -303,6 +313,11 @@ func (runtime *projectRuntime) reconcileExecutionBindings(ctx context.Context) e
 			if record.Table == "chat_turns" {
 				identity, _ := executionIdentityFor(matching[0])
 				if _, err := tx.ExecContext(ctx, `UPDATE workflow_awaits SET river_job_id=?,execution_uuid=? WHERE chat_turn_id=? AND uuid=? AND status IN ('ready','resuming')`, binding.JobID, binding.NullableUUID(), record.ID, identity.WakeupUUID); err != nil {
+					return err
+				}
+			}
+			if record.Table == "workflow_steps" && record.WakeupUUID != "" {
+				if _, err := tx.ExecContext(ctx, `UPDATE workflow_step_waits SET river_job_id=?,execution_uuid=? WHERE workflow_step_id=? AND uuid=? AND status IN ('ready','consumed')`, binding.JobID, binding.NullableUUID(), record.ID, record.WakeupUUID); err != nil {
 					return err
 				}
 			}

@@ -236,6 +236,14 @@ func (s *Service) Call(ctx context.Context, g Grant, args map[string]any, key st
 		s.mu.Unlock()
 		return failure(project.CodeProjectNotOpen, "项目尚未打开；请先在 Lumi 打开已授权项目，再重试。")
 	}
+	if !req.ReadOnly() {
+		if err := s.projects.WithStore(ctx, g.ProjectUUID, func(store *project.Store) error {
+			return store.RequireInitializationAvailable(ctx)
+		}); err != nil {
+			s.mu.Unlock()
+			return publicError(err)
+		}
+	}
 	now := s.now().UTC()
 	status := "executing"
 	if req.Dangerous() {
@@ -276,7 +284,9 @@ func (s *Service) execute(g Grant, c Call, req agent.ExternalRequest) map[string
 			return &agent.Error{Code: project.CodeProjectSetupIncomplete, Message: "请先在 Lumi 完成项目设置。"}
 		}
 		var err error
-		value, err = s.api.Execute(ctx, req, c.UUID)
+		value, err = s.api.ExecuteGuarded(ctx, req, c.UUID, func() error {
+			return store.RequireInitializationAvailable(ctx)
+		})
 		return err
 	})
 	result := success(value)

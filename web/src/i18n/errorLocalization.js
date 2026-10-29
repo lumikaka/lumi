@@ -18,6 +18,8 @@ export const ERROR_CODE_KEYS = Object.freeze({
   project_format_too_new: 'errors.code.project_format_too_new',
   project_migration_failed: 'errors.code.project_migration_failed',
   project_locked: 'errors.code.project_locked',
+  project_initializing: 'errors.code.project_initializing',
+  initialization_handoff_conflict: 'errors.code.initialization_handoff_conflict',
   project_directory_name_exhausted: 'errors.code.project_directory_name_exhausted',
   invalid_project: 'errors.code.invalid_project',
   invalid_picture_book_profile: 'errors.code.invalid_picture_book_profile',

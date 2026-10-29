@@ -172,7 +172,16 @@ func (service *Service) CreateThread(ctx context.Context, projectUUID string, in
 			return err
 		}
 		record := threadRecord{UUID: threadUUID, ProjectID: pid, Title: title, Status: ThreadIdle, ThreadType: ThreadTypeConversation, ProviderUUID: resolved.UUID, Model: model, ModelSource: modelSource, NextTurnSequence: 1, NextItemSequence: 1, NextEventSequence: 1, CreatedAt: now, UpdatedAt: now}
-		return taskexecution.Write(store.DB().WithContext(ctx), func(executionTx *gorm.DB) *gorm.DB { return executionTx.Create(&record) }).Error
+		return taskexecution.Transaction(store.DB().WithContext(ctx), func(executionTx *gorm.DB) error {
+			sqlTx, ok := executionTx.Statement.ConnPool.(*sql.Tx)
+			if !ok {
+				return domainError(CodeStateConflict, "无法创建对话", "项目事务连接不可用。", nil)
+			}
+			if err := project.RequireInitializationAvailableTx(ctx, sqlTx, pid); err != nil {
+				return err
+			}
+			return executionTx.Create(&record).Error
+		})
 	})
 	if err != nil {
 		return Thread{}, err
@@ -295,6 +304,9 @@ func (service *Service) CreateTurn(ctx context.Context, projectUUID, threadUUID 
 		defer tx.Rollback()
 		pid, err := projectIDSQL(ctx, tx, projectUUID)
 		if err != nil {
+			return err
+		}
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
 			return err
 		}
 		thread, err := lockThreadSQL(ctx, tx, pid, threadUUID)

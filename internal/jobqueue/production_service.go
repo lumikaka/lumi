@@ -1336,4 +1336,5 @@ func (runtime *projectRuntime) broadcastProduction(event string, task Production
 		return
 	}
 	runtime.manager.hub.Broadcast("project:"+runtime.projectUUID, event, map[string]any{"project_uuid": runtime.projectUUID, "task_uuid": task.UUID, "kind": task.Kind, "resource_uuid": task.ResourceUUID, "status": task.Status, "progress": task.Progress, "attempt": task.Attempt, "error_code": task.ErrorCode, "error_message": task.ErrorMessage})
+	runtime.broadcastWaitingWorkflowTask(task.UUID)
 }

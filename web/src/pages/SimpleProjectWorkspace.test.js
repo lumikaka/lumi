@@ -20,7 +20,7 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'ProjectInitializationGate.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx', 'ComicExportDialog.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
@@ -36,7 +36,7 @@ test('simple mode owns its project workspace while reusing the app sidebar, Chat
   assert.match(workspaceSource, /aria-haspopup="menu"/)
   assert.match(workspaceSource, /className="simple-project-topbar__dropdown"[\s\S]*role="menu"/)
   assert.equal((workspaceSource.match(/<(?:button|Link)[^>]*role="menuitem"/g) || []).length, 4)
-  for (const key of ['projects.configuration', 'simple.shell.switch_workspace_mode', 'settings.llm_logs', 'projects.tab.exports']) {
+  for (const key of ['projects.configuration', 'simple.shell.switch_workspace_mode', 'settings.llm_logs', 'simple.shell.export_history']) {
     assert.ok(workspaceSource.includes(`t('${key}')`), `missing project action ${key}`)
   }
   assert.doesNotMatch(pagesSource, /location\.state\?\.openProjectConfiguration/)
@@ -396,7 +396,7 @@ test('simple page current image opens an accessible large-image dialog', () => {
 })
 
 test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {
-  assert.match(workspaceSource, /const pageEditorActive = project\?\.setup_status !== 'draft' && \['page', 'pages'\]\.includes\(routeState\.key\)/)
+  assert.match(workspaceSource, /const pageEditorActive = !initializationBlocked && project\?\.setup_status !== 'draft' && \['page', 'pages'\]\.includes\(routeState\.key\)/)
   assert.match(workspaceSource, /simple-project-content\$\{pageEditorActive \? ' simple-project-content--page-editor' : ''\}/)
   assert.match(styles, /\.simple-project-content--page-editor\s+overflow: hidden/)
   assert.match(styles, /\.simple-page-view\s+[\s\S]*?height: 100%[\s\S]*?overflow: hidden/)

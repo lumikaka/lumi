@@ -82,6 +82,9 @@ func (service *Service) CreateFollowUp(ctx context.Context, projectUUID, threadU
 			return err
 		}
 		defer tx.Rollback()
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
+			return err
+		}
 		var active int64
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_turns WHERE thread_id=? AND status IN ('queued','in_progress','waiting_for_input')`, thread.ID).Scan(&active); err != nil {
 			return err
@@ -318,6 +321,9 @@ func (service *Service) Steer(ctx context.Context, projectUUID, threadUUID strin
 			return err
 		}
 		defer tx.Rollback()
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
+			return err
+		}
 		thread, err := lockThreadSQL(ctx, tx, pid, threadUUID)
 		if err != nil {
 			return err
@@ -383,6 +389,9 @@ func (service *Service) SteerFollowUp(ctx context.Context, projectUUID, threadUU
 			return err
 		}
 		defer tx.Rollback()
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
+			return err
+		}
 		thread, err := lockThreadSQL(ctx, tx, pid, threadUUID)
 		if err != nil {
 			return err
@@ -664,6 +673,9 @@ func (service *Service) RespondUserInput(ctx context.Context, projectUUID, threa
 		defer tx.Rollback()
 		pid, err := projectIDSQL(ctx, tx, projectUUID)
 		if err != nil {
+			return err
+		}
+		if err := project.RequireInitializationAvailableTx(ctx, tx, pid); err != nil {
 			return err
 		}
 		thread, err := lockThreadSQL(ctx, tx, pid, threadUUID)

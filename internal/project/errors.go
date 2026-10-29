@@ -23,6 +23,8 @@ const (
 	CodeProjectSetupConflict               = "project_setup_revision_conflict"
 	CodeProjectSetupInvalid                = "invalid_project_setup"
 	CodeProjectSetupReferenceSystemManaged = "project_setup_reference_system_managed"
+	CodeProjectInitializing                = "project_initializing"
+	CodeInitializationHandoffConflict      = "initialization_handoff_conflict"
 )
 
 type Error struct {

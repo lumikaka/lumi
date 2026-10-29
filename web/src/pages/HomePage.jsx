@@ -15,6 +15,8 @@ import { useI18n } from '../i18n/useI18n.js'
 import { createChatThread, createChatTurn, createYoloWorkflow } from '../api/chat.js'
 import { createAssetUpload, finalizeAssetUpload } from '../api/assets.js'
 import { projectQueryKeys } from '../api/projectQueryKeys.js'
+import { useProjectInitialization } from '../api/useProjectInitialization.js'
+import { useProjectRealtimeSync } from '../realtime/useProjectRealtimeSync.js'
 import {
   overallStyleForLanguage,
   overallStyleUsesDefault,
@@ -189,6 +191,9 @@ export default function HomePage() {
   const creationContextTriggerRef = useRef(null)
 
   const recentQuery = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
+  const creationProjectInitialization = useProjectInitialization(creationProjectUuid)
+  const creationProjectBlocked = Boolean(creationProjectUuid) && (!creationProjectInitialization.data || creationProjectInitialization.data.locked)
+  useProjectRealtimeSync(creationProjectUuid)
   const openProjectsQuery = useQuery({ queryKey: projectQueryKeys.openProjects(), queryFn: listOpenProjects })
   const projectDefaultsQuery = useQuery({ queryKey: ['project-defaults'], queryFn: getProjectDefaults })
   const creationSessionQuery = useQuery({
@@ -449,7 +454,7 @@ export default function HomePage() {
   const missingCreationReferenceFiles = unresolvedCreationReferences.filter((reference) => !reference.file).length
   const submitCreationComposer = (event) => {
     event.preventDefault()
-    if (creationPending) return
+    if (creationPending || creationProjectBlocked) return
     setCreationValidationAttempted(true)
     if (!creationInput.trim()) return
     if (selectedCreationProject) {
@@ -471,7 +476,7 @@ export default function HomePage() {
     creationMutation.mutate({ inputText: creationInput, idempotencyKey: checkpoint.idempotencyKey, referenceFiles: checkpoint.referenceFiles || referenceFiles, references: creationReferences, sessionUuid: checkpoint.sessionUuid, checkpoint })
   }
   const retryCreation = () => {
-    if (creationPending) return
+    if (creationPending || creationProjectBlocked) return
     if (selectedCreationProject) {
       if (!creationInput.trim()) return
       projectThreadMutation.mutate({
@@ -503,6 +508,7 @@ export default function HomePage() {
     }
   }
   const addCreationReferenceFiles = (files) => {
+    if (creationProjectBlocked) return
     setCreationReferenceError(null)
     const missingSlots = creationReferences.filter((reference) => reference.status !== 'ready' && !reference.file).length
     const refillLockedManifest = Array.isArray(creationCheckpoint?.referenceFiles) && missingSlots > 0
@@ -629,7 +635,7 @@ export default function HomePage() {
           </div>
           <form onSubmit={submitCreationComposer}>
             <label htmlFor="project-creation-input">{t('projects.conversation.label')}</label>
-            <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} onPaste={handleCreationReferencePaste} placeholder={t('projects.conversation.placeholder')} disabled={creationPending || Boolean(creationCheckpoint?.sessionUuid)} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
+            <textarea id="project-creation-input" rows="4" value={creationInput} onChange={(event) => changeCreationInput(event.target.value)} onPaste={handleCreationReferencePaste} placeholder={t('projects.conversation.placeholder')} disabled={creationPending || creationProjectBlocked || Boolean(creationCheckpoint?.sessionUuid)} aria-invalid={creationValidationAttempted && !creationInput.trim() ? 'true' : undefined} aria-describedby="project-creation-hint" />
             {creationValidationAttempted && !creationInput.trim() ? <p className="project-field-error" role="alert">{t('projects.conversation.required')}</p> : null}
             <div className="project-creation-composer__attachments">
               <div className="project-creation-composer__context-wrap" ref={creationContextRef}>
@@ -653,8 +659,8 @@ export default function HomePage() {
                   {!recentQuery.isLoading && !selectableCreationProjects.length ? <p>{t('projects.conversation.context.empty')}</p> : null}
                 </div> : null}
               </div>
-              <button type="button" className="project-creation-composer__attachment-button" aria-label={t('projects.conversation.reference.add')} title={t('projects.conversation.reference.add')} disabled={creationPending || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><Paperclip size={16} aria-hidden="true" /></button>
-              <input ref={creationReferenceInputRef} className="project-creation-composer__file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={creationPending} onChange={(event) => { addCreationReferenceFiles(event.target.files); event.target.value = '' }} />
+              <button type="button" className="project-creation-composer__attachment-button" aria-label={t('projects.conversation.reference.add')} title={t('projects.conversation.reference.add')} disabled={creationPending || creationProjectBlocked || (Boolean(creationCheckpoint?.sessionUuid) && missingCreationReferenceFiles === 0)} onClick={() => creationReferenceInputRef.current?.click()}><Paperclip size={16} aria-hidden="true" /></button>
+              <input ref={creationReferenceInputRef} className="project-creation-composer__file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={creationPending || creationProjectBlocked} onChange={(event) => { addCreationReferenceFiles(event.target.files); event.target.value = '' }} />
               {creationReferences.length ? <span>{t('projects.conversation.reference.count', { count: creationReferences.length, max: MAX_PROJECT_CHAT_REFERENCES })}</span> : null}
             </div>
             <ReferenceStrip projectUuid={selectedCreationProject?.uuid || creationSession?.project_uuid || ''} references={creationReferences} onRemove={removeCreationReference} canRemove={(reference) => !creationPending && (selectedCreationProject ? true : reference.status !== 'ready' && (!creationCheckpoint?.sessionUuid || Boolean(reference.file)))} compact />
@@ -662,9 +668,11 @@ export default function HomePage() {
             {creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0 ? <p className="project-creation-composer__reference-notice" role="status">{t('projects.conversation.reference.reselect', { count: missingCreationReferenceFiles })}</p> : null}
             <div className="project-creation-composer__footer">
               <p id="project-creation-hint">{t(selectedCreationProject ? 'projects.conversation.project_hint' : 'projects.conversation.path_hint')}</p>
-              <button type="submit" disabled={creationPending || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}>{t(creationPending ? selectedCreationProject ? 'projects.conversation.publishing' : 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.send')}<ArrowUp size={16} aria-hidden="true" /></button>
+              <button type="submit" disabled={creationPending || creationProjectBlocked || !creationInput.trim() || (creationSession?.status === 'awaiting_references' && missingCreationReferenceFiles > 0)}>{t(creationPending ? selectedCreationProject ? 'projects.conversation.publishing' : 'projects.conversation.creating' : creationSession?.status === 'awaiting_references' ? 'projects.conversation.reference.continue' : 'projects.conversation.send')}<ArrowUp size={16} aria-hidden="true" /></button>
             </div>
           </form>
+          {creationProjectBlocked ? <div className="workspace-notice" role="status"><span>{t(creationProjectInitialization.data?.locked ? 'projects.initialization.home_locked' : 'projects.initialization.loading')}</span><button type="button" className="button-secondary" onClick={() => navigate(`/projects/${encodeURIComponent(creationProjectUuid)}`)}>{t('projects.initialization.open_chat')}</button></div> : null}
+          <LocalizedErrorMessage error={creationProjectInitialization.error} />
           {creationError ? <div className="project-creation-composer__failure" role="alert"><LocalizedErrorMessage error={creationError} className="project-alert project-creation-composer__error" titleKey={selectedCreationProject ? 'projects.conversation.project_failed' : 'projects.conversation.failed'} /><button type="button" className="button-secondary" disabled={creationPending || (selectedCreationProject ? !creationInput.trim() : !creationCheckpoint)} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
           {creationSession?.status === 'failed' ? <div className="project-creation-composer__failure" role="alert"><div><strong>{t('projects.conversation.failed')}</strong><p>{creationSession.error_message || t('errors.generic')}</p>{creationSession.error_code ? <code>{creationSession.error_code}</code> : null}</div><button type="button" className="button-secondary" disabled={creationPending} onClick={retryCreation}>{t(creationPending ? 'projects.conversation.retrying' : 'common.action.retry')}</button></div> : null}
         </section>

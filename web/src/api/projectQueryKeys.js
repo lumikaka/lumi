@@ -3,6 +3,7 @@ export const projectQueryKeys = {
   openProjects: () => ['open-projects'],
   open: (projectUuid) => ['project-open', projectUuid],
   setup: (projectUuid) => ['project-setup', projectUuid],
+  initialization: (projectUuid) => ['project-initialization', projectUuid],
 }
 
 export function isProjectBusinessQuery(query, projectUuid) {

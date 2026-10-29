@@ -97,6 +97,8 @@ import { useI18n } from '../i18n/useI18n.js'
 import { ReferencePicker, ReferenceStrip } from './ChatReferences.jsx'
 import SafeMarkdown from './SafeMarkdown.jsx'
 import ProjectSetupCard from './ProjectSetupCard.jsx'
+import { initializationChatSearch } from '../pages/projectInitialization.js'
+import { projectQueryKeys } from '../api/projectQueryKeys.js'
 
 const threadStatusCopy = {
   idle: 'chat.status.idle', busy: 'chat.status.busy', waiting_for_input: 'chat.status.waiting_for_input', completed: 'common.status.completed',
@@ -521,7 +523,7 @@ function toolStatusLabel(status, t) {
   }[status] || t('common.status.unknown_with_code', { code: status })
 }
 
-function TurnGroup({ group, projectUuid, pictureBook, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict, onProjectReferenceNavigate }) {
+function TurnGroup({ group, projectUuid, pictureBook, historyMayBePartial, requestByItemUuid, inputPending, workflowPending, selectedWorkflowUuid, retiredWorkflowUuid, onRespond, onCancel, onCancelWorkflow, onRetryWorkflow, onResolveWorkflowConflict, onProjectReferenceNavigate }) {
   const { formatDateTime, t } = useI18n()
   const turn = group.turn
   const activity = projectChatTurnActivity(turn, group.items, { historyMayBePartial })
@@ -538,6 +540,7 @@ function TurnGroup({ group, projectUuid, pictureBook, historyMayBePartial, reque
 					inline
 					selected={workflow.uuid === selectedWorkflowUuid}
 					pending={workflowPending}
+						allowRetry={workflow.uuid !== retiredWorkflowUuid}
 					onCancel={onCancelWorkflow}
 					onRetry={onRetryWorkflow}
 					onResolveConflict={onResolveWorkflowConflict}
@@ -591,7 +594,7 @@ function TurnActivity({ turn, items, activity }) {
   return <div className="chat-turn__activity" role="status" aria-live="polite"><i aria-hidden="true" /><span>{copy}{longRunning ? <small>{t('chat.activity.long_running')}</small> : null}</span></div>
 }
 
-function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, selected = false, pending, onCancel, onRetry, onResolveConflict }) {
+function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, selected = false, pending, allowRetry = true, onCancel, onRetry, onResolveConflict }) {
   const { t } = useI18n()
   const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
@@ -641,7 +644,7 @@ function WorkflowProgress({ projectUuid, pictureBook, workflow, inline = false, 
         </section>
       ) : null}
       {workflow.error_code ? <LocalizedErrorMessage error={{ code: workflow.error_code, provider_error: workflow.provider_error }} compact showDiagnostics /> : null}
-      <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{pending ? t('image.task.stage.cancelling') : workflow.cancel_requested_at ? t('image.task.retry_cancel') : t(imageBatch ? 'image.batch.cancel' : 'chat.workflow.cancel')}</button> : null}{controls.canRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
+      <footer>{controls.canCancel ? <button type="button" className="button-secondary" disabled={pending} onClick={() => onCancel(workflow.uuid)}>{pending ? t('image.task.stage.cancelling') : workflow.cancel_requested_at ? t('image.task.retry_cancel') : t(imageBatch ? 'image.batch.cancel' : 'chat.workflow.cancel')}</button> : null}{controls.canRetry && allowRetry ? <button type="button" disabled={pending} onClick={() => onRetry(workflow.uuid)}>{t('chat.workflow.retry')}</button> : null}<small>{t('chat.workflow.persisted')}</small></footer>
       <WorkflowDiagnostics projectUuid={projectUuid} pictureBook={pictureBook} workflow={workflow} open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} focusStepUuid={diagnosticStepUuid} onFocusStep={setDiagnosticStepUuid} />
     </section>
   )
@@ -933,11 +936,13 @@ function NewThreadDraft({ projectUuid, pictureBook, draft, pending, error, overl
   )
 }
 
-export default function ChatArea({ projectUuid, pictureBook, expanded: controlledExpanded, onToggle, overlay = false, newThreadReference = null }) {
+export default function ChatArea({ projectUuid, pictureBook, expanded: controlledExpanded, onToggle, overlay = false, newThreadReference = null, initialization = null, initializationPending = false }) {
   const { t } = useI18n()
   const term = (key, values) => t(formatTerminologyMessageKey(pictureBook, key), values)
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+  const initializationBlocked = initializationPending || initialization?.locked === true
+  const retiredWorkflowUuid = initialization?.status === 'handed_off' ? initialization.workflow_uuid : ''
   const requestedReferenceType = searchParams.get('chat_reference_type') || ''
   const requestedReferenceUuid = searchParams.get('chat_reference_uuid') || ''
   const requestedReferenceTitle = searchParams.get('chat_reference_title') || ''
@@ -947,7 +952,8 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   const requestedNewThread = searchParams.get('chat_new') === '1' || Boolean(requestedReference)
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(Boolean(searchParams.get('chat_thread_uuid') || searchParams.get('workflow_uuid') || requestedNewThread))
   const expanded = controlledExpanded ?? uncontrolledExpanded
-  const [selectedThreadUuid, setSelectedThreadUuid] = useState(searchParams.get('chat_thread_uuid') || '')
+  const [storedThreadUuid, setSelectedThreadUuid] = useState(searchParams.get('chat_thread_uuid') || '')
+  const selectedThreadUuid = initializationBlocked ? initialization?.thread_uuid || '' : storedThreadUuid
   const [showCreate, setShowCreate] = useState(requestedNewThread)
   const [inputText, setInputText] = useState('')
   const [references, setReferences] = useState([])
@@ -967,6 +973,15 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   const workflows = workflowsQuery.data?.items || []
 
   useEffect(() => {
+    if (!initialization?.locked) return
+    setShowCreate(false)
+    setSelectedThreadUuid(initialization.thread_uuid || '')
+    const next = initializationChatSearch(searchParams, initialization)
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
+  }, [initialization?.locked, initialization?.thread_uuid, initialization?.workflow_uuid, searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (initializationBlocked) return
     const requested = searchParams.get('chat_thread_uuid') || ''
     setSelectedThreadUuid((current) => requested === current ? current : requested)
     if (requested) {
@@ -976,27 +991,27 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     if (requestedNewThread) {
       setShowCreate(true)
     }
-  }, [requestedNewThread, searchParams])
+  }, [initializationBlocked, requestedNewThread, searchParams])
 
   useEffect(() => {
-    if (!requestedReference) return
+    if (initializationBlocked || !requestedReference) return
     setSearchParams(consumeProjectChatReferenceQuery(searchParams), { replace: true })
     if (!selectedThreadUuid) {
       setShowCreate(true)
       setReferences((current) => appendProjectChatReference(current, requestedReference))
     }
-  }, [requestedReferenceType, requestedReferenceUuid, requestedReferenceTitle, selectedThreadUuid])
+  }, [initializationBlocked, requestedReferenceType, requestedReferenceUuid, requestedReferenceTitle, selectedThreadUuid])
 
   useEffect(() => {
-    if (!newThreadReference?.resource_uuid || selectedThreadUuid || !showCreate || searchParams.get('chat_new') !== '1') return
+    if (initializationBlocked || !newThreadReference?.resource_uuid || selectedThreadUuid || !showCreate || searchParams.get('chat_new') !== '1') return
     setReferences((current) => appendProjectChatReference(current, newThreadReference))
-  }, [newThreadReference?.resource_type, newThreadReference?.resource_uuid, newThreadReference?.title, selectedThreadUuid, showCreate])
+  }, [initializationBlocked, newThreadReference?.resource_type, newThreadReference?.resource_uuid, newThreadReference?.title, selectedThreadUuid, showCreate])
 
   const selectedThreadQuery = useQuery({ queryKey: ['chat-thread', projectUuid, selectedThreadUuid], queryFn: () => getChatThread(projectUuid, selectedThreadUuid), enabled: expanded && Boolean(selectedThreadUuid) && !threads.some((item) => item.uuid === selectedThreadUuid) })
   const selectedThread = threads.find((item) => item.uuid === selectedThreadUuid) || selectedThreadQuery.data
   const isMCPThread = selectedThread?.thread_type === 'mcp'
   const isWorkflowThread = selectedThread?.thread_type === 'workflow'
-  const canAcceptChatInput = selectedThread?.thread_type === 'conversation'
+  const canAcceptChatInput = !initializationBlocked && selectedThread?.thread_type === 'conversation'
   const referenceBlocked = references.some((item) => item.status === 'uploading' || item.status === 'error')
   const requestedWorkflow = searchParams.get('workflow_uuid')
 	const requestedWorkflowMatch = workflows.find((item) => item.uuid === requestedWorkflow) || null
@@ -1006,13 +1021,13 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
 	const inlineWorkflowsByTurn = useMemo(() => groupInlineWorkflowsByTurn(workflows, selectedThreadUuid), [selectedThreadUuid, workflows])
 
 	useEffect(() => {
-		if (!requestedWorkflowMatch?.thread_uuid || requestedWorkflowMatch.thread_uuid === selectedThreadUuid) return
+		if (initializationBlocked || !requestedWorkflowMatch?.thread_uuid || requestedWorkflowMatch.thread_uuid === selectedThreadUuid) return
 		setSelectedThreadUuid(requestedWorkflowMatch.thread_uuid)
 		setShowCreate(false)
 		const next = new URLSearchParams(searchParams)
 		next.set('chat_thread_uuid', requestedWorkflowMatch.thread_uuid)
 		setSearchParams(next, { replace: true })
-	}, [requestedWorkflowMatch?.thread_uuid, searchParams, selectedThreadUuid, setSearchParams])
+	}, [initializationBlocked, requestedWorkflowMatch?.thread_uuid, searchParams, selectedThreadUuid, setSearchParams])
 
 	useEffect(() => {
 		if (!requestedWorkflow || !requestedWorkflowMatch || requestedWorkflowMatch.thread_uuid !== selectedThreadUuid) return
@@ -1069,6 +1084,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   }, [projectUuid])
 
   const addAttachmentFiles = useCallback((files) => {
+    if (initializationBlocked) return
     const currentCount = references.filter((item) => item.status !== 'error').length
     const selection = selectProjectChatImageFiles(files, currentCount)
     if (selection.rejectedNonImages) {
@@ -1090,7 +1106,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     if (!drafts.length) return
     setReferences((current) => [...current, ...drafts])
     drafts.forEach(uploadAttachmentDraft)
-  }, [references, t, uploadAttachmentDraft])
+  }, [initializationBlocked, references, t, uploadAttachmentDraft])
 
   const handleAttachmentPaste = useCallback((event) => {
     const selected = selectProjectChatClipboardImages(event.clipboardData, references.filter((item) => item.status !== 'error').length)
@@ -1175,6 +1191,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
   const workflowMutation = useMutation({
     mutationFn: ({ workflowUuid, action }) => action === 'cancel' ? cancelWorkflow(projectUuid, workflowUuid) : retryWorkflow(projectUuid, workflowUuid),
     onSuccess: (workflow) => { setError(null); invalidate({ thread_uuid: workflow.thread_uuid, workflow_uuid: workflow.uuid }) }, onError: (error) => { setError(error); invalidate() },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: projectQueryKeys.initialization(projectUuid) }),
   })
   const workflowConflictMutation = useMutation({
     mutationFn: ({ workflowUuid, action, expectedRevision }) => resolveWorkflowConflict(projectUuid, workflowUuid, {
@@ -1262,6 +1279,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     else setUncontrolledExpanded((value) => !value)
   }
   const showThreadList = () => {
+    if (initializationBlocked) return
     setShowCreate(false)
     setSelectedThreadUuid('')
     setInputText('')
@@ -1276,6 +1294,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     setSearchParams(next, { replace: true })
   }
   const startNewThread = () => {
+    if (initializationBlocked) return
     setSelectedThreadUuid('')
     setShowCreate(true)
     setInputText('')
@@ -1294,6 +1313,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     setSearchParams(next, { replace: true })
   }
   const chooseThread = (uuid) => {
+    if (initializationBlocked) return
     setSelectedThreadUuid(uuid)
     setShowCreate(false)
     setInputText('')
@@ -1321,7 +1341,11 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     )
   }
 
-  if (showCreate) {
+  if (initializationBlocked && !selectedThreadUuid) {
+    return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><p className="chat-muted" role="status">{t('projects.initialization.loading')}</p></aside>
+  }
+
+  if (showCreate && !initializationBlocked) {
     return <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}><NewThreadDraft projectUuid={projectUuid} pictureBook={pictureBook} draft={inputText} pending={createThreadMutation.isPending} error={error || createThreadMutation.error} overlay={overlay} references={references} referenceBlocked={referenceBlocked} onDraftChange={setInputText} onSubmit={() => createThreadMutation.mutate()} onBack={showThreadList} onToggle={toggleExpanded} onDismissError={() => setError(null)} onAddFiles={addAttachmentFiles} onRemoveReference={removeReference} onToggleReference={toggleReference} onPaste={handleAttachmentPaste} /></aside>
   }
 
@@ -1333,7 +1357,7 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
     <aside className={`chat-area chat-area--expanded ${overlay ? 'chat-area--overlay' : ''}`} aria-label={t('chat.project')}>
       <div className="chat-panel chat-panel--detail">
         <header className="chat-detail-header">
-          <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button>
+          {!initializationBlocked ? <button className="chat-back" type="button" onClick={showThreadList} aria-label={t('chat.thread.back')}><ArrowLeft size={17} /></button> : null}
 		  <div><p>{t('chat.title')}</p><h2>{selectedThread ? threadDisplayTitle(selectedThread, selectedDedicatedWorkflow, term) : t('chat.threads')}</h2></div>
           <div className="chat-detail-actions">
             {isMCPThread ? <span className="chat-muted">{t('chat.mcp.source')}</span> : <span className={`chat-status chat-status--${statusClass(selectedThread?.status)}`}>{threadStatusCopy[selectedThread?.status] ? t(threadStatusCopy[selectedThread.status]) : selectedThread?.status ? t('common.status.unknown_with_code', { code: selectedThread.status }) : t('chat.loading')}</span>}
@@ -1356,13 +1380,13 @@ export default function ChatArea({ projectUuid, pictureBook, expanded: controlle
             {itemsQuery.isFetchingNextPage ? <div className="chat-history-loader" role="status"><span>{t('chat.messages.loading_earlier')}</span></div> : null}
             <ErrorNotice error={error || itemsQuery.error || turnsQuery.error || workflowsQuery.error} onDismiss={() => setError(null)} />
 			<ProjectSetupCard projectUuid={projectUuid} enabled={expanded && Boolean(selectedThreadUuid)} />
-			<WorkflowProgress projectUuid={projectUuid} pictureBook={pictureBook} workflow={selectedDedicatedWorkflow} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
+			<WorkflowProgress projectUuid={projectUuid} pictureBook={pictureBook} workflow={selectedDedicatedWorkflow} allowRetry={selectedDedicatedWorkflow?.uuid !== retiredWorkflowUuid} selected={selectedDedicatedWorkflow?.uuid === requestedWorkflow} pending={workflowMutation.isPending || workflowConflictMutation.isPending} onCancel={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetry={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} />
             {itemsQuery.isLoading || turnsQuery.isLoading ? <p className="chat-muted">{t('chat.messages.loading')}</p> : null}
             {!isWorkflowThread && !itemsQuery.isLoading && !turnsQuery.isLoading && !turnGroups.length ? <div className="chat-empty-state"><strong>{t('chat.messages.empty')}</strong><span>{t('chat.messages.empty_body')}</span></div> : null}
-			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
+			{turnGroups.map((group, index) => <TurnGroup key={group.uuid} group={group} projectUuid={projectUuid} pictureBook={pictureBook} historyMayBePartial={Boolean(index === 0 && itemsQuery.hasNextPage && !group.items.some((item) => item.item_type === 'user_message'))} requestByItemUuid={requestByItemUuid} inputPending={inputMutation.isPending || initializationBlocked} retiredWorkflowUuid={retiredWorkflowUuid} workflowPending={workflowMutation.isPending || workflowConflictMutation.isPending} selectedWorkflowUuid={requestedWorkflow} onRespond={(requestUuid, payload) => inputMutation.mutate({ requestUuid, payload })} onCancel={(requestUuid) => inputMutation.mutate({ requestUuid, cancel: true })} onCancelWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'cancel' })} onRetryWorkflow={(uuid) => workflowMutation.mutate({ workflowUuid: uuid, action: 'retry' })} onResolveWorkflowConflict={(uuid, action, expectedRevision) => workflowConflictMutation.mutate({ workflowUuid: uuid, action, expectedRevision })} onProjectReferenceNavigate={overlay ? onToggle : undefined} />)}
           </div>
           </>}
-          {isWorkflowThread ? <div className="chat-composer-shell chat-workflow-notice">
+          {initializationBlocked ? <div className="chat-composer-shell chat-workflow-notice"><p className="chat-muted">{t('projects.initialization.chat_read_only')}</p></div> : isWorkflowThread ? <div className="chat-composer-shell chat-workflow-notice">
             <p className="chat-muted">{t('chat.workflow.read_only')}</p>
             <button type="button" className="button-quiet" onClick={startNewThread}>{t('chat.thread.new')}</button>
           </div> : canAcceptChatInput ? (
