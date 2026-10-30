@@ -14,14 +14,19 @@
 
 1. `lumi init [--name <名称>] [--language <语言>]`：
    - cwd 已是 Lumi 项目：幂等返回项目信息，不做修改。
-   - cwd 为空目录或只包含无冲突文件（如 `.git/`、`.codex/`、`AGENTS.md`、其他用户文件）：原地创建项目。
+   - cwd 为空目录或只包含无冲突文件（如 `.git/`、`.codex/`、`AGENTS.md`、其他用户文件）：原地创建项目。`.codex/config.toml` 已存在时按下文规则合并。
    - 与项目受管文件冲突（例如已有非 Lumi 的 `project.sqlite`、`README.md`、`STORY.md`）：拒绝并给出明确错误，不覆盖任何已有文件。
    - 创建后通过 Step 1 的实例打开项目，并写入最近项目索引。
 2. 在 `internal/project` 中新增「原地初始化」能力，复用现有的写目录契约、加锁、migration、事务创建 `projects` 与 `local_user` 的步骤；失败时只清理本次新建的文件。
 3. `lumi project info [--json]`：输出 cwd 项目的 UUID、名称、路径、是否打开。
 4. 生成 Codex 指引（仅在不存在时写入，已存在则不覆盖并提示）：
    - `AGENTS.md`：简短说明这是 Lumi 项目；在 Codex 中所有项目读写必须通过 Lumi 插件工具；禁止直接读写 `project.sqlite`、`.lumi/`、`assets/`，`STORY.md` 只读。
-   - 如果 `docs/features/codex-plugins/spike.md` 证实项目级 `.codex/config.toml` 能限制写入，则一并生成；否则跳过并在交付说明中记录。
+   - `.codex/config.toml`：调研已证实（macOS、`codex-cli 0.163.0`）项目级 permission profile 能拒绝写入，配置片段见 `spike.md` 第 5 项。要求：
+     - 保护 `project.sqlite` 及其 `-wal`、`-shm`、`-journal` 附属文件，以及 `.lumi/`、`assets/`。
+     - 已有 `config.toml` 时合并 Lumi 的 profile，不覆盖用户已有内容；无法安全合并（例如已设置其他 `default_permissions`）时不改动文件，并输出需要用户手动处理的说明。
+     - 检测旧的 `sandbox_mode` 设置并提示它会让 profile 失效。
+     - 配置只在用户信任该项目后生效。`lumi init` 不得替用户设置信任，只在输出中提示；`lumi project info` 报告保护是否实际生效（无法判断时标为未知）。
+     - 该配置只限制写入、不限制读取；AGENTS.md 中关于禁止直接读取的要求属于行为指引，不得描述为强制保障。调研只在 PATH 上的 `codex-cli 0.163.0` 中验证了沙箱效果，Codex App 中是否同样生效尚未验证：用 App 内置的 `codex` 二进制（`/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`）按 `spike.md` 第 5 项复测，并在 App 中由用户人工确认；未确认前文档不得宣称 App 中已有写保护。
    - 这些文件不属于项目格式的一部分：桌面版创建的项目没有它们也必须能正常使用，可通过 `lumi init` 在已有项目上补齐。
 
 ## 禁止
@@ -33,6 +38,6 @@
 
 ## 完成标准
 
-- `go test ./internal/project/... ./cmd/lumi/...` 通过，测试至少覆盖：空目录、含 `.git` 的目录、已是项目（幂等）、存在冲突文件、中途失败的清理。
+- `go test ./internal/project/... ./cmd/lumi/...` 通过，测试至少覆盖：空目录、含 `.git` 的目录、已是项目（幂等）、存在冲突文件、中途失败的清理、已有 `.codex/config.toml` 的合并与拒绝合并。
 - 测试证明：`lumi init` 创建的项目可以被桌面版的打开流程（`OpenSelected` 路径：UUID 校验、加锁、migration）正常打开；桌面版创建的项目可以被 `lumi init` 补齐指引文件而不改动其他内容。
 - 更新 `docs/features/codex-plugins/cli.md`。

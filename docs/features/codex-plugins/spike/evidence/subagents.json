@@ -1,0 +1,35 @@
+{
+  "kind": "curated record of actual App collaboration tool calls and returned reports",
+  "date": "2026-10-30",
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "app_bundled_codex_version": "codex-cli 0.166.0-alpha.5.1",
+  "path_codex_version": "codex-cli 0.163.0",
+  "tests": [
+    {
+      "task_name": "/root/subagent_probe",
+      "fork_turns": "none",
+      "reported_cwd": "/Users/qingyang/mine-work/lumi",
+      "reported_context": "System/developer instructions, user AGENTS.md/environment, and delegated task; no earlier root conversation history",
+      "shared_file": "docs/features/codex-plugins/spike/probe_server.py",
+      "shared_file_docstring": "Disposable, dependency-free stdio MCP probe. Never logs arbitrary env/secrets.",
+      "plugin_tool": "mcp__plan_questionnaire__get_questionnaire",
+      "arguments": {"questionnaire_id": "lumi-codex-spike-nonexistent-20261030"},
+      "result": {"content": [{"type": "text", "text": "找不到该问卷，请重新打开问卷"}], "isError": true},
+      "mutation": false
+    },
+    {
+      "task_name": "/root/subagent_fork_probe",
+      "fork_turns": "all",
+      "reported_context": "Could see original root Step 0 request and its eight questions",
+      "values_recalled_from_parent_history_not_supplied_in_delegated_prompt": {
+        "path_cli": "codex-cli 0.163.0",
+        "app_bundled_cli": "codex-cli 0.166.0-alpha.5.1",
+        "fox_actual_dimensions": [1536, 1024],
+        "fox_prompt_requested_dimensions": [384, 256]
+      },
+      "tools_called": false,
+      "mutation": false
+    }
+  ]
+}

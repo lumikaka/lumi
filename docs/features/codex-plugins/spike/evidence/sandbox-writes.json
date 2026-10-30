@@ -1,0 +1,66 @@
+[
+  {
+    "path": "allowed.txt",
+    "write": "allowed"
+  },
+  {
+    "path": "project.sqlite",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'project.sqlite'"
+  },
+  {
+    "path": "project.sqlite-wal",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'project.sqlite-wal'"
+  },
+  {
+    "path": "project.sqlite-shm",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'project.sqlite-shm'"
+  },
+  {
+    "path": "project.sqlite-journal",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'project.sqlite-journal'"
+  },
+  {
+    "path": ".lumi/probe.txt",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: '.lumi/probe.txt'"
+  },
+  {
+    "path": "assets/probe.txt",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'assets/probe.txt'"
+  },
+  {
+    "path": "assets/new.txt",
+    "write": "denied",
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted: 'assets/new.txt'"
+  },
+  {
+    "path": "project.sqlite",
+    "operation": "replace",
+    "result": "denied",
+    "errno": 1
+  },
+  {
+    "path": "project.sqlite",
+    "operation": "unlink",
+    "result": "denied",
+    "errno": 1
+  },
+  {
+    "path": "assets",
+    "operation": "rename",
+    "result": "denied",
+    "errno": 1
+  }
+]

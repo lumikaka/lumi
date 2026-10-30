@@ -1,0 +1,953 @@
+{
+  "root": "/private/tmp/lumi-codex-config-cgvwtky2",
+  "project": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+  "home": "/private/tmp/lumi-codex-config-cgvwtky2/home",
+  "version": "codex-cli 0.163.0",
+  "untrusted": {
+    "config": {
+      "id": 2,
+      "result": {
+        "config": {
+          "model": null,
+          "review_model": null,
+          "model_context_window": null,
+          "model_auto_compact_token_limit": null,
+          "model_auto_compact_token_limit_scope": null,
+          "model_provider": null,
+          "approval_policy": null,
+          "approvals_reviewer": null,
+          "sandbox_mode": null,
+          "sandbox_workspace_write": null,
+          "forced_chatgpt_workspace_id": null,
+          "forced_login_method": null,
+          "web_search": null,
+          "tools": null,
+          "instructions": null,
+          "developer_instructions": null,
+          "compact_prompt": null,
+          "model_reasoning_effort": null,
+          "model_reasoning_summary": null,
+          "model_verbosity": null,
+          "service_tier": null,
+          "analytics": null,
+          "apps": null,
+          "browser_use": null,
+          "computer_use": null,
+          "desktop": null,
+          "experimental_realtime_ws_base_url": null,
+          "feedback": null,
+          "experimental_compact_prompt_file": null,
+          "experimental_realtime_ws_model": null,
+          "sqlite_home": null,
+          "model_post_turn_compact_threshold_percent": null,
+          "show_raw_agent_reasoning": null,
+          "openai_base_url": null,
+          "allow_login_shell": true,
+          "mcp_optional_startup_grace_ms": null,
+          "thread_unload_delay_secs": null,
+          "tool_suggest": null,
+          "auto_review": null,
+          "suppress_unstable_features_warning": null,
+          "mcp_oauth_credentials_store": "auto",
+          "plan_mode_reasoning_effort": null,
+          "profiles": {},
+          "experimental_realtime_ws_backend_prompt": null,
+          "projects": {
+            "/private/tmp/lumi-codex-config-cgvwtky2/project": {
+              "trust_level": "untrusted"
+            }
+          },
+          "profile": null,
+          "personality": null,
+          "project_doc_max_bytes": 32768,
+          "js_repl_node_path": null,
+          "audio": null,
+          "check_for_update_on_startup": null,
+          "apps_mcp_product_sku": null,
+          "include_permissions_instructions": true,
+          "allow_symlinked_codex_home": null,
+          "disable_paste_burst": null,
+          "windows": null,
+          "tui": null,
+          "experimental_thread_store_endpoint": null,
+          "model_catalog_json": null,
+          "cli_auth_credentials_store": "file",
+          "notice": null,
+          "skills": null,
+          "experimental_use_unified_exec_tool": null,
+          "include_environment_context": true,
+          "hide_agent_reasoning": false,
+          "oss_provider": null,
+          "experimental_realtime_start_instructions": null,
+          "history": {
+            "persistence": "save-all",
+            "max_bytes": null
+          },
+          "daybreak": null,
+          "default_permissions": null,
+          "features": {
+            "api_key_cyber_access_programs": true,
+            "api_key_model_discovery": true,
+            "auth_elicitation": true,
+            "background_paginated_rollout_migration": false,
+            "codex_apps_mcp_2026_07_28": false,
+            "mcp_2026_07_28": false,
+            "memories": false,
+            "mentions_v2": true,
+            "remote_control": false,
+            "remote_plugin": true,
+            "tool_suggest": true,
+            "windows_sandbox_service": false
+          },
+          "background_terminal_max_timeout": 300000,
+          "permissions": null,
+          "agents": null,
+          "realtime": null,
+          "project_doc_fallback_filenames": [],
+          "include_environment_context_time": true,
+          "mcp_servers": {},
+          "log_dir": null,
+          "orchestrator": null,
+          "responses_api_metadata": null,
+          "experimental_realtime_ws_startup_context": null,
+          "file_opener": "vscode",
+          "shell_environment_policy": {
+            "inherit": null,
+            "ignore_default_excludes": null,
+            "exclude": null,
+            "set": null,
+            "include_only": null,
+            "filters": null,
+            "experimental_use_profile": null
+          },
+          "project_root_markers": [
+            ".git"
+          ],
+          "notify": null,
+          "tool_output_token_limit": null,
+          "mcp_oauth_callback_port": null,
+          "ghost_snapshot": null,
+          "otel": null,
+          "cloud": null,
+          "marketplaces": {},
+          "mcp_oauth_callback_url": null,
+          "goals": null,
+          "mcp_enterprise_managed_auth": null,
+          "experimental_thread_store": null,
+          "experimental_realtime_webrtc_call_base_url": null,
+          "model_providers": {},
+          "include_collaboration_mode_instructions": true,
+          "chatgpt_base_url": "https://chatgpt.com/backend-api/",
+          "hooks": null,
+          "memories": null,
+          "include_apps_instructions": true,
+          "model_instructions_file": null,
+          "js_repl_node_module_dirs": null,
+          "plugins": {}
+        },
+        "origins": {
+          "projects./private/tmp/lumi-codex-config-cgvwtky2/project.trust_level": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-config-cgvwtky2/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:f451c77f0595d678ee51ec51937b95df0b0b9ca9902dbda45f363f9f5d57fa9e"
+          }
+        },
+        "layers": [
+          {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734",
+            "config": {
+              "default_permissions": "lumi-protect",
+              "permissions": {
+                "lumi-protect": {
+                  "extends": ":workspace",
+                  "filesystem": {
+                    ":workspace_roots": {
+                      "project.sqlite": "read",
+                      "project.sqlite-wal": "read",
+                      "project.sqlite-shm": "read",
+                      "project.sqlite-journal": "read",
+                      ".lumi": "read",
+                      "assets": "read"
+                    }
+                  }
+                }
+              }
+            },
+            "disabledReason": "/private/tmp/lumi-codex-config-cgvwtky2/project is marked as untrusted in the effective configuration. To load project-local config, hooks, and exec policies, update its trust setting. If that setting is managed by your organization, contact your administrator."
+          },
+          {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-config-cgvwtky2/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:f451c77f0595d678ee51ec51937b95df0b0b9ca9902dbda45f363f9f5d57fa9e",
+            "config": {
+              "projects": {
+                "/private/tmp/lumi-codex-config-cgvwtky2/project": {
+                  "trust_level": "untrusted"
+                }
+              }
+            }
+          },
+          {
+            "name": {
+              "type": "system",
+              "file": "/etc/codex/config.toml"
+            },
+            "version": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "config": {}
+          }
+        ]
+      }
+    },
+    "hooks": {
+      "id": 3,
+      "result": {
+        "data": [
+          {
+            "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+            "hooks": [],
+            "warnings": [],
+            "errors": []
+          }
+        ]
+      }
+    },
+    "thread": {
+      "id": 4,
+      "result": {
+        "thread": {
+          "id": "01a18bf2-7594-7632-ae4e-149506402e44",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-config-cgvwtky2/project"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bf2-7594-7632-ae4e-149506402e44",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349285,
+          "updatedAt": 1793349285,
+          "recencyAt": 1793349285,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-config-cgvwtky2/home/sessions/2026/10/30/rollout-2026-10-30T16-34-45-01a18bf2-7594-7632-ae4e-149506402e44.jsonl",
+          "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+          "cliVersion": "0.163.0",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        },
+        "model": "gpt-6.1-sol",
+        "modelProvider": "openai",
+        "serviceTier": null,
+        "disabledPluginIds": [],
+        "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+        "runtimeWorkspaceRoots": [
+          "/private/tmp/lumi-codex-config-cgvwtky2/project"
+        ],
+        "instructionSources": [],
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "activePermissionProfile": {
+          "id": ":workspace",
+          "extends": null
+        },
+        "reasoningEffort": null,
+        "multiAgentMode": "explicitRequestOnly"
+      }
+    }
+  },
+  "trusted": {
+    "config": {
+      "id": 2,
+      "result": {
+        "config": {
+          "model": null,
+          "review_model": null,
+          "model_context_window": null,
+          "model_auto_compact_token_limit": null,
+          "model_auto_compact_token_limit_scope": null,
+          "model_provider": null,
+          "approval_policy": null,
+          "approvals_reviewer": null,
+          "sandbox_mode": null,
+          "sandbox_workspace_write": null,
+          "forced_chatgpt_workspace_id": null,
+          "forced_login_method": null,
+          "web_search": null,
+          "tools": null,
+          "instructions": null,
+          "developer_instructions": null,
+          "compact_prompt": null,
+          "model_reasoning_effort": null,
+          "model_reasoning_summary": null,
+          "model_verbosity": null,
+          "service_tier": null,
+          "analytics": null,
+          "apps": null,
+          "browser_use": null,
+          "computer_use": null,
+          "desktop": null,
+          "permissions": {
+            "lumi-protect": {
+              "description": null,
+              "extends": ":workspace",
+              "workspace_roots": null,
+              "filesystem": {
+                "glob_scan_max_depth": null,
+                ":workspace_roots": {
+                  ".lumi": "read",
+                  "assets": "read",
+                  "project.sqlite": "read",
+                  "project.sqlite-journal": "read",
+                  "project.sqlite-shm": "read",
+                  "project.sqlite-wal": "read"
+                }
+              },
+              "network": null
+            }
+          },
+          "default_permissions": "lumi-protect",
+          "model_instructions_file": null,
+          "history": {
+            "persistence": "save-all",
+            "max_bytes": null
+          },
+          "file_opener": "vscode",
+          "apps_mcp_product_sku": null,
+          "responses_api_metadata": null,
+          "skills": null,
+          "allow_symlinked_codex_home": null,
+          "mcp_servers": {},
+          "experimental_compact_prompt_file": null,
+          "tool_output_token_limit": null,
+          "mcp_oauth_callback_url": null,
+          "notify": null,
+          "include_collaboration_mode_instructions": true,
+          "experimental_realtime_ws_base_url": null,
+          "projects": {
+            "/private/tmp/lumi-codex-config-cgvwtky2/project": {
+              "trust_level": "trusted"
+            }
+          },
+          "marketplaces": {},
+          "oss_provider": null,
+          "openai_base_url": null,
+          "project_root_markers": [
+            ".git"
+          ],
+          "include_environment_context_time": true,
+          "project_doc_fallback_filenames": [],
+          "suppress_unstable_features_warning": null,
+          "thread_unload_delay_secs": null,
+          "check_for_update_on_startup": null,
+          "model_catalog_json": null,
+          "auto_review": null,
+          "personality": null,
+          "notice": null,
+          "experimental_realtime_ws_startup_context": null,
+          "memories": null,
+          "experimental_realtime_ws_backend_prompt": null,
+          "profiles": {},
+          "log_dir": null,
+          "realtime": null,
+          "tool_suggest": null,
+          "otel": null,
+          "tui": null,
+          "orchestrator": null,
+          "mcp_oauth_credentials_store": "auto",
+          "mcp_oauth_callback_port": null,
+          "ghost_snapshot": null,
+          "mcp_optional_startup_grace_ms": null,
+          "hide_agent_reasoning": false,
+          "include_permissions_instructions": true,
+          "windows": null,
+          "experimental_realtime_ws_model": null,
+          "experimental_realtime_start_instructions": null,
+          "js_repl_node_module_dirs": null,
+          "experimental_use_unified_exec_tool": null,
+          "include_environment_context": true,
+          "disable_paste_burst": null,
+          "sqlite_home": null,
+          "agents": null,
+          "audio": null,
+          "daybreak": null,
+          "model_providers": {},
+          "experimental_thread_store": null,
+          "hooks": null,
+          "mcp_enterprise_managed_auth": null,
+          "profile": null,
+          "model_post_turn_compact_threshold_percent": null,
+          "js_repl_node_path": null,
+          "shell_environment_policy": {
+            "inherit": null,
+            "ignore_default_excludes": null,
+            "exclude": null,
+            "set": null,
+            "include_only": null,
+            "filters": null,
+            "experimental_use_profile": null
+          },
+          "cloud": null,
+          "plan_mode_reasoning_effort": null,
+          "plugins": {},
+          "features": {
+            "api_key_cyber_access_programs": true,
+            "api_key_model_discovery": true,
+            "auth_elicitation": true,
+            "background_paginated_rollout_migration": false,
+            "codex_apps_mcp_2026_07_28": false,
+            "mcp_2026_07_28": false,
+            "memories": false,
+            "mentions_v2": true,
+            "remote_control": false,
+            "remote_plugin": true,
+            "tool_suggest": true,
+            "windows_sandbox_service": false
+          },
+          "include_apps_instructions": true,
+          "allow_login_shell": true,
+          "experimental_realtime_webrtc_call_base_url": null,
+          "background_terminal_max_timeout": 300000,
+          "chatgpt_base_url": "https://chatgpt.com/backend-api/",
+          "cli_auth_credentials_store": "file",
+          "goals": null,
+          "show_raw_agent_reasoning": null,
+          "experimental_thread_store_endpoint": null,
+          "project_doc_max_bytes": 32768,
+          "feedback": null
+        },
+        "origins": {
+          "permissions.lumi-protect.filesystem.:workspace_roots.project.sqlite-journal": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "permissions.lumi-protect.filesystem.:workspace_roots..lumi": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "permissions.lumi-protect.filesystem.:workspace_roots.project.sqlite": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "permissions.lumi-protect.filesystem.:workspace_roots.project.sqlite-wal": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "permissions.lumi-protect.filesystem.:workspace_roots.project.sqlite-shm": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "permissions.lumi-protect.extends": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "projects./private/tmp/lumi-codex-config-cgvwtky2/project.trust_level": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-config-cgvwtky2/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:78e6e0186026679bdde71df9ced862fc9c20bfb74054aa30cdc887da694b7b9d"
+          },
+          "permissions.lumi-protect.filesystem.:workspace_roots.assets": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          },
+          "default_permissions": {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734"
+          }
+        },
+        "layers": [
+          {
+            "name": {
+              "type": "project",
+              "dotCodexFolder": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex"
+            },
+            "version": "sha256:7d9e5f3a0022a803b97085f3c78b97b11fcafc145650aada645146b1c5366734",
+            "config": {
+              "default_permissions": "lumi-protect",
+              "permissions": {
+                "lumi-protect": {
+                  "extends": ":workspace",
+                  "filesystem": {
+                    ":workspace_roots": {
+                      "project.sqlite": "read",
+                      "project.sqlite-wal": "read",
+                      "project.sqlite-shm": "read",
+                      "project.sqlite-journal": "read",
+                      ".lumi": "read",
+                      "assets": "read"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-config-cgvwtky2/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:78e6e0186026679bdde71df9ced862fc9c20bfb74054aa30cdc887da694b7b9d",
+            "config": {
+              "projects": {
+                "/private/tmp/lumi-codex-config-cgvwtky2/project": {
+                  "trust_level": "trusted"
+                }
+              }
+            }
+          },
+          {
+            "name": {
+              "type": "system",
+              "file": "/etc/codex/config.toml"
+            },
+            "version": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "config": {}
+          }
+        ]
+      }
+    },
+    "hooks": {
+      "id": 3,
+      "result": {
+        "data": [
+          {
+            "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+            "hooks": [
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:pre_tool_use:0:0",
+                "eventName": "preToolUse",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 0,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:172c63de98eb1e3558b60d5247950e0948233973f4265c499aa06896ff435913",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:permission_request:0:0",
+                "eventName": "permissionRequest",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 1,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:17e6a79911a29e3d569e8bc4b77ffb7aa84325f2060419b612be1391df7c53dd",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:post_tool_use:0:0",
+                "eventName": "postToolUse",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 2,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:65a391c974e2c72496be1fb5c964ed959d5b4eae6c8dab00311202060c101d62",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:pre_compact:0:0",
+                "eventName": "preCompact",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 3,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:504860b4abf17f05e721fb4a6a44b7eea0d30619b44271dad4cd97adf08952d9",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:post_compact:0:0",
+                "eventName": "postCompact",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 4,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:343ddf42f154dd83ed258555d6b367ab5f57624cf30d55f612b9bf5599557b5b",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:session_start:0:0",
+                "eventName": "sessionStart",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 5,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:82eb463cf9654a7e8879fe4fb6de72ccb1d384dbe5a162250035062a3ef1a3f0",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:session_end:0:0",
+                "eventName": "sessionEnd",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 6,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:3998afa08de540866e0dbb66b67c0efe0986662a225aa79876f0b4c403fc8df2",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:user_prompt_submit:0:0",
+                "eventName": "userPromptSubmit",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 7,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:767deef2a5e24034a0842f7c08216c37e5c1f4fc33bcacd4de5f0f68a0f6eb48",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:subagent_start:0:0",
+                "eventName": "subagentStart",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 8,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:bd97bfc08d112d3c737a82c93dbad3bc8d2d6ea2c1f4220c5bf613ccab402173",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:subagent_stop:0:0",
+                "eventName": "subagentStop",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 9,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:89c4218b51585f9dcf14264451eae3a5f207be2f9a59e111cbc8a4377d11e5de",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:stop:0:0",
+                "eventName": "stop",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 10,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:9032a78a3a459c30d206eb51ffbb1c5ba25ef41691b96691342e2e89a958d232",
+                "trustStatus": "untrusted"
+              },
+              {
+                "key": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json:interrupt:0:0",
+                "eventName": "interrupt",
+                "handlerType": "command",
+                "command": "python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/hook_probe.py /private/tmp/lumi-codex-config-cgvwtky2/hooks.jsonl",
+                "async": false,
+                "matcher": null,
+                "timeoutSec": 3,
+                "statusMessage": null,
+                "additionalContextLimit": null,
+                "sourcePath": "/private/tmp/lumi-codex-config-cgvwtky2/project/.codex/hooks.json",
+                "source": "project",
+                "pluginId": null,
+                "displayOrder": 11,
+                "enabled": true,
+                "isManaged": false,
+                "currentHash": "sha256:4cf11dd5ca71b389ab0ab2d0f50b04f8a25e459810eaf11161ec258a1c826a2c",
+                "trustStatus": "untrusted"
+              }
+            ],
+            "warnings": [],
+            "errors": []
+          }
+        ]
+      }
+    },
+    "thread": {
+      "id": 4,
+      "result": {
+        "thread": {
+          "id": "01a18bf2-76ee-7050-8aa8-2202b6271cbd",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-config-cgvwtky2/project"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bf2-76ee-7050-8aa8-2202b6271cbd",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349285,
+          "updatedAt": 1793349285,
+          "recencyAt": 1793349285,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-config-cgvwtky2/home/sessions/2026/10/30/rollout-2026-10-30T16-34-45-01a18bf2-76ee-7050-8aa8-2202b6271cbd.jsonl",
+          "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+          "cliVersion": "0.163.0",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        },
+        "model": "gpt-6.1-sol",
+        "modelProvider": "openai",
+        "serviceTier": null,
+        "disabledPluginIds": [],
+        "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+        "runtimeWorkspaceRoots": [
+          "/private/tmp/lumi-codex-config-cgvwtky2/project"
+        ],
+        "instructionSources": [],
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "activePermissionProfile": {
+          "id": "lumi-protect",
+          "extends": ":workspace"
+        },
+        "reasoningEffort": null,
+        "multiAgentMode": "explicitRequestOnly"
+      }
+    }
+  },
+  "offline_hook_turn": {
+    "argv": [
+      "codex",
+      "--no-daemon",
+      "exec",
+      "--dangerously-bypass-hook-trust",
+      "--json",
+      "-s",
+      "read-only",
+      "-C",
+      "/private/tmp/lumi-codex-config-cgvwtky2/project",
+      "-c",
+      "model_provider=\"spike\"",
+      "-c",
+      "model_providers.spike.name=\"Offline lifecycle test\"",
+      "-c",
+      "model_providers.spike.base_url=\"http://127.0.0.1:9/v1\"",
+      "-c",
+      "model_providers.spike.wire_api=\"responses\"",
+      "-c",
+      "model_providers.spike.requires_openai_auth=false",
+      "-c",
+      "model_providers.spike.request_max_retries=0",
+      "-c",
+      "model_providers.spike.stream_max_retries=0",
+      "Reply exactly SPIKE_OK. Do not invoke tools."
+    ],
+    "exit_code": -15,
+    "timed_out": true,
+    "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"01a18bf2-774d-70b2-ae2d-d90b4c660a1f\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"error\",\"message\":\"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.\"}}\n{\"type\":\"turn.started\"}\n{\"type\":\"error\",\"message\":\"Reconnecting... waiting for network (Connection failed: error sending request)\"}\n",
+    "stderr": "Reading additional input from stdin...\n2026-10-30T08:34:45.707646Z  WARN codex_core_plugins::manager: failed to warm featured plugin ids cache error=failed to send remote featured plugin request to https://chatgpt.com/backend-api/plugins/featured?platform=codex: error sending request for url (https://chatgpt.com/backend-api/plugins/featured?platform=codex)\n2026-10-30T08:34:45.812275Z  WARN codex_core_plugins::startup_sync: git sync failed for curated plugin sync; falling back to GitHub HTTP error=git ls-remote curated plugins repo failed with status exit status: 128: fatal: unable to access 'https://github.com/openai/plugins.git/': Failed to connect to 0.0.0.0 port 1080 after 0 ms: Couldn't connect to server\n2026-10-30T08:34:45.812908Z  WARN codex_core_plugins::startup_sync: GitHub HTTP sync failed for curated plugin sync; falling back to export archive error=failed to get curated plugins repository from https://api.github.com/repos/openai/plugins: error sending request for url (https://api.github.com/repos/openai/plugins) backup_archive_api_url=\"https://chatgpt.com/backend-api/plugins/export/curated\"\n2026-10-30T08:34:45.813462Z  WARN codex_core_plugins::manager: failed to sync curated plugins repo: git sync failed for curated plugin sync: git ls-remote curated plugins repo failed with status exit status: 128: fatal: unable to access 'https://github.com/openai/plugins.git/': Failed to connect to 0.0.0.0 port 1080 after 0 ms: Couldn't connect to server; GitHub HTTP sync failed for curated plugin sync: failed to get curated plugins repository from https://api.github.com/repos/openai/plugins: error sending request for url (https://api.github.com/repos/openai/plugins); export archive sync failed for curated plugin sync: failed to get curated plugins export archive metadata from https://chatgpt.com/backend-api/plugins/export/curated: error sending request for url (https://chatgpt.com/backend-api/plugins/export/curated)\n2026-10-30T08:34:45.896895Z  WARN codex_core::responses_retry: stream connection failed; waiting to retry turn_id=01a18bf2-7782-7032-90f8-1d1975ec9ba8 error=Connection failed: error sending request retry_delay=5s\n"
+  },
+  "hook_payloads": [
+    {
+      "process_cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+      "payload": {
+        "session_id": "01a18bf2-774d-70b2-ae2d-d90b4c660a1f",
+        "transcript_path": "/private/tmp/lumi-codex-config-cgvwtky2/home/sessions/2026/10/30/rollout-2026-10-30T16-34-45-01a18bf2-774d-70b2-ae2d-d90b4c660a1f.jsonl",
+        "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+        "hook_event_name": "SessionStart",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "source": "startup"
+      },
+      "transcript_exists": true
+    },
+    {
+      "process_cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+      "payload": {
+        "session_id": "01a18bf2-774d-70b2-ae2d-d90b4c660a1f",
+        "turn_id": "01a18bf2-7782-7032-90f8-1d1975ec9ba8",
+        "transcript_path": "/private/tmp/lumi-codex-config-cgvwtky2/home/sessions/2026/10/30/rollout-2026-10-30T16-34-45-01a18bf2-774d-70b2-ae2d-d90b4c660a1f.jsonl",
+        "cwd": "/private/tmp/lumi-codex-config-cgvwtky2/project",
+        "hook_event_name": "UserPromptSubmit",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "prompt": "Reply exactly SPIKE_OK. Do not invoke tools."
+      },
+      "transcript_exists": true
+    }
+  ]
+}

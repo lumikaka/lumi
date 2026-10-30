@@ -1,0 +1,49 @@
+{
+  "appVersion": "26.1027.30824",
+  "appBuild": "22943",
+  "appBundledCodexVersion": "codex-cli 0.166.0-alpha.5.1",
+  "pathCodexVersion": "codex-cli 0.163.0",
+  "entries": [
+    {
+      "file": "fox-original.png",
+      "args": {
+        "prompt": "Technical verification image for Lumi Codex spike. Create a simple original hand-painted picture-book character: a mint-green friendly fox with a violet triangular scarf, one white five-point star patch on its left ear, and a small orange satchel, standing centered on a cream background. Exactly one character. Landscape 3:2 composition. Request output 384 x 256 pixels PNG if supported. No text. This is a test asset.",
+        "transparent_background": false
+      },
+      "tool": "image_gen.imagegen",
+      "response_keys": [
+        "image_url",
+        "output_hint"
+      ],
+      "output_hint": "Generated images are saved to /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae as /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link."
+    },
+    {
+      "file": "fox-boots.png",
+      "args": {
+        "prompt": "Edit the immediately preceding generated mint-green picture-book fox image as a reference. Preserve the same character, face, hand-painted watercolor style, cream background, white star on the character's left ear (viewer right), violet scarf, orange satchel, and composition. Make only this change: add bright red rain boots to all four paws. This is a reference fidelity test. Please output PNG at 384 x 256 if supported.",
+        "num_last_images_to_include": 1,
+        "transparent_background": false
+      },
+      "tool": "image_gen.imagegen",
+      "response_keys": [
+        "image_url",
+        "output_hint"
+      ],
+      "output_hint": "Generated images are saved to /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae as /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-b29298f1-92a6-4bc6-9796-36c61ea2315b.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link."
+    },
+    {
+      "file": "mcp-reference-ring.png",
+      "args": {
+        "prompt": "Use the immediately preceding 128x128 abstract image returned by the stdio MCP reference_image tool as the reference. It has a red left half, blue right half, and a yellow square in the top-left. Preserve exactly that composition and those color locations. Add ONLY one thick black hollow ring centered at the intersection of the red and blue halves, around the center of the image. Keep a square canvas. This tests reference images supplied as MCP image content; do not use the fox images.",
+        "num_last_images_to_include": 1,
+        "transparent_background": false
+      },
+      "tool": "image_gen.imagegen",
+      "response_keys": [
+        "image_url",
+        "output_hint"
+      ],
+      "output_hint": "Generated images are saved to /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae as /Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-a711085a-fdbd-4e53-ae6a-aea911e07635.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link."
+    }
+  ]
+}

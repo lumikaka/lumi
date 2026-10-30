@@ -1,0 +1,1693 @@
+{
+  "root": "/private/tmp/lumi-codex-spike-ocw4qvr1",
+  "binary": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+  "version": "codex-cli 0.166.0-alpha.5.1",
+  "commands": [
+    {
+      "argv": [
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+        "plugin",
+        "marketplace",
+        "add",
+        "/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"marketplaceName\": \"lumi-spike-local\",\n  \"installedRoot\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace\",\n  \"alreadyAdded\": false\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+        "plugin",
+        "add",
+        "lumi-spike@lumi-spike-local",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"pluginId\": \"lumi-spike@lumi-spike-local\",\n  \"name\": \"lumi-spike\",\n  \"marketplaceName\": \"lumi-spike-local\",\n  \"version\": \"0.1.0\",\n  \"installedPath\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/home/plugins/cache/lumi-spike-local/lumi-spike/0.1.0\",\n  \"authPolicy\": \"ON_INSTALL\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"installed\": [\n    {\n      \"pluginId\": \"lumi-spike@lumi-spike-local\",\n      \"name\": \"lumi-spike\",\n      \"marketplaceName\": \"lumi-spike-local\",\n      \"version\": \"0.1.0\",\n      \"installed\": true,\n      \"enabled\": true,\n      \"source\": {\n        \"source\": \"local\",\n        \"path\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace/plugins/lumi-spike\"\n      },\n      \"marketplaceSource\": {\n        \"sourceType\": \"local\",\n        \"source\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace\"\n      },\n      \"installPolicy\": \"AVAILABLE\",\n      \"authPolicy\": \"ON_INSTALL\"\n    }\n  ],\n  \"available\": []\n}\n",
+      "stderr": ""
+    }
+  ],
+  "rpc": {
+    "initial_config": {
+      "id": 2,
+      "result": {
+        "config": {
+          "model": null,
+          "review_model": null,
+          "model_context_window": null,
+          "model_auto_compact_token_limit": null,
+          "model_auto_compact_token_limit_scope": null,
+          "model_provider": null,
+          "approval_policy": null,
+          "approvals_reviewer": null,
+          "sandbox_mode": null,
+          "sandbox_workspace_write": null,
+          "forced_chatgpt_workspace_id": null,
+          "forced_login_method": null,
+          "web_search": null,
+          "tools": null,
+          "instructions": null,
+          "developer_instructions": null,
+          "compact_prompt": null,
+          "model_reasoning_effort": null,
+          "model_reasoning_summary": null,
+          "model_verbosity": null,
+          "service_tier": null,
+          "analytics": null,
+          "apps": null,
+          "browser_use": null,
+          "computer_use": null,
+          "desktop": null,
+          "log_dir": null,
+          "include_collaboration_mode_instructions": true,
+          "model_providers": {},
+          "project_root_markers": [
+            ".git"
+          ],
+          "shell_environment_policy": {
+            "inherit": null,
+            "ignore_default_excludes": null,
+            "exclude": null,
+            "set": null,
+            "include_only": null,
+            "filters": null,
+            "experimental_use_profile": null
+          },
+          "mcp_oauth_callback_port": null,
+          "daybreak": null,
+          "tui": null,
+          "experimental_realtime_start_instructions": null,
+          "profile": null,
+          "auto_review": null,
+          "model_catalog_json": null,
+          "thread_unload_delay_secs": null,
+          "openai_base_url": null,
+          "windows": null,
+          "oss_provider": null,
+          "history": {
+            "persistence": "save-all",
+            "max_bytes": null
+          },
+          "background_terminal_max_timeout": 300000,
+          "memories": null,
+          "otel": null,
+          "js_repl_node_path": null,
+          "experimental_compact_prompt_file": null,
+          "experimental_thread_store_endpoint": null,
+          "cli_auth_credentials_store": "file",
+          "plan_mode_reasoning_effort": null,
+          "orchestrator": null,
+          "personality": null,
+          "experimental_realtime_webrtc_call_base_url": null,
+          "plugins": {
+            "lumi-spike@lumi-spike-local": {
+              "enabled": true
+            }
+          },
+          "tool_suggest": null,
+          "check_for_update_on_startup": null,
+          "experimental_realtime_ws_base_url": null,
+          "experimental_thread_store": null,
+          "project_doc_fallback_filenames": [],
+          "default_permissions": null,
+          "model_post_turn_compact_threshold_percent": null,
+          "mcp_optional_startup_grace_ms": null,
+          "include_apps_instructions": true,
+          "experimental_realtime_ws_startup_context": null,
+          "mcp_enterprise_managed_auth": null,
+          "features": {
+            "api_key_cyber_access_programs": true,
+            "api_key_model_discovery": true,
+            "auth_elicitation": true,
+            "background_paginated_rollout_migration": false,
+            "codex_apps_mcp_2026_07_28": false,
+            "mcp_2026_07_28": false,
+            "mcp_connection_sharing": false,
+            "memories": false,
+            "mentions_v2": true,
+            "remote_control": false,
+            "remote_plugin": true,
+            "tool_suggest": true,
+            "windows_sandbox_service": false
+          },
+          "feedback": null,
+          "disable_paste_burst": null,
+          "notice": null,
+          "experimental_realtime_ws_backend_prompt": null,
+          "audio": null,
+          "responses_api_metadata": null,
+          "tool_output_token_limit": null,
+          "profiles": {},
+          "permissions": null,
+          "marketplaces": {
+            "lumi-spike-local": {
+              "last_updated": null,
+              "last_revision": null,
+              "source_type": "local",
+              "source": "/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace",
+              "ref": null,
+              "sparse_paths": null
+            }
+          },
+          "sqlite_home": null,
+          "show_raw_agent_reasoning": null,
+          "agents": null,
+          "goals": null,
+          "mcp_oauth_callback_url": null,
+          "suppress_unstable_features_warning": null,
+          "include_environment_context": true,
+          "include_environment_context_time": true,
+          "model_instructions_file": null,
+          "experimental_realtime_ws_model": null,
+          "skills": null,
+          "notify": null,
+          "js_repl_node_module_dirs": null,
+          "allow_symlinked_codex_home": null,
+          "file_opener": "vscode",
+          "realtime": null,
+          "ghost_snapshot": null,
+          "allow_login_shell": true,
+          "include_permissions_instructions": true,
+          "mcp_servers": {},
+          "hooks": null,
+          "apps_mcp_product_sku": null,
+          "experimental_use_unified_exec_tool": null,
+          "chatgpt_base_url": "https://chatgpt.com/backend-api/",
+          "hide_agent_reasoning": false,
+          "projects": null,
+          "project_doc_max_bytes": 32768,
+          "mcp_oauth_credentials_store": "auto",
+          "cloud": null
+        },
+        "origins": {
+          "marketplaces.lumi-spike-local.source": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          },
+          "plugins.lumi-spike@lumi-spike-local.enabled": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          },
+          "marketplaces.lumi-spike-local.source_type": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          }
+        },
+        "layers": [
+          {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6",
+            "config": {
+              "marketplaces": {
+                "lumi-spike-local": {
+                  "source_type": "local",
+                  "source": "/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace"
+                }
+              },
+              "plugins": {
+                "lumi-spike@lumi-spike-local": {
+                  "enabled": true
+                }
+              }
+            }
+          },
+          {
+            "name": {
+              "type": "system",
+              "file": "/etc/codex/config.toml"
+            },
+            "version": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "config": {}
+          }
+        ]
+      }
+    },
+    "project-a": {
+      "start": {
+        "id": 3,
+        "result": {
+          "thread": {
+            "id": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+            "environments": [
+              {
+                "environmentId": "local",
+                "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+                "runtimeWorkspaceRoots": [
+                  "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a"
+                ]
+              }
+            ],
+            "extra": null,
+            "sessionId": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "projectId": null,
+            "historyMode": "paginated",
+            "modelProvider": "openai",
+            "model": "gpt-6.1-sol",
+            "reasoningEffort": null,
+            "createdAt": 1793349820,
+            "updatedAt": 1793349820,
+            "recencyAt": 1793349820,
+            "status": {
+              "type": "idle"
+            },
+            "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a03f-7d63-8cf4-173efecab7fd.jsonl",
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "cliVersion": "0.166.0-alpha.5.1",
+            "originator": "Codex Desktop",
+            "source": "vscode",
+            "canAcceptDirectInput": true,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": null,
+            "name": null,
+            "daybreakEnabled": null,
+            "turns": []
+          },
+          "model": "gpt-6.1-sol",
+          "modelProvider": "openai",
+          "serviceTier": null,
+          "disabledPluginIds": [],
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "runtimeWorkspaceRoots": [
+            "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a"
+          ],
+          "instructionSources": [],
+          "approvalPolicy": "never",
+          "approvalsReviewer": "user",
+          "sandbox": {
+            "type": "readOnly",
+            "networkAccess": false
+          },
+          "activePermissionProfile": {
+            "id": ":read-only",
+            "extends": null
+          },
+          "reasoningEffort": null,
+          "multiAgentMode": "explicitRequestOnly"
+        }
+      },
+      "mcp_status": {
+        "id": 4,
+        "result": {
+          "data": [
+            {
+              "name": "probe",
+              "runtimeStatus": "connected",
+              "pluginId": "lumi-spike@lumi-spike-local",
+              "httpOrigin": null,
+              "serverInfo": {
+                "name": "lumi-spike",
+                "title": null,
+                "version": "0.1.0",
+                "description": null,
+                "icons": null,
+                "websiteUrl": null
+              },
+              "serverCapabilities": {
+                "resources": {},
+                "tools": {}
+              },
+              "toolListMeta": null,
+              "tools": {
+                "inspect": {
+                  "name": "inspect",
+                  "description": "Return this probe MCP process cwd, PID and safe environment. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "_meta": {
+                    "ui": {
+                      "visibility": [
+                        "model",
+                        "app"
+                      ]
+                    }
+                  }
+                },
+                "read_image": {
+                  "name": "read_image",
+                  "description": "Read a local image path and return its SHA256 and byte count. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ]
+                  }
+                },
+                "reference_image": {
+                  "name": "reference_image",
+                  "description": "Return a synthetic PNG as MCP image content for a reference-image test. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                "show_app": {
+                  "name": "show_app",
+                  "description": "Show a disposable MCP Apps image/CSP/tool-callback diagnostic. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "_meta": {
+                    "ui": {
+                      "resourceUri": "ui://lumi-spike/app.html",
+                      "visibility": [
+                        "model",
+                        "app"
+                      ]
+                    }
+                  }
+                }
+              },
+              "toolsError": null,
+              "resources": [
+                {
+                  "mimeType": "text/html;profile=mcp-app",
+                  "name": "Lumi spike",
+                  "uri": "ui://lumi-spike/app.html"
+                }
+              ],
+              "resourceTemplates": [],
+              "authStatus": "unsupported"
+            }
+          ],
+          "nextCursor": null
+        }
+      },
+      "inspect": {
+        "id": 5,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98433,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "env": {}
+          }
+        }
+      },
+      "inspect_again": {
+        "id": 6,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98433,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "env": {}
+          }
+        }
+      },
+      "show_app": {
+        "id": 7,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98433,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "env": {}
+          }
+        }
+      },
+      "ui_resource": {
+        "id": 8,
+        "result": {
+          "contents": [
+            {
+              "uri": "ui://lumi-spike/app.html",
+              "mimeType": "text/html;profile=mcp-app",
+              "text": "<!doctype html>\n<html lang=\"en\"><meta charset=\"utf-8\"><title>Lumi Codex MCP Apps spike</title>\n<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>\n<h1>Lumi MCP Apps spike</h1>\n<p>Loopback image: <img id=\"loopback\" src=\"http://127.0.0.1:18765/reference.png\"></p>\n<p>Data image: <img id=\"data\"></p>\n<button id=\"call\">Call inspect tool</button>\n<label>Data URI padding bytes <input id=\"size\" type=\"number\" value=\"1048576\"></label>\n<button id=\"test\">Test data image</button><pre id=\"out\"></pre>\n<script>\nconst out=document.querySelector('#out'), pending=new Map(); let serial=0;\nfunction log(v){out.textContent+=JSON.stringify(v)+'\\n'}\nfunction rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}\naddEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});\ndocument.querySelector('#loopback').onload=()=>log({loopback:'loaded'});\ndocument.querySelector('#loopback').onerror=()=>log({loopback:'failed'});\nconst base='iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAABUElEQVR4nO3RQQ3CAAAEwYrgzRtNaK8XaqJkuTDJKtg5PudxS+fzlfR4n9Pdcx8AgNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN8CqMYBAPATAQAAYLr8IIB+IoDhAAAAMF1+EEA/EcBwAAAAmC4/CKCfCGA4AAAATJcfBNBPBDAcAAAApssPAugnAhgOAAAA0+UHAfQTAQwHAACA6fKDAPqJAIYDAADAdPlBAP1EAMMBAABguvwggH4igOEAAAAwXX4QQD8RwHAAAACYLj8IoJ8IYDgAAABMlx8E0E8EMBwAAACmyw8C6CcCGA4AAADT5QcB9BMBDAcAAIDp8oMA+okAhgMAAMB0+UEA/UQAwwEAAGC6/CCAfiKA4QAAADBdfhBAPxHAcAAAAJguPwignwhgOAAAAEyXHwTQTwQwHAAA/w1wAWv2JOIthK1xAAAAAElFTkSuQmCC';\nfunction paddedPng(n){\n  const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\\0'+'x'.repeat(n));\n  const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);\n  view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);\n  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);\n  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);\n  const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));\n}\ndocument.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};\ndocument.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};\nrpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);\n</script></html>\n",
+              "_meta": {
+                "ui": {
+                  "csp": {
+                    "resourceDomains": [
+                      "http://127.0.0.1:18765"
+                    ],
+                    "connectDomains": [
+                      "http://127.0.0.1:18765"
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "originCallId": null
+        }
+      },
+      "image_read": {
+        "id": 9,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"path\": \"/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png\", \"bytes\": 1889711, \"sha256\": \"f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040\", \"signature\": \"89504e470d0a1a0a0000000d49484452\"}"
+            }
+          ],
+          "structuredContent": {
+            "path": "/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png",
+            "bytes": 1889711,
+            "sha256": "f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040",
+            "signature": "89504e470d0a1a0a0000000d49484452"
+          }
+        }
+      }
+    },
+    "project-b": {
+      "start": {
+        "id": 10,
+        "result": {
+          "thread": {
+            "id": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+            "environments": [
+              {
+                "environmentId": "local",
+                "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+                "runtimeWorkspaceRoots": [
+                  "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b"
+                ]
+              }
+            ],
+            "extra": null,
+            "sessionId": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "projectId": null,
+            "historyMode": "paginated",
+            "modelProvider": "openai",
+            "model": "gpt-6.1-sol",
+            "reasoningEffort": null,
+            "createdAt": 1793349820,
+            "updatedAt": 1793349820,
+            "recencyAt": 1793349820,
+            "status": {
+              "type": "idle"
+            },
+            "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a0c8-7633-b854-9e3b04c3c915.jsonl",
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "cliVersion": "0.166.0-alpha.5.1",
+            "originator": "Codex Desktop",
+            "source": "vscode",
+            "canAcceptDirectInput": true,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": null,
+            "name": null,
+            "daybreakEnabled": null,
+            "turns": []
+          },
+          "model": "gpt-6.1-sol",
+          "modelProvider": "openai",
+          "serviceTier": null,
+          "disabledPluginIds": [],
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "runtimeWorkspaceRoots": [
+            "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b"
+          ],
+          "instructionSources": [],
+          "approvalPolicy": "never",
+          "approvalsReviewer": "user",
+          "sandbox": {
+            "type": "readOnly",
+            "networkAccess": false
+          },
+          "activePermissionProfile": {
+            "id": ":read-only",
+            "extends": null
+          },
+          "reasoningEffort": null,
+          "multiAgentMode": "explicitRequestOnly"
+        }
+      },
+      "mcp_status": {
+        "id": 11,
+        "result": {
+          "data": [
+            {
+              "name": "probe",
+              "runtimeStatus": "connected",
+              "pluginId": "lumi-spike@lumi-spike-local",
+              "httpOrigin": null,
+              "serverInfo": {
+                "name": "lumi-spike",
+                "title": null,
+                "version": "0.1.0",
+                "description": null,
+                "icons": null,
+                "websiteUrl": null
+              },
+              "serverCapabilities": {
+                "resources": {},
+                "tools": {}
+              },
+              "toolListMeta": null,
+              "tools": {
+                "read_image": {
+                  "name": "read_image",
+                  "description": "Read a local image path and return its SHA256 and byte count. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ]
+                  }
+                },
+                "inspect": {
+                  "name": "inspect",
+                  "description": "Return this probe MCP process cwd, PID and safe environment. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "_meta": {
+                    "ui": {
+                      "visibility": [
+                        "model",
+                        "app"
+                      ]
+                    }
+                  }
+                },
+                "reference_image": {
+                  "name": "reference_image",
+                  "description": "Return a synthetic PNG as MCP image content for a reference-image test. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                "show_app": {
+                  "name": "show_app",
+                  "description": "Show a disposable MCP Apps image/CSP/tool-callback diagnostic. This tool is part of plugin `lumi-spike`.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "_meta": {
+                    "ui": {
+                      "resourceUri": "ui://lumi-spike/app.html",
+                      "visibility": [
+                        "model",
+                        "app"
+                      ]
+                    }
+                  }
+                }
+              },
+              "toolsError": null,
+              "resources": [
+                {
+                  "mimeType": "text/html;profile=mcp-app",
+                  "name": "Lumi spike",
+                  "uri": "ui://lumi-spike/app.html"
+                }
+              ],
+              "resourceTemplates": [],
+              "authStatus": "unsupported"
+            }
+          ],
+          "nextCursor": null
+        }
+      },
+      "inspect": {
+        "id": 12,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98545,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "env": {}
+          }
+        }
+      },
+      "inspect_again": {
+        "id": 13,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98545,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "env": {}
+          }
+        }
+      },
+      "show_app": {
+        "id": 14,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+            }
+          ],
+          "structuredContent": {
+            "pid": 98545,
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "env": {}
+          }
+        }
+      },
+      "ui_resource": {
+        "id": 15,
+        "result": {
+          "contents": [
+            {
+              "uri": "ui://lumi-spike/app.html",
+              "mimeType": "text/html;profile=mcp-app",
+              "text": "<!doctype html>\n<html lang=\"en\"><meta charset=\"utf-8\"><title>Lumi Codex MCP Apps spike</title>\n<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>\n<h1>Lumi MCP Apps spike</h1>\n<p>Loopback image: <img id=\"loopback\" src=\"http://127.0.0.1:18765/reference.png\"></p>\n<p>Data image: <img id=\"data\"></p>\n<button id=\"call\">Call inspect tool</button>\n<label>Data URI padding bytes <input id=\"size\" type=\"number\" value=\"1048576\"></label>\n<button id=\"test\">Test data image</button><pre id=\"out\"></pre>\n<script>\nconst out=document.querySelector('#out'), pending=new Map(); let serial=0;\nfunction log(v){out.textContent+=JSON.stringify(v)+'\\n'}\nfunction rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}\naddEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});\ndocument.querySelector('#loopback').onload=()=>log({loopback:'loaded'});\ndocument.querySelector('#loopback').onerror=()=>log({loopback:'failed'});\nconst base='iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAABUElEQVR4nO3RQQ3CAAAEwYrgzRtNaK8XaqJkuTDJKtg5PudxS+fzlfR4n9Pdcx8AgNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN8CqMYBAPATAQAAYLr8IIB+IoDhAAAAMF1+EEA/EcBwAAAAmC4/CKCfCGA4AAAATJcfBNBPBDAcAAAApssPAugnAhgOAAAA0+UHAfQTAQwHAACA6fKDAPqJAIYDAADAdPlBAP1EAMMBAABguvwggH4igOEAAAAwXX4QQD8RwHAAAACYLj8IoJ8IYDgAAABMlx8E0E8EMBwAAACmyw8C6CcCGA4AAADT5QcB9BMBDAcAAIDp8oMA+okAhgMAAMB0+UEA/UQAwwEAAGC6/CCAfiKA4QAAADBdfhBAPxHAcAAAAJguPwignwhgOAAAAEyXHwTQTwQwHAAA/w1wAWv2JOIthK1xAAAAAElFTkSuQmCC';\nfunction paddedPng(n){\n  const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\\0'+'x'.repeat(n));\n  const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);\n  view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);\n  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);\n  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);\n  const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));\n}\ndocument.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};\ndocument.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};\nrpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);\n</script></html>\n",
+              "_meta": {
+                "ui": {
+                  "csp": {
+                    "resourceDomains": [
+                      "http://127.0.0.1:18765"
+                    ],
+                    "connectDomains": [
+                      "http://127.0.0.1:18765"
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "originCallId": null
+        }
+      },
+      "image_read": {
+        "id": 16,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"path\": \"/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png\", \"bytes\": 1889711, \"sha256\": \"f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040\", \"signature\": \"89504e470d0a1a0a0000000d49484452\"}"
+            }
+          ],
+          "structuredContent": {
+            "path": "/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png",
+            "bytes": 1889711,
+            "sha256": "f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040",
+            "signature": "89504e470d0a1a0a0000000d49484452"
+          }
+        }
+      }
+    },
+    "hooks": {
+      "id": 17,
+      "result": {
+        "data": [
+          {
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "hooks": [],
+            "warnings": [],
+            "errors": []
+          },
+          {
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "hooks": [],
+            "warnings": [],
+            "errors": []
+          }
+        ]
+      }
+    }
+  },
+  "installed_config": "[marketplaces.lumi-spike-local]\nsource_type = \"local\"\nsource = \"/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace\"\n\n[plugins.\"lumi-spike@lumi-spike-local\"]\nenabled = true\n",
+  "events": [
+    {
+      "id": 1,
+      "result": {
+        "userAgent": "Codex Desktop/0.166.0-alpha.5.1 (Mac OS 14.5.0; arm64) dumb (lumi-spike; 0.1.0)",
+        "codexHome": "/private/tmp/lumi-codex-spike-ocw4qvr1/home",
+        "platformFamily": "unix",
+        "platformOs": "macos"
+      }
+    },
+    {
+      "method": "remoteControl/status/changed",
+      "params": {
+        "status": "disabled",
+        "serverName": "MacBook-Pro-2.local",
+        "installationId": "16af6b8c-3f4d-4c05-b062-fc01e0d9966f",
+        "environmentId": null
+      },
+      "emittedAtMs": 1793349820468
+    },
+    {
+      "id": 2,
+      "result": {
+        "config": {
+          "model": null,
+          "review_model": null,
+          "model_context_window": null,
+          "model_auto_compact_token_limit": null,
+          "model_auto_compact_token_limit_scope": null,
+          "model_provider": null,
+          "approval_policy": null,
+          "approvals_reviewer": null,
+          "sandbox_mode": null,
+          "sandbox_workspace_write": null,
+          "forced_chatgpt_workspace_id": null,
+          "forced_login_method": null,
+          "web_search": null,
+          "tools": null,
+          "instructions": null,
+          "developer_instructions": null,
+          "compact_prompt": null,
+          "model_reasoning_effort": null,
+          "model_reasoning_summary": null,
+          "model_verbosity": null,
+          "service_tier": null,
+          "analytics": null,
+          "apps": null,
+          "browser_use": null,
+          "computer_use": null,
+          "desktop": null,
+          "log_dir": null,
+          "include_collaboration_mode_instructions": true,
+          "model_providers": {},
+          "project_root_markers": [
+            ".git"
+          ],
+          "shell_environment_policy": {
+            "inherit": null,
+            "ignore_default_excludes": null,
+            "exclude": null,
+            "set": null,
+            "include_only": null,
+            "filters": null,
+            "experimental_use_profile": null
+          },
+          "mcp_oauth_callback_port": null,
+          "daybreak": null,
+          "tui": null,
+          "experimental_realtime_start_instructions": null,
+          "profile": null,
+          "auto_review": null,
+          "model_catalog_json": null,
+          "thread_unload_delay_secs": null,
+          "openai_base_url": null,
+          "windows": null,
+          "oss_provider": null,
+          "history": {
+            "persistence": "save-all",
+            "max_bytes": null
+          },
+          "background_terminal_max_timeout": 300000,
+          "memories": null,
+          "otel": null,
+          "js_repl_node_path": null,
+          "experimental_compact_prompt_file": null,
+          "experimental_thread_store_endpoint": null,
+          "cli_auth_credentials_store": "file",
+          "plan_mode_reasoning_effort": null,
+          "orchestrator": null,
+          "personality": null,
+          "experimental_realtime_webrtc_call_base_url": null,
+          "plugins": {
+            "lumi-spike@lumi-spike-local": {
+              "enabled": true
+            }
+          },
+          "tool_suggest": null,
+          "check_for_update_on_startup": null,
+          "experimental_realtime_ws_base_url": null,
+          "experimental_thread_store": null,
+          "project_doc_fallback_filenames": [],
+          "default_permissions": null,
+          "model_post_turn_compact_threshold_percent": null,
+          "mcp_optional_startup_grace_ms": null,
+          "include_apps_instructions": true,
+          "experimental_realtime_ws_startup_context": null,
+          "mcp_enterprise_managed_auth": null,
+          "features": {
+            "api_key_cyber_access_programs": true,
+            "api_key_model_discovery": true,
+            "auth_elicitation": true,
+            "background_paginated_rollout_migration": false,
+            "codex_apps_mcp_2026_07_28": false,
+            "mcp_2026_07_28": false,
+            "mcp_connection_sharing": false,
+            "memories": false,
+            "mentions_v2": true,
+            "remote_control": false,
+            "remote_plugin": true,
+            "tool_suggest": true,
+            "windows_sandbox_service": false
+          },
+          "feedback": null,
+          "disable_paste_burst": null,
+          "notice": null,
+          "experimental_realtime_ws_backend_prompt": null,
+          "audio": null,
+          "responses_api_metadata": null,
+          "tool_output_token_limit": null,
+          "profiles": {},
+          "permissions": null,
+          "marketplaces": {
+            "lumi-spike-local": {
+              "last_updated": null,
+              "last_revision": null,
+              "source_type": "local",
+              "source": "/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace",
+              "ref": null,
+              "sparse_paths": null
+            }
+          },
+          "sqlite_home": null,
+          "show_raw_agent_reasoning": null,
+          "agents": null,
+          "goals": null,
+          "mcp_oauth_callback_url": null,
+          "suppress_unstable_features_warning": null,
+          "include_environment_context": true,
+          "include_environment_context_time": true,
+          "model_instructions_file": null,
+          "experimental_realtime_ws_model": null,
+          "skills": null,
+          "notify": null,
+          "js_repl_node_module_dirs": null,
+          "allow_symlinked_codex_home": null,
+          "file_opener": "vscode",
+          "realtime": null,
+          "ghost_snapshot": null,
+          "allow_login_shell": true,
+          "include_permissions_instructions": true,
+          "mcp_servers": {},
+          "hooks": null,
+          "apps_mcp_product_sku": null,
+          "experimental_use_unified_exec_tool": null,
+          "chatgpt_base_url": "https://chatgpt.com/backend-api/",
+          "hide_agent_reasoning": false,
+          "projects": null,
+          "project_doc_max_bytes": 32768,
+          "mcp_oauth_credentials_store": "auto",
+          "cloud": null
+        },
+        "origins": {
+          "marketplaces.lumi-spike-local.source": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          },
+          "plugins.lumi-spike@lumi-spike-local.enabled": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          },
+          "marketplaces.lumi-spike-local.source_type": {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6"
+          }
+        },
+        "layers": [
+          {
+            "name": {
+              "type": "user",
+              "file": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/config.toml",
+              "profile": null
+            },
+            "version": "sha256:6faa2d057db32f506377f1dbdd161be36641b0541b19fe9e1361035067cdf3b6",
+            "config": {
+              "marketplaces": {
+                "lumi-spike-local": {
+                  "source_type": "local",
+                  "source": "/private/tmp/lumi-codex-spike-ocw4qvr1/marketplace"
+                }
+              },
+              "plugins": {
+                "lumi-spike@lumi-spike-local": {
+                  "enabled": true
+                }
+              }
+            }
+          },
+          {
+            "name": {
+              "type": "system",
+              "file": "/etc/codex/config.toml"
+            },
+            "version": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "config": {}
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "result": {
+        "thread": {
+          "id": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349820,
+          "updatedAt": 1793349820,
+          "recencyAt": 1793349820,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a03f-7d63-8cf4-173efecab7fd.jsonl",
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "cliVersion": "0.166.0-alpha.5.1",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        },
+        "model": "gpt-6.1-sol",
+        "modelProvider": "openai",
+        "serviceTier": null,
+        "disabledPluginIds": [],
+        "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+        "runtimeWorkspaceRoots": [
+          "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a"
+        ],
+        "instructionSources": [],
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user",
+        "sandbox": {
+          "type": "readOnly",
+          "networkAccess": false
+        },
+        "activePermissionProfile": {
+          "id": ":read-only",
+          "extends": null
+        },
+        "reasoningEffort": null,
+        "multiAgentMode": "explicitRequestOnly"
+      }
+    },
+    {
+      "method": "thread/started",
+      "params": {
+        "thread": {
+          "id": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349820,
+          "updatedAt": 1793349820,
+          "recencyAt": 1793349820,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a03f-7d63-8cf4-173efecab7fd.jsonl",
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "cliVersion": "0.166.0-alpha.5.1",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        }
+      },
+      "emittedAtMs": 1793349820574
+    },
+    {
+      "method": "mcpServer/startupStatus/updated",
+      "params": {
+        "threadId": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+        "name": "probe",
+        "status": "starting",
+        "error": null,
+        "failureReason": null
+      },
+      "emittedAtMs": 1793349820574
+    },
+    {
+      "method": "mcpServer/startupStatus/updated",
+      "params": {
+        "threadId": "01a18bfa-a03f-7d63-8cf4-173efecab7fd",
+        "name": "probe",
+        "status": "ready",
+        "error": null,
+        "failureReason": null
+      },
+      "emittedAtMs": 1793349820595
+    },
+    {
+      "id": 4,
+      "result": {
+        "data": [
+          {
+            "name": "probe",
+            "runtimeStatus": "connected",
+            "pluginId": "lumi-spike@lumi-spike-local",
+            "httpOrigin": null,
+            "serverInfo": {
+              "name": "lumi-spike",
+              "title": null,
+              "version": "0.1.0",
+              "description": null,
+              "icons": null,
+              "websiteUrl": null
+            },
+            "serverCapabilities": {
+              "resources": {},
+              "tools": {}
+            },
+            "toolListMeta": null,
+            "tools": {
+              "inspect": {
+                "name": "inspect",
+                "description": "Return this probe MCP process cwd, PID and safe environment. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "_meta": {
+                  "ui": {
+                    "visibility": [
+                      "model",
+                      "app"
+                    ]
+                  }
+                }
+              },
+              "read_image": {
+                "name": "read_image",
+                "description": "Read a local image path and return its SHA256 and byte count. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ]
+                }
+              },
+              "reference_image": {
+                "name": "reference_image",
+                "description": "Return a synthetic PNG as MCP image content for a reference-image test. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              },
+              "show_app": {
+                "name": "show_app",
+                "description": "Show a disposable MCP Apps image/CSP/tool-callback diagnostic. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "_meta": {
+                  "ui": {
+                    "resourceUri": "ui://lumi-spike/app.html",
+                    "visibility": [
+                      "model",
+                      "app"
+                    ]
+                  }
+                }
+              }
+            },
+            "toolsError": null,
+            "resources": [
+              {
+                "mimeType": "text/html;profile=mcp-app",
+                "name": "Lumi spike",
+                "uri": "ui://lumi-spike/app.html"
+              }
+            ],
+            "resourceTemplates": [],
+            "authStatus": "unsupported"
+          }
+        ],
+        "nextCursor": null
+      }
+    },
+    {
+      "id": 5,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98433,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 6,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98433,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 7,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98433, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-a\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98433,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 8,
+      "result": {
+        "contents": [
+          {
+            "uri": "ui://lumi-spike/app.html",
+            "mimeType": "text/html;profile=mcp-app",
+            "text": "<!doctype html>\n<html lang=\"en\"><meta charset=\"utf-8\"><title>Lumi Codex MCP Apps spike</title>\n<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>\n<h1>Lumi MCP Apps spike</h1>\n<p>Loopback image: <img id=\"loopback\" src=\"http://127.0.0.1:18765/reference.png\"></p>\n<p>Data image: <img id=\"data\"></p>\n<button id=\"call\">Call inspect tool</button>\n<label>Data URI padding bytes <input id=\"size\" type=\"number\" value=\"1048576\"></label>\n<button id=\"test\">Test data image</button><pre id=\"out\"></pre>\n<script>\nconst out=document.querySelector('#out'), pending=new Map(); let serial=0;\nfunction log(v){out.textContent+=JSON.stringify(v)+'\\n'}\nfunction rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}\naddEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});\ndocument.querySelector('#loopback').onload=()=>log({loopback:'loaded'});\ndocument.querySelector('#loopback').onerror=()=>log({loopback:'failed'});\nconst base='iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAABUElEQVR4nO3RQQ3CAAAEwYrgzRtNaK8XaqJkuTDJKtg5PudxS+fzlfR4n9Pdcx8AgNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN8CqMYBAPATAQAAYLr8IIB+IoDhAAAAMF1+EEA/EcBwAAAAmC4/CKCfCGA4AAAATJcfBNBPBDAcAAAApssPAugnAhgOAAAA0+UHAfQTAQwHAACA6fKDAPqJAIYDAADAdPlBAP1EAMMBAABguvwggH4igOEAAAAwXX4QQD8RwHAAAACYLj8IoJ8IYDgAAABMlx8E0E8EMBwAAACmyw8C6CcCGA4AAADT5QcB9BMBDAcAAIDp8oMA+okAhgMAAMB0+UEA/UQAwwEAAGC6/CCAfiKA4QAAADBdfhBAPxHAcAAAAJguPwignwhgOAAAAEyXHwTQTwQwHAAA/w1wAWv2JOIthK1xAAAAAElFTkSuQmCC';\nfunction paddedPng(n){\n  const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\\0'+'x'.repeat(n));\n  const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);\n  view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);\n  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);\n  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);\n  const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));\n}\ndocument.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};\ndocument.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};\nrpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);\n</script></html>\n",
+            "_meta": {
+              "ui": {
+                "csp": {
+                  "resourceDomains": [
+                    "http://127.0.0.1:18765"
+                  ],
+                  "connectDomains": [
+                    "http://127.0.0.1:18765"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "originCallId": null
+      }
+    },
+    {
+      "id": 9,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"path\": \"/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png\", \"bytes\": 1889711, \"sha256\": \"f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040\", \"signature\": \"89504e470d0a1a0a0000000d49484452\"}"
+          }
+        ],
+        "structuredContent": {
+          "path": "/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png",
+          "bytes": 1889711,
+          "sha256": "f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040",
+          "signature": "89504e470d0a1a0a0000000d49484452"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "result": {
+        "thread": {
+          "id": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349820,
+          "updatedAt": 1793349820,
+          "recencyAt": 1793349820,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a0c8-7633-b854-9e3b04c3c915.jsonl",
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "cliVersion": "0.166.0-alpha.5.1",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        },
+        "model": "gpt-6.1-sol",
+        "modelProvider": "openai",
+        "serviceTier": null,
+        "disabledPluginIds": [],
+        "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+        "runtimeWorkspaceRoots": [
+          "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b"
+        ],
+        "instructionSources": [],
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user",
+        "sandbox": {
+          "type": "readOnly",
+          "networkAccess": false
+        },
+        "activePermissionProfile": {
+          "id": ":read-only",
+          "extends": null
+        },
+        "reasoningEffort": null,
+        "multiAgentMode": "explicitRequestOnly"
+      }
+    },
+    {
+      "method": "thread/started",
+      "params": {
+        "thread": {
+          "id": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+          "environments": [
+            {
+              "environmentId": "local",
+              "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+              "runtimeWorkspaceRoots": [
+                "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b"
+              ]
+            }
+          ],
+          "extra": null,
+          "sessionId": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+          "forkedFromId": null,
+          "parentThreadId": null,
+          "preview": "",
+          "ephemeral": false,
+          "section": null,
+          "sectionEnteredAt": null,
+          "projectId": null,
+          "historyMode": "paginated",
+          "modelProvider": "openai",
+          "model": "gpt-6.1-sol",
+          "reasoningEffort": null,
+          "createdAt": 1793349820,
+          "updatedAt": 1793349820,
+          "recencyAt": 1793349820,
+          "status": {
+            "type": "idle"
+          },
+          "path": "/private/tmp/lumi-codex-spike-ocw4qvr1/home/sessions/2026/10/30/rollout-2026-10-30T16-43-40-01a18bfa-a0c8-7633-b854-9e3b04c3c915.jsonl",
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "cliVersion": "0.166.0-alpha.5.1",
+          "originator": "Codex Desktop",
+          "source": "vscode",
+          "canAcceptDirectInput": true,
+          "threadSource": null,
+          "agentNickname": null,
+          "agentRole": null,
+          "gitInfo": null,
+          "name": null,
+          "daybreakEnabled": null,
+          "turns": []
+        }
+      },
+      "emittedAtMs": 1793349820628
+    },
+    {
+      "method": "mcpServer/startupStatus/updated",
+      "params": {
+        "threadId": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+        "name": "probe",
+        "status": "starting",
+        "error": null,
+        "failureReason": null
+      },
+      "emittedAtMs": 1793349820628
+    },
+    {
+      "method": "mcpServer/startupStatus/updated",
+      "params": {
+        "threadId": "01a18bfa-a0c8-7633-b854-9e3b04c3c915",
+        "name": "probe",
+        "status": "ready",
+        "error": null,
+        "failureReason": null
+      },
+      "emittedAtMs": 1793349820652
+    },
+    {
+      "id": 11,
+      "result": {
+        "data": [
+          {
+            "name": "probe",
+            "runtimeStatus": "connected",
+            "pluginId": "lumi-spike@lumi-spike-local",
+            "httpOrigin": null,
+            "serverInfo": {
+              "name": "lumi-spike",
+              "title": null,
+              "version": "0.1.0",
+              "description": null,
+              "icons": null,
+              "websiteUrl": null
+            },
+            "serverCapabilities": {
+              "resources": {},
+              "tools": {}
+            },
+            "toolListMeta": null,
+            "tools": {
+              "read_image": {
+                "name": "read_image",
+                "description": "Read a local image path and return its SHA256 and byte count. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ]
+                }
+              },
+              "inspect": {
+                "name": "inspect",
+                "description": "Return this probe MCP process cwd, PID and safe environment. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "_meta": {
+                  "ui": {
+                    "visibility": [
+                      "model",
+                      "app"
+                    ]
+                  }
+                }
+              },
+              "reference_image": {
+                "name": "reference_image",
+                "description": "Return a synthetic PNG as MCP image content for a reference-image test. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              },
+              "show_app": {
+                "name": "show_app",
+                "description": "Show a disposable MCP Apps image/CSP/tool-callback diagnostic. This tool is part of plugin `lumi-spike`.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "_meta": {
+                  "ui": {
+                    "resourceUri": "ui://lumi-spike/app.html",
+                    "visibility": [
+                      "model",
+                      "app"
+                    ]
+                  }
+                }
+              }
+            },
+            "toolsError": null,
+            "resources": [
+              {
+                "mimeType": "text/html;profile=mcp-app",
+                "name": "Lumi spike",
+                "uri": "ui://lumi-spike/app.html"
+              }
+            ],
+            "resourceTemplates": [],
+            "authStatus": "unsupported"
+          }
+        ],
+        "nextCursor": null
+      }
+    },
+    {
+      "id": 12,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98545,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 13,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98545,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 14,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"pid\": 98545, \"cwd\": \"/private/tmp/lumi-codex-spike-ocw4qvr1/project-b\", \"env\": {}}"
+          }
+        ],
+        "structuredContent": {
+          "pid": 98545,
+          "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+          "env": {}
+        }
+      }
+    },
+    {
+      "id": 15,
+      "result": {
+        "contents": [
+          {
+            "uri": "ui://lumi-spike/app.html",
+            "mimeType": "text/html;profile=mcp-app",
+            "text": "<!doctype html>\n<html lang=\"en\"><meta charset=\"utf-8\"><title>Lumi Codex MCP Apps spike</title>\n<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>\n<h1>Lumi MCP Apps spike</h1>\n<p>Loopback image: <img id=\"loopback\" src=\"http://127.0.0.1:18765/reference.png\"></p>\n<p>Data image: <img id=\"data\"></p>\n<button id=\"call\">Call inspect tool</button>\n<label>Data URI padding bytes <input id=\"size\" type=\"number\" value=\"1048576\"></label>\n<button id=\"test\">Test data image</button><pre id=\"out\"></pre>\n<script>\nconst out=document.querySelector('#out'), pending=new Map(); let serial=0;\nfunction log(v){out.textContent+=JSON.stringify(v)+'\\n'}\nfunction rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}\naddEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});\ndocument.querySelector('#loopback').onload=()=>log({loopback:'loaded'});\ndocument.querySelector('#loopback').onerror=()=>log({loopback:'failed'});\nconst base='iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAABUElEQVR4nO3RQQ3CAAAEwYrgzRtNaK8XaqJkuTDJKtg5PudxS+fzlfR4n9Pdcx8AgNUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN8CqMYBAPATAQAAYLr8IIB+IoDhAAAAMF1+EEA/EcBwAAAAmC4/CKCfCGA4AAAATJcfBNBPBDAcAAAApssPAugnAhgOAAAA0+UHAfQTAQwHAACA6fKDAPqJAIYDAADAdPlBAP1EAMMBAABguvwggH4igOEAAAAwXX4QQD8RwHAAAACYLj8IoJ8IYDgAAABMlx8E0E8EMBwAAACmyw8C6CcCGA4AAADT5QcB9BMBDAcAAIDp8oMA+okAhgMAAMB0+UEA/UQAwwEAAGC6/CCAfiKA4QAAADBdfhBAPxHAcAAAAJguPwignwhgOAAAAEyXHwTQTwQwHAAA/w1wAWv2JOIthK1xAAAAAElFTkSuQmCC';\nfunction paddedPng(n){\n  const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\\0'+'x'.repeat(n));\n  const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);\n  view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);\n  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);\n  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);\n  const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));\n}\ndocument.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};\ndocument.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};\nrpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);\n</script></html>\n",
+            "_meta": {
+              "ui": {
+                "csp": {
+                  "resourceDomains": [
+                    "http://127.0.0.1:18765"
+                  ],
+                  "connectDomains": [
+                    "http://127.0.0.1:18765"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "originCallId": null
+      }
+    },
+    {
+      "id": 16,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"path\": \"/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png\", \"bytes\": 1889711, \"sha256\": \"f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040\", \"signature\": \"89504e470d0a1a0a0000000d49484452\"}"
+          }
+        ],
+        "structuredContent": {
+          "path": "/Users/qingyang/.codex/generated_images/01a18be4-9a79-7941-b214-3748669c12ae/exec-65413b3a-e8d3-4b30-bf28-0b082ec1f18e.png",
+          "bytes": 1889711,
+          "sha256": "f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040",
+          "signature": "89504e470d0a1a0a0000000d49484452"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "result": {
+        "data": [
+          {
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-a",
+            "hooks": [],
+            "warnings": [],
+            "errors": []
+          },
+          {
+            "cwd": "/private/tmp/lumi-codex-spike-ocw4qvr1/project-b",
+            "hooks": [],
+            "warnings": [],
+            "errors": []
+          }
+        ]
+      }
+    }
+  ]
+}

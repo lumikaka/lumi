@@ -1,0 +1,12 @@
+{
+  "kind": "relevant subset of actual cua.getState UI inventory; not a screenshot or render test",
+  "date": "2026-10-30",
+  "app": {"id": "com.openai.codex", "displayName": "ChatGPT", "isRunning": true},
+  "installed_bundle": {"version": "26.1027.30824", "build": "22943"},
+  "app_bundled_codex_version": "codex-cli 0.166.0-alpha.5.1",
+  "path_codex_version": "codex-cli 0.163.0",
+  "browser": {"id": "3", "name": "Codex MCP Apps", "type": "mcpapps", "tabs": []},
+  "loopback_image_tested": false,
+  "data_uri_limit_tested": false,
+  "ui_tool_callback_tested": false
+}

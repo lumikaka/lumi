@@ -1,0 +1,36 @@
+{
+  "path": "/private/tmp/lumi-codex-config-cgvwtky2/home/sessions/2026/10/30/rollout-2026-10-30T16-34-45-01a18bf2-774d-70b2-ae2d-d90b4c660a1f.jsonl",
+  "exists": true,
+  "bytes": 50841,
+  "record_types": [
+    "event_msg",
+    "response_item",
+    "session_meta",
+    "turn_context",
+    "world_state"
+  ],
+  "first_record_type": "session_meta",
+  "first_record_keys": [
+    "timestamp",
+    "ordinal",
+    "type",
+    "payload"
+  ],
+  "session_meta_keys": [
+    "session_id",
+    "id",
+    "timestamp",
+    "cwd",
+    "runtime_workspace_roots",
+    "originator",
+    "cli_version",
+    "source",
+    "thread_source",
+    "model_provider",
+    "base_instructions",
+    "history_mode",
+    "context_window",
+    "git"
+  ],
+  "cli_version": "0.163.0"
+}

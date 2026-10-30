@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Lumi Codex MCP Apps spike</title>
+<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>
+<h1>Lumi MCP Apps spike</h1>
+<p>Loopback image: <img id="loopback" src="http://127.0.0.1:__PORT__/reference.png"></p>
+<p>Data image: <img id="data"></p>
+<button id="call">Call inspect tool</button>
+<label>Data URI padding bytes <input id="size" type="number" value="1048576"></label>
+<button id="test">Test data image</button><pre id="out"></pre>
+<script>
+const out=document.querySelector('#out'), pending=new Map(); let serial=0;
+function log(v){out.textContent+=JSON.stringify(v)+'\n'}
+function rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}
+addEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});
+document.querySelector('#loopback').onload=()=>log({loopback:'loaded'});
+document.querySelector('#loopback').onerror=()=>log({loopback:'failed'});
+const base='__REFERENCE_B64__';
+function paddedPng(n){
+  const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\0'+'x'.repeat(n));
+  const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);
+  view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);
+  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);
+  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);
+  const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));
+}
+document.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};
+document.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};
+rpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);
+</script></html>
