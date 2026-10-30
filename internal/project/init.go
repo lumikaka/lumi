@@ -125,6 +125,20 @@ func copyInspectionFile(source, target string) error {
 // only; the caller may independently add optional host guidance to them.
 // Desktop creation deliberately continues to use CreateWithInput.
 func (manager *Manager) InitAt(ctx context.Context, rawRoot string, input CreateInput) (result InitResult, err error) {
+	return manager.initAt(ctx, rawRoot, input, nil)
+}
+
+// InitTextAt uses the same in-place layout and lock as init, but leaves setup
+// as a draft for an external author. It never starts a generation workflow.
+func (manager *Manager) InitTextAt(ctx context.Context, root string, input CreateInput, idea string) (InitResult, error) {
+	setupUUID, err := newUUIDv7()
+	if err != nil {
+		return InitResult{}, err
+	}
+	return manager.initAt(ctx, root, input, &SetupDraftInitialization{UUID: setupUUID, OriginalInput: idea, GenerationLanguage: input.GenerationLanguage})
+}
+
+func (manager *Manager) initAt(ctx context.Context, rawRoot string, input CreateInput, draft *SetupDraftInitialization) (result InitResult, err error) {
 	root, err := normalizeDirectory(rawRoot)
 	if err != nil {
 		return result, err
@@ -188,7 +202,11 @@ func (manager *Manager) InitAt(ctx context.Context, rawRoot string, input Create
 	if err != nil {
 		return result, err
 	}
-	store, err := initializeStore(ctx, root, projectUUID, name, language, actorUUID, &profile, strings.TrimSpace(promptcatalog.DefaultProjectStyle(language)), nil, now, lock)
+	var finalProfile *PictureBookProfile
+	if draft == nil {
+		finalProfile = &profile
+	}
+	store, err := initializeStore(ctx, root, projectUUID, name, language, actorUUID, finalProfile, strings.TrimSpace(promptcatalog.DefaultProjectStyle(language)), draft, now, lock)
 	if err != nil {
 		_ = lock.Close()
 		return result, err

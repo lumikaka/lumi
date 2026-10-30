@@ -7,16 +7,18 @@ import (
 	"strings"
 
 	"lumi/internal/agentcheckpoint"
+	"lumi/internal/project"
 	"lumi/internal/taskexecution"
 
 	"gorm.io/gorm"
 )
 
 type CreateChapterInput struct {
-	ChapterCode   string
-	Title         string
-	Content       string
-	ContentFormat string
+	ChapterCode             string
+	Title                   string
+	Content                 string
+	ContentFormat           string
+	ExpectedProjectRevision *int64
 }
 
 func (service *Service) CreateChapter(ctx context.Context, input CreateChapterInput) (Chapter, error) {
@@ -49,6 +51,15 @@ func (service *Service) CreateChapter(ctx context.Context, input CreateChapterIn
 	now := service.now().UTC()
 	record := chapterRecord{UUID: chapterUUID, ProjectID: projectRecord.ID, VolumeNo: volume, ChapterNo: chapterNo, ChapterCode: code, SortOrder: sortOrder, Title: input.Title, Revision: 0, CreatedAt: now, UpdatedAt: now}
 	err = taskexecution.Transaction(service.store.DB().WithContext(ctx), func(tx *gorm.DB) error {
+		if input.ExpectedProjectRevision != nil {
+			result := tx.Model(&project.Project{}).Where("id = ? AND revision = ?", projectRecord.ID, *input.ExpectedProjectRevision).Updates(map[string]any{"revision": gorm.Expr("revision + 1"), "updated_at": now})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return storyError(CodeProjectRevisionConflict, "项目版本冲突", "重新读取 project_overview 后创建章节。", nil)
+			}
+		}
 		if err := tx.Create(&record).Error; err != nil {
 			return err
 		}

@@ -271,10 +271,11 @@ type UpdateAssetInput struct {
 }
 
 type CreateSectionInput struct {
-	Title         string
-	DescriptionMD string
-	StoryboardMD  string
-	PageRole      string
+	Title                 string
+	DescriptionMD         string
+	StoryboardMD          string
+	PageRole              string
+	ExpectedStateRevision *int64
 }
 
 type GeneratedComicSection struct {
@@ -286,6 +287,7 @@ type UpdateSectionInput struct {
 	Title            *string
 	DescriptionMD    *string
 	PageRole         *string
+	StoryboardMD     *string
 	ExpectedRevision int64
 }
 

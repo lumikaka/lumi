@@ -15,13 +15,14 @@ import (
 	"lumi/internal/platformpath"
 )
 
-const usage = `Usage: lumi <serve|status|stop|init|project info> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
+const usage = `Usage: lumi <serve|status|stop|init|project info|mcp> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
 
 serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
 init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
 project info  Inspect cwd project identity and Codex write-protection status.
+mcp     Run a cwd-bound stdio MCP server; auto-start the CLI instance.
 `
 
 type options struct {
@@ -73,7 +74,7 @@ func command(args []string, out, stderr io.Writer) int {
 		}
 		return printError(opt, out, stderr, "invalid_arguments", err, 2)
 	}
-	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "project info") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
+	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "project info" && name != "mcp") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
 		return printError(opt, out, stderr, "invalid_arguments", errors.New("invalid command, environment, arguments or timeout"), 2)
 	}
 	var err error
@@ -89,6 +90,13 @@ func command(args []string, out, stderr io.Writer) int {
 	if name == "__serve" {
 		if err := runDaemon(opt); err != nil {
 			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
+	if name == "mcp" {
+		if err := runMCP(opt); err != nil {
+			fmt.Fprintln(stderr, "lumi mcp:", err)
 			return 1
 		}
 		return 0

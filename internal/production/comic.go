@@ -268,6 +268,9 @@ func (service *Service) CreateSection(ctx context.Context, chapterUUID string, i
 			return err
 		}
 		chapter = foundChapter
+		if input.ExpectedStateRevision != nil && state.Revision != *input.ExpectedStateRevision {
+			return domainError(CodeConflict, "页面结构已被修改", "重新读取 pages list 中的 state.revision 后创建。", nil)
+		}
 		_, actor, err := service.projectActor(ctx, tx)
 		if err != nil {
 			return err
@@ -552,6 +555,9 @@ func generatedSectionsMatchTx(tx *gorm.DB, existing []comicSectionRecord, genera
 }
 
 func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionUUID string, input UpdateSectionInput) (ComicSection, error) {
+	if input.StoryboardMD != nil && (strings.TrimSpace(*input.StoryboardMD) == "" || len([]rune(*input.StoryboardMD)) > 262144) {
+		return ComicSection{}, domainError(CodeValidation, "Storyboard 无效", "storyboard_md 必须包含内容且最多 262144 个字符。", nil)
+	}
 	var pageRole *string
 	if input.PageRole != nil {
 		normalized, err := service.normalizePageRole(*input.PageRole, false)
@@ -600,6 +606,13 @@ func (service *Service) UpdateSection(ctx context.Context, chapterUUID, sectionU
 				return err
 			}
 			updates["page_role"] = *pageRole
+		}
+		if input.StoryboardMD != nil {
+			variant, err := createStoryboardTx(tx, row, actor.ID, strings.TrimSpace(*input.StoryboardMD), "manual", service.now().UTC())
+			if err != nil {
+				return err
+			}
+			updates["current_storyboard_variant_id"] = variant.ID
 		}
 		result := tx.Model(&row).Where("revision = ?", input.ExpectedRevision).Updates(updates)
 		if result.Error != nil {
