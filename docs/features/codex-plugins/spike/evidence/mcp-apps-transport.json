@@ -1,0 +1,438 @@
+{
+  "scope": "Isolated app-server transport, PNG integrity, annotations and temporary marker; NO GUI or host approval evidence",
+  "environment": {
+    "observed_at_utc": "2026-10-30T13:37:01.708597+00:00",
+    "app_bundle": "/Applications/ChatGPT.app",
+    "app_version": "26.1027.30824",
+    "app_build": "22943",
+    "bundle_id": "com.openai.codex",
+    "bundled_cli": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+    "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+    "scope": "Installed bundle metadata; not a running-renderer binary fingerprint"
+  },
+  "variants": [
+    {
+      "variant": "allow",
+      "version": "0.4.1+20261030133701.rexuk97g",
+      "payloads": [
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1116,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1128,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1116,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88516,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88528,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88516,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350666,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350678,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350666,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399248,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399260,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399248,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593552,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593564,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593552,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185958,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185970,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185958,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        }
+      ],
+      "annotations_checked": true,
+      "ui_uri": "ui://lumi-spike/20261030133701.rexuk97g/allow/app.html",
+      "csp": {
+        "connectDomains": [],
+        "resourceDomains": [
+          "http://127.0.0.1:18765"
+        ]
+      },
+      "html_bytes": 8721
+    },
+    {
+      "variant": "no-resource",
+      "version": "0.4.2+20261030133701.rexuk97g",
+      "payloads": [
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1116,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1128,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 0,
+          "png_bytes": 411,
+          "base64_chars": 548,
+          "result_json_bytes": 1116,
+          "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88516,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88528,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 65536,
+          "png_bytes": 65947,
+          "base64_chars": 87932,
+          "result_json_bytes": 88516,
+          "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350666,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350678,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 262144,
+          "png_bytes": 262555,
+          "base64_chars": 350076,
+          "result_json_bytes": 350666,
+          "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399248,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399260,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 1048576,
+          "png_bytes": 1048987,
+          "base64_chars": 1398652,
+          "result_json_bytes": 1399248,
+          "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593552,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593564,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 4194304,
+          "png_bytes": 4194715,
+          "base64_chars": 5592956,
+          "result_json_bytes": 5593552,
+          "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "data_uri",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185958,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "get_image",
+          "mode": "image",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185970,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        },
+        {
+          "tool": "show_app",
+          "mode": "data_uri",
+          "padding_bytes": 8388608,
+          "png_bytes": 8389019,
+          "base64_chars": 11185360,
+          "result_json_bytes": 11185958,
+          "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+          "transport_and_integrity": "passed",
+          "iframe": "not_tested"
+        }
+      ],
+      "annotations_checked": true,
+      "ui_uri": "ui://lumi-spike/20261030133701.rexuk97g/no-resource/app.html",
+      "csp": {
+        "connectDomains": []
+      },
+      "html_bytes": 8733
+    }
+  ]
+}

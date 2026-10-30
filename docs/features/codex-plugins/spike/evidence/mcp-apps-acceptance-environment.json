@@ -1,0 +1,92 @@
+{
+  "observed_at_utc": "2026-10-30T13:39:20.178478+00:00",
+  "thread_id": "01a18d02-3f23-7160-a4a7-614b1e778478",
+  "environment": {
+    "observed_at_utc": "2026-10-30T13:35:57.243705+00:00",
+    "app_bundle": "/Applications/ChatGPT.app",
+    "app_version": "26.1027.30824",
+    "app_build": "22943",
+    "bundle_id": "com.openai.codex",
+    "bundled_cli": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+    "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+    "scope": "Installed bundle metadata; not a running-renderer binary fingerprint"
+  },
+  "manual_fixture": {
+    "root": "/private/tmp/lumi-mcp-apps-6mxe4b0s",
+    "environment": {
+      "observed_at_utc": "2026-10-30T13:35:57.243705+00:00",
+      "app_bundle": "/Applications/ChatGPT.app",
+      "app_version": "26.1027.30824",
+      "app_build": "22943",
+      "bundle_id": "com.openai.codex",
+      "bundled_cli": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+      "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+      "scope": "Installed bundle metadata; not a running-renderer binary fingerprint"
+    },
+    "variants": [
+      {
+        "variant": "allow",
+        "version": "0.4.1+20261030133557.6mxe4b0s",
+        "plugin": "lumi-apps-allow-6mxe4b0s",
+        "marketplace": "lumi-apps-allow-6mxe4b0s-local",
+        "marketplace_path": "/private/tmp/lumi-mcp-apps-6mxe4b0s/allow/marketplace",
+        "plugin_path": "/private/tmp/lumi-mcp-apps-6mxe4b0s/allow/marketplace/plugins/lumi-apps-allow-6mxe4b0s",
+        "ui_uri": "ui://lumi-spike/20261030133557.6mxe4b0s/allow/app.html",
+        "manual_register_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /private/tmp/lumi-mcp-apps-6mxe4b0s/allow/marketplace",
+        "manual_remove_marketplace_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace remove lumi-apps-allow-6mxe4b0s-local"
+      },
+      {
+        "variant": "no-resource",
+        "version": "0.4.2+20261030133557.6mxe4b0s",
+        "plugin": "lumi-apps-no-resource-6mxe4b0s",
+        "marketplace": "lumi-apps-no-resource-6mxe4b0s-local",
+        "marketplace_path": "/private/tmp/lumi-mcp-apps-6mxe4b0s/no-resource/marketplace",
+        "plugin_path": "/private/tmp/lumi-mcp-apps-6mxe4b0s/no-resource/marketplace/plugins/lumi-apps-no-resource-6mxe4b0s",
+        "ui_uri": "ui://lumi-spike/20261030133557.6mxe4b0s/no-resource/app.html",
+        "manual_register_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /private/tmp/lumi-mcp-apps-6mxe4b0s/no-resource/marketplace",
+        "manual_remove_marketplace_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace remove lumi-apps-no-resource-6mxe4b0s-local"
+      }
+    ],
+    "source_sha256": {
+      "probe_server.py": "8d3bbcd81078683b345f4b084a5fc87493e9e52f941e875b1721d8391aa626ed",
+      "app.html": "a1f87eb2ae2c298d7cb713c24c8698f543d41f937b139d9538d7ebd23ddf9755"
+    },
+    "serve_command": "/Users/qingyang/.asdf/installs/python/3.10.16/Library/Frameworks/Python.framework/Versions/3.10/bin/python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/serve_acceptance_images.py /private/tmp/lumi-mcp-apps-6mxe4b0s --port 18765"
+  },
+  "current_session": {
+    "browser": {
+      "id": "2",
+      "name": "Codex MCP Apps",
+      "type": "mcpapps",
+      "tabs": []
+    },
+    "probe_tools_exposed": false,
+    "inventory_source": "cua.getState followed by cua.listTabs(browser=2)",
+    "scope": "Only side-panel tabs are listed; empty does not rule out inline apps or prove renderer failure",
+    "probe_show_app_called_in_real_app": false,
+    "probe_installed_by_agent": false,
+    "gui_screenshot": null,
+    "reason": "No probe tool entry in this chat; installation and uninstallation reserved to user by task instruction"
+  },
+  "http_server": {
+    "bind": "127.0.0.1",
+    "port": 18765,
+    "started": true,
+    "startup_output": {
+      "listening": "http://127.0.0.1:18765",
+      "log": "/private/tmp/lumi-mcp-apps-6mxe4b0s/http.jsonl"
+    },
+    "host_requests_observed_at_recording": 0,
+    "scope": "No App image load attempted; absence of requests is not CSP failure evidence",
+    "stopped_after_preparation": true,
+    "stopped_at_utc": "2026-10-30T13:42:49.105182+00:00"
+  },
+  "preflight": {
+    "root": "/private/tmp/lumi-mcp-apps-rexuk97g",
+    "report": "mcp-apps-transport.json",
+    "gui": false,
+    "payload_checks": 36
+  },
+  "user_installation_requested": true,
+  "agent_writes_to_user_codex_home": false
+}

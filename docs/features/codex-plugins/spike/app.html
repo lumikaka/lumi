@@ -1,29 +1,102 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><title>Lumi Codex MCP Apps spike</title>
-<style>body{font:16px system-ui;padding:20px}img{width:128px;height:128px;object-fit:contain}pre{white-space:pre-wrap}button{padding:10px}</style>
-<h1>Lumi MCP Apps spike</h1>
-<p>Loopback image: <img id="loopback" src="http://127.0.0.1:__PORT__/reference.png"></p>
-<p>Data image: <img id="data"></p>
-<button id="call">Call inspect tool</button>
-<label>Data URI padding bytes <input id="size" type="number" value="1048576"></label>
-<button id="test">Test data image</button><pre id="out"></pre>
+<html lang="zh-CN">
+<meta charset="utf-8"><title>Lumi MCP Apps acceptance probe</title>
+<style>
+body{font:14px system-ui;margin:16px;color:#182330;background:#f4f7fa}h1{font-size:20px}
+section{background:white;border:1px solid #b8c4cf;border-radius:8px;padding:12px;margin:12px 0}
+img{width:128px;height:128px;object-fit:contain;border:1px solid #73818f;display:block;margin-top:8px}
+button,select{font:inherit;padding:8px;margin:4px}button{cursor:pointer}button:hover{background:#dce8f4}
+button:disabled{cursor:wait}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:280px;overflow:auto}
+</style>
+<h1>Lumi MCP Apps 验收探针</h1>
+<p id="build">版本 __BUILD__ · CSP __VARIANT__</p>
+<p id="bridge">桥接：等待初始化</p>
+<section>1 / 2 · Loopback（左红右蓝、左上黄块）
+<p id="loopback-status">等待请求</p><img id="loopback" alt="Loopback 参考图"></section>
+<section>3 · iframe 本地生成 data URI（不经过工具结果）
+<label>Padding <select id="padding">
+<option value="0">0</option><option value="65536">64 KiB</option><option value="262144">256 KiB</option>
+<option value="1048576">1 MiB</option><option value="4194304">4 MiB</option><option value="8388608">8 MiB</option>
+</select></label><button id="local">测试所选值</button><button id="matrix">测试本地全部六档</button>
+<img id="local-image" alt="本地 data URI 参考图"></section>
+<section>4 · 工具回调（写操作仅追加临时 marker）
+<button data-tool="inspect" disabled>只读 inspect</button><button data-tool="write_marker" disabled>写入 marker</button>
+<button data-tool="fail_tool" disabled>预期工具错误</button></section>
+<section>5 / 3 · 工具取图与结果 payload（使用上方 padding）
+<button id="uri-tool" disabled>工具返回 data URI</button><button id="image-tool" disabled>工具返回 image content</button>
+<p id="tool-status">等待工具结果；也接收 show_app({padding_bytes}) 的宿主通知</p>
+<img id="tool-image" alt="工具取图参考图"></section>
+<p>记录截图、按钮动作、批准/拒绝弹窗、输出及对应 HTTP/MCP 日志。超时只表示本次未获响应。</p>
+<pre id="out" aria-live="polite"></pre>
 <script>
 const out=document.querySelector('#out'), pending=new Map(); let serial=0;
-function log(v){out.textContent+=JSON.stringify(v)+'\n'}
-function rpc(method,params){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});parent.postMessage({jsonrpc:'2.0',id,method,params},'*')})}
-addEventListener('message',({data})=>{if(!data||data.jsonrpc!=='2.0')return;if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(data.error):p.resolve(data.result)}});
-document.querySelector('#loopback').onload=()=>log({loopback:'loaded'});
-document.querySelector('#loopback').onerror=()=>log({loopback:'failed'});
+const build='__BUILD__', variant='__VARIANT__', instance=Date.now()+'-'+Math.random().toString(16).slice(2);
+function log(v){out.textContent+=JSON.stringify({at:new Date().toISOString(),...v})+'\n';out.scrollTop=out.scrollHeight}
+function brief(r){return {isError:r?.isError,structured_keys:Object.keys(r?.structuredContent||{}),
+  content:r?.content?.map(c=>({type:c.type,chars:c.data?.length,text:c.type==='text'?c.text.slice(0,700):undefined})),
+  padding_bytes:r?.structuredContent?.padding_bytes,png_bytes:r?.structuredContent?.png_bytes}}
+function rpc(method,params){return new Promise((resolve,reject)=>{
+  const id=++serial, timer=setTimeout(()=>{pending.delete(id);reject({code:'PROBE_TIMEOUT',method,wait_ms:30000})},30000);
+  pending.set(id,{resolve,reject,timer}); parent.postMessage({jsonrpc:'2.0',id,method,params},'*');
+})}
+function displayImage(selector,src,label,details={}){return new Promise(resolve=>{
+  const img=document.querySelector(selector), started=performance.now();
+  const timer=setTimeout(()=>finish('timeout'),15000);
+  function finish(status){clearTimeout(timer);img.onload=null;img.onerror=null;
+    const event={test:label,status,...details,uri_chars:src.length,width:img.naturalWidth,height:img.naturalHeight,
+      elapsed_ms:Math.round(performance.now()-started)};log(event);
+    if(selector==='#loopback') document.querySelector('#loopback-status').textContent=JSON.stringify(event);
+    if(selector==='#tool-image') document.querySelector('#tool-status').textContent=JSON.stringify(event);
+    resolve(event);
+  }
+  img.onload=()=>finish('loaded');img.onerror=()=>finish('failed');img.src=src;
+})}
+async function receiveImage(r,source){
+  log({event:source,result:brief(r)});
+  if(r?.isError){log({event:'tool_error',source});return}
+  const d=r?.structuredContent, block=r?.content?.find(c=>c.type==='image');
+  const src=d?.data_uri||(block?'data:'+block.mimeType+';base64,'+block.data:null);
+  if(src) await displayImage('#tool-image',src,source,{padding_bytes:d?.padding_bytes,png_bytes:d?.png_bytes});
+}
+addEventListener('message',({source,data})=>{
+  if(source!==parent||!data||data.jsonrpc!=='2.0')return;
+  if(pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);clearTimeout(p.timer);
+    data.error?p.reject(data.error):p.resolve(data.result);return}
+  if(data.method==='ui/notifications/tool-result') receiveImage(data.params,'host_tool_result').catch(e=>log({error:String(e)}));
+  else if(data.method) log({event:'host_notification',method:data.method});
+});
 const base='__REFERENCE_B64__';
 function paddedPng(n){
   const raw=Uint8Array.from(atob(base),c=>c.charCodeAt(0)),data=new TextEncoder().encode('spike\0'+'x'.repeat(n));
   const chunk=new Uint8Array(data.length+12),view=new DataView(chunk.buffer);
   view.setUint32(0,data.length);chunk.set(new TextEncoder().encode('tEXt'),4);chunk.set(data,8);
-  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(8+data.length,(crc^0xffffffff)>>>0);
-  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);all.set(raw.subarray(-12),raw.length-12+chunk.length);
+  let crc=0xffffffff;for(const byte of chunk.subarray(4,8+data.length)){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}
+  view.setUint32(8+data.length,(crc^0xffffffff)>>>0);
+  const all=new Uint8Array(raw.length+chunk.length);all.set(raw.subarray(0,-12));all.set(chunk,raw.length-12);
+  all.set(raw.subarray(-12),raw.length-12+chunk.length);
   const pieces=[];for(let i=0;i<all.length;i+=32768)pieces.push(String.fromCharCode(...all.subarray(i,i+32768)));return btoa(pieces.join(''));
 }
-document.querySelector('#test').onclick=()=>{const n=Number(document.querySelector('#size').value),img=document.querySelector('#data');if(!Number.isSafeInteger(n)||n<0||n>8*1024*1024){log({error:'Choose 0..8388608 padding bytes'});return}img.onload=()=>log({data:'loaded',padding_bytes:n,uri_length:img.src.length});img.onerror=()=>log({data:'failed',padding_bytes:n});img.src='data:image/png;base64,'+paddedPng(n)};
-document.querySelector('#call').onclick=async()=>{try{log(await rpc('tools/call',{name:'inspect',arguments:{}}))}catch(e){log(e)}};
-rpc('ui/initialize',{appInfo:{name:'Lumi spike',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'}).then(r=>{log({initialize:r});parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*')}).catch(log);
+async function localTest(n){return displayImage('#local-image','data:image/png;base64,'+paddedPng(n),'local_data_uri',{padding_bytes:n})}
+document.querySelector('#local').onclick=()=>localTest(Number(document.querySelector('#padding').value));
+document.querySelector('#matrix').onclick=async event=>{event.target.disabled=true;document.querySelector('#local').disabled=true;
+  try{for(const n of [0,65536,262144,1048576,4194304,8388608])await localTest(n)}
+  catch(e){log({error:String(e)})}finally{event.target.disabled=false;document.querySelector('#local').disabled=false}};
+async function callTool(button,name,args={}){
+  const request_token=instance+'-'+(++serial);button.disabled=true;
+  const input={...args,...(name==='inspect'?{}:{request_token})};log({event:'tool_call_started',name,request_token,arguments:input});
+  try{await receiveImage(await rpc('tools/call',{name,arguments:input}),'callback_'+name)}
+  catch(error){log({event:'tool_call_failed',name,request_token,error})}finally{button.disabled=false}
+}
+for(const button of document.querySelectorAll('[data-tool]'))button.onclick=()=>callTool(button,button.dataset.tool);
+document.querySelector('#uri-tool').onclick=event=>callTool(event.target,'get_image',{mode:'data_uri',padding_bytes:Number(document.querySelector('#padding').value)});
+document.querySelector('#image-tool').onclick=event=>callTool(event.target,'get_image',{mode:'image',padding_bytes:Number(document.querySelector('#padding').value)});
+addEventListener('error',event=>log({event:'script_error',message:event.message}));
+addEventListener('unhandledrejection',event=>log({event:'unhandled_rejection',error:String(event.reason)}));
+log({event:'script_started',build,variant,instance});
+displayImage('#loopback','http://127.0.0.1:__PORT__/reference.png?build='+encodeURIComponent(build)+'&variant='+variant+'&instance='+instance,'loopback');
+rpc('ui/initialize',{appInfo:{name:'Lumi acceptance probe',version:build},appCapabilities:{},protocolVersion:'2026-01-26'})
+  .then(r=>{document.querySelector('#bridge').textContent='桥接：初始化成功';log({event:'initialize',result:r});
+    parent.postMessage({jsonrpc:'2.0',method:'ui/notifications/initialized',params:{}},'*');
+    for(const button of document.querySelectorAll('[data-tool],#uri-tool,#image-tool'))button.disabled=false;
+  }).catch(error=>{document.querySelector('#bridge').textContent='桥接：初始化失败或超时';log({event:'initialize_failed',error})});
 </script></html>
