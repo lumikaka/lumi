@@ -111,7 +111,7 @@ func TestGlobalModelSettingsRoutesWithoutAConfiguredProvider(t *testing.T) {
 		if method == http.MethodPatch {
 			body = `{"expected_revision":0,"overrides":{"project_image":null}}`
 		}
-		req := httptest.NewRequest(method, "/api/v1/model-settings", strings.NewReader(body))
+		req := newLocalRequest(method, "/api/v1/model-settings", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://localhost:5801")
 		recorder := httptest.NewRecorder()

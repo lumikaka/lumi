@@ -12,7 +12,7 @@ func TestMCPHistoryAppearsInExistingThreadsAndRemainsReadOnly(t *testing.T) {
 	h := newMCPHarness(t)
 	request := func(method, path, body string, want int) map[string]any {
 		t.Helper()
-		r := httptest.NewRequest(method, "/api/v1/projects/"+h.p+path, strings.NewReader(body))
+		r := newLocalRequest(method, "/api/v1/projects/"+h.p+path, strings.NewReader(body))
 		r.Header.Set("Content-Type", "application/json")
 		r.Header.Set("Origin", "http://localhost:5801")
 		w := httptest.NewRecorder()

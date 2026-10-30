@@ -128,7 +128,7 @@ func TestDesktopAuthenticationIntegratesWithApplicationRoutes(t *testing.T) {
 		}
 	}
 
-	sessionRequest := httptest.NewRequest(http.MethodPost, "/api/v1/desktop-sessions", strings.NewReader(`{"token":"`+token+`"}`))
+	sessionRequest := newLocalRequest(http.MethodPost, "/api/v1/desktop-sessions", strings.NewReader(`{"token":"`+token+`"}`))
 	sessionRequest.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	sessionRequest.Header.Set(echo.HeaderOrigin, frontendURL)
 	sessionRecorder := httptest.NewRecorder()
@@ -141,7 +141,7 @@ func TestDesktopAuthenticationIntegratesWithApplicationRoutes(t *testing.T) {
 		t.Fatalf("desktop session cookies = %#v", cookies)
 	}
 
-	providersRequest := httptest.NewRequest(http.MethodGet, "/api/v1/providers", nil)
+	providersRequest := newLocalRequest(http.MethodGet, "/api/v1/providers", nil)
 	providersRequest.AddCookie(cookies[0])
 	providersRecorder := httptest.NewRecorder()
 	application.ServeHTTP(providersRecorder, providersRequest)
@@ -149,12 +149,12 @@ func TestDesktopAuthenticationIntegratesWithApplicationRoutes(t *testing.T) {
 		t.Fatalf("authenticated providers status = %d, body = %s", providersRecorder.Code, providersRecorder.Body.String())
 	}
 
-	writeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/open-projects", strings.NewReader(`{"root_path":""}`))
+	writeRequest := newLocalRequest(http.MethodPost, "/api/v1/open-projects", strings.NewReader(`{"root_path":""}`))
 	writeRequest.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	writeRequest.AddCookie(cookies[0])
 	writeRecorder := httptest.NewRecorder()
 	application.ServeHTTP(writeRecorder, writeRequest)
-	if writeRecorder.Code != http.StatusForbidden {
+	if writeRecorder.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("authenticated write without origin status = %d, body = %s", writeRecorder.Code, writeRecorder.Body.String())
 	}
 
@@ -185,7 +185,7 @@ func TestDesktopAuthenticationIntegratesWithApplicationRoutes(t *testing.T) {
 func TestDesktopSessionRouteIsAbsentWhenAuthenticationIsDisabled(t *testing.T) {
 	const frontendURL = "http://localhost:5801"
 	application := newDesktopIntegrationApplication(t, nil, frontendURL)
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/desktop-sessions", strings.NewReader(`{"token":"anything"}`))
+	request := newLocalRequest(http.MethodPost, "/api/v1/desktop-sessions", strings.NewReader(`{"token":"anything"}`))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	request.Header.Set(echo.HeaderOrigin, frontendURL)
 	recorder := httptest.NewRecorder()
@@ -224,9 +224,9 @@ func newDesktopIntegrationApplication(t *testing.T, authentication *config.Deskt
 func serveDesktopRequest(e *echo.Echo, method, path, token string, body *strings.Reader) *httptest.ResponseRecorder {
 	var request *http.Request
 	if body == nil {
-		request = httptest.NewRequest(method, path, nil)
+		request = newLocalRequest(method, path, nil)
 	} else {
-		request = httptest.NewRequest(method, path, body)
+		request = newLocalRequest(method, path, body)
 		request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	}
 	if token != "" {

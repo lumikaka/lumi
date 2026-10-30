@@ -29,9 +29,9 @@ func acquireProjectLock(root, projectUUID string, now time.Time) (*projectLock, 
 	if err := lockFile(file); err != nil {
 		metadata := readLockMetadata(file)
 		_ = file.Close()
-		details := "该项目正由另一个 Lumi 实例使用，请先在另一个实例中关闭项目。"
-		if metadata.Hostname != "" && metadata.PID > 0 {
-			details = fmt.Sprintf("项目由 %s 上的 Lumi 进程 %d 使用；进程退出后锁会自动恢复。", metadata.Hostname, metadata.PID)
+		details := "该项目正由另一个 Lumi 实例使用；请在桌面版中关闭该项目，或等待 CLI 空闲回收 / 执行 lumi stop 释放。"
+		if metadata.PID > 0 {
+			details = fmt.Sprintf("项目由 %s 上的 Lumi 进程 %d 使用；请在桌面版中关闭该项目，或等待 CLI 空闲回收 / 执行 lumi stop 释放。进程退出后锁会自动释放。", metadata.Hostname, metadata.PID)
 		}
 		return nil, projectError(CodeLocked, "项目已被锁定", details, err)
 	}

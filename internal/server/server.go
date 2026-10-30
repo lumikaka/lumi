@@ -93,6 +93,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	e := echo.New()
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpapi.ErrorHandler
+	e.Pre(trustedHost(cfg.Address))
 	e.Use(middleware.RequestID())
 	e.Use(requestLogger(slog.Default()))
 	e.Use(middleware.Recover())
@@ -376,7 +377,11 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	}
 	lifecycleContext, lifecycleCancel := context.WithCancel(context.Background())
 	lifecycleDone := make(chan struct{})
-	lifecycle := newProjectLifecycleController(projects, projectIdleGrace)
+	idleGrace := cfg.ProjectIdleGrace
+	if idleGrace <= 0 {
+		idleGrace = projectIdleGrace
+	}
+	lifecycle := newProjectLifecycleController(projects, idleGrace)
 	go func() {
 		defer close(lifecycleDone)
 		lifecycle.run(lifecycleContext, projectIdleCheckInterval)
@@ -521,7 +526,8 @@ func trustedWriteOrigin(frontendURL string) echo.MiddlewareFunc {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
 				return next(c)
 			}
-			if !realtime.OriginAllowed(c.Request().Header.Get(echo.HeaderOrigin), frontendURL) {
+			origin := c.Request().Header.Get(echo.HeaderOrigin)
+			if origin != "" && !realtime.OriginAllowed(origin, frontendURL) {
 				return httpapi.NewError(http.StatusForbidden, "untrusted_origin", "请求来源不受信任", "写请求只能由 Lumi 本地界面发起。", nil)
 			}
 			return next(c)

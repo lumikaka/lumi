@@ -71,3 +71,27 @@ func databaseFilePath(dsn string) (string, bool, error) {
 	}
 	return decoded, true, nil
 }
+
+// FilePath identifies the SQLite file for cross-process migration locking.
+// Memory databases have no filesystem lock.
+func FilePath(dsn string) (string, bool, error) {
+	if strings.Contains(dsn, "mode=memory") {
+		return "", false, nil
+	}
+	path, ok, err := databaseFilePath(dsn)
+	if err != nil || !ok {
+		return path, ok, err
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return "", false, err
+	}
+	// Resolve directory aliases even before SQLite creates the database.
+	if parent, resolveErr := filepath.EvalSymlinks(filepath.Dir(path)); resolveErr == nil {
+		path = filepath.Join(parent, filepath.Base(path))
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(path); resolveErr == nil {
+		path = resolved
+	}
+	return path, true, nil
+}

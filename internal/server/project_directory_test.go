@@ -43,7 +43,7 @@ func TestDirectoryRenameReopensRealProjectRuntime(t *testing.T) {
 	}
 	defer releasePresence()
 	body, _ := json.Marshal(map[string]any{"name": "勇敢的小火车", "description": "", "expected_revision": 1, "rename_directory": true})
-	request := httptest.NewRequest(http.MethodPatch, "/api/v1/projects/"+created.UUID, bytes.NewReader(body))
+	request := newLocalRequest(http.MethodPatch, "/api/v1/projects/"+created.UUID, bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://localhost:5801")
 	response := httptest.NewRecorder()
@@ -61,7 +61,7 @@ func TestDirectoryRenameReopensRealProjectRuntime(t *testing.T) {
 	}
 	for _, suffix := range []string{"", "/chat_threads", "/tasks"} {
 		response := httptest.NewRecorder()
-		application.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+created.UUID+suffix, nil))
+		application.ServeHTTP(response, newLocalRequest(http.MethodGet, "/api/v1/projects/"+created.UUID+suffix, nil))
 		if response.Code != http.StatusOK {
 			t.Fatalf("reopened %s: %d %s", suffix, response.Code, response.Body.String())
 		}

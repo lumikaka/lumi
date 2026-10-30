@@ -376,7 +376,7 @@ func TestMCPWriteEmitsWebsocketThenRESTReadsTruth(t *testing.T) {
 func TestMCPGrantManagementEnvelopeAndSecretOnlyOnce(t *testing.T) {
 	h := newMCPHarness(t)
 	request := func(method, path, body string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(method, "/api/v1/projects/"+h.p+path, strings.NewReader(body))
+		r := newLocalRequest(method, "/api/v1/projects/"+h.p+path, strings.NewReader(body))
 		r.Header.Set("Origin", "http://localhost:5801")
 		r.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()

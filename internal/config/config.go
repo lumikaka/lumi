@@ -62,6 +62,8 @@ type Config struct {
 	DatabaseDSN            string
 	DesktopAuth            *DesktopAuthentication
 	WorkflowRequestTimeout time.Duration
+	// Zero preserves the desktop's default idle grace.
+	ProjectIdleGrace time.Duration
 }
 
 func Load() (Config, error) {

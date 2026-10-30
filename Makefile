@@ -27,12 +27,14 @@ build:
 	pnpm --dir web run build
 	mkdir -p build
 	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/lumi_web ./cmd/lumi_web
+	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/lumi ./cmd/lumi
 	go build -trimpath -ldflags="-s -w" -o build/lumi_ctl ./cmd/lumi_ctl
 
 build-linux:
 	pnpm --dir web run build
 	mkdir -p build/linux-amd64
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/linux-amd64/lumi_web ./cmd/lumi_web
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/linux-amd64/lumi ./cmd/lumi
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o build/linux-amd64/lumi_ctl ./cmd/lumi_ctl
 
 desktop-build:

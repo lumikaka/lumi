@@ -25,7 +25,7 @@ func TestPriceRoutesAreRegisteredAndCatalogSeeded(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = server.Close() })
 	recorder := httptest.NewRecorder()
-	server.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/model-prices", nil))
+	server.ServeHTTP(recorder, newLocalRequest(http.MethodGet, "/api/v1/model-prices", nil))
 	if recorder.Code != 200 || !strings.Contains(recorder.Body.String(), "qwen3.7-plus") {
 		t.Fatalf("%d %s", recorder.Code, recorder.Body)
 	}

@@ -67,7 +67,7 @@ func TestInitializationGateCoversHTTPAndAgentDispatch(t *testing.T) {
 		{http.MethodPost, base + "/workflows/other/cancellations"},
 	} {
 		recorder := httptest.NewRecorder()
-		e.ServeHTTP(recorder, httptest.NewRequest(input.method, input.path, nil))
+		e.ServeHTTP(recorder, newLocalRequest(input.method, input.path, nil))
 		var body httpapi.Envelope
 		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
 		if recorder.Code != http.StatusConflict || body.Success || body.Data != nil || body.Error == nil || body.Error.Code != project.CodeProjectInitializing {
@@ -83,7 +83,7 @@ func TestInitializationGateCoversHTTPAndAgentDispatch(t *testing.T) {
 		{http.MethodPost, base + "/workflows/" + workflowID.String() + "/cancellations"},
 	} {
 		recorder := httptest.NewRecorder()
-		e.ServeHTTP(recorder, httptest.NewRequest(input.method, input.path, nil))
+		e.ServeHTTP(recorder, newLocalRequest(input.method, input.path, nil))
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("expected allowed %s %s: %s", input.method, input.path, recorder.Body.String())
 		}
@@ -95,14 +95,14 @@ func TestInitializationGateCoversHTTPAndAgentDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, base+"/initialization/handoffs", strings.NewReader(`{"workflow_uuid":"`+workflowID.String()+`"}`))
+	request := newLocalRequest(http.MethodPost, base+"/initialization/handoffs", strings.NewReader(`{"workflow_uuid":"`+workflowID.String()+`"}`))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	e.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"status":"handed_off"`) {
 		t.Fatalf("handoff response=%d %s", recorder.Code, recorder.Body.String())
 	}
 	recorder = httptest.NewRecorder()
-	e.ServeHTTP(recorder, httptest.NewRequest(http.MethodPatch, base, nil))
+	e.ServeHTTP(recorder, newLocalRequest(http.MethodPatch, base, nil))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("handoff did not restore writes: %s", recorder.Body.String())
 	}

@@ -1,13 +1,16 @@
 package dbmigrate
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
+	"time"
 
 	embeddedmigrations "lumi/db/migrations"
 	"lumi/internal/database"
+	"lumi/internal/processlock"
 
 	"github.com/golang-migrate/migrate/v4"
 	migratedatabase "github.com/golang-migrate/migrate/v4/database/sqlite"
@@ -16,6 +19,7 @@ import (
 
 type Runner struct {
 	migrator *migrate.Migrate
+	appLock  *processlock.Lock
 	empty    bool
 	latest   uint
 }
@@ -26,7 +30,30 @@ func Open(dsn string) (*Runner, error) {
 }
 
 func OpenApp(dsn string) (*Runner, error) {
-	return OpenWithFS(dsn, embeddedmigrations.Files, "app")
+	if err := database.EnsureParentDirectory(dsn); err != nil {
+		return nil, err
+	}
+	path, onDisk, err := database.FilePath(dsn)
+	if err != nil {
+		return nil, err
+	}
+	var lock *processlock.Lock
+	if onDisk {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		lock, err = processlock.Acquire(ctx, path+".migrate.lock")
+		if err != nil {
+			return nil, fmt.Errorf("lock app migrations: %w", err)
+		}
+	}
+	// Serialize driver initialization as well as version checks and Up/Down.
+	runner, err := OpenWithFS(dsn, embeddedmigrations.Files, "app")
+	if err != nil {
+		_ = lock.Close()
+		return nil, err
+	}
+	runner.appLock = lock
+	return runner, nil
 }
 
 func OpenProject(dsn string) (*Runner, error) {
@@ -138,7 +165,7 @@ func (runner *Runner) Version() (version uint, dirty bool, applied bool, err err
 
 func (runner *Runner) Close() error {
 	sourceErr, databaseErr := runner.migrator.Close()
-	return errors.Join(sourceErr, databaseErr)
+	return errors.Join(sourceErr, databaseErr, runner.appLock.Close())
 }
 
 func IsNoChange(err error) bool {

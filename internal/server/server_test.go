@@ -2,15 +2,19 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -91,7 +95,7 @@ func TestRequestLoggerFiltersAndClassifiesByLevel(t *testing.T) {
 			e.Use(requestLogger(logger))
 			e.GET("/logging-test", func(c echo.Context) error { return c.NoContent(scenario.status) })
 
-			request := httptest.NewRequest(http.MethodGet, "/logging-test", nil)
+			request := newLocalRequest(http.MethodGet, "/logging-test", nil)
 			request.Header.Set(echo.HeaderXRequestID, "test-request-id")
 			e.ServeHTTP(httptest.NewRecorder(), request)
 
@@ -218,7 +222,7 @@ func TestHealthAndUnknownAPI(t *testing.T) {
 		{path: "/api/missing", status: http.StatusNotFound},
 	} {
 		recorder := httptest.NewRecorder()
-		application.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, scenario.path, nil))
+		application.ServeHTTP(recorder, newLocalRequest(http.MethodGet, scenario.path, nil))
 		if recorder.Code != scenario.status {
 			t.Fatalf("GET %s status = %d, body = %s", scenario.path, recorder.Code, recorder.Body.String())
 		}
@@ -250,11 +254,11 @@ func TestWriteRequestsRequireTrustedOrigin(t *testing.T) {
 		origin string
 		status int
 	}{
-		{origin: "", status: http.StatusForbidden},
+		{origin: "", status: http.StatusUnprocessableEntity},
 		{origin: "https://evil.example", status: http.StatusForbidden},
 		{origin: "http://127.0.0.1:5801", status: http.StatusUnprocessableEntity},
 	} {
-		request := httptest.NewRequest(http.MethodPost, "/api/v1/open-projects", strings.NewReader(`{"root_path":""}`))
+		request := newLocalRequest(http.MethodPost, "/api/v1/open-projects", strings.NewReader(`{"root_path":""}`))
 		request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		if scenario.origin != "" {
 			request.Header.Set(echo.HeaderOrigin, scenario.origin)
@@ -265,4 +269,14 @@ func TestWriteRequestsRequireTrustedOrigin(t *testing.T) {
 			t.Fatalf("origin %q status = %d, body = %s", scenario.origin, recorder.Code, recorder.Body.String())
 		}
 	}
+}
+
+// Synthetic requests must use the same loopback Host contract as real clients.
+func newLocalRequest(method, target string, body io.Reader) *http.Request {
+	if strings.HasPrefix(target, "/") {
+		target = "http://localhost:5801" + target
+	}
+	request := httptest.NewRequest(method, target, body)
+	port, _ := strconv.Atoi(request.URL.Port())
+	return request.WithContext(context.WithValue(request.Context(), http.LocalAddrContextKey, &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: port}))
 }

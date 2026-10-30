@@ -68,14 +68,14 @@ func TestMCPOAuthOfficialSDK(t *testing.T) {
 						return nil, err
 					}
 					id := location.Query().Get("request_uuid")
-					request := httptest.NewRequest("GET", "/api/v1/mcp-authorization-requests/"+id, nil)
+					request := newLocalRequest("GET", "/api/v1/mcp-authorization-requests/"+id, nil)
 					rec := httptest.NewRecorder()
 					h.a.Echo.ServeHTTP(rec, request)
 					if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"client_name":"`+clientName+`"`) {
 						t.Fatalf("consent: %s", rec.Body.String())
 					}
 					body, _ := json.Marshal(map[string]string{"project_uuid": h.p, "permission": permission, "decision": "approve"})
-					request = httptest.NewRequest("POST", "/api/v1/mcp-authorization-requests/"+id+"/decisions", bytes.NewReader(body))
+					request = newLocalRequest("POST", "/api/v1/mcp-authorization-requests/"+id+"/decisions", bytes.NewReader(body))
 					request.Header.Set("Content-Type", "application/json")
 					request.Header.Set("Origin", "http://localhost:5801")
 					rec = httptest.NewRecorder()
@@ -203,7 +203,7 @@ func TestMCPOAuthConsentRequiresDesktopSessionAndOrigin(t *testing.T) {
 		{"desktop-test-secret", "http://localhost:5801", `{"decision":"approve","confirmed":true}`, 422},
 		{"desktop-test-secret", "http://localhost:5801", `{"decision":"approve"}`, 409},
 	} {
-		request := httptest.NewRequest("POST", "/api/v1/mcp-authorization-requests/01970000-0000-7000-8000-000000000001/decisions", strings.NewReader(tc.body))
+		request := newLocalRequest("POST", "/api/v1/mcp-authorization-requests/01970000-0000-7000-8000-000000000001/decisions", strings.NewReader(tc.body))
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("Origin", tc.origin)
 		if tc.cookie != "" {
@@ -234,7 +234,7 @@ func TestMCPSharedListenerAuthenticationIsolation(t *testing.T) {
 		{"POST", "/mcp", "", h.token, "http://localhost:5801", 403},
 		{"POST", "/api/v1/mcp-authorization-requests/01970000-0000-7000-8000-000000000001/decisions", "desktop-shared-test", "", "http://evil.test", 403},
 	} {
-		request := httptest.NewRequest(tc.method, "http://127.0.0.1:5801"+tc.path, strings.NewReader(`{}`))
+		request := newLocalRequest(tc.method, "http://127.0.0.1:5801"+tc.path, strings.NewReader(`{}`))
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("Origin", tc.origin)
 		if tc.bearer != "" {
