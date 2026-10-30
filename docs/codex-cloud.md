@@ -20,7 +20,7 @@
 
 在环境的准备对话中发送：
 
-> 为 `lumikaka/lumi` 准备 Linux 开发环境。安装并使用 Go 1.25、Node.js 26 和 pnpm 11.16.0。只安装 Go 服务与 `web/` 前端的依赖：运行 `go mod download`、`pnpm --dir web install --frozen-lockfile`。不要运行 Cargo、Rust 编译、桌面打包或 `make deps`（后者会额外安装 `rel/app/` 的桌面工具）。运行 `go test ./...`、`pnpm --dir web test`、`pnpm --dir web run build` 验证安装。然后分别启动 `make dev-web` 和 `make dev-api`，确认 `http://127.0.0.1:5801/api/v1/health` 返回成功 JSON，并记录可重复使用的 Install script 与 Start skill。
+> 为 `lumikaka/lumi` 准备 Linux 开发环境。安装并使用 Go 1.25、Node.js 26 和 pnpm 12.16.1。只安装 Go 服务与 `web/` 前端的依赖：运行 `go mod download`、`pnpm --dir web install --frozen-lockfile`。不要运行 Cargo、Rust 编译、桌面打包或 `make deps`（后者会额外安装 `rel/app/` 的桌面工具）。运行 `go test ./...`、`pnpm --dir web test`、`pnpm --dir web run build` 验证安装。然后分别启动 `make dev-web` 和 `make dev-api`，确认 `http://127.0.0.1:5801/api/v1/health` 返回成功 JSON，并记录可重复使用的 Install script 与 Start skill。
 
 ## Install script
 
@@ -32,7 +32,7 @@ go mod download
 pnpm --dir web install --frozen-lockfile
 ```
 
-Go、Node.js 和 pnpm 的安装命令及 `PATH` 设置应由云端准备对话根据实际 VM 验证后加入脚本；不能直接假设 VM 已安装指定版本。`web/package.json` 固定 `pnpm@11.16.0`。无需复制 `.env.example`：服务在 development 模式下已有本地默认值。
+Go、Node.js 和 pnpm 的安装命令及 `PATH` 设置应由云端准备对话根据实际 VM 验证后加入脚本；不能直接假设 VM 已安装指定版本。`web/package.json` 固定 `pnpm@12.16.1`。无需复制 `.env.example`：服务在 development 模式下已有本地默认值。
 
 ## Start skill
 
@@ -44,7 +44,7 @@ Go、Node.js 和 pnpm 的安装命令及 `PATH` 设置应由云端准备对话�
 
 ## 发布前检查
 
-1. 在准备对话中确认 `go version` 为 1.25.x、`node --version` 为 26.x、`pnpm --version` 为 11.16.0。
+1. 在准备对话中确认 `go version` 为 1.25.x、`node --version` 为 26.x、`pnpm --version` 为 12.16.1。
 2. 确认 `go test ./...`、`pnpm --dir web test`、`pnpm --dir web run build` 均通过；再检查健康端点。
 3. 检查生成的 Install script、Start skill、网络访问范围及准备出的文件，保存并发布环境。
 4. 新建一个云任务，再运行上述检查。已存在的任务保留自己的工作状态，不会自动切换到重新发布的环境。
