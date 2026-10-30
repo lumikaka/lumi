@@ -1,0 +1,271 @@
+[
+  {
+    "at_utc": "2026-10-30T14:10:11.408Z",
+    "path": "model_show_app",
+    "requested_padding": 0,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 0,
+      "png_bytes": 411,
+      "base64_chars": 548,
+      "sha256": "9241dc7b306558c801fb18f56546140267617188f4d6deeb674965e6a7186a7b",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 411,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 570,
+      "base64_chars": 548,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 6,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "host_rendering": "not_observed"
+  },
+  {
+    "at_utc": "2026-10-30T14:10:19.722Z",
+    "path": "model_show_app",
+    "requested_padding": 65536,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 65536,
+      "png_bytes": 65947,
+      "base64_chars": 87932,
+      "sha256": "4b33360faa1a55f8e9854447531723f7ce09bf25db61bfe4847716219416a558",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 65947,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 87954,
+      "base64_chars": 87932,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 65542,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "elapsed_ms": 34,
+    "host_rendering": "not_observed"
+  },
+  {
+    "at_utc": "2026-10-30T14:10:19.762Z",
+    "path": "model_show_app",
+    "requested_padding": 262144,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 262144,
+      "png_bytes": 262555,
+      "base64_chars": 350076,
+      "sha256": "6862b1109a35891bfa5c19b90ccdff071499ee8cff21ae63a5d9f1fe18fbb504",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 262555,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 350098,
+      "base64_chars": 350076,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 262150,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "elapsed_ms": 36,
+    "host_rendering": "not_observed"
+  },
+  {
+    "at_utc": "2026-10-30T14:10:19.832Z",
+    "path": "model_show_app",
+    "requested_padding": 1048576,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 1048576,
+      "png_bytes": 1048987,
+      "base64_chars": 1398652,
+      "sha256": "f8eaf82bd5e11937d1624550ba4262f8831dddf3261c0676d2ce48df981b93dc",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 1048987,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 1398674,
+      "base64_chars": 1398652,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 1048582,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "elapsed_ms": 143,
+    "host_rendering": "not_observed"
+  },
+  {
+    "at_utc": "2026-10-30T14:10:20.052Z",
+    "path": "model_show_app",
+    "requested_padding": 4194304,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 4194304,
+      "png_bytes": 4194715,
+      "base64_chars": 5592956,
+      "sha256": "217f403eb3eec54a77bc4923ac7b16475a47ea2d5e30af52a13cd7586acbb622",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 4194715,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 5592978,
+      "base64_chars": 5592956,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 4194310,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "elapsed_ms": 315,
+    "host_rendering": "not_observed"
+  },
+  {
+    "at_utc": "2026-10-30T14:10:20.412Z",
+    "path": "model_show_app",
+    "requested_padding": 8388608,
+    "metadata": {
+      "build": "0.4.1+20261030133557.6mxe4b0s",
+      "padding_bytes": 8388608,
+      "png_bytes": 8389019,
+      "base64_chars": 11185360,
+      "sha256": "42afdd3c711cbbe67b3a347de5bb9b05632b2ca89e30da0b4a5d844262a0bc63",
+      "mode": "data_uri",
+      "request_token": null
+    },
+    "validation": {
+      "decoded_bytes": 8389019,
+      "width": 128,
+      "height": 128,
+      "uri_chars": 11185382,
+      "base64_chars": 11185360,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "bytes": 13,
+          "crc_ok": true
+        },
+        {
+          "type": "IDAT",
+          "bytes": 336,
+          "crc_ok": true
+        },
+        {
+          "type": "tEXt",
+          "bytes": 8388614,
+          "crc_ok": true
+        },
+        {
+          "type": "IEND",
+          "bytes": 0,
+          "crc_ok": true
+        }
+      ]
+    },
+    "elapsed_ms": 556,
+    "host_rendering": "not_observed"
+  }
+]

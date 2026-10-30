@@ -1,0 +1,17 @@
+{
+  "observed_at_utc": "2026-10-30T14:09:54.515438+00:00",
+  "timezone": "Asia/Shanghai",
+  "app_bundle": "/Applications/ChatGPT.app",
+  "bundle_id": "com.openai.codex",
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "bundled_cli": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+  "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+  "thread_id": "01a18d23-7b86-7b32-b75e-d6fb190d727f",
+  "scope": "Installed bundle metadata and executable version, not a renderer binary fingerprint",
+  "permission_mode": {
+    "sandbox": "workspace-write",
+    "approval_reviewer": "auto_review"
+  },
+  "native_codex_ui_access": "Denied by computer-use safety policy; no workaround attempted"
+}

@@ -1,0 +1,45 @@
+{
+  "recorded_at_utc": "2026-10-30T14:38:12.598233+00:00",
+  "report": "acceptance-results.md",
+  "show_app_calls": 7,
+  "six_padding_results_integrity": "passed",
+  "max_tested_padding_bytes": 8388608,
+  "max_tested_uri_chars": 11185382,
+  "scope_of_payload_pass": "Real model-initiated MCP tools to functions tool-orchestration return, not iframe rendering or model text-context capacity",
+  "host_acceptance": {
+    "1_rendering": "passed",
+    "2_loopback_and_csp_control": "allow image failed with no GET while server was running; no-resource control unverified",
+    "3_iframe_data_uri_and_callback_payload": "all six local sizes and all 12 image callback cases passed through 8 MiB padding; model-to-orchestration six results intact; observed 8 MiB model notification text-wrapped and not displayed",
+    "4_read_write_error_callbacks_and_approval": "inspect, expected tool error and two marker writes passed; approval prompt and denial behavior unverified",
+    "5_in_app_tool_image_fetch": "both modes passed all six sizes, with MCP correlation and screenshot of correct 8 MiB image"
+  },
+  "screenshots": [
+    "screenshots/user-probe-detail.png",
+    "screenshots/user-host-sidepanel.png",
+    "screenshots/host-callbacks-padding-8m.png",
+    "screenshots/host-local-and-callback-8m.png"
+  ],
+  "blockers": [
+    "no-resource control requires user-managed plugin switch and new chat",
+    "write approval/denial behavior remains unverified",
+    "only the 8 MiB model notification was inspected; it was text-wrapped and not displayed"
+  ],
+  "marker_file_exists": true,
+  "step5_recommendation": "Prefer read-only in-App get_image with structuredContent.data_uri and controlled thumbnails; image content also passed. Keep text and Open in Lumi fallback; do not rely on loopback or assume approval-free writes.",
+  "server_stopped": true,
+  "local_iframe_max_confirmed_padding_bytes": 8388608,
+  "reported_host_csp": {
+    "baseUriDomains": [],
+    "connectDomains": [],
+    "frameDomains": [],
+    "resourceDomains": []
+  },
+  "user_callback_log_request_pending": false,
+  "local_iframe_visual_qa_incomplete": false,
+  "callback_tools_call_count_all_pids": 17,
+  "http_request_count": 0,
+  "callback_max_confirmed_padding_bytes": 8388608,
+  "callback_unique_cases_passed": 12,
+  "marker_count": 2,
+  "approval_prompt_observation": "unknown; no explicit user description"
+}

@@ -2,7 +2,7 @@
 
 验证日期：2026-10-30（Asia/Shanghai）。本步只新增本文、`spike/` 内的一次性脚本与证据，未修改 Lumi 产品代码或用户已有 Codex 配置。
 
-**结论：stdio 按会话 cwd 绑定项目、宿主生图路径导入、参考图编辑、本地 marketplace 安装均有实测依据。项目写保护在 macOS CLI 沙箱中有效，但依赖项目信任和所选权限模式。MCP Apps 的资源传输已验证；实际 iframe 中的 loopback 图片、data URI 上限和工具回调仍未验证，不能作为 Step 5 已成立的前提。**
+**结论：stdio 按会话 cwd 绑定项目、宿主生图路径导入、参考图编辑、本地 marketplace 安装均有实测依据。项目写保护在 macOS CLI 沙箱中有效，但依赖项目信任和所选权限模式。MCP Apps 的后续 [Step 4.5 验收](mcp-apps-acceptance.md) 已验证真实渲染、桥接和工具取图，支持 Step 5 采用 App 内只读工具返回受控缩略图；loopback allow 轮失败，CSP 对照及写操作批准/拒绝仍未验证。**
 
 ## 环境与证据边界
 
@@ -139,6 +139,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/call_probe.p
 
 ## 4. MCP Apps：界面、CSP、图片与回调
 
+**后续验收更新（2026-10-30）：** [Step 4.5](mcp-apps-acceptance.md) 已验证真实渲染/初始化、本地六档 data URI、两种工具取图模式 × 六档及只读/临时写入/错误回显；8 MiB padding 仅为已测下界。allow 轮 loopback 失败，no-resource 对照和写操作批准/拒绝仍待验证。以下保留早期调研快照与原始复现方法，其中“未验证”描述当时状态；当前图片方案以 Step 4.5 和 [Step 5](step5-mcp-apps.md) 为准。
+
 **结论：资源关联、列出/读取和 HTML/CSP 传输已验证；实际 iframe 行为未验证。** 版本：CLI `0.163.0`、App 内置 CLI `0.166.0-alpha.5.1`；观察到的 App 版本 `26.1027.30824`。
 
 探针的 `show_app` 工具声明 `_meta.ui.resourceUri = "ui://lumi-spike/app.html"`；资源返回 `text/html;profile=mcp-app`。两个版本均能发现工具并通过 `mcpServer/resource/read` 取得带 CSP 的 HTML。这只证明 MCP 传输，不证明画面已渲染。
@@ -188,7 +190,7 @@ python3 -m http.server 18765 --bind 127.0.0.1 --directory '/private/tmp/NEW_ROOT
 3. 测试 data URI padding 为 0、64 KiB、256 KiB、1 MiB、4 MiB、8 MiB。探针插入有效 PNG `tEXt` chunk 并显示最终 URI 字符数；某值成功只能作为该版本下界。它测试 iframe 内图片解码，**不测试大型 data URI 经 MCP 工具结果传输时的 payload 上限**；后者须另测。
 4. 点击 Call inspect，确认 server 收到新的 `tools/call` 且界面显示结果。另测写工具的批准与错误反馈，不以只读按钮替代。
 
-该清单尚未执行。Step 5 必须保留文本兜底，并把这些项作为接入门槛。
+早期调研时该清单尚未执行；后续真实宿主验收结果及剩余未验证项见 [Step 4.5](mcp-apps-acceptance.md)。Step 5 保留完整文本兜底。
 
 证据：上述两个版本 `stdio-image` 报告的 `mcp_status` / `show_app` / `ui_resource`，以及 [`app-inventory.json`](spike/evidence/app-inventory.json)。
 
@@ -388,7 +390,7 @@ codex plugin list --json
 | Step 2 · init | 可以生成 macOS 上有效的项目 permission profile | 必须告知项目信任、识别 legacy sandbox 设置冲突并校验实际 profile；保护 SQLite sidecar。已有 `.codex/config.toml` 要保留/合并，不能覆盖；只读配置仍允许读取，跨平台尚待验证 |
 | Step 3 · stdio / 文本 | 未指定 cwd 的插件进程可按会话 cwd 绑定项目；子代理可用插件工具 | 用 cwd 固定项目并校验项目格式；不依赖 roots/env。所有连接转交实例，继续使用公开 UUID、revision 和项目锁。新 Lumi 插件在子代理中的实际连接行为另验收 |
 | Step 4 · 生图导入 | App 原生生图会落盘，独立 MCP 能按路径读取；已有对话图片可以作参考 | 把输出路径当宿主结果传入，不硬编码 savedPath/目录/命名。精确像素不可依赖，比例偏差应按现有计划柔性处理；立即 Asset Store 导入，保留真实尺寸/来源。CLI 端到端与复杂角色 MCP 参考仍待测 |
-| Step 5 · MCP Apps | UI 资源及标准 CSP 元数据可以经 MCP 传输 | **尚无足够证据选定 loopback 或 data URI 方案。** 先完成第 4 项人工验收，再冻结图片传输设计；保留文本工具结果与完整 web UI 入口，不能把 RPC 读取成功当视觉验收 |
+| Step 5 · MCP Apps | 后续 Step 4.5 已验证真实渲染、桥接及两种 App 内工具取图模式的六档加载 | 采用只读工具返回受控缩略图 data URI；保留完整文本与 Lumi 入口。loopback 当前失败，CSP 对照和写操作批准/拒绝仍未验证；8 MiB padding 是已测下界，生产大小沿用受控预览限制 |
 | Step 6 · 插件 / skill / 安装 | 本地 marketplace 的 add/install 命令与新会话 MCP 可用；显式 Subagent 触发可行 | 使用绝对 CLI 路径；写清配置写入、项目信任、hook 信任及可能的宿主批准。skill 明确何时委派并保留串行路径；另测真实用户安装、升级幂等、CLI 登录后的完整流程 |
 | Step 7 · 可选记录导入 | hook 可取得 cwd、session ID 与现存 rollout 路径 | 默认关闭，正常信任不能省略；补测 Stop、PostToolUse、中断/恢复和完整助手输出。格式适配须版本化、失败不阻断创作；路径为空/文件轮换或格式变化须降级，提供手动 import |
 

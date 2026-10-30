@@ -1,0 +1,71 @@
+{
+  "source_root": "/private/tmp/lumi-mcp-apps-6mxe4b0s",
+  "scope": "Selected unchanged host evidence; original absolute paths and references in snapshots describe the test session, not repository locations. Only the final host screenshot is archived.",
+  "files": [
+    {
+      "path": "acceptance-manifest.json",
+      "bytes": 2657,
+      "sha256": "5a38ee9cdff2594a92dcd48d0141b34e61669251efce7837afbe526ab5921307"
+    },
+    {
+      "path": "acceptance-results.json",
+      "bytes": 2384,
+      "sha256": "587e8da08ac5289b4338fef9b71f0e8004e7f6936d92a0dbb49cc296c1bed29d"
+    },
+    {
+      "path": "host-environment.json",
+      "bytes": 717,
+      "sha256": "baed43c25985ed05bbc33634ef815b08f6cc7a60bf50ac52b9993350070a5def"
+    },
+    {
+      "path": "host-callback-matrix.json",
+      "bytes": 6773,
+      "sha256": "74ef2a5b3a11255dfcae6f6c977973573e24db7951eed1a069ae3f393cfaf99f"
+    },
+    {
+      "path": "callback-verification.json",
+      "bytes": 438,
+      "sha256": "2fc94c8d7f85b68505971a698bc197fad5cc9a7eecf23b20df551effce5866c6"
+    },
+    {
+      "path": "host-local-data-uri-observed.json",
+      "bytes": 2219,
+      "sha256": "e73293f7d2357decce0c1f2481c668af5bc852f6ffb99c80c5ebc801218c0a71"
+    },
+    {
+      "path": "host-mcp-events.jsonl",
+      "bytes": 16308,
+      "sha256": "4b1074c9e21465864fa85f44ed94382a36d39252cce126dcc97cee4cca230c83"
+    },
+    {
+      "path": "host-ui-followup-events.json",
+      "bytes": 34244,
+      "sha256": "7acbb4804dd9e9a1996ec87206e7a63e6325ac299cfca482df0c3e75de5255a2"
+    },
+    {
+      "path": "model-payload-results.json",
+      "bytes": 6195,
+      "sha256": "65a435fb42ea0d206afc9cc33b796db58b6ab4d26acabb5146a96b890bc90cf9"
+    },
+    {
+      "path": "markers.jsonl",
+      "bytes": 243,
+      "sha256": "84772bdc97a3d82c5ec3f3cee664e7cb25c562ac03034e170a2e83f13917c006"
+    },
+    {
+      "path": "host-http-events.json",
+      "bytes": 126,
+      "sha256": "d543df567f45ad171add231019eadaf6b148a48ecc8ecab0095aa9412c4f6fc8"
+    },
+    {
+      "path": "host-server-status.json",
+      "bytes": 746,
+      "sha256": "48f8cb6b62c9c75cf180210e0ba53f0ec051e8659b953f3fdbf0846c2abc04fb"
+    },
+    {
+      "path": "screenshots/host-local-and-callback-8m.png",
+      "bytes": 63239,
+      "sha256": "b61f4b8e8596d69beeadc03bbfe7f19eaa3e99e966113e74d10855bdcf18646b"
+    }
+  ]
+}

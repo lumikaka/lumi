@@ -1,0 +1,96 @@
+{
+  "source": "Real MCP Apps DOM after user manual testing and recovered automation",
+  "events": [
+    {
+      "at": "2026-10-30T14:18:18.601Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 0,
+      "uri_chars": 570,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 4
+    },
+    {
+      "at": "2026-10-30T14:18:18.610Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 65536,
+      "uri_chars": 87954,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 1
+    },
+    {
+      "at": "2026-10-30T14:18:18.629Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 262144,
+      "uri_chars": 350098,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 3
+    },
+    {
+      "at": "2026-10-30T14:18:18.698Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 1048576,
+      "uri_chars": 1398674,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 4
+    },
+    {
+      "at": "2026-10-30T14:18:18.953Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 4194304,
+      "uri_chars": 5592978,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 13
+    },
+    {
+      "at": "2026-10-30T14:18:19.489Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 8388608,
+      "uri_chars": 11185382,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 27
+    },
+    {
+      "at": "2026-10-30T14:34:43.586Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 0,
+      "uri_chars": 570,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 1
+    },
+    {
+      "at": "2026-10-30T14:34:45.235Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 0,
+      "uri_chars": 570,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 1
+    },
+    {
+      "at": "2026-10-30T14:36:57.918Z",
+      "test": "local_data_uri",
+      "status": "loaded",
+      "padding_bytes": 8388608,
+      "uri_chars": 11185382,
+      "width": 128,
+      "height": 128,
+      "elapsed_ms": 8
+    }
+  ],
+  "remaining_padding_not_observed": []
+}

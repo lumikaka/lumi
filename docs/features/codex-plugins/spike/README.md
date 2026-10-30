@@ -70,7 +70,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/config_hooks
 | `mcp-apps-acceptance-environment.json` | Step 4.5 的 bundle/内置 CLI 版本、人工夹具标识、当前入口与证据边界 |
 | `mcp-apps-transport.json`、`mcp-apps-transport-allow.jsonl`、`mcp-apps-transport-no-resource.jsonl` | Step 4.5 非可视预检：两套 CSP、工具注解、临时 marker、预期错误和 36 组图片传输；不代表宿主 iframe 验收 |
 
-App iframe、loopback、data URI 上限和 UI 回调没有成功观测记录，不能从这些文件推导为通过。所有 PNG 均为本次测试新建内容。
+以上早期传输证据不能推导为宿主 iframe 验收通过。后续真实宿主已验证渲染、桥接、六档本地 data URI 和两种工具取图模式 × 六档，以及只读、临时写入和工具错误回显；loopback allow 轮失败，CSP 对照和批准/拒绝仍未验证。最新结论见 [验收记录](../mcp-apps-acceptance.md)，关键真实宿主证据见 [归档清单](evidence/mcp-apps-host-20261030/archive-manifest.json)。8 MiB padding 仅为该版本的已测下界。所有探针 PNG 均为测试合成内容。
 
 ## Step 4.5 · 真实 Codex App 验收
 

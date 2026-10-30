@@ -1,0 +1,13 @@
+{
+  "verified_at_utc": "2026-10-30T14:38:12.598233+00:00",
+  "inspect": "passed",
+  "expected_error": "passed: server isError true and UI error feedback",
+  "write_marker": "passed",
+  "marker_count": 2,
+  "marker_request_tokens": [
+    "1793369421103-eea7eb0e0e7e78-6",
+    "1793369421103-eea7eb0e0e7e78-10"
+  ],
+  "approval_prompt": "unknown: user supplied logs but did not explicitly describe prompts",
+  "denial_path": "unverified"
+}

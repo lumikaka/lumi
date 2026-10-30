@@ -1,0 +1,17 @@
+{
+  "observed_at_utc": "2026-10-30T14:25:30.806553+00:00",
+  "address": "127.0.0.1:18765",
+  "started_before_show_app": true,
+  "execution_session": 3988,
+  "stopped": true,
+  "stop_mechanism": "Ctrl-C to the original execution session",
+  "exit_code": 0,
+  "request_count": 0,
+  "restart_command": "/Users/qingyang/.asdf/installs/python/3.10.16/Library/Frameworks/Python.framework/Versions/3.10/bin/python3 /Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/serve_acceptance_images.py /private/tmp/lumi-mcp-apps-6mxe4b0s --port 18765",
+  "previous_run": {
+    "execution_session": 20528,
+    "stopped": true,
+    "exit_code": 0
+  },
+  "status": "Stopped after follow-up automation timeouts; restart before another loopback test"
+}
