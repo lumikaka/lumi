@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"lumi/internal/files"
 	"lumi/internal/httpapi"
 	"lumi/internal/production"
 	"lumi/internal/project"
@@ -57,6 +58,14 @@ type arguments struct {
 	ContextSettings  *[]string                 `json:"context_setting_uuids"`
 	Format           string                    `json:"format"`
 	AllowMissing     bool                      `json:"allow_missing_images"`
+	Path             string                    `json:"path"`
+	TargetUUID       string                    `json:"target_uuid"`
+	Slot             string                    `json:"slot"`
+	FitMode          string                    `json:"fit_mode"`
+	ImageDescription string                    `json:"description"`
+	ImagePrompt      string                    `json:"prompt"`
+	AssetUUID        string                    `json:"asset_uuid"`
+	MaxEdge          int                       `json:"max_edge"`
 }
 
 func value[T any](v *T) (zero T) {
@@ -152,6 +161,12 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result = paginate(metadata, a)
 		case "render_prompt":
 			result, callErr = render(ctx, store, st, prod, a)
+		case "image_target":
+			result, callErr = prod.HostImageTarget(ctx, a.TargetUUID, a.Slot)
+		case "import_image":
+			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision)})
+		case "read_image":
+			result, callErr = readImage(ctx, prod.Files(), a.AssetUUID, a.MaxEdge)
 		case "export_book":
 			var book production.TextBook
 			book, callErr = readBook(ctx, store, st, prod)
@@ -178,7 +193,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 }
 
 func isMutation(name, action string) bool {
-	return name == "project_init" || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
+	return name == "project_init" || name == "import_image" || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
 }
 
 func mutationSummary(result any) any {
@@ -211,6 +226,7 @@ func publicError(err error) httpapi.Envelope {
 	var se *story.Error
 	var de *production.Error
 	var ae *httpapi.APIError
+	var fe *files.Error
 	switch {
 	case errors.As(err, &pe):
 		if pe.Code == project.CodeProjectSetupIncomplete {
@@ -221,6 +237,8 @@ func publicError(err error) httpapi.Envelope {
 		return Failure(se.Code, se.Message, se.Details)
 	case errors.As(err, &de):
 		return Failure(de.Code, de.Message, de.Details)
+	case errors.As(err, &fe):
+		return Failure(fe.Code, fe.Message, fe.Details)
 	case errors.As(err, &ae):
 		return Failure(ae.Code, ae.Message, ae.Details)
 	default:

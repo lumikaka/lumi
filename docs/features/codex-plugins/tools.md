@@ -1,4 +1,4 @@
-# 本地文本创作 MCP 工具
+# 本地创作 MCP 工具
 
 运行 `lumi mcp [--environment production|development] [--data-dir PATH] [--timeout 90s]`。stdin/stdout 只传 MCP JSON-RPC，诊断写 stderr。`--timeout` 是每次工具调用的实例启动及执行总时限，不限制整个 MCP 会话寿命。
 
@@ -8,7 +8,7 @@ cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后�
 
 ## 共同约定
 
-每个工具同时返回 MCP text 和 structured content，内容均为以下信封；失败时另有 `isError=true`：
+每个工具同时返回 MCP text 和 structured content，内容均为以下信封；`read_image` 成功时另带 MCP image content，失败时另有 `isError=true`：
 
 ```json
 {"success":true,"data":{"uuid":"...","revision":1}}
@@ -40,6 +40,7 @@ cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后�
 | 修改、删除设定 | 设定 revision |
 | 创建页面 | `pages list.state.revision`；页面结构或内容变化都会更新此版本 |
 | 修改、删除页面 | 页面 revision |
+| 导入页面 / 设定图片 | `image_target.expected_revision` 或对应页面 / 设定 revision |
 
 版本冲突时重读并重新判断；不要把旧模型输出直接换上新 revision 再覆盖。工具调用中断时写入可能已经提交，先重读确认结果。
 
@@ -164,6 +165,55 @@ page_role 默认 `body`，也支持 `front_cover/back_cover`。封面、封底�
 
 常用文本模板：`story/story_profile`、`story/story_chapter`、`story/profile_from_chapters`、`chapter/comic_storyboard`、`chapter/cover_storyboard`。后者按项目绘本格式自动解析，包含完整页面和输出 JSON 约束。
 
+### image_target
+
+必填：`target_uuid`、`slot`（`page_image` / `setting_image`）。页面 UUID 可直接从 pages 或 book_outline 取得，不需要 chapter_uuid；设定 UUID 来自 settings。
+
+返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`。ratio 为 `{width,height}`，不是输出像素要求。
+
+- 页面目标比例沿用项目绘本规格（包括封面、封底和 1:3 条漫）。
+- 角色、道具和参考设定建议 1:1；场景建议沿用项目比例。设定没有持久化的强制画布约束，这里仅提供创作建议。
+- 在宿主常见 3:2、1:1、2:3 中按比例的对数距离选最近一档，属于生成建议，不承诺精确像素或比例。generation_hint 提醒保留主体、画面文字和安全边距。
+- 建议页面 `crop`，设定 `pad`；这是生图前的处理建议，**import_image 的默认行为仍是 keep**。
+- 容差为相对目标比例的 2%。宿主路径不调用 `ResolveImageSize`，服务商生图的精确比例规则保持原有行为。
+
+### import_image
+
+必填：`path,target_uuid,slot,expected_revision`；可选：`fit_mode`（`keep/crop/pad`）、`description`、`prompt`（原始提示词）。说明和提示词各最多 12000 字符，超过限制返回错误，不静默截断。
+
+path 必须是宿主生图结果实际给出的本地绝对路径；可以来自结果提示文本。工具不接收 base64，不假定 `savedPath` 字段、宿主目录或文件名，也不扫描目录。文件必须是可读的普通文件，支持 PNG、JPEG、WebP；最多 32 MiB、4000 万像素，先校验限制再完整解码。以真实内容判断格式，即使 PNG 文件被命名为 `.jpg` 也按 PNG 提交；伪装成图片的文本和损坏图片会被拒绝。
+
+返回 `{target,revision,variant_uuid,version_no,asset,input_size,fit_mode,ratio_deviation,ratio_matches,warnings}`，target 与 image_target 结构一致并携带新 revision。`ratio_deviation=(输入宽/输入高)/(目标宽/目标高)-1`，正值表示更宽；`ratio_matches` 表示输入是否在容差内。超出容差时仍导入，并通过 warnings 返回偏差和下一次生图建议。
+
+| fit_mode | 行为 |
+| --- | --- |
+| `keep`（默认） | 按原始像素和比例保存，偏差仅提示 |
+| `crop` | 超出容差时居中裁切到目标比例；允许整数像素舍入 |
+| `pad` | 超出容差时保持原图大小，居中放到白色补边画布；允许整数像素舍入 |
+
+在容差内直接使用原图，即使请求 crop/pad 也不重复处理。补边后的画布也受 4000 万像素限制；超限时可缩小原图或选择 keep/crop。
+
+所有文件都由 Asset Store 提交。处理后的图片是新的派生 Asset，并以 `source_asset_uuid` 关联不可变原图。每次导入增加图片版本并切换 current；历史版本不被覆盖。Asset 与业务版本、current 指针在同一最终 SQLite 事务中提交，事务内再次检查 revision，冲突不创建可见图片版本。
+
+Asset 的公开 metadata 保存 `origin:"host_generated"`、`original_prompt`、`description`、`fit_mode`、输入宽高和目标比例，不保存原始绝对路径。兼容现有数据库枚举：File source_type 使用 imported/derived，业务版本沿用 manual/replacement；页面和设定的版本 DTO 根据 origin 将 `source_type` 显示为 `host_generated`。web UI 当前图和历史版本显示“宿主生图 / Host generated”。无需数据库迁移，桌面版和 CLI 共用项目格式。
+
+已有项目页允许在没有服务商配置时打开，仍经过项目打开、初始化和 setup 状态检查；宿主创作项目可直接在 CLI web UI 中审阅。
+
+PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位内居中、剩余区域留白，不拉伸、不因目标比例不同中断导出。图片内容丢失或损坏仍返回已有的内容不可用错误。
+
+### read_image
+
+必填：`asset_uuid`，可选 `max_edge`（256–1024，默认 1024）。Asset UUID 来自 `pages get.current_image.asset.uuid`、`settings get.current_variant.asset.uuid` 或图片版本列表，可读取历史图片；只允许当前项目内的图片 Asset，不提供任意路径读取。
+
+成功返回 text/structured 信封 `{asset_uuid,mime_type,width,height}`，另附一个真正的 MCP `content.type=image` 块。预览等比缩小、透明区域铺白，并编码成 JPEG；最长边不超过 max_edge，编码最多 120 KiB，必要时进一步缩小。包含图片的整个 MCP 结果仍不超过 256 KiB；二进制不重复出现在 text/structured content 中。原图不变。
+
+宿主创作流程（后续插件 skill 也应遵守）：
+
+1. 调用 image_target；如果需要角色或场景一致性，用 read_image 把所需设定图片放入对话。
+2. 使用宿主自带生图能力，参考推荐比例和构图描述；使用最近对话图片作为参考（Codex App 的 `num_last_images_to_include`），确认引用的是所需图片。
+3. **生图后立即调用 import_image**，传入本次结果中实际给出的绝对路径和原始提示词；保留期限未知，不延后到创作结束。不要把像素不精确当作失败，也不要因比例偏差阻塞用户。
+4. 冲突时重读目标和内容后重新判断；不要只更换 revision 覆盖他人的新版本。调用中断后也先重读确认是否已导入。
+
 ### export_book
 
 必填：`format`（`markdown/zip/pdf`）、`allow_missing_images`（布尔）。返回 `{uuid,format,path,byte_size,missing_image_count}`，path 为项目 `.lumi/exports/` 下的绝对路径；不接受任意导出路径。
@@ -195,6 +245,10 @@ page_role 默认 `body`，也支持 `front_cover/back_cover`。封面、封底�
 | `comic_export_empty` / `comic_export_incomplete` / `comic_export_unavailable` | 无页面、PDF 无正文图、缺图或图片不可用 |
 | `validation_failed` / `production_validation_failed` / `invalid_picture_book_profile` | 领域内容或绘本规格无效；按 details 修正 |
 | `project_initializing` | 内置初始化工作流仍占用编辑权；等待完成或通过现有 UI 接管 |
+| `image_path_unavailable` / `asset_path_unsafe` | 文件不存在、不可读、不是普通文件，或路径不是实际绝对路径；从宿主结果获取路径并立即导入 |
+| `asset_too_large` / `asset_pixels_too_large` | 文件字节、输入像素或处理后画布超限；缩小图片或改用 keep/crop |
+| `asset_content_invalid` / `asset_type_not_allowed` | 内容损坏、不可解码或格式不支持；不要仅修改扩展名 |
+| `asset_not_found` / `asset_object_unavailable` | read_image 的 UUID 不属于当前项目，或图片文件不可用 |
 | `internal_error` | 本地存储等未预期失败；检查 CLI 日志 |
 
 路径、项目格式和迁移失败还会保留既有项目错误码，如 `invalid_project_path/project_permission_denied/invalid_project/project_format_too_new/project_migration_failed`。
@@ -203,4 +257,6 @@ page_role 默认 `body`，也支持 `front_cover/back_cover`。封面、封底�
 
 写入使用现有 `story:*`、`premise:*`、`comic:*` 和 `project:setup_changed` 变更提示，通过 `/api/v1/ws` 的 `topic/event/payload/ref/join_ref` 信封发送。已打开 UI 沿用 TanStack Query 失效与 REST 重读，并保留首次 join、重新 join、窗口聚焦校准；没有新增 HTTP 轮询。
 
-`cmd/lumi/mcp_test.go` 使用 go-sdk CommandTransport 客户端执行真实 stdio → CLI 实例 → SQLite 链路：空目录初始化、无服务商 setup、渲染提示词、固定文本写回、三页正文和画面、导出并检查文件内容；同时测试双连接版本冲突、UI WebSocket/REST、桌面占锁和释放。结束后检查无服务商配置及零 LLM/生成任务记录。`internal/textmcp` 另测 schema、提示词覆盖、分页、大小限制与缩小范围恢复；`internal/production` 验证已有图片可进入文本 ZIP，以及复用 PDF 渲染。
+`cmd/lumi/mcp_test.go` 使用 go-sdk CommandTransport 客户端执行真实 stdio → CLI 实例 → SQLite 链路：空目录初始化、无服务商 setup、渲染提示词、固定文本写回、三页正文和画面、导出并检查文件内容；同时测试双连接版本冲突、UI WebSocket/REST、桌面占锁和释放。结束后检查无服务商配置及零 LLM/生成任务记录。`internal/textmcp` 另测 schema、提示词覆盖、分页、大小限制与缩小范围恢复，以及高熵图片预览的大小限制和 MCP image content；`internal/production` 覆盖宿主图片比例正确与容差、keep/crop/pad、真实 PNG/JPEG/WebP、伪装扩展名、文件超限/像素超限/损坏/路径缺失、目标缺失、版本冲突、历史和原图保留。Step 4 的真实 stdio 链路另导入三种比例到页面，读取设定参考图，验证 WebSocket 变更提示与 UI REST 历史/来源，并导出不缺图的 PDF。
+
+2026-10-30 本机验证：`go test ./...` 通过；前端 `node --test` 422 项通过，Vite 生产构建通过。CLI 内嵌 web UI 在零服务商配置下成功打开页面和角色设定，显示宿主导入的图片、历史版本和“宿主生图”来源；候选稿弹窗保持打开时再经真实 stdio 导入，列表从两版自动更新为三版，当前图片随之切换，无需手动刷新。另验证最终 Asset 提交事务中的版本冲突会同时回滚逻辑 File 和图片版本。

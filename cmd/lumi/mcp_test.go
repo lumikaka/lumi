@@ -2,9 +2,13 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -146,7 +150,7 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 11 {
+	if len(tools.Tools) != 14 {
 		t.Fatalf("tools=%d", len(tools.Tools))
 	}
 	for _, tool := range tools.Tools {
@@ -261,6 +265,85 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 		t.Fatal("missing chapter")
 	}
 	callText(t, client, "export_book", map[string]any{"format": "markdown", "allow_missing_images": true}, "")
+	// The host supplies actual paths. Import different ratios through real
+	// stdio -> CLI -> Asset Store; no image provider is configured or invoked.
+	lastHostPath := ""
+	for i, size := range []image.Point{{450, 300}, {300, 300}, {300, 500}} {
+		target := callText(t, client, "image_target", map[string]any{"target_uuid": pageUUIDs[i], "slot": "page_image"}, "")
+		if field(target, "target_ratio")["width"] != float64(4) || field(target, "recommended_ratio")["width"] != float64(3) || target["suggested_fit"] != "crop" {
+			t.Fatalf("target=%v", target)
+		}
+		fixture := image.NewRGBA(image.Rect(0, 0, size.X, size.Y))
+		for y := 0; y < size.Y; y++ {
+			for x := 0; x < size.X; x++ {
+				fixture.SetRGBA(x, y, color.RGBA{R: uint8(x % 251), G: uint8(y % 251), B: 90, A: 255})
+			}
+		}
+		var pngData bytes.Buffer
+		if err := png.Encode(&pngData, fixture); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(t.TempDir(), "host-result.jpeg")
+		lastHostPath = path // really PNG
+		if err := os.WriteFile(path, pngData.Bytes(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		args := map[string]any{"path": path, "target_uuid": pageUUIDs[i], "slot": "page_image", "expected_revision": target["expected_revision"], "fit_mode": []string{"keep", "crop", "pad"}[i], "prompt": "同一只小狐狸，温暖水彩，保持黄色雨衣。"}
+		imported := callText(t, client, "import_image", args, "")
+		if imported["ratio_matches"] != false || len(imported["warnings"].([]any)) != 1 || field(field(imported, "asset"), "metadata")["origin"] != "host_generated" {
+			t.Fatalf("import=%v", imported)
+		}
+		expectHint(t, conn, "comic:section_changed")
+		callText(t, second, "import_image", args, "production_conflict")
+		if i == 0 {
+			args["expected_revision"] = imported["revision"]
+			callText(t, client, "import_image", args, "")
+			expectHint(t, conn, "comic:section_changed")
+		}
+		// Same REST history used by the web UI includes both versions/origin.
+		url := "/api/v1/projects/" + projectUUID + "/chapters/" + chapterUUID + "/comic-sections/" + pageUUIDs[i] + "/image-variants"
+		history := apiRequest(t, status.Endpoint, "GET", url, "", "", "", "", 200)
+		var versions struct {
+			Items []map[string]any `json:"items"`
+		}
+		if err := json.Unmarshal(history.data, &versions); err != nil {
+			t.Fatal(err)
+		}
+		wantCount := 1
+		if i == 0 {
+			wantCount = 2
+		}
+		if len(versions.Items) != wantCount || versions.Items[0]["source_type"] != "host_generated" {
+			t.Fatalf("UI history=%s", history.data)
+		}
+	}
+	settingTarget := callText(t, client, "image_target", map[string]any{"target_uuid": setting["uuid"], "slot": "setting_image"}, "")
+	callText(t, client, "import_image", map[string]any{"path": filepath.Join(root, "not-there.png"), "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": settingTarget["expected_revision"]}, "image_path_unavailable")
+	settingArt := callText(t, client, "import_image", map[string]any{"path": lastHostPath, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": settingTarget["expected_revision"]}, "")
+	expectHint(t, conn, "premise:asset_changed")
+	// Read the imported setting into the conversation as a generation reference.
+	assetUUID := field(settingArt, "asset")["uuid"]
+	preview, err := client.CallTool(t.Context(), &mcp.CallToolParams{Name: "read_image", Arguments: map[string]any{"asset_uuid": assetUUID, "max_edge": 256}})
+	if err != nil || preview == nil || preview.IsError || len(preview.Content) != 2 {
+		t.Fatalf("preview=%+v err=%v", preview, err)
+	}
+	imageContent, ok := preview.Content[1].(*mcp.ImageContent)
+	if !ok || imageContent.MIMEType != "image/jpeg" {
+		t.Fatalf("image content=%T", preview.Content[1])
+	}
+	previewConfig, _, err := image.DecodeConfig(bytes.NewReader(imageContent.Data))
+	if err != nil || max(previewConfig.Width, previewConfig.Height) > 256 || bytes.Contains([]byte(preview.Content[0].(*mcp.TextContent).Text), []byte("image_data")) {
+		t.Fatalf("preview geometry/text config=%v err=%v", previewConfig, err)
+	}
+	wire, _ := json.Marshal(preview)
+	if len(wire) > textmcp.MaxBytes {
+		t.Fatal("preview result exceeds MCP bound")
+	}
+	pdf := callText(t, client, "export_book", map[string]any{"format": "pdf", "allow_missing_images": false}, "")
+	pdfData, err := os.ReadFile(pdf["path"].(string))
+	if err != nil || !bytes.HasPrefix(pdfData, []byte("%PDF-")) || len(pdfData) < 1000 || pdf["missing_image_count"] != float64(0) {
+		t.Fatalf("PDF=%v bytes=%d err=%v", pdf, len(pdfData), err)
+	}
 	// Read through the same REST API used by the UI after the socket hint.
 	rest := apiRequest(t, status.Endpoint, "GET", "/api/v1/projects/"+projectUUID+"/chapters/"+chapterUUID+"/comic-sections/"+pageUUIDs[0], "", "", "", "", 200)
 	if !strings.Contains(string(rest.data), "我陪你回家") {

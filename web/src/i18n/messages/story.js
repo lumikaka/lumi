@@ -148,6 +148,7 @@ export const story = defineMessages({
   'story.source.manual': ['手动编辑', 'Manual edit'],
   'story.source.upload': ['手动上传', 'Manual upload'],
   'story.source.ai': ['AI 生成', 'AI generated'],
+  'story.source.host_generated': ['宿主生图', 'Host generated'],
   'story.source.restored': ['历史恢复', 'Restored from history'],
   'story.source.replacement': ['替换版本', 'Replacement'],
   'story.source.breakdown': ['设定项拆解', 'Premise-item breakdown'],

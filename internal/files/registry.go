@@ -26,9 +26,9 @@ func mimeSet(values ...string) map[string]struct{} {
 var purposeRegistry = map[string]purposePolicy{
 	"story_import":                        {Namespace: "story/imports", AllowedMIME: mimeSet("text/plain", "text/markdown"), MaxBytes: 2 << 20, MetadataKeys: mimeSet("chapter_code", "content_format")},
 	"premise_setting_image":               {Namespace: "premise/setting-images", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/gif", "image/webp"), MaxBytes: 32 << 20, MaxPixels: 40_000_000, MetadataKeys: mimeSet("generation", "prompt_revision")},
-	"premise_asset":                       {Namespace: "premise/assets", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/gif", "image/webp"), MaxBytes: 32 << 20, MaxPixels: 40_000_000, MetadataKeys: mimeSet("tags", "crop_profile")},
+	"premise_asset":                       {Namespace: "premise/assets", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/gif", "image/webp"), MaxBytes: 32 << 20, MaxPixels: 40_000_000, MetadataKeys: mimeSet("tags", "crop_profile", "origin", "original_prompt", "description", "fit_mode", "input_width", "input_height", "target_width", "target_height")},
 	"premise_reference_board":             {Namespace: "premise/reference-boards", AllowedMIME: mimeSet("image/png"), MaxBytes: 64 << 20, MaxPixels: 80_000_000, MetadataKeys: mimeSet("generation_task_uuid", "composer_version", "reference_file_uuids", "reference_count")},
-	"comic_section_image":                 {Namespace: "comic/sections", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/gif", "image/webp"), MaxBytes: 64 << 20, MaxPixels: 80_000_000, MetadataKeys: mimeSet("section_uuid", "variant")},
+	"comic_section_image":                 {Namespace: "comic/sections", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/gif", "image/webp"), MaxBytes: 64 << 20, MaxPixels: 80_000_000, MetadataKeys: mimeSet("section_uuid", "variant", "origin", "original_prompt", "description", "fit_mode", "input_width", "input_height", "target_width", "target_height")},
 	"comic_section_premise":               {Namespace: "comic/section-premises", AllowedMIME: mimeSet("image/png"), MaxBytes: 64 << 20, MaxPixels: 80_000_000, MetadataKeys: mimeSet("section_uuid", "generation_uuid", "composer_version", "selected_titles")},
 	"project_chatbot_reference":           {Namespace: "chat/references", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/webp"), MaxBytes: 32 << 20, MaxPixels: 40_000_000, MetadataKeys: mimeSet("source")},
 	"project_chat_image_generation":       {Namespace: "chat/generated", AllowedMIME: mimeSet("image/png", "image/jpeg", "image/webp"), MaxBytes: 64 << 20, MaxPixels: 80_000_000, MetadataKeys: mimeSet("source", "tool_execution_uuid", "chat_thread_uuid", "chat_run_uuid", "operation", "use_default_style", "default_style_snapshot", "reference_uuids", "reference_types", "resolved_file_uuids", "revised_prompt")},
@@ -95,6 +95,16 @@ func filteredMetadata(policy purposePolicy, metadata map[string]any) (map[string
 	result := map[string]any{}
 	for key, value := range metadata {
 		if _, ok := policy.MetadataKeys[key]; ok {
+			// Host prompts and descriptions are bounded independently of small
+			// bookkeeping strings. Keep the original prompt without truncation.
+			if key == "original_prompt" || key == "description" {
+				text, ok := value.(string)
+				if !ok || len([]rune(text)) > 12000 {
+					return nil, fileError(CodeValidationFailed, "图片说明过长", "提示词和说明最多 12000 字符。", nil)
+				}
+				result[key] = text
+				continue
+			}
 			safe, err := safeMetadataValue(value)
 			if err != nil {
 				return nil, fileError(CodeValidationFailed, "Asset metadata 无效", "允许的 metadata 值只能是有界标量或字符串数组。", err)

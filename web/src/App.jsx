@@ -44,7 +44,7 @@ export default function App() {
       <Route path="/settings/llm-logs" element={<LLMLogsPage />} />
       <Route path="/settings/mcp/authorize" element={<MCPOAuthPage />} />
       <Route path="/settings/mcp" element={<MCPSettingsPage />} />
-      <Route path="/projects/:projectUuid/*" element={<ProviderGate><ProjectActivationGate><StoryWorkspacePage /></ProjectActivationGate></ProviderGate>} />
+      <Route path="/projects/:projectUuid/*" element={<ProjectActivationGate><StoryWorkspacePage /></ProjectActivationGate>} />
       <Route path="*" element={<ProviderGate><NotFoundPage /></ProviderGate>} />
     </Routes>
   )

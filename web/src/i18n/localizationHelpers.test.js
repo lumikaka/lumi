@@ -11,6 +11,8 @@ const translator = (locale) => (key, values) => translateMessage(RESOURCES, loca
 test('status and source labels localize known values and preserve unknown machine codes', () => {
   assert.equal(statusLabel(translator('en'), 'queued'), 'Queued')
   assert.equal(sourceTypeLabel(translator('zh-Hans'), 'ai_generated'), 'AI 生成')
+  assert.equal(sourceTypeLabel(translator('zh-Hans'), 'host_generated'), '宿主生图')
+  assert.equal(sourceTypeLabel(translator('en'), 'host_generated'), 'Host generated')
   assert.equal(statusLabel(translator('en'), 'custom_state'), 'Unknown (custom_state)')
 })
 

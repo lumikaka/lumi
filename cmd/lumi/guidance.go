@@ -19,6 +19,11 @@ const agentsGuidance = `# Lumi 项目
 禁止直接读取或写入 project.sqlite（包括 -wal、-shm、-journal）、.lumi/、assets/。
 STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi 插件工具。
 
+生图前调用 image_target 查询比例和构图建议；角色、场景参考先用 read_image 放入对话。
+使用宿主自带生图能力，生成后立即把工具结果中实际提供的绝对路径传给 import_image。
+图片保留期限未知；不得假设 savedPath、猜测文件名或扫描固定目录。比例偏差默认允许导入，
+可按用户意愿选择 keep、居中 crop 或白色 pad；不要因比例偏差阻塞创作。
+
 这些要求是行为指引。项目级 .codex/config.toml 的 permission profile 只限制
 命令沙箱的写入，不限制读取；须先由用户信任项目，且可能被更高优先级配置覆盖。
 不要替用户设置信任。Codex App 中的实际保护仍需用户人工确认。

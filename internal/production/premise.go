@@ -1362,6 +1362,13 @@ func (service *Service) ListAssetVariants(ctx context.Context, assetUUID string)
 }
 
 func (service *Service) ImportPremiseAssetVariant(ctx context.Context, assetUUID, uploadUUID string, crop any, expectedRevision int64) (PremiseAsset, error) {
+	return service.importPremiseAssetVariant(ctx, assetUUID, crop, expectedRevision, func(bind func(*gorm.DB, int64) error) error {
+		_, err := service.files.FinalizeUploadWithBind(ctx, uploadUUID, "premise_asset", bind)
+		return err
+	})
+}
+
+func (service *Service) importPremiseAssetVariant(ctx context.Context, assetUUID string, crop any, expectedRevision int64, commit func(func(*gorm.DB, int64) error) error) (PremiseAsset, error) {
 	variantUUID, err := newUUIDv7()
 	if err != nil {
 		return PremiseAsset{}, err
@@ -1370,7 +1377,7 @@ func (service *Service) ImportPremiseAssetVariant(ctx context.Context, assetUUID
 	if err != nil {
 		return PremiseAsset{}, err
 	}
-	_, err = service.files.FinalizeUploadWithBind(ctx, uploadUUID, "premise_asset", func(tx *gorm.DB, fileID int64) error {
+	err = commit(func(tx *gorm.DB, fileID int64) error {
 		var asset premiseAssetRecord
 		if err := tx.Where("uuid = ? AND project_id=(SELECT id FROM projects WHERE uuid=?) AND deleted_at IS NULL", assetUUID, service.store.ProjectUUID()).First(&asset).Error; err != nil {
 			return notFound(err, "设定资产不存在")
@@ -1782,7 +1789,7 @@ func (service *Service) assetVariantDTO(ctx context.Context, row assetVariantRec
 	if row.SourceSettingImageID != nil {
 		_ = service.store.DB().WithContext(ctx).Table("premise_setting_images").Where("id = ?", *row.SourceSettingImageID).Pluck("uuid", &settingUUID).Error
 	}
-	return AssetVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: row.SourceType, SourceSettingImageUUID: settingUUID, Crop: json.RawMessage(row.CropJSON), Asset: asset, CreatedAt: row.CreatedAt}, nil
+	return AssetVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: hostImageSourceType(asset, row.SourceType), SourceSettingImageUUID: settingUUID, Crop: json.RawMessage(row.CropJSON), Asset: asset, CreatedAt: row.CreatedAt}, nil
 }
 
 func replaceTags(tx *gorm.DB, assetID int64, tags []string, now time.Time) error {

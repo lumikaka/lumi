@@ -998,11 +998,18 @@ func (service *Service) SelectStoryboard(ctx context.Context, chapterUUID, secti
 }
 
 func (service *Service) ImportSectionImage(ctx context.Context, chapterUUID, sectionUUID, uploadUUID string, expectedRevision int64) (ComicSection, error) {
+	return service.importSectionImage(ctx, chapterUUID, sectionUUID, expectedRevision, func(bind func(*gorm.DB, int64) error) error {
+		_, err := service.files.FinalizeUploadWithBind(ctx, uploadUUID, "comic_section_image", bind)
+		return err
+	})
+}
+
+func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64, commit func(func(*gorm.DB, int64) error) error) (ComicSection, error) {
 	variantUUID, err := newUUIDv7()
 	if err != nil {
 		return ComicSection{}, err
 	}
-	_, err = service.files.FinalizeUploadWithBind(ctx, uploadUUID, "comic_section_image", func(tx *gorm.DB, fileID int64) error {
+	err = commit(func(tx *gorm.DB, fileID int64) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
 		if err != nil {
 			return err
@@ -1706,7 +1713,7 @@ func (service *Service) imageVariantDTO(ctx context.Context, row imageVariantRec
 			return ImageVariant{}, err
 		}
 	}
-	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: row.SourceType, GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
+	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: hostImageSourceType(asset, row.SourceType), GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
 }
 func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, chapterUUID string) (ComicSection, error) {
 	result := ComicSection{UUID: row.UUID, ChapterUUID: chapterUUID, SectionNo: row.SectionNo, PageRole: row.PageRole, Title: row.Title, DescriptionMD: row.DescriptionMD, PremiseAssets: []PremiseAssetReference{}, Revision: row.Revision, DeletedAt: row.DeletedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}

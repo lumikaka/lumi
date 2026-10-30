@@ -40,6 +40,7 @@ export function sourceTypeLabel(t, value) {
     external_import: 'story.source.upload',
     ai: 'story.source.ai',
     ai_generated: 'story.source.ai',
+    host_generated: 'story.source.host_generated',
     generated: 'story.source.ai',
     ai_asset_thread: 'story.source.ai',
     restored: 'story.source.restored',
