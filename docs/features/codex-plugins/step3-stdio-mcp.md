@@ -1,0 +1,43 @@
+# Step 3 · 新的 stdio MCP 与文本创作链路
+
+## 目标
+
+提供 `lumi mcp`：一个绑定当前项目目录、无需鉴权的本地 stdio MCP server，让 Codex 不依赖任何 LLM 服务商配置，完成从想法到整本绘本**全部文本内容**（setup、故事、设定、页面与画面描述）的创作，并能导出。
+
+## 背景
+
+- 方案：`docs/features/codex-plugins/plan.md`。要点：本地 CLI 不做额外鉴权；旧的 MCP 逻辑不要管；推理全部由 Codex 完成。
+- 调研结论：`docs/features/codex-plugins/spike.md`，尤其是 stdio MCP 的 cwd 行为。
+- Step 1 提供实例托管，Step 2 提供 `lumi init` 与项目信息。
+- Lumi 现有生成链路的提示词在 `internal/promptcatalog`（story / chapter / premise / style / picture_book 等），由内置 runtime 调用服务商执行。
+- 导出能力在 `internal/production/export.go`、`export_pdf.go`。
+
+## 设计约束
+
+1. **项目绑定**：`lumi mcp` 启动时根据 cwd（或调研确认的会话目录来源）找到项目；需要时自动 `serve` 并打开项目。cwd 不是项目时，工具返回明确错误，并提示先调用初始化工具。
+2. **传输**：stdio MCP 进程可以转发给 Step 1 的实例，或在实例内执行；不得直接打开 `project.sqlite` 绕过实例持有的项目锁。
+3. **无鉴权**：信任边界等同于本机用户运行 CLI；不复用旧 MCP 的 grant / OAuth。
+4. **提示词单一来源**：新增 `render_prompt` 类工具，用 `internal/promptcatalog` 的现有模板和项目上下文渲染完整提示词（含输出格式要求），交给 Codex 或其 subagent 执行；Codex 再通过写入工具提交结果。不要在 skill 里复写提示词。
+5. **无服务商 setup**：项目 setup 在没有配置任何服务商时也能完成并进入可编辑状态。
+6. **写入安全**：写入带 `expected_revision` 等版本保护；返回字段使用公开 UUIDv7，不暴露内部 `id`；结果有大小上限，超限时提示缩小范围或分页。
+7. **工具粒度**：面向创作流程设计，数量适中、命名清晰，参数用 JSON Schema 明确描述。建议覆盖：
+   - 项目：初始化、查看概况、完成 setup
+   - 故事：`STORY.md` 对应的 Story Profile、章节与正文
+   - 设定：角色 / 场景等设定的增删改查
+   - 页面：页面与画面段落的增删改查、整本结构概览
+   - 提示词：`render_prompt`
+   - 导出：PDF 等现有导出格式，返回本地文件路径
+8. 变更后通过现有 WebSocket 变更提示通知已打开的 web UI，遵守 `AGENTS.md` 的实时同步规则。
+
+## 禁止
+
+- 不修改 `internal/mcpserver`、`codex-plugins/` 与旧 MCP 文档；可以复用其中的内部函数，但不改变其行为。
+- 不调用任何 LLM / 图片服务商。
+- 不运行任何 Cargo / Rust 命令。
+
+## 完成标准
+
+- `go test ./...` 中新增包的测试通过。
+- 新增一个使用 `github.com/modelcontextprotocol/go-sdk` 客户端的端到端集成测试：在临时目录 init 项目 → 完成 setup → 调用 `render_prompt` → 用固定文本模拟模型输出并写回 → 建立至少 3 页完整文本 → 导出（允许缺图）→ 断言导出文件存在。全程不出现服务商调用。
+- 测试证明：同一项目被桌面版 web UI 打开时，MCP 写入后 UI 能收到变更提示。
+- 新增 `docs/features/codex-plugins/tools.md`：工具清单、参数、返回、错误码。
