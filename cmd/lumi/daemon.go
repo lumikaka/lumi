@@ -88,6 +88,7 @@ func runDaemon(opt options) error {
 		return err
 	}
 	value := instance{Endpoint: cfg.FrontendURL, PID: os.Getpid(), Environment: opt.environment, Nonce: nonce}
+	registerInitialization(application.Echo, value, projects)
 	shutdown := make(chan struct{}, 1)
 	application.GET(instanceRoute, func(c echo.Context) error { return serveIdentity(c, value, projects) })
 	application.DELETE(instanceRoute, func(c echo.Context) error {

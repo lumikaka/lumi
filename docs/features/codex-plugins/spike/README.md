@@ -20,6 +20,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/run_probe.py
 
 # 项目信任、权限配置、hook 发现；打印独立 sandbox_command
 PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/config_hooks_probe.py
+PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/config_hooks_probe.py \
+  --codex /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
 
 # 仅执行生成器提供的已审阅 hook；单次信任 bypass，不持久化信任
 # 本地离线 provider 不会产生成功模型回复，5 秒后终止整个测试进程组
@@ -53,6 +55,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/config_hooks
 | `app-bundled-stdio-image.json`、`app-bundled-stdio.jsonl` | App bundle CLI `0.166.0-alpha.5.1` 同项记录 |
 | `config-hooks.json`、`hooks.jsonl`、`hook-transcript-metadata.json` | CLI `0.163.0`，信任发现和真实离线轮次的两个 hook 输入；不含完整 rollout |
 | `sandbox-writes.json` | CLI `0.163.0`，macOS Seatbelt 下的真实文件操作结果 |
+| `app-bundled-config-hooks.json`、`app-bundled-sandbox-writes.json` | App 内置 CLI `0.166.0-alpha.5.1` 的 trusted/untrusted 配置读取、profile 选择与真实沙箱文件操作 |
+| `app-manual-write-confirmation.json` | 用户在当前 App 的临时假项目中人工确认的原话与证据边界；无独立 App 工具日志 |
 | `image-generation.json` | 本次 App 三次内置生图的原始参数、返回字段名及落盘提示；未重复保存 base64 |
 | `fox-original.png`、`fox-boots.png` | 真实 App 生成/参考编辑，1536×1024 PNG |
 | `mcp-reference-result.json`、`mcp-reference.png` | 真实 stdio MCP image 结果及其原始 PNG，128×128 |

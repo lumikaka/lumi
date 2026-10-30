@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-30",
+  "binary": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+  "version": "codex-cli 0.166.0-alpha.5.1",
+  "fixture": "/private/tmp/lumi-codex-config-xbgwj5qx/project",
+  "argv": [
+    "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+    "sandbox",
+    "-C",
+    "/private/tmp/lumi-codex-config-xbgwj5qx/project",
+    "-P",
+    "lumi-protect",
+    "--",
+    "python3",
+    "/Users/qingyang/mine-work/lumi/docs/features/codex-plugins/spike/write_probe.py"
+  ],
+  "exit_code": 0,
+  "results": [
+    {
+      "path": "allowed.txt",
+      "write": "allowed"
+    },
+    {
+      "path": "project.sqlite",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'project.sqlite'"
+    },
+    {
+      "path": "project.sqlite-wal",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'project.sqlite-wal'"
+    },
+    {
+      "path": "project.sqlite-shm",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'project.sqlite-shm'"
+    },
+    {
+      "path": "project.sqlite-journal",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'project.sqlite-journal'"
+    },
+    {
+      "path": ".lumi/probe.txt",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: '.lumi/probe.txt'"
+    },
+    {
+      "path": "assets/probe.txt",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'assets/probe.txt'"
+    },
+    {
+      "path": "assets/new.txt",
+      "write": "denied",
+      "errno": 1,
+      "error": "[Errno 1] Operation not permitted: 'assets/new.txt'"
+    },
+    {
+      "path": "project.sqlite",
+      "operation": "replace",
+      "result": "denied",
+      "errno": 1
+    },
+    {
+      "path": "project.sqlite",
+      "operation": "unlink",
+      "result": "denied",
+      "errno": 1
+    },
+    {
+      "path": "assets",
+      "operation": "rename",
+      "result": "denied",
+      "errno": 1
+    }
+  ],
+  "environment": {
+    "CODEX_HOME": "/private/tmp/lumi-codex-config-xbgwj5qx/home"
+  },
+  "capture_source": "Structured transcription of successful exec_command stdout in this chat; results are the observed write_probe.py output."
+}

@@ -14,7 +14,7 @@
 | App 内置 CLI | `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，`codex-cli 0.166.0-alpha.5.1` |
 | stdio 测试 | 两个版本的真实 `codex app-server`，同一 server 中启动不同 cwd 的两个 thread；无模型推理、无登录凭据 |
 | 生图 / Subagent 测试 | 本次真实 App 对话；附带的 CLI 版本如上，不把 PATH CLI 版本当作 App 的版本 |
-| 配置 / Hooks / 沙箱 | PATH CLI `0.163.0`，临时 git 项目、临时 `CODEX_HOME`，数据库为普通文本假文件 |
+| 配置 / Hooks / 沙箱 | PATH CLI `0.163.0` 与 App 内置 CLI `0.166.0-alpha.5.1`，临时 git 项目、临时 `CODEX_HOME`，数据库为普通文本假文件；App 另有用户人工反馈 |
 
 App 的版本来自已安装 bundle，未另行核验运行中服务端的二进制指纹。所有版本结论仅覆盖以上环境；不是未来版本或跨平台保证。
 
@@ -194,7 +194,7 @@ python3 -m http.server 18765 --bind 127.0.0.1 --directory '/private/tmp/NEW_ROOT
 
 ## 5. 沙箱写保护与项目配置的信任
 
-**结论：已验证 macOS CLI 下可以用项目级 permission profile 限制写入；不是不可覆盖的强制策略。** 版本：`codex-cli 0.163.0`。App / Windows / Linux 的同等规则执行**未验证**。
+**结论：已验证 macOS PATH CLI 与 App 内置 CLI 下可以用项目级 permission profile 限制写入；当前 App 中另获用户人工确认样本；不是不可覆盖的强制策略。** 版本：PATH `codex-cli 0.163.0`，App bundle `0.166.0-alpha.5.1`。Windows / Linux 的同等规则执行**未验证**。
 
 临时项目 `.codex/config.toml`：
 
@@ -239,6 +239,18 @@ CODEX_HOME=/private/tmp/NEW_ROOT/home codex sandbox \
 
 `codex sandbox` 在本版本需要显式 `-P`；缺失会报 required argument。外层 Codex 沙箱不允许嵌套 `sandbox-exec`，所以本次测试命令获自动审批后在外层沙箱之外启动，再由被测 Codex 加载自己的 Seatbelt 规则；所有写操作都只针对 `/private/tmp/` 的假文件。
 
+Step 2 用 App 内置二进制复测：
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 docs/features/codex-plugins/spike/config_hooks_probe.py \
+  --codex /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
+# 再执行本次打印的 sandbox_command；不要复用历史夹具路径
+```
+
+本次夹具为 `/private/tmp/lumi-codex-config-xbgwj5qx/project`。untrusted layer 带 `disabledReason`，thread 的 active profile 为 `:workspace`；trusted 后为 `lumi-protect`。上表 11 项操作结果与 PATH CLI 一致，受保护项全部返回 EPERM，只有 `allowed.txt` 成功。
+
+随后请用户在 App 打开同一临时假项目、手动信任并新建默认权限会话，不批准提权。用户人工反馈：“已向 allowed.txt 追加 Codex write test”，并报告 `project.sqlite` 与 `assets/` 受当前环境只读限制、未写入。此确认来自用户转述的 agent 反馈，未另收集 App 工具执行日志、有效权限配置或 GUI 进程指纹；可记录为当前 App 样本的人工确认，不能扩展为所有 App 场景均受保护。附属文件及替换/删除/重命名的逐项证据来自内置 CLI 测试。
+
 **限制与设计影响：**
 
 - 用户必须信任项目；不要自动把用户实际项目写成 trusted。本次只在临时 `CODEX_HOME` 设置测试信任。
@@ -247,7 +259,7 @@ CODEX_HOME=/private/tmp/NEW_ROOT/home codex sandbox \
 - `read` 仍允许读取；若 Step 2 要禁止直接读，也需要另设计/验证 deny-read。该片段只兑现本题的写保护。
 - MCP、本地 Lumi server 与用户批准的其他执行路径有各自权限边界；不要期待这份命令沙箱配置限制 Lumi 的正常资产写入。数据库锁、版本校验仍须由 Lumi 实现。
 
-证据：[`config-hooks.json`](spike/evidence/config-hooks.json)、[`sandbox-writes.json`](spike/evidence/sandbox-writes.json)。
+证据：[`config-hooks.json`](spike/evidence/config-hooks.json)、[`sandbox-writes.json`](spike/evidence/sandbox-writes.json)、[`app-bundled-config-hooks.json`](spike/evidence/app-bundled-config-hooks.json)、[`app-bundled-sandbox-writes.json`](spike/evidence/app-bundled-sandbox-writes.json)、[`app-manual-write-confirmation.json`](spike/evidence/app-manual-write-confirmation.json)。
 
 ## 6. Subagent：触发、上下文与插件工具
 

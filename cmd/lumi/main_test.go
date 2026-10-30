@@ -28,7 +28,7 @@ import (
 func TestMain(m *testing.M) {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "serve", "status", "stop", "__serve":
+		case "serve", "status", "stop", "__serve", "init", "project":
 			os.Exit(command(os.Args[1:], os.Stdout, os.Stderr))
 		case "__desktop":
 			if err := testDesktop(os.Args[2]); err != nil {

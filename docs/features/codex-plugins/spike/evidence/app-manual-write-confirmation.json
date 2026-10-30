@@ -1,0 +1,8 @@
+{
+  "date": "2026-10-30",
+  "source": "User-reported Codex App manual verification in this implementation chat; no independent App tool transcript collected.",
+  "fixture": "/private/tmp/lumi-codex-config-xbgwj5qx/project",
+  "requested_setup": "Open disposable fake project in Codex App, trust it manually, use a fresh default-permissions chat; do not approve escalation.",
+  "user_report": "agent反馈\n\n已向 allowed.txt 追加 Codex write test。\nproject.sqlite 和 assets/ 受当前环境的只读限制，未写入。",
+  "scope": "User confirmed the observed ordinary-file write and protected-path refusal. Exact App permission configuration and GUI binary fingerprint were not independently collected. Companion bundled-CLI evidence covers all six protection rules and additional filesystem operations."
+}

@@ -25,6 +25,8 @@ Lumi 使用两个互不关联的 SQLite 范围：
 
 只有 `os.Mkdir` 成功占用的候选会注册失败清理。后续任一步失败只会删除本次调用新建的目录，不会删除调用前已存在或其他并发调用已占用的文件和目录。
 
+CLI 的 `ProjectManager.InitAt` 是独立的原地创建入口，不改变上述桌面行为。它接收已有绝对目录，先识别有效项目并幂等返回；否则拒绝受管路径冲突，再独占创建 `.lumi` 与目录契约。锁、migration、项目身份/local_user 事务、open hooks 和最近索引均复用现有流程，失败只清理本次持有的节点，不递归删除 cwd。可选 `AGENTS.md` / `.codex/config.toml` 由 CLI 在项目有效后补齐，不属于项目格式。参数、配置合并与身份读取边界见 [CLI 文档](features/codex-plugins/cli.md)。
+
 ## 打开与身份
 
 打开已有目录时顺序固定为：路径绝对化与清理 → 解析根目录 symlink → 验证 Goal 01 基础目录与读写权限 → 以只读连接读取项目 UUID/format/schema version → 与最近项目 UUID 比对 → 获取该目录的项目锁 → 幂等补齐 `.lumi/quarantine/` 等后加受管目录 → 迁移 → 打开 `ProjectStore` → 有上限的 Asset reconcile → 启动该项目的 River client。这个流程不停止或关闭其他项目。

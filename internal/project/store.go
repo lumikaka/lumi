@@ -188,7 +188,11 @@ func projectReadOnlyDSN(root string) string {
 }
 
 func readHeader(ctx context.Context, root string) (Header, error) {
-	db, err := sql.Open("sqlite", projectReadOnlyDSN(root))
+	return readHeaderDSN(ctx, projectReadOnlyDSN(root))
+}
+
+func readHeaderDSN(ctx context.Context, dsn string) (Header, error) {
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return Header{}, projectError(CodeInvalidProject, "无法打开项目数据库", "project.sqlite 不是可读取的 SQLite 数据库。", err)
 	}

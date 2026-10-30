@@ -183,9 +183,7 @@ func createProjectLayout(root, name string) error {
 			return fmt.Errorf("create %s: %w", directory, err)
 		}
 	}
-	readme := "# " + name + "\n\n这是一个自包含的 Lumi 本地绘本项目。请复制整个目录进行移动或备份。\n"
-	story := "# STORY\n\n<!-- Lumi Goal 02 将在这里维护故事正文。 -->\n"
-	for filename, content := range map[string]string{"README.md": readme, "STORY.md": story} {
+	for filename, content := range projectTextFiles(name) {
 		if err := writeExclusive(filepath.Join(root, filename), []byte(content), 0o644); err != nil {
 			return err
 		}
@@ -195,6 +193,13 @@ func createProjectLayout(root, name string) error {
 		return fmt.Errorf("create project.sqlite: %w", err)
 	}
 	return file.Close()
+}
+
+func projectTextFiles(name string) map[string]string {
+	return map[string]string{
+		"README.md": "# " + name + "\n\n这是一个自包含的 Lumi 本地绘本项目。请复制整个目录进行移动或备份。\n",
+		"STORY.md":  "# STORY\n\n<!-- Lumi Goal 02 将在这里维护故事正文。 -->\n",
+	}
 }
 
 func writeExclusive(path string, content []byte, mode os.FileMode) error {

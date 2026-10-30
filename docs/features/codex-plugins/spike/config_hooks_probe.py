@@ -17,6 +17,7 @@ EVENTS = ("SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "Permi
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--codex", default="codex", help="CLI binary; may use the App-bundled CLI")
     parser.add_argument("--run-reviewed-hooks", action="store_true",
                         help="Run only the generated, reviewed test hooks for at most 5 seconds")
     args = parser.parse_args()
@@ -49,10 +50,12 @@ extends = ":workspace"
         event: [{"hooks": [{"type": "command", "command": command, "timeout": 3}]}] for event in EVENTS}}))
     env = os.environ.copy()
     env["CODEX_HOME"] = str(home)
+    env["SPIKE_CODEX_BIN"] = args.codex
     for name in ("OPENAI_API_KEY", "CODEX_API_KEY"):
         env.pop(name, None)
     report = {"root": str(root), "project": str(project), "home": str(home),
-              "version": subprocess.check_output(["codex", "--version"], env=env, text=True).strip()}
+              "binary": args.codex,
+              "version": subprocess.check_output([args.codex, "--version"], env=env, text=True).strip()}
     for trust in ("untrusted", "trusted"):
         (home / "config.toml").write_text('[projects.' + json.dumps(str(project)) + ']\ntrust_level = ' + json.dumps(trust) + '\n')
         rpc = Rpc(env, root, root / (trust + ".stderr"))
@@ -66,7 +69,7 @@ extends = ":workspace"
     # Normal discovery never grants hook trust. The opt-in phase below exercises
     # only the known local fixture with an invocation-scoped trust bypass.
     if args.run_reviewed_hooks:
-        cmd = ["codex", "--no-daemon", "exec", "--dangerously-bypass-hook-trust", "--json",
+        cmd = [args.codex, "--no-daemon", "exec", "--dangerously-bypass-hook-trust", "--json",
                "-s", "read-only", "-C", str(project),
                "-c", 'model_provider="spike"',
                "-c", 'model_providers.spike.name="Offline lifecycle test"',
@@ -91,7 +94,7 @@ extends = ":workspace"
         if (root / "hooks.jsonl").exists():
             report["hook_payloads"] = [json.loads(line) for line in (root / "hooks.jsonl").read_text().splitlines()]
     (root / "report.json").write_text(json.dumps(report, indent=2))
-    command = ("CODEX_HOME=" + shlex.quote(str(home)) + " codex sandbox -C " + shlex.quote(str(project))
+    command = ("CODEX_HOME=" + shlex.quote(str(home)) + " " + shlex.quote(args.codex) + " sandbox -C " + shlex.quote(str(project))
                + " -P lumi-protect -- python3 " + shlex.quote(str(HERE / "write_probe.py")))
     print(json.dumps({"root": str(root), "report": str(root / "report.json"), "sandbox_command": command}, indent=2))
 

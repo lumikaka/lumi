@@ -11,6 +11,7 @@ const (
 	CodeProjectNotOpen                     = "project_not_open"
 	CodePermissionDenied                   = "project_permission_denied"
 	CodeInvalidProject                     = "invalid_project"
+	CodeInitializationConflict             = "project_initialization_conflict"
 	CodeIdentityMismatch                   = "project_identity_mismatch"
 	CodeFormatTooNew                       = "project_format_too_new"
 	CodeMigrationFailed                    = "project_migration_failed"

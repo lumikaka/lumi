@@ -15,11 +15,13 @@ import (
 	"lumi/internal/platformpath"
 )
 
-const usage = `Usage: lumi <serve|status|stop> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
+const usage = `Usage: lumi <serve|status|stop|init|project info> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
 
 serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
+init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
+project info  Inspect cwd project identity and Codex write-protection status.
 `
 
 type options struct {
@@ -27,6 +29,8 @@ type options struct {
 	dataDir     string
 	json        bool
 	timeout     time.Duration
+	projectName string
+	language    string
 }
 
 func main() { os.Exit(command(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -42,12 +46,20 @@ func command(args []string, out, stderr io.Writer) int {
 		return 2
 	}
 	name := args[0]
+	if name == "project" && len(args) > 1 && args[1] == "info" {
+		name = "project info"
+		args = append([]string{name}, args[2:]...)
+	}
 	flags := flag.NewFlagSet("lumi "+name, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&opt.environment, "environment", "production", "production or development (ignores APP_ENV)")
 	flags.StringVar(&opt.dataDir, "data-dir", os.Getenv("LUMI_DATA_DIR"), "application data directory")
 	flags.BoolVar(&opt.json, "json", false, "output a JSON envelope")
 	flags.DurationVar(&opt.timeout, "timeout", 90*time.Second, "maximum startup or shutdown wait")
+	if name == "init" {
+		flags.StringVar(&opt.projectName, "name", "", "project name (defaults to directory name)")
+		flags.StringVar(&opt.language, "language", "zh-Hans", "project generation language")
+	}
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			fmt.Fprint(out, usage)
@@ -61,7 +73,7 @@ func command(args []string, out, stderr io.Writer) int {
 		}
 		return printError(opt, out, stderr, "invalid_arguments", err, 2)
 	}
-	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
+	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "project info") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
 		return printError(opt, out, stderr, "invalid_arguments", errors.New("invalid command, environment, arguments or timeout"), 2)
 	}
 	var err error
@@ -83,6 +95,9 @@ func command(args []string, out, stderr io.Writer) int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), opt.timeout)
 	defer cancel()
+	if name == "init" || name == "project info" {
+		return projectCommand(ctx, name, opt, out, stderr)
+	}
 	var status instanceStatus
 	switch name {
 	case "serve":
