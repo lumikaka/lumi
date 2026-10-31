@@ -12,6 +12,8 @@ Current desktop builds support Apple Silicon Macs and Windows x64. AI writing an
 
 ## Recommended path
 
+If you use Codex App on macOS, you can also create with the [Lumi Codex plugin]({{< relref "codex" >}}) without configuring an API key.
+
 1. Install Lumi and pass the first-launch system prompts.
 2. Connect a provider and confirm that Lumi reports a verified connection.
 3. Use Quick generation to make an editable first draft.

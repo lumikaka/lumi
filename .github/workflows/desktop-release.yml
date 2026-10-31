@@ -124,10 +124,19 @@ jobs:
       build_updater: ${{ needs.prepare.outputs.publish == 'true' }}
     secrets: inherit
 
+  codex:
+    name: Codex App CLI and plugin
+    needs: prepare
+    uses: ./.github/workflows/codex-macos.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+    secrets: inherit
+
   publish:
     name: Publish complete desktop release
     if: ${{ needs.prepare.outputs.publish == 'true' }}
-    needs: [prepare, macos, windows]
+    needs: [prepare, macos, windows, codex]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout release source
@@ -150,6 +159,12 @@ jobs:
       - name: Test updater manifest generator
         run: node --test rel/app/generate-updater-manifest.test.mjs
 
+      - name: Download Codex App assets
+        uses: actions/download-artifact@v7
+        with:
+          name: Lumi-codex-macos
+          path: artifacts/codex
+
       - name: Assemble and validate release assets
         id: assets
         shell: bash
@@ -168,6 +183,15 @@ jobs:
             artifacts/windows/Lumi-windows-x64-setup.exe
             artifacts/windows/Lumi-windows-x64-setup.exe.sha256
             artifacts/windows/Lumi-windows-x64-setup.exe.sig
+            artifacts/codex/lumi-darwin-arm64
+            artifacts/codex/lumi-darwin-arm64.sha256
+            artifacts/codex/lumi-darwin-amd64
+            artifacts/codex/lumi-darwin-amd64.sha256
+            artifacts/codex/lumi-codex-plugin.tar.gz
+            artifacts/codex/lumi-codex-plugin.tar.gz.sha256
+            artifacts/codex/install-codex.sh
+            artifacts/codex/install-codex.sh.sha256
+            artifacts/codex/lumi-codex-version.txt
           )
           for asset in "${required_assets[@]}"; do
             if [ ! -s "$asset" ]; then
@@ -179,6 +203,7 @@ jobs:
           mkdir release-assets
           cp artifacts/macos/* release-assets/
           cp artifacts/windows/* release-assets/
+          cp artifacts/codex/* release-assets/
 
           if [ "$RELEASE_STABLE" = "true" ]; then
             node rel/app/generate-updater-manifest.mjs \
@@ -210,7 +235,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          notes="Desktop builds for ${RELEASE_TAG}. The macOS build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen."
+          notes="Desktop and Codex App builds for ${RELEASE_TAG}. The macOS desktop build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen. Codex CLI assets include SHA256 checksums; see the Codex macOS assets job for signing/notarization status and docs/features/codex-plugins/install.md for installation."
           release_state="missing"
           if release_json="$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease 2>/dev/null)"; then
             if [ "$(jq -r '.isDraft' <<<"$release_json")" = "true" ]; then

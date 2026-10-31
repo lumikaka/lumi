@@ -1,5 +1,9 @@
 # Lumi MCP plugins
 
+新绘本创作插件位于 [`lumi/`](lumi/)，通过本地 stdio CLI 工作，无需 API key，面向 macOS Codex App。请使用[安装器与完整指南](../docs/features/codex-plugins/install.md)生成绝对 CLI 路径；不要直接安装含占位符的仓库模板。
+
+## 旧 HTTP OAuth 插件
+
 这两个可分发的 Codex 插件参考 VACS 插件的实际结构：`.codex-plugin/plugin.json`、`.mcp.json`、`skills/<name>/SKILL.md`、`agents/openai.yaml`、`assets/icon.png` 和 API 总览参考文档。它们连接正在运行的 Lumi，不启动后端，不携带用户凭据，也不访问项目数据库。
 
 | 插件 | 场景 | MCP URL / OAuth resource |

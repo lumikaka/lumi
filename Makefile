@@ -3,6 +3,9 @@
 TAG_BUMP ?= patch
 TAG_INITIAL_VERSION ?= 0.1.0
 TAG_REMOTE ?= origin
+CODEX_VERSION ?= 0.1.0
+CODEX_OUT ?= build/codex
+PYTHON ?= python3
 
 deps:
 	go mod download
@@ -29,6 +32,28 @@ build:
 	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/lumi_web ./cmd/lumi_web
 	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/lumi ./cmd/lumi
 	go build -trimpath -ldflags="-s -w" -o build/lumi_ctl ./cmd/lumi_ctl
+	node scripts/package-codex.mjs "$(CODEX_VERSION)" "$(CODEX_OUT)"
+
+# CLI/plugin release assets; Go + web only, no Cargo or Tauri invocation.
+.PHONY: codex-build codex-package codex-release codex-smoke
+codex-build:
+	pnpm --dir web run build
+	mkdir -p "$(CODEX_OUT)"
+	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_OUT)/lumi" ./cmd/lumi
+
+codex-package:
+	node scripts/package-codex.mjs "$(CODEX_VERSION)" "$(CODEX_OUT)"
+
+codex-release: codex-package
+	pnpm --dir web run build
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_OUT)/lumi-darwin-arm64" ./cmd/lumi
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_OUT)/lumi-darwin-amd64" ./cmd/lumi
+	cd "$(CODEX_OUT)" && shasum -a 256 lumi-darwin-arm64 > lumi-darwin-arm64.sha256
+	cd "$(CODEX_OUT)" && shasum -a 256 lumi-darwin-amd64 > lumi-darwin-amd64.sha256
+	@echo "CI signs macOS binaries and regenerates their SHA256 files (see install.md)."
+
+codex-smoke:
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/test-install-codex.py --assets "$(CODEX_OUT)"
 
 build-linux:
 	pnpm --dir web run build

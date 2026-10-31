@@ -1,0 +1,20 @@
+{
+  "name": "lumi",
+  "version": "0.1.0",
+  "description": "在 Codex App 中从想法创作并导出绘本。无需 API key，使用 Codex 自身额度，项目数据保存在本地。",
+  "author": { "name": "Lumi" },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Lumi 绘本创作",
+    "shortDescription": "用 Codex 写故事、画绘本并导出，本地保存。",
+    "longDescription": "面向 macOS Codex App 的本地绘本创作插件。无需 API key，写作与生图使用 Codex 自身额度，项目数据保存在本地。安装后请新开会话；项目写保护需要用户信任项目。",
+    "developerName": "Lumi",
+    "category": "Productivity",
+    "capabilities": ["MCP", "Interactive", "Image Generation"],
+    "brandColor": "#2B6B58",
+    "defaultPrompt": ["用 Lumi 把我的想法做成一本绘本，完成后导出 PDF 和包含全部文字的 ZIP。"],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

@@ -1,0 +1,129 @@
+name: Codex macOS assets
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      checkout_ref:
+        required: true
+        type: string
+    secrets:
+      APPLE_CERTIFICATE_BASE64:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_NOTARY_APPLE_ID:
+        required: false
+      APPLE_NOTARY_PASSWORD:
+        required: false
+      APPLE_NOTARY_TEAM_ID:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      APPLE_SIGNING_IDENTITY: "${{ vars.APPLE_SIGNING_IDENTITY || '-' }}"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.16.1
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build CLI and plugin (no Rust)
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          pnpm --dir web install --frozen-lockfile
+          bash -n scripts/install-codex.sh
+          make codex-release CODEX_VERSION="${RELEASE_TAG#v}"
+          go test ./cmd/lumi ./internal/textmcp
+      - name: Import optional Developer ID certificate
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CERTIFICATE" ]; then
+            [ "$APPLE_SIGNING_IDENTITY" = '-' ] || { echo 'Signing identity configured without certificate'; exit 1; }
+            echo 'Using ad-hoc signing; this is not Apple notarization.'
+            exit 0
+          fi
+          [ -n "$CERTIFICATE_PASSWORD" ] && [ "$APPLE_SIGNING_IDENTITY" != '-' ]
+          keychain="$RUNNER_TEMP/lumi-codex-signing.keychain-db"
+          password="$(openssl rand -hex 32)"
+          printf '%s' "$CERTIFICATE" | /usr/bin/base64 -D > "$RUNNER_TEMP/lumi-codex-signing.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/lumi-codex-signing.p12" -k "$keychain" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          rm "$RUNNER_TEMP/lumi-codex-signing.p12"
+      - name: Sign both architectures
+        run: |
+          set -euo pipefail
+          for binary in build/codex/lumi-darwin-arm64 build/codex/lumi-darwin-amd64; do
+            if [ "$APPLE_SIGNING_IDENTITY" = '-' ]; then
+              codesign --force --sign - --timestamp=none "$binary"
+            else
+              codesign --force --sign "$APPLE_SIGNING_IDENTITY" --options runtime --timestamp "$binary"
+            fi
+            codesign --verify --strict --verbose=2 "$binary"
+          done
+      - name: Optional Apple notarization
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.APPLE_NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NOTARY_APPLE_ID$NOTARY_PASSWORD$NOTARY_TEAM_ID" ]; then
+            echo 'Notarization not configured; do not describe this release as notarized.'
+            exit 0
+          fi
+          [ "$APPLE_SIGNING_IDENTITY" != '-' ]
+          [ -n "$NOTARY_APPLE_ID" ] && [ -n "$NOTARY_PASSWORD" ] && [ -n "$NOTARY_TEAM_ID" ]
+          mkdir "$RUNNER_TEMP/lumi-codex-notary"
+          cp build/codex/lumi-darwin-arm64 build/codex/lumi-darwin-amd64 "$RUNNER_TEMP/lumi-codex-notary/"
+          ditto -c -k "$RUNNER_TEMP/lumi-codex-notary" "$RUNNER_TEMP/lumi-codex-notary.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/lumi-codex-notary.zip" \
+            --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" \
+            --wait --output-format json > "$RUNNER_TEMP/notary-result.json"
+          jq -e '.status == "Accepted"' "$RUNNER_TEMP/notary-result.json"
+      - name: Hash final signed binaries and check native startup
+        run: |
+          set -euo pipefail
+          cd build/codex
+          for binary in lumi-darwin-arm64 lumi-darwin-amd64; do
+            shasum -a 256 "$binary" > "$binary.sha256"
+          done
+          case "$(uname -m)" in arm64) ./lumi-darwin-arm64 --help ;; x86_64) ./lumi-darwin-amd64 --help ;; esac
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Lumi-codex-macos
+          path: build/codex/*
+          if-no-files-found: error
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/lumi-codex-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/lumi-codex-signing.keychain-db"
+          fi

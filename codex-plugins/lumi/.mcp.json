@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lumi": {
+      "command": "__LUMI_ABSOLUTE_BINARY__",
+      "args": ["mcp"]
+    }
+  }
+}

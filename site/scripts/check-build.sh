@@ -11,6 +11,7 @@ fi
 
 docs_slugs=(
   installation
+  codex
   providers
   first-picture-book
   story-and-chapters
@@ -47,8 +48,8 @@ for relative_file in "${required_files[@]}"; do
 done
 
 for index_file in "${build_dir}/search.json" "${build_dir}/en/search.json"; do
-  jq -e '
-    length == 9 and
+  jq -e --argjson expected "${#docs_slugs[@]}" '
+    length == $expected and
     all(.[];
       (.title | type == "string" and length > 0) and
       (.content | type == "string") and
