@@ -1,0 +1,32 @@
+- text: 外观
+- combobox "审阅外观":
+  - option "跟随宿主" [selected]
+  - option "浅色"
+  - option "深色"
+- main:
+  - paragraph: LUMI / 单页预览
+  - heading "星星回家 · 审阅验收" [level=1]
+  - link "在 Lumi 中打开 ↗":
+    - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/chapters/01a18d87-3ef0-7756-ad33-73b8cd3a5561/sections/01a18d87-3ef7-7bf6-9805-71ace00935d4
+  - status: 已同步
+  - button "刷新内容"
+  - button "重新连接"
+  - navigation "审阅视图":
+    - button "整本"
+    - button "设定"
+  - article:
+    - img "一颗迷路的星星"
+    - paragraph: body · r7
+    - heading "一颗迷路的星星" [level=2]
+    - text: 图片版本
+    - combobox "图片版本":
+      - option "当前图片"
+      - option "版本 2（仅预览）"
+      - option "版本 1（仅预览）" [selected]
+    - paragraph: WebSocket 提示后从 REST 重读的最新正文。
+    - generic "画面描述"
+    - paragraph: 穿黄色雨衣的小狐狸，橘红色毛发，温柔的眼神。星星发出金色光芒，照亮蓝色雨夜。水彩质感，画面上方留出文字空间。
+    - link "在 Lumi 中打开 ↗":
+      - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/chapters/01a18d87-3ef0-7756-ad33-73b8cd3a5561/sections/01a18d87-3ef7-7bf6-9805-71ace00935d4
+    - button "查看图片候选"
+  - generic: 缩略图供审阅使用 · 原图与完整编辑请在 Lumi 中打开

@@ -1,0 +1,12 @@
+{
+  "source_hashes_match": true,
+  "source_file_count": 49,
+  "current_binary_matches": true,
+  "old_binary_unchanged": true,
+  "resource_uri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html",
+  "web_tests": 434,
+  "go_tests": "passed",
+  "host_status": "new_resource_loaded_sidepanel_not_available",
+  "host_progress_forwarding": "unverified",
+  "forbidden_paths_changed": false
+}

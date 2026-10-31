@@ -1,0 +1,60 @@
+{
+  "scope": "approved disposable project; temporary physical resource failure; no SQLite edits",
+  "source": "/private/tmp/lumi-step5-prbzu0ey/project/assets/comic/sections/asset-bin--01a18d87-3f2e-7182-a1d8-e8ab1d4242cd.png",
+  "backup": "/private/tmp/lumi-step5-v0.5.4-ih1679fv/fault-original-asset.png",
+  "sha256": "f54be7a2cc0671df5716c36dc7c37afa5601c91191b159ad1b0b99f4947cf040",
+  "restored": true,
+  "observed_callback_error": {
+    "request": {
+      "at": "2026-10-31T08:30:03.123977+00:00",
+      "direction": "request",
+      "wire_bytes": 296,
+      "message": {
+        "jsonrpc": "2.0",
+        "id": 117,
+        "method": "tools/call",
+        "params": {
+          "_meta": {
+            "thread_id": "01a18d79-7388-7b52-a831-95dde3360928",
+            "threadId": "01a18d79-7388-7b52-a831-95dde3360928",
+            "progressToken": 116
+          },
+          "name": "read_app_image",
+          "arguments": {
+            "asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10",
+            "max_edge": 384
+          }
+        }
+      }
+    },
+    "response": {
+      "at": "2026-10-31T08:30:03.133462+00:00",
+      "direction": "result",
+      "wire_bytes": 448,
+      "message": {
+        "jsonrpc": "2.0",
+        "id": 117,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"success\":false,\"data\":null,\"error\":{\"code\":\"asset_object_unavailable\",\"message\":\"Asset 文件缺失\",\"details\":\"请运行完整性扫描或重试生成。\"}}"
+            }
+          ],
+          "structuredContent": {
+            "success": false,
+            "data": null,
+            "error": {
+              "code": "asset_object_unavailable",
+              "message": "Asset 文件缺失",
+              "details": "请运行完整性扫描或重试生成。"
+            }
+          },
+          "isError": true
+        }
+      }
+    }
+  },
+  "hidden_at_utc": "2026-10-31T08:29:47.149276+00:00",
+  "restored_at_utc": "2026-10-31T08:30:03.180790+00:00"
+}

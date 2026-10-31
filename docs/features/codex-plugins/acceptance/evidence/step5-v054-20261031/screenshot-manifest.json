@@ -1,0 +1,34 @@
+{
+  "host-book-final.png": {
+    "bytes": 66832,
+    "sha256": "6f1bb6798139dc487d1f7355c57bda22244488d896a8a4789bee88615aeefedf"
+  },
+  "host-book-light.png": {
+    "bytes": 67016,
+    "sha256": "a69c9a0be0aff3e0bfbd44c8e33b6d51a03d07895212049e071837c229bc8702"
+  },
+  "host-candidates-dark-selected1.png": {
+    "bytes": 76621,
+    "sha256": "0f7b1e10c270fd33fe49f8c5b7e5fd76a01dd12d33779ed7beb79814b17f56c7"
+  },
+  "host-page-current-v2.png": {
+    "bytes": 60058,
+    "sha256": "00b7873db12d0caf783a34710c496c18d749a8feb80d36218171386da8d9d41e"
+  },
+  "host-page-version1.png": {
+    "bytes": 58759,
+    "sha256": "a34779ece73f17a2c09bf00da55e404106d90484df3cfd889dd79245c055b9ea"
+  },
+  "host-settings-dark.png": {
+    "bytes": 58864,
+    "sha256": "8dc6ed9578e5d41b36c9ac564e28683cbd53007ebd9fa3c28b319f592c82aaf4"
+  },
+  "host-ws-updated.png": {
+    "bytes": 66327,
+    "sha256": "11dbe5f85923a80cda65e4d1a02bd2546707340e3a098c8aa34ef4152ba7e045"
+  },
+  "lumi-full-original.png": {
+    "bytes": 64175,
+    "sha256": "804c9d1e75e0faa1848d073deb1fc51aa458cb28eb167cce29158da198c91e6c"
+  }
+}

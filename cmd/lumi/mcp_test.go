@@ -30,14 +30,18 @@ import (
 	"lumi/internal/textmcp"
 )
 
-func mcpClient(t *testing.T, opt options, root string) *mcp.ClientSession {
+func mcpClient(t *testing.T, opt options, root string, clientOptions ...*mcp.ClientOptions) *mcp.ClientSession {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "mcp", "--data-dir", opt.dataDir, "--environment", opt.environment, "--timeout", "20s")
 	cmd.Dir = root
 	// Workspace-like env values and an inherited desktop token cannot select
 	// a project or change this into a desktop MCP connection.
 	cmd.Env = append(os.Environ(), "PWD=/wrong", "CODEX_WORKSPACE_ROOT=/wrong", "LUMI_DESKTOP_ACCESS_TOKEN=unused")
-	client, err := mcp.NewClient(&mcp.Implementation{Name: "text-e2e", Version: "1"}, nil).Connect(t.Context(), &mcp.CommandTransport{Command: cmd}, nil)
+	var config *mcp.ClientOptions
+	if len(clientOptions) > 0 {
+		config = clientOptions[0]
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "text-e2e", Version: "1"}, config).Connect(t.Context(), &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +154,7 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 14 {
+	if len(tools.Tools) != 20 {
 		t.Fatalf("tools=%d", len(tools.Tools))
 	}
 	for _, tool := range tools.Tools {
@@ -225,6 +229,15 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	if len(last["items"].([]any)) != 2 {
 		t.Fatalf("last=%v", last)
 	}
+	// Step 5 text fallback: do not read any UI resource. A failed preview does
+	// not prevent the complete Step 3 creation/export workflow below.
+	review := callText(t, client, "review_book", map[string]any{}, "")
+	if len(review["items"].([]any)) != 3 || review["items"].([]any)[0].(map[string]any)["text"] != "第一页旁白：我陪你回家。" {
+		t.Fatal(review)
+	}
+	callText(t, client, "review_page", map[string]any{"chapter_uuid": chapterUUID, "page_uuid": pageUUIDs[0]}, "")
+	callText(t, client, "review_settings", map[string]any{"setting_uuid": setting["uuid"]}, "")
+	callText(t, client, "read_app_image", map[string]any{"asset_uuid": "01989abc-def0-7000-8000-000000000099"}, "asset_not_found")
 	callText(t, client, "export_book", map[string]any{"format": "zip", "allow_missing_images": false}, "comic_export_incomplete")
 	exported := callText(t, client, "export_book", map[string]any{"format": "zip", "allow_missing_images": true}, "")
 	path := exported["path"].(string)

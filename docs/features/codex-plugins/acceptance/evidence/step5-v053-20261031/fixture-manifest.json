@@ -1,0 +1,126 @@
+{
+  "root": "/private/tmp/lumi-step5-v0.5.3-_ik_j1q3",
+  "binary": "/private/tmp/lumi-step5-v0.5.3-_ik_j1q3/lumi",
+  "binary_sha256": "3f163e1ed59fc355789a4597e4fabf5411bdb6b46c35c0ac74c1255ffbb0112c",
+  "project": "/private/tmp/lumi-step5-prbzu0ey/project",
+  "data_dir": "/private/tmp/lumi-step5-prbzu0ey/data",
+  "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+  "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+  "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4",
+  "setting_uuid": "01a18d87-40de-7a87-9234-af81f6c31107",
+  "resource_uri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html",
+  "requests": {
+    "book": {
+      "name": "review_book",
+      "arguments": {}
+    },
+    "page": {
+      "name": "review_page",
+      "arguments": {
+        "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+        "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"
+      }
+    },
+    "candidates": {
+      "name": "review_candidates",
+      "arguments": {
+        "kind": "page",
+        "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+        "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"
+      }
+    },
+    "settings": {
+      "name": "review_settings",
+      "arguments": {}
+    }
+  },
+  "product_boundaries": [
+    {
+      "requested_max_edge": 256,
+      "width": 256,
+      "height": 170,
+      "jpeg_bytes": 6521,
+      "mcp_result_bytes": 9063,
+      "sha256": "2891f00796fede00deacf59f4da2ac4e60f95f34500a7463e5f5054a04158824"
+    },
+    {
+      "requested_max_edge": 384,
+      "width": 384,
+      "height": 256,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243,
+      "sha256": "8a41b750118bcb46ff52c33da113b9561bf1b49c9f59ae4decc7044687c6924e"
+    },
+    {
+      "requested_max_edge": 1024,
+      "width": 1024,
+      "height": 682,
+      "jpeg_bytes": 59595,
+      "mcp_result_bytes": 79829,
+      "sha256": "6928f59545060dc02171044d2c1cd7e05da4ba4f311211af439e83ce0ad39b23"
+    }
+  ],
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+  "host_status": "not_yet_tested",
+  "plugin": "lumi-review-prbzu0ey",
+  "marketplace": "lumi-review-prbzu0ey-local",
+  "register_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /private/tmp/lumi-step5-prbzu0ey/marketplace",
+  "remove_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace remove lumi-review-prbzu0ey-local",
+  "final_build_at": "2026-10-31T04:00:45.254003+00:00",
+  "plugin_version": "0.5.3",
+  "source_sha256": {
+    "cmd/lumi/app_connection.go": "ae5d59d7cc2dad31ee4e89908df4c2be142dbcac5ce71969629d72e0ecf00687",
+    "cmd/lumi/app_connection_test.go": "fcff1254c03a4ec2b4fa1322c8bf110e5e1854321d7e689262faaa285b9e5feb",
+    "cmd/lumi/client.go": "f12e24c40f06cfb99d41a703b56c16a7fa63e401d61292b905d54a38e9750ff5",
+    "cmd/lumi/daemon.go": "95325a0f7f41fdb2bf59552339aa9bec4954351616c3612bf3f4ae19f9e7d590",
+    "cmd/lumi/discovery.go": "beaab807ac5f5615484e2961cbe2b4a63de7b61a1c034e8714889b8ed1f28772",
+    "cmd/lumi/discovery_test.go": "f307e62cb40d47ce0b719dcead84ea29e400bc24ffa19781c54f4841767e2cd8",
+    "cmd/lumi/guidance.go": "4dda4afab69db2eb8aa40248668c5720d92c1a8ea689a94a32943b3d60d1789e",
+    "cmd/lumi/guidance_test.go": "9e0e8b5da22c993033f6c042aade16b9b3b1af7ab6352e5e78d0a1cfdcba95ff",
+    "cmd/lumi/main.go": "2b3cd4b0b4c777d3a2fe13992ead1c4d706f83b570d415c2db0c6136cf7408fb",
+    "cmd/lumi/main_test.go": "292f748f800f0c93355ca3129b13d515b094166d6f7658dbe4d1cee8d0bdbb09",
+    "cmd/lumi/mcp.go": "234a5a50d0b0dc0a99e7207231a7081282d1d122d21f8e6741e4092149337735",
+    "cmd/lumi/mcp_test.go": "e3043259af594f855bced19f321e6e6c355a3cada1d2847111745ef5c926c683",
+    "cmd/lumi/open.go": "ff2e25ad52322e18795490d86a8c763d84ef257d9e188fcc494c79ad0239f4e7",
+    "cmd/lumi/process_unix.go": "9249cf32ac433388a82112960eec7e979c5fb32d5badbf6ba557d09d5182a563",
+    "cmd/lumi/process_windows.go": "980477b465a1e4e2ea4f7be209a391be50383f20a5fbf35e941a52afe5583809",
+    "cmd/lumi/project.go": "c2ee1273c74ec176283ef15e54690b645fb3454f93417d5bb3f86aa131ffe309",
+    "cmd/lumi/project_test.go": "c5596d7a2b08e881d34b1ed9593b14d66b40ee47993fc9b2e09d89199f86eb54",
+    "internal/realtime/client.go": "6b68579dc4f767748a5aa3f4551f0005cb2d2c4d2901fd9ca88266b239674c49",
+    "internal/realtime/hub.go": "d2d0bcd3daeca64896c9350138ef2355fa2c99029041993c8faa9a22e50b7936",
+    "internal/realtime/panic.go": "fd38b8f31cb0dd58aa89a9ad5516db3fbe16d0fda322017c3e8d13bcdba24644",
+    "internal/realtime/protocol.go": "a2e90e2927eb7c42a767d2564285e4ada155d4ebcccff1e1d8d804c360645f51",
+    "internal/realtime/realtime_test.go": "eae52ea47cdc272eeb7059bde84284f28594d0000659a1056ef8886fcef6441b",
+    "internal/realtime/topics.go": "ed79e73cb7b1f9aa310af3410c9c49135fa9edfe6459d2af9d44b7fd34d9c6a2",
+    "internal/realtime/topics_test.go": "0e4a54ed60196d8e49a28b0f7e7dd51884285f41a32b26e202ed146da7192d84",
+    "internal/realtime/websocket.go": "9e475268603d6b39f8da0734e9364c6d34b78568bf84538651944e18bff4be7b",
+    "internal/textmcp/app.go": "c882c0453ea3bdab534f87250fe6be4d89a08d4db682c6fbf7ff87aa158728f1",
+    "internal/textmcp/app_test.go": "cc44c4ff68cb5e9e888389b7b078e06cf38793d4f04a4154b6fae195feb8c571",
+    "internal/textmcp/app_watch.go": "ee1d1bd73235afa3e28d5f963fe625d8b630c07882c53e99a3b0f386b3ce1e88",
+    "internal/textmcp/app_watch_test.go": "6eb22cd2e0025f554294fb5ed7b483b8fc838bc7c495d340ea80630338451205",
+    "internal/textmcp/appdist/review.html": "bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b",
+    "internal/textmcp/image.go": "a2b668c4360d2ff2f1a8c3cdd25fa37669be86ca9efa0f68dfadccc35b8b52ba",
+    "internal/textmcp/image_test.go": "4bda66a40600e346c00064990ffda544a2fe46ad37a9210451e2c5530e02753a",
+    "internal/textmcp/prompt.go": "c134cc088026110a487043306286b7162c1aecd2aa62fdbd5582ecdd61c6a9d4",
+    "internal/textmcp/protocol.go": "335c1f6c66e866b8087d1b66091a1af34420b16e2f286d19cea27f196c0be798",
+    "internal/textmcp/review.go": "e981be870b572caea7dc9c0d91f656bf4671cce69c103046ae5e61f9468b51b6",
+    "internal/textmcp/schema.go": "1d39e3ab2557dbe8eae57be811afac47d842b9cfb17c195a358e575b47d701e3",
+    "internal/textmcp/service.go": "e6f5aa4f8d8489c15db5215e236543293fc32fb5eb3350d387cbb1c6d7ad2bac",
+    "internal/textmcp/service_test.go": "0e4aa4572311364c0666888e43d714c136ce7b6148194c43f569dfb46d6f8be1",
+    "web/mcp-app/app.test.js": "d19d9ae0f424017258a8138b99de5f6d61219af42173b73edb5a2716f1658ef9",
+    "web/mcp-app/bridge.js": "0efda23e1ff8ab6622023c23ee8deb508333c90dc2742978e9698ebf853ac02b",
+    "web/mcp-app/build.mjs": "489d68728f5ce09635cca0e6d37dad1314a451271203e5c6b0371b7dc8fbaa42",
+    "web/mcp-app/contracts.js": "a124dca50fe1cd52d1592dc41d7ddf37f9ddcf4976b0a3515aa7d0c8779ced20",
+    "web/mcp-app/images.js": "24af10876e7b97918f24216f2123f39bc2859a15c30d72d66c697d09f89bf413",
+    "web/mcp-app/main.jsx": "e5fc008724cdab95eb8aa014c1c32870b009d36f3d414ec704504d05d91c9297",
+    "web/mcp-app/realtime.js": "00b5c18c9ac2b9fe22529edcc2c7b7490b4357b66eabc0f8b33a79bce7feccc1",
+    "web/mcp-app/review.scss": "027429652cd53a2a4b09b54dada9223446d7cd08cac9bb19a74bac2c73e6915c",
+    "web/mcp-app/sync.js": "ab6cdc1f3b02d640d096c3d7616b19901480640f4483e4e80918c0f84c4faf81",
+    "web/mcp-app/template.html": "9b32123864761536946ab29861a0030ba306bc0cb118ee5e5355ddd93ecb72a3",
+    "web/package.json": "78076a7aa79f7ea3460d51731b204c8139ea4952a1d58120be1c7c9ff0cbc125"
+  },
+  "plugin_source": "/private/tmp/lumi-step5-prbzu0ey/marketplace/plugins/lumi-review-prbzu0ey-v0.5.3",
+  "upgrades_manifest": "/private/tmp/lumi-step5-prbzu0ey/manifest.json"
+}

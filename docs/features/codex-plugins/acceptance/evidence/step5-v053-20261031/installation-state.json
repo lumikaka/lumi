@@ -1,0 +1,23 @@
+{
+  "installed": [
+    {
+      "pluginId": "lumi-review-prbzu0ey@lumi-review-prbzu0ey-local",
+      "name": "lumi-review-prbzu0ey",
+      "marketplaceName": "lumi-review-prbzu0ey-local",
+      "version": "0.5.3",
+      "installed": true,
+      "enabled": true,
+      "source": {
+        "source": "local",
+        "path": "/private/tmp/lumi-step5-prbzu0ey/marketplace/plugins/lumi-review-prbzu0ey-v0.5.3"
+      },
+      "marketplaceSource": {
+        "sourceType": "local",
+        "source": "/private/tmp/lumi-step5-prbzu0ey/marketplace"
+      },
+      "installPolicy": "AVAILABLE",
+      "authPolicy": "ON_INSTALL"
+    }
+  ],
+  "available": []
+}

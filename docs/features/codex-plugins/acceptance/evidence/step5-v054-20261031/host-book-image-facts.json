@@ -1,0 +1,20 @@
+{
+  "background": "rgb(250, 249, 246)",
+  "images": [
+    {
+      "alt": "一颗迷路的星星",
+      "complete": true,
+      "height": 256,
+      "uri_chars": 15899,
+      "width": 384
+    },
+    {
+      "alt": "穿过雨夜的森林",
+      "complete": true,
+      "height": 256,
+      "uri_chars": 14351,
+      "width": 384
+    }
+  ],
+  "theme": "light"
+}

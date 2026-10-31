@@ -1,0 +1,109 @@
+{
+  "checked_at_utc": "2026-10-31T03:20:11.514871+00:00",
+  "previous_goal_turn": "progress_explicitly_authorized_plugin_installation_completed_and_entrypoint_verified",
+  "current_goal_turn": "progress_real_host_resource_and_app_image_callbacks_verified",
+  "completion_proven": false,
+  "requirements": [
+    {
+      "requirement": "four_review_views_complete_text_stable_numbers_and_lumi_entry",
+      "automation": "passed",
+      "browser": "passed",
+      "real_codex_app": "pending",
+      "evidence": [
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/mcp_test.go",
+        "docs/features/codex-plugins/acceptance/evidence/step5-20261030/screenshots/browser-final-candidates.png"
+      ]
+    },
+    {
+      "requirement": "app_only_read_only_image_contract_isolation_uuid_and_120_256_kib_caps",
+      "automation": "passed",
+      "browser": "passed",
+      "real_codex_app": "pending",
+      "evidence": [
+        "internal/textmcp/image_test.go",
+        "internal/textmcp/app_test.go",
+        "docs/features/codex-plugins/acceptance/evidence/step5-20261030/fixture-manifest.json"
+      ]
+    },
+    {
+      "requirement": "embedded_resource_mime_csp_and_bounded_result_adapter",
+      "automation": "passed",
+      "browser": "passed",
+      "real_codex_app": "pending",
+      "evidence": [
+        "internal/textmcp/app_test.go",
+        "web/mcp-app/app.test.js",
+        "internal/textmcp/appdist/review.html"
+      ]
+    },
+    {
+      "requirement": "lazy_loading_cache_capacity_stale_responses_and_failure_fallback",
+      "automation": "passed",
+      "browser": "passed_for_resource_error_missing_and_manual_retry",
+      "real_codex_app": "pending",
+      "evidence": [
+        "web/mcp-app/app.test.js",
+        "docs/features/codex-plugins/acceptance/evidence/step5-20261030/screenshots/browser-image-error.png"
+      ]
+    },
+    {
+      "requirement": "text_only_step3_flow_and_conversation_candidate_submission",
+      "automation": "passed",
+      "real_codex_app": "pending",
+      "evidence": [
+        "cmd/lumi/mcp_test.go",
+        "internal/textmcp/app_test.go"
+      ]
+    },
+    {
+      "requirement": "websocket_hints_query_invalidation_rest_reread_join_rejoin_focus_no_polling",
+      "automation": "passed",
+      "browser": "passed",
+      "real_codex_app": "pending_independent_ws_csp_gate",
+      "evidence": [
+        "cmd/lumi/app_connection_test.go",
+        "web/mcp-app/app.test.js",
+        "web/mcp-app/sync.js"
+      ]
+    },
+    {
+      "requirement": "ui_business_write_approval_denial_and_conflict_gate",
+      "status": "not_enabled",
+      "evidence": [
+        "web/mcp-app/main.jsx"
+      ]
+    },
+    {
+      "requirement": "go_and_frontend_full_test_commands",
+      "status": "passed",
+      "evidence": [
+        "docs/features/codex-plugins/acceptance/evidence/step5-20261030/go-tests.txt",
+        "docs/features/codex-plugins/acceptance/evidence/step5-20261030/web-tests.txt"
+      ]
+    }
+  ],
+  "remaining_blocker": {
+    "condition": "inline_app_not_expanded_in_sidepanel_for_ui_verification",
+    "consecutive_goal_turns_observed": 1,
+    "available_production_review_tools": [
+      "review_book",
+      "review_candidates",
+      "review_page",
+      "review_settings"
+    ],
+    "mcp_apps_tabs_observed": [],
+    "host_log_exists": true,
+    "approval": "registration_and_installation_approved; sidepanel expansion requested",
+    "plugin": "lumi-review-prbzu0ey",
+    "plugin_version": "0.5.2",
+    "source_changes_since_verified_build": [],
+    "marketplace_registered": true,
+    "plugin_installed": true,
+    "plugin_enabled": true,
+    "host_log_scope": "real Codex tool/resource/App-image calls after 2026-10-31T03:14Z, separately archived from earlier installed-entrypoint smoke"
+  },
+  "bundle_sha256": "9984d28e7a6b92df9a8d66fc2421fa1c9081975a2f540113890a94ac2848cbbd",
+  "binary_sha256": "1447e0daf118617faaee2ee26f7ee409ae4dfe4144fdb4927384295cc20272a4",
+  "forbidden_paths_modified": []
+}

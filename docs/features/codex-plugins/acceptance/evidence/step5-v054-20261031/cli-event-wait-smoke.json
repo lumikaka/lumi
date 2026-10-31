@@ -1,0 +1,31 @@
+{
+  "scope": "standalone CLI fixture smoke, NOT Codex Host evidence",
+  "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+  "binary_sha256": "3847cd531984b728a2cf81a361b64506195169d88874ed1ebfcdcd94875713ed",
+  "opened": {
+    "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+    "subscription_uuid": "01a19106-b247-76b2-9391-44a4dfe2e8be",
+    "cursor": "0",
+    "state": "joined"
+  },
+  "next_request": {
+    "action": "next",
+    "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+    "subscription_uuid": "01a19106-b247-76b2-9391-44a4dfe2e8be",
+    "cursor": "0"
+  },
+  "next_result": {
+    "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+    "subscription_uuid": "01a19106-b247-76b2-9391-44a4dfe2e8be",
+    "cursor": "1",
+    "state": "heartbeat"
+  },
+  "blocked_seconds": 45.0,
+  "closed": {
+    "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+    "subscription_uuid": "01a19106-b247-76b2-9391-44a4dfe2e8be",
+    "cursor": "1",
+    "state": "closed"
+  },
+  "business_state_reads_during_wait": 0
+}

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && pnpm build:app",
+    "build:app": "node mcp-app/build.mjs",
     "test": "node --test",
     "preview": "vite preview"
   },

@@ -1,0 +1,71 @@
+{
+  "root": "/private/tmp/lumi-step5-prbzu0ey",
+  "binary": "/private/tmp/lumi-step5-prbzu0ey/lumi",
+  "binary_sha256": "6073666ffa0732035fb58eb53f40c55c65bf3a258057ec98bcca6e40c38a135f",
+  "project": "/private/tmp/lumi-step5-prbzu0ey/project",
+  "data_dir": "/private/tmp/lumi-step5-prbzu0ey/data",
+  "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+  "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+  "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4",
+  "setting_uuid": "01a18d87-40de-7a87-9234-af81f6c31107",
+  "resource_uri": "ui://lumi/review/3f81eafcb736428a40a3ad6d4a0e84190f6efa6371142f1624ddc50e5739813d.html",
+  "requests": {
+    "book": {
+      "name": "review_book",
+      "arguments": {}
+    },
+    "page": {
+      "name": "review_page",
+      "arguments": {
+        "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+        "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"
+      }
+    },
+    "candidates": {
+      "name": "review_candidates",
+      "arguments": {
+        "kind": "page",
+        "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+        "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"
+      }
+    },
+    "settings": {
+      "name": "review_settings",
+      "arguments": {}
+    }
+  },
+  "product_boundaries": [
+    {
+      "requested_max_edge": 256,
+      "width": 256,
+      "height": 170,
+      "jpeg_bytes": 6521,
+      "mcp_result_bytes": 9063,
+      "sha256": "2891f00796fede00deacf59f4da2ac4e60f95f34500a7463e5f5054a04158824"
+    },
+    {
+      "requested_max_edge": 384,
+      "width": 384,
+      "height": 256,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243,
+      "sha256": "8a41b750118bcb46ff52c33da113b9561bf1b49c9f59ae4decc7044687c6924e"
+    },
+    {
+      "requested_max_edge": 1024,
+      "width": 1024,
+      "height": 682,
+      "jpeg_bytes": 59595,
+      "mcp_result_bytes": 79829,
+      "sha256": "6928f59545060dc02171044d2c1cd7e05da4ba4f311211af439e83ce0ad39b23"
+    }
+  ],
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+  "host_status": "not_yet_tested",
+  "plugin": "lumi-review-prbzu0ey",
+  "marketplace": "lumi-review-prbzu0ey-local",
+  "register_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /private/tmp/lumi-step5-prbzu0ey/marketplace",
+  "remove_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace remove lumi-review-prbzu0ey-local"
+}

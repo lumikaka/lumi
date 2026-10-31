@@ -1,0 +1,911 @@
+{
+  "scope": "real Codex App callbacks, separately from CLI fixture smoke",
+  "resource_uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+  "new_resource_loaded": true,
+  "images": [
+    {
+      "request_id": 8,
+      "request_at": "2026-10-31T08:20:33.772399+00:00",
+      "result_at": "2026-10-31T08:20:33.978158+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14730,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 7,
+      "request_at": "2026-10-31T08:20:33.771058+00:00",
+      "result_at": "2026-10-31T08:20:33.981778+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 16278,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243
+    },
+    {
+      "request_id": 15,
+      "request_at": "2026-10-31T08:20:42.956708+00:00",
+      "result_at": "2026-10-31T08:20:43.070953+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 16279,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243
+    },
+    {
+      "request_id": 16,
+      "request_at": "2026-10-31T08:20:42.970163+00:00",
+      "result_at": "2026-10-31T08:20:43.076375+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14731,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 21,
+      "request_at": "2026-10-31T08:21:04.183175+00:00",
+      "result_at": "2026-10-31T08:21:04.282360+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 16279,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243
+    },
+    {
+      "request_id": 22,
+      "request_at": "2026-10-31T08:21:04.183464+00:00",
+      "result_at": "2026-10-31T08:21:04.293482+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14731,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 52,
+      "request_at": "2026-10-31T08:23:05.262649+00:00",
+      "result_at": "2026-10-31T08:23:05.464843+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 1024
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 79865,
+      "width": 1024,
+      "height": 682,
+      "data_uri_sha256": "76a4354202a7fa698c04b55422c2209dd56ada39bffb540f3348a0de79921157",
+      "jpeg_bytes_upper_bound": 59595,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 59595,
+      "mcp_result_bytes": 79829
+    },
+    {
+      "request_id": 61,
+      "request_at": "2026-10-31T08:24:05.231980+00:00",
+      "result_at": "2026-10-31T08:24:05.327574+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14731,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 78,
+      "request_at": "2026-10-31T08:25:05.731013+00:00",
+      "result_at": "2026-10-31T08:25:05.836542+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 16279,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243
+    },
+    {
+      "request_id": 80,
+      "request_at": "2026-10-31T08:25:05.731822+00:00",
+      "result_at": "2026-10-31T08:25:05.867180+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14731,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 133,
+      "request_at": "2026-10-31T08:35:42.500060+00:00",
+      "result_at": "2026-10-31T08:35:42.594218+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14732,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 178,
+      "request_at": "2026-10-31T08:50:03.862856+00:00",
+      "result_at": "2026-10-31T08:50:03.962990+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14732,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 177,
+      "request_at": "2026-10-31T08:50:03.861984+00:00",
+      "result_at": "2026-10-31T08:50:03.968426+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 16280,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 11905,
+      "mcp_result_bytes": 16243
+    },
+    {
+      "request_id": 183,
+      "request_at": "2026-10-31T08:50:26.872606+00:00",
+      "result_at": "2026-10-31T08:50:26.995599+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 1024
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 79866,
+      "width": 1024,
+      "height": 682,
+      "data_uri_sha256": "76a4354202a7fa698c04b55422c2209dd56ada39bffb540f3348a0de79921157",
+      "jpeg_bytes_upper_bound": 59595,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false,
+      "matches_frozen_product_preview": true,
+      "jpeg_bytes": 59595,
+      "mcp_result_bytes": 79829
+    },
+    {
+      "request_id": 187,
+      "request_at": "2026-10-31T08:50:40.375441+00:00",
+      "result_at": "2026-10-31T08:50:40.486543+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+        "max_edge": 1024
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 73958,
+      "width": 1024,
+      "height": 682,
+      "data_uri_sha256": "d192569b782616f69a80689eb3be6332f7ab532f8ad401d6979e7b90033581d5",
+      "jpeg_bytes_upper_bound": 55164,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    },
+    {
+      "request_id": 191,
+      "request_at": "2026-10-31T08:50:51.368830+00:00",
+      "result_at": "2026-10-31T08:50:51.444297+00:00",
+      "arguments": {
+        "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+        "max_edge": 384
+      },
+      "success": true,
+      "error": null,
+      "jsonrpc_wire_bytes": 14732,
+      "width": 384,
+      "height": 256,
+      "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "text_blocks": 1,
+      "has_duplicate_image_content": false
+    }
+  ],
+  "ws_changed_results": [
+    {
+      "at": "2026-10-31T08:21:41.580507+00:00",
+      "request_id": 26,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1910b-d3df-7b5a-b603-83e7b210d8c1",
+        "cursor": "2",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:21:41.580664+00:00",
+      "request_id": 25,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1910b-d3df-7b69-90dd-33e6a7a433b9",
+        "cursor": "2",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:21:41.580757+00:00",
+      "request_id": 24,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1910c-4a3f-774b-ab49-45eb160efae1",
+        "cursor": "1",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:27:48.504863+00:00",
+      "request_id": 96,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1910b-d3df-7b5a-b603-83e7b210d8c1",
+        "cursor": "11",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:27:48.505316+00:00",
+      "request_id": 97,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1910f-fc25-7271-a88c-0e765787314c",
+        "cursor": "4",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:59:13.368183+00:00",
+      "request_id": 222,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1912e-fb04-7c96-9b7a-0634df577515",
+        "cursor": "1",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    },
+    {
+      "at": "2026-10-31T08:59:30.896497+00:00",
+      "request_id": 225,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1912e-fb04-7c96-9b7a-0634df577515",
+        "cursor": "2",
+        "state": "changed",
+        "event": "comic:section_changed"
+      }
+    }
+  ],
+  "updated_review_results": [
+    {
+      "request_at": "2026-10-31T08:21:41.604428+00:00",
+      "result_at": "2026-10-31T08:21:41.615966+00:00",
+      "request_id": 33,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:21:41.604674+00:00",
+      "result_at": "2026-10-31T08:21:41.644692+00:00",
+      "request_id": 34,
+      "tool": "review_candidates",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:21:41.604862+00:00",
+      "result_at": "2026-10-31T08:21:41.670690+00:00",
+      "request_id": 36,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:22:30.294847+00:00",
+      "result_at": "2026-10-31T08:22:30.309611+00:00",
+      "request_id": 43,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:22:34.699450+00:00",
+      "result_at": "2026-10-31T08:22:34.720159+00:00",
+      "request_id": 46,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:23:04.807713+00:00",
+      "result_at": "2026-10-31T08:23:04.833091+00:00",
+      "request_id": 49,
+      "tool": "review_page",
+      "app_callback": false,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:23:05.363178+00:00",
+      "result_at": "2026-10-31T08:23:05.376117+00:00",
+      "request_id": 53,
+      "tool": "review_page",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:25:02.922040+00:00",
+      "result_at": "2026-10-31T08:25:02.940250+00:00",
+      "request_id": 71,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:25:05.702973+00:00",
+      "result_at": "2026-10-31T08:25:05.715724+00:00",
+      "request_id": 76,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:25:05.788726+00:00",
+      "result_at": "2026-10-31T08:25:05.795544+00:00",
+      "request_id": 82,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:25:07.348191+00:00",
+      "result_at": "2026-10-31T08:25:07.369377+00:00",
+      "request_id": 88,
+      "tool": "review_candidates",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:25:07.348342+00:00",
+      "result_at": "2026-10-31T08:25:07.388178+00:00",
+      "request_id": 89,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 6,
+      "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。"
+    },
+    {
+      "request_at": "2026-10-31T08:59:13.396795+00:00",
+      "result_at": "2026-10-31T08:59:13.409047+00:00",
+      "request_id": 226,
+      "tool": "review_book",
+      "app_callback": true,
+      "revision": 8,
+      "text": "真实宿主自动同步验收：星星回家了。"
+    }
+  ],
+  "change_to_app_reread_observed": true,
+  "ui_dom_and_screenshot": "passed for all four views; direct WS text update and restoration observed",
+  "restoration_pending": false,
+  "restored_page_revision": 9,
+  "user_visible_confirmation": {
+    "text": "实时验收 0.5.4：小狐狸找到了通往星空的路。",
+    "automatic_without_refresh": true,
+    "status": "已同步",
+    "source": "explicit user answer to live verification question"
+  },
+  "cli_open_entry_verified": true,
+  "full_lumi_original_image": {
+    "url": "http://127.0.0.1:63196/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/chapters/01a18d87-3ef0-7756-ad33-73b8cd3a5561/sections/01a18d87-3ef7-7bf6-9805-71ace00935d4",
+    "width": 1536,
+    "height": 1024,
+    "complete": true,
+    "scope": "full Lumi web UI through real CLI URL; does not prove App ui/open-link handler",
+    "screenshot": "screenshots/lumi-full-original.png"
+  },
+  "resource_contract_verified": [
+    {
+      "at": "2026-10-31T08:20:33.092966+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:20:33.270071+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:20:33.371042+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:20:33.423934+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:21:03.740872+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:21:27.684647+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:21:31.637496+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:22:30.128955+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:22:34.690474+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:23:04.841797+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:24:04.738707+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:24:42.036593+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:24:53.117204+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:25:24.355815+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:25:54.856424+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:29:31.827017+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:29:47.200478+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:29:50.793105+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:31:04.497369+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:34:54.868104+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:36:01.305411+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:36:50.393649+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:38:29.651071+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:42:27.711794+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:44:57.148694+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:45:48.402546+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:48:12.404625+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:48:13.491848+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:51:31.086403+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:52:17.544757+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:56:22.665690+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:56:25.310537+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:58:54.869709+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    },
+    {
+      "at": "2026-10-31T08:58:57.542098+00:00",
+      "uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "html_sha256": "cabb7294555900046f90b80ecc00435072080bf5b1b59645c7039a1db6e3b9b5"
+    }
+  ],
+  "direct_ws_update_dom": "host-ws-updated-dom.txt",
+  "direct_ws_update_screenshot": "screenshots/host-ws-updated.png"
+}

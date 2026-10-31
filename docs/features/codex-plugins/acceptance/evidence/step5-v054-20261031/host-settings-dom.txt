@@ -1,0 +1,39 @@
+- text: 外观
+- combobox "审阅外观":
+  - option "跟随宿主"
+  - option "浅色"
+  - option "深色" [selected]
+- main:
+  - paragraph: LUMI / 设定卡片
+  - heading "星星回家 · 审阅验收" [level=1]
+  - link "在 Lumi 中打开 ↗":
+    - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/chapters
+  - status: 已同步
+  - button "刷新内容"
+  - button "重新连接"
+  - navigation "审阅视图":
+    - button "整本"
+    - button "设定" [pressed]
+  - article:
+    - status:
+      - generic: ◩
+      - generic: 暂无图片
+    - paragraph: scene · r0
+    - heading "雨夜森林" [level=2]
+    - paragraph: 靛蓝色的树影与湿润的苔藓。星光在积水里映出回家的路。暂无参考图。
+    - link "在 Lumi 中打开 ↗":
+      - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/premise/assets/01a18d87-4177-75a5-8d4f-31399dac00ce
+    - button "查看图片候选"
+  - article:
+    - img "小狐狸"
+    - paragraph: character · r1
+    - heading "小狐狸" [level=2]
+    - paragraph: 橘红色毛发、白色胸口，穿黄色雨衣。遇到黑暗时会害怕，但愿意为了朋友再走一步。
+    - link "在 Lumi 中打开 ↗":
+      - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/premise/assets/01a18d87-40de-7a87-9234-af81f6c31107
+    - button "查看图片候选"
+  - navigation "审阅分页":
+    - button "上一组" [disabled]
+    - generic: 每组 20 项
+    - button "下一组" [disabled]
+  - generic: 缩略图供审阅使用 · 原图与完整编辑请在 Lumi 中打开

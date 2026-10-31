@@ -1,0 +1,58 @@
+{
+  "new_resource_loaded": true,
+  "resource_reads": 3,
+  "progress_emitted_by_server": [
+    {
+      "at": "2026-10-31T04:29:31.598779+00:00",
+      "progressToken": 7,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"joined\"}",
+      "progress": 1
+    },
+    {
+      "at": "2026-10-31T04:29:31.599222+00:00",
+      "progressToken": 4,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"joined\"}",
+      "progress": 1
+    },
+    {
+      "at": "2026-10-31T04:30:16.602857+00:00",
+      "progressToken": 7,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 2
+    },
+    {
+      "at": "2026-10-31T04:30:16.603470+00:00",
+      "progressToken": 4,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 2
+    },
+    {
+      "at": "2026-10-31T04:31:01.600903+00:00",
+      "progressToken": 7,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 3
+    },
+    {
+      "at": "2026-10-31T04:31:01.601513+00:00",
+      "progressToken": 4,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 3
+    },
+    {
+      "at": "2026-10-31T04:31:46.600553+00:00",
+      "progressToken": 7,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 4
+    },
+    {
+      "at": "2026-10-31T04:31:46.601002+00:00",
+      "progressToken": 4,
+      "message": "{\"project_uuid\":\"01a18d87-3d8d-779d-afcd-fa9a408439eb\",\"state\":\"heartbeat\"}",
+      "progress": 4
+    }
+  ],
+  "progress_received_by_view": "unverified",
+  "sidepanel_inventory": "empty",
+  "visual_acceptance": "awaiting_expansion",
+  "no_periodic_state_queries_observed": true
+}

@@ -1,0 +1,1379 @@
+{
+  "ttlMs": 0,
+  "cacheScope": "public",
+  "tools": [
+    {
+      "description": "Paginated compact structure across the whole book, including chapter and page UUIDs/revisions, roles, and text/image presence. Does not return prose.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "book_outline"
+    },
+    {
+      "description": "List/get chapters, create with project revision, update title, write prose, or soft-delete with chapter revision. txt/md supported.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_code",
+                "title",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "update"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "title",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "write"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "content",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "delete"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "get"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "list",
+              "get",
+              "create",
+              "update",
+              "write",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "chapter_code": {
+            "description": "Unique code such as vol01.ch01.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "content": {
+            "description": "Complete chapter prose.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "content_format": {
+            "enum": [
+              "txt",
+              "md"
+            ],
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": {
+            "description": "Chapter title.",
+            "maxLength": 120000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "chapters"
+    },
+    {
+      "description": "Export all text to markdown or ZIP (book.md + book.json + available page images), even before any artwork. PDF reuses existing image PDF export and requires at least one body image. Returns a local path inside this project.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_missing_images": {
+            "type": "boolean"
+          },
+          "format": {
+            "enum": [
+              "markdown",
+              "zip",
+              "pdf"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "allow_missing_images"
+        ],
+        "type": "object"
+      },
+      "name": "export_book"
+    },
+    {
+      "description": "Before host image generation, read the target ratio, closest common host ratio, composition guidance, suggested crop/pad and current revision. Settings use a square reference canvas; scenes follow the book ratio. No generation or provider call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "slot": {
+            "enum": [
+              "page_image",
+              "setting_image"
+            ],
+            "type": "string"
+          },
+          "target_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_uuid",
+          "slot"
+        ],
+        "type": "object"
+      },
+      "name": "image_target"
+    },
+    {
+      "description": "Immediately import the actual absolute file path returned by host image generation, including paths given in output hint text. Never guess paths, assume savedPath or scan directories. PNG/JPEG/WebP only, up to 32 MiB/40 million pixels. Creates a version with host_generated origin and original prompt. Ratio mismatch is advisory; default keep, optional centered crop or white pad. Reread target on conflict.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fit_mode": {
+            "enum": [
+              "keep",
+              "crop",
+              "pad"
+            ],
+            "type": "string"
+          },
+          "path": {
+            "description": "Actual absolute local file path from the host image tool result.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "slot": {
+            "enum": [
+              "page_image",
+              "setting_image"
+            ],
+            "type": "string"
+          },
+          "target_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "target_uuid",
+          "slot",
+          "expected_revision"
+        ],
+        "type": "object"
+      },
+      "name": "import_image"
+    },
+    {
+      "description": "List/get/create/update/soft-delete pages and their visual paragraphs. description_md stores page text; storyboard_md stores the complete scene description. Create uses state.revision from list; edits use page.revision. select_image selects an existing variant_uuid using the target's current expected_revision; reread before submitting a conversation candidate number.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "list"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "get"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "page_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "title",
+                "description_md",
+                "storyboard_md",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "update"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "page_uuid",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "delete"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "page_uuid",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "select_image"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "page_uuid",
+                "variant_uuid",
+                "expected_revision",
+                "chapter_uuid"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "list",
+              "get",
+              "create",
+              "update",
+              "delete",
+              "select_image"
+            ],
+            "type": "string"
+          },
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "description_md": {
+            "description": "Narrative, dialogue and captions.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "page_role": {
+            "enum": [
+              "body",
+              "front_cover",
+              "back_cover"
+            ],
+            "type": "string"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "storyboard_md": {
+            "description": "Visual paragraphs: composition, action, expression, lighting and exact visible copy.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "title": {
+            "description": "Page title.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "variant_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "pages"
+    },
+    {
+      "description": "Initialize only the process startup directory, preserving existing files. Creates a setup draft; idempotently opens existing projects.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "generation_language": {
+            "enum": [
+              "zh-Hans",
+              "en"
+            ],
+            "type": "string"
+          },
+          "idea": {
+            "description": "Original user idea, required for a new project.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "name": {
+            "description": "Project name; defaults to directory name.",
+            "maxLength": 120000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "type": "object"
+      },
+      "name": "project_init"
+    },
+    {
+      "description": "Read bound project identity, project revision, setup state and text counts.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "project_overview"
+    },
+    {
+      "description": "Read, edit, or finalize setup without providers. Update then finalize using the new revision. Final format is immutable.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "update"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "finalize"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "expected_revision"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "get",
+              "update",
+              "finalize"
+            ],
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "generation_brief": {
+            "description": "Creative brief.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "generation_language": {
+            "enum": [
+              "zh-Hans",
+              "en"
+            ],
+            "type": "string"
+          },
+          "overall_style": {
+            "description": "Visual style direction.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "picture_book": {
+            "additionalProperties": false,
+            "properties": {
+              "aspect_ratio": {
+                "additionalProperties": false,
+                "properties": {
+                  "height": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "enum": [
+                      "landscape",
+                      "square",
+                      "portrait",
+                      "custom"
+                    ],
+                    "type": "string"
+                  },
+                  "width": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "type": "object"
+              },
+              "comic_layout": {
+                "enum": [
+                  "four_panel",
+                  "page_comic"
+                ],
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "classic_picture_book",
+                  "wordless_picture_book",
+                  "interactive_picture_book",
+                  "comic_story",
+                  "vertical_strip"
+                ],
+                "type": "string"
+              },
+              "interaction_mode": {
+                "enum": [
+                  "find_it",
+                  "make_a_choice",
+                  "guess",
+                  "follow_along"
+                ],
+                "type": "string"
+              },
+              "large_image_minimal_text": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "type": "object"
+          },
+          "project_name": {
+            "description": "Final project title.",
+            "maxLength": 120000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "project_setup"
+    },
+    {
+      "description": "List effective project prompt metadata and required placeholders; templates remain in internal/promptcatalog, including project overrides.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "prompt_group": {
+            "enum": [
+              "story",
+              "chapter",
+              "premise",
+              "premise_style",
+              "agent",
+              "runtime"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "prompt_catalog"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "App-only bounded JPEG preview. No filesystem paths; use read_image for model references.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "max_edge": {
+            "maximum": 1024,
+            "minimum": 256,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_uuid"
+        ],
+        "type": "object"
+      },
+      "name": "read_app_image"
+    },
+    {
+      "description": "Read a project Asset UUID as a bounded MCP image for review or host generation reference. Use settings/pages get to obtain current_variant.asset.uuid or current_image.asset.uuid. Read reference images before host generation; use the host's recent conversation image reference mechanism, then immediately import the generated file.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "max_edge": {
+            "description": "Preview longest edge, default 1024; may shrink further to bound content size.",
+            "maximum": 1024,
+            "minimum": 256,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_uuid"
+        ],
+        "type": "object"
+      },
+      "name": "read_image"
+    },
+    {
+      "description": "Render an effective catalog template with project context and output requirements for Codex to execute. Returns a self-contained task, target UUID, expected_revision and write instructions. No provider is called. Supply missing task inputs in variables. Narrow context_chapter_uuids/context_setting_uuids if the result is too large.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "target": {
+                  "enum": [
+                    "chapter",
+                    "pages",
+                    "page"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "target": {
+                  "enum": [
+                    "page"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "page_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "target": {
+                  "enum": [
+                    "setting"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "context_chapter_uuids": {
+            "description": "Limit prompt context to these resources; [] omits the collection. Default: all. The write target is always included separately.",
+            "items": {
+              "description": "Public UUIDv7 from a previous read.",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "context_setting_uuids": {
+            "description": "Limit prompt context to these resources; [] omits the collection. Default: all. The write target is always included separately.",
+            "items": {
+              "description": "Public UUIDv7 from a previous read.",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "prompt_group": {
+            "enum": [
+              "story",
+              "chapter",
+              "premise",
+              "premise_style",
+              "agent",
+              "runtime"
+            ],
+            "type": "string"
+          },
+          "prompt_key": {
+            "description": "Key from prompt_catalog.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "setup",
+              "story_profile",
+              "chapter",
+              "pages",
+              "page",
+              "setting",
+              "premise"
+            ],
+            "type": "string"
+          },
+          "variables": {
+            "additionalProperties": {
+              "description": "Template task input; authoritative project context cannot be overridden.",
+              "maxLength": 120000,
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "prompt_group",
+          "prompt_key",
+          "target"
+        ],
+        "type": "object"
+      },
+      "name": "render_prompt"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Review the book as a paginated thumbnail grid with complete page text and Lumi links. Images load separately in the App.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "review_book"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Review numbered page/setting image versions or supplied text candidates. Local selection is unsaved; user replies with the candidate number in conversation, then reread and call the indicated write tool with expected_revision.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "page"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "page_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "setting"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "text"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "candidates"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "description": "Complete candidate text",
+                  "maxLength": 120000,
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Candidate title",
+                  "maxLength": 120000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "text"
+              ],
+              "type": "object"
+            },
+            "maxItems": 12,
+            "minItems": 2,
+            "type": "array"
+          },
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "page",
+              "setting",
+              "text"
+            ],
+            "type": "string"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "name": "review_candidates"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Review one page, its complete text/scene description and image history. Version switching is local preview only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_uuid",
+          "page_uuid"
+        ],
+        "type": "object"
+      },
+      "name": "review_page"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://lumi/review/bcbe3de01f6b773a91c7a44e0f0020a6ec8e918b9be2ace96b924aaf5729850b.html"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Review character/scene/prop/reference cards with full setting text. Optionally focus one setting.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "review_settings"
+    },
+    {
+      "description": "List/get/create/update/soft-delete text settings (character, scene, prop, reference); artwork is optional. Create uses premise.revision from list; edits use item.revision. select_image selects an existing variant_uuid using the target's current expected_revision; reread before submitting a conversation candidate number.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "get"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "asset_type",
+                "title",
+                "summary",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "update"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "delete"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid",
+                "expected_revision"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "select_image"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid",
+                "variant_uuid",
+                "expected_revision"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "list",
+              "get",
+              "create",
+              "update",
+              "delete",
+              "select_image"
+            ],
+            "type": "string"
+          },
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "asset_type": {
+            "enum": [
+              "character",
+              "scene",
+              "prop",
+              "reference"
+            ],
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Full text description, up to 12000 characters.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "description": "Search tag.",
+              "maxLength": 120000,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "title": {
+            "description": "Setting title.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "variant_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "settings"
+    },
+    {
+      "description": "Read or write the canonical Story Profile and STORY.md projection.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "write"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "story_md",
+                "expected_revision"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "get",
+              "write"
+            ],
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "story_md": {
+            "description": "Complete STORY.md content.",
+            "maxLength": 120000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "story_profile"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "App-only live WebSocket hint relay over MCP progress notifications. One long-lived call, no polling or business writes. Requires a progress token; cancel when the View closes.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "project_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_uuid"
+        ],
+        "type": "object"
+      },
+      "name": "watch_app_changes"
+    }
+  ]
+}

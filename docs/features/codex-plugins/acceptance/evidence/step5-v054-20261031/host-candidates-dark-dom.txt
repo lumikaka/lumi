@@ -1,0 +1,35 @@
+- text: 外观
+- combobox "审阅外观":
+  - option "跟随宿主"
+  - option "浅色"
+  - option "深色" [selected]
+- main:
+  - paragraph: LUMI / 候选审阅
+  - heading "星星回家 · 审阅验收" [level=1]
+  - link "在 Lumi 中打开 ↗":
+    - /url: http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/chapters/01a18d87-3ef0-7756-ad33-73b8cd3a5561/sections/01a18d87-3ef7-7bf6-9805-71ace00935d4
+  - status: 已同步
+  - button "刷新内容"
+  - button "重新连接"
+  - navigation "审阅视图":
+    - button "整本"
+    - button "设定"
+    - button "返回单页"
+  - paragraph: 选择只保留在当前界面。请在对话中回复候选编号，由模型重读后提交。
+  - article:
+    - img "候选 2：版本 2"
+    - button "02 版本 2":
+      - generic: "02"
+      - generic: 版本 2
+      - generic: ○
+    - paragraph: WebSocket 提示后从 REST 重读的最新正文。
+    - text: 当前使用
+  - article:
+    - img "候选 1：版本 1"
+    - button "01 版本 1" [active] [pressed]:
+      - generic: "01"
+      - generic: 版本 1
+      - generic: ●
+    - paragraph: WebSocket 提示后从 REST 重读的最新正文。
+  - status: 已在界面选中 1，尚未保存。请在对话中回复“选择 1”。
+  - generic: 缩略图供审阅使用 · 原图与完整编辑请在 Lumi 中打开

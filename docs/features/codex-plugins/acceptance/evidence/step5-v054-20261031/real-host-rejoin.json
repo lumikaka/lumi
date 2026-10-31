@@ -1,0 +1,32 @@
+{
+  "scope": "real Host, same MCP process; only disposable CLI daemon restarted",
+  "old_endpoint": "http://127.0.0.1:63196",
+  "new_endpoint": "http://127.0.0.1:57113",
+  "timeline": [
+    {
+      "at": "2026-10-31T08:36:56.543293+00:00",
+      "kind": "disconnect",
+      "request_id": 142
+    },
+    {
+      "at": "2026-10-31T08:36:56.885738+00:00",
+      "kind": "rejoined",
+      "request_id": 146,
+      "data": {
+        "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+        "subscription_uuid": "01a1911a-d3b5-7785-a2df-1069a56511c1",
+        "cursor": "0",
+        "state": "joined"
+      }
+    },
+    {
+      "at": "2026-10-31T08:36:56.894019+00:00",
+      "kind": "app_review_new_endpoint",
+      "request_id": 147,
+      "view": "candidates",
+      "open_url": "http://127.0.0.1:57113/projects/01a18d87-3d8d-779d-afcd-fa9a408439eb/premise/assets/01a18d87-40de-7a87-9234-af81f6c31107"
+    }
+  ],
+  "automatic_rejoin_and_app_reread_proven": true,
+  "visible_status_confirmation": "user confirmed automatically restored to 已同步; direct manual reconnect also verified in host-manual-reconnect-dom.txt"
+}

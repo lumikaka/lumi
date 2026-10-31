@@ -1,0 +1,174 @@
+{
+  "scope": "real Host callback results; durations are measured between joined and later results, not inferred from a state file",
+  "streams": {
+    "01a1910b-d3df-7b5a-b603-83e7b210d8c1": {
+      "joined_at": "2026-10-31T08:20:33.888380+00:00",
+      "last_result_at": "2026-10-31T08:30:18.889870+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "changed",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "changed",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 585.00149
+    },
+    "01a1910b-d3df-7b69-90dd-33e6a7a433b9": {
+      "joined_at": "2026-10-31T08:20:33.888548+00:00",
+      "last_result_at": "2026-10-31T08:25:48.891646+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "changed",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 315.003098
+    },
+    "01a1910c-4a3f-774b-ab49-45eb160efae1": {
+      "joined_at": "2026-10-31T08:21:04.191673+00:00",
+      "last_result_at": "2026-10-31T08:23:19.193638+00:00",
+      "states": [
+        "joined",
+        "changed",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 135.001965
+    },
+    "01a1910e-2356-7d84-8a94-eaaef64b9b10": {
+      "joined_at": "2026-10-31T08:23:05.306934+00:00",
+      "last_result_at": "2026-10-31T08:24:35.302684+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 89.99575
+    },
+    "01a1910f-0d71-7a19-bfb2-173b643a8b54": {
+      "joined_at": "2026-10-31T08:24:05.233912+00:00",
+      "last_result_at": "2026-10-31T08:25:05.731645+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "closed"
+      ],
+      "observed_seconds": 60.497733
+    },
+    "01a1910f-f9ee-7080-8fa9-2ddacd6e2612": {
+      "joined_at": "2026-10-31T08:25:05.774349+00:00",
+      "last_result_at": "2026-10-31T08:25:06.328470+00:00",
+      "states": [
+        "joined",
+        "closed"
+      ],
+      "observed_seconds": 0.554121
+    },
+    "01a1910f-fc25-7271-a88c-0e765787314c": {
+      "joined_at": "2026-10-31T08:25:06.341345+00:00",
+      "last_result_at": "2026-10-31T08:30:21.343705+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "changed",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 315.00236
+    },
+    "01a19114-836e-7b9c-ab54-d1b757f9d8f9": {
+      "joined_at": "2026-10-31T08:30:03.119308+00:00",
+      "last_result_at": "2026-10-31T08:35:50.062309+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "closed"
+      ],
+      "observed_seconds": 346.943001
+    },
+    "01a19119-ceba-7445-8bb0-17d997c2edfe": {
+      "joined_at": "2026-10-31T08:35:50.074511+00:00",
+      "last_result_at": "2026-10-31T08:36:35.075977+00:00",
+      "states": [
+        "joined",
+        "heartbeat"
+      ],
+      "observed_seconds": 45.001466
+    },
+    "01a1911a-d3b5-7785-a2df-1069a56511c1": {
+      "joined_at": "2026-10-31T08:36:56.885738+00:00",
+      "last_result_at": "2026-10-31T08:45:11.887150+00:00",
+      "states": [
+        "joined",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat",
+        "heartbeat"
+      ],
+      "observed_seconds": 495.001412
+    }
+  },
+  "longest_observed_seconds": 585.00149,
+  "explicit_close_results": [
+    {
+      "at": "2026-10-31T08:25:05.731645+00:00",
+      "subscription_uuid": "01a1910f-0d71-7a19-bfb2-173b643a8b54"
+    },
+    {
+      "at": "2026-10-31T08:25:06.328470+00:00",
+      "subscription_uuid": "01a1910f-f9ee-7080-8fa9-2ddacd6e2612"
+    },
+    {
+      "at": "2026-10-31T08:35:50.062309+00:00",
+      "subscription_uuid": "01a19114-836e-7b9c-ab54-d1b757f9d8f9"
+    }
+  ],
+  "quiet_window": {
+    "start": "2026-10-31T08:30:03.140172+00:00",
+    "end": "2026-10-31T08:34:54.684808+00:00",
+    "seconds": 291.544636,
+    "review_tool_calls": 1,
+    "description": "WS heartbeat results and event waits continued. One review read occurred; timestamps alone do not identify its trigger. Source/tests verify heartbeat does not invalidate Query.",
+    "after_last_review": {
+      "start": "2026-10-31T08:31:04.679177+00:00",
+      "end": "2026-10-31T08:34:54.684808+00:00",
+      "seconds": 230.005631,
+      "review_tool_calls": 0,
+      "heartbeat_results": 5
+    }
+  }
+}

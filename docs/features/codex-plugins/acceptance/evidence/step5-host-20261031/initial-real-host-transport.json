@@ -1,0 +1,84 @@
+{
+  "observed_at_utc": "2026-10-31T03:17:56.061427+00:00",
+  "scope": "real Codex App plugin tool calls and App callbacks; sidepanel visual verification pending",
+  "thread_uuid": "01a18d79-7388-7b52-a831-95dde3360928",
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+  "plugin_version": "0.5.2",
+  "resources": [
+    {
+      "uri": "ui://lumi/review/9984d28e7a6b92df9a8d66fc2421fa1c9081975a2f540113890a94ac2848cbbd.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [
+          "ws://127.0.0.1:63196"
+        ],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "actual_html_sha256_verified": true,
+      "html_chars": 282684
+    },
+    {
+      "uri": "ui://lumi/review/9984d28e7a6b92df9a8d66fc2421fa1c9081975a2f540113890a94ac2848cbbd.html",
+      "mime_type": "text/html;profile=mcp-app",
+      "csp": {
+        "connectDomains": [
+          "ws://127.0.0.1:63196"
+        ],
+        "frameDomains": [],
+        "resourceDomains": []
+      },
+      "actual_html_sha256_verified": true,
+      "html_chars": 282684
+    }
+  ],
+  "real_app_image_callbacks": [
+    {
+      "request_id": 8,
+      "arguments": {
+        "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+        "max_edge": 384
+      },
+      "result_at_utc": "2026-10-31T03:14:15.390145+00:00",
+      "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+      "width": 384,
+      "height": 256,
+      "mime_type": "image/jpeg",
+      "uri_chars": 14351,
+      "uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+      "jpeg_bytes_upper_bound": 10746,
+      "serialized_mcp_result_bytes": 14695,
+      "is_error": false,
+      "content_types": [
+        "text"
+      ]
+    },
+    {
+      "request_id": 9,
+      "arguments": {
+        "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+        "max_edge": 384
+      },
+      "result_at_utc": "2026-10-31T03:14:15.411290+00:00",
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "width": 384,
+      "height": 256,
+      "mime_type": "image/jpeg",
+      "uri_chars": 15899,
+      "uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+      "jpeg_bytes_upper_bound": 11907,
+      "serialized_mcp_result_bytes": 16243,
+      "is_error": false,
+      "content_types": [
+        "text"
+      ],
+      "jpeg_bytes": 11905,
+      "jpeg_sha256": "8a41b750118bcb46ff52c33da113b9561bf1b49c9f59ae4decc7044687c6924e",
+      "expected_product_preview_matches": true
+    }
+  ],
+  "visual_verification": "pending_sidepanel_expansion",
+  "websocket_status": "pending_dom_observation"
+}

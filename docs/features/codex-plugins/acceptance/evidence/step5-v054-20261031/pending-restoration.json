@@ -1,0 +1,14 @@
+{
+  "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+  "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+  "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4",
+  "previous_text": "WebSocket 提示后从 REST 重读的最新正文。",
+  "previous_revision": 7,
+  "current_test_text": "真实宿主自动同步验收：星星回家了。",
+  "test_revision": 8,
+  "restoration_pending": false,
+  "instructions": "After visual confirmation, reread via pages get and restore description_md with the fresh expected_revision. Do not edit SQLite.",
+  "restored_revision": 9,
+  "user_confirmation": "Automatically updated without refresh; status is 已同步.",
+  "direct_ui_dom_and_screenshot": "host-ws-updated-dom.txt; screenshots/host-ws-updated.png"
+}

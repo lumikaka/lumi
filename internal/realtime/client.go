@@ -18,13 +18,14 @@ const (
 )
 
 type Client struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	ctx    context.Context
-	send   chan []byte
-	done   chan struct{}
-	once   sync.Once
-	writer sync.WaitGroup
+	hub          *Hub
+	conn         *websocket.Conn
+	ctx          context.Context
+	send         chan []byte
+	done         chan struct{}
+	once         sync.Once
+	writer       sync.WaitGroup
+	allowedTopic string // Nonempty only for a validated project-scoped App ticket.
 }
 
 func newClient(ctx context.Context, hub *Hub, conn *websocket.Conn) *Client {
@@ -94,6 +95,10 @@ func (client *Client) handle(frame Frame) {
 }
 
 func (client *Client) handleJoin(frame Frame) {
+	if client.allowedTopic != "" && frame.Topic != client.allowedTopic {
+		client.sendProtocolError(frame.Topic, frame.Ref, frame.JoinRef, "invalid_topic", "App ticket only permits its bound project")
+		return
+	}
 	if frame.Ref == nil || *frame.Ref == "" {
 		client.sendProtocolError(frame.Topic, frame.Ref, frame.JoinRef, "missing_ref", "join requires a ref")
 		return

@@ -1,0 +1,19 @@
+{
+  "browser-fallback-ax.txt": "c81c9be4d9b4d26c45850ba99dc5b26a92cb3b8977bd6d8667933e95299726cf",
+  "browser-final-ax.txt": "58b52f49e05bb312ae940c0b50b98a2e214011437d364a479f73aa999d293961",
+  "browser-fixture-manifest.json": "7ef67678b9b853b4b1cd27c9c5359f8525f031158c94f50075306378e909beb6",
+  "browser-requests.jsonl": "1012d7f9b0744ebceba250693d6efa5c7e682684913106835d7395bcc7245309",
+  "completion-audit.json": "910f04a2bbd4443fe7484d7a7497449c448323dc7341c66279e5cfd2cf17a580",
+  "fixture-manifest.json": "c4c5d8c5ba856d2d8cf54580cf8d0bb3e60d9c6d786a45d4a7491053d8c0c054",
+  "go-tests.txt": "73f7f03876f563920403395f6b84244bb96236625ace9d966c9b3b44583b3de4",
+  "installation-state.json": "b2526b3c2155369de497383849f57598fcc55ee9a310adb5ac94196f0ff5986e",
+  "installed-entrypoint-smoke.json": "53c93db3df83225dc21e7b633fd8625d6fb22ec12d366d7b64c370363638fafa",
+  "screenshots/browser-book-light.png": "d01122769f02f0c82faae1aabd6207ff93e51c7b0637d6ec2099800c45b772d1",
+  "screenshots/browser-candidates-dark.png": "49e366b6351ecc5390a71af0552ba39aa5a15fd74f31f5186139b29602fa183f",
+  "screenshots/browser-final-candidates.png": "90d3d5c51045600918c49e5fb489d77d4470fe9de5d170b5ff5af903b3a32338",
+  "screenshots/browser-final-page.png": "6fa6ab8d792e61a990a7b6d04980ed5beccc2067fc3a323f9e38a68d7ae17fee",
+  "screenshots/browser-image-error.png": "8a2e1ff2d8c7f0a8b11c9064b1031739cdc0f9d677ba77eef86689c26dabf606",
+  "screenshots/browser-page-version1.png": "1397d5155a03a9ce17ca2d9fcafaab410796a3e25b9b5fc4302319abd5ddb554",
+  "screenshots/browser-settings-dark.png": "8721537fcbb889431dae592e8069e8f987979c34503f6377eba6ada216260f38",
+  "web-tests.txt": "a95517ad7d8b9b0343b152ed7796fd18f287b4993d0893f4a096397374d9504b"
+}

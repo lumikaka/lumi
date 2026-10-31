@@ -1,0 +1,29 @@
+{
+  "observed_at_utc": "2026-10-31T03:20:11.514871+00:00",
+  "plugin": "lumi-review-prbzu0ey",
+  "version": "0.5.2",
+  "marketplace": "lumi-review-prbzu0ey-local",
+  "marketplace_registered": true,
+  "registered_source": "/private/tmp/lumi-step5-prbzu0ey/marketplace",
+  "installed": true,
+  "enabled": true,
+  "registration_approval": "user explicitly approved registration",
+  "installation_approval": "user explicitly approved actual installation",
+  "installation_auto_review": {
+    "status": "rejected_before_execution",
+    "reason": "User explicitly approved marketplace registration; actual installation changes local Codex software and permission state and needs separate approval.",
+    "resolved_by": "explicit user installation approval",
+    "subsequent_attempt": "succeeded"
+  },
+  "verification_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin list --marketplace lumi-review-prbzu0ey-local --available --json",
+  "installed_path": "/Users/qingyang/.codex/plugins/cache/lumi-review-prbzu0ey-local/lumi-review-prbzu0ey/0.5.2",
+  "install_command": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin add lumi-review-prbzu0ey@lumi-review-prbzu0ey-local --json",
+  "install_exit_code": 0,
+  "current_chat_production_tools": [
+    "review_book",
+    "review_candidates",
+    "review_page",
+    "review_settings"
+  ],
+  "remaining_action": "expand inline Lumi review card into the sidepanel for supported UI observation"
+}

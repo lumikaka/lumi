@@ -1,0 +1,15 @@
+{
+  "checked_at_utc": "2026-10-31T08:17:15.346982+00:00",
+  "source_hashes_match": true,
+  "source_file_count": 49,
+  "current_binary_matches": true,
+  "resource_uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+  "web_tests": 435,
+  "go_tests": "passed",
+  "watch_race_test": "passed",
+  "host_status": "complete_v054_real_host_and_automated_checks_passed",
+  "app_version": "26.1027.30824",
+  "app_build": "22943",
+  "bundled_cli_version": "codex-cli 0.166.0-alpha.5.1",
+  "cli_real_ws_wait_smoke": "passed_45_seconds_no_business_reads"
+}

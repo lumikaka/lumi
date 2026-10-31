@@ -1,0 +1,75 @@
+{
+  "scope": "Real Codex model tools; approved disposable project only. No UI business write. Existing project conversation selection and export, not a new Step 3 initialization run.",
+  "project_uuid": "01a18d87-3d8d-779d-afcd-fa9a408439eb",
+  "text_candidates": [
+    {
+      "number": 2,
+      "uuid": "01a18d87-3fcb-776a-9e79-08754db72ef6",
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "text": "WebSocket 提示后从 REST 重读的最新正文。"
+    },
+    {
+      "number": 1,
+      "uuid": "01a18d87-3f2d-7e50-8def-709b6aa099f3",
+      "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+      "text": "WebSocket 提示后从 REST 重读的最新正文。"
+    }
+  ],
+  "before": {
+    "revision": 3,
+    "current_variant_uuid": "01a18d87-3fcb-776a-9e79-08754db72ef6",
+    "current_asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+    "version_no": 2,
+    "description_md": "WebSocket 提示后从 REST 重读的最新正文。"
+  },
+  "selection_request": {
+    "action": "select_image",
+    "chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561",
+    "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4",
+    "variant_uuid": "01a18d87-3f2d-7e50-8def-709b6aa099f3",
+    "expected_revision": 3
+  },
+  "selected": {
+    "revision": 4,
+    "current_variant_uuid": "01a18d87-3f2d-7e50-8def-709b6aa099f3",
+    "current_asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+    "version_no": 1
+  },
+  "stale_conflict": {
+    "success": false,
+    "data": null,
+    "error": {
+      "code": "production_conflict",
+      "message": "Section 已被修改",
+      "details": "刷新后重试。"
+    }
+  },
+  "after_reread": {
+    "revision": 4,
+    "current_variant_uuid": "01a18d87-3f2d-7e50-8def-709b6aa099f3",
+    "current_asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+    "version_no": 1,
+    "description_md": "WebSocket 提示后从 REST 重读的最新正文。"
+  },
+  "restored": {
+    "revision": 5,
+    "current_variant_uuid": "01a18d87-3fcb-776a-9e79-08754db72ef6",
+    "current_asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+    "version_no": 2,
+    "description_md": "WebSocket 提示后从 REST 重读的最新正文。"
+  },
+  "text_preserved": true,
+  "export": {
+    "byte_size": 3257,
+    "format": "markdown",
+    "missing_image_count": 1,
+    "path": "/private/tmp/lumi-step5-prbzu0ey/project/.lumi/exports/text-01a190e3-d5b3-7eb1-ac4b-b6c24590393a.md",
+    "uuid": "01a190e3-d5b3-7eb1-ac4b-b6c24590393a"
+  },
+  "observed_host_approval": "Writes completed through host tools; no extra approval request was presented to this agent. Does not prove UI write approval behavior.",
+  "export_verification": {
+    "bytes": 3257,
+    "sha256": "e6d860692573451e1cd2cae55b20c6afe912e01fdcfd411e02f6eddf9fefbfdc",
+    "all_three_pages_and_settings_present": true
+  }
+}

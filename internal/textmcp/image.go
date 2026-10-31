@@ -3,6 +3,7 @@ package textmcp
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -93,4 +94,37 @@ func imageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
 	preview.ImageData = nil
 	envelope.Data = preview
 	return boundedResult(envelope, content)
+}
+
+// The App gets exactly one representation. Only structured content carries the
+// data URI; the text block remains a small, readable metadata envelope.
+func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
+	if !envelope.Success {
+		return boundedResult(envelope)
+	}
+	b, err := json.Marshal(envelope.Data)
+	if err != nil {
+		return nil, err
+	}
+	var p imageResult
+	if json.Unmarshal(b, &p) != nil || len(p.ImageData) == 0 || len(p.ImageData) > maxPreviewBytes {
+		return boundedResult(Failure("asset_content_invalid", "图片预览无效", "重新读取图片。"))
+	}
+	uri := "data:" + p.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(p.ImageData)
+	p.ImageData = nil
+	summary := httpapi.Envelope{Success: true, Data: p}
+	b, err = json.Marshal(summary)
+	if err != nil {
+		return nil, err
+	}
+	envelope.Data = map[string]any{"asset_uuid": p.AssetUUID, "mime_type": p.MIMEType, "width": p.Width, "height": p.Height, "data_uri": uri}
+	result := &mcp.CallToolResult{StructuredContent: envelope, Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}
+	wire, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	if len(wire) > MaxBytes-1024 {
+		return boundedResult(Failure("result_too_large", "图片结果超过 256 KiB", "使用更小的 max_edge。"))
+	}
+	return result, nil
 }

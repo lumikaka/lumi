@@ -2,6 +2,7 @@ package textmcp
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -41,6 +42,34 @@ func TestImageReferenceContentIsBoundedAndNotDuplicatedInJSON(t *testing.T) {
 	imported := object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"], "prompt": "Keep the fox"}))
 	asset := imported["asset"].(map[string]any)
 	internal := invoke(t, s, root, "read_image", map[string]any{"asset_uuid": asset["uuid"]})
+	appInternal := invoke(t, s, root, "read_app_image", map[string]any{"asset_uuid": asset["uuid"]})
+	app, err := appImageToolResult(appInternal)
+	if err != nil || app.IsError || len(app.Content) != 1 {
+		t.Fatal(app, err)
+	}
+	wireApp, _ := json.Marshal(app)
+	if len(wireApp) > MaxBytes {
+		t.Fatalf("app bytes=%d", len(wireApp))
+	}
+	var appEnvelope struct {
+		Data struct {
+			URI           string `json:"data_uri"`
+			Width, Height int
+		} `json:"data"`
+	}
+	appBytes, _ := json.Marshal(app.StructuredContent)
+	_ = json.Unmarshal(appBytes, &appEnvelope)
+	previewBytes, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(appEnvelope.Data.URI, "data:image/jpeg;base64,"))
+	if err != nil || len(previewBytes) > maxPreviewBytes || max(appEnvelope.Data.Width, appEnvelope.Data.Height) > 1024 {
+		t.Fatal("unbounded app image")
+	}
+	if strings.Contains(app.Content[0].(*mcp.TextContent).Text, "data_uri") || strings.Contains(string(wireApp), "image_data") {
+		t.Fatal("duplicated image")
+	}
+	other, otherRoot, _ := harness(t)
+	if got := code(invoke(t, other, otherRoot, "read_app_image", map[string]any{"asset_uuid": asset["uuid"]})); got != files.CodeAssetNotFound {
+		t.Fatalf("cross-project=%s", got)
+	}
 	result, err := imageToolResult(internal)
 	if err != nil || result.IsError || len(result.Content) != 2 {
 		t.Fatalf("result=%+v err=%v", result, err)
@@ -75,6 +104,9 @@ func TestImageReferenceContentIsBoundedAndNotDuplicatedInJSON(t *testing.T) {
 	}
 	if got := code(invoke(t, s, root, "read_image", map[string]any{"asset_uuid": textAsset.UUID})); got != files.CodeTypeNotAllowed {
 		t.Fatalf("text read=%s", got)
+	}
+	if got := code(invoke(t, s, root, "read_app_image", map[string]any{"asset_uuid": textAsset.UUID})); got != files.CodeTypeNotAllowed {
+		t.Fatal(got)
 	}
 }
 

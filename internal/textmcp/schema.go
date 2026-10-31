@@ -65,7 +65,7 @@ func Specs() []Spec {
 		"aspect_ratio":             obj(map[string]any{"mode": enum("landscape", "square", "portrait", "custom"), "width": map[string]any{"type": "integer", "minimum": 1}, "height": map[string]any{"type": "integer", "minimum": 1}}, "mode"),
 		"large_image_minimal_text": boolSchema, "interaction_mode": enum("find_it", "make_a_choice", "guess", "follow_along"), "comic_layout": enum("four_panel", "page_comic"),
 	}, "format")
-	return []Spec{
+	specs := []Spec{
 		{"project_init", "Initialize only the process startup directory, preserving existing files. Creates a setup draft; idempotently opens existing projects.", obj(map[string]any{"name": str("Project name; defaults to directory name."), "generation_language": enum("zh-Hans", "en"), "idea": str("Original user idea, required for a new project.")}, "idea")},
 		{"project_overview", "Read bound project identity, project revision, setup state and text counts.", obj(map[string]any{})},
 		{"project_setup", "Read, edit, or finalize setup without providers. Update then finalize using the new revision. Final format is immutable.", actionSchema(map[string]any{"action": enum("get", "update", "finalize"), "expected_revision": rev, "project_name": str("Final project title."), "generation_language": enum("zh-Hans", "en"), "overall_style": str("Visual style direction."), "generation_brief": str("Creative brief."), "picture_book": pictureBook}, map[string][]string{"update": {"expected_revision"}, "finalize": {"expected_revision"}})},
@@ -81,6 +81,40 @@ func Specs() []Spec {
 		{"read_image", "Read a project Asset UUID as a bounded MCP image for review or host generation reference. Use settings/pages get to obtain current_variant.asset.uuid or current_image.asset.uuid. Read reference images before host generation; use the host's recent conversation image reference mechanism, then immediately import the generated file.", obj(map[string]any{"asset_uuid": uuid, "max_edge": map[string]any{"type": "integer", "minimum": 256, "maximum": 1024, "description": "Preview longest edge, default 1024; may shrink further to bound content size."}}, "asset_uuid")},
 		{"export_book", "Export all text to markdown or ZIP (book.md + book.json + available page images), even before any artwork. PDF reuses existing image PDF export and requires at least one body image. Returns a local path inside this project.", obj(map[string]any{"format": enum("markdown", "zip", "pdf"), "allow_missing_images": boolSchema}, "format", "allow_missing_images")},
 	}
+	for i := range specs {
+		if specs[i].Name != "pages" && specs[i].Name != "settings" {
+			continue
+		}
+		p := specs[i].Schema["properties"].(map[string]any)
+		p["action"].(map[string]any)["enum"] = append(p["action"].(map[string]any)["enum"].([]string), "select_image")
+		p["variant_uuid"] = uuid
+		fields := []string{"setting_uuid", "variant_uuid", "expected_revision"}
+		if specs[i].Name == "pages" {
+			fields[0] = "page_uuid"
+			fields = append(fields, "chapter_uuid")
+		}
+		conditions := specs[i].Schema["allOf"].([]any)
+		specs[i].Schema["allOf"] = append(conditions, map[string]any{"if": map[string]any{"properties": map[string]any{"action": enum("select_image")}}, "then": map[string]any{"required": fields}})
+		specs[i].Description += " select_image selects an existing variant_uuid using the target's current expected_revision; reread before submitting a conversation candidate number."
+	}
+	candidateSchema := obj(map[string]any{
+		"kind": enum("page", "setting", "text"), "chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid,
+		"candidates": map[string]any{"type": "array", "minItems": 2, "maxItems": 12, "items": obj(map[string]any{"title": str("Candidate title"), "text": str("Complete candidate text")}, "title", "text")},
+	}, "kind")
+	for kind, fields := range map[string][]string{"page": {"chapter_uuid", "page_uuid"}, "setting": {"setting_uuid"}, "text": {"candidates"}} {
+		conditions, _ := candidateSchema["allOf"].([]any)
+		candidateSchema["allOf"] = append(conditions, map[string]any{"if": map[string]any{"properties": map[string]any{"kind": enum(kind)}}, "then": map[string]any{"required": fields}})
+	}
+	watchSchema := actionSchema(map[string]any{"action": enum("open", "next", "close"), "project_uuid": uuid, "subscription_uuid": uuid, "cursor": map[string]any{"type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$"}}, map[string][]string{"open": {"project_uuid"}, "next": {"project_uuid", "subscription_uuid", "cursor"}, "close": {"project_uuid", "subscription_uuid"}})
+	return append(specs,
+		Spec{"read_app_image", "App-only bounded JPEG preview. No filesystem paths; use read_image for model references.", obj(map[string]any{"asset_uuid": uuid, "max_edge": map[string]any{"type": "integer", "minimum": 256, "maximum": 1024}}, "asset_uuid")},
+		Spec{"read_app_connection", "Internal CLI connection descriptor for the bound project's hint relay; not registered as an MCP tool.", obj(map[string]any{})},
+		Spec{"watch_app_changes", "App-only WS event subscription. open joins the bound project, next blocks for a real WS change or keepalive, close releases it. Cursor prevents missed changes between calls. No timed business-state queries or writes.", watchSchema},
+		Spec{"review_book", "Review the book as a paginated thumbnail grid with complete page text and Lumi links. Images load separately in the App.", obj(paged(map[string]any{}))},
+		Spec{"review_page", "Review one page, its complete text/scene description and image history. Version switching is local preview only.", obj(map[string]any{"chapter_uuid": uuid, "page_uuid": uuid}, "chapter_uuid", "page_uuid")},
+		Spec{"review_settings", "Review character/scene/prop/reference cards with full setting text. Optionally focus one setting.", obj(paged(map[string]any{"setting_uuid": uuid}))},
+		Spec{"review_candidates", "Review numbered page/setting image versions or supplied text candidates. Local selection is unsaved; user replies with the candidate number in conversation, then reread and call the indicated write tool with expected_revision.", candidateSchema},
+	)
 }
 
 var schemas = sync.OnceValue(func() map[string]*jsonschema.Resolved {

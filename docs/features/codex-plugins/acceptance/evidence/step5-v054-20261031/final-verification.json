@@ -1,0 +1,25 @@
+{
+  "checked_at_utc": "2026-10-31T09:09:23.679807+00:00",
+  "requirements_passed": 24,
+  "completion_proven": true,
+  "source_hashes_match": true,
+  "source_file_count": 49,
+  "binary_sha256": "3847cd531984b728a2cf81a361b64506195169d88874ed1ebfcdcd94875713ed",
+  "resource_uri": "ui://lumi/review/47db6bd0ede0afed29cf47c5a6a588543455866254c8369a937dc56e3464b2bb.html",
+  "web_tests": 435,
+  "go_test_all": "passed",
+  "watch_race_test": "passed",
+  "screenshots_valid": 8,
+  "ui_callback_tools": [
+    "read_app_image",
+    "review_book",
+    "review_candidates",
+    "review_page",
+    "review_settings",
+    "watch_app_changes"
+  ],
+  "ui_domain_write_calls": 0,
+  "forbidden_paths_modified": [],
+  "pending_restorations": false,
+  "remaining_required_work": []
+}

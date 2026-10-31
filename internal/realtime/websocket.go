@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -40,6 +41,24 @@ func (handler *WebSocketHandler) Serve(c echo.Context) error {
 		return nil
 	}
 	newClient(c.Request().Context(), handler.hub, connection).run()
+	return nil
+}
+
+// ServeProjectApp must only be called after validating a CLI-issued ticket.
+// Sandboxed Apps may have an opaque Origin; the ticket replaces Origin trust
+// solely for this read-only, single-project hint channel.
+func (handler *WebSocketHandler) ServeProjectApp(c echo.Context, projectUUID string, expires time.Time) error {
+	upgrader := handler.upgrader
+	upgrader.CheckOrigin = func(*http.Request) bool { return true }
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return nil
+	}
+	client := newClient(c.Request().Context(), handler.hub, conn)
+	client.allowedTopic = ProjectTopic(projectUUID)
+	timer := time.AfterFunc(time.Until(expires), func() { client.shutdown(); _ = conn.Close() })
+	defer timer.Stop()
+	client.run()
 	return nil
 }
 

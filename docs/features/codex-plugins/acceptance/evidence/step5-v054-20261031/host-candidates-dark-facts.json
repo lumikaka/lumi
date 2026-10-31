@@ -1,0 +1,31 @@
+{
+  "background": "rgb(29, 34, 31)",
+  "hover_variable": "#425a3e",
+  "images": [
+    {
+      "alt": "候选 2：版本 2",
+      "complete": true,
+      "height": 256,
+      "width": 384
+    },
+    {
+      "alt": "候选 1：版本 1",
+      "complete": true,
+      "height": 256,
+      "width": 384
+    }
+  ],
+  "pressed_rules": [
+    {
+      "background": "var(--soft)",
+      "selector": ".candidate[aria-pressed=\"true\"]"
+    },
+    {
+      "background": "var(--hover)",
+      "selector": ".candidate[aria-pressed=\"true\"]:hover"
+    }
+  ],
+  "selected": "01版本 1●",
+  "selected_background": "rgb(51, 68, 48)",
+  "theme": "dark"
+}

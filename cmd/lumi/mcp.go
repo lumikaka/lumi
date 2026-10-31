@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -28,7 +29,20 @@ type creationRequest struct {
 }
 
 func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub) {
-	service := &textmcp.Service{Projects: projects, Events: events}
+	service := &textmcp.Service{Projects: projects, Events: events, Endpoint: identity.Endpoint}
+	service.AppConnection = func(uuid string) any { return appConnection(identity, uuid, time.Now()) }
+	ws := realtime.NewWebSocketHandler(events, identity.Endpoint)
+	// Only the CLI instance accepts scoped App tickets. Desktop Origin policy is unchanged.
+	e.GET("/api/v1/ws", func(c echo.Context) error {
+		if ticket := c.QueryParam("app_ticket"); ticket != "" {
+			uuid, expires, err := verifyAppTicket(identity.Nonce, ticket, time.Now())
+			if err != nil {
+				return httpapi.NewError(403, "app_ticket_invalid", "实时连接票据失效", "重新打开审阅界面。", err)
+			}
+			return ws.ServeProjectApp(c, uuid, expires)
+		}
+		return ws.Serve(c)
+	})
 	e.POST(creationRoute, func(c echo.Context) error {
 		if c.Request().Header.Get("If-Match") != identity.Nonce {
 			return httpapi.NewError(409, "cli_instance_changed", "CLI 实例已更换", "重新读取 CLI 发现信息后重试。", nil)

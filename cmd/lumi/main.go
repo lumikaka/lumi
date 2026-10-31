@@ -15,12 +15,13 @@ import (
 	"lumi/internal/platformpath"
 )
 
-const usage = `Usage: lumi <serve|status|stop|init|project info|mcp> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
+const usage = `Usage: lumi <serve|status|stop|init|open|project info|mcp> [--environment production|development] [--data-dir PATH] [--json] [--timeout 90s]
 
 serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
 init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
+open    Open cwd project in the CLI instance's complete web UI (--json prints URL).
 project info  Inspect cwd project identity and Codex write-protection status.
 mcp     Run a cwd-bound stdio MCP server; auto-start the CLI instance.
 `
@@ -74,7 +75,7 @@ func command(args []string, out, stderr io.Writer) int {
 		}
 		return printError(opt, out, stderr, "invalid_arguments", err, 2)
 	}
-	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "project info" && name != "mcp") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
+	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "open" && name != "project info" && name != "mcp") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
 		return printError(opt, out, stderr, "invalid_arguments", errors.New("invalid command, environment, arguments or timeout"), 2)
 	}
 	var err error
@@ -103,6 +104,9 @@ func command(args []string, out, stderr io.Writer) int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), opt.timeout)
 	defer cancel()
+	if name == "open" {
+		return openProjectCommand(ctx, opt, out, stderr)
+	}
 	if name == "init" || name == "project info" {
 		return projectCommand(ctx, name, opt, out, stderr)
 	}

@@ -1,0 +1,24 @@
+{
+  "source": "user supplied screenshot of real Codex App",
+  "file": "docs/features/codex-plugins/acceptance/evidence/step5-v053-20261031/screenshots/user-candidates-light.png",
+  "sha256": "4f75526653a0225ea718c37b69c91ee305ec48871eae79dcf65f1ee6b349103e",
+  "confirmed": [
+    "v053 internal navigation and appearance control visible",
+    "candidate numbers2/1 and correct boots/no-boots artwork",
+    "version2 current-use marker",
+    "local selection notice",
+    "Lumi link",
+    "light theme"
+  ],
+  "contradicted": [
+    "realtime joined status: screenshot says interrupted"
+  ],
+  "not_proven": [
+    "progress forwarding into View",
+    "historical dropdown interaction",
+    "dark theme",
+    "hover",
+    "open-link navigation",
+    "single-image error retry"
+  ]
+}

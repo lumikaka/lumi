@@ -1,0 +1,35 @@
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e", "max_edge": 384}, "result_bytes": 16261}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_book", "arguments": {}, "result_bytes": 7328}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e", "max_edge": 1024}, "result_bytes": 79847}
+{"name": "review_page", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 5584}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd", "max_edge": 1024}, "result_bytes": 73939}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_candidates", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "kind": "page", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 5642}
+{"name": "review_candidates", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "kind": "page", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 5642}
+{"name": "review_candidates", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "kind": "page", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 4949}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_settings", "arguments": {}, "result_bytes": 3673}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "review_settings", "arguments": {}, "result_bytes": 3673}
+{"name": "review_settings", "arguments": {}, "result_bytes": 3673}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "review_page", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 4891}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e", "max_edge": 1024}, "result_bytes": 79847}
+{"name": "review_page", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 4891}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e", "max_edge": 384}, "result_bytes": 16261}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_book", "arguments": {}, "result_bytes": 7097}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_settings", "arguments": {}, "result_bytes": 3673}
+{"name": "read_app_connection", "arguments": {}, "result_bytes": 656}
+{"name": "read_app_image", "arguments": {"asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd", "max_edge": 384}, "result_bytes": 14713}
+{"name": "review_candidates", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "kind": "page", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 4949}
+{"name": "review_candidates", "arguments": {"chapter_uuid": "01a18d87-3ef0-7756-ad33-73b8cd3a5561", "kind": "page", "page_uuid": "01a18d87-3ef7-7bf6-9805-71ace00935d4"}, "result_bytes": 4949}

@@ -1,0 +1,293 @@
+{
+  "checked_at_utc": "2026-10-31T06:47:25.515212+00:00",
+  "completion_proven": false,
+  "plugin_version": "0.5.3",
+  "source_hashes_match": true,
+  "binary_matches": true,
+  "forbidden_paths_modified": [],
+  "requirements": [
+    {
+      "requirement": "transport.1_four_review_tools_complete_text_public_targets_revisions_and_open_links",
+      "status": "automation_passed",
+      "evidence": [
+        "internal/textmcp/review.go",
+        "cmd/lumi/app_connection_test.go",
+        "internal/textmcp/app_test.go"
+      ],
+      "real_host": "book_v052_visual_passed_other_views_and_v053_pending",
+      "note": ""
+    },
+    {
+      "requirement": "transport.2_app_image_shared_pipeline_cwd_scope_no_paths_no_direct_sqlite",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/image.go",
+        "internal/textmcp/image_test.go",
+        "internal/textmcp/app_test.go"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "transport.2_app_only_readonly_annotations_and_256_1024_edge",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/protocol.go",
+        "internal/textmcp/schema.go",
+        "internal/textmcp/app_test.go",
+        "tools.json"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "transport.2_nested_envelope_metadata_text_no_duplicate_image_content",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/image.go",
+        "internal/textmcp/image_test.go",
+        "internal/textmcp/app_test.go",
+        "real-host-events.jsonl"
+      ],
+      "real_host": "v053_384_callback_observed",
+      "note": ""
+    },
+    {
+      "requirement": "transport.2_jpeg_120kib_whole_result_256kib",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/image_test.go",
+        "fixture-manifest.json",
+        "real-host-events.jsonl"
+      ],
+      "real_host": "v053_384_callback_observed_1024_host_pending",
+      "note": "Actual Lumi preview: 1024x682, 59595 JPEG bytes and 79829 MCP-result bytes in CLI; historical host 384 decoded correctly. These are actual sizes, not maximum-capacity claims."
+    },
+    {
+      "requirement": "transport.3_legacy_model_read_image_kept",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/image_test.go",
+        "cmd/lumi/mcp_test.go"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "transport.4_embedded_independent_bundle_mime_ui_resource_uri_csp_no_image_network_origins",
+      "status": "passed",
+      "evidence": [
+        "web/mcp-app/build.mjs",
+        "web/package.json",
+        "internal/textmcp/app.go",
+        "internal/textmcp/app_test.go",
+        "initial-real-host-v053.json"
+      ],
+      "real_host": "new_sha_resource_read_by_codex_mcp_client",
+      "note": "Host received empty CSP domain lists; visual behavior remains independently unverified."
+    },
+    {
+      "requirement": "transport.5_one_level_owned_text_result_adaptation_target_uuid_revision_validation",
+      "status": "passed",
+      "evidence": [
+        "web/mcp-app/contracts.js",
+        "web/mcp-app/app.test.js"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "ui.1_book",
+      "status": "implemented_automation_passed",
+      "evidence": [
+        "web/mcp-app/main.jsx",
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/app_connection_test.go"
+      ],
+      "real_host": "v053_visual_pending",
+      "note": "Grid, excerpts and missing image"
+    },
+    {
+      "requirement": "ui.1_page",
+      "status": "implemented_automation_passed",
+      "evidence": [
+        "web/mcp-app/main.jsx",
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/app_connection_test.go"
+      ],
+      "real_host": "v053_visual_pending",
+      "note": "Full text/scene and image history"
+    },
+    {
+      "requirement": "ui.1_candidates",
+      "status": "implemented_automation_passed",
+      "evidence": [
+        "web/mcp-app/main.jsx",
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/app_connection_test.go"
+      ],
+      "real_host": "v053_visual_pending",
+      "note": "Image/text stable numbers and local pressed state"
+    },
+    {
+      "requirement": "ui.1_settings",
+      "status": "implemented_automation_passed",
+      "evidence": [
+        "web/mcp-app/main.jsx",
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/app_connection_test.go"
+      ],
+      "real_host": "v053_visual_pending",
+      "note": "Setting summaries, reference image and missing image"
+    },
+    {
+      "requirement": "ui.2_visible_only_three_inflight_project_asset_edge_lru_bounded_stale_requests",
+      "status": "passed",
+      "evidence": [
+        "web/mcp-app/images.js",
+        "web/mcp-app/main.jsx",
+        "web/mcp-app/app.test.js"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "ui.3_distinct_missing_loading_resource_hostdenial_timeout_decode_manual_retry_text_fallback",
+      "status": "implemented_automation_passed",
+      "evidence": [
+        "web/mcp-app/contracts.js",
+        "web/mcp-app/main.jsx",
+        "web/mcp-app/app.test.js"
+      ],
+      "real_host": "v053_visual_pending",
+      "note": "Historical v052 ordinary browser exercised missing/resource error/manual retry; no claim that all real-host failures were exercised."
+    },
+    {
+      "requirement": "ui.4_lumi_open_full_editor_entry",
+      "status": "cli_automation_passed",
+      "evidence": [
+        "cmd/lumi/open.go",
+        "cmd/lumi/main_test.go",
+        "web/mcp-app/main.jsx"
+      ],
+      "real_host": "ui_open_link_pending",
+      "note": ""
+    },
+    {
+      "requirement": "ui.5_light_dark_and_explicit_selected_hover",
+      "status": "implemented",
+      "evidence": [
+        "web/mcp-app/review.scss",
+        "web/mcp-app/main.jsx"
+      ],
+      "real_host": "v053_light_dark_and_hover_pending",
+      "note": ""
+    },
+    {
+      "requirement": "sync.readonly_tools_public_uuidv7",
+      "status": "passed",
+      "evidence": [
+        "internal/textmcp/app_test.go",
+        "internal/textmcp/app_watch_test.go",
+        "internal/textmcp/schema.go"
+      ],
+      "real_host": "not_applicable",
+      "note": ""
+    },
+    {
+      "requirement": "sync.conversation_candidate_submission_no_ui_business_write",
+      "status": "automation_passed",
+      "evidence": [
+        "internal/textmcp/app_test.go",
+        "cmd/lumi/mcp_test.go",
+        "web/mcp-app/main.jsx",
+        "real-conversation-selection.json"
+      ],
+      "real_host": "passed_existing_fixture_selection_conflict_restore_export",
+      "note": "UI write approval/denial/repeat/interruption/conflict gate does not apply: no UI business write is enabled. Automated conversation selection and stale revision conflict pass."
+    },
+    {
+      "requirement": "sync.ws_envelope_hint_query_invalidation_cli_rest_sqlite_join_rejoin_focus_no_polling",
+      "status": "automation_passed",
+      "evidence": [
+        "cmd/lumi/app_connection_test.go",
+        "internal/textmcp/app_watch_test.go",
+        "web/mcp-app/realtime.js",
+        "web/mcp-app/sync.js",
+        "web/mcp-app/app.test.js"
+      ],
+      "real_host": "progress_to_view_and_change_readback_pending",
+      "note": "Real server emitted joined and heartbeat over MCP. This does not prove the Host forwarded them to the View. Historical v052 direct WS failed in the Host."
+    },
+    {
+      "requirement": "sync.relay_progress_cancellation_lifetime_separate_host_gate",
+      "status": "automation_passed",
+      "evidence": [
+        "internal/textmcp/app_watch_test.go",
+        "web/mcp-app/app.test.js",
+        "real-host-events.jsonl"
+      ],
+      "real_host": "pending",
+      "note": ""
+    },
+    {
+      "requirement": "completion.full_go_tests_frontend_tests_and_build",
+      "status": "passed",
+      "evidence": [
+        "go-tests.txt",
+        "web-tests.txt",
+        "pre-host-audit.json"
+      ],
+      "real_host": "not_applicable",
+      "note": "434 frontend tests; full Go suite and embedded production build passed. Source hashes still match the tested candidate."
+    },
+    {
+      "requirement": "completion.text_only_step3_flow_despite_failed_image_callback",
+      "status": "passed",
+      "evidence": [
+        "cmd/lumi/mcp_test.go",
+        "internal/textmcp/app_test.go"
+      ],
+      "real_host": "real_host_text_path_pending",
+      "note": ""
+    },
+    {
+      "requirement": "completion.real_codex_checklist_versions_screenshots_requests_results",
+      "status": "incomplete",
+      "evidence": [
+        "docs/features/codex-plugins/mcp-apps.md",
+        "initial-real-host-v053.json",
+        "real-host-events.jsonl"
+      ],
+      "real_host": "pending",
+      "note": "App 26.1027.30824/build22943, bundled CLI0.166.0-alpha.5.1 recorded. Historical book screenshot exists; remaining/new visual screenshots absent."
+    },
+    {
+      "requirement": "prohibitions.old_mcp_untouched_no_complex_editor_no_polling_no_host_permission_change_no_initial_base64_no_cargo",
+      "status": "passed",
+      "evidence": [
+        "web/mcp-app/main.jsx",
+        "web/mcp-app/realtime.js",
+        "internal/textmcp/review.go",
+        "git_diff_paths"
+      ],
+      "real_host": "not_applicable",
+      "note": "No forbidden tracked paths changed. No Cargo/Rust commands were run; no host approval settings were changed."
+    }
+  ],
+  "remaining_blocker": {
+    "condition": "mcp_apps_tab_inventory_empty_after_manual_unlock",
+    "consecutive_resumed_goal_turns_observed": 1,
+    "user_unlock_request": "answered_unlocked",
+    "last_goal_turn_classification": "progress_requirement_by_requirement_evidence_audit_completed",
+    "this_goal_turn_classification": "progress_real_host_conversation_selection_conflict_restore_export_verified",
+    "must_not_substitute_browser_or_cli_for_host_visual_gate": true,
+    "latest_authoritative_observation": {
+      "source": "cua.getState",
+      "mac_locked": false,
+      "mcp_apps_tabs": []
+    },
+    "goal_status_after_audit": "resume_requested_by_user",
+    "required_external_change": "User manually unlocks Mac and keeps the Lumi review sidepanel open in this chat."
+  }
+}

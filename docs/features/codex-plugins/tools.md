@@ -8,7 +8,7 @@ cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后�
 
 ## 共同约定
 
-每个工具同时返回 MCP text 和 structured content，内容均为以下信封；`read_image` 成功时另带 MCP image content，失败时另有 `isError=true`：
+每个工具同时返回 MCP text 和 structured content，内容均为以下信封；`read_image` 成功时另带 MCP image content，`read_app_image` 仅在 structured content 中携带 data URI（text 只保留元数据），失败时另有 `isError=true`：
 
 ```json
 {"success":true,"data":{"uuid":"...","revision":1}}
@@ -126,6 +126,43 @@ asset_type 为 `character/scene/prop/reference`。title 最多 160 字符，summ
 description_md 保存页面正文、对白或旁白；storyboard_md 保存完整画面段落，包括构图、动作、表情、光线及逐字画面文字。update 在同一事务内修改页面字段和追加 storyboard 版本；冲突时全部回滚。返回 `uuid/chapter_uuid/section_no/page_role/title/description_md/revision/current_storyboard/current_image` 等，画面段落在 `current_storyboard.content_md`。
 
 page_role 默认 `body`，也支持 `front_cover/back_cover`。封面、封底唯一性及至少保留一页正文等规则沿用现有绘本约束；删除为软删除并重新规范页码。
+
+### review_book / review_page / review_candidates / review_settings
+
+四个只读审阅工具关联独立内嵌的 `text/html;profile=mcp-app` 资源，面向 Codex App。脚本和样式随 HTML 打包，不加载外部资源或本地图片 URL。资源 URI 包含构建内容摘要。图片通过 App 调用 `read_app_image` 按需读取，不进入初始结果。
+
+| 工具 | 参数 | 视图 |
+| --- | --- | --- |
+| `review_book` | 分页参数可选 | 按阅读顺序的页面网格，保留每页完整正文与画面描述、缺图标记 |
+| `review_page` | `chapter_uuid,page_uuid` | 单页正文、画面描述、当前图片与全部图片历史版本 |
+| `review_candidates` | `kind:page` + `chapter_uuid,page_uuid`；或 `kind:setting` + `setting_uuid`；或 `kind:text` + `candidates:[{title,text}]`（2–12 项） | 图片版本或文本候选，多选一；图片候选编号为不可变的 `version_no`，文本候选按输入顺序从 1 编号 |
+| `review_settings` | `setting_uuid?` 与分页参数 | 角色、场景、道具及参考卡片，保留完整 summary 和当前参考图 |
+
+成功 data 包含 `view,project_uuid,target_uuid,revision,title,open_url,open_command,request,selection_notice,items`，列表另含 `cursor_pagination`。每项包含公开 `uuid,revision,title,text,scene,kind,asset_uuid?,chapter_uuid?,open_url`；单页和候选另含 `variants:[{uuid?,asset_uuid?,number,title,text}]`，纯文本候选不输出不存在的资源 UUID。结果超限时减小 limit 或读取单页，不截断正文。图片历史仅切换本地预览。
+
+候选界面不会提交业务写入，也不会显示“已保存”。用户在对话回复编号后，模型重读目标并核对候选 UUID，再调用 `pages/settings` 的 `action:select_image`，显式提供 `variant_uuid,expected_revision` 以及相应目标 UUID（页面另需 `chapter_uuid`）。响应或工具中断时重读；冲突不自动覆盖。图片候选结果的 `submit` 字段提供对应写工具与当前版本，仍需在实际提交前重读。
+
+所有工具文本保留完整内容、编号、入口与写入依据；未读取 UI 资源或图片失败时仍可继续创作和导出。完整编辑、原图及复杂操作使用 `open_url`，或在同一 cwd 使用 `lumi open`（带相同 environment/data-dir；`--json` 只输出 URL）。
+
+### read_app_image
+
+仅供 App：`_meta.ui.visibility:["app"]`，注解为 `readOnlyHint:true,destructiveHint:false,openWorldHint:false`。参数为必填 `asset_uuid` 与可选 `max_edge`（256–1024，默认 1024；网格请求 384）。项目边界、解码、JPEG 转换、缩小与错误码与 `read_image` 共用。
+
+成功 structuredContent 为 `{"success":true,"data":{"asset_uuid":"…","mime_type":"image/jpeg","width":384,"height":256,"data_uri":"data:image/jpeg;base64,…"}}`。text 返回相同信封的元数据摘要，省略 `data_uri`。不额外附带 image content。JPEG ≤120 KiB，序列化整个 MCP 结果 ≤256 KiB。失败为标准失败信封，并有 `isError:true`。
+
+App 仅从 `structuredContent.data.data_uri` 读取图片，不采用探针的平铺字段。轻量初始结果可读取正常 structuredContent，或单个 JSON text 中的自有信封 / `{content,structuredContent}` 包装；不递归解析任意文本，也不猜测目标。
+
+### watch_app_changes
+
+App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 `project_uuid`。此工具只转发 WebSocket 提示，不读取业务状态、不写入项目。
+
+- `open`：stdio 读取内部连接描述、连接 CLI `/api/v1/ws` 并完成项目 join，返回 `{project_uuid,subscription_uuid,cursor,state:"joined"}`。`subscription_uuid` 是公开 UUIDv7，绑定当前 MCP 会话与项目。连接描述、地址与临时票据不交给 iframe，内部 `read_app_connection` 不注册为 MCP 工具。
+- `next`：另传 `subscription_uuid,cursor`，阻塞等待同一 WS 的真实变更或 ping。通过普通工具成功信封返回 `{project_uuid,subscription_uuid,cursor,state,event?}`；state 为 `changed/heartbeat`。界面收到结果后接续下一次事件等待，没有按定时器读取业务状态。只在 `changed` 时使 Query 失效；heartbeat 不触发 REST。保留游标及最新变更，即使事件发生在两次等待之间，后来的心跳也不会掩盖它。
+- `close`：另传 `subscription_uuid`，释放连接，返回 `state:"closed"`。View teardown 显式关闭并取消等待；MCP 会话结束、两分钟未续接等待、CLI 断开或票据过期也释放资源。每进程最多 16 个订阅，每个订阅最多一个等待者。
+
+服务器丢弃原始 WS payload，只转发公开项目 UUID、订阅 UUID、事件名和不涉及数据库 ID 的游标。临时票据仍限制单个项目、一小时有效，CLI 重启失效；不能加入 system 或其他项目。普通 web UI 与桌面的 Origin 校验保持原状。资源的三个 CSP 域列表均为空，HTML 为 `connect-src 'none'; img-src data:`。
+
+首次 join、重新 join、变更提示、窗口聚焦或恢复可见时使 TanStack Query 失效，经只读工具→CLI REST 重读 SQLite。确认 CLI 订阅丢失后有限次数重连；宿主拒绝、超时或协议异常保留手动重连、正文与 Lumi 入口，不循环查询。0.5.3 的 progress 转发已在真实宿主观察到界面中断，0.5.4 改用普通工具结果；**新事件等待链路仍须真实宿主验收**，见 [mcp-apps.md](mcp-apps.md)。
 
 ### book_outline
 

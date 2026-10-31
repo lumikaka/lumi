@@ -19,8 +19,10 @@ import (
 )
 
 type Service struct {
-	Projects *project.Manager
-	Events   *realtime.Hub
+	Projects      *project.Manager
+	Events        *realtime.Hub
+	Endpoint      string
+	AppConnection func(string) any
 }
 
 type arguments struct {
@@ -66,6 +68,9 @@ type arguments struct {
 	ImagePrompt      string                    `json:"prompt"`
 	AssetUUID        string                    `json:"asset_uuid"`
 	MaxEdge          int                       `json:"max_edge"`
+	VariantUUID      string                    `json:"variant_uuid"`
+	SlotKind         string                    `json:"kind"`
+	Candidates       []reviewCandidate         `json:"candidates"`
 }
 
 func value[T any](v *T) (zero T) {
@@ -165,8 +170,17 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result, callErr = prod.HostImageTarget(ctx, a.TargetUUID, a.Slot)
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision)})
-		case "read_image":
+		case "read_image", "read_app_image":
 			result, callErr = readImage(ctx, prod.Files(), a.AssetUUID, a.MaxEdge)
+		case "read_app_connection":
+			if s.AppConnection == nil {
+				return httpapi.NewError(503, "app_connection_unavailable", "实时连接不可用", "在 Lumi 中打开以查看最新状态。", nil)
+			}
+			result = s.AppConnection(store.ProjectUUID())
+		case "watch_app_changes":
+			return httpapi.NewError(400, "app_watch_transport_required", "实时提示需要 MCP 会话", "请通过 MCP Apps 的 watch_app_changes 调用。", nil)
+		case "review_book", "review_page", "review_candidates", "review_settings":
+			result, callErr = s.review(ctx, store, st, prod, name, a)
 		case "export_book":
 			var book production.TextBook
 			book, callErr = readBook(ctx, store, st, prod)
@@ -347,6 +361,8 @@ func settings(ctx context.Context, prod *production.Service, a arguments) (any, 
 		return result, err
 	case "get":
 		return prod.GetPremiseAsset(ctx, a.SettingUUID)
+	case "select_image":
+		return prod.SelectAssetVariant(ctx, a.SettingUUID, a.VariantUUID, value(a.ExpectedRevision))
 	case "create":
 		return prod.CreateTextPremiseAsset(ctx, production.CreateAssetInput{AssetType: value(a.AssetType), Title: value(a.Title), Summary: value(a.Summary), Tags: value(a.Tags)}, value(a.ExpectedRevision))
 	case "update":
@@ -372,6 +388,8 @@ func pages(ctx context.Context, prod *production.Service, a arguments) (any, err
 		return result, err
 	case "get":
 		return prod.GetSection(ctx, a.ChapterUUID, a.PageUUID)
+	case "select_image":
+		return prod.SelectImageVariant(ctx, a.ChapterUUID, a.PageUUID, a.VariantUUID, value(a.ExpectedRevision))
 	case "create":
 		return prod.CreateSection(ctx, a.ChapterUUID, production.CreateSectionInput{Title: value(a.Title), DescriptionMD: value(a.Description), StoryboardMD: value(a.Storyboard), PageRole: value(a.PageRole), ExpectedStateRevision: a.ExpectedRevision})
 	case "update":

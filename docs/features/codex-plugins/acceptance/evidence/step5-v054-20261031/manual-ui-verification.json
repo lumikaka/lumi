@@ -1,0 +1,48 @@
+{
+  "scope": "User performed interactions in the real Codex App; tool callback trace is archived separately.",
+  "checks": [
+    {
+      "name": "single_image_failure_retry",
+      "answer": "重试恢复，说明和入口都保留",
+      "evidence": "fixture-image-fault.json"
+    },
+    {
+      "name": "page_historical_version1_full_text_scene",
+      "answer": "版本 1 正确，正文和画面描述完整"
+    },
+    {
+      "name": "dark_theme_local_candidate_selection",
+      "answer": "深色可读，选中后显示尚未保存"
+    },
+    {
+      "name": "automatic_rejoin_visible_status",
+      "answer": "已自动恢复为已同步"
+    },
+    {
+      "name": "App_open_link_and_window_return",
+      "answer": "完整页面打开正常，返回后仍已同步"
+    }
+  ],
+  "after_local_selection": {
+    "page_revision": 7,
+    "page_current_version": 2,
+    "setting_revision": 1
+  },
+  "ui_business_writes_enabled": false,
+  "automated_real_host": {
+    "book": "host-book-dom.txt",
+    "page_history": "host-page-version1-dom.txt",
+    "candidates": "host-candidates-dark-dom.txt",
+    "settings": "host-settings-dom.txt",
+    "manual_reconnect": "host-manual-reconnect-dom.txt",
+    "ws_change": "host-ws-updated-dom.txt",
+    "restored": "host-restored-dom.txt"
+  },
+  "final_business_state": {
+    "page_revision": 9,
+    "current_image_version": 2,
+    "page_description_restored": true,
+    "setting_revision": 1
+  },
+  "remaining_required_user_actions": []
+}

@@ -1,0 +1,311 @@
+[
+  {
+    "request_id": 8,
+    "request_at": "2026-10-31T08:20:33.772399+00:00",
+    "result_at": "2026-10-31T08:20:33.978158+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14730,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 7,
+    "request_at": "2026-10-31T08:20:33.771058+00:00",
+    "result_at": "2026-10-31T08:20:33.981778+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 16278,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+    "jpeg_bytes_upper_bound": 11907,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 11905,
+    "mcp_result_bytes": 16243
+  },
+  {
+    "request_id": 15,
+    "request_at": "2026-10-31T08:20:42.956708+00:00",
+    "result_at": "2026-10-31T08:20:43.070953+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 16279,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+    "jpeg_bytes_upper_bound": 11907,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 11905,
+    "mcp_result_bytes": 16243
+  },
+  {
+    "request_id": 16,
+    "request_at": "2026-10-31T08:20:42.970163+00:00",
+    "result_at": "2026-10-31T08:20:43.076375+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14731,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 21,
+    "request_at": "2026-10-31T08:21:04.183175+00:00",
+    "result_at": "2026-10-31T08:21:04.282360+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 16279,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+    "jpeg_bytes_upper_bound": 11907,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 11905,
+    "mcp_result_bytes": 16243
+  },
+  {
+    "request_id": 22,
+    "request_at": "2026-10-31T08:21:04.183464+00:00",
+    "result_at": "2026-10-31T08:21:04.293482+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14731,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 52,
+    "request_at": "2026-10-31T08:23:05.262649+00:00",
+    "result_at": "2026-10-31T08:23:05.464843+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 1024
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 79865,
+    "width": 1024,
+    "height": 682,
+    "data_uri_sha256": "76a4354202a7fa698c04b55422c2209dd56ada39bffb540f3348a0de79921157",
+    "jpeg_bytes_upper_bound": 59595,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 59595,
+    "mcp_result_bytes": 79829
+  },
+  {
+    "request_id": 61,
+    "request_at": "2026-10-31T08:24:05.231980+00:00",
+    "result_at": "2026-10-31T08:24:05.327574+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14731,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 78,
+    "request_at": "2026-10-31T08:25:05.731013+00:00",
+    "result_at": "2026-10-31T08:25:05.836542+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 16279,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+    "jpeg_bytes_upper_bound": 11907,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 11905,
+    "mcp_result_bytes": 16243
+  },
+  {
+    "request_id": 80,
+    "request_at": "2026-10-31T08:25:05.731822+00:00",
+    "result_at": "2026-10-31T08:25:05.867180+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14731,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 133,
+    "request_at": "2026-10-31T08:35:42.500060+00:00",
+    "result_at": "2026-10-31T08:35:42.594218+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-410e-730d-b90b-38d803b25b10",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14732,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 178,
+    "request_at": "2026-10-31T08:50:03.862856+00:00",
+    "result_at": "2026-10-31T08:50:03.962990+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-406d-75ad-b3cd-eeac367ff841",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14732,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 177,
+    "request_at": "2026-10-31T08:50:03.861984+00:00",
+    "result_at": "2026-10-31T08:50:03.968426+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 16280,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "81ca5ed741ff4c0ddad66edc5c4a221400c1394d3681b2a19e12652247ce6b98",
+    "jpeg_bytes_upper_bound": 11907,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 11905,
+    "mcp_result_bytes": 16243
+  },
+  {
+    "request_id": 183,
+    "request_at": "2026-10-31T08:50:26.872606+00:00",
+    "result_at": "2026-10-31T08:50:26.995599+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3fcb-79fa-a279-be0b99d4de1e",
+      "max_edge": 1024
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 79866,
+    "width": 1024,
+    "height": 682,
+    "data_uri_sha256": "76a4354202a7fa698c04b55422c2209dd56ada39bffb540f3348a0de79921157",
+    "jpeg_bytes_upper_bound": 59595,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false,
+    "matches_frozen_product_preview": true,
+    "jpeg_bytes": 59595,
+    "mcp_result_bytes": 79829
+  },
+  {
+    "request_id": 187,
+    "request_at": "2026-10-31T08:50:40.375441+00:00",
+    "result_at": "2026-10-31T08:50:40.486543+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+      "max_edge": 1024
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 73958,
+    "width": 1024,
+    "height": 682,
+    "data_uri_sha256": "d192569b782616f69a80689eb3be6332f7ab532f8ad401d6979e7b90033581d5",
+    "jpeg_bytes_upper_bound": 55164,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  },
+  {
+    "request_id": 191,
+    "request_at": "2026-10-31T08:50:51.368830+00:00",
+    "result_at": "2026-10-31T08:50:51.444297+00:00",
+    "arguments": {
+      "asset_uuid": "01a18d87-3f2e-7182-a1d8-e8ab1d4242cd",
+      "max_edge": 384
+    },
+    "success": true,
+    "error": null,
+    "jsonrpc_wire_bytes": 14732,
+    "width": 384,
+    "height": 256,
+    "data_uri_sha256": "c27c73bc85d1c485494b7be329ff4a31ee79611a57c1764972f8025cf092027c",
+    "jpeg_bytes_upper_bound": 10746,
+    "text_blocks": 1,
+    "has_duplicate_image_content": false
+  }
+]
