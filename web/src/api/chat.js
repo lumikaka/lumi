@@ -153,3 +153,10 @@ export function listMCPActivity(projectUuid, threadUuid, { before = '', after = 
   if (after) search.set('after', after)
   return apiRequest(threadPath(projectUuid, threadUuid, `/mcp_activity?${search}`), { signal })
 }
+
+export function listCodexSessionItems(projectUuid, threadUuid, { before = '', after = '', limit = 50, signal } = {}) {
+  const search = new URLSearchParams({ limit: String(limit) })
+  if (before) search.set('before', before)
+  if (after) search.set('after', after)
+  return apiRequest(threadPath(projectUuid, threadUuid, `/codex_session_items?${search}`), { signal })
+}

@@ -7,6 +7,16 @@ import { projectRealtimeInvalidation, uniqueQueryKeys } from './projectRealtimeQ
 
 const projectUuid = 'project-uuid'
 
+test('Codex imports invalidate only the imported thread history and shared list', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'codex_session:changed', { thread_uuid: 'imported-thread' })
+  assert.equal(result.invalidateAll, false)
+  assert.deepEqual(result.queryKeys, [
+    ['chat-threads', projectUuid],
+    ['chat-thread', projectUuid, 'imported-thread'],
+    ['codex-session-items', projectUuid, 'imported-thread'],
+  ])
+})
+
 function keyNames(result) {
   return result.queryKeys.map((queryKey) => queryKey[0])
 }

@@ -26,6 +26,7 @@ import (
 	"lumi/internal/provider"
 	"lumi/internal/providerlimit"
 	"lumi/internal/realtime"
+	"lumi/internal/sessionimport"
 	"lumi/internal/sitesettings"
 	"lumi/internal/story"
 
@@ -363,6 +364,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		return nil, err
 	}
 	configureMCPManagement(api, mcpService, cfg)
+	httpapi.RegisterCodexSessionHistory(api, &sessionimport.Service{Projects: projects})
 	configureAgentProjectAPIGateway(e, agentService)
 	if err := projectCreationService.Reconcile(context.Background()); err != nil {
 		return nil, err

@@ -311,6 +311,9 @@ func (service *Service) ListTrajectory(ctx context.Context, projectUUID, threadU
 			if thread.ThreadType == ThreadTypeMCP {
 				return domainError(CodeValidation, "MCP 线程仅提供概括历史", "", nil)
 			}
+			if thread.ThreadType == ThreadTypeCodexSession {
+				return domainError(CodeValidation, "Codex 会话仅提供只读导入记录", "", nil)
+			}
 			page.Thread = threadDTO(thread, projectUUID)
 			page.Thread.Title = sanitizeDiagnosticText(page.Thread.Title)
 			page.Thread.Model = sanitizeDiagnosticText(page.Thread.Model)

@@ -45,6 +45,12 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   let matched = true
   if (event.startsWith('website:')) {
     // Payloads are hints; REST reads the persisted task and website state.
+  } else if (event === 'codex_session:changed') {
+    add('chat-threads')
+    if (payload.thread_uuid) {
+      add('chat-thread', payload.thread_uuid)
+      add('codex-session-items', payload.thread_uuid)
+    }
   } else if (event === 'mcp:changed') {
     add('mcp-grants')
     add('mcp-calls')

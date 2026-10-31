@@ -1,5 +1,37 @@
 @use './design-tokens' as *
 
+.codex-session-history
+  min-width: 0
+
+.codex-session-history__items
+  display: grid
+  gap: 20px
+  padding: 0
+  list-style: none
+
+.codex-session-history__item
+  min-width: 0
+  padding: 12px
+  border-radius: 10px
+  > p
+    margin: 8px 0 0
+    white-space: pre-wrap
+    overflow-wrap: anywhere
+
+.codex-session-history__item--user
+  background: $color-surface-muted
+
+.codex-session-history__item--lumi_tool
+  border: 1px solid $color-border
+
+.codex-session-history__meta
+  display: flex
+  flex-wrap: wrap
+  justify-content: space-between
+  gap: 6px
+  font-size: 12px
+  color: $color-muted
+
 .chat-area
   position: relative
   right: auto

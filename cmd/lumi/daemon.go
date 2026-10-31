@@ -89,6 +89,7 @@ func runDaemon(opt options) error {
 	}
 	value := instance{Endpoint: cfg.FrontendURL, PID: os.Getpid(), Environment: opt.environment, Nonce: nonce}
 	registerInitialization(application.Echo, value, projects)
+	registerSessionImports(application.Echo, value, projects, application.RealtimeHub())
 	registerTextAuthoring(application.Echo, value, projects, application.RealtimeHub())
 	shutdown := make(chan struct{}, 1)
 	application.GET(instanceRoute, func(c echo.Context) error { return serveIdentity(c, value, projects) })

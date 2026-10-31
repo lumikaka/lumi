@@ -352,6 +352,9 @@ func lockThreadSQL(ctx context.Context, tx *sql.Tx, projectID int64, threadUUID 
 
 // Dedicated workflow threads expose workflow controls, not conversational input.
 func requireConversationInput(thread threadRecord) error {
+	if thread.ThreadType == ThreadTypeCodexSession {
+		return domainError(CodeValidation, "Codex 导入记录不接受聊天输入", "请在 Codex 中继续会话后手动导入。", nil)
+	}
 	if thread.ThreadType != ThreadTypeConversation && thread.ThreadType != ThreadTypeWorkflow {
 		return domainError(CodeValidation, "此线程仅用于查看 MCP 操作历史", "请新建对话。", nil)
 	}

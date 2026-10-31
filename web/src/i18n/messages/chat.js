@@ -1,6 +1,13 @@
 import { defineMessages } from './defineMessages.js'
 
 export const chat = defineMessages({
+  'chat.codex.source': ['Codex · 只读', 'Codex · Read only'],
+  'chat.codex.history': ['Codex 会话记录', 'Codex session history'],
+  'chat.codex.read_only': ['手动导入的会话记录。继续创作请回到 Codex，完成后再次导入。', 'Manually imported history. Continue in Codex, then import again.'],
+  'chat.codex.user': ['你', 'You'],
+  'chat.codex.assistant': ['Codex', 'Codex'],
+  'chat.codex.lumi_tool': ['Lumi 工具', 'Lumi tool'],
+  'chat.codex.retry': ['重试', 'Retry'],
   'chat.mcp.source': ['MCP', 'MCP'],
   'chat.mcp.history': ['MCP 操作历史', 'MCP activity history'],
   'chat.mcp.confirmation': ['前往确认', 'Review confirmation'],

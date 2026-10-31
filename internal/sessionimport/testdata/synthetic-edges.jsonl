@@ -1,0 +1,11 @@
+{"type":"response_item","payload":{"type":"function_call","name":"mcp__lumi__pages","arguments":"{\"secret\":\"DO_NOT_STORE_ARGUMENTS\"}"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"function_call","namespace":"mcp__lumi_review","name":"import_image","arguments":"{\"path\":\"DO_NOT_STORE_IMAGE_PATH\"}"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"DO_NOT_STORE_COMMAND\"}"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"function_call_output","output":"DO_NOT_STORE_OUTPUT"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"reasoning","summary":"DO_NOT_STORE_REASONING"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"DO_NOT_STORE_INSTRUCTIONS"}]},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions for DO_NOT_STORE_CONTEXT"}]},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_image","image_url":"DO_NOT_STORE_IMAGE"},{"type":"input_text","text":"参考图文字 ![image](https://example.com/private.png) data:image/png;base64,DO_NOT_STORE_BASE64"}]},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"compacted","payload":{"message":"DO_NOT_STORE_COMPACTION","replacement_history":[{"type":"message","role":"user","content":[{"type":"input_text","text":"DO_NOT_STORE_REPLACEMENT"}]}]},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"event_msg","payload":{"type":"turn_aborted","reason":"interrupted"},"timestamp":"2026-10-31T12:00:00Z"}
+{"type":"new_future_record","payload":{"text":"DO_NOT_STORE_UNKNOWN"},"timestamp":"2026-10-31T12:00:00Z"}
