@@ -12,8 +12,8 @@ import (
 )
 
 func TestTrustedHostCoversEveryPathAndActualListenerPort(t *testing.T) {
-	for _, host := range []string{"127.0.0.1:8123", "localhost:8123", "[::1]:8123", "evil.example:8123", "127.0.0.1:9999", "localhost", "localhost.:8123", "127.0.0.2:8123", "[::ffff:127.0.0.1]:8123", "[localhost]:8123", "[127.0.0.1]:8123"} {
-		for _, path := range []string{"/api/v1/providers", "/media/file", "/", "/mcp", "/oauth/token"} {
+	for _, host := range []string{"127.0.0.1:8123", "localhost:8123", "[::1]:8123", "evil.example:8123", "127.0.0.1:9999", "127.0.0.1", "localhost", "localhost.:8123", "127.0.0.2:8123", "[::ffff:127.0.0.1]:8123", "[localhost]:8123", "[127.0.0.1]:8123"} {
+		for _, path := range []string{"/api/v1/health", "/api/v1/providers", "/media/file", "/", "/mcp", "/oauth/token"} {
 			e := echo.New()
 			e.HTTPErrorHandler = httpapi.ErrorHandler
 			e.Pre(trustedHost("127.0.0.1:0"))

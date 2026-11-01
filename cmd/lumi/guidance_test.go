@@ -109,7 +109,7 @@ func TestGuidanceConfigMergeAndRefusal(t *testing.T) {
 					t.Fatal("missing manual instructions")
 				}
 			} else {
-				if !bytes.Contains(after, []byte(test.original)) || afterInfo.Mode().Perm() != 0o600 {
+				if !bytes.Contains(after, []byte(test.original)) || afterInfo.Mode().Perm() != before.Mode().Perm() {
 					t.Fatal("lost original content or permissions")
 				}
 				if !inspectProtection(root).Configured {

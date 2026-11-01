@@ -39,6 +39,10 @@ func acquireProjectLock(root, projectUUID string, now time.Time) (*projectLock, 
 	metadata := lockMetadata{PID: os.Getpid(), Hostname: hostname, ProjectUUID: projectUUID, AcquiredAt: now.UTC()}
 	content, err := json.Marshal(metadata)
 	if err == nil {
+		// Windows locks byte zero mandatorily. Keep it as JSON whitespace so
+		// other handles can read the owner from byte one without moving the
+		// lock range (which must still exclude older Lumi versions).
+		content = append([]byte{'\n'}, content...)
 		if truncateErr := file.Truncate(0); truncateErr == nil {
 			_, _ = file.Seek(0, 0)
 			_, _ = file.Write(content)
@@ -49,14 +53,18 @@ func acquireProjectLock(root, projectUUID string, now time.Time) (*projectLock, 
 }
 
 func readLockMetadata(file *os.File) lockMetadata {
-	if _, err := file.Seek(0, 0); err != nil {
-		return lockMetadata{}
+	// Start at zero for legacy metadata, then skip the reserved lock byte if
+	// Windows denies reading it through a handle that does not own the lock.
+	for _, offset := range []int64{0, 1} {
+		if _, err := file.Seek(offset, 0); err != nil {
+			return lockMetadata{}
+		}
+		var metadata lockMetadata
+		if err := json.NewDecoder(file).Decode(&metadata); err == nil {
+			return metadata
+		}
 	}
-	var metadata lockMetadata
-	if err := json.NewDecoder(file).Decode(&metadata); err != nil && !errors.Is(err, os.ErrClosed) {
-		return lockMetadata{}
-	}
-	return metadata
+	return lockMetadata{}
 }
 
 func (lock *projectLock) Close() error {

@@ -1060,8 +1060,9 @@ fn health_is_ready(port: u16) -> io::Result<bool> {
     let mut stream = TcpStream::connect_timeout(&address, Duration::from_millis(300))?;
     stream.set_read_timeout(Some(Duration::from_millis(500)))?;
     stream.set_write_timeout(Some(Duration::from_millis(500)))?;
-    stream.write_all(
-        b"GET /api/v1/health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
+    write!(
+        stream,
+        "GET /api/v1/health HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\n\r\n",
     )?;
 
     let mut response = String::new();
@@ -1802,9 +1803,15 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         let server = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0_u8; 512];
-            let count = stream.read(&mut request).unwrap();
-            assert!(String::from_utf8_lossy(&request[..count]).starts_with("GET /api/v1/health"));
+            let mut request = String::new();
+            {
+                let mut reader = BufReader::new(&mut stream);
+                while !request.ends_with("\r\n\r\n") {
+                    assert_ne!(reader.read_line(&mut request).unwrap(), 0);
+                }
+            }
+            assert!(request.starts_with("GET /api/v1/health HTTP/1.1\r\n"));
+            assert!(request.contains(&format!("\r\nHost: 127.0.0.1:{port}\r\n")));
             let body = "{\"success\":true,\"data\":{\"status\":\"ok\",\"database\":\"connected\"}}";
             write!(
                 stream,

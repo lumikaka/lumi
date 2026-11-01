@@ -248,7 +248,14 @@ type initializationLayout struct {
 
 func (layout *initializationLayout) remember(relative string) {
 	path := filepath.Join(layout.root, relative)
-	if info, err := os.Lstat(path); err == nil {
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	// File.Stat captures the file identity now. On Windows, Lstat defers
+	// loading the file ID until SameFile, potentially after a replacement.
+	if info, err := file.Stat(); err == nil {
 		layout.nodes = append(layout.nodes, initializedNode{path, info})
 	}
 }

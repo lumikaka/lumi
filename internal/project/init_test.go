@@ -72,12 +72,6 @@ func TestInitAtEmptyAndExistingUserFiles(t *testing.T) {
 			if result.RootPath != canonical {
 				t.Fatalf("root=%s", result.RootPath)
 			}
-			after := directorySnapshot(t, root)
-			for name, value := range before {
-				if after[name] != value {
-					t.Fatalf("changed existing %s", name)
-				}
-			}
 			store := openStoreForTest(t, manager, result.UUID)
 			var projectCount, actorCount int64
 			if err := store.DB().Model(&Project{}).Count(&projectCount).Error; err != nil {
@@ -96,7 +90,14 @@ func TestInitAtEmptyAndExistingUserFiles(t *testing.T) {
 			if _, err := manager.CloseProject(t.Context(), result.UUID); err != nil {
 				t.Fatal(err)
 			}
-			before = directorySnapshot(t, root)
+			// Snapshot only after releasing the mandatory Windows file lock.
+			after := directorySnapshot(t, root)
+			for name, value := range before {
+				if after[name] != value {
+					t.Fatalf("changed existing %s", name)
+				}
+			}
+			before = after
 			// Repeated init must not rename, change language, reopen, run hooks,
 			// or update any project file or recent timestamp.
 			manager.WithOpenHook(func(context.Context, *Store) error { t.Fatal("existing init ran hook"); return nil })

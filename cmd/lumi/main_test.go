@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -101,7 +102,11 @@ func TestServeReusesInstanceAndRestartsAfterCrash(t *testing.T) {
 		t.Fatalf("instances: %+v %+v", first, second)
 	}
 	info, err := os.Stat(opt.path(".json"))
-	if err != nil || info.Mode().Perm() != 0600 {
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Windows reports DOS file attributes, not POSIX owner/group permissions.
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("discovery permissions: %v %v", info, err)
 	}
 	process, err := os.FindProcess(first.PID)
