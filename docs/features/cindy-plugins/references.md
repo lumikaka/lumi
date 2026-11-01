@@ -2,15 +2,21 @@
 
 ## 核对基线
 
-2026-11-01 通过 Cindy 只读 `check_app_update` 得到当前执行电脑版本 `0.1.121`；官方 `refs/tags/v0.1.121` 指向 commit `727afb1ad6902176e2ec55254154b900c489a998`。本计划查阅了随宿主提供的 `cindy-plugin-creator` Skill，并核对该 commit 的公开桥接、Node 请求处理、taskView 处理与部分测试，以及媒体、打包、移动页面和 Manual 文档。
+2026-11-01 的 Step 0 已完成独立探针实测与卸载清理，详见 [实测报告](spike.md)。下列三种依据分别记录，不互相替代：
 
-这是**文档与源码核对**，没有运行 Lumi Cindy 插件探针。没有据此确认生图扣费、图片原件交接、CLI 随包执行、远程手机页面或完整聊天归档已经可用。
+| 依据 | 固定身份 | 可支持的结论 |
+| --- | --- | --- |
+| 历史公开源码参考 | 官方 `refs/tags/v0.1.121` → `727afb1ad6902176e2ec55254154b900c489a998` | 本计划曾核对该 commit 的公开桥接、Node、taskView、订阅/任务处理与部分测试；不是实际构建源码证明 |
+| Step 0 实际执行端 | macOS 14.5、arm64，Cindy `0.1.121`；应用 sourceCommit=`0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`，builtAt=`2026-10-30T01:16:08.865+08:00` | 进程、bundle、版本及构建记录核对通过；该 ref 的公开源码查询返回 404，精确源码与最低正式兼容版本仍未验证 |
+| 随包契约与运行证据 | 当前导出的与应用内 `cindy-plugin-creator` SKILL.md SHA256 相同；探针 0.0.1–0.0.5、Host Node `v24.19.0` | 仅支持下文及 spike.md 中实际测试到的行为，不外推至产品、其他架构或其他版本 |
 
-执行时先核实插件运行电脑，而非手机或底层 Codex/Claude 引擎的版本。若发现真实构建 `sourceCommit` 与 tag 不同，按 [源码核对规则][source] 重新固定来源；不得用 `main` 替代未知版本。
+[宿主与源码回执](spike/evidence/host-source.json)、[Node 运行身份](spike/evidence/host-environment.json)。探针 CLI 使用 Lumi commit `68235b5b4e9bc45d871895c8cb99ae4d6c0ba6e7`、Go `1.27.3`；完整版本、原件与包指纹见报告。
+
+后续执行仍须核实真正运行插件的电脑，而非手机或底层引擎版本。按 [源码核对规则][source] 固定实际来源；无法取得匹配源码时使用随包契约和运行证据并保留限制，不以 tag 或 main 替代。Step 0 探针已卸载、临时根已删除，重跑需重新配置并打包，不能直接复用旧审阅包的临时路径。
 
 ## 官方开发文档
 
-以下均固定在上述 commit；实施时仍须阅读执行宿主当前随包 Skill，按真实版本处理差异。
+以下链接保留在历史公开参考 commit `727afb1ad6902176e2ec55254154b900c489a998`；它们不是实际构建 `0a7d5a4…` 的实现证据。实施时先阅读执行宿主当前随包 Skill，结合实测处理差异。
 
 | 主题 | 文档 | 对本项目的约束 |
 | --- | --- | --- |
@@ -25,7 +31,9 @@
 | 分发 | [打包安装][packaging] | 随包原生程序须预置执行位；不从已安装目录开发；打包不自动安装/发布 |
 | 手机扩展 | [移动页面][mobile] | 独立页面与桥接、48 KiB 消息限制、mobilePageId 来源保持；不能直接复用桌面 taskView 的支持结论 |
 
-## 已核对的源码入口
+## 历史参考 commit 中已核对的源码入口
+
+以下为阅读所得，没有运行这些上游测试，也没有取得实际构建对应源码；Host 实测另列。
 
 - [公开 preload 桥][preload]：`node.request`、`taskView`、`tasks.readMessages` 等入口存在；单有入口不证明特定权限或操作可用。
 - [Node broker][broker]：已启用且声明 `node` 才处理请求，支持 JSON-RPC 与 MCP stdio；完整生命周期仍需实测。
@@ -44,16 +52,45 @@
 | 四种审阅界面 | [web/mcp-app](../../../web/mcp-app)、[当前验收记录](../codex-plugins/mcp-apps.md) | 组件可复用，MCP Apps 桥接和宿主证据不可直接迁移到 Cindy |
 | Codex 会话导入 | [当前交付范围](../codex-plugins/session-import.md)、[internal/sessionimport](../../../internal/sessionimport) | 现为手动 rollout 导入，不能把 Cindy 文本伪装成 Codex rollout |
 
-## 必须保留为待实测的结论
+## Codex 兼容验证入口
 
-1. 完整 `.cindy` 包中 Go CLI 的体积、执行位、签名、公证与每个目标架构的启动结果。
-2. 同一 worker 下两个项目并发调用、停用/升级/崩溃回收、共享 CLI 生命周期。
-3. 授权媒体从 Cindy 原件到 Lumi Asset Store 的字节链；参考图回送、订阅与 Core media 路径分别验证。
-4. taskView 的图片加载、后台唤醒、WS 变更转发、重连与聚焦校准。
-5. 手机控制 Mac 时的执行归属与产物交付；手机审阅页不在基础支持范围内。
-6. hooks 的真实投递范围、消息身份、失败/中断/后续钩子改写行为；普通用户任务能否可靠归档。
+以下来自当前仓库的代码与测试入口核对，不表示本次文档修订已经执行产品回归。按实际共用代码变更选择检查，并在各步记录命令、结果与未覆盖范围。
 
-各步骤将结果写进各自的验收记录；在记录出现之前，本表不改成“已验证”。
+| 共用部分 | 现有验证入口 | 新适配的隔离要求 |
+| --- | --- | --- |
+| CLI / MCP / guidance / 实例 | [CLI 测试目录](../../../cmd/lumi)、[初始化测试](../../../internal/project/init_test.go) | 保留默认初始化与配置合并；补 Cindy/Codex 共用服务及释放隔离场景 |
+| 创作工具 / MCP Apps 资源 | [工具服务测试](../../../internal/textmcp/service_test.go)、[App 契约测试](../../../internal/textmcp/app_test.go)、[WS 测试](../../../internal/textmcp/app_watch_test.go) | 保留旧调用方 schema、结果、资源元数据与版本保护，不引入 Cindy 必填上下文 |
+| 图片与导出 | [MCP 图片测试](../../../internal/textmcp/image_test.go)、[宿主图片导入测试](../../../internal/production/host_image_test.go)、[PDF 导出测试](../../../internal/production/export_pdf_test.go) | Cindy 附件校验在适配入口；旧导入方式和素材/导出语义继续可用 |
+| 审阅组件与构建 | [MCP App 测试](../../../web/mcp-app/app.test.js)、[构建脚本](../../../web/mcp-app/build.mjs)、[前端命令](../../../web/package.json) | 既有 `build:app` 写入 `internal/textmcp/appdist/review.html`；Cindy 使用独立产物，修改共用组件后验证 Codex 测试与构建 |
+| 可选会话归档 | [导入测试](../../../internal/sessionimport/service_test.go)、[rollout fixture](../../../internal/sessionimport/testdata/README.md) | 保留 Codex 记录、幂等导入与项目迁移兼容 |
+
+自动化客户端可以验证 MCP 协议与共享服务行为，但不能代替真实 Codex 宿主的加载、交互和完整流程验收。两者分开报告，具体门槛见 [plan.md](plan.md#codex-兼容门槛)。
+
+## Step 0 实测结果与后续验收边界
+
+本表只描述 2026-11-01 的测试范围；详细复现步骤和证据等级见 [spike.md](spike.md)。未列为通过的能力不因接口存在而自动成立。
+
+| 项目 | 已取得的证据 | 后续仍须验证 |
+| --- | --- | --- |
+| Node / CLI | Host Node 执行随包 Go CLI；本机 arm64、CLI 字节与执行位、包体核对通过 | `lumi mcp` 初始化/取消/协议适配；签名、公证、其他架构与最低正式版本 |
+| 上下文与项目 | 两个真实本地任务的不同 session/workdir hash、顺序隔离与共享服务；同 worker 合成并发；伪造上下文被 Host 覆盖 | 真实同时并发、取消/退出引用回收、只读与非本地上下文；产品初始化/绑定与桌面互通 |
+| 生命周期 | worker 崩溃/更新后可重启；按需 Node 后台通知未阻止 120 秒空闲回收；detached CLI 在 worker 退出/卸载后仍可能存活 | 产品归属与回收策略、自动发现/恢复、关闭页面后不再拉起服务；不依赖逻辑页 resident 保证 Node 常驻 |
+| 工具与 Manual | info、分类目录、Manual、错误样本与 17 顶层工具拒绝 | 产品业务 schema、读写授权、错误映射和版本保护；不照搬探针的简化实现 |
+| 原件与参考图 | Core 与引擎原生生成 PNG 均经授权交接，Node 原件 SHA256 一致；参考图回送 Agent 通过 | Asset Store 导入/导出、参考图实际编辑、其他格式、大原件、过期、跨插件归属；额度来源未知 |
+| taskView / WS | 真实开页、wake、focus、light 主题；mutation→页面→REST、手动重新 join 校准；113.684 秒静置未新增业务 GET | 产品取图、dark、双页切换/隔离、自动恢复、TanStack Query；已测窗口不代表任意状态无轮询 |
+| 消息 | 自建任务历史可读、普通任务不可读；真实双向 hooks，用户前置/助手后置，消息 hook 缺稳定消息 ID 与 seq | 插话、中断、引擎失败、后续 hook 改写、丢失/补读；完整增量归档不具备条件，有限记录/公开导入仍须设计验收 |
+| 安装与清理 | 首次安装、四次同源更新及正常卸载；新增 hooks 走确认；卸载后发现残留 CLI 并另行 stop，最终进程为空 | 单独停用/启用、产品数据保留与升级兼容、正式分发；卸载回执不能代替进程检查 |
+| 手机控制 Mac | Step 0 未取得手机读取/导出与交付的专项验收证据 | 手机产物交付；独立手机审阅页不在基础支持范围内 |
+
+需要落实到后续提示词的具体约束：
+
+- Step 0 实测 CLI serve/status 加 REST/WS，不是 `lumi mcp` 适配。已有项目初始化成功后仍须确认已打开；worker 恢复要重新校准绑定和项目状态。
+- Node 的无 Origin WS 连接曾被 Lumi 拒绝，探针使用现有单项目提示票据接入 `/api/v1/ws`；票据只留 worker，不交页面或日志，不放宽 Origin/CSP。
+- 探针只为已知 PNG 裸指纹补 `.png`；产品必须遵守当前媒体地址契约并核对真实格式，不能推广此后缀假设。未知哈希 404 不能证明跨插件权限隔离。
+- Forge install 重新打包。0.0.1 当前包与首次 pack SHA 不同且旧字节未保留，因此无法证明仅元数据变化；后续分别保存审阅包与安装生成包并核对条目/指纹（[当前快照](spike/evidence/package-snapshot.json)）。
+- 消息正文 hash 不能作为唯一消息键；保留真实重复文本。只有新增稳定身份、提交事实与可靠补读证据后才扩展增量归档；基础包不照搬测试 hooks/自建任务权限。
+
+各步骤保留自动化、真实宿主、真实模型的证据区分；只补测新增适配或受变更影响的行为。Step 0 完成不自动启动 Step 1，也不免除 Step 4.5 和完整产品验收。
 
 [source]: https://github.com/makecindy/cindy/blob/727afb1ad6902176e2ec55254154b900c489a998/apps/desktop/resources/system-skills/cindy-plugin-creator/references/plugin-source-verification.md
 [design]: https://github.com/makecindy/cindy/blob/727afb1ad6902176e2ec55254154b900c489a998/apps/desktop/resources/system-skills/cindy-plugin-creator/references/plugin-design.md
