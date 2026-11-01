@@ -37,6 +37,10 @@ Step 1–7 均受 [Codex 兼容门槛](plan.md#codex-兼容门槛) 约束：共�
 
 在 cindy-plugins/lumi/ 建立独立作者源码，采用浏览器 main.js + 随包 Node worker，衔接现有 lumi CLI/server。按项目管理固定 cwd 的 MCP 子进程，不改变 worker 的全局 cwd；透传真实调用上下文，正确处理取消、只读限制、大小限制和错误。区分 worker、项目连接和共享 server 的生命周期，避免一个任务结束时杀掉其他任务的服务，不直接读写 SQLite。
 
+补齐 docs/features/cindy-plugins/development.md 的独立开发通道；当前 Step 2 包仍为 lumi/production，不能当作开发隔离已完成。从一份源码生成正式 lumi 与开发 lumi-dev，分别使用随包 bin/lumi、bin/lumi_dev，production + ~/.lumi 与 development + ~/.lumi_dev。实现 make cindy-dev 生成完整 build/cindy-dev/lumi-dev 作者目录，记录 channel、源 commit/dirty 与 CLI 指纹；worker 显式传环境和 data-dir，不依赖 APP_ENV，不开放任意路径给 Agent。实现显式 make cindy-dev-stop，沿用同一开发 data-dir；开发目录可能与 Codex 开发版共享，未经协调不自动停止。构建只生成作者目录，不暗中安装或发布。
+
+把修改 → 构建 → Forge pack → 协调旧开发任务/后台 → Forge install → 实际调用验证写入开发说明。仅改 JS/Manual 也须重新打包安装；仅编译仓库 CLI 不会更新包内副本，安装新包也不会自动替换旧 detached server。诊断提供必要 channel/构建标识，不暴露私有路径或实例秘密。正式默认行为不变。
+
 Step 0 实测通路是 CLI serve/status 加 REST/WS，没有验证 lumi mcp 的初始化、取消或协议适配；将这条 MCP 桥列为本步新增验证。后台通知不能阻止按需 Node 空闲回收，逻辑页 resident 不等于 Node 常驻；worker 崩溃、更新和插件卸载也不保证 detached CLI 退出。实现实例归属、引用管理、重启后的重新发现与绑定复核，以及只回收本插件应回收资源的策略，不依赖退出回调必达或全局 lumi stop。
 
 完成双项目并发、同项目双任务、进程崩溃、取消、过期实例和协议错误的相关验证；增加 Cindy 与 Codex 客户端共用服务、Cindy 释放后 Codex 仍可调用的验证，无法证明独占的既有实例不得自动停止。交付 runtime.md 与 acceptance/step1-runtime.md，区分自动化与真实宿主结果。本步只开发和打包；没有另行安装委托时不安装。保留现有 Codex/桌面功能，不运行 Cargo/Rust，不自动开始 Step 2。
@@ -137,13 +141,19 @@ Cindy 附件限制只用于 Cindy 入口；保留 Codex 既有 import_image 调�
 
 完善创作 Manual，制作包含 Node worker、目标架构 Go CLI、taskView 静态资源的 v3 .cindy 包；验证文件数、包体、执行位与最低正式 Cindy 版本。用户首次使用不需要 npm install/npx 或在线下载可执行代码，不向 ~/.codex 或全局 Skill 目录写配置。
 
+先核对 development.md 的构建与隔离已经实现：共享源码生成正式 lumi 和开发 lumi-dev，开发包使用随包 lumi_dev、development 与明确的 ~/.lumi_dev 或专用测试 data-dir。当前计划中的 make cindy-dev / make cindy-dev-stop 未实现时先报告缺口，不能把 lumi/production 包充作开发版。补齐从修改源码、生成开发作者目录、Forge pack 到 Forge install 的完整日常流程；无需发布 patch 或市场上架。
+
 Step 0 只验证当前 Mac arm64 构建；正式签名/公证、其他架构、单独停用仍待测，实际构建与 tag 不匹配不能证明最低正式版本。基础包不照搬探针为验证任务与 hooks 增加的权限。
 
 此任务包括先 pack 提供审阅包，再从同一已审阅作者源码通过 Forge install 安装到当前 Cindy，并在已有同来源实例上进行明确的升级验收；遵循宿主正常权限确认和实例归属。Forge install 会重新打包，分别保存审阅包与安装时生成包的 SHA256、条目清单和安装回执；若指纹变化需核对内容，不能直接沿用首次 pack 的 SHA 或假定仅元数据变化。用临时作品完成真实 Agent 从想法到至少 3 页、宿主生图与导入、审阅修改、PDF/ZIP 导出、中断恢复和桌面重开。安装、模型调用或设备条件不可用时明确记录，继续完成独立打包和测试，不伪造通过。
 
+本 Goal 的安装范围同时包含独立 lumi-dev 的安装和同来源更新验收，保留正式 lumi 的身份与来源；多实例按真实回执定位 target_instance_id，不擅自换 namespace 或创建副本。用独立测试作品验证两版并存；同版本修改 JS/Manual 后重新生成、pack/install，实际发现新内容。Go 改动另验证包更新不会自动替换旧 server：先协调全部开发客户端、释放旧页面及任务，再显式停止相同 environment/data-dir 的开发实例，重连核对新构建与代次。仅改 JS/Manual 不停止未变的共享 CLI。核对实际执行 Mac、插件 instanceId/namespace/source、审阅与安装包及 CLI 指纹；不把仓库文件已更新等同于安装副本或后台已更新。
+
 验收本插件停用/启用与卸载保留作品：先阻止页面 focus/wake 重开服务，再按实例归属和剩余引用回收，卸载后核查工具不可用及残留进程；不能把卸载回执当作 CLI 已退出。卸载只走当前公开能力或用户操作的正常详情页；没有自动化入口时记录所需手动步骤，不删除 Host 安装目录或批准配置。
 
 按 plan.md 的 Codex 兼容门槛汇总受影响链路的回归证据；覆盖 Cindy 停用/升级/卸载时 Codex 客户端仍可使用共享服务，核对两种插件的构建产物独立。真实 Codex 宿主未测项必须标为待验收，不能只凭 Cindy 成功声明兼容。
+
+完成 development.md 的验收矩阵，开发构建、安装、更新、停止与卸载均不改变正式实例包/配置/启用状态，正式客户端仍可调用；Cindy 与 Codex 共用 development server 时也不得自动 stop。历史探针递增版本更新不能代替同版本刷新证据，未通过项单独记录。
 
 交付可安装包、构建脚本、完整 Manual、docs/features/cindy-plugins/install.md、acceptance/step6-install.md 与文档入口，分别报告自动化、真实宿主、真实模型结果。当前任务不包含公开或组织发布，不卸载其他插件，不运行 Cargo/Rust，不自动开启聊天归档。
 ```

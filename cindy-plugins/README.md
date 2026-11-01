@@ -2,7 +2,9 @@
 
 `lumi/` 是独立作者目录，交付浏览器 `main.js`、零第三方依赖的 Node worker 与制作时编译的 Go CLI。当前实现 Step 1 运行时与 [Step 2 项目绑定](../docs/features/cindy-plugins/project-binding.md)，尚未安装或发布。
 
-在仓库根运行：
+当前包身份仍为 `lumi`，运行使用 `production + ~/.lumi`；测试临时 data-dir 不代表已有独立开发版。`lumi-dev`、`make cindy-dev` 和 `make cindy-dev-stop` 是[新增待实现要求](../docs/features/cindy-plugins/development.md)，当前不能执行这些计划命令。
+
+现有构建与测试可在仓库根运行：
 
 ```sh
 node cindy-plugins/scripts/build.mjs
@@ -21,5 +23,13 @@ python3 cindy-plugins/scripts/verify-package.py
 不从已安装目录制作，不在运行时安装依赖。Go 二进制、build-info 与 `.cindy` 是 Git 忽略的生成物；包内包含 CLI SHA256、源 commit 和编译平台信息。现有 Lumi 图标复用自 `codex-plugins/lumi/assets/icon.png`。
 
 manifest 的 `minCindyVersion: 0.1.121` 是本次 Forge scaffold 自动写入的本机版本字段；实际构建 sourceCommit 与官方 tag 不同，**这个字段不是最低正式兼容版本的证明**。本步仅交付本地开发包；正式发布前须取得符合当前 Skill 的正式版本证据并校准该字段。
+
+## 独立开发通道（待实现）
+
+目标是同一份源码生成正式 `lumi` 与开发 `lumi-dev`；开发包携带 `bin/lumi_dev`，固定 development 环境和默认 `~/.lumi_dev`。`make cindy-dev` 将生成完整开发作者目录，再由 Forge pack/install 安装到独立开发实例，无需发布 patch。
+
+修改 Go、JS、Manual 或 UI 后都要重新生成、打包并安装开发包。Cindy 执行安装后的副本，单独编译仓库 CLI 或只 pack 不会生效；Go 后台已运行时还需协调使用者、显式停止对应开发实例并重连，不能自动停止共享服务。仅改 JS/Manual 且 CLI 未变时不用停止后台。
+
+步骤、安装回执要求、与 Codex 开发版共享目录的注意事项及同版本刷新验收见[开发流程](../docs/features/cindy-plugins/development.md)。实施完成后再把此节改为已验证的执行入口，不提前宣称两版并存或热更新可用。
 
 运行链路和资源归属见 [runtime.md](../docs/features/cindy-plugins/runtime.md)，当前结果与未验证项见 [Step 2 验收记录](../docs/features/cindy-plugins/acceptance/step2-project-binding.md)。验证脚本将结果写到 `acceptance/step2-evidence/`；Step 1 历史记录保持原样。

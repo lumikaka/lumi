@@ -2,6 +2,8 @@
 
 2026-11-01。本文记录 Step 1 的运行时基线与当时验收边界；作者源码在 [cindy-plugins/lumi](../../../cindy-plugins/lumi)。当前版本已在此基础上完成 [Step 2 项目绑定与初始化](project-binding.md)，新增初始化和 setup，仍为 macOS arm64 开发包，未安装、未发布。下文“本步”均指 Step 1，后续变化以 Step 2 文档为准。
 
+这里的“开发包”表示尚未发布的产品包，实际仍为 `lumi / production / ~/.lumi`。[独立开发通道](development.md) 是后续新增待实现要求；本文的运行链和历史验收不作为 `lumi-dev / development` 已实现的证明。
+
 ## 宿主依据
 
 本机 Cindy `0.1.121`，构建 `sourceCommit=0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`、`builtAt=2026-10-30T01:16:08.865+08:00`。对应公开 ref 查询仍返回 404；官方 tag 指向 `727afb1ad6902176e2ec55254154b900c489a998`，不是该构建源码。

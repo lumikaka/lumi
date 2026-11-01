@@ -12,10 +12,11 @@
 - 参考 [Codex 总体方案](../codex-plugins/plan.md) 的分步方式，复用其已经存在的 CLI、业务工具、素材导入和审阅组件，不重新实现一套 Lumi 内核。
 - 历史公开源码参考为官方 tag `v0.1.121`，commit `727afb1ad6902176e2ec55254154b900c489a998`。Step 0 的真实执行端是 Mac arm64、Cindy `0.1.121`，应用记录的 sourceCommit 为 `0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`，与 tag 不同且该 ref 的公开源码查询返回 404；不能用 tag 代替实际构建源码或证明最低正式版本。证据等级与限制见 [开发依据](references.md)；每次执行仍须确认真正运行插件的电脑与版本。
 - 每一步可复制的任务文本集中在 [Goal 提示词](goals.md)。先完成前置步骤，再执行下一步；不把本目录全部内容一次性交给自动续跑。
+- [本地开发与双版本隔离](development.md) 是新增待实现要求：目前 Step 2 包仍使用正式身份与 production 环境，不等于已有独立开发通道。Step 1 补齐构建/运行隔离，Step 6 补齐同版本更新与两版并存的真实安装验收。
 
 ## 产品形态与支持范围
 
-1. **一个 Cindy 插件**：作者源码目录 `cindy-plugins/lumi/`、插件 id `lumi`、command `lumi`；发布前核查身份冲突。当前已有 Step 2 开发包，尚未安装或发布。
+1. **一份源码、正式与开发两个入口**：共享作者源码目录 `cindy-plugins/lumi/`；正式 id/command 为 `lumi`，开发 id/command 为 `lumi-dev`，显示名称明确区分。发布前核查身份冲突。当前已有 Step 2 包，尚未安装或发布；独立开发入口按新增要求实施。
 2. **对话驱动**：Agent 通过插件工具读写项目，通过插件 Manual 理解创作流程；具体提示词继续来自 Lumi `render_prompt`。
 3. **任务审阅页**：以 `taskView` 为主要界面，展示当前任务对应项目的整本、单页、候选与设定。首版选择仍在对话中提交，页内选中只表示预览。
 4. **本地项目目录**：保留 `project.sqlite`、`assets/`、`.lumi/`、`STORY.md` 等现有格式。项目不放在卸载即删除的插件私有存储中。
@@ -81,6 +82,13 @@ flowchart TD
 - Forge 打包、安装、公开发布是不同动作。执行某一步开发或打包不自动授权安装或发布；已有明确授权时沿用，不重复询问。真实宿主验证需要安装时，先准备可审阅的包，再走宿主正常安装流程。
 - Forge install 会从作者源码重新打包；留存审阅包、安装时生成包的指纹/条目清单与安装回执，差异须核对，不能假定字节恒定。Step 0 已通过安装、同源更新和卸载；单独停用、正式签名/公证、其他架构及最低正式版本仍待验收。
 
+### 本地开发与版本隔离
+
+- 正式包使用随包 `bin/lumi`、`production + ~/.lumi`；开发包使用随包 `bin/lumi_dev`、`development + ~/.lumi_dev`。环境和 data-dir 由构建配置及 worker 显式传入，不能只改 CLI 名称或依赖 `APP_ENV`。两版共用业务、Node、Manual 和 UI 源码，生成不同的身份与运行配置。
+- 规划的 `make cindy-dev` 一次生成完整开发作者目录；随后通过 Forge pack/install 完成本地更新，不要求 Tag、Release、公开 patch 或市场发布。该命令及独立开发包尚未实现，不得在现有 README 中当作可用入口。
+- 改 Go、JS、Manual 或 UI 后都要重新生成、打包并安装开发包；Cindy 使用安装副本，编译仓库二进制或仅 pack 不会刷新已安装实例。Go 后台另按共享服务归属协调并显式停止，再重连验证，不能自动停止正式版或其他开发客户端。
+- 使用独立测试作品；默认开发 data-dir 可能与 Codex 开发版共用，不能宣称宿主间天然隔离。具体身份、安装步骤和验收矩阵以 [development.md](development.md) 为准。
+
 ### 可选创作记录
 
 - Step 0 的消息 hooks 没有稳定消息 ID 与 seq；用户文本在提交前投递，助手文本在落库后投递，`tasks.readMessages` 不能补读普通任务。因此完整增量归档尚不具备条件。
@@ -91,7 +99,7 @@ flowchart TD
 | 步骤 | 用户得到的结果 | 前置 | 文档 |
 | --- | --- | --- | --- |
 | 0（已完成） | 有证据的宿主能力、安装与媒体链路结论，含未验证子项 | 无 | [关键行为调研](step0-spike.md)、[实测报告](spike.md) |
-| 1（开发包完成） | 已实现本机 CLI 桥接并通过自动化；真实宿主安装验收待授权 | 0 的运行时门槛 | [插件运行时与 CLI](step1-runtime-cli.md)、[验收](acceptance/step1-runtime.md) |
+| 1（基线完成，开发通道待补） | 本机 CLI 桥接已通过自动化；补齐正式/开发产物与环境隔离，真实安装另验 | 0 的运行时门槛 | [插件运行时与 CLI](step1-runtime-cli.md)、[验收](acceptance/step1-runtime.md) |
 | 2 | 当前任务目录成为可与桌面互通的 Lumi 项目 | 1 | [项目绑定与初始化](step2-project-binding.md) |
 | 3 | 在 Cindy 对话中完成整本文本并导出 | 2 | [文本创作工具](step3-authoring-tools.md) |
 | 4 | 宿主图片进入项目并挂到正确页面 | 3、0 的媒体门槛 | [宿主生图导入](step4-image-import.md) |
@@ -102,13 +110,13 @@ flowchart TD
 
 执行顺序：`0 → 1 → 2 → 3 → 4 → 4.5 → 5 → 6`，之后单独决定是否执行 7。探针暴露问题时修订受影响的后续计划；不把“未验证”转换成“已支持”。
 
-Step 1 的开发与打包已完成，真实 Host 并发、取消及只读上下文等仍按验收记录补测；不自动开始 Step 2。Step 4.5 重点补齐产品取图、双任务页隔离、dark 主题、自动恢复与 Query 失效，不能因 Step 0 基础页面闭环通过就跳过；Step 5 仍以这些验收通过为前置。
+Step 1–2 的运行时与项目绑定基线已实现；新增开发通道仍待补齐，真实 Host 并发、取消及只读上下文等仍按验收记录补测。后续实施先落实开发包隔离，文档修订不自动启动产品开发或安装。Step 4.5 重点补齐产品取图、双任务页隔离、dark 主题、自动恢复与 Query 失效，不能因 Step 0 基础页面闭环通过就跳过；Step 5 仍以这些验收通过为前置。
 
 ## 共同约束与最终验收
 
 - 遵守根 `AGENTS.md`：业务 API 资源化，JSON 使用 `success/data/error` 与 `snake_case`；内部 bigint 自增 ID 不外泄；实时 payload 只含公开 UUIDv7。
 - Cindy 自身 API 的 `ok`、`sessionId`、`callId` 等按宿主契约原样使用，只在 Lumi 业务边界转换；不能为统一格式擅改宿主字段或把宿主不透明标识冒充 Lumi UUID。
-- 不修改旧 MCP `internal/mcpserver` 与旧插件；现有 Codex 新链路也须继续可用。共用代码确需调整时按下列兼容门槛验收，不能以 Cindy 流程通过替代 Codex 回归证据。
+- 保留通用 HTTP OAuth MCP `internal/mcpserver` 与现有 Codex 正式/开发链路。共用代码确需调整时按下列兼容门槛验收，不能以 Cindy 流程通过替代 Codex 回归证据。
 - 不让 Agent/插件直接改 SQLite 或素材索引，不复制模型提示词，不把 `AGENTS.md` 的行为指引描述为跨引擎强制沙箱。
 - 不使用定时 HTTP/MCP 查询刷新业务状态，不关闭 CSP、来源校验或桌面鉴权。
 - 不在本地运行 Cargo/Rust。仅运行与改动有关的 Go、前端、Node 检查；纯计划文档变更只检查文档。
