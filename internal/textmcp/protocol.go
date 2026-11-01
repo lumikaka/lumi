@@ -5,6 +5,7 @@ package textmcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -24,7 +25,11 @@ func Protocol(forward Forward) *mcp.Server {
 		if spec.Name == "read_app_connection" {
 			continue
 		}
-		tool := &mcp.Tool{Name: spec.Name, Description: spec.Description, InputSchema: spec.Schema}
+		published, err := modelVisibleSpec(spec)
+		if err != nil {
+			panic(fmt.Errorf("publish MCP tool %s: %w", spec.Name, err))
+		}
+		tool := &mcp.Tool{Name: spec.Name, Description: published.Description, InputSchema: published.Schema}
 		if strings.HasPrefix(spec.Name, "review_") {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"resourceUri": ReviewURI}}
 			tool.Annotations = appReadAnnotations()

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -162,12 +163,42 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 		if strings.Contains(string(b), "root_path") {
 			t.Fatal("model can choose root")
 		}
+		var published map[string]any
+		if err := json.Unmarshal(b, &published); err != nil {
+			t.Fatal(err)
+		}
+		for _, spec := range textmcp.Specs() {
+			if spec.Name != tool.Name {
+				continue
+			}
+			original, _ := json.Marshal(spec.Schema)
+			var want map[string]any
+			_ = json.Unmarshal(original, &want)
+			delete(want, "allOf")
+			if !reflect.DeepEqual(published, want) {
+				t.Fatalf("%s: stdio tools/list lost object fields or constraints", tool.Name)
+			}
+		}
 	}
 	callText(t, client, "project_overview", map[string]any{}, "project_not_initialized")
 	init := callText(t, client, "project_init", map[string]any{"idea": "小狐狸在雨夜把迷路的星星送回天空", "name": "回家的星星"}, "")
 	projectUUID := field(init, "project")["uuid"].(string)
 	if field(init, "setup")["setup_status"] != "draft" {
 		t.Fatalf("init=%v", init)
+	}
+	// Conditions are absent from tools/list, but remain enforced by the CLI
+	// before any setup write. Compare the complete state after rejected calls.
+	initialSetup := callText(t, client, "project_setup", map[string]any{"action": "get"}, "")
+	for _, args := range []map[string]any{
+		{"action": "update", "project_name": "missing revision"},
+		{"action": "finalize"},
+		{"action": "update", "expected_revision": initialSetup["revision"], "generation_scope": "project_only"},
+		{"action": "update", "expected_revision": initialSetup["revision"], "picture_book": map[string]any{"format": "invalid"}},
+	} {
+		callText(t, client, "project_setup", args, "invalid_arguments")
+	}
+	if got := callText(t, client, "project_setup", map[string]any{"action": "get"}, ""); !reflect.DeepEqual(initialSetup, got) {
+		t.Fatal("invalid requests changed setup state")
 	}
 	// A real web UI subscribes through this same socket, holding CLI presence.
 	status := cliRun(t, opt, "status", 0)
@@ -197,6 +228,10 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	}
 	chapter := callText(t, client, "chapters", map[string]any{"action": "create", "chapter_code": "vol01.ch01", "title": "雨夜的星星", "expected_revision": field(overview, "project")["revision"]}, "")
 	chapterUUID := chapter["uuid"].(string)
+	if chapter["revision"] != float64(0) {
+		t.Fatalf("empty chapter must exercise valid revision=0: %v", chapter)
+	}
+	callText(t, client, "chapters", map[string]any{"action": "write", "chapter_uuid": chapterUUID, "expected_revision": chapter["revision"]}, "invalid_arguments")
 	callText(t, client, "chapters", map[string]any{"action": "write", "chapter_uuid": chapterUUID, "content": "雨落下来时，小狐狸在草丛里找到星星。它撑起树叶伞，带星星走过森林，爬上山顶。天亮前，星星终于回到了天空。", "expected_revision": chapter["revision"]}, "")
 	settingList := callText(t, client, "settings", map[string]any{"action": "list"}, "")
 	setting := callText(t, client, "settings", map[string]any{"action": "create", "asset_type": "character", "title": "小狐狸", "summary": "橘红毛，白胸口，穿黄色雨衣；大尾巴，神情坚定。", "tags": []string{"主角"}, "expected_revision": field(settingList, "premise")["revision"]}, "")

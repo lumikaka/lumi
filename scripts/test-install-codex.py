@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import select
 import shutil
 import struct
@@ -24,6 +25,18 @@ APP_CODEX = Path('/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/cod
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def check_skill_references(plugin):
+    skill = plugin / 'skills/create-picture-book/SKILL.md'
+    links = re.findall(r'\]\((references/[^)]+)\)', skill.read_text())
+    assert links, 'Skill must link its bundled calling reference'
+    for link in links:
+        target = (skill.parent / link.split('#')[0]).resolve()
+        target.relative_to(skill.parent.resolve())
+        assert target.is_file(), f'Missing installed skill reference: {link}'
+        source = REPO / 'codex-plugins/lumi/skills/create-picture-book' / link.split('#')[0]
+        assert target.read_bytes() == source.read_bytes(), f'Stale installed reference: {link}'
 
 
 def png():
@@ -150,6 +163,8 @@ def main():
         mcp = json.loads(mcp_path.read_text())
         assert mcp['mcpServers']['lumi'] == {'command': str(binary), 'args': ['mcp']}
         check('generated stdio command is absolute and has no cwd')
+        check_skill_references(mcp_path.parent)
+        check('installed skill relative references resolve to the packaged content')
 
         # A damaged download must fail before changing the installed state/config.
         corrupt = root / 'corrupt-assets'
@@ -191,6 +206,7 @@ def main():
         assert current_manifest['version'] == '999.0.1'
         cached = home / 'plugins/cache/lumi-local/lumi/999.0.1'
         assert json.loads((cached / '.codex-plugin/plugin.json').read_text())['version'] == '999.0.1'
+        check_skill_references(cached)
         after_upgrade, config_after_upgrade = snapshot(), config.read_bytes()
         command(installer + ['--from-dir', upgraded])
         assert snapshot() == after_upgrade and config.read_bytes() == config_after_upgrade
@@ -214,6 +230,25 @@ def main():
         status = rpc.call('mcpServerStatus/list', {'threadId': thread, 'limit': 100})
         server = next(item for item in status['data'] if 'project_overview' in str(item.get('tools')))
         check('App loader accepts manifest and skill, and discovers Lumi MCP tools')
+        # These are App-loaded MCP schemas, not the model's converted tool
+        # declarations. Actual model-visible types still need a model turn.
+        schemas = {name: tool['inputSchema'] for name, tool in server['tools'].items()}
+        for name in ('project_setup', 'story_profile', 'chapters', 'settings', 'pages',
+                     'render_prompt', 'review_candidates', 'watch_app_changes'):
+            schema = schemas[name]
+            assert schema['type'] == 'object' and schema['additionalProperties'] is False
+            assert 'allOf' not in schema and 'if' not in schema and 'then' not in schema
+            selector = 'target' if name == 'render_prompt' else 'kind' if name == 'review_candidates' else 'action'
+            assert schema['properties'][selector]['type'] == 'string'
+            assert schema['properties'][selector]['enum']
+            assert schema['required'] == (['prompt_group', 'prompt_key', 'target'] if name == 'render_prompt' else [selector])
+        picture_book = schemas['project_setup']['properties']['picture_book']
+        assert picture_book['type'] == 'object' and picture_book['required'] == ['format']
+        assert 'vertical_strip' in picture_book['properties']['format']['enum']
+        assert picture_book['properties']['aspect_ratio']['properties']['width']['type'] == 'integer'
+        assert schemas['render_prompt']['properties']['variables']['additionalProperties']['type'] == 'string'
+        assert schemas['review_candidates']['properties']['candidates']['items']['required'] == ['title', 'text']
+        check('App-loaded schemas retain nested fields, enums and base required without conditional composition')
 
         def tool(name, arguments=None, error=None):
             response = rpc.call('mcpServer/tool/call', {'threadId': thread, 'server': server['name'],

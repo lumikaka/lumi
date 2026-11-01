@@ -3,6 +3,8 @@ package textmcp
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -35,7 +37,8 @@ func paged(p map[string]any) map[string]any {
 func actionSchema(p map[string]any, requirements map[string][]string) map[string]any {
 	s := obj(p, "action")
 	conditions := []any{}
-	for action, fields := range requirements {
+	for _, action := range slices.Sorted(maps.Keys(requirements)) {
+		fields := requirements[action]
 		conditions = append(conditions, map[string]any{"if": map[string]any{"properties": map[string]any{"action": map[string]any{"const": action}}}, "then": map[string]any{"required": fields}})
 	}
 	s["allOf"] = conditions
@@ -101,7 +104,9 @@ func Specs() []Spec {
 		"kind": enum("page", "setting", "text"), "chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid,
 		"candidates": map[string]any{"type": "array", "minItems": 2, "maxItems": 12, "items": obj(map[string]any{"title": str("Candidate title"), "text": str("Complete candidate text")}, "title", "text")},
 	}, "kind")
-	for kind, fields := range map[string][]string{"page": {"chapter_uuid", "page_uuid"}, "setting": {"setting_uuid"}, "text": {"candidates"}} {
+	candidateRequirements := map[string][]string{"page": {"chapter_uuid", "page_uuid"}, "setting": {"setting_uuid"}, "text": {"candidates"}}
+	for _, kind := range slices.Sorted(maps.Keys(candidateRequirements)) {
+		fields := candidateRequirements[kind]
 		conditions, _ := candidateSchema["allOf"].([]any)
 		candidateSchema["allOf"] = append(conditions, map[string]any{"if": map[string]any{"properties": map[string]any{"kind": enum(kind)}}, "then": map[string]any{"required": fields}})
 	}

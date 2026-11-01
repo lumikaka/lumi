@@ -23,10 +23,12 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 遵循用户已经给出的语言、年龄、页数、风格、审阅和交付要求。没指定的可逆细节做合理假设并说明；绘本格式与比例定稿后不可变，若用户未指定也未授权自行决定，在 setup 定稿前确认。
 
-1. **想法 → setup**：读 `project_setup get`，根据用户意图和缺失字段整理设置。`project_setup update` 填名称、语言、画风、创作要求和绘本规格；以返回的新 revision 调 `finalize`。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
+首次选择 setup 参数、组织规格选项或写入前，先读 [MCP 调用参考](references/mcp-usage.md) 的「Setup 与规格」；其余操作按需读「动作参数与版本」和「渲染与写回」。参数声明显示 `unknown`、缺失或不足以确定必填项时，先查对应段落，不用连续失败的写调用猜参数。参考中的示例值不能替代本项目刚读取的 UUID 和 revision。
+
+1. **想法 → setup**：按参考中的合法组合和 `get → update → finalize` 顺序写入。已有明确规格直接沿用；形式与比例冲突时先说明可行选择及影响，不自行替换形式。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
 3. **设定**：从已保存故事提取角色、场景、道具和参考，用 `prompt_catalog` 查实际 premise 模板，再 `render_prompt(target=premise)`。逐项 `settings create` 保存文字特征、色彩、服饰和画风，先为重复出现的角色/场景制作设定图。
-4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。`pages create` 中 `description_md` 是页面正文，`storyboard_md` 是完整画面描述，含构图、动作、表情、光线和逐字画面文字；封面/封底传正确 `page_role`。不要把整个输出 JSON 当作正文保存。
+4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
 5. **生图与挂载**：按下节逐张生成并立即导入。按用户要求完成整本，不只生成示范页。
 6. **审阅与导出**：按约定用 `review_settings`、`review_page`、`review_book` 展示；修正后 `export_book`。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
@@ -36,7 +38,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 父代理先查 `prompt_catalog`，按实际模板及必填占位符调用 `render_prompt`；把返回的完整 `prompt`、`project_uuid`、`target_uuid`、`expected_revision`、`write_back` 和用户约束交给 subagent。优先使用不继承父历史的任务输入，避免依赖未传递的对话。要求 subagent 按模板输出结构化草稿，**不要写项目、不要生图、不要启动 Lumi provider pipeline**。subagent 的共享文件系统不是隔离边界。
 
-父代理核对输出与用户要求、渲染时的目标和 revision，再按 `write_back` 映射到 MCP 写工具，串行写回。下一次创建章节前重读 `project_overview.project.revision`，创建设定前重读 `settings list.premise.revision`，创建页面前重读 `pages list.state.revision`。创建返回的对象 revision 不等于父级集合 revision，也不能给整批复用旧 revision。版本冲突先重读事实并检查草稿是否仍适用，不只把 revision 换新强行覆盖。
+父代理核对输出与用户要求、渲染时的目标和 revision，再按 `write_back` 和调用参考中的版本来源串行写回。每次创建都需最新父级版本，不能给整批复用旧 revision。版本冲突先重读事实并检查草稿是否仍适用，不只把 revision 换新强行覆盖。
 
 用户要求不使用 subagent、宿主没有委派工具或额度不足时，**走串行路径**：父代理自己执行同一个 `render_prompt` 任务并核对写回。告知采用串行方式，不因缺少 subagent 停止可完成的创作。缺占位符时根据工具错误和 `prompt_catalog` 补齐；不要猜模板名或覆盖工具自动填入的项目事实。
 

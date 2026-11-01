@@ -53,6 +53,7 @@ jobs:
           set -euo pipefail
           pnpm --dir web install --frozen-lockfile
           bash -n scripts/install-codex.sh
+          node --test scripts/test-package-codex.mjs
           make codex-release CODEX_VERSION="${RELEASE_TAG#v}"
           go test ./cmd/lumi ./internal/textmcp
       - name: Import optional Developer ID certificate
