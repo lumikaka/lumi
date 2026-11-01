@@ -90,13 +90,13 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 ### 在 Codex App 中创作（macOS）
 
-新 `lumi` 插件无需 API key，写作和生图使用 Codex 自身额度，项目数据保存在本地。在 Codex App 中输入一句提示词：
+`lumi` 插件无需 API key，写作和生图使用 Codex 自身额度，项目数据保存在本地。在 Codex App 中输入一句提示词：
 
 > 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 
 下载二进制、写用户安装目录和 `~/.codex`（注册 marketplace、启用插件）可能需要宿主批准；**安装后须新开 App 会话**。项目写保护还需要用户信任项目。仅支持 macOS Codex App，不支持 Codex TUI 或 IDE 扩展。入口从首个含 Codex 资产的 Release 起可用；自动化测试不能替代真实 App 人工验收。
 
-完整的安装、升级、卸载、创作提示词和验收状态见 [Codex App 安装指南](docs/features/codex-plugins/install.md)。旧 HTTP OAuth 插件不受影响。
+正式版安装为 `lumi@lumi-local`。完整的安装、升级、卸载、创作提示词和验收状态见 [Codex App 安装指南](docs/features/codex-plugins/install.md)；从当前源码开发插件使用独立的 `lumi-dev@lumi-dev-local`，见下方[插件本地开发](#codex-插件本地开发macos)。
 
 ### 独立桌面版
 
@@ -129,8 +129,12 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 ```text
 .
 ├── cmd/
+│   ├── lumi/              # 绘本 CLI、stdio MCP 与独立后台实例
 │   ├── lumi_web/          # API、开发前端代理与生产内嵌前端
 │   └── lumi_ctl/          # SQLite migration 管理命令
+├── codex-plugins/
+│   ├── lumi/              # 正式插件、共享绘本技能和资源
+│   └── lumi-dev/          # 开发插件配置差异，构建时合入共享资源
 ├── db/migrations/
 │   ├── app/               # 全局应用库 migration
 │   └── project/           # 自包含项目库 migration
@@ -189,6 +193,33 @@ make dev-api
 Go 会优先处理 `/api`；开发环境的其他前端请求和 Vite HMR WebSocket 会转发到 `5802`。Vite 未运行时，前端请求返回 `502 Bad Gateway`，API 仍可使用。
 
 应用实时通信采用 `topic/event/payload/ref/join_ref` Channel 信封，提供 join、leave、heartbeat、自动重连和按 topic 广播。`system` 用于应用状态；同一连接可以同时订阅任意已打开项目的 `project:<project_uuid>`，每个 topic 独立持有 Presence lease。WebSocket 只负责即时提示，业务状态不使用定时 HTTP 轮询；客户端在首次 join、重新 join 和窗口重新聚焦时通过 REST task/event cursor 校准 SQLite 事实状态。若项目已被空闲回收，URL 会先幂等重开再重新 join。
+
+### Codex 插件本地开发（macOS）
+
+在仓库根目录执行：
+
+```bash
+make codex-dev
+```
+
+命令从当前源码构建 Go CLI 和前端，生成开发插件，再注册本地 marketplace 并安装或刷新。无需发布 patch、创建 Tag 或下载 Release；安装后在独立测试绘本目录中新开 Codex App 会话，使用 `lumi-dev:create-picture-book`。
+
+| 项目 | 正式版 | 开发版 |
+|---|---|---|
+| 插件身份 | `lumi@lumi-local` | `lumi-dev@lumi-dev-local` |
+| CLI | Release 安装的 `lumi` | `build/codex-dev/lumi_dev` |
+| 环境 | `production` | `development` |
+| 默认应用数据 | `~/.lumi` | `~/.lumi_dev` |
+
+CLI 和绘本技能共用源码；开发插件明确指定开发环境和数据目录。应用数据隔离不会复制绘本项目，请使用独立测试项目文件夹。
+
+日常迭代：
+
+- 修改 Go 或前端后执行 `make codex-dev`；结束开发任务后执行 `make codex-dev-stop` 停止旧后台，再新开会话加载新构建。
+- 仅修改技能或插件配置时执行 `make codex-dev-refresh`，随后新开会话。
+- 只需构建 CLI 时执行 `make codex-dev-build`。
+
+`CODEX_HOME` 应与实际使用的 Codex App 一致，未设置时使用 `~/.codex`。自定义目录、卸载及验证命令见 [Codex 插件开发指南](codex-plugins/README.md)。
 
 ### 配置
 
@@ -403,4 +434,4 @@ updater 密钥通过 `cargo tauri signer generate` 离线生成，公钥保存�
 
 ## 本地项目 MCP
 
-在项目配置中创建外部 AI 访问授权并复制 stdio 客户端配置。Lumi 必须运行且项目已打开；支持只读、编辑/生成与持久化危险操作确认。详见 [连接和使用说明](docs/local-project-mcp.md)。
+通用外部 AI 客户端可从 Lumi 的「设置 → MCP 设置」复制 HTTP OAuth 地址，在授权页选择项目和只读或编辑权限。此方式需要 Lumi 运行，并支持持久化危险操作确认；上方 Codex 绘本插件通过自己的 CLI 和 stdio MCP 工作。详见 [连接和使用说明](docs/local-project-mcp.md)。

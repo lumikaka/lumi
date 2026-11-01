@@ -7,6 +7,8 @@
 | 正式版 [`lumi/`](lumi/) | `lumi@lumi-local` | Release 安装的 `lumi` | `~/.lumi` |
 | 开发版 [`lumi-dev/`](lumi-dev/) | `lumi-dev@lumi-dev-local` | 当前源码构建的 `lumi_dev` | `~/.lumi_dev` |
 
+插件以会话 cwd 绑定绘本项目，使用 Codex 的写作和生图能力，无需 OAuth 或启动桌面 Lumi。
+
 正式版使用[一句话安装指南](../docs/features/codex-plugins/install.md)。开发版在仓库根目录执行：
 
 ```sh
@@ -47,12 +49,6 @@ node scripts/dev-codex.mjs --uninstall
 
 自定义输出目录时给脚本传 `--out /绝对路径`；沿用安装时的 `CODEX_HOME`。正式插件的注册与文件不受开发安装、刷新或卸载影响。
 
-## 从旧 HTTP OAuth 插件迁移
-
-旧 `lumi-prod-plugin` 和 `lumi-dev-plugin` 已从源码移除。正式版名称固定为 `lumi`，开发版为 `lumi-dev`。旧插件若已通过其他市场安装，源码删除不会自动卸载缓存；在 Codex 插件管理中卸载旧的两个插件，再安装对应的新入口。开发脚本仅管理 `lumi-dev@lumi-dev-local`，不擅自移除其他市场的注册。
-
-新的绘本插件以会话 cwd 绑定项目，使用 Codex 的写作和生图能力；不沿用旧 OAuth 授权，也不要求桌面 Lumi 运行。通用 HTTP OAuth 服务继续可用，连接说明见[本地项目 MCP](../docs/local-project-mcp.md)。
-
 ## 验证
 
 ```sh
@@ -61,4 +57,4 @@ go test ./cmd/lumi
 go test ./internal/server -run TestMCPOAuthOfficialSDK -count=1
 ```
 
-开发生成测试覆盖共享资源、含空格路径、同版本刷新及目录保护。HTTP OAuth SDK 测试继续覆盖动态注册、带后缀回调和重复 resource，不依赖已删除的插件目录。真实 Codex App 的新会话和原生生图仍需在安装后验证。
+开发生成测试覆盖共享资源、含空格路径、同版本刷新及目录保护。HTTP OAuth SDK 测试覆盖通用 MCP 服务的动态注册、带后缀回调和重复 resource。真实 Codex App 的新会话和原生生图仍需在安装后验证。
