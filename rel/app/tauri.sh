@@ -111,7 +111,6 @@ build_backend() {
 
 build_tauri() {
   config_json='{"bundle":{"resources":{"backend-darwin/":"backend/"}}}'
-  updater_args=()
 
   if [ -n "${LUMI_DESKTOP_VERSION:-}" ]; then
     if ! [[ "$LUMI_DESKTOP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
@@ -131,13 +130,12 @@ build_tauri() {
     else
       config_json='{"bundle":{"createUpdaterArtifacts":true,"resources":{"backend-darwin/":"backend/"}}}'
     fi
-    updater_args=(--features desktop-updater)
+    set -- --features desktop-updater "$@"
   fi
 
   pnpm --dir "$root_dir" exec tauri build \
     --config "$config_json" \
     --target "$target" \
-    "${updater_args[@]}" \
     "$@"
 }
 
