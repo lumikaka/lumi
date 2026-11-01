@@ -110,10 +110,10 @@ test('ratio helpers preserve exact ratios and detect replacement mismatches with
 
 test('chapter preview keeps continuous vertical strips and adds single-page keyboard pagination', () => {
   const source = readFileSync(new URL('./ChapterComicPreviewPage.jsx', import.meta.url), 'utf8')
-  assert.match(source, /verticalStrip \? \(/)
-  assert.match(source, /chapter-preview__pager/)
-  assert.match(source, /event\.key === 'ArrowLeft'/)
-  assert.match(source, /event\.key === 'ArrowRight'/)
-  assert.match(source, /comicPageLabel\(t, sections, currentPage\)/)
+  const shared = readFileSync(new URL('../components/book-preview/BookPreview.jsx', import.meta.url), 'utf8')
+  assert.match(source, /mode=\{verticalStrip \? 'strip' : 'paged'\}/)
+  assert.match(source, /webBookPages\(sections, t, \{ verticalStrip/)
+  assert.match(shared, /event\.key === 'ArrowLeft'/)
+  assert.match(shared, /event\.key === 'ArrowRight'/)
   assert.match(source, /<ImageRatioNotice pictureBook=\{pictureBook\}/)
 })

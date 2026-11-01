@@ -134,3 +134,11 @@
 ```json
 {"name":"review_candidates","arguments":{"kind":"text","candidates":[{"title":"温暖结局","text":"星星点亮了狐狸回家的路。"},{"title":"幽默结局","text":"星星约狐狸下次带一把更大的伞。"}]}}
 ```
+
+## 最终绘本预览
+
+完成用户要求的创作、保存与 `export_book` 后调用 `review_book`。整本传 `{}`；指定章节传 `{"chapter_uuid":"刚读取的章节 UUID"}`。不等待用户打开或操作 App，不新增确认节点；用户明确要求的中途审阅仍保留。
+
+工具继续使用统一 JSON 信封，`data.items` 只携带当前采用的 `asset_uuid`、正文和真实 `open_url`。可选 `chapter_uuid` 为向后兼容的范围参数；新增 `scope`（`book`/`chapter`）、`total`，各页含 `chapter_title` 和正文 `page_number`（封面/封底无正文页码）。`target_uuid` 仍为项目 UUID。默认每批 20 页，按 `cursor_pagination` 继续读取；App 自动从首批读全后展示，跨章节保持顺序。模型需要完整文字时也必须继续分页，不能把首批当整本。
+
+App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在 App 内进入单页阅读。完整原图经工具返回的 Lumi 链接查看。UI 失败仍交付文本摘要、准确导出路径及 Web 入口；不改变 `import_image` 立即导入/采用语义。

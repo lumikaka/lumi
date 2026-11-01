@@ -133,12 +133,18 @@ page_role 默认 `body`，也支持 `front_cover/back_cover`。封面、封底�
 
 | 工具 | 参数 | 视图 |
 | --- | --- | --- |
-| `review_book` | 分页参数可选 | 按阅读顺序的页面网格，保留每页完整正文与画面描述、缺图标记 |
+| `review_book` | `chapter_uuid?` 与分页参数 | 当前采用图片的最终只读预览：章节分组、缩略图、单页大图、前后翻页和缺图提示；工具文本仍保留完整正文与画面描述 |
 | `review_page` | `chapter_uuid,page_uuid` | 单页正文、画面描述、当前图片与全部图片历史版本 |
 | `review_candidates` | `kind:page` + `chapter_uuid,page_uuid`；或 `kind:setting` + `setting_uuid`；或 `kind:text` + `candidates:[{title,text}]`（2–12 项） | 图片版本或文本候选，多选一；图片候选编号为不可变的 `version_no`，文本候选按输入顺序从 1 编号 |
 | `review_settings` | `setting_uuid?` 与分页参数 | 角色、场景、道具及参考卡片，保留完整 summary 和当前参考图 |
 
 成功 data 包含 `view,project_uuid,target_uuid,revision,title,open_url,open_command,request,selection_notice,items`，列表另含 `cursor_pagination`。每项包含公开 `uuid,revision,title,text,scene,kind,asset_uuid?,chapter_uuid?,open_url`；单页和候选另含 `variants:[{uuid?,asset_uuid?,number,title,text}]`，纯文本候选不输出不存在的资源 UUID。结果超限时减小 limit 或读取单页，不截断正文。图片历史仅切换本地预览。
+
+`review_book` 向后兼容增加 `scope:"book"|"chapter"`、完整范围的 `total`，页面增加 `chapter_title` 和正文 `page_number`。指定 `chapter_uuid` 时只读该 active 章节；省略时按章节与封面/正文/封底阅读顺序遍历全书。`target_uuid` 仍是项目 UUID。`asset_uuid` 只来自当前采用图片，不附带候选或业务提交字段。章节预览（及单章节全书）的 `open_url` 指向实际 Web 预览；多章节全书指向完整 Lumi 的章节入口。
+
+App 从首游标开始依次读完 `cursor_pagination`，校验范围、总数、重复项与游标前进；`result_too_large` 时缩小批量。读全前不会把首批页面标为全书；刷新失败保留上次完整快照，并尽量按页面 UUID 保留阅读位置。缩略图在 App 内打开共享大图阅读器，只有“在 Lumi 中打开”调用宿主链接行为。共享实现、Web 原视觉对照及验收边界见 [最终预览验收](final-book-preview-acceptance.md)。
+
+创作、图片导入、保存和用户要求的导出先完成，再调用最终 `review_book`；不等待用户打开或操作 UI，不新增确认节点。明确要求的中途审阅继续执行。UI 不可用时仍交付文本、导出路径和真实 Web 入口；`import_image` 语义不变。
 
 候选界面不会提交业务写入，也不会显示“已保存”。用户在对话回复编号后，模型重读目标并核对候选 UUID，再调用 `pages/settings` 的 `action:select_image`，显式提供 `variant_uuid,expected_revision` 以及相应目标 UUID（页面另需 `chapter_uuid`）。响应或工具中断时重读；冲突不自动覆盖。图片候选结果的 `submit` 字段提供对应写工具与当前版本，仍需在实际提交前重读。
 

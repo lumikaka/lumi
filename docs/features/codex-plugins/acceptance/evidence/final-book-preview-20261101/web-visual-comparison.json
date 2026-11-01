@@ -1,0 +1,38 @@
+{
+  "grid": {
+    "viewport": [
+      1280,
+      900
+    ],
+    "preview_region": [
+      258,
+      302,
+      916,
+      459
+    ],
+    "difference_bbox": null,
+    "mean_rgb_delta": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "paged": {
+    "viewport": [
+      1280,
+      900
+    ],
+    "preview_region": [
+      262,
+      185,
+      1242,
+      900
+    ],
+    "difference_bbox": null,
+    "mean_rgb_delta": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

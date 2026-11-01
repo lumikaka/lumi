@@ -6,6 +6,7 @@ import { AppBridge } from './bridge.js'
 import { reviewContext, failureKind, failureLabels, acceptReviewResult } from './contracts.js'
 import { PreviewCache, PreviewRequest } from './images.js'
 import { bindReviewSync } from './sync.js'
+import BookReview from './BookReview.jsx'
 import './review.scss'
 
 const bridge = new AppBridge()
@@ -124,7 +125,7 @@ function App() {
     observer.observe(document.body)
     return () => { off(); observer.disconnect() }
   }, [])
-  return <div className="lumi-app" data-theme={effectiveTheme}><label className="theme-control">外观<select aria-label="审阅外观" value={theme} onChange={e=>{const value=e.target.value;themeRef.current=value;setTheme(value);const next=value==='auto'?hostTheme.current:value;document.documentElement.dataset.theme=next;setEffectiveTheme(next)}}><option value="auto">跟随宿主</option><option value="light">浅色</option><option value="dark">深色</option></select></label>{seed ? <>{error && <p role="alert" className="notice">{error}</p>}<Review key={seed.sequence} seed={seed.context} navigate={showReview} /></> : <main><p className="eyebrow">LUMI / 创作审阅</p><h1>审阅内容</h1>{error && <p role="alert">{error}</p>}<p>正文、候选编号和 Lumi 入口保留在工具文本中。也可在项目目录运行 <code>lumi open</code>。</p><pre>{fallback}</pre></main>}</div>
+  return <div className="lumi-app" data-theme={effectiveTheme}><label className="theme-control">外观<select aria-label="审阅外观" value={theme} onChange={e=>{const value=e.target.value;themeRef.current=value;setTheme(value);const next=value==='auto'?hostTheme.current:value;document.documentElement.dataset.theme=next;setEffectiveTheme(next)}}><option value="auto">跟随宿主</option><option value="light">浅色</option><option value="dark">深色</option></select></label>{seed ? <>{error && <p role="alert" className="notice">{error}</p>}{seed.context.view === 'book' ? <BookReview key={`${seed.context.project_uuid}:${seed.context.request.arguments.chapter_uuid || ''}`} seed={seed.context} bridge={bridge} previews={previews} client={client} OpenLumi={OpenLumi} /> : <Review key={seed.sequence} seed={seed.context} navigate={showReview} />}</> : <main><p className="eyebrow">LUMI / 创作审阅</p><h1>审阅内容</h1>{error && <p role="alert">{error}</p>}<p>正文、候选编号和 Lumi 入口保留在工具文本中。也可在项目目录运行 <code>lumi open</code>。</p><pre>{fallback}</pre></main>}</div>
 }
 const reactRoot=createRoot(document.getElementById('root'))
 reactRoot.render(<QueryClientProvider client={client}><App /></QueryClientProvider>)

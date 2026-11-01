@@ -36,6 +36,16 @@ export function reviewContext(result) {
   const a = d.request.arguments
   if (Array.isArray(a) || typeof a !== 'object') throw new Error('审阅请求无效')
   if (d.view === 'book' && d.target_uuid !== d.project_uuid) throw new Error('整本目标无效')
+  if (d.view === 'book') {
+    if ((a.chapter_uuid && !uuidV7.test(a.chapter_uuid)) ||
+        (d.scope !== undefined && d.scope !== (a.chapter_uuid ? 'chapter' : 'book')) ||
+        (d.total !== undefined && (!Number.isSafeInteger(d.total) || d.total < d.items.length))) throw new Error('预览范围无效')
+    for (const item of d.items) {
+      if (!uuidV7.test(item.chapter_uuid) || (a.chapter_uuid && item.chapter_uuid !== a.chapter_uuid) ||
+          (item.chapter_title !== undefined && typeof item.chapter_title !== 'string') ||
+          (item.page_number !== undefined && (!Number.isSafeInteger(item.page_number) || item.page_number < 1))) throw new Error('预览章节无效')
+    }
+  }
   if (d.view === 'page' || d.view === 'candidates') {
     const item = d.items[0]
     if (d.items.length !== 1 || item.uuid !== d.target_uuid || item.revision !== d.revision) throw new Error('目标修订不匹配')

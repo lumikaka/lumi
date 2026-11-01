@@ -32,7 +32,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 3. **设定**：从已保存故事提取角色、场景、道具和参考，用 `prompt_catalog` 查实际 premise 模板，再 `render_prompt(target=premise)`。逐项 `settings create` 保存文字特征、色彩、服饰和画风，先为重复出现的角色/场景制作设定图。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
 5. **生图与挂载**：按下节逐张生成并立即导入。按用户要求完成整本，不只生成示范页。
-6. **审阅与导出**：按约定用 `review_settings`、`review_page`、`review_book` 展示；修正后 `export_book`。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
+6. **导出与最终预览**：按用户要求完成创作、生图挂载和保存，再 `export_book`；导出完成后调用 `review_book` 展示当前采用图片的最终只读预览。只交付指定章节时传 `chapter_uuid`，整本时省略；多章节按章节分组阅读。用户明确要求的中途审阅仍按约定使用 `review_settings`、`review_page` 或 `review_book`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
 
@@ -56,9 +56,9 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 审阅与提问
 
-用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。交付前展示全书审阅，不把额外确认设为导出前置条件。
+用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。完成用户要求的创作、保存和导出后展示最终预览；不增加确认节点，不等待用户打开、翻页或操作 MCP Apps。用户要求一次生成时连续做完。
 
-只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。MCP Apps 不可见时使用完整文本及工具返回的 Lumi 链接/命令，不把界面加载失败当作内容丢失。`review_candidates` 切换只是本地预览；用户回复编号后重读，核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。
+只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。MCP Apps 关闭、不可用或加载失败均不阻塞创作与导出；仍交付文本摘要、准确导出路径和工具返回的真实 Lumi Web 预览入口/命令，不把界面加载失败当作内容丢失。`review_book` 的缩略图、大图和翻页只读当前采用图片，不能以预览点击作为保存、审批或 `import_image` 的前置条件。`review_candidates` 切换只是本地预览；用户回复编号后重读，核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。
 
 ## 额度耗尽、中断与续做
 

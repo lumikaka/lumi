@@ -19,7 +19,7 @@ else if(m.method==='ui/open-link')result={};else return;
 frame.contentWindow.postMessage({jsonrpc:'2.0',id:m.id,result},'*')}catch(error){frame.contentWindow.postMessage({jsonrpc:'2.0',id:m.id,error:{code:-32603,message:String(error)}},'*')}});
 for(const button of document.querySelectorAll('[data-view]'))button.onclick=()=>{view=button.dataset.view;show()};
 document.querySelector('#theme').onclick=()=>{dark=!dark;frame.contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/host-context-changed',params:{theme:dark?'dark':'light'}},'*')};
-document.querySelector('#failure').onclick=()=>{fail=!fail;frame.src='/review.html?retry='+Date.now()};
+document.querySelector('#failure').onclick=()=>{fail=!fail;if(fail)frame.src='/review.html?retry='+Date.now()};
 document.querySelector('#wrap').onclick=()=>{wrapped=!wrapped;show()};
 document.querySelector('#mutate').onclick=()=>fetch('/mutate',{method:'POST'});
 </script></html>'''
@@ -45,7 +45,8 @@ def main():
                     p=mcp.tool('pages',{'action':'get','chapter_uuid':manifest['chapter_uuid'],'page_uuid':manifest['page_uuid']})
                     return self.reply(mcp.tool('pages',{'action':'update','chapter_uuid':manifest['chapter_uuid'],'page_uuid':manifest['page_uuid'],'expected_revision':p['revision'],'description_md':'WebSocket 提示后从 REST 重读的最新正文。'}))
                 if self.path!='/call' or body['name'] not in ('read_app_image','read_app_connection',*['review_'+v for v in manifest['requests']]):return self.send_error(403)
-                if body.get('fail') and body['name']=='read_app_image':
+                failed_asset=json.loads((root/'results/page.json').read_text())['structuredContent']['data']['items'][0].get('asset_uuid')
+                if body.get('fail') and body['name']=='read_app_image' and body['arguments'].get('asset_uuid')==failed_asset:
                     return self.reply({'isError':True,'structuredContent':{'success':False,'data':None,'error':{'code':'asset_not_found','message':'故意触发单图失败','details':'手动重试'}}})
                 result=mcp.rpc('tools/call',{'name':body['name'],'arguments':body['arguments']})
                 with (root/'browser-requests.jsonl').open('a') as log:log.write(json.dumps({'name':body['name'],'arguments':body['arguments'],'result_bytes':len(json.dumps(result).encode())})+'\n')

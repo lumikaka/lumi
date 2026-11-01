@@ -39,7 +39,7 @@ export class AppBridge {
     })
   }
   notify(method, params = {}) { this.surface.parent.postMessage({ jsonrpc: '2.0', method, params }, '*') }
-  call(name, args) { return this.request('tools/call', { name, arguments: args }) }
+  call(name, args, options) { return this.request('tools/call', { name, arguments: args }, options) }
   async initialize() {
     const result = await this.request('ui/initialize', { appInfo: { name: 'Lumi review', version: '1.0.2' }, appCapabilities: {}, protocolVersion: '2026-01-26' })
     this.notify('ui/notifications/initialized'); return result

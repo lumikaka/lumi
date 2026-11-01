@@ -1,0 +1,208 @@
+@use "../../styles/design-tokens" as *
+
+// Extracted from SimpleBookView and ChapterComicPreviewPage without redesign.
+
+.simple-book-grid
+  display: grid
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  gap: 16px
+
+  .book-preview__thumbnail
+    display: block
+    position: relative
+    aspect-ratio: 4 / 3
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-text
+    background: $color-surface
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      display: block
+      object-fit: cover
+
+    > span
+      position: absolute
+      left: 8px
+      bottom: 8px
+      min-width: 26px
+      min-height: 24px
+      padding: 3px 6px
+      display: grid
+      place-items: center
+      border-radius: 4px
+      background: rgba($color-surface, .92)
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+    &:has(.book-preview__hit-area:hover),
+    &:has(.book-preview__hit-area:focus-visible)
+      border-color: $color-accent
+      transform: translateY(-1px)
+
+.simple-book-grid > article
+  position: relative
+  min-width: 0
+
+  .simple-book-grid__agent
+    position: absolute
+    overflow: hidden
+    z-index: 2
+    top: 8px
+    right: 8px
+    width: auto
+    height: 28px
+    aspect-ratio: 4 / 3
+    border: 1px solid $color-border
+    padding: 0 8px
+    display: flex
+    align-items: center
+    gap: 4px
+    border-radius: $radius-sm
+    color: $color-text
+    background: rgba($color-surface, .92)
+    font-size: $font-size-micro
+    text-decoration: none
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      transform: translateY(-1px)
+
+.chapter-preview__strip
+  width: min(100%, 760px)
+  margin: 0 auto
+  display: grid
+  gap: 16px
+
+.chapter-preview__pager
+  width: min(100%, 980px)
+  margin: 0 auto
+  display: grid
+  gap: 12px
+
+  > .chapter-preview__section
+    width: 100%
+
+.chapter-preview__pager-controls
+  min-height: 40px
+  display: grid
+  grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr)
+  align-items: center
+  gap: 12px
+
+  button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+
+  button:first-child
+    justify-self: start
+
+  button:last-child
+    justify-self: end
+
+  strong
+    color: $color-muted
+    font-size: 12px
+    text-align: center
+
+.chapter-preview__section
+  min-width: 0
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 1px 0 rgba($color-text, .03)
+
+  > header
+    min-width: 0
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    > div
+      min-width: 0
+
+    p,
+    h2
+      margin: 0
+
+    p
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+      letter-spacing: .06em
+      text-transform: uppercase
+
+    h2
+      overflow-wrap: anywhere
+      font-size: 17px
+      line-height: 1.25
+      letter-spacing: 0
+
+    a
+      flex: 0 0 auto
+      width: 34px
+      height: 34px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-accent
+      background: $color-surface-subtle
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        background: $color-accent-muted
+
+.chapter-preview__media
+  width: 100%
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  img
+    width: 100%
+    height: 100%
+    display: block
+    object-fit: contain
+
+.chapter-preview__placeholder
+  height: 100%
+  display: grid
+  place-items: center
+  align-content: center
+  gap: 10px
+  color: $color-muted
+  font-size: 13px
+  font-weight: $font-weight-semibold
+  text-align: center
+
+  span
+    padding: 0 16px
+    overflow-wrap: anywhere
+
+
+@media screen and (max-width: 760px)
+  .chapter-preview__pager-controls
+    grid-template-columns: 1fr 1fr
+
+    strong
+      grid-column: 1 / -1
+      grid-row: 1
+
+    button
+      grid-row: 2

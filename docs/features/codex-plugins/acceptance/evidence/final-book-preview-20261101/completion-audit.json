@@ -1,0 +1,27 @@
+{
+  "final_resource_sha256": "263d05f6bbc61ccbb25c1cdc2f43ab8db575059462da62b1b227ac78037de454",
+  "web_tests": {
+    "passed": 442,
+    "failed": 0
+  },
+  "web_build": "passed_with_existing_chunk_warning",
+  "go_packages": [
+    "./internal/textmcp",
+    "./internal/server",
+    "./cmd/lumi"
+  ],
+  "go_result": "passed",
+  "web_visual_regions": "pixel_identical",
+  "browser_fixture": {
+    "total_pages": 25,
+    "chapters": 2,
+    "status": "passed",
+    "host_simulated": true
+  },
+  "real_codex_final_ui": "unverified",
+  "host_loaded_old_resource": "ee8d5ceaf93a1fc17085d06c0d4a5f59a72a5b3b86083d8e7a6246604cf185f9",
+  "reason": "Current chat retained old MCP connection; no expanded MCP Apps side-panel tab. Requested connection reload.",
+  "no_cargo_or_rust_commands": true,
+  "unrelated_worktree_changes": "preserved",
+  "commit_formatting": "Removed only trailing whitespace from shared Sass and build log; rebuilt App resource SHA256 unchanged."
+}

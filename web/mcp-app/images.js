@@ -5,6 +5,11 @@ export class PreviewCache {
     this.call = call; this.concurrency = concurrency; this.capacity = capacity; this.maxBytes = maxBytes
     this.cache = new Map(); this.pending = new Map(); this.queue = []; this.active = 0; this.bytes = 0
   }
+  evict(project, asset, edge) {
+    const key = `${project}:${asset}:${edge}`
+    const hit = this.cache.get(key)
+    if (hit) { this.bytes -= hit.data_uri.length * 2; this.cache.delete(key) }
+  }
   load(project, asset, edge, signal) {
     const key = `${project}:${asset}:${edge}`
     if (this.cache.has(key)) { const hit = this.cache.get(key); this.cache.delete(key); this.cache.set(key, hit); return Promise.resolve(hit) }

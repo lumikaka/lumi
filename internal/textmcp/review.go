@@ -24,16 +24,18 @@ type reviewVariant struct {
 }
 
 type reviewItem struct {
-	UUID        string          `json:"uuid"`
-	Revision    int64           `json:"revision"`
-	Title       string          `json:"title"`
-	Text        string          `json:"text"`
-	Scene       string          `json:"scene"`
-	Kind        string          `json:"kind"`
-	ChapterUUID string          `json:"chapter_uuid,omitempty"`
-	AssetUUID   string          `json:"asset_uuid,omitempty"`
-	OpenURL     string          `json:"open_url"`
-	Variants    []reviewVariant `json:"variants,omitempty"`
+	UUID         string          `json:"uuid"`
+	Revision     int64           `json:"revision"`
+	Title        string          `json:"title"`
+	Text         string          `json:"text"`
+	Scene        string          `json:"scene"`
+	Kind         string          `json:"kind"`
+	ChapterUUID  string          `json:"chapter_uuid,omitempty"`
+	ChapterTitle string          `json:"chapter_title,omitempty"`
+	PageNumber   int             `json:"page_number,omitempty"`
+	AssetUUID    string          `json:"asset_uuid,omitempty"`
+	OpenURL      string          `json:"open_url"`
+	Variants     []reviewVariant `json:"variants,omitempty"`
 }
 
 func pageReview(p production.ComicSection, base string) reviewItem {
@@ -71,15 +73,39 @@ func (s *Service) review(ctx context.Context, store *project.Store, st *story.Se
 		if err != nil {
 			return nil, err
 		}
+		found := a.ChapterUUID == ""
+		data["scope"] = "book"
+		data["selection_notice"] = "只读预览当前采用的页面图片；无需操作此界面即可完成创作与导出。"
 		for _, ch := range chapters {
+			if a.ChapterUUID != "" && a.ChapterUUID != ch.UUID {
+				continue
+			}
+			found = true
+			if a.ChapterUUID != "" {
+				data["scope"], data["title"] = "chapter", ch.Title
+				data["open_url"] = base + "/chapters/" + ch.UUID + "/preview"
+			} else if len(chapters) == 1 {
+				data["open_url"] = base + "/chapters/" + ch.UUID + "/preview"
+			}
 			pages, err := prod.ListSections(ctx, ch.UUID)
 			if err != nil {
 				return nil, err
 			}
+			bodyNumber := 0
 			for _, page := range pages {
-				items = append(items, pageReview(page, base))
+				item := pageReview(page, base)
+				item.ChapterTitle = ch.Title
+				if page.PageRole != "front_cover" && page.PageRole != "back_cover" {
+					bodyNumber++
+					item.PageNumber = bodyNumber
+				}
+				items = append(items, item)
 			}
 		}
+		if !found {
+			return nil, reviewArguments("指定章节不在当前项目的有效章节中。")
+		}
+		data["total"] = len(items)
 	case "review_settings":
 		settings, err := prod.ListPremiseAssets(ctx, "", "active")
 		if err != nil {

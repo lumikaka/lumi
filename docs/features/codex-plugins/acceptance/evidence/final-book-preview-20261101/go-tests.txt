@@ -1,0 +1,3 @@
+ok  	lumi/internal/textmcp	(cached)
+ok  	lumi/internal/server	7.089s
+ok  	lumi/cmd/lumi	(cached)
