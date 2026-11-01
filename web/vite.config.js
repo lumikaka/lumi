@@ -52,7 +52,7 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         main: 'index.html',
         admin: 'admin.html',

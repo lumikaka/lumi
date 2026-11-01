@@ -6,7 +6,7 @@
 
 ## 实现与边界
 
-- `web/mcp-app/` 使用 React 19、TanStack Query 5、Sass、Vite 7。`pnpm --dir web build:app` 独立生成 `internal/textmcp/appdist/review.html`，通过 Go embed 内嵌；完整 web 构建同时更新审阅包。资源 URI 含构建 SHA256，无新增运行时依赖或 CDN。
+- `web/mcp-app/` 使用 React 19、TanStack Query 5、Sass、Vite 8。`pnpm --dir web build:app` 独立生成 `internal/textmcp/appdist/review.html`，通过 Go embed 内嵌；完整 web 构建同时更新审阅包。资源 URI 含构建 SHA256，无新增运行时依赖或 CDN。
 - 四个模型审阅工具返回完整文本、公开 UUIDv7、revision、稳定候选编号与 Lumi 入口。初始结果没有图片 base64。App 通过只读、App-only 的 `read_app_image` 获取 `structuredContent.data.data_uri`；text 仅包含元数据摘要。旧 `read_image` 的模型参考图链路保留。[完整契约](tools.md#review_book--review_page--review_candidates--review_settings)。
 - 网格仅对可见项请求 384 预览，单页请求 1024；最多 3 路图片请求，按项目/Asset/尺寸缓存，LRU 最多 32 项、6 MiB。取消排队请求并丢弃过期响应，不预取整本原图。
 - 缺图、加载、资源错误、宿主拒绝、超时及解码失败分别显示；单图失败不自动重试，正文、编号和打开入口保留。受限结果适配只接受生产 structuredContent 或观察到的一层自有 JSON text 包装，解包后校验信封、目标、视图和 revision。

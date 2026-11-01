@@ -14,7 +14,7 @@ REST API，路径格式遵循资源化设计，按语义使用 GET、POST、PUT/
 ## 技术栈
 
 - 后端：Go 1.25、Echo v4、GORM v2、SQLite
-- 前端：React 19（JavaScript）、Vite 7、React Router 7、TanStack Query 5、Sass、pnpm
+- 前端：React 19（JavaScript）、Vite 8、React Router 7、TanStack Query 5、Sass、pnpm
 
 `site/` 是使用 Hugo 构建的 Lumi 官方网站与文档项目，独立于 Lumi 应用的构建与打包链路。
 

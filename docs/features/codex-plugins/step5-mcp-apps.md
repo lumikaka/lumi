@@ -9,7 +9,7 @@
 - 方案：`docs/features/codex-plugins/plan.md`（「大量使用 Codex 新支持的 MCP Apps」「MCP Apps 有自己的 UI」）。
 - 调研与真实宿主证据：[Step 4.5 验收记录](mcp-apps-acceptance.md)。App `26.1027.30824` / build `22943`、内置 CLI `0.166.0-alpha.5.1` 下，渲染、桥接、只读及临时 marker 写回调、工具错误回显通过；本地 data URI 六档和两种工具取图模式 × 六档全部加载成功。
 - Step 3 / Step 4 已提供文本与图片工具，当前契约见 [tools.md](tools.md#read_image)。`read_image` 接收项目 Asset UUID，生成最长边 256–1024、编码不超过 120 KiB 的 JPEG 预览；整个 MCP 结果不超过 256 KiB。
-- 前端技术栈见 `AGENTS.md`（React 19 JavaScript、Vite 7、Sass、pnpm）；可复用 `web/` 中现有的展示组件与样式变量，但 MCP Apps 的构建产物需独立打包并内嵌进 Go 二进制。
+- 前端技术栈见 `AGENTS.md`（React 19 JavaScript、Vite 8、Sass、pnpm）；可复用 `web/` 中现有的展示组件与样式变量，但 MCP Apps 的构建产物需独立打包并内嵌进 Go 二进制。
 
 ## 前置条件
 

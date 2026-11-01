@@ -120,7 +120,7 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 ### 技术栈
 
 - 后端：Go 1.25、Echo v4、GORM v2、纯 Go SQLite
-- 前端：React 19、Vite 7、React Router 7、TanStack Query 5、Sass、pnpm；管理端使用 MUI + Emotion
+- 前端：React 19、Vite 8、React Router 7、TanStack Query 5、Sass、pnpm；管理端使用 MUI + Emotion
 - 数据迁移：`github.com/golang-migrate/migrate/v4`
 - 后台任务：River Queue `v0.41.0` 与官方 `riverdriver/riversqlite`
 
