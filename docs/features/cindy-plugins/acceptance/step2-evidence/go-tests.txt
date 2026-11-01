@@ -1,0 +1,4 @@
+ok  	lumi/internal/textmcp	6.083s
+ok  	lumi/internal/project	19.792s
+ok  	lumi/cmd/lumi	8.392s
+ok  	lumi/internal/httpapi	20.631s

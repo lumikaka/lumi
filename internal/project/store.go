@@ -58,6 +58,7 @@ type Header struct {
 type Store struct {
 	db          *gorm.DB
 	root        string
+	identity    storeIdentity
 	metaMu      sync.RWMutex
 	project     Project
 	pictureBook *PictureBookProfile
@@ -308,6 +309,10 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 	if err != nil {
 		return nil, err
 	}
+	identity, err := captureStoreIdentity(root)
+	if err != nil {
+		return nil, projectError(CodeIdentityMismatch, "无法核对项目文件身份", "检查项目目录是否在初始化期间发生变化。", err)
+	}
 	premiseUUID, err := newUUIDv7()
 	if err != nil {
 		return nil, err
@@ -373,13 +378,22 @@ func initializeStore(ctx context.Context, root, projectUUID, projectName, genera
 		profile := clonePictureBookProfile(*pictureBook)
 		storedProfile = &profile
 	}
-	return &Store{db: db, root: root, project: project, pictureBook: storedProfile, lock: lock}, nil
+	store := &Store{db: db, root: root, identity: identity, project: project, pictureBook: storedProfile, lock: lock}
+	if err := store.RequireDirectoryIdentity(); err != nil {
+		closeProjectDB(db)
+		return nil, err
+	}
+	return store, nil
 }
 
 func openStore(ctx context.Context, root string, header Header, now time.Time, lock *projectLock) (*Store, error) {
 	latest, err := migrateProject(ctx, root, &header, now)
 	if err != nil {
 		return nil, err
+	}
+	identity, err := captureStoreIdentity(root)
+	if err != nil {
+		return nil, projectError(CodeIdentityMismatch, "无法核对项目文件身份", "检查项目目录是否在打开期间发生变化。", err)
 	}
 	db, err := database.Open(projectDSN(root))
 	if err != nil {
@@ -431,7 +445,12 @@ func openStore(ctx context.Context, root string, header Header, now time.Time, l
 		closeProjectDB(db)
 		return nil, projectError(CodeInvalidProject, "项目设置状态无效", "setup_status 只支持 draft 或 ready。", nil)
 	}
-	return &Store{db: db, root: root, project: projects[0], pictureBook: pictureBook, lock: lock}, nil
+	store := &Store{db: db, root: root, identity: identity, project: projects[0], pictureBook: pictureBook, lock: lock}
+	if err := store.RequireDirectoryIdentity(); err != nil {
+		closeProjectDB(db)
+		return nil, err
+	}
+	return store, nil
 }
 
 func closeProjectDB(db *gorm.DB) {

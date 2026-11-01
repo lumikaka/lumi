@@ -3,9 +3,9 @@
   "minCindyVersion": "0.1.121",
   "id": "lumi",
   "name": "Lumi",
-  "description": "连接当前本地任务的 Lumi 项目，检查运行时和读取项目概况。Step 1 开发包。",
-  "whenToUse": "检查当前 Lumi 项目的本地运行环境、读取项目概况或释放当前任务连接。",
-  "version": "0.1.0",
+  "description": "在 Cindy 当前本地项目目录初始化或打开标准 Lumi 作品，完成 setup、读取项目概况并管理任务绑定。",
+  "whenToUse": "在当前 Cindy 任务初始化 Lumi 作品、打开已有项目、完成创作规格、读取概况或释放任务连接。",
+  "version": "0.2.0",
   "entry": "main.js",
   "icon": "assets/icon.png",
   "tools": [
@@ -15,6 +15,147 @@
       "parameters": {
         "type": "object",
         "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_init",
+      "description": "在 Cindy 当前本地可写项目根原地创建标准 Lumi draft；已有有效项目只打开并返回现状，不重置内容。不生成 AGENTS.md、Codex 配置或 hooks。idea 使用用户原始创意。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "idea": {
+            "type": "string",
+            "maxLength": 120000,
+            "description": "用户原始创意。"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "项目名称；省略时使用目录名。"
+          },
+          "generation_language": {
+            "type": "string",
+            "enum": [
+              "zh-Hans",
+              "en"
+            ]
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_setup",
+      "description": "读取、更新或确认当前项目 setup。update/finalize 必须带上次读取的 expected_revision；update 后用新 revision finalize。只读任务拒绝；最终格式遵循 Lumi 已有不可变规则。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "get",
+              "update",
+              "finalize"
+            ]
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "project_name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "作品名称。"
+          },
+          "generation_language": {
+            "type": "string",
+            "enum": [
+              "zh-Hans",
+              "en"
+            ]
+          },
+          "overall_style": {
+            "type": "string",
+            "maxLength": 12000,
+            "description": "整体画风。"
+          },
+          "generation_brief": {
+            "type": "string",
+            "maxLength": 120000,
+            "description": "创作简报。"
+          },
+          "picture_book": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "classic_picture_book",
+                  "wordless_picture_book",
+                  "interactive_picture_book",
+                  "comic_story",
+                  "vertical_strip"
+                ]
+              },
+              "aspect_ratio": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "landscape",
+                      "square",
+                      "portrait",
+                      "custom"
+                    ]
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "large_image_minimal_text": {
+                "type": "boolean"
+              },
+              "interaction_mode": {
+                "type": "string",
+                "enum": [
+                  "find_it",
+                  "make_a_choice",
+                  "guess",
+                  "follow_along"
+                ]
+              },
+              "comic_layout": {
+                "type": "string",
+                "enum": [
+                  "four_panel",
+                  "page_comic"
+                ]
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "action"
+        ],
         "additionalProperties": false
       }
     },
@@ -50,7 +191,7 @@
   "command": "lumi",
   "launch": "on-demand",
   "sessionContext": true,
-  "releaseNotes": "Step 1 开发包：按任务隔离的 CLI MCP 桥接、调用取消、连接回收与运行诊断；尚未完成产品宿主验收。",
+  "releaseNotes": "新增当前任务项目初始化、setup 和绑定校验；复用标准项目格式，保留现有内容；不生成 Codex 配置。仍为 macOS arm64 开发包。",
   "manual": {
     "items": [
       {
@@ -58,6 +199,12 @@
         "title": "运行与恢复",
         "description": "诊断、只读限制、释放连接与共享服务边界。",
         "dir": "manual/runtime"
+      },
+      {
+        "name": "project",
+        "title": "项目初始化与创作规约",
+        "description": "目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。",
+        "dir": "manual/project"
       }
     ]
   }

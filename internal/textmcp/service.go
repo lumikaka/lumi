@@ -100,6 +100,17 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if !filepath.IsAbs(root) {
 		return Failure("invalid_arguments", "启动目录必须是绝对路径", "重新启动 lumi mcp。")
 	}
+	expectedUUID := ExpectedProjectUUID(ctx)
+	if expectedUUID != "" {
+		if !publicProjectUUID.MatchString(expectedUUID) {
+			return Failure("invalid_arguments", "项目绑定无效", "重新读取当前任务项目。")
+		}
+		// Check before initialization or opening can migrate/write anything.
+		info, err := project.InspectDirectory(ctx, root)
+		if err != nil || info.UUID != expectedUUID || info.RootPath != filepath.Clean(root) {
+			return Failure("project_identity_mismatch", "项目目录与绑定身份不一致", "释放当前任务连接，再从 Cindy 当前目录重新读取；未执行创作操作。")
+		}
+	}
 	var opened project.Summary
 	var err error
 	if name == "project_init" {
@@ -126,6 +137,16 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	}
 	var result any
 	err = s.Projects.WithStore(ctx, opened.UUID, func(store *project.Store) error {
+		// UUID alone is insufficient: a copied project can have the same UUID.
+		// Recheck the leased store so a concurrent close/reopen cannot redirect
+		// the operation between OpenSelected and WithStore.
+		canonical, err := filepath.EvalSymlinks(root)
+		if err != nil || store.Root() != canonical || (expectedUUID != "" && store.ProjectUUID() != expectedUUID) {
+			return httpapi.NewError(409, "project_identity_mismatch", "项目目录与绑定身份不一致", "释放当前任务连接后重新读取项目。", nil)
+		}
+		if err := store.RequireDirectoryIdentity(); err != nil {
+			return err
+		}
 		st := story.NewService(store).WithEvents(s.Events)
 		prod := production.NewService(store, s.Events)
 		if isMutation(name, a.Action) && name != "project_setup" && name != "project_init" {

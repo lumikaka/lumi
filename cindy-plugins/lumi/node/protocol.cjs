@@ -109,7 +109,7 @@ class MCPConnection {
 
   async initialize() {
     const result = await this.request('initialize', {
-      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.1.0' },
+      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.2.0' },
     });
     if (!['2025-03-26', '2025-06-18', '2024-11-05'].includes(result?.protocolVersion)
       || result.serverInfo?.name !== 'lumi-text' || result.serverInfo.version !== '1.0.0' || !result.capabilities?.tools) {
@@ -118,7 +118,7 @@ class MCPConnection {
     }
     this.send({ jsonrpc: '2.0', method: 'notifications/initialized' });
     const listed = await this.request('tools/list');
-    if (!Array.isArray(listed?.tools) || !listed.tools.some(tool => tool.name === 'project_overview')) {
+    if (!Array.isArray(listed?.tools) || !['project_overview', 'project_init', 'project_setup'].every(name => listed.tools.some(tool => tool.name === name))) {
       this.fail(protocolError());
       throw protocolError();
     }
@@ -126,8 +126,14 @@ class MCPConnection {
     return this.info;
   }
 
-  async overview(signal) {
-    const result = await this.request('tools/call', { name: 'project_overview', arguments: {} }, { signal });
+  async overview(signal, expectedProjectUUID) {
+    return this.call('project_overview', {}, { signal, expectedProjectUUID });
+  }
+
+  async call(name, args, { signal, expectedProjectUUID, mutation = false } = {}) {
+    const params = { name, arguments: args };
+    if (expectedProjectUUID) params._meta = { 'lumi/expected_project_uuid': expectedProjectUUID };
+    const result = await this.request('tools/call', params, { signal, mutation });
     let value = result?.structuredContent;
     if (!value && result?.content?.length === 1 && result.content[0].type === 'text') {
       try { value = JSON.parse(result.content[0].text); } catch { throw protocolError(); }

@@ -1,6 +1,6 @@
 # Step 1 · Cindy 本地运行时
 
-2026-11-01。作者源码在 [cindy-plugins/lumi](../../../cindy-plugins/lumi)，当前交付为 macOS arm64 开发包。只提供 `runtime_status`、`project_overview`、`runtime_release`；没有初始化、写作、媒体、taskView 或消息归档功能。未安装、未发布，不自动进入 Step 2。
+2026-11-01。本文记录 Step 1 的运行时基线与当时验收边界；作者源码在 [cindy-plugins/lumi](../../../cindy-plugins/lumi)。当前版本已在此基础上完成 [Step 2 项目绑定与初始化](project-binding.md)，新增初始化和 setup，仍为 macOS arm64 开发包，未安装、未发布。下文“本步”均指 Step 1，后续变化以 Step 2 文档为准。
 
 ## 宿主依据
 

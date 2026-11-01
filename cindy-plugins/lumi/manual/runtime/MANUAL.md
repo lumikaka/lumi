@@ -1,8 +1,8 @@
 # Lumi 运行与恢复
 
-本包只实现 Step 1 的本地运行通路，支持 macOS arm64。它尚未提供项目初始化、文本创作、图片交接或任务审阅页。三个工具都不需要参数；目录与任务身份由 Cindy 注入。
+本包实现本地运行、项目初始化与 setup，支持 macOS arm64。尚未提供正文创作、图片交接或任务审阅页。目录与任务身份由 Cindy 注入。初始化与创作规约见 `ghost_manual({ ghost_id: "lumi", path: "project/MANUAL.md" })`。
 
-先用 `runtime_status` 检查 MCP 初始化与共享服务状态。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时保留 `project_not_initialized`，不要改用外部命令替插件初始化。需要结束当前任务连接时使用 `runtime_release`。
+先用 `runtime_status` 检查 MCP 初始化与共享服务状态。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时按项目手册调用 `project_init`。需要结束当前任务连接时使用 `runtime_release`。
 
 `runtime_status` 可以用于只读任务，此时只检查 MCP 初始化和 ping，server_running 为 null，不检查可能创建数据目录锁的 CLI status。`project_overview` 的作品内容是只读的，但现有 CLI 打开项目可能执行数据库迁移、写入锁/WAL 和运行状态，所以只读任务会被拒绝。不要用设置、嵌套参数、远端同名路径或伪造 `session_context` 绕过此限制。
 
@@ -12,6 +12,6 @@ Node 是拥有本机账号权限的可信程序，不是项目文件沙箱。插
 
 worker、MCP 代理和共享 server 是三个独立生命周期。worker 回收或崩溃后，下一次显式工具调用会重新检查任务目录、CLI 和实例身份；旧任务绑定不从磁盘恢复。代理空闲约 30 秒关闭，任务绑定空闲约 60 秒失效。服务本身沿用 Lumi 的项目空闲释放机制，可能继续存活。
 
-失败结果以 `success:false` 判断。目录或实例身份改变时，重新读取；只读/非本地错误先修正任务条件。超时、取消或崩溃不能证明写入未发生；本步没有写工具，未来写工具须先重读事实状态再决定是否重试，禁止自动重放。
+失败结果以 `success:false` 判断。目录或实例身份改变时，重新读取；只读/非本地错误先修正任务条件。初始化或 setup 写入在超时、取消、崩溃和结果复核失败时返回 `result_unknown`，须先重读事实状态再决定是否重试，禁止自动重放。
 
 此包是开发验收产物，未安装实测。打包成功不等于当前构建下的宿主取消、升级或卸载已通过；最低正式兼容版本也尚待正式发布证据确认。

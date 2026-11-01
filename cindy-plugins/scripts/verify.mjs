@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const evidence = path.join(repo, 'docs/features/cindy-plugins/acceptance/step1-evidence');
+const evidence = path.join(repo, 'docs/features/cindy-plugins/acceptance/step2-evidence');
 const tests = readdirSync(path.join(repo, 'cindy-plugins/tests')).filter(name => name.endsWith('.test.cjs')).sort();
 const args = ['--test', '--test-reporter=spec', ...tests.map(name => `cindy-plugins/tests/${name}`)];
 const result = spawnSync(process.execPath, args, { cwd: repo, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });

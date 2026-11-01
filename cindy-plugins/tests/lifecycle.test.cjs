@@ -13,6 +13,9 @@ async function until(predicate) {
 }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 const identity = { running: true, nonce: 'a'.repeat(64), pid: 1, endpoint: 'http://127.0.0.1:10000', environment: 'production' };
+const uuid = '01989abc-def0-7000-8000-000000000001';
+const overview = () => ({ success: true, data: { project: { uuid, name: 'test', revision: 0 },
+  setup: { project_uuid: uuid, revision: 0, setup_status: 'draft', status: 'draft' } } });
 
 async function fixture(t, { holdInit = false, holdCalls = false } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'lumi-step1-lifecycle-'));
@@ -22,11 +25,11 @@ async function fixture(t, { holdInit = false, holdCalls = false } = {}) {
       const peer = { closed: false, info: {}, async initialize() { if (holdInit) await init.promise; },
         async request() { return {}; }, async close() { this.closed = true; },
         overview(signal) {
-          if (!holdCalls) return Promise.resolve({ success: true, data: { project: { uuid: '01989abc-def0-7000-8000-000000000001' } } });
+          if (!holdCalls) return Promise.resolve(overview());
           return new Promise((resolve, reject) => {
             const cancel = () => reject(new RuntimeError('request_cancelled', 'cancelled'));
             signal.addEventListener('abort', cancel, { once: true });
-            calls.push(() => { signal.removeEventListener('abort', cancel); resolve({ success: true, data: { project: { uuid: '01989abc-def0-7000-8000-000000000001' } } }); });
+            calls.push(() => { signal.removeEventListener('abort', cancel); resolve(overview()); });
           });
         },
       };

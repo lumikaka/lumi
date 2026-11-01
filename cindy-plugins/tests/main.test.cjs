@@ -38,3 +38,32 @@ test('only explicit tools may wake worker; host failure stays failure', async ()
   assert.equal(h.replies[0].result.success, false);
   assert.equal(JSON.stringify(h.replies).includes('/private/error'), false);
 });
+
+test('project arguments are forwarded separately; context, page and KV cannot choose bindings', async () => {
+  const h = host();
+  await h.invoke(message('project_init', context, { idea: '一只狐狸', name: '星星' }));
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].params)), { context, arguments: { idea: '一只狐狸', name: '星星' } });
+  await h.invoke({ type: 'event', name: 'task-closed', session_id: context.session_id });
+  await h.invoke({ type: 'panel-message', tool: 'project_init', args: { session_context: context } });
+  for (const extra of [{ project_uuid: 'forged' }, { session_id: 'forged' }, { workdir: '/elsewhere' }, { _meta: {} }, { context }]) {
+    await h.invoke(message('project_init', context, { idea: 'x', ...extra }));
+    assert.equal(h.replies.at(-1).result.error.code, 'invalid_arguments');
+  }
+  assert.equal(h.calls.length, 1);
+});
+
+test('missing directory, nonlocal URI and current readonly status fail before entering worker', async () => {
+  for (const [ctx, code] of [
+    [{ ...context, workdir: '' }, 'workdir_required'],
+    [{ ...context, workdir: 'ssh://host/project' }, 'workdir_invalid'],
+    [{ ...context, workdir: '/same-local-name', workdir_is_local: false }, 'context_not_local'],
+    [{ ...context, workdir_is_read_only: true }, 'read_only_context'],
+  ]) {
+    const h = host();
+    for (const tool of ['project_init', 'project_setup', 'project_overview']) {
+      await h.invoke(message(tool, ctx));
+      assert.equal(h.replies.at(-1).result.error.code, code);
+    }
+    assert.equal(h.calls.length, 0);
+  }
+});

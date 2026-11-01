@@ -6,16 +6,17 @@ const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { MCPConnection, MAX_LINE } = require('./protocol.cjs');
 const { RuntimeError, aborted, validEnvelope } = require('./errors.cjs');
+const { argumentsFor, publicProject, publicFailure, setupState, UUID } = require('./project.cjs');
 
-const METHODS = new Set(['runtime_status', 'project_overview', 'runtime_release']);
+const METHODS = new Set(['runtime_status', 'project_overview', 'project_init', 'project_setup', 'runtime_release']);
 const success = data => ({ success: true, data });
 const sameIdentity = (a, b) => a && b && a.nonce === b.nonce && a.pid === b.pid && a.endpoint === b.endpoint;
 function contextFor(params) {
-  if (!params || Object.keys(params).length !== 1 || !params.context) throw new RuntimeError('invalid_arguments', '运行时参数无效。', '只能使用宿主任务上下文。');
+  if (!params || Object.keys(params).some(k => !['context', 'arguments'].includes(k)) || !params.context) throw new RuntimeError('invalid_arguments', '运行时参数无效。', '只能使用宿主任务上下文和声明的业务参数。');
   const c = params.context;
   if (Object.keys(c).some(k => !['session_id', 'workdir', 'workdir_is_local', 'workdir_is_read_only'].includes(k))
     || typeof c.session_id !== 'string' || !c.session_id || c.session_id.length > 200
-    || typeof c.workdir !== 'string' || !path.isAbsolute(c.workdir) || c.workdir.length > 4096
+    || typeof c.workdir !== 'string' || !path.isAbsolute(c.workdir) || c.workdir.startsWith('//') || c.workdir.length > 4096
     || c.workdir.includes('\0') || typeof c.workdir_is_read_only !== 'boolean') {
     throw new RuntimeError('context_missing', '任务上下文缺失或无效。', '在本地项目任务中重新调用。');
   }
@@ -88,12 +89,21 @@ class Runtime {
     }
   }
 
-  async directory(root) {
+  async directory(root, writable = false) {
     try {
       const real = await fs.realpath(root), stat = await fs.stat(real);
       if (!stat.isDirectory()) throw new Error('directory');
+      await fs.access(real, fs.constants.R_OK | fs.constants.X_OK | (writable ? fs.constants.W_OK : 0));
       return { root: real, stamp: `${stat.dev}:${stat.ino}` };
     } catch { throw new RuntimeError('workdir_unavailable', '任务目录不可用。', '核对当前任务的本地工作目录。'); }
+  }
+
+  async projectFile(root) {
+    try {
+      const stat = await fs.lstat(path.join(root, 'project.sqlite'));
+      if (!stat.isFile()) throw new RuntimeError('project_identity_mismatch', '项目数据库不是普通文件。', '不要使用指向其他项目的数据库链接。');
+      return `${stat.dev}:${stat.ino}`;
+    } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   }
 
   async dataDirectory() {
@@ -154,6 +164,7 @@ class Runtime {
   async execute(method, params, signal) {
     if (!METHODS.has(method)) throw new RuntimeError('method_not_found', '运行时方法不存在。', '使用插件声明的工具。');
     const context = contextFor(params);
+    const input = argumentsFor(method, params);
     aborted(signal);
     if (this.closed) throw new RuntimeError('runtime_closed', '运行时已释放。', '发起新的工具调用。');
     if (method === 'runtime_release') {
@@ -163,15 +174,22 @@ class Runtime {
       await Promise.all([...this.closing]);
       return success({ released: true, server_policy: 'shared_retained' });
     }
-    if (method === 'project_overview' && context.workdir_is_read_only) {
+    let session = this.sessions.get(context.session_id);
+    // A permission downgrade invalidates old in-flight writes as well as the
+    // next call. Never use a prior session's writable flag as authorization.
+    if (session && context.workdir_is_read_only && session.permission?.workdir_is_read_only === false) {
+      this.forget(session);
+      session = null;
+    }
+    if (method.startsWith('project_') && context.workdir_is_read_only) {
       throw new RuntimeError('read_only_context', '只读任务不能打开 Lumi 项目。', '现有 CLI 打开项目可能写入运行文件；可使用 runtime_status。');
     }
-    let session = this.sessions.get(context.session_id);
     if (!session) {
       if (this.sessions.size >= 128) throw new RuntimeError('runtime_busy', '任务绑定数量已满。', '释放不再使用的连接或等待空闲回收。');
       session = { id: context.session_id, calls: new Set(), pending: new Set(), revoked: false };
       this.sessions.set(session.id, session);
     }
+    session.permission = { ...context };
     clearTimeout(session.timer);
     const controller = new AbortController();
     const cancel = () => controller.abort();
@@ -181,11 +199,11 @@ class Runtime {
     const done = new Promise(resolve => { finish = resolve; });
     session.pending.add(done);
     const callSignal = controller.signal;
-    let record, acquired = false;
+    let record, acquired = false, finishInitialization, mutationSent = false;
     try {
       await this.binary();
       aborted(callSignal);
-      const directory = await this.directory(context.workdir);
+      const directory = await this.directory(context.workdir, method.startsWith('project_'));
       const dataDir = await this.dataDirectory();
       aborted(callSignal);
       const key = JSON.stringify([directory.root, directory.stamp, this.environment, dataDir, this.build.cli_sha256]);
@@ -195,6 +213,8 @@ class Runtime {
       }
       if (session.revoked || this.sessions.get(session.id) !== session) aborted(AbortSignal.abort());
       session.key = key;
+      session.root = directory.root;
+      session.directoryStamp = directory.stamp;
       record = this.connections.get(key);
       if (!record || record.peer.closed) {
         if (this.connections.size >= 16) throw new RuntimeError('runtime_busy', '项目连接数量已满。', '释放不再使用的项目连接。');
@@ -213,11 +233,23 @@ class Runtime {
       record.active++;
       acquired = true;
       record.sessions.set(session.id, session);
+      // Serialize initializations of one root, without blocking other projects
+      // or concurrent reads. Cancellation cannot let later initializers jump
+      // ahead of an earlier one still running.
+      const priorInitialization = record.initializing || Promise.resolve();
+      if (method === 'project_init') {
+        const own = new Promise(resolve => { finishInitialization = resolve; });
+        record.initializing = priorInitialization.then(() => own);
+      }
       // Initialization belongs to the connection, not the first requesting task.
       await abortable(record.ready, callSignal);
+      await abortable(priorInitialization, callSignal);
       aborted(callSignal);
       const again = await this.directory(context.workdir);
-      if (again.root !== directory.root || again.stamp !== directory.stamp) throw new RuntimeError('binding_changed', '任务目录在调用期间发生变化。', '释放连接后重新执行工具。');
+      if (again.root !== directory.root || again.stamp !== directory.stamp) {
+        this.forget(session);
+        throw new RuntimeError('binding_changed', '任务目录在调用期间发生变化。', '释放连接后重新执行工具。');
+      }
       // CLI status may create its data-dir lock when no daemon is running. A
       // read-only workdir can contain that data-dir (e.g. HOME), so only perform
       // the side-effect-free MCP handshake/ping in read-only diagnostics.
@@ -235,26 +267,83 @@ class Runtime {
           server_running: before?.running ?? null, server_observation: before ? 'verified' : 'not_checked_read_only',
           server_policy: 'shared_retained' });
       }
-      const result = await record.peer.overview(callSignal);
+      const verifyDirectory = async () => {
+        const current = await this.directory(context.workdir, true);
+        if (current.root !== directory.root || current.stamp !== directory.stamp) {
+          this.forget(session);
+          throw new RuntimeError('binding_changed', '任务目录在调用期间发生变化。', '重新读取当前任务项目。');
+        }
+      };
+      await verifyDirectory();
+      const file = await this.projectFile(directory.root);
+      if ((session.projectFile && session.projectFile !== file) || (record.projectFile && record.projectFile !== file)
+        || (session.projectUUID && record.projectUUID && session.projectUUID !== record.projectUUID)) {
+        this.forget(session);
+        throw new RuntimeError('binding_changed', '项目文件或身份已改变。', '重新读取当前任务项目，不沿用旧绑定。');
+      }
+      let expectedUUID = session.projectUUID || record.projectUUID;
+      const bind = result => {
+        aborted(callSignal);
+        const uuid = result.data?.project?.uuid;
+        if (!UUID.test(uuid)) throw new RuntimeError('protocol_error', 'CLI 未返回有效项目 UUIDv7。', '检查 CLI 版本。');
+        if (expectedUUID && expectedUUID !== uuid) {
+          this.forget(session);
+          throw new RuntimeError('binding_changed', '当前目录的项目身份已改变。', '重新读取当前任务项目。');
+        }
+        expectedUUID = uuid;
+        session.projectUUID = record.projectUUID = uuid;
+      };
+      // Setup has no project identity in its arguments. First bind from a
+      // trusted cwd read, then send that UUID as an additional CLI constraint.
+      if (method === 'project_setup') {
+        const current = await record.peer.overview(callSignal, expectedUUID);
+        if (!current.success) {
+          if (current.error.code === 'project_identity_mismatch') this.forget(session);
+          return publicFailure(current);
+        }
+        bind(current);
+        await verifyDirectory();
+        if (await this.projectFile(directory.root) !== file) {
+          this.forget(session);
+          throw new RuntimeError('binding_changed', '项目文件在调用期间发生变化。', '重新读取项目。');
+        }
+      }
+      const mutation = method === 'project_init' || (method === 'project_setup' && input.action !== 'get');
+      mutationSent = mutation;
+      const result = method === 'project_overview'
+        ? await record.peer.overview(callSignal, expectedUUID)
+        : await record.peer.call(method, input, { signal: callSignal, expectedProjectUUID: expectedUUID, mutation });
       aborted(callSignal);
-      if (!result.success) return result; // Preserve the CLI's full business error.
+      if (!result.success) {
+        mutationSent = false;
+        if (result.error.code === 'project_identity_mismatch') this.forget(session);
+        return publicFailure(result);
+      }
+      await verifyDirectory();
+      const afterFile = await this.projectFile(directory.root);
+      if (file && file !== afterFile) {
+        this.forget(session);
+        throw new RuntimeError('binding_changed', '项目文件在调用期间发生变化。', '重新读取项目。');
+      }
       const after = await this.inspect(dataDir, callSignal);
+      aborted(callSignal);
       if (!after.running || (before.running && !sameIdentity(before, after))) {
         throw new RuntimeError('instance_changed', '调用期间共享 CLI 实例已更换。', '重新读取项目状态，不自动重放写操作。');
       }
       record.identity = after;
+      session.instance = { ...after };
       record.provenance = before.running ? 'observed_existing_shared' : 'first_observed_shared';
-      if (result.success) {
-        const uuid = result.data?.project?.uuid;
-        if (typeof uuid !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(uuid)) throw new RuntimeError('protocol_error', 'CLI 未返回有效项目 UUIDv7。', '检查 CLI 版本。');
-        if (session.projectUUID && session.projectUUID !== uuid) {
-          this.forget(session);
-          throw new RuntimeError('binding_changed', '当前目录的项目身份已改变。', '重新执行工具以复核新项目。');
-        }
-        session.projectUUID = uuid;
+      session.projectFile = record.projectFile = afterFile;
+      if (method === 'project_setup') {
+        return success({ ...setupState(result.data, expectedUUID), limitations: { read_only: false, open_may_write: true } });
       }
-      return result;
+      bind(result);
+      return success(publicProject(result.data));
+    } catch (error) {
+      if (mutationSent) throw new RuntimeError('result_unknown', '项目操作结果尚未确认。', '先调用 project_overview 重读状态，再决定是否重试；不会自动重放写操作。');
+      throw error;
     } finally {
+      finishInitialization?.();
       signal?.removeEventListener('abort', cancel);
       session.calls.delete(controller);
       this.touch(session);

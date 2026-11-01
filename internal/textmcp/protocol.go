@@ -34,6 +34,15 @@ func Protocol(forward Forward) *mcp.Server {
 			tool.Annotations = appReadAnnotations()
 		}
 		s.AddTool(tool, func(ctx context.Context, r *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// A local adapter may constrain the cwd identity. This never selects
+			// a directory or grants access; ordinary Codex calls omit it.
+			if expected, ok := r.Params.Meta[ExpectedProjectUUIDMeta]; ok {
+				uuid, valid := expected.(string)
+				if !valid || !publicProjectUUID.MatchString(uuid) {
+					return boundedResult(Failure("invalid_arguments", "项目绑定无效", "重新读取当前任务项目。"))
+				}
+				ctx = WithExpectedProjectUUID(ctx, uuid)
+			}
 			if spec.Name == "watch_app_changes" {
 				return watches.call(ctx, r)
 			}

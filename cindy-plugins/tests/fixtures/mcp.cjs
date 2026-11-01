@@ -8,7 +8,7 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
   if (req.method === 'initialize') {
     write({ jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-03-26', serverInfo: { name: 'lumi-text', version: mode === 'version' ? '9.0.0' : '1.0.0' }, capabilities: { tools: {} } } });
   } else if (req.method === 'tools/list') {
-    write({ jsonrpc: '2.0', id: req.id, result: { tools: [{ name: 'project_overview' }] } });
+    write({ jsonrpc: '2.0', id: req.id, result: { tools: ['project_overview', 'project_init', 'project_setup'].map(name => ({ name })) } });
   } else if (req.method === 'ping') {
     write({ jsonrpc: '2.0', id: req.id, result: {} });
   } else if (req.method === 'tools/call') {

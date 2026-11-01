@@ -23,9 +23,10 @@ const creationRoute = "/api/v1/creation-requests"
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
-	RootPath  string          `json:"root_path"`
-	Tool      string          `json:"tool"`
-	Arguments json.RawMessage `json:"arguments"`
+	RootPath            string          `json:"root_path"`
+	Tool                string          `json:"tool"`
+	Arguments           json.RawMessage `json:"arguments"`
+	ExpectedProjectUUID string          `json:"expected_project_uuid,omitempty"`
 }
 
 func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub) {
@@ -58,7 +59,8 @@ func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Ma
 		if err := decoder.Decode(&trailing); err != io.EOF {
 			return httpapi.NewError(400, "invalid_arguments", "创作请求无效", "只能提交一个 JSON 对象。", err)
 		}
-		return c.JSON(http.StatusOK, service.Call(c.Request().Context(), input.RootPath, input.Tool, input.Arguments))
+		ctx := textmcp.WithExpectedProjectUUID(c.Request().Context(), input.ExpectedProjectUUID)
+		return c.JSON(http.StatusOK, service.Call(ctx, input.RootPath, input.Tool, input.Arguments))
 	})
 }
 
@@ -80,7 +82,7 @@ func runMCP(opt options) error {
 		if err != nil {
 			return textmcp.Failure("instance_unavailable", "CLI 实例不可用", err.Error())
 		}
-		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args})
+		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx)})
 	})
 	return protocol.Run(context.Background(), &mcp.StdioTransport{})
 }
