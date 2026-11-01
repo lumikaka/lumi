@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"origin\":\"cindy-ghost://lumi-step0-probe-20261101\",\"pages\":[],\"notifications\":[{\"name\":\"node-status\",\"state\":\"starting\"},{\"name\":\"node-status\",\"state\":\"running\"}],\"bound_sessions\":[\"a04c93b4-6b67-4c15-b87a-0cdd22677748\"]}}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+2026-11-01 · partial Step 0, not completion acceptance
+
+Local integration:
+PASS: parallel isolated CLI servers/projects; same-project reuse; WS join; REST calibration; media chunk integrity
+PASS: both probe CLI instances stopped
+
+Final artifact checks this turn:
+PASS: two real media originals match Host handoff SHA256 and byte counts
+PASS: 0.0.3 Forge package matches current author source; CLI executable mode 755
+PASS: report links, all JSON/JSONL receipts, JS syntax, and allowed change scope
+
+git diff --check: exit 0.
+Read-only ps check: temporary CLI PID 56719 and 56720 absent after stop.
+Host status: both probe CLI instances running=false, exit_code=3.
+Probe 0.0.3 remains installed/enabled for outstanding validation; uninstall not yet performed.
+No product code edits, Cargo/Rust commands, Step 1 implementation, or publication.

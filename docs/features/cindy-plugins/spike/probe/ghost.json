@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 3,
+  "minCindyVersion": "0.1.121",
+  "id": "lumi-step0-probe-20261101",
+  "name": "Lumi Step 0 Probe",
+  "description": "仅在独立临时数据中验证 Cindy Node、随包 CLI、任务上下文、媒体与任务页，验证后移除。",
+  "whenToUse": "仅在独立临时数据中验证 Cindy Node、随包 CLI、任务上下文、媒体与任务页，验证后移除。",
+  "version": "0.0.5",
+  "kind": "chip",
+  "entry": "main.js",
+  "icon": "assets/icon.png",
+  "tools": [
+    {
+      "name": "list_tools",
+      "description": "查询 Step 0 探针操作目录；category 下钻附规则。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "call_tool",
+      "description": "执行探针操作：随包 CLI 只创建/读取/停止标记临时项目和 data-dir；测试 worker 崩溃、任务页、已授权媒体原件及当前任务读取边界，不操作其他插件或用户作品。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  ],
+  "node": {
+    "entry": "node/worker.cjs",
+    "protocol": "json-rpc-stdio",
+    "lifecycle": "on-demand",
+    "idleTimeoutSeconds": 120,
+    "entries": [
+      "node/lifecycle.cjs"
+    ]
+  },
+  "command": "lumi-step0-probe",
+  "launch": "resident",
+  "subscribe": {
+    "topics": ["turn", "session", "activity"],
+    "hooks": ["will-user-message", "will-assistant-message"]
+  },
+  "sessionContext": true,
+  "taskView": {
+    "title": "Step 0 Probe",
+    "html": "task.html"
+  },
+  "cindy": {
+    "media": [
+      "deposit"
+    ]
+  },
+  "agent": {
+    "tasks": true
+  },
+  "manual": {
+    "items": [
+      {
+        "title": "Step 0 验证流程",
+        "description": "运行、媒体、任务页与清理边界。",
+        "dir": "manual/probe",
+        "name": "probe"
+      }
+    ]
+  },
+  "releaseNotes": "临时验证 hooks：默认不采集，显式开启后仅记录两个探针自建任务的事件字段和文本 SHA256，所有消息原样放行；无消息正文持久化；验证后卸载此探针。"
+}

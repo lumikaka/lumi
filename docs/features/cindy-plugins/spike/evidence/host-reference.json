@@ -1,0 +1,14 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"deposited\":{\"ok\":true,\"url\":\"cindy-media://blobs/9bba276dc1d324b0e7c0d9362c90e1b5f40df0bbb35e33ec0298b02698a8b8f1.png\",\"hash\":\"9bba276dc1d324b0e7c0d9362c90e1b5f40df0bbb35e33ec0298b02698a8b8f1\",\"ext\":\".png\",\"bytes\":2031418,\"deduplicated\":true,\"quotaUsedBytes\":2031418,\"quotaLimitBytes\":1073741824},\"source_sha256\":\"9bba276dc1d324b0e7c0d9362c90e1b5f40df0bbb35e33ec0298b02698a8b8f1\",\"synthetic\":false}}"
+    },
+    {
+      "type": "image",
+      "mimeType": "image/webp",
+      "base64_length": 131472,
+      "bytes_omitted": true
+    }
+  ]
+}

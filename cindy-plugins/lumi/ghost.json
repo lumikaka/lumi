@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 3,
+  "minCindyVersion": "0.1.121",
+  "id": "lumi",
+  "name": "Lumi",
+  "description": "连接当前本地任务的 Lumi 项目，检查运行时和读取项目概况。Step 1 开发包。",
+  "whenToUse": "检查当前 Lumi 项目的本地运行环境、读取项目概况或释放当前任务连接。",
+  "version": "0.1.0",
+  "entry": "main.js",
+  "icon": "assets/icon.png",
+  "tools": [
+    {
+      "name": "runtime_status",
+      "description": "检查当前本地任务与随包 Lumi CLI 的 MCP 初始化及连接。执行随包 lumi mcp 的 initialize、tools/list、ping；可写任务另执行 lumi status。不打开或初始化作品；只读任务跳过可能创建锁文件的 status，并返回服务状态未知。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_overview",
+      "description": "读取当前本地任务目录中已有 Lumi 项目的概况。通过随包 lumi mcp 连接共享 production CLI server；可按需启动服务、打开项目、运行已有数据库迁移并更新本地运行状态。不创建项目或写入创作内容；只读任务拒绝此调用。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "runtime_release",
+      "description": "撤销当前任务的运行时绑定并取消其在途调用，释放其 MCP 代理引用。不停止共享 CLI server，不影响其他 Cindy 任务或 Codex 客户端。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "node": {
+    "entry": "node/worker.cjs",
+    "protocol": "json-rpc-stdio",
+    "lifecycle": "on-demand",
+    "idleTimeoutSeconds": 120,
+    "childSpawn": true,
+    "entries": [
+      "node/request-lifetime.cjs"
+    ]
+  },
+  "command": "lumi",
+  "launch": "on-demand",
+  "sessionContext": true,
+  "releaseNotes": "Step 1 开发包：按任务隔离的 CLI MCP 桥接、调用取消、连接回收与运行诊断；尚未完成产品宿主验收。",
+  "manual": {
+    "items": [
+      {
+        "name": "runtime",
+        "title": "运行与恢复",
+        "description": "诊断、只读限制、释放连接与共享服务边界。",
+        "dir": "manual/runtime"
+      }
+    ]
+  }
+}

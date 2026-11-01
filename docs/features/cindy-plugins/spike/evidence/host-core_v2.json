@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":false,\"errorCode\":\"PROBE_FAILED\",\"message\":\"Media HTTP 404; origin=cindy-ghost://lumi-step0-probe-20261101; token=f09a1d3de26dbe010ed12cf9ff6594ea4b064f927c260ca41670e0b055b9652c\"}"
+    }
+  ],
+  "isError": true
+}

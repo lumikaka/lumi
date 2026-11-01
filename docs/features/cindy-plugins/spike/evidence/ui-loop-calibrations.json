@@ -1,0 +1,77 @@
+{
+  "probe_version": "0.0.5",
+  "records": [
+    {
+      "time": "2026-11-01T08:16:25.935Z",
+      "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+      "name": "calibrate",
+      "result": {
+        "reason": "ws-change",
+        "business_reads": 11,
+        "projects": {
+          "items": [
+            {
+              "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+              "name": "Cindy temporary probe a",
+              "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+              "status": "open",
+              "status_detail": "",
+              "available": true,
+              "open": true,
+              "setup_status": "ready",
+              "updated_at": "2026-11-01T08:13:35.096522Z",
+              "last_opened_at": "2026-11-01T08:13:35.096522Z",
+              "picture_book": {
+                "format": "classic_picture_book",
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                },
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "time": "2026-11-01T08:16:36.721Z",
+      "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+      "name": "calibrate",
+      "result": {
+        "reason": "join",
+        "business_reads": 12,
+        "projects": {
+          "items": [
+            {
+              "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+              "name": "Cindy temporary probe a",
+              "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+              "status": "open",
+              "status_detail": "",
+              "available": true,
+              "open": true,
+              "setup_status": "ready",
+              "updated_at": "2026-11-01T08:13:35.096522Z",
+              "last_opened_at": "2026-11-01T08:13:35.096522Z",
+              "picture_book": {
+                "format": "classic_picture_book",
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                },
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

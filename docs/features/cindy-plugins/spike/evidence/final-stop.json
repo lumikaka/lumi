@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"2cd8d211-bd5f-4f47-aefe-b561372fb68e\",\"a\":{\"exit_code\":0,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true},\"b\":{\"exit_code\":0,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true}}}"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 3,
+  "minCindyVersion": "0.1.121",
+  "id": "lumi-step0-invalid-17",
+  "name": "Step 0 negative fixture",
+  "description": "Never install. Forge top-level tool limit check.",
+  "version": "0.0.1",
+  "entry": "main.js",
+  "tools": [
+    {
+      "name": "probe_0",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_1",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_2",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_3",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_4",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_5",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_6",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_7",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_8",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_9",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_10",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_11",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_12",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_13",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_14",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_15",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "probe_16",
+      "description": "Negative fixture only.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

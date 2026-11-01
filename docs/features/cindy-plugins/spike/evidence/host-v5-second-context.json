@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"2cd8d211-bd5f-4f47-aefe-b561372fb68e\",\"session_id\":\"a04c93b4-6b67-4c15-b87a-0cdd22677748\",\"workdir\":\"<redacted; see workdir_sha256>\",\"workdir_sha256\":\"14604bbd29f96dbd79af03c56a7401329328d78a0814e988a0b9371a6a20d18a\",\"workdir_is_local\":true,\"workdir_is_read_only\":false,\"call_id_present\":true}}"
+    }
+  ]
+}

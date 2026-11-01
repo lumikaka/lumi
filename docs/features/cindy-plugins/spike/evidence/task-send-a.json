@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"runId\":\"99e84cde-4e52-4919-b729-268fc6e405ba\",\"taskId\":\"dc429a41-0051-47b4-a91a-d7fefe0d4ce4\",\"inputMessageId\":\"plugin-task:99e84cde-4e52-4919-b729-268fc6e405ba\",\"status\":\"queued\",\"acceptedAt\":1793520174169,\"invocationId\":\"<redacted-current-call-id>\",\"acceptedConfig\":{\"agentKind\":\"codex\",\"providerId\":\"openai\",\"model\":\"gpt-6-astra\",\"effort\":\"xhigh\",\"fastMode\":false},\"usage\":{\"status\":\"unavailable\",\"reason\":\"Per-input usage has not been reconciled.\"}}}"
+    }
+  ]
+}

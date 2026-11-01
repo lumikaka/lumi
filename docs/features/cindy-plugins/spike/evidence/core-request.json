@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"xdt_image_urls\":[\"cindy-media://blobs/f09a1d3de26dbe010ed12cf9ff6594ea4b064f927c260ca41670e0b055b9652c.png\"],\"hint\":\"请在最终回复中使用返回的 cindy-media:// 地址只嵌入展示一次；若未嵌入，客户端会用工具结果兜底展示。\",\"ok\":true,\"status\":\"complete\",\"invocation_id\":\"26984028-317e-4fa0-8b9f-2c7ba2fc84ba\"}"
+    }
+  ]
+}

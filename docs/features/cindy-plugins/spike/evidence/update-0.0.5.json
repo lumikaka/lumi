@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-step0-probe-20261101\",\"name\":\"Lumi Step 0 Probe\",\"version\":\"0.0.5\",\"enabled\":true,\"instanceId\":\"_root__lumi-step0-probe-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+    }
+  ]
+}

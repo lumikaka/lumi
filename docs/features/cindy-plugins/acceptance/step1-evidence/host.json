@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+  "builtAt": "2026-10-30T01:16:08.865+08:00",
+  "current_version": "0.1.121",
+  "platform": "darwin",
+  "arch": "arm64",
+  "evidence": "read-only installed bundle and current-session check_app_update; no product installation",
+  "public_source_lookup": "GitHub contents API at actual sourceCommit returned 404 in this session",
+  "official_tag_commit": "727afb1ad6902176e2ec55254154b900c489a998",
+  "minimum_stable_version_verified": false,
+  "skill_sha256": "cbdaae022b89900b546d3664a647b8174e444fbd057d04b4a9cbdd4fdaa7f7cc",
+  "bundled_worker_artifact_sha256": "43cb7ef576d64f2edab401634c42ed857d4a159039da6c99c17733538cba62a6"
+}

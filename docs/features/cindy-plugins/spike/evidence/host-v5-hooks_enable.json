@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"enabled_only_for\":[\"dc429a41-0051-47b4-a91a-d7fefe0d4ce4\",\"2804af10-ad08-4ff0-97d1-b4d1f4288bca\"],\"records\":\"event metadata and text SHA256 only\",\"verdict\":\"always allow\"}}"
+    }
+  ]
+}

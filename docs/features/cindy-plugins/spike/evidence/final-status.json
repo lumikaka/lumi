@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"2cd8d211-bd5f-4f47-aefe-b561372fb68e\",\"a\":{\"exit_code\":3,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true},\"b\":{\"exit_code\":3,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true},\"business_reads\":12,\"frames\":[{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"phx_reply\",\"payload\":{\"status\":\"ok\",\"response\":{}},\"ref\":\"2bfbc63b-b7a4-4069-ad80-d63aa4a80a69\",\"join_ref\":\"2bfbc63b-b7a4-4069-ad80-d63aa4a80a69\"},{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"story:project_changed\",\"payload\":{\"project_uuid\":\"01a19610-5331-7d1f-b989-e4a46c44effb\",\"revision\":3},\"ref\":null,\"join_ref\":\"2bfbc63b-b7a4-4069-ad80-d63aa4a80a69\"},{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"story:project_changed\",\"payload\":{\"project_uuid\":\"01a19610-5331-7d1f-b989-e4a46c44effb\",\"revision\":4},\"ref\":null,\"join_ref\":\"2bfbc63b-b7a4-4069-ad80-d63aa4a80a69\"},{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"phx_reply\",\"payload\":{\"status\":\"ok\",\"response\":{}},\"ref\":\"f3e53356-3327-40fb-8b63-baa0b783a541\",\"join_ref\":\"f3e53356-3327-40fb-8b63-baa0b783a541\"}]}}"
+    }
+  ]
+}

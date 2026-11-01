@@ -1,0 +1,17 @@
+{
+  "time_utc": "2026-11-01T08:23:19.175521+00:00",
+  "removed": [
+    "/private/tmp/lumi-cindy-step0-20261101-silc5gb5",
+    "/private/tmp/lumi-cindy-step0-go-cache",
+    "probe/probe-config.json"
+  ],
+  "confirmed_absent": true,
+  "retained": [
+    "probe source",
+    "all five locally ignored .cindy review packages and bin/lumi",
+    "media originals and evidence",
+    "two archived Cindy temporary tasks (history retained)",
+    "Host-managed generation media (not accessed or deleted directly)"
+  ],
+  "other_plugins_modified": false
+}

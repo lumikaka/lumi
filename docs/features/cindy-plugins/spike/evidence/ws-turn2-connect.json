@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"704faa90-f403-4b70-a8f0-e6a88a0a703f\",\"slot\":\"a\",\"frame\":{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"phx_reply\",\"payload\":{\"status\":\"ok\",\"response\":{}},\"ref\":\"bff35c3e-8087-4a3d-9041-72aa8e68033b\",\"join_ref\":\"bff35c3e-8087-4a3d-9041-72aa8e68033b\"}}}"
+    }
+  ]
+}

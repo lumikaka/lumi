@@ -1,0 +1,11 @@
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"status\":\"prepared\",\"invocation_id\":\"26984028-317e-4fa0-8b9f-2c7ba2fc84ba\",\"provider_id\":\"xd\",\"model_id\":\"qwen/qwen-image-3\",\"model_name\":\"Qwen Image 3\",\"capability\":\"image.generate\",\"guide_revision\":\"2026-08-11.2\",\"instructions\":\"按阿里云百炼 Qwen Image 3.0 多模态生成接口组装 JSON。input.messages 必须只有一轮 user 消息，文生图的 content 只放一个 text 对象。可选 parameters 包含 prompt_extend、n、size、negative_prompt、seed、watermark。model 由 Cindy 注入，不要设置 endpoint、headers 或凭证。\",\"input_schema\":{\"type\":\"object\",\"required\":[\"input\"],\"properties\":{\"input\":{\"type\":\"object\"},\"parameters\":{\"type\":\"object\"}},\"additionalProperties\":false},\"example_body\":{\"input\":{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"一张中文科幻电影海报\"}]}]},\"parameters\":{\"prompt_extend\":true,\"watermark\":false}},\"official_docs\":\"https://help.aliyun.com/en/model-studio/qwen-image-generation-and-editing-api-reference\",\"guidance\":\"按 instructions/input_schema 组装 body；不要添加 model、endpoint、headers 或凭证。\"}"
+      }
+    ]
+  }
+}

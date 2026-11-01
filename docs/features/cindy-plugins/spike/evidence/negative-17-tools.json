@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":false,\"errorCode\":\"MANIFEST_INVALID\",\"message\":\"清单不合格:tools 必须是 1–16 项的数组\"}"
+    }
+  ],
+  "isError": true
+}

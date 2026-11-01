@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":false,\"errorCode\":\"PROBE_FAILED\",\"message\":\"{\\\"ok\\\":false,\\\"errorCode\\\":\\\"PROCESS_EXITED\\\",\\\"message\\\":\\\"Node 工作进程已退出(code=73, signal=none)\\\"}\"}"
+    }
+  ],
+  "isError": true
+}

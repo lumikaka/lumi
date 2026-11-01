@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":false,\"errorCode\":\"GHOST_NOT_FOUND\",\"message\":\"目标插件已卸载或当前不可用\"}"
+    }
+  ],
+  "isError": true
+}

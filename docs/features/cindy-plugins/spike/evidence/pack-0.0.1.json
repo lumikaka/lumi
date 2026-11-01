@@ -1,0 +1,19 @@
+{
+  "file": "lumi-step0-probe-20261101-0.0.1.cindy",
+  "bytes": 20920444,
+  "sha256": "c850cf5e127c4be8953e0d1b4d4148c28c77fbf25903880ef7116ecf10fe90bb",
+  "cli_archive_mode": "0o100755",
+  "entries": [
+    "assets/icon.png",
+    "bin/lumi",
+    "ghost.json",
+    "main.js",
+    "manual/probe/MANUAL.md",
+    "node/worker.cjs",
+    "probe-config.json",
+    "task.css",
+    "task.html",
+    "task.js"
+  ],
+  "uncompressed_bytes": 40135655
+}

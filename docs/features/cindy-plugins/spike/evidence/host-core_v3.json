@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"bytes\":826433,\"sha256\":\"f09a1d3de26dbe010ed12cf9ff6594ea4b064f927c260ca41670e0b055b9652c\",\"magic_hex\":\"89504e470d0a1a0a0000000d49484452\",\"mime\":\"image/png\",\"dimensions\":{\"width\":1024,\"height\":1024},\"authorized_token\":\"f09a1d3de26dbe010ed12cf9ff6594ea4b064f927c260ca41670e0b055b9652c\"}}"
+    }
+  ]
+}

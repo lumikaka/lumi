@@ -1,0 +1,14 @@
+{
+  "tool": "ghost_forge_pack",
+  "request": {
+    "dir": "/Users/qingyang/mine-work/lumi/cindy-plugins/lumi"
+  },
+  "response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"cindyPath\":\"/Users/qingyang/mine-work/lumi/cindy-plugins/lumi/lumi-0.1.0.cindy\",\"id\":\"lumi\",\"name\":\"Lumi\",\"version\":\"0.1.0\",\"note\":\"已完成校验和打包；本工具不会安装或更新插件。\"}"
+      }
+    ]
+  }
+}

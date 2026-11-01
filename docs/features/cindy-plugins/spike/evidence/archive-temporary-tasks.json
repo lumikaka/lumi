@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\": true, \"status\": \"archived\", \"count\": 2, \"changed\": [{\"session_id\": \"dc429a41-0051-47b4-a91a-d7fefe0d4ce4\", \"title\": \"Lumi Step 0 temporary a\", \"status\": \"archived\", \"working_dir\": \"<redacted>\", \"workdir_sha256\": \"7014103c008c7ca63a2263688a513d121b29199bcac9fb2c5b273cdc7b34797e\"}, {\"session_id\": \"2804af10-ad08-4ff0-97d1-b4d1f4288bca\", \"title\": \"Lumi Step 0 temporary b\", \"status\": \"archived\", \"working_dir\": \"<redacted>\", \"workdir_sha256\": \"2c974192a52edcb7d4dd4f0ae19c4a9254eaca669a726be66c43c1edd8090b6d\"}]}"
+    }
+  ]
+}

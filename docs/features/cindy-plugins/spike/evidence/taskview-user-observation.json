@@ -1,0 +1,7 @@
+{
+  "source": "User replied to the pending taskView observation question on 2026-11-01",
+  "display": "Step 0 临时探针 / 重新校准 / 已校准",
+  "result": {"reason":"focus","business_reads":2,"projects":{"items":[]}},
+  "proves": "User-visible taskView and a successful focus calibration",
+  "does_not_prove": "Expected project binding, image display, themes, mutation invalidation or mobile UI"
+}

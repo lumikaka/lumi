@@ -1,0 +1,263 @@
+{
+  "note": "Current local packages after Forge install repack. Earlier pack hashes are retained as historical receipts, not silently replaced. Mismatch means the exact earlier bytes are no longer the local file; zip metadata or repack is not independently proven as the sole cause.",
+  "packages": [
+    {
+      "version": "0.0.1",
+      "file": "lumi-step0-probe-20261101-0.0.1.cindy",
+      "bytes": 20920444,
+      "sha256": "069d4f51da433a7d7d0265908550e37ea9d01d207a5389e7dceb24c7a1efe591",
+      "earlier_record_sha256": "c850cf5e127c4be8953e0d1b4d4148c28c77fbf25903880ef7116ecf10fe90bb",
+      "matches_earlier_record": false,
+      "entries": {
+        "assets/icon.png": {
+          "sha256": "d4b6d2997b1472f9bdfd48a034aec12d341b5a0d541a9d19122dcb79015bf3ee",
+          "mode": "0o100600"
+        },
+        "bin/lumi": {
+          "sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+          "mode": "0o100755"
+        },
+        "ghost.json": {
+          "sha256": "7a074caa76a3dc2cf1fe49978c65864b76921fb41ded7853e18a7edb314c04f4",
+          "mode": "0o100600"
+        },
+        "main.js": {
+          "sha256": "310b97d0c33e26ac64d5d0c982a744b411a293d9c1b29a650afb7d69da6ee244",
+          "mode": "0o100600"
+        },
+        "manual/probe/MANUAL.md": {
+          "sha256": "d61395dd171002b0be2a3d4aef1d21fcc1b8dd1ad60c954d13daaa83b15d1ea8",
+          "mode": "0o100644"
+        },
+        "node/worker.cjs": {
+          "sha256": "09f65ec1a79ce54d08b04b33d0563f02754c6fcbf61a01214b249764e02129e0",
+          "mode": "0o100600"
+        },
+        "probe-config.json": {
+          "sha256": "84ac4ded5613b81d758e75b7bab5b491ebea7cccfd746054fe3303b3561e5d6e",
+          "mode": "0o100644"
+        },
+        "task.css": {
+          "sha256": "24a54efc3108b1affb77fa03c9a4ba876b8e94f7dfd4ef9be172a4b26853bf49",
+          "mode": "0o100644"
+        },
+        "task.html": {
+          "sha256": "e46020befd741e8a39a57bdcebb192f4df4c280c1f1e52eca1f1029c00cd8e7a",
+          "mode": "0o100644"
+        },
+        "task.js": {
+          "sha256": "36c0134fc85fe927af048ff4d6dffb418efd648e660ff8cf86613fdfd9728b58",
+          "mode": "0o100644"
+        }
+      }
+    },
+    {
+      "version": "0.0.2",
+      "file": "lumi-step0-probe-20261101-0.0.2.cindy",
+      "bytes": 20920824,
+      "sha256": "3aa0842ae384a9f563235f8390f14187cc22f98ca701161572aaf8d8a170dba8",
+      "earlier_record_sha256": "3aa0842ae384a9f563235f8390f14187cc22f98ca701161572aaf8d8a170dba8",
+      "matches_earlier_record": true,
+      "entries": {
+        "assets/icon.png": {
+          "sha256": "d4b6d2997b1472f9bdfd48a034aec12d341b5a0d541a9d19122dcb79015bf3ee",
+          "mode": "0o100600"
+        },
+        "bin/lumi": {
+          "sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+          "mode": "0o100755"
+        },
+        "ghost.json": {
+          "sha256": "4f661a26d783b52932cec6a47d3d84fe31c32454417f7e84f85ed41c39b73aba",
+          "mode": "0o100600"
+        },
+        "main.js": {
+          "sha256": "af41aa2d5b0fee467d540f0d7d9500803307372d2bf5988bd4df7f2d1629cbbd",
+          "mode": "0o100600"
+        },
+        "manual/probe/MANUAL.md": {
+          "sha256": "d61395dd171002b0be2a3d4aef1d21fcc1b8dd1ad60c954d13daaa83b15d1ea8",
+          "mode": "0o100644"
+        },
+        "node/worker.cjs": {
+          "sha256": "09f65ec1a79ce54d08b04b33d0563f02754c6fcbf61a01214b249764e02129e0",
+          "mode": "0o100600"
+        },
+        "probe-config.json": {
+          "sha256": "84ac4ded5613b81d758e75b7bab5b491ebea7cccfd746054fe3303b3561e5d6e",
+          "mode": "0o100644"
+        },
+        "task.css": {
+          "sha256": "24a54efc3108b1affb77fa03c9a4ba876b8e94f7dfd4ef9be172a4b26853bf49",
+          "mode": "0o100644"
+        },
+        "task.html": {
+          "sha256": "e46020befd741e8a39a57bdcebb192f4df4c280c1f1e52eca1f1029c00cd8e7a",
+          "mode": "0o100644"
+        },
+        "task.js": {
+          "sha256": "9426480be21f42377ee148d4f0a613ee79c5e1c775dc712a6bf8865cb789db1d",
+          "mode": "0o100644"
+        }
+      }
+    },
+    {
+      "version": "0.0.3",
+      "file": "lumi-step0-probe-20261101-0.0.3.cindy",
+      "bytes": 20920943,
+      "sha256": "c9eca21a922c5e13ff3be9aa7b85aebc512f13bb8d7c27dd2cbfb35cf3cf0b9a",
+      "earlier_record_sha256": "c9eca21a922c5e13ff3be9aa7b85aebc512f13bb8d7c27dd2cbfb35cf3cf0b9a",
+      "matches_earlier_record": true,
+      "entries": {
+        "assets/icon.png": {
+          "sha256": "d4b6d2997b1472f9bdfd48a034aec12d341b5a0d541a9d19122dcb79015bf3ee",
+          "mode": "0o100600"
+        },
+        "bin/lumi": {
+          "sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+          "mode": "0o100755"
+        },
+        "ghost.json": {
+          "sha256": "6146c093929306bb92ddc1a77a6076428ad5b6f2ce7b29f565455468a0fa149e",
+          "mode": "0o100600"
+        },
+        "main.js": {
+          "sha256": "3b9d0d285a68266abc471cd85b909fce8dc5c102e990f557a9946a5b53da6136",
+          "mode": "0o100600"
+        },
+        "manual/probe/MANUAL.md": {
+          "sha256": "d61395dd171002b0be2a3d4aef1d21fcc1b8dd1ad60c954d13daaa83b15d1ea8",
+          "mode": "0o100644"
+        },
+        "node/worker.cjs": {
+          "sha256": "09f65ec1a79ce54d08b04b33d0563f02754c6fcbf61a01214b249764e02129e0",
+          "mode": "0o100600"
+        },
+        "probe-config.json": {
+          "sha256": "84ac4ded5613b81d758e75b7bab5b491ebea7cccfd746054fe3303b3561e5d6e",
+          "mode": "0o100644"
+        },
+        "task.css": {
+          "sha256": "24a54efc3108b1affb77fa03c9a4ba876b8e94f7dfd4ef9be172a4b26853bf49",
+          "mode": "0o100644"
+        },
+        "task.html": {
+          "sha256": "e46020befd741e8a39a57bdcebb192f4df4c280c1f1e52eca1f1029c00cd8e7a",
+          "mode": "0o100644"
+        },
+        "task.js": {
+          "sha256": "041bc848b57c348e3412446768a6d9e7fb153f3d07fc06777fa53ea8091538be",
+          "mode": "0o100644"
+        }
+      }
+    },
+    {
+      "version": "0.0.4",
+      "file": "lumi-step0-probe-20261101-0.0.4.cindy",
+      "bytes": 20923173,
+      "sha256": "b289ac8bd28c082673bafc0258641ba3c3d02b411ab040a907e4fae8496e9594",
+      "earlier_record_sha256": "b289ac8bd28c082673bafc0258641ba3c3d02b411ab040a907e4fae8496e9594",
+      "matches_earlier_record": true,
+      "entries": {
+        "assets/icon.png": {
+          "sha256": "d4b6d2997b1472f9bdfd48a034aec12d341b5a0d541a9d19122dcb79015bf3ee",
+          "mode": "0o100600"
+        },
+        "bin/lumi": {
+          "sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+          "mode": "0o100755"
+        },
+        "ghost.json": {
+          "sha256": "be3a6c74d9b931cf7be60ae17c15f3675638aca2c1c56b04af63fd823c0d1783",
+          "mode": "0o100600"
+        },
+        "main.js": {
+          "sha256": "d860c7b22970ededa9a4d7a67a7f809b2245208b0eeb713ad4f086a9a6220107",
+          "mode": "0o100600"
+        },
+        "manual/probe/MANUAL.md": {
+          "sha256": "d61395dd171002b0be2a3d4aef1d21fcc1b8dd1ad60c954d13daaa83b15d1ea8",
+          "mode": "0o100644"
+        },
+        "node/lifecycle.cjs": {
+          "sha256": "d872cea3881df9aa4b2f0f8bb5cbd03e51d40e03fecf4c2d6a985f5fd36f10d6",
+          "mode": "0o100644"
+        },
+        "node/worker.cjs": {
+          "sha256": "5eb61459e812403e42afdc47ede98bd100c5df46571891a85b1c95de88ae8799",
+          "mode": "0o100600"
+        },
+        "probe-config.json": {
+          "sha256": "84ac4ded5613b81d758e75b7bab5b491ebea7cccfd746054fe3303b3561e5d6e",
+          "mode": "0o100644"
+        },
+        "task.css": {
+          "sha256": "24a54efc3108b1affb77fa03c9a4ba876b8e94f7dfd4ef9be172a4b26853bf49",
+          "mode": "0o100644"
+        },
+        "task.html": {
+          "sha256": "e46020befd741e8a39a57bdcebb192f4df4c280c1f1e52eca1f1029c00cd8e7a",
+          "mode": "0o100644"
+        },
+        "task.js": {
+          "sha256": "041bc848b57c348e3412446768a6d9e7fb153f3d07fc06777fa53ea8091538be",
+          "mode": "0o100644"
+        }
+      }
+    },
+    {
+      "version": "0.0.5",
+      "file": "lumi-step0-probe-20261101-0.0.5.cindy",
+      "bytes": 20923913,
+      "sha256": "7ea04ada4e8ee674cc52a364a86359ba294147a36274a79ebc0d31fbea84cb13",
+      "earlier_record_sha256": "7ea04ada4e8ee674cc52a364a86359ba294147a36274a79ebc0d31fbea84cb13",
+      "matches_earlier_record": true,
+      "entries": {
+        "assets/icon.png": {
+          "sha256": "d4b6d2997b1472f9bdfd48a034aec12d341b5a0d541a9d19122dcb79015bf3ee",
+          "mode": "0o100600"
+        },
+        "bin/lumi": {
+          "sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+          "mode": "0o100755"
+        },
+        "ghost.json": {
+          "sha256": "b73f01c6b21042e8b22fa1dd07e878c4e3282bd26d2ea05a61b91f7a887c9c92",
+          "mode": "0o100600"
+        },
+        "main.js": {
+          "sha256": "3ecf99353f7ea8b92c572d73ee223a9297546e42697966e9e47265f416ef287c",
+          "mode": "0o100600"
+        },
+        "manual/probe/MANUAL.md": {
+          "sha256": "d61395dd171002b0be2a3d4aef1d21fcc1b8dd1ad60c954d13daaa83b15d1ea8",
+          "mode": "0o100644"
+        },
+        "node/lifecycle.cjs": {
+          "sha256": "d872cea3881df9aa4b2f0f8bb5cbd03e51d40e03fecf4c2d6a985f5fd36f10d6",
+          "mode": "0o100644"
+        },
+        "node/worker.cjs": {
+          "sha256": "66b4625418d0172609f54a313b114e9e2443872c7d3d7e4bf7c2df43d2b0dc54",
+          "mode": "0o100600"
+        },
+        "probe-config.json": {
+          "sha256": "84ac4ded5613b81d758e75b7bab5b491ebea7cccfd746054fe3303b3561e5d6e",
+          "mode": "0o100644"
+        },
+        "task.css": {
+          "sha256": "24a54efc3108b1affb77fa03c9a4ba876b8e94f7dfd4ef9be172a4b26853bf49",
+          "mode": "0o100644"
+        },
+        "task.html": {
+          "sha256": "e46020befd741e8a39a57bdcebb192f4df4c280c1f1e52eca1f1029c00cd8e7a",
+          "mode": "0o100644"
+        },
+        "task.js": {
+          "sha256": "041bc848b57c348e3412446768a6d9e7fb153f3d07fc06777fa53ea8091538be",
+          "mode": "0o100644"
+        }
+      }
+    }
+  ]
+}

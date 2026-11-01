@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"pages\":[],\"notifications\":[{\"name\":\"node-status\",\"state\":\"starting\"},{\"name\":\"node-status\",\"state\":\"running\"},{\"name\":\"node-notification\",\"method\":\"lumi-change\",\"params\":{\"slot\":\"a\",\"frame\":{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"phx_reply\",\"payload\":{\"status\":\"ok\",\"response\":{}},\"ref\":\"e537d44e-73c9-4562-aa0b-811e61cdf891\",\"join_ref\":\"e537d44e-73c9-4562-aa0b-811e61cdf891\"}}}],\"bound_sessions\":[\"a04c93b4-6b67-4c15-b87a-0cdd22677748\"]}}"
+    }
+  ]
+}

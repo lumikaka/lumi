@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"35d1590e-6dca-4acb-81bd-33da3b5921e6\",\"a\":{\"exit_code\":0,\"data\":{\"endpoint\":\"http://127.0.0.1:62120\",\"pid\":93140,\"environment\":\"production\",\"nonce\":\"c47b00f4b0fe4bcddabe6f58f029afc3a2f64ea990557cf949ec07297adf6716\",\"running\":true,\"open_projects\":[]},\"success\":true},\"b\":{\"exit_code\":3,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true},\"business_reads\":0,\"frames\":[]}}"
+    }
+  ]
+}

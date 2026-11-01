@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":false,\"errorCode\":\"PROBE_FAILED\",\"message\":\"Media HTTP 404\"}"
+    }
+  ],
+  "isError": true
+}

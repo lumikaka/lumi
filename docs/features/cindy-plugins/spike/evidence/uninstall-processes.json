@@ -1,0 +1,6 @@
+{
+  "exit_code": 0,
+  "matches": [
+    "52274     1 <CINDY_DATA>/cindy-brain/_ns/_root/lumi-step0-probe-20261101/bin/lumi __serve --environment production --data-dir /private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/data"
+  ]
+}

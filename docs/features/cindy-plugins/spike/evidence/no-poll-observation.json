@@ -1,0 +1,9 @@
+{
+  "start": "2026-11-01T08:16:46.324Z",
+  "end": "2026-11-01T08:18:40.008Z",
+  "seconds": 113.684,
+  "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+  "business_reads_before": 12,
+  "business_reads_after": 12,
+  "meaning": "No added business GET in this observed interval; not a proof for all future states."
+}

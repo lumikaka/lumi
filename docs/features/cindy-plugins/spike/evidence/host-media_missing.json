@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"status\":404,\"ok\":false,\"note\":\"nonexistent unowned hash only; not proof of cross-plugin ownership rejection\"}}"
+    }
+  ]
+}

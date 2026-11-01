@@ -1,0 +1,20 @@
+{
+  "version": "0.0.4",
+  "host": "Cindy 0.1.121 / 0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+  "entry": "node/lifecycle.cjs",
+  "idle_timeout_seconds": 120,
+  "notification_interval_seconds": 2,
+  "log_interval_ticks": 5,
+  "started_ms": 1793520153865,
+  "last_logged_tick_ms": 1793520263967,
+  "last_logged_tick": 55,
+  "planned_ticks": 80,
+  "old_pid": 89073,
+  "process_check_utc": "2026-11-01 08:07",
+  "old_pid_present": false,
+  "next_report_pid": 6063,
+  "next_report_boot": "b6071a7e-bd6b-4c1d-bf6e-f81e7bd75ff2",
+  "next_report_ticks": 0,
+  "result": "Background notifications did not keep this on-demand entry alive. No calls or update to this entry occurred during the idle interval. Exact kill timestamp was not captured.",
+  "caution": "Main worker also restarted after inactivity; its business_reads reset, so quiet-time status cannot prove a no-poll interval across that restart."
+}

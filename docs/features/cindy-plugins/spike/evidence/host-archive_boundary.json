@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"capabilities\":{\"version\":1,\"experimental\":true,\"operations\":[\"capabilities\",\"models\",\"setModel\",\"requestWriteAccess\",\"startTeam\",\"getTeam\",\"setTeamPlan\",\"releaseWorker\",\"create\",\"list\",\"get\",\"send\",\"getRun\",\"listRuns\",\"cancel\",\"readMessages\",\"setHidden\"],\"targets\":[\"own-plugin-local-session\"],\"maxPageSize\":100,\"exactRoute\":true,\"pluginDefaultModel\":true,\"sourceCallContext\":true,\"invocationContext\":true,\"messageContext\":true,\"autoTitle\":true,\"createPermissionMode\":true,\"messageAttachments\":{\"kinds\":[\"image\"],\"maxCount\":4,\"maxBytes\":20971520},\"hiddenTasks\":false},\"current_task\":{\"message\":\"Task not found\"},\"note\":\"No message contents retained\"}}"
+    }
+  ]
+}

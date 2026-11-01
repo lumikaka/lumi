@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"task\":{\"taskId\":\"dc429a41-0051-47b4-a91a-d7fefe0d4ce4\",\"revision\":204043114488888,\"permissionMode\":\"ask\",\"workdir_sha256\":\"7014103c008c7ca63a2263688a513d121b29199bcac9fb2c5b273cdc7b34797e\"},\"created\":true}}"
+    }
+  ]
+}

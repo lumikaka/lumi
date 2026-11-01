@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"business_reads\":1,\"projects\":{\"items\":[{\"uuid\":\"01a19610-5331-7d1f-b989-e4a46c44effb\",\"name\":\"Cindy temporary probe a\",\"root_path\":\"/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project\",\"status\":\"open\",\"status_detail\":\"\",\"available\":true,\"open\":true,\"setup_status\":\"ready\",\"updated_at\":\"2026-11-01T08:03:31.215386Z\",\"last_opened_at\":\"2026-11-01T08:03:31.215386Z\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}}]}}}"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "path": "../media/native-fox.png",
+  "bytes": 2031418,
+  "sha256": "9bba276dc1d324b0e7c0d9362c90e1b5f40df0bbb35e33ec0298b02698a8b8f1",
+  "format": "PNG",
+  "width": 1254,
+  "height": 1254,
+  "execution_path": "engine builtin image_gen",
+  "provider": "unknown",
+  "wire_model": "unknown",
+  "billing_source": "unknown",
+  "prompt": "Use case: illustration-story. Asset type: tiny test specimen for a local plugin media handoff verification. Create one square children's book illustration of a small orange fox holding a blue book, with a plain cream background. No letters, no logos, no watermark. One image only."
+}

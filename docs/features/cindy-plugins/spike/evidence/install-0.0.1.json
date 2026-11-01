@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"action\":\"installed\",\"id\":\"lumi-step0-probe-20261101\",\"name\":\"Lumi Step 0 Probe\",\"version\":\"0.0.1\",\"enabled\":true,\"instanceId\":\"_root__lumi-step0-probe-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和安装，并已启用。\"}"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "result": "Parent and temporary task b used the same worker and shared project a service; b used a separate project/data-dir. Actual calls were sequential, not a verified simultaneous two-session race.",
+  "records": [
+    {
+      "time": "2026-11-01T08:14:21.706Z",
+      "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+      "name": "context",
+      "result": {
+        "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+        "session_id": "2804af10-ad08-4ff0-97d1-b4d1f4288bca",
+        "workdir": "<redacted; see workdir_sha256>",
+        "workdir_sha256": "2c974192a52edcb7d4dd4f0ae19c4a9254eaca669a726be66c43c1edd8090b6d",
+        "workdir_is_local": true,
+        "workdir_is_read_only": false,
+        "call_id_present": true
+      }
+    },
+    {
+      "time": "2026-11-01T08:14:24.893Z",
+      "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+      "name": "session_probe",
+      "result": {
+        "context": {
+          "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+          "session_id": "2804af10-ad08-4ff0-97d1-b4d1f4288bca",
+          "workdir": "<redacted; see workdir_sha256>",
+          "workdir_sha256": "2c974192a52edcb7d4dd4f0ae19c4a9254eaca669a726be66c43c1edd8090b6d",
+          "workdir_is_local": true,
+          "workdir_is_read_only": false,
+          "call_id_present": true
+        },
+        "slot": "b",
+        "started": 1793520861706,
+        "ended": 1793520864893,
+        "own_project": "01a19610-532f-7ea6-908f-5fc720e3d908",
+        "own_pid": 28069,
+        "shared_project": "01a19610-5331-7d1f-b989-e4a46c44effb",
+        "shared_pid": 93140,
+        "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e"
+      }
+    },
+    {
+      "time": "2026-11-01T08:15:39.272Z",
+      "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+      "name": "context",
+      "result": {
+        "boot": "2cd8d211-bd5f-4f47-aefe-b561372fb68e",
+        "session_id": "a04c93b4-6b67-4c15-b87a-0cdd22677748",
+        "workdir": "<redacted; see workdir_sha256>",
+        "workdir_sha256": "14604bbd29f96dbd79af03c56a7401329328d78a0814e988a0b9371a6a20d18a",
+        "workdir_is_local": true,
+        "workdir_is_read_only": false,
+        "call_id_present": true
+      }
+    }
+  ]
+}

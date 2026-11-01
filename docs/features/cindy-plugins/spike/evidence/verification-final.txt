@@ -1,0 +1,11 @@
+PASS: 103 evidence JSON files and all JSONL parse
+PASS: both original PNG SHA256 values match the handoff records
+NOTE: 0.0.1 current archive differs from historical pack receipt; exact earlier bytes not retained
+PASS: current package snapshots, manifest versions, CLI bytes and executable modes match
+PASS: probe JavaScript syntax
+PASS: report and README local links resolve
+PASS: task evidence does not retain current callId capabilities
+PASS: uninstall discovery/call receipts, final process evidence and removed temporary paths
+PASS: 126 changed/untracked paths stay within the authorized probe/report scope
+NOTE: artifact checks do not certify the untested subcases listed in spike.md
+PASS: git diff --check

@@ -1,0 +1,19 @@
+{
+  "version": "0.0.3",
+  "bytes": 20920943,
+  "sha256": "c9eca21a922c5e13ff3be9aa7b85aebc512f13bb8d7c27dd2cbfb35cf3cf0b9a",
+  "cli_archive_mode": "0o100755",
+  "entries": [
+    "assets/icon.png",
+    "bin/lumi",
+    "ghost.json",
+    "main.js",
+    "manual/probe/MANUAL.md",
+    "node/worker.cjs",
+    "probe-config.json",
+    "task.css",
+    "task.html",
+    "task.js"
+  ],
+  "uncompressed_bytes": 40136861
+}

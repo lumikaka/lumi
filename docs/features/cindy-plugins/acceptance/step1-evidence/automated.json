@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-01T09:16:33.227Z",
+  "kind": "automated-not-cindy-host",
+  "command": "node cindy-plugins/scripts/verify.mjs",
+  "node": "v25.2.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "build": {
+    "source_commit": "0837609129513b6438dbf416490bb60675961d26",
+    "source_dirty": false,
+    "go_version": "go version go1.27.3 darwin/arm64",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cli_sha256": "6a9689e940a26bdacbb92fb0963ecd853a85c36b6ea065d95144def09f6e6c60"
+  },
+  "exit_code": 0,
+  "stdout": "▶ real bundled CLI: isolation, sharing, cancellation, crashes and stale discovery\n  ✔ stale discovery recovers without stopping unknown services (788.593042ms)\n  ✔ two projects truly overlap and keep cwd, project UUID and names isolated (117.073708ms)\n  ✔ same-project two tasks reuse one MCP proxy; releasing one retains the other (69.839833ms)\n  ✔ read-only diagnosis makes no project files; overview, remote and forged args rejected (3.947291ms)\n  ✔ proxy crash invalidates transport and next invocation reconnects (43.207084ms)\n  ✔ real MCP cancellation removes only the waiting WS subscription and preserves concurrent reads (114.956042ms)\n  ✔ Codex-style ordinary MCP client shares service and survives all Cindy releases (58.978375ms)\n  ✔ worker SIGKILL closes owned proxies via pipe EOF, shared server survives, restart rebinds (222.528333ms)\n  ✔ server crash leaves stale discovery; ordinary MCP and restarted Cindy rediscover replacement (160.154875ms)\n  ✔ idle proxy reclamation and trusted invocation reopening preserve server (222.932208ms)\n  ✔ missing CLI and architecture mismatch fail closed (0.484542ms)\n  ✔ symlink rebinding cannot silently switch a live task to another project (110.077583ms)\nCLEANUP: isolated CLI stopped, proxies closed, temporary projects removed; global cwd unchanged\n✔ real bundled CLI: isolation, sharing, cancellation, crashes and stale discovery (1968.989167ms)\n✔ release revokes before awaits, drains that task and preserves another task on the shared proxy (11.626541ms)\n✔ one task cancelling during shared initialize does not cancel the other (6.982333ms)\n✔ release during directory lookup cannot create a late proxy or restore a binding (1.002958ms)\n✔ read-only diagnostic avoids CLI status lock writes even when data-dir is inside workdir (1.009708ms)\n✔ browser forwards real callId and only the injected context, with scoped cancellation (2.188666ms)\n✔ missing, remote, read-only and nested forged arguments cannot open a project (1.291125ms)\n✔ only explicit tools may wake worker; host failure stays failure (0.669ms)\n✔ MCP initialize, reverse request rejection, and full business failure envelope (122.047542ms)\n✔ cancel one request, preserve a concurrent request and ignore late completion (308.753667ms)\n✔ write timeout reports unknown result and does not replay (307.350791ms)\n✔ reject malformed without converting it to business success (55.048875ms)\n✔ reject oversize without converting it to business success (59.803ms)\n✔ reject wrongid without converting it to business success (55.097ms)\n✔ reject crash without converting it to business success (55.191334ms)\n✔ reject invalid-envelope without converting it to business success (56.99425ms)\n✔ reject rpc-error without converting it to business success (55.820375ms)\n✔ incompatible MCP and oversize params fail before a business call (111.609ms)\n✔ Host sentinel exit cancels exactly its call while other calls finish (14.405916ms)\n✔ missing call binding fails before dispatch; malformed JSON can recover (11.528125ms)\n✔ limits reject oversize params and fifth pending call without spawning extra children (7.489209ms)\n✔ Host-style require(entry) starts worker even though require.main is bootstrap (61.860583ms)\nℹ tests 34\nℹ suites 0\nℹ pass 34\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2055.125333\n",
+  "stderr": ""
+}

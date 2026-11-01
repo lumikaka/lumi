@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ok\":true,\"result\":{\"boot\":\"704faa90-f403-4b70-a8f0-e6a88a0a703f\",\"a\":{\"exit_code\":0,\"data\":{\"endpoint\":\"http://127.0.0.1:62120\",\"pid\":93140,\"environment\":\"production\",\"nonce\":\"c47b00f4b0fe4bcddabe6f58f029afc3a2f64ea990557cf949ec07297adf6716\",\"running\":true,\"open_projects\":[{\"uuid\":\"01a19610-5331-7d1f-b989-e4a46c44effb\",\"name\":\"Cindy temporary probe a\",\"root_path\":\"/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project\",\"status\":\"open\",\"status_detail\":\"\",\"available\":true,\"open\":true,\"setup_status\":\"ready\",\"updated_at\":\"2026-11-01T08:03:31.215386Z\",\"last_opened_at\":\"2026-11-01T08:03:31.215386Z\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}}]},\"success\":true},\"b\":{\"exit_code\":3,\"data\":{\"endpoint\":\"\",\"pid\":0,\"environment\":\"production\",\"nonce\":\"\",\"running\":false,\"open_projects\":[]},\"success\":true},\"business_reads\":2,\"frames\":[{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"phx_reply\",\"payload\":{\"status\":\"ok\",\"response\":{}},\"ref\":\"bff35c3e-8087-4a3d-9041-72aa8e68033b\",\"join_ref\":\"bff35c3e-8087-4a3d-9041-72aa8e68033b\"},{\"topic\":\"project:01a19610-5331-7d1f-b989-e4a46c44effb\",\"event\":\"story:project_changed\",\"payload\":{\"project_uuid\":\"01a19610-5331-7d1f-b989-e4a46c44effb\",\"revision\":2},\"ref\":null,\"join_ref\":\"bff35c3e-8087-4a3d-9041-72aa8e68033b\"}]}}"
+    }
+  ]
+}

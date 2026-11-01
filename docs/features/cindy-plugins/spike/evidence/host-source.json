@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-11-01",
+  "update": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"status\":\"no_installable_update\",\"currentVersion\":\"0.1.121\",\"reason\":\"当前渠道没有适用于这台设备的可安装更新；也可能已是最新版本。\",\"autoUpdateEnabled\":false}"
+        }
+      ]
+    }
+  },
+  "tag": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "content": "{\"ref\":\"refs/tags/v0.1.121\",\"node_id\":\"REF_kwDOTgdRUrJyZWZzL3RhZ3MvdjAuMS4xMjE\",\"url\":\"https://api.github.com/repos/makecindy/cindy/git/refs/tags/v0.1.121\",\"object\":{\"sha\":\"727afb1ad6902176e2ec55254154b900c489a998\",\"type\":\"commit\",\"url\":\"https://api.github.com/repos/makecindy/cindy/git/commits/727afb1ad6902176e2ec55254154b900c489a998\"}}",
+        "title": "v0.1.121",
+        "modified_date": null,
+        "url": "https://api.github.com/repos/makecindy/cindy/git/ref/tags/v0.1.121",
+        "display_url": "https://api.github.com/repos/makecindy/cindy/git/ref/tags/v0.1.121",
+        "display_title": "v0.1.121",
+        "structuredContent": {
+          "title": "v0.1.121",
+          "content": "{\"ref\":\"refs/tags/v0.1.121\",\"node_id\":\"REF_kwDOTgdRUrJyZWZzL3RhZ3MvdjAuMS4xMjE\",\"url\":\"https://api.github.com/repos/makecindy/cindy/git/refs/tags/v0.1.121\",\"object\":{\"sha\":\"727afb1ad6902176e2ec55254154b900c489a998\",\"type\":\"commit\",\"url\":\"https://api.github.com/repos/makecindy/cindy/git/commits/727afb1ad6902176e2ec55254154b900c489a998\"}}",
+          "display_url": "https://api.github.com/repos/makecindy/cindy/git/ref/tags/v0.1.121"
+        }
+      },
+      "isError": false
+    }
+  },
+  "build_source_lookup": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "GitHub API error 404: {\"message\":\"No commit found for the ref 0a7d5a419f5cd3e0fbebc9642dde8388376a68aa\",\"documentation_url\":\"https://docs.github.com/v3/repos/contents/\",\"status\":\"404\"}"
+        }
+      ],
+      "structuredContent": {
+        "error": "GitHub API error 404: {\"message\":\"No commit found for the ref 0a7d5a419f5cd3e0fbebc9642dde8388376a68aa\",\"documentation_url\":\"https://docs.github.com/v3/repos/contents/\",\"status\":\"404\"}",
+        "error_code": "NOT_FOUND",
+        "error_data": {
+          "message": "No commit found for the ref 0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+          "documentation_url": "https://docs.github.com/v3/repos/contents/",
+          "status": "404"
+        }
+      },
+      "isError": true
+    }
+  },
+  "observed": {
+    "platform": "macOS 14.5 (23F79)",
+    "arch": "arm64",
+    "app": "/Applications/Cindy.app",
+    "pid": 39732,
+    "sourceCommit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+    "builtAt": "2026-10-30T01:16:08.865+08:00",
+    "app_bundle_version": "0.1.121",
+    "skill_sha256": "cbdaae022b89900b546d3664a647b8174e444fbd057d04b4a9cbdd4fdaa7f7cc"
+  }
+}

@@ -1,0 +1,344 @@
+{
+  "evidence_level": "local Node integration, not Cindy Host",
+  "evidence": [
+    {
+      "method": "environment",
+      "result": {
+        "boot": "01240bc3-17e7-4057-bc92-a79caa8c47ff",
+        "pid": 33246,
+        "ppid": 33242,
+        "node": "v25.2.1",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os_release": "23.5.0",
+        "exec_path": "/opt/homebrew/Cellar/node/25.2.1/bin/node",
+        "gui_path": "<HOME>/Library/Application Support/Cindy/codex-package/0.159.2/codex-path:<HOME>/.asdf/installs/golang/1.27.3/packages/bin:<HOME>/.bun/bin:/opt/homebrew/opt/php@8.4/sbin:/opt/homebrew/opt/php@8.4/bin:<HOME>/.opencode/bin:<HOME>/.config/herd-lite/bin:<HOME>/.local/bin:/opt/homebrew/bin:/usr/local/opt/postgresql@15/bin:/usr/local/opt/icu4c@76/sbin:/usr/local/opt/icu4c@76/bin:<HOME>/.asdf/shims:/usr/local/opt/asdf/libexec/bin:<HOME>/.cabal/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/bin:/bin:/sbin:/usr/sbin:/usr/local/share/npm/bin:/usr/local/share/npm/bin/:/usr/local/Cellar/qt5/5.3.1/bin/:<HOME>/.rvm/bin:<HOME>/project/depot_tools:/Library/Java/Home/bin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:<HOME>/.local/bin:<HOME>/.asdf/installs/golang/1.27.3/packages/bin:<HOME>/.bun/bin:/opt/homebrew/opt/php@8.4/sbin:/opt/homebrew/opt/php@8.4/bin:<HOME>/.opencode/bin:<HOME>/.config/herd-lite/bin:<HOME>/.local/bin:/opt/homebrew/bin:/usr/local/opt/postgresql@15/bin:/usr/local/opt/icu4c@76/sbin:/usr/local/opt/icu4c@76/bin:<HOME>/.rvm/gems/ruby-2.2.1/bin:<HOME>/.rvm/gems/ruby-2.2.1@global/bin:<HOME>/.rvm/rubies/ruby-2.2.1/bin:<HOME>/.cabal/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/bin:/bin:/sbin:/usr/sbin:/usr/local/share/npm/bin:/usr/local/share/npm/bin/:/usr/local/Cellar/qt5/5.3.1/bin/:<HOME>/.rvm/bin:<HOME>/project/depot_tools:/Library/Java/Home/bin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Library/TeX/texbin:/Applications/Wireshark.app/Contents/MacOS:/usr/local/share/dotnet:~/.dotnet/tools:<HOME>/Library/Application Support/Cindy/codex-home/tmp/arg0/codex-arg01ci87K:<HOME>/Library/Application Support/Cindy/codex-package/0.159.2/codex-path:/Applications/Cindy.app/Contents/Resources/tools/ripgrep:<HOME>/.asdf/installs/golang/1.27.3/packages/bin:<HOME>/.bun/bin:/opt/homebrew/opt/php@8.4/sbin:/opt/homebrew/opt/php@8.4/bin:<HOME>/.opencode/bin:<HOME>/.config/herd-lite/bin:<HOME>/.local/bin:/opt/homebrew/bin:/usr/local/opt/postgresql@15/bin:/usr/local/opt/icu4c@76/sbin:/usr/local/opt/icu4c@76/bin:<HOME>/.cabal/bin:/usr/local/sbin:/usr/local/share/npm/bin:/usr/local/share/npm/bin/:/usr/local/Cellar/qt5/5.3.1/bin/:<HOME>/.rvm/bin:<HOME>/project/depot_tools:/Library/Java/Home/bin:/opt/homebrew/sbin:<HOME>/.rvm/gems/ruby-2.2.1/bin:<HOME>/.rvm/gems/ruby-2.2.1@global/bin:<HOME>/.rvm/rubies/ruby-2.2.1/bin:<HOME>/Library/pnpm/bin:<HOME>/.cargo/bin:<HOME>/Library/Android/sdk/tools:~/go/bin/:~/.asdf/installs/golang/1.21.1/packages/bin/:<HOME>/.asdf/installs/golang/1.23.3/packages/bin/:/usr/local/share/npm/bin/:<HOME>/Library/Android/sdk/tools:<HOME>/.rvm/bin:~/go/bin/:~/.asdf/installs/golang/1.21.1/packages/bin/:<HOME>/.asdf/installs/golang/1.23.3/packages/bin/:/usr/local/share/npm/bin/:<HOME>/Library/Android/sdk/tools:<HOME>/.rvm/bin:~/go/bin/:~/.asdf/installs/golang/1.21.1/packages/bin/:<HOME>/.asdf/installs/golang/1.23.3/packages/bin/",
+        "cli_sha256": "88a8f2ec9664d9ad3ed3a09dca3f49aacf1bcf4125c53b1d69c92a81837dd62d",
+        "cli_mode": "755",
+        "lumi_commit": "68235b5b4e9bc45d871895c8cb99ae4d6c0ba6e7",
+        "fixture": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5"
+      }
+    },
+    {
+      "method": "parallel_projects",
+      "result": {
+        "boot": "01240bc3-17e7-4057-bc92-a79caa8c47ff",
+        "a": {
+          "inst": {
+            "endpoint": "http://127.0.0.1:59677",
+            "pid": 33252,
+            "environment": "production",
+            "nonce": "1c0b8e2c06d6684405eeb0cc5dfcf6fb48c6b36edef2564af4ea717a935000d3",
+            "running": true,
+            "open_projects": []
+          },
+          "project": {
+            "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+            "name": "Cindy temporary probe a",
+            "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+            "open": false,
+            "created": false
+          }
+        },
+        "b": {
+          "inst": {
+            "endpoint": "http://127.0.0.1:59678",
+            "pid": 33253,
+            "environment": "production",
+            "nonce": "7088b911f5de03f5e82a25f7311d4dc9d7af397896933520634106822f8220c3",
+            "running": true,
+            "open_projects": []
+          },
+          "project": {
+            "uuid": "01a19610-532f-7ea6-908f-5fc720e3d908",
+            "name": "Cindy temporary probe b",
+            "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/b/project",
+            "open": false,
+            "created": false
+          }
+        },
+        "a1": {
+          "exit_code": 0,
+          "data": {
+            "endpoint": "http://127.0.0.1:59677",
+            "pid": 33252,
+            "environment": "production",
+            "nonce": "1c0b8e2c06d6684405eeb0cc5dfcf6fb48c6b36edef2564af4ea717a935000d3",
+            "running": true,
+            "open_projects": [
+              {
+                "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+                "name": "Cindy temporary probe a",
+                "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+                "status": "open",
+                "status_detail": "",
+                "available": true,
+                "open": true,
+                "setup_status": "ready",
+                "updated_at": "2026-11-01T07:44:40.896528Z",
+                "last_opened_at": "2026-11-01T07:44:40.896528Z",
+                "picture_book": {
+                  "format": "classic_picture_book",
+                  "aspect_ratio": {
+                    "mode": "landscape",
+                    "width": 4,
+                    "height": 3
+                  },
+                  "large_image_minimal_text": false,
+                  "interaction_mode": null,
+                  "comic_layout": null
+                }
+              }
+            ]
+          },
+          "success": true
+        },
+        "a2": {
+          "exit_code": 0,
+          "data": {
+            "endpoint": "http://127.0.0.1:59677",
+            "pid": 33252,
+            "environment": "production",
+            "nonce": "1c0b8e2c06d6684405eeb0cc5dfcf6fb48c6b36edef2564af4ea717a935000d3",
+            "running": true,
+            "open_projects": [
+              {
+                "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+                "name": "Cindy temporary probe a",
+                "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+                "status": "open",
+                "status_detail": "",
+                "available": true,
+                "open": true,
+                "setup_status": "ready",
+                "updated_at": "2026-11-01T07:44:40.896528Z",
+                "last_opened_at": "2026-11-01T07:44:40.896528Z",
+                "picture_book": {
+                  "format": "classic_picture_book",
+                  "aspect_ratio": {
+                    "mode": "landscape",
+                    "width": 4,
+                    "height": 3
+                  },
+                  "large_image_minimal_text": false,
+                  "interaction_mode": null,
+                  "comic_layout": null
+                }
+              }
+            ]
+          },
+          "success": true
+        },
+        "b1": {
+          "exit_code": 0,
+          "data": {
+            "endpoint": "http://127.0.0.1:59678",
+            "pid": 33253,
+            "environment": "production",
+            "nonce": "7088b911f5de03f5e82a25f7311d4dc9d7af397896933520634106822f8220c3",
+            "running": true,
+            "open_projects": [
+              {
+                "uuid": "01a19610-532f-7ea6-908f-5fc720e3d908",
+                "name": "Cindy temporary probe b",
+                "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/b/project",
+                "status": "open",
+                "status_detail": "",
+                "available": true,
+                "open": true,
+                "setup_status": "ready",
+                "updated_at": "2026-11-01T07:44:40.896656Z",
+                "last_opened_at": "2026-11-01T07:44:40.896656Z",
+                "picture_book": {
+                  "format": "classic_picture_book",
+                  "aspect_ratio": {
+                    "mode": "landscape",
+                    "width": 4,
+                    "height": 3
+                  },
+                  "large_image_minimal_text": false,
+                  "interaction_mode": null,
+                  "comic_layout": null
+                }
+              }
+            ]
+          },
+          "success": true
+        },
+        "separate_servers": true,
+        "separate_projects": true,
+        "same_project_server_reused": true,
+        "evidence_level": "one worker; synthetic concurrent calls, not two Host tasks"
+      }
+    },
+    {
+      "notification": {
+        "jsonrpc": "2.0",
+        "method": "lumi-change",
+        "params": {
+          "slot": "a",
+          "frame": {
+            "topic": "project:01a19610-5331-7d1f-b989-e4a46c44effb",
+            "event": "phx_reply",
+            "payload": {
+              "status": "ok",
+              "response": {}
+            },
+            "ref": "a66d6859-af9c-4879-bddd-10e0842eea0c",
+            "join_ref": "a66d6859-af9c-4879-bddd-10e0842eea0c"
+          }
+        }
+      }
+    },
+    {
+      "method": "ws_connect",
+      "result": {
+        "boot": "01240bc3-17e7-4057-bc92-a79caa8c47ff",
+        "slot": "a",
+        "frame": {
+          "topic": "project:01a19610-5331-7d1f-b989-e4a46c44effb",
+          "event": "phx_reply",
+          "payload": {
+            "status": "ok",
+            "response": {}
+          },
+          "ref": "a66d6859-af9c-4879-bddd-10e0842eea0c",
+          "join_ref": "a66d6859-af9c-4879-bddd-10e0842eea0c"
+        }
+      }
+    },
+    {
+      "method": "calibrate",
+      "result": {
+        "reason": "local-check-join",
+        "business_reads": 1,
+        "projects": {
+          "items": [
+            {
+              "uuid": "01a19610-5331-7d1f-b989-e4a46c44effb",
+              "name": "Cindy temporary probe a",
+              "root_path": "/private/tmp/lumi-cindy-step0-20261101-silc5gb5/a/project",
+              "status": "open",
+              "status_detail": "",
+              "available": true,
+              "open": true,
+              "setup_status": "ready",
+              "updated_at": "2026-11-01T07:44:40.896528Z",
+              "last_opened_at": "2026-11-01T07:44:40.896528Z",
+              "picture_book": {
+                "format": "classic_picture_book",
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                },
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "fixture",
+      "result": {
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aA1sAAAAASUVORK5CYII="
+      }
+    },
+    {
+      "method": "media_begin",
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "method": "media_chunk",
+      "result": {
+        "received": 68
+      }
+    },
+    {
+      "method": "media_end",
+      "result": {
+        "bytes": 68,
+        "sha256": "852a44ed047cc995ca787c4aee5bd87fecede010675c1586e32a55f9bd5cfbc8",
+        "magic_hex": "89504e470d0a1a0a0000000d49484452"
+      }
+    },
+    {
+      "method": "stop",
+      "result": {
+        "boot": "01240bc3-17e7-4057-bc92-a79caa8c47ff",
+        "a": {
+          "exit_code": 0,
+          "data": {
+            "endpoint": "",
+            "pid": 0,
+            "environment": "production",
+            "nonce": "",
+            "running": false,
+            "open_projects": []
+          },
+          "success": true
+        },
+        "b": {
+          "exit_code": 0,
+          "data": {
+            "endpoint": "",
+            "pid": 0,
+            "environment": "production",
+            "nonce": "",
+            "running": false,
+            "open_projects": []
+          },
+          "success": true
+        }
+      }
+    },
+    {
+      "method": "status",
+      "result": {
+        "boot": "01240bc3-17e7-4057-bc92-a79caa8c47ff",
+        "a": {
+          "exit_code": 3,
+          "data": {
+            "endpoint": "",
+            "pid": 0,
+            "environment": "production",
+            "nonce": "",
+            "running": false,
+            "open_projects": []
+          },
+          "success": true
+        },
+        "b": {
+          "exit_code": 3,
+          "data": {
+            "endpoint": "",
+            "pid": 0,
+            "environment": "production",
+            "nonce": "",
+            "running": false,
+            "open_projects": []
+          },
+          "success": true
+        },
+        "business_reads": 1,
+        "frames": [
+          {
+            "topic": "project:01a19610-5331-7d1f-b989-e4a46c44effb",
+            "event": "phx_reply",
+            "payload": {
+              "status": "ok",
+              "response": {}
+            },
+            "ref": "a66d6859-af9c-4879-bddd-10e0842eea0c",
+            "join_ref": "a66d6859-af9c-4879-bddd-10e0842eea0c"
+          }
+        ]
+      }
+    }
+  ]
+}
