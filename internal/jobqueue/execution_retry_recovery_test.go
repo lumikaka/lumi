@@ -18,13 +18,13 @@ import (
 
 func claimRetryFixture(t *testing.T, r *projectRuntime, job *rivertype.JobRow, clientID string) *rivertype.JobRow {
 	t.Helper()
-	jobs, err := riversqlite.New(r.sqlDB).GetExecutor().JobGetAvailable(t.Context(), &riverdriver.JobGetAvailableParams{
+	result, err := riversqlite.New(r.sqlDB).GetExecutor().JobGetAvailable(t.Context(), &riverdriver.JobGetAvailableParams{
 		ClientID: clientID, MaxAttemptedBy: 10, MaxToLock: 1, Queue: job.Queue,
 	})
-	if err != nil || len(jobs) != 1 || jobs[0].ID != job.ID || jobs[0].State != rivertype.JobStateRunning {
-		t.Fatalf("claim fixture: %+v / %v", jobs, err)
+	if err != nil || result == nil || len(result.DecodeErrors) != 0 || len(result.Jobs) != 1 || result.Jobs[0].ID != job.ID || result.Jobs[0].State != rivertype.JobStateRunning {
+		t.Fatalf("claim fixture: %+v / %v", result, err)
 	}
-	return jobs[0]
+	return result.Jobs[0]
 }
 
 func TestRetryReclaimsPreviousRuntimeExecution(t *testing.T) {

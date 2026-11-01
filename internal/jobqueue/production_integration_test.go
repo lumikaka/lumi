@@ -2900,8 +2900,9 @@ func TestProjectCloseAndReopenRecoversDurableProduction(t *testing.T) {
 		t.Fatal(err)
 	}
 	completed := waitProductionStatus(t, harness.queue, harness.project.UUID, task.UUID, StatusCompleted)
-	if completed.Attempt < 2 {
-		t.Fatalf("recovered task=%+v", completed)
+	// River resumes shutdown-interrupted work without consuming a retry attempt.
+	if providerCalls := len(provider.snapshot()); completed.Attempt != 1 || providerCalls != 2 {
+		t.Fatalf("recovered attempt=%d provider calls=%d", completed.Attempt, providerCalls)
 	}
 	images, err := service.ListSettingImages(context.Background())
 	if err != nil || len(images) != 1 || images[0].Origin != "generated" {

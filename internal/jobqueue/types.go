@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	RiverVersion                  = "v0.41.0"
+	RiverVersion                  = "v0.51.0"
 	QueueStory                    = "story_generation"
 	QueueAssetMaintenance         = "asset_maintenance"
 	QueueProduction               = "production"

@@ -5,12 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"lumi/internal/config"
 	"lumi/internal/database"
+	"lumi/internal/taskexecution"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
@@ -218,6 +221,66 @@ func TestRiverSQLiteCompatibilityGate(t *testing.T) {
 	waitJobEvent(t, reopenedCompleted, reopenedJob.Job.ID)
 	if err := reopenedClient.Stop(stopCtx); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRiverSQLiteUpgradePreservesExecutionsAndBacksUpLegacySchema(t *testing.T) {
+	_, runtime := stoppedLegacyExecutionHarness(t)
+	ctx := t.Context()
+	owner := executionFixture(t, runtime, "task_runs", StatusQueued, taskexecution.Binding{})
+	before := enqueueExecutionFixture(t, runtime, owner)
+	backupPattern := filepath.Join(runtime.store.Root(), ".lumi", "backups", "project-before-river-*.sqlite")
+	backupsBefore, err := filepath.Glob(backupPattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driver := riversqlite.New(runtime.sqlDB)
+	if err := migrateRiver(ctx, runtime.store, driver); err != nil {
+		t.Fatal(err)
+	}
+	after, err := runtime.client.JobGet(ctx, before.ID)
+	if err != nil || !reflect.DeepEqual(before, after) {
+		t.Fatalf("migration changed queued execution: before=%+v after=%+v err=%v", before, after, err)
+	}
+	if row := readExecutionFixture(t, runtime, owner.Table, owner.UUID); row.Status != StatusQueued || row.binding() != executionBindingFor(before) {
+		t.Fatalf("migration changed product binding: %+v", row)
+	}
+	if _, err := runtime.executionContext(ctx, after); err != nil {
+		t.Fatalf("migrated execution is no longer accepted: %v", err)
+	}
+	backupsAfter, err := filepath.Glob(backupPattern)
+	if err != nil || len(backupsAfter) != len(backupsBefore)+1 {
+		t.Fatalf("migration backup count: before=%v after=%v err=%v", backupsBefore, backupsAfter, err)
+	}
+	for _, path := range backupsAfter {
+		if slices.Contains(backupsBefore, path) {
+			continue
+		}
+		backup, err := sql.Open("sqlite", config.SQLiteDSN(path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer backup.Close()
+		var version int
+		if err := backup.QueryRowContext(ctx, `SELECT MAX(version) FROM river_migration`).Scan(&version); err != nil || version != 7 {
+			t.Fatalf("backup must contain the pre-upgrade schema: version=%d err=%v", version, err)
+		}
+		var jobID int64
+		var executionUUID string
+		if err := backup.QueryRowContext(ctx, `SELECT river_job_id,execution_uuid FROM task_runs WHERE uuid=?`, owner.UUID).Scan(&jobID, &executionUUID); err != nil || jobID != before.ID || executionUUID != executionBindingFor(before).ExecutionUUID {
+			t.Fatalf("backup lost execution binding: job=%d execution=%q err=%v", jobID, executionUUID, err)
+		}
+	}
+	// The upgraded allocator must not attach a deleted job's ID to unrelated work.
+	if _, err := runtime.client.JobDelete(ctx, before.ID); err != nil {
+		t.Fatal(err)
+	}
+	next, err := runtime.client.Insert(ctx, gateArgs{Key: "after-upgrade"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.Job.ID <= before.ID {
+		t.Fatalf("upgraded database reused deleted job ID %d: next=%d", before.ID, next.Job.ID)
 	}
 }
 

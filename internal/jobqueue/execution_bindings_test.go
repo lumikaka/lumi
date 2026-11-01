@@ -15,11 +15,12 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
+	"github.com/riverqueue/river/rivermigrate"
 	"github.com/riverqueue/river/rivertype"
 	"gorm.io/gorm"
 )
 
-// Keep the actual migrated project SQLite and River v0.41.0 adapter, but stop
+// Keep the actual migrated project SQLite and River adapter, but stop
 // workers so cleanup and provider timing cannot mask ID allocation races.
 func stoppedExecutionHarness(t *testing.T) (*queueHarness, *projectRuntime) {
 	t.Helper()
@@ -43,6 +44,21 @@ func stoppedExecutionHarness(t *testing.T) (*queueHarness, *projectRuntime) {
 		if _, err := client.JobDelete(t.Context(), job.ID); err != nil {
 			t.Fatal(err)
 		}
+	}
+	return h, r
+}
+
+// River v0.41.0 used schema version 7, whose ROWID allocator could reuse deleted
+// IDs. Keep exercising our execution guards against databases with that schema.
+func stoppedLegacyExecutionHarness(t *testing.T) (*queueHarness, *projectRuntime) {
+	t.Helper()
+	h, r := stoppedExecutionHarness(t)
+	migrator, err := rivermigrate.New(riversqlite.New(r.sqlDB), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := migrator.Migrate(t.Context(), rivermigrate.DirectionDown, &rivermigrate.MigrateOpts{TargetVersion: 7}); err != nil {
+		t.Fatal(err)
 	}
 	return h, r
 }
@@ -125,7 +141,7 @@ func TestExecutionIDReuseFirstInsertionSucceeds(t *testing.T) {
 	for _, table := range []string{"task_runs", "production_task_runs", "asset_maintenance_runs"} {
 		for _, onOpen := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/open_repair_%v", table, onOpen), func(t *testing.T) {
-				_, r := stoppedExecutionHarness(t)
+				_, r := stoppedLegacyExecutionHarness(t)
 				seedEightRiverJobs(t, r)
 				old := executionFixture(t, r, table, StatusFailed, taskexecution.Binding{JobID: 9})
 				if onOpen {
@@ -155,7 +171,7 @@ func TestExecutionIDReuseFirstInsertionSucceeds(t *testing.T) {
 }
 
 func TestExecutionIDRepairRollsBackWithFailedBinding(t *testing.T) {
-	_, r := stoppedExecutionHarness(t)
+	_, r := stoppedLegacyExecutionHarness(t)
 	seedEightRiverJobs(t, r)
 	old := executionFixture(t, r, "production_task_runs", StatusFailed, taskexecution.Binding{JobID: 9})
 	fresh := executionFixture(t, r, "production_task_runs", StatusQueued, taskexecution.Binding{})
@@ -229,7 +245,7 @@ func TestForeignExecutionIsNeverCancelledOrRetried(t *testing.T) {
 }
 
 func TestSameTaskAndNumericIDUseDistinctExecutions(t *testing.T) {
-	h, r := stoppedExecutionHarness(t)
+	h, r := stoppedLegacyExecutionHarness(t)
 	owner := executionFixture(t, r, "production_task_runs", StatusQueued, taskexecution.Binding{})
 	oldJob := enqueueExecutionFixture(t, r, owner)
 	oldCtx, err := r.executionContext(t.Context(), oldJob)

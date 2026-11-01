@@ -119,10 +119,10 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 ### 技术栈
 
-- 后端：Go 1.25、Echo v4、GORM v2、纯 Go SQLite
+- 后端：Go 1.27.3、Echo v4、GORM v2、纯 Go SQLite
 - 前端：React 19、Vite 8、React Router 7、TanStack Query 5、Sass、pnpm；管理端使用 MUI + Emotion
 - 数据迁移：`github.com/golang-migrate/migrate/v4`
-- 后台任务：River Queue `v0.41.0` 与官方 `riverdriver/riversqlite`
+- 后台任务：River Queue `v0.51.0` 与官方 `riverdriver/riversqlite`
 
 ### 目录结构
 
@@ -157,7 +157,7 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 ### 本地开发
 
-需要 Go 1.25+、Node.js 26+、pnpm 12.16.1+；一键开发额外需要 tmux。
+需要 Go 1.27.3+、Node.js 26+、pnpm 12.16.1+；一键开发额外需要 tmux。
 
 Codex Cloud 的仓库选择、依赖安装和服务启动配置见 [云环境配置](docs/codex-cloud.md)。
 
@@ -299,7 +299,7 @@ Lumi 的 macOS 与 Windows 版本保持 `browser → Go backend` 架构。Tauri 
 macOS 本地桌面构建只支持 Apple Silicon（`aarch64-apple-darwin`），需要：
 
 - macOS Apple Silicon 与 Xcode Command Line Tools
-- Go 1.25
+- Go 1.27.3
 - Node.js 26、pnpm 12.16.1
 - Rust stable
 - Tauri CLI 2.8.0：`cargo install tauri-cli --version '=2.8.0' --locked`

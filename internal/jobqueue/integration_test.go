@@ -966,8 +966,12 @@ func TestProjectCloseAndReopenRecoversDurableGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 	completed := waitTaskStatus(t, harness.queue, harness.project.UUID, created.UUID, StatusCompleted)
-	if completed.Attempt < 2 {
-		t.Fatalf("recovered task = %+v", completed)
+	// River resumes shutdown-interrupted work without consuming a retry attempt.
+	harness.fakeModel.mu.Lock()
+	providerCalls := harness.fakeModel.attempts["restart"]
+	harness.fakeModel.mu.Unlock()
+	if completed.Attempt != 1 || providerCalls != 2 {
+		t.Fatalf("recovered attempt=%d provider calls=%d", completed.Attempt, providerCalls)
 	}
 	current, err := harness.stories.GetChapter(context.Background(), chapter.UUID)
 	if err != nil || current.Revision != chapter.Revision+1 || current.CurrentStory == nil || current.CurrentStory.Content != "生成后的完整正文" {
