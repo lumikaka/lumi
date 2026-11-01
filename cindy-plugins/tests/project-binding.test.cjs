@@ -34,8 +34,12 @@ test('Cindy project binding through the real bundled CLI', { timeout: 120000 }, 
       assert.equal(current.nonce, owned.nonce, 'only stop the exact isolated test instance');
       const stopped = await fetch(`${current.endpoint}/api/v1/cli-instance`, { method: 'DELETE', headers: { 'If-Match': current.nonce } });
       assert.equal(stopped.status, 200);
-      for (let i = 0; i < 200 && (await status()).running; i++) await new Promise(r => setTimeout(r, 25));
-      assert.equal((await status()).running, false);
+      const isStopped = async () => {
+        try { return !(await status()).running; }
+        catch (error) { if (error.code === 'instance_unavailable') return false; throw error; }
+      };
+      for (let i = 0; i < 200 && !(await isStopped()); i++) await new Promise(r => setTimeout(r, 25));
+      assert.equal(await isStopped(), true);
     }
     await fs.rm(base, { recursive: true, force: true });
     console.log('BINDING CLEANUP: isolated server stopped; projects, proxies and temporary home removed');
@@ -145,8 +149,9 @@ test('Cindy project binding through the real bundled CLI', { timeout: 120000 }, 
       await assert.rejects(runtime.execute('project_init', ctx(root, 'forged', args)), { code: 'invalid_arguments' });
     }
     const downgraded = ctx(a, 'a'); downgraded.context.workdir_is_read_only = true;
-    await assert.rejects(runtime.execute('project_overview', downgraded), { code: 'read_only_context' });
-    assert.equal(runtime.sessions.has('a'), false);
+    assert.equal(ok(await runtime.execute('project_overview', downgraded)).limitations.read_only, true);
+    assert.equal(runtime.sessions.get('a').permission.workdir_is_read_only, true);
+    await assert.rejects(runtime.execute('project_init', { ...downgraded, arguments: { idea: 'no' } }), { code: 'read_only_context' });
     assert.deepEqual(await fs.readdir(root), []);
     await fs.chmod(root, 0o555);
     try { await assert.rejects(runtime.execute('project_init', ctx(root, 'os-readonly', { idea: 'no' })), { code: 'workdir_unavailable' }); }
@@ -200,7 +205,7 @@ test('Cindy project binding through the real bundled CLI', { timeout: 120000 }, 
     const restarted = create();
     assert.equal(restarted.sessions.size, 0);
     const readonly = ctx(b, 'b'); readonly.context.workdir_is_read_only = true;
-    await assert.rejects(restarted.execute('project_setup', { ...readonly, arguments: { action: 'get' } }), { code: 'read_only_context' });
+    assert.equal(ok(await restarted.execute('project_setup', { ...readonly, arguments: { action: 'get' } })).limitations.read_only, true);
     const reopened = ok(await restarted.execute('project_overview', ctx(b, 'b')));
     assert.equal(reopened.project.uuid, projectB.project.uuid);
     assert.equal((await status()).nonce, owned.nonce);

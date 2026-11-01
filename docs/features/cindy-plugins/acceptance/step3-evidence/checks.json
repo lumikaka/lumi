@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-01",
+  "kind": "automated-go-and-realtime-tests",
+  "go": {
+    "command": "go test ./internal/promptcatalog ./internal/story ./internal/textmcp ./internal/project ./cmd/lumi ./cindy-plugins/schema",
+    "exit_code": 0,
+    "stdout": "ok  lumi/internal/promptcatalog (cached)\nok  lumi/internal/story (cached)\nok  lumi/internal/textmcp 8.604s\nok  lumi/internal/project (cached)\nok  lumi/cmd/lumi 7.599s\n?   lumi/cindy-plugins/schema [no test files]\n"
+  },
+  "realtime": {
+    "command": "node --test web/src/api/realtime.test.js web/src/realtime/projectRealtimeQueries.test.js",
+    "exit_code": 0,
+    "tests": 25,
+    "pass": 25,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "diff_check": {
+    "command": "git diff --check -- cindy-plugins cmd/lumi/client.go cmd/lumi/main.go cmd/lumi/mcp.go cmd/lumi/mcp_test.go internal/promptcatalog/catalog.go internal/promptcatalog/catalog_test.go internal/story/projection.go internal/story/story_test.go internal/textmcp/service.go docs/features/cindy-plugins",
+    "exit_code": 0
+  }
+}

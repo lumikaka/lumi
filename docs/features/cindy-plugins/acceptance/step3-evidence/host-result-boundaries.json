@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-01T14:23:10.490Z",
+  "kind": "installed-host-compiled-function-audit",
+  "boundary": "Constructed text inputs; transport, owner scope and unused media helpers mocked. Not an installed-plugin or autonomous Agent E2E test. Exact public source unavailable.",
+  "archive": "/Applications/Cindy.app/Contents/Resources/app.asar",
+  "entry": "bootstrap-electron-BJb-edRz.js",
+  "bundle_sha256": "1e9fae4d1dd5e54793551e5de8f37b7afdb3649e4b4b0cfd0f0b67362a123f9d",
+  "function_sha256": {
+    "function textResult(": "d2e81a5018f9dcb237e0689822f7ca4e8602d9591e73df46f3978d499e4b5c2b",
+    "async function handleGhostCall(": "34b8475923287f7db4b1d25bcb9209b968e24ce464083dec6feddde76113aec3",
+    "handleToolResult(n,R){": "1a9b21498be3252ca2066d9db8dcb08c72ef87494be0f8641c128d38824c0e72",
+    "function isGhostPluginErrorCode(": "baa0834f2ec789f25b5f1d6fe513a64b16d17f047752cd44178b05a92c5e5520",
+    "function projectMobileToolResult(": "64e0d0706ec1cc6c760757347aea6e8aea0c1da4839c9b4ea14866d20a1c45b0"
+  },
+  "host": {
+    "version": "0.1.121",
+    "source_commit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa"
+  },
+  "agent_result": {
+    "bytes": 125087,
+    "complete": true,
+    "end_marker": true
+  },
+  "mobile_tool_history": {
+    "limit_bytes": 8192,
+    "projected_bytes": 8190,
+    "explicit_truncation": true,
+    "utf8_intact": true
+  },
+  "host_failure": {
+    "is_error": true,
+    "code_preserved": true,
+    "schema_and_rules_in_message": true,
+    "arbitrary_failure_result_dropped": true
+  }
+}

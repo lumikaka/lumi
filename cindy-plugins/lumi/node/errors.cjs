@@ -12,7 +12,7 @@ const failure = (code, message, details = '') => ({
   success: false, data: null, error: { code, message, details },
 });
 const envelope = (error) => error instanceof RuntimeError
-  ? failure(error.code, error.message, error.details)
+  ? { ...failure(error.code, error.message, error.details), ...(error.correction ? { correction: error.correction } : {}) }
   : failure('runtime_failed', '本地运行时失败。', '重新执行运行诊断；不要自动重放写操作。');
 function aborted(signal) {
   if (signal?.aborted) throw new RuntimeError('request_cancelled', '调用已取消。', '其他任务的连接保持可用。');

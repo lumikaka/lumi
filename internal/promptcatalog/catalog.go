@@ -58,6 +58,7 @@ func Definitions(language string) []Definition {
 	definitions = append(definitions, storyDefinitions(language)...)
 	definitions = append(definitions, chapterDefinitions(language)...)
 	definitions = append(definitions, premiseDefinitions(language)...)
+	definitions = append(definitions, textSettingsDefinition(language))
 	definitions = append(definitions, premiseStyleDefinitions(language)...)
 	definitions = append(definitions, agentDefinitions(language)...)
 	definitions = append(definitions, runtimeDefinitions(language)...)

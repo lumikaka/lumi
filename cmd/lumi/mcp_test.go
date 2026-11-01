@@ -155,7 +155,13 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 20 {
+	publishedCount := 0
+	for _, spec := range textmcp.Specs() {
+		if spec.Name != "read_app_connection" {
+			publishedCount++
+		}
+	}
+	if len(tools.Tools) != publishedCount {
 		t.Fatalf("tools=%d", len(tools.Tools))
 	}
 	for _, tool := range tools.Tools {

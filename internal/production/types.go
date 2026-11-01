@@ -46,12 +46,13 @@ type PremiseSource struct {
 }
 
 type SettingImage struct {
-	UUID       string      `json:"uuid"`
-	SourceUUID string      `json:"source_uuid,omitempty"`
-	Origin     string      `json:"origin"`
-	Prompt     string      `json:"prompt"`
-	Asset      files.Asset `json:"asset"`
-	CreatedAt  time.Time   `json:"created_at"`
+	BreakdownCompleted bool        `json:"breakdown_completed,omitempty"`
+	UUID               string      `json:"uuid"`
+	SourceUUID         string      `json:"source_uuid,omitempty"`
+	Origin             string      `json:"origin"`
+	Prompt             string      `json:"prompt"`
+	Asset              files.Asset `json:"asset"`
+	CreatedAt          time.Time   `json:"created_at"`
 }
 
 type PremiseAsset struct {

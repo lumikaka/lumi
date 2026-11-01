@@ -1,0 +1,18 @@
+{
+  "byte_size": 3143,
+  "format": "markdown",
+  "missing_image_count": 3,
+  "path": "lumi-exports/text-01a19776-7207-733c-ad10-84033a3ff930.md",
+  "uuid": "01a19776-7207-733c-ad10-84033a3ff930",
+  "file_generated": true,
+  "user_received": false,
+  "delivery": {
+    "status": "prepared",
+    "channel": "cindy_task_files",
+    "relative_path": "lumi-exports/text-01a19776-7207-733c-ad10-84033a3ff930.md",
+    "byte_size": 3143,
+    "sha256": "d0d800424931601e25f2181ff1256adbe782b777754d5f8197536ed9445ebb54",
+    "receipt": null,
+    "instructions": "在 Cindy 当前任务的文件列表打开此相对路径；手机通过原生任务文件浏览器读取。prepared 仅表示已准备，收到须以控制端读取回执或用户确认为准，不承诺本地链接可下载。"
+  }
+}

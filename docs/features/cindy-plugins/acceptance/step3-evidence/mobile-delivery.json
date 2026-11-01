@@ -1,0 +1,19 @@
+{
+  "kind": "user-confirmed-cindy-mobile-file-read",
+  "date": "2026-11-01T14:17:44.502747+00:00",
+  "relative_path": "docs/features/cindy-plugins/acceptance/step3-evidence/fixed-book.md",
+  "byte_size": 3143,
+  "sha256": "d0d800424931601e25f2181ff1256adbe782b777754d5f8197536ed9445ebb54",
+  "file_generated": true,
+  "user_received": true,
+  "channel": "cindy_task_files",
+  "confirmation": "已在手机完整打开",
+  "confirmed_scope": "当前任务文件列表中的三页固定文本作品，包含各页正文与画面描述",
+  "boundary": "来自用户对实际手机打开结果的确认；不是插件自动接收回调，也不是 Agent 自主创作验收。",
+  "screenshot": {
+    "relative_path": "docs/features/cindy-plugins/acceptance/step3-evidence/mobile-file-open.webp",
+    "sha256": "ce62d3daa0bd80e996e2f02cb419802fca3153ec0a62bc2f5490de375d1842f1",
+    "source": "用户提供的手机文件预览截图",
+    "visible_evidence": "fixed-book.md、故事、角色设定、章节正文及第 1/2 页正文与画面描述；三页完整性另有用户明确确认。"
+  }
+}

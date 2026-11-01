@@ -40,6 +40,7 @@ type options struct {
 	projectName string
 	language    string
 	rollout     string
+	readOnly    bool
 }
 
 func main() { os.Exit(command(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -69,6 +70,9 @@ func command(args []string, out, stderr io.Writer) int {
 	flags.StringVar(&opt.dataDir, "data-dir", os.Getenv("LUMI_DATA_DIR"), "application data directory")
 	flags.BoolVar(&opt.json, "json", false, "output a JSON envelope")
 	flags.DurationVar(&opt.timeout, "timeout", 90*time.Second, "maximum startup or shutdown wait")
+	if name == "mcp" || name == "status" {
+		flags.BoolVar(&opt.readOnly, "read-only", false, "only inspect a live CLI and read already-open projects without repairs")
+	}
 	if name == "init" {
 		flags.StringVar(&opt.projectName, "name", "", "project name (defaults to directory name)")
 		flags.StringVar(&opt.language, "language", "zh-Hans", "project generation language")
@@ -135,7 +139,11 @@ func command(args []string, out, stderr io.Writer) int {
 	case "serve":
 		status, err = ensureInstance(ctx, opt)
 	case "status":
-		status, err = inspectInstance(ctx, opt)
+		if opt.readOnly {
+			status, err = inspectLiveInstance(ctx, opt)
+		} else {
+			status, err = inspectInstance(ctx, opt)
+		}
 	case "stop":
 		status, err = stopInstance(ctx, opt)
 	}

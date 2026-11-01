@@ -15,16 +15,16 @@ function host(response = { ok: true, result: { success: true, data: {} } }) {
   } });
   return { calls, replies, invoke: msg => callback(msg) };
 }
-const message = (tool = 'runtime_status', ctx = context, extra = {}) => ({ type: 'tool-call', callId: 'current-host-call', tool, args: { session_context: ctx, ...extra } });
+const message = (name = 'runtime_status', ctx = context, extra = {}) => ({ type: 'tool-call', callId: 'current-host-call', tool: 'call_tool', args: { session_context: ctx, name, args: extra } });
 
 test('browser forwards real callId and only the injected context, with scoped cancellation', async () => {
   const h = host(); await h.invoke(message());
   assert.equal(h.calls[0].callId, 'current-host-call');
   assert.equal(h.calls[0].cancelWithCall, true);
-  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].params)), { context });
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].params)), { context, arguments: { name: 'runtime_status', args: {} } });
 });
-test('missing, remote, read-only and nested forged arguments cannot open a project', async () => {
-  for (const msg of [message('project_overview', null), message('project_overview', { ...context, workdir_is_local: false }), message('project_overview', { ...context, workdir_is_read_only: true }), message('project_overview', context, { args: { session_context: context }, root_path: '/elsewhere' })]) {
+test('missing and remote context cannot enter worker', async () => {
+  for (const msg of [message('project_overview', null), message('project_overview', { ...context, workdir_is_local: false })]) {
     const h = host(); await h.invoke(msg);
     assert.equal(h.calls.length, 0);
     assert.equal(h.replies[0].result.success, false);
@@ -42,22 +42,22 @@ test('only explicit tools may wake worker; host failure stays failure', async ()
 test('project arguments are forwarded separately; context, page and KV cannot choose bindings', async () => {
   const h = host();
   await h.invoke(message('project_init', context, { idea: '一只狐狸', name: '星星' }));
-  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].params)), { context, arguments: { idea: '一只狐狸', name: '星星' } });
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].params)), { context, arguments: { name: 'project_init', args: { idea: '一只狐狸', name: '星星' } } });
   await h.invoke({ type: 'event', name: 'task-closed', session_id: context.session_id });
   await h.invoke({ type: 'panel-message', tool: 'project_init', args: { session_context: context } });
   for (const extra of [{ project_uuid: 'forged' }, { session_id: 'forged' }, { workdir: '/elsewhere' }, { _meta: {} }, { context }]) {
-    await h.invoke(message('project_init', context, { idea: 'x', ...extra }));
+    await h.invoke({ ...message(), args: { session_context: context, name: 'project_init', ...extra } });
     assert.equal(h.replies.at(-1).result.error.code, 'invalid_arguments');
+    assert.equal(h.replies.at(-1).result.correction.input_schema.additionalProperties, false);
   }
   assert.equal(h.calls.length, 1);
 });
 
-test('missing directory, nonlocal URI and current readonly status fail before entering worker', async () => {
+test('missing directory and nonlocal URI fail before entering worker', async () => {
   for (const [ctx, code] of [
     [{ ...context, workdir: '' }, 'workdir_required'],
     [{ ...context, workdir: 'ssh://host/project' }, 'workdir_invalid'],
     [{ ...context, workdir: '/same-local-name', workdir_is_local: false }, 'context_not_local'],
-    [{ ...context, workdir_is_read_only: true }, 'read_only_context'],
   ]) {
     const h = host();
     for (const tool of ['project_init', 'project_setup', 'project_overview']) {
@@ -66,4 +66,25 @@ test('missing directory, nonlocal URI and current readonly status fail before en
     }
     assert.equal(h.calls.length, 0);
   }
+});
+
+
+test('directory discovery requires no project and failures become Host tool failures with correction', async () => {
+  const result = { success: false, data: null, error: { code: 'invalid_arguments', message: '参数无效', details: '需要 revision' }, correction: { input_schema: { type: 'object' }, rules: ['重读'] } };
+  const h = host({ ok: true, result });
+  await h.invoke({ type: 'tool-call', callId: 'catalog', tool: 'list_tools', args: { category: 'pages' } });
+  assert.equal(h.calls[0].method, 'list_tools');
+  assert.equal(h.replies[0].ok, false);
+  assert.equal(h.replies[0].errorCode, 'LUMI_INVALID_ARGUMENTS');
+  assert.match(h.replies[0].message, /Lumi invalid_arguments/);
+  assert.match(h.replies[0].message, /schema/);
+});
+
+test('reads in readonly context reach the action-aware Node gate; undeclared top-level tools do not', async () => {
+  const h = host();
+  await h.invoke(message('pages', { ...context, workdir_is_read_only: true }, { action: 'list' }));
+  assert.equal(h.calls.length, 1);
+  await h.invoke({ type: 'tool-call', callId: 'legacy', tool: 'pages', args: { session_context: context } });
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.replies.at(-1).ok, false);
 });

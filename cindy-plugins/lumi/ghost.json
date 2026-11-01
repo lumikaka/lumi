@@ -3,177 +3,41 @@
   "minCindyVersion": "0.1.121",
   "id": "lumi",
   "name": "Lumi",
-  "description": "在 Cindy 当前本地项目目录初始化或打开标准 Lumi 作品，完成 setup、读取项目概况并管理任务绑定。",
-  "whenToUse": "在当前 Cindy 任务初始化 Lumi 作品、打开已有项目、完成创作规格、读取概况或释放任务连接。",
-  "version": "0.2.0",
+  "description": "在 Cindy 当前 Lumi 项目中完成 setup、故事、设定、章节、页面正文和画面描述，导出完整文本作品；无需 Lumi 模型服务商。媒体交接和审阅界面尚未实现。",
+  "whenToUse": "初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。",
+  "version": "0.3.0",
   "entry": "main.js",
   "icon": "assets/icon.png",
   "tools": [
     {
-      "name": "runtime_status",
-      "description": "检查当前本地任务与随包 Lumi CLI 的 MCP 初始化及连接。执行随包 lumi mcp 的 initialize、tools/list、ping；可写任务另执行 lumi status。不打开或初始化作品；只读任务跳过可能创建锁文件的 status，并返回服务状态未知。",
+      "name": "list_tools",
+      "description": "不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。media/review 未实现，不返回占位工具。",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
         "additionalProperties": false
       }
     },
     {
-      "name": "project_init",
-      "description": "在 Cindy 当前本地可写项目根原地创建标准 Lumi draft；已有有效项目只打开并返回现状，不重置内容。不生成 AGENTS.md、Codex 配置或 hooks。idea 使用用户原始创意。",
+      "name": "call_tool",
+      "description": "执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。",
       "parameters": {
         "type": "object",
         "properties": {
-          "idea": {
-            "type": "string",
-            "maxLength": 120000,
-            "description": "用户原始创意。"
-          },
           "name": {
-            "type": "string",
-            "maxLength": 120,
-            "description": "项目名称；省略时使用目录名。"
+            "type": "string"
           },
-          "generation_language": {
-            "type": "string",
-            "enum": [
-              "zh-Hans",
-              "en"
-            ]
+          "args": {
+            "type": "object"
           }
         },
         "required": [
-          "idea"
+          "name"
         ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "project_setup",
-      "description": "读取、更新或确认当前项目 setup。update/finalize 必须带上次读取的 expected_revision；update 后用新 revision finalize。只读任务拒绝；最终格式遵循 Lumi 已有不可变规则。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": [
-              "get",
-              "update",
-              "finalize"
-            ]
-          },
-          "expected_revision": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "project_name": {
-            "type": "string",
-            "maxLength": 120,
-            "description": "作品名称。"
-          },
-          "generation_language": {
-            "type": "string",
-            "enum": [
-              "zh-Hans",
-              "en"
-            ]
-          },
-          "overall_style": {
-            "type": "string",
-            "maxLength": 12000,
-            "description": "整体画风。"
-          },
-          "generation_brief": {
-            "type": "string",
-            "maxLength": 120000,
-            "description": "创作简报。"
-          },
-          "picture_book": {
-            "type": "object",
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "classic_picture_book",
-                  "wordless_picture_book",
-                  "interactive_picture_book",
-                  "comic_story",
-                  "vertical_strip"
-                ]
-              },
-              "aspect_ratio": {
-                "type": "object",
-                "properties": {
-                  "mode": {
-                    "type": "string",
-                    "enum": [
-                      "landscape",
-                      "square",
-                      "portrait",
-                      "custom"
-                    ]
-                  },
-                  "width": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "height": {
-                    "type": "integer",
-                    "minimum": 1
-                  }
-                },
-                "required": [
-                  "mode"
-                ],
-                "additionalProperties": false
-              },
-              "large_image_minimal_text": {
-                "type": "boolean"
-              },
-              "interaction_mode": {
-                "type": "string",
-                "enum": [
-                  "find_it",
-                  "make_a_choice",
-                  "guess",
-                  "follow_along"
-                ]
-              },
-              "comic_layout": {
-                "type": "string",
-                "enum": [
-                  "four_panel",
-                  "page_comic"
-                ]
-              }
-            },
-            "required": [
-              "format"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "project_overview",
-      "description": "读取当前本地任务目录中已有 Lumi 项目的概况。通过随包 lumi mcp 连接共享 production CLI server；可按需启动服务、打开项目、运行已有数据库迁移并更新本地运行状态。不创建项目或写入创作内容；只读任务拒绝此调用。",
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "runtime_release",
-      "description": "撤销当前任务的运行时绑定并取消其在途调用，释放其 MCP 代理引用。不停止共享 CLI server，不影响其他 Cindy 任务或 Codex 客户端。",
-      "parameters": {
-        "type": "object",
-        "properties": {},
         "additionalProperties": false
       }
     }
@@ -191,7 +55,7 @@
   "command": "lumi",
   "launch": "on-demand",
   "sessionContext": true,
-  "releaseNotes": "新增当前任务项目初始化、setup 和绑定校验；复用标准项目格式，保留现有内容；不生成 Codex 配置。仍为 macOS arm64 开发包。",
+  "releaseNotes": "新增两段式文本工具目录与明确允许列表、action 级读写授权、完整错误自纠、串行创作手册及原生任务文件交付。无需 Lumi 模型服务商即可保存并导出完整文本作品。",
   "manual": {
     "items": [
       {
@@ -205,6 +69,12 @@
         "title": "项目初始化与创作规约",
         "description": "目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。",
         "dir": "manual/project"
+      },
+      {
+        "name": "authoring",
+        "title": "文本创作与恢复",
+        "description": "项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。",
+        "dir": "manual/authoring"
       }
     ]
   }

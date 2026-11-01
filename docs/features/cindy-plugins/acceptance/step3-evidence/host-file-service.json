@@ -1,0 +1,21 @@
+{
+  "kind": "actual-shipped-cindy-file-service-not-phone-receipt",
+  "date": "2026-11-01T14:29:21.996Z",
+  "host_source": {
+    "sourceCommit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+    "builtAt": "2026-10-30T01:16:08.865+08:00"
+  },
+  "file_service": {
+    "schema_version": 3,
+    "bundle_version": "0.2.7",
+    "sha256": "7a474d942cfe301042c43e7f0a1292ca073b6aa9de263fa4da54241c27bae0fa"
+  },
+  "relative_path": "docs/features/cindy-plugins/acceptance/step3-evidence/fixed-book.md",
+  "bytes": 3143,
+  "chunks": 1,
+  "sha256": "d0d800424931601e25f2181ff1256adbe782b777754d5f8197536ed9445ebb54",
+  "visible": true,
+  "full_bytes_verified": true,
+  "user_received": false,
+  "mobile_client_verified": false
+}

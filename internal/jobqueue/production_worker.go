@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"image"
-	"image/draw"
 	"image/png"
 	"io"
 	"strings"
@@ -783,18 +782,11 @@ func premiseAssetTypeFromTags(tags []string) string {
 	}
 }
 func cropImage(source image.Image, item breakdownItem) (image.Image, image.Rectangle, error) {
-	bounds := source.Bounds()
-	x := bounds.Min.X + int(item.X*float64(bounds.Dx()))
-	y := bounds.Min.Y + int(item.Y*float64(bounds.Dy()))
-	w := int(item.Width * float64(bounds.Dx()))
-	h := int(item.Height * float64(bounds.Dy()))
-	box := image.Rect(x, y, x+w, y+h).Intersect(bounds)
-	if box.Dx() < 2 || box.Dy() < 2 {
-		return nil, box, productionError("invalid_breakdown_crop", "拆分裁剪框过小", false)
+	cropped, box, err := production.CropSettingImage(source, production.CropBox{X: item.X, Y: item.Y, Width: item.Width, Height: item.Height})
+	if err != nil {
+		return nil, box, productionError("invalid_breakdown_crop", "拆分裁剪框无效或过小", false)
 	}
-	target := image.NewRGBA(image.Rect(0, 0, box.Dx(), box.Dy()))
-	draw.Draw(target, target.Bounds(), source, box.Min, draw.Src)
-	return target, box, nil
+	return cropped, box, nil
 }
 
 func (runtime *projectRuntime) markProductionRunning(ctx context.Context, record productionTaskRecord, attempt int) error {

@@ -1,6 +1,7 @@
 'use strict';
 const { MAX_LINE } = require('./protocol.cjs');
 const { RuntimeError, envelope } = require('./errors.cjs');
+const catalog = require('./catalog.cjs');
 
 function createWorker({ input, output, runtime, spawnLifetime }) {
   let buffer = Buffer.alloc(0), discard = false, stopped = false;
@@ -30,7 +31,9 @@ function createWorker({ input, output, runtime, spawnLifetime }) {
       return;
     }
     if (Buffer.byteLength(JSON.stringify(request.params ?? {})) > 256 * 1024) {
-      write({ jsonrpc: '2.0', id: request.id, result: envelope(new RuntimeError('arguments_too_large', 'Node 参数超过 256 KiB。', '缩小参数。')) });
+      const error = new RuntimeError('arguments_too_large', 'Node 参数超过 256 KiB。', '缩小单次参数，不截断完整正文冒充成功。');
+      error.correction = catalog.repair(request.method === 'call_tool' ? request.params?.arguments?.name : request.method);
+      write({ jsonrpc: '2.0', id: request.id, result: envelope(error) });
       return;
     }
     const controller = new AbortController();

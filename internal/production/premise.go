@@ -594,7 +594,12 @@ func (service *Service) settingImageDTO(ctx context.Context, id int64) (SettingI
 	if err != nil {
 		return SettingImage{}, err
 	}
-	return SettingImage{UUID: row.UUID, SourceUUID: sourceUUID, Origin: row.Origin, Prompt: row.Prompt, Asset: asset, CreatedAt: row.CreatedAt}, nil
+	var hostCompleted bool
+	if err := service.store.DB().WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM host_setting_boards WHERE setting_image_id=? AND revision>0)", row.ID).Scan(&hostCompleted).Error; err != nil {
+		return SettingImage{}, err
+	}
+
+	return SettingImage{BreakdownCompleted: hostCompleted, UUID: row.UUID, SourceUUID: sourceUUID, Origin: row.Origin, Prompt: row.Prompt, Asset: asset, CreatedAt: row.CreatedAt}, nil
 }
 
 func (service *Service) ImportPremiseAsset(ctx context.Context, input CreateAssetInput) (PremiseAsset, error) {
@@ -850,10 +855,6 @@ func (service *Service) CommitGeneratedPremiseAsset(ctx context.Context, taskUUI
 	if err != nil {
 		return PremiseAsset{}, err
 	}
-	variantUUID, err := newUUIDv7()
-	if err != nil {
-		return PremiseAsset{}, err
-	}
 	var domainID int64
 	_, err = service.files.CommitReader(ctx, files.CommitInput{Purpose: "premise_asset", OriginalFilename: "breakdown-crop.png", DisplayName: title, SourceType: "derived", Metadata: map[string]any{"tags": tags, "crop_profile": crop}, Reader: reader, Bind: func(tx *gorm.DB, fileID int64) error {
 		if err := ensureProductionTaskRunning(tx, taskUUID); err != nil {
@@ -874,35 +875,14 @@ func (service *Service) CommitGeneratedPremiseAsset(ctx context.Context, taskUUI
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
 			existingRecord = false
 			record = premiseAssetRecord{UUID: assetUUID, ProjectID: p.ID, ActorID: actor.ID, AssetType: assetType, Title: title, Summary: strings.TrimSpace(input.Summary), PositionJSON: position, CropJSON: crop, CreatedAt: now, UpdatedAt: now}
-			if err := tx.Create(&record).Error; err != nil {
-				return conflictErr(err)
-			}
 		} else if findErr != nil {
 			return findErr
 		}
+		variant, err := service.bindBreakdownAsset(tx, &record, existingRecord, setting.ID, fileID, input)
+		if err != nil {
+			return err
+		}
 		domainID = record.ID
-		var version int
-		if err := tx.Model(&assetVariantRecord{}).Where("premise_asset_id = ?", record.ID).Select("COALESCE(MAX(version_no),0)+1").Scan(&version).Error; err != nil {
-			return err
-		}
-		variant := assetVariantRecord{UUID: variantUUID, PremiseAssetID: record.ID, FileID: fileID, SourceSettingImageID: &setting.ID, VersionNo: version, SourceType: "breakdown", CropJSON: crop, CreatedAt: now}
-		if err := tx.Create(&variant).Error; err != nil {
-			return err
-		}
-		updates := map[string]any{
-			"asset_type": assetType, "title": title, "summary": strings.TrimSpace(input.Summary),
-			"position_json": position, "crop_json": crop, "current_variant_id": variant.ID,
-			"revision": gorm.Expr("revision + 1"), "updated_at": now,
-		}
-		if !existingRecord {
-			delete(updates, "revision")
-		}
-		if err := tx.Model(&premiseAssetRecord{}).Where("id = ?", record.ID).Updates(updates).Error; err != nil {
-			return err
-		}
-		if err := replaceTags(tx, record.ID, tags, now); err != nil {
-			return err
-		}
 		eventType := "asset_created_from_breakdown"
 		if existingRecord {
 			eventType = "asset_candidate_added_from_breakdown"

@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-01",
+  "tool": "ghost_forge_pack",
+  "arguments": { "dir": "/Users/qingyang/mine-work/lumi/cindy-plugins/lumi" },
+  "receipt": {
+    "ok": true,
+    "cindyPath": "/Users/qingyang/mine-work/lumi/cindy-plugins/lumi/lumi-0.3.0.cindy",
+    "id": "lumi",
+    "name": "Lumi",
+    "version": "0.3.0",
+    "note": "已完成校验和打包；本工具不会安装或更新插件。"
+  },
+  "installed": false,
+  "published": false
+}

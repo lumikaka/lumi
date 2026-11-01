@@ -106,12 +106,15 @@ test('real bundled CLI: isolation, sharing, cancellation, crashes and stale disc
     assert.equal(record.peer.child.pid, pid);
   });
 
-  await t.test('read-only diagnosis makes no project files; overview, remote and forged args rejected', async () => {
+  await t.test('read-only diagnosis and overview preserve project files; remote and forged args rejected', async () => {
     const before = await snapshot(a);
     const result = await runtime.execute('runtime_status', ctx(a, 'readonly', true));
     assert.equal(result.data.read_only, true);
     assert.deepEqual(await snapshot(a), before);
-    await assert.rejects(runtime.execute('project_overview', ctx(a, 'readonly', true)), { code: 'read_only_context' });
+    const read = await runtime.execute('project_overview', ctx(a, 'readonly', true));
+    assert.equal(read.success, true, JSON.stringify(read));
+    assert.equal(read.data.limitations.read_only, true);
+    assert.deepEqual(await snapshot(a), before);
     await assert.rejects(runtime.execute('runtime_status', { context: { ...ctx(a).context, workdir_is_local: false } }), { code: 'context_not_local' });
     await assert.rejects(runtime.execute('runtime_status', { ...ctx(a), root_path: b }), { code: 'invalid_arguments' });
     await assert.rejects(runtime.execute('runtime_status', {}), { code: 'invalid_arguments' });

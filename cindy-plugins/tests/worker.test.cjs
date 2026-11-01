@@ -63,6 +63,7 @@ test('limits reject oversize params and fifth pending call without spawning extr
   for (let i = 0; i < 5; i++) h.send(String(i));
   await until(() => h.results.length === 2);
   assert.equal(h.results[0].result.error.code, 'arguments_too_large');
+  assert.equal(h.results[0].result.correction.tool.name, 'runtime_status');
   assert.equal(h.results[1].result.error.code, 'runtime_busy');
   assert.equal(h.children.length, 4);
   for (const child of h.children) child.emit('exit');

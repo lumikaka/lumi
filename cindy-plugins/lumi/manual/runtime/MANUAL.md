@@ -1,10 +1,10 @@
 # Lumi 运行与恢复
 
-本包实现本地运行、项目初始化与 setup，支持 macOS arm64。尚未提供正文创作、图片交接或任务审阅页。目录与任务身份由 Cindy 注入。初始化与创作规约见 `ghost_manual({ ghost_id: "lumi", path: "project/MANUAL.md" })`。
+本包实现本地运行、项目 setup 与文本创作，支持 macOS arm64。图片交接与任务审阅页尚未实现。文本流程见 `ghost_manual({ghost_id:"lumi",path:"authoring/MANUAL.md"})`。目录与任务身份由 Cindy 注入。初始化与创作规约见 `ghost_manual({ ghost_id: "lumi", path: "project/MANUAL.md" })`。
 
-先用 `runtime_status` 检查 MCP 初始化与共享服务状态。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时按项目手册调用 `project_init`。需要结束当前任务连接时使用 `runtime_release`。
+所有工具由 `list_tools` 发现，再通过 `call_tool({name:"工具名",args:{业务参数}})` 执行。先用 `runtime_status` 检查 MCP 初始化与共享服务状态。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时按项目手册调用 `project_init`。需要结束当前任务连接时使用 `runtime_release`。
 
-`runtime_status` 可以用于只读任务，此时只检查 MCP 初始化和 ping，server_running 为 null，不检查可能创建数据目录锁的 CLI status。`project_overview` 的作品内容是只读的，但现有 CLI 打开项目可能执行数据库迁移、写入锁/WAL 和运行状态，所以只读任务会被拒绝。不要用设置、嵌套参数、远端同名路径或伪造 `session_context` 绕过此限制。
+`runtime_status` 可以用于只读任务，此时只检查 MCP 初始化和 ping，server_running 为 null，不检查可能创建数据目录锁的 CLI status。只读业务调用使用附加的只读 CLI 模式，只连接已运行的服务并查看已打开项目，不打开、迁移或修复作品。未打开时返回 read_only_project_not_open。不要用设置、嵌套参数、远端同名路径或伪造 `session_context` 绕过此限制。
 
 Node 是拥有本机账号权限的可信程序，不是项目文件沙箱。插件仅运行随包 CLI，不接受任意命令、环境变量、SQL、二进制替换或目录参数。不要直接编辑项目 SQLite。
 

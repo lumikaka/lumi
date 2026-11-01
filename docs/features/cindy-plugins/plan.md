@@ -8,7 +8,7 @@
 
 ## 状态与阅读入口
 
-- 本目录建立于 2026-11-01；Step 0 已完成独立探针实测与卸载清理，结果见 [实测报告](spike.md)。Step 1 已实现运行时并完成自动化验证和开发包打包，见 [运行时](runtime.md) 与 [验收记录](acceptance/step1-runtime.md)。Step 2 已实现[项目绑定、初始化与 setup](project-binding.md)，结果见 [Step 2 验收](acceptance/step2-project-binding.md)；未安装产品插件，真实宿主结果另列待验。Step 3–7 尚未实现。
+- 本目录建立于 2026-11-01；Step 0 已完成独立探针实测与卸载清理，结果见 [实测报告](spike.md)。Step 1 已实现运行时并完成自动化验证和开发包打包，见 [运行时](runtime.md) 与 [验收记录](acceptance/step1-runtime.md)。Step 2 已实现[项目绑定、初始化与 setup](project-binding.md)，结果见 [Step 2 验收](acceptance/step2-project-binding.md)。Step 3 已完成[文本工具与流程](tools.md)、固定输出三页端到端、用户手机文件接收确认及 Forge 开发包，见 [Step 3 验收](acceptance/step3-authoring-tools.md)。产品插件未安装，真实 Agent 创作留到 Step 6；Step 4–7 尚未实现。
 - 参考 [Codex 总体方案](../codex-plugins/plan.md) 的分步方式，复用其已经存在的 CLI、业务工具、素材导入和审阅组件，不重新实现一套 Lumi 内核。
 - 历史公开源码参考为官方 tag `v0.1.121`，commit `727afb1ad6902176e2ec55254154b900c489a998`。Step 0 的真实执行端是 Mac arm64、Cindy `0.1.121`，应用记录的 sourceCommit 为 `0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`，与 tag 不同且该 ref 的公开源码查询返回 404；不能用 tag 代替实际构建源码或证明最低正式版本。证据等级与限制见 [开发依据](references.md)；每次执行仍须确认真正运行插件的电脑与版本。
 - 每一步可复制的任务文本集中在 [Goal 提示词](goals.md)。先完成前置步骤，再执行下一步；不把本目录全部内容一次性交给自动续跑。

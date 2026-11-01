@@ -23,5 +23,6 @@ const info = {
   go_version: run('go', ['version']), platform: process.platform, arch: process.arch,
   cli_sha256: createHash('sha256').update(readFileSync(binary)).digest('hex'),
 };
+writeFileSync(path.join(author, 'node/business-specs.json'), run('go', ['run', './cindy-plugins/schema']) + '\n');
 writeFileSync(path.join(author, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
 console.log(JSON.stringify(info, null, 2));

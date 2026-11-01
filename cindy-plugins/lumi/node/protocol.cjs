@@ -109,7 +109,7 @@ class MCPConnection {
 
   async initialize() {
     const result = await this.request('initialize', {
-      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.2.0' },
+      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.3.0' },
     });
     if (!['2025-03-26', '2025-06-18', '2024-11-05'].includes(result?.protocolVersion)
       || result.serverInfo?.name !== 'lumi-text' || result.serverInfo.version !== '1.0.0' || !result.capabilities?.tools) {

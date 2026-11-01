@@ -54,6 +54,15 @@ func requestInstance(ctx context.Context, value instance, method string) (instan
 	return status, nil
 }
 
+// Unlike inspectInstance, this probe never creates a lock file when offline.
+func inspectLiveInstance(ctx context.Context, opt options) (instanceStatus, error) {
+	value, err := readInstance(opt)
+	if err != nil {
+		return stoppedStatus(opt), errNotRunning
+	}
+	return requestInstance(ctx, value, http.MethodGet)
+}
+
 func inspectInstance(ctx context.Context, opt options) (instanceStatus, error) {
 	value, err := readInstance(opt)
 	if err == nil {

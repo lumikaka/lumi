@@ -35,7 +35,7 @@ export function premiseSourceState(sourceOrUuid, settings, tasks) {
   if (generation && ['queued', 'running'].includes(generation.status)) return 'generating'
   if (generation && ['failed', 'interrupted'].includes(generation.status) && sourceSettings.length === 0) return 'failed'
   if (breakdowns.some((task) => ['queued', 'running'].includes(task.status))) return 'splitting'
-  if (breakdowns.some((task) => task.status === 'completed')) return 'completed'
+  if (sourceSettings.some((setting) => setting.breakdown_completed) || breakdowns.some((task) => task.status === 'completed')) return 'completed'
   if (sourceSettings.length > 0) return 'ready'
   return 'draft'
 }

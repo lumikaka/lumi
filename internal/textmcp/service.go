@@ -26,6 +26,13 @@ type Service struct {
 }
 
 type arguments struct {
+	BoardUUID               string                       `json:"board_uuid"`
+	SourceText              string                       `json:"source_text"`
+	StyleSnapshot           string                       `json:"style_snapshot"`
+	IdempotencyKey          string                       `json:"idempotency_key"`
+	ExpectedPremiseRevision int64                        `json:"expected_premise_revision"`
+	Crops                   []production.HostSettingCrop `json:"assets"`
+
 	Action           string                    `json:"action"`
 	Name             string                    `json:"name"`
 	Idea             string                    `json:"idea"`
@@ -97,6 +104,9 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if a.After != "" && a.Before != "" {
 		return Failure("invalid_arguments", "游标冲突", "before 和 after 不能同时提供。")
 	}
+	if project.IsReadOnly(ctx) && !readOnlyOperation(name, a.Action) {
+		return Failure("read_only_context", "只读任务不能执行此操作", "只允许查看当前已打开项目；初始化、定稿、图片选择和导出均需写权限。")
+	}
 	if !filepath.IsAbs(root) {
 		return Failure("invalid_arguments", "启动目录必须是绝对路径", "重新启动 lumi mcp。")
 	}
@@ -105,6 +115,8 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		if !publicProjectUUID.MatchString(expectedUUID) {
 			return Failure("invalid_arguments", "项目绑定无效", "重新读取当前任务项目。")
 		}
+	}
+	if expectedUUID != "" && !project.IsReadOnly(ctx) {
 		// Check before initialization or opening can migrate/write anything.
 		info, err := project.InspectDirectory(ctx, root)
 		if err != nil || info.UUID != expectedUUID || info.RootPath != filepath.Clean(root) {
@@ -125,7 +137,23 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	} else if _, statErr := os.Stat(filepath.Join(root, "project.sqlite")); errors.Is(statErr, os.ErrNotExist) {
 		return Failure("project_not_initialized", "当前目录尚未初始化为 Lumi 项目", "先调用 project_init；初始化后同一 MCP 进程可继续使用，无需重启。")
 	}
-	if err == nil {
+	if err == nil && project.IsReadOnly(ctx) {
+		root, err = filepath.EvalSymlinks(root)
+		if err != nil {
+			return publicError(err)
+		}
+		var items []project.Summary
+		items, err = s.Projects.OpenProjects(ctx)
+		for _, item := range items {
+			if item.RootPath == filepath.Clean(root) && (expectedUUID == "" || item.UUID == expectedUUID) {
+				opened = item
+				break
+			}
+		}
+		if err == nil && opened.UUID == "" {
+			return Failure("read_only_project_not_open", "只读任务只能查看 CLI 已打开的项目", "先在可写任务打开相同项目；只读调用不会启动项目、迁移或恢复投影。")
+		}
+	} else if err == nil {
 		opened, err = s.Projects.OpenSelected(ctx, project.ExplicitExistingDirectory(root))
 	}
 	if err != nil {
@@ -136,7 +164,13 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		return publicError(err)
 	}
 	var result any
-	err = s.Projects.WithStore(ctx, opened.UUID, func(store *project.Store) error {
+	withStore := s.Projects.WithStore
+	if project.IsReadOnly(ctx) {
+		withStore = func(ctx context.Context, uuid string, callback func(*project.Store) error) error {
+			return s.Projects.WithStore(ctx, uuid, func(store *project.Store) error { return store.ReadOnly(ctx, callback) })
+		}
+	}
+	err = withStore(ctx, opened.UUID, func(store *project.Store) error {
 		// UUID alone is insufficient: a copied project can have the same UUID.
 		// Recheck the leased store so a concurrent close/reopen cannot redirect
 		// the operation between OpenSelected and WithStore.
@@ -187,6 +221,20 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result = paginate(metadata, a)
 		case "render_prompt":
 			result, callErr = render(ctx, store, st, prod, a)
+		case "setting_boards":
+			switch a.Action {
+			case "list":
+				var items []production.HostSettingBoardSummary
+				items, callErr = prod.ListHostSettingBoards(ctx)
+				result = paginate(items, a)
+			case "get":
+				result, callErr = prod.GetHostSettingBoard(ctx, a.BoardUUID)
+			case "import":
+				result, callErr = prod.ImportHostSettingBoard(ctx, production.ImportHostSettingBoardInput{Path: a.Path, SourceText: a.SourceText, StyleSnapshot: a.StyleSnapshot, Prompt: a.ImagePrompt, IdempotencyKey: a.IdempotencyKey, ExpectedRevision: value(a.ExpectedRevision)})
+			}
+		case "apply_setting_breakdown":
+			result, callErr = prod.ApplyHostSettingBreakdown(ctx, production.ApplyHostSettingBreakdownInput{BoardUUID: a.BoardUUID, IdempotencyKey: a.IdempotencyKey, ExpectedRevision: value(a.ExpectedRevision), ExpectedPremiseRevision: a.ExpectedPremiseRevision, Assets: a.Crops})
+
 		case "image_target":
 			result, callErr = prod.HostImageTarget(ctx, a.TargetUUID, a.Slot)
 		case "import_image":
@@ -228,7 +276,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 }
 
 func isMutation(name, action string) bool {
-	return name == "project_init" || name == "import_image" || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
+	return name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
 }
 
 func mutationSummary(result any) any {

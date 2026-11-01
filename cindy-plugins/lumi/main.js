@@ -1,10 +1,10 @@
 /* Browser logic only. Host alone mints args.session_context and callId. */
 (() => {
   'use strict';
-  const argumentsByMethod = {
-    runtime_status: [], project_overview: [], runtime_release: [],
-    project_init: ['idea', 'name', 'generation_language'],
-    project_setup: ['action', 'expected_revision', 'project_name', 'generation_language', 'overall_style', 'generation_brief', 'picture_book'],
+  const argumentsByMethod = { list_tools: ['category'], call_tool: ['name', 'args'] };
+  const schemas = {
+    list_tools: { type: 'object', properties: { category: { type: 'string' } }, additionalProperties: false },
+    call_tool: { type: 'object', properties: { name: { type: 'string' }, args: { type: 'object' } }, required: ['name'], additionalProperties: false },
   };
   const fail = (code, message, details = '') => ({ success: false, data: null, error: { code, message, details } });
   cindy.onHostMessage(async msg => {
@@ -14,8 +14,15 @@
       const args = msg.args;
       const context = args?.session_context;
       const allowed = Object.hasOwn(argumentsByMethod, msg.tool) ? argumentsByMethod[msg.tool] : null;
-      if (!allowed || !args || Object.keys(args).some(key => key !== 'session_context' && !allowed.includes(key))) {
+      if (!allowed || !args || typeof args !== 'object' || Array.isArray(args)
+        || Object.keys(args).some(key => key !== 'session_context' && !allowed.includes(key))) {
         result = fail('invalid_arguments', '工具参数无效。', '不能指定路径、任务或项目绑定；使用当前任务的宿主上下文。');
+        result.correction = { input_schema: allowed ? schemas[msg.tool] : schemas.call_tool,
+          rules: ['顶层仅 list_tools / call_tool；先发现类别，再以 name 和 args 调用允许工具。', 'session_context 由 Host 注入，不能用业务参数选择目录或项目。'],
+          discovery: { tool: 'list_tools', args: {} } };
+      } else if (msg.tool === 'list_tools' && typeof msg.callId === 'string' && msg.callId) {
+        const response = await cindy.node.request({ method: 'list_tools', params: { arguments: Object.fromEntries(allowed.filter(k => Object.hasOwn(args, k)).map(k => [k, args[k]])) }, callId: msg.callId, cancelWithCall: true, timeoutMs: 60000 });
+        result = response?.ok ? response.result : fail('host_node_failed', '目录调用失败。', '检查插件运行状态。');
       } else if (typeof msg.callId !== 'string' || !msg.callId || typeof context?.session_id !== 'string'
         || !context.session_id
         || typeof context.workdir_is_read_only !== 'boolean') {
@@ -26,8 +33,6 @@
         result = fail('workdir_required', '当前任务尚未选择项目目录。', '在 Cindy 为当前任务选择本机项目根目录，再调用 Lumi；不会在插件安装目录创建作品。');
       } else if (!context.workdir.startsWith('/') || context.workdir.startsWith('//') || context.workdir.includes('\u0000')) {
         result = fail('workdir_invalid', '当前任务目录不是本机绝对路径。', '在 Cindy 重新选择本机项目根目录，不接受远程地址或 URI。');
-      } else if (msg.tool.startsWith('project_') && context.workdir_is_read_only) {
-        result = fail('read_only_context', '只读任务不能打开 Lumi 项目。', '现有 CLI 打开项目可能迁移数据库或写入运行文件；可使用 runtime_status。');
       } else {
         // Host provides the permission snapshot for this call. No page, KV or
         // model field may select it. Realpath/access checks run inside Node.
@@ -53,8 +58,16 @@
     } catch {
       result = fail('host_node_failed', '宿主运行时连接失败。', '检查插件状态后重新执行诊断；不要自动重放写操作。');
     }
-    // Business failures remain complete envelopes; transport failures never
-    // become success:true. Host's ok is the transport receipt, not Lumi status.
-    await cindy.send({ type: 'tool-result', callId: msg.callId, ok: true, result });
+    // A Lumi business failure must also be a failed Host tool receipt.
+    if (result?.success === true) {
+      await cindy.send({ type: 'tool-result', callId: msg.callId, ok: true, result });
+    } else {
+      result ||= fail('protocol_error', '运行时结果无效。', '重新发现工具目录。');
+      const correction = result.correction ? '\n调用修正规则与 schema：\n' + JSON.stringify(result.correction) : '';
+      const code = result.error?.code || 'protocol_error';
+      await cindy.send({ type: 'tool-result', callId: msg.callId, ok: false,
+        errorCode: 'LUMI_' + code.toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 59),
+        message: `Lumi ${code}：` + [result.error?.message, result.error?.details].filter(Boolean).join(' ') + correction, result });
+    }
   });
 })();

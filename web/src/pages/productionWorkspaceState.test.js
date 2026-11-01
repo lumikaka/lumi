@@ -45,3 +45,11 @@ test('premise source status reflects generation and breakdown stages', () => {
   assert.equal(premiseSourceState('source-empty', settings, [{ kind: 'premise_setting_generation', resource_uuid: 'source-empty', status: 'failed' }]), 'failed')
   assert.equal(premiseSourceState({ uuid: 'source-a', ignored_at: '2026-08-09T00:00:00Z' }, settings, []), 'ignored')
 })
+
+
+test('host board completion comes from persisted settings without provider tasks', () => {
+  const settings = [{ uuid: 'board-image', source_uuid: 'source-host', breakdown_completed: true }]
+  assert.equal(premiseSourceState('source-host', settings, []), 'completed')
+  assert.equal(premiseSourceState('other-source', settings, []), 'draft')
+  assert.equal(premiseSourceState('source-host', settings, [{ kind: 'premise_asset_breakdown', resource_uuid: 'board-image', status: 'running' }]), 'splitting')
+})

@@ -118,6 +118,8 @@
 | `page` | `chapter_uuid`、`page_uuid` | `pages update`；单页 revision |
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
+| `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；额外返回供宿主生图使用的 `generation_prompt` |
+| `setting_breakdown` | `board_uuid`；只配合 `premise/asset_breakdown` | `apply_setting_breakdown`；批次 revision 与 `expected_premise_revision` |
 
 ```json
 {"name":"render_prompt","arguments":{"prompt_group":"story","prompt_key":"story_profile","target":"story_profile","variables":{"chapter_count":"1"}}}
@@ -134,6 +136,23 @@
 ```json
 {"name":"review_candidates","arguments":{"kind":"text","candidates":[{"title":"温暖结局","text":"星星点亮了狐狸回家的路。"},{"title":"幽默结局","text":"星星约狐狸下次带一把更大的伞。"}]}}
 ```
+
+
+## 批量设定图
+
+执行前读 [批量设定图流程](batch-settings.md)。这些工具只保存、裁切和绑定图片；生成及视觉定位由 Codex 完成。
+
+| 工具 | 参数与版本来源 |
+| --- | --- |
+| `setting_boards list` | `action=list`；支持 `before/after/limit`，返回批次 UUID、revision、时间 |
+| `setting_boards get` | `action=get, board_uuid`；返回 source、setting_image（含 asset）、revision、latest_breakdown |
+| `setting_boards import` | `action=import, path, source_text, prompt, expected_revision, idempotency_key`；可选 `style_snapshot`；revision 来自 `settings list` 的 `premise.revision` 或生成前的 `render_prompt`；原图不裁切 |
+| `apply_setting_breakdown` | `board_uuid, expected_revision, expected_premise_revision, idempotency_key, assets`；分别使用批次 revision 和设定集合 revision；每批 1–6 项 |
+
+每项 asset 使用 `type, title, summary, tags, confidence, crop_box`；`crop_box` 为原始整图上的归一化 `x/y/width/height`，不能重叠，`confidence` 至少 0.92。更新已有设定时再加 `setting_uuid, expected_revision`（该设定当前 revision）；省略这两个字段只允许创建新设定，同名会报冲突。返回 `items` 中的 `setting_uuid/variant_uuid/asset_uuid` 均为实际写入结果，`revision` 属于该设定。
+
+同一次请求重试必须保留原幂等键和全部原参数，包括 revision。导入成功后即使宿主文件过期，原请求仍可重放；幂等键不能用于替换同路径下的新图片。修改输入或开始新的拆分使用新键。`latest_breakdown` 是最后一次提交的结果，不代表其图片仍是用户当前选择；审阅或更新前重读 `settings get`。
+
 
 ## 最终绘本预览
 

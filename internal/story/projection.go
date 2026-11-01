@@ -156,6 +156,9 @@ func (service *Service) reconcileStoryProfile(ctx context.Context) (storyProfile
 }
 
 func (service *Service) GetStoryProfile(ctx context.Context) (StoryProfile, error) {
+	if project.IsReadOnly(ctx) {
+		return service.storedStoryProfile(ctx)
+	}
 	current, err := service.reconcileStoryProfile(ctx)
 	if err != nil {
 		return StoryProfile{}, err

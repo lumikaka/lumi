@@ -29,9 +29,9 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 1. **想法 → setup**：按参考中的合法组合和 `get → update → finalize` 顺序写入。已有明确规格直接沿用；形式与比例冲突时先说明可行选择及影响，不自行替换形式。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
-3. **设定**：从已保存故事提取角色、场景、道具和参考，用 `prompt_catalog` 查实际 premise 模板，再 `render_prompt(target=premise)`。逐项 `settings create` 保存文字特征、色彩、服饰和画风，先为重复出现的角色/场景制作设定图。
+3. **设定**：从已保存故事提取角色、场景、道具和参考。用户要求批量设定图，或需要为多个独立主体建立初版设定图时，先读 [批量设定图](references/batch-settings.md)，用 Codex 生成总览图、识图，再由 Lumi 裁切入库。每张总览图放 1–6 个主体，超过时分批；共享画面、复杂场景或单项精修沿用单张流程。纯文字设定可逐项 `settings create`；批量拆分会创建图文设定，无需先重复创建。已有文字设定需按 UUID 和 revision 明确匹配后更新。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
-5. **生图与挂载**：按下节逐张生成并立即导入。按用户要求完成整本，不只生成示范页。
+5. **生图与挂载**：页面和单项设定按下节逐张生成并立即导入；批量设定每张总览图生成后立即 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与最终预览**：按用户要求完成创作、生图挂载和保存，再 `export_book`；导出完成后调用 `review_book` 展示当前采用图片的最终只读预览。只交付指定章节时传 `chapter_uuid`，整本时省略；多章节按章节分组阅读。用户明确要求的中途审阅仍按约定使用 `review_settings`、`review_page` 或 `review_book`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
@@ -46,11 +46,11 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 宿主生图与一致性
 
-每张图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。提示词写出目标比例及宿主推荐比例，让主体、文字和装订边留出安全区；推荐值是比例，不是像素保证。
+页面和单项设定图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。提示词写出目标比例及宿主推荐比例，让主体、文字和装订边留出安全区；推荐值是比例，不是像素保证。
 
 需要角色/场景一致性时，先 `settings get` 取得 `current_variant.asset.uuid`，再 `read_image(asset_uuid)` 把相关设定图实际放进当前对话。可补充上一页 `current_image.asset.uuid` 的参考。紧接着调用 App 原生生图，以最近图片为参考（如 `num_last_images_to_include`），确认最近几张确实是本页所需图，遵守宿主参考图数量上限；跨会话/压缩后重新读图，不把 UUID 当成生图工具可见的图像。不要直接读取资产目录来传路径。
 
-**生成完成后立即 `import_image`**：`path` 必须取宿主本次返回的真实绝对路径（也可能在 output hint 文本里），传目标 UUID、slot、revision、原始 prompt。不能假定有 `savedPath` 字段，不能猜目录或扫描生成文件。宿主没提供可访问路径时说明缺失，不能伪造导入成功。
+**页面和单项设定图生成完成后立即 `import_image`**：`path` 必须取宿主本次返回的真实绝对路径（也可能在 output hint 文本里），传目标 UUID、slot、revision、原始 prompt。不能假定有 `savedPath` 字段，不能猜目录或扫描生成文件。宿主没提供可访问路径时说明缺失，不能伪造导入成功。
 
 默认先用 `fit_mode=keep` 保留原图；已约定居中裁切/补边时用 `crop/pad`。查看导入返回的 `ratio_matches`、`ratio_deviation`、`warnings`：偏差不阻塞导入；页面适合在主体安全时 crop，设定或边缘文字宜 pad，必要时下一张调整构图。不要仅因像素不精确反复重生。处理后的图有独立版本，原图保留。
 
@@ -63,5 +63,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 ## 额度耗尽、中断与续做
 
 每段文本写完、每张图生成后及时提交。调用中断可能已经提交，先 get 核实，避免重复创建和重复导入。额度不足时停止反复重试，报告已经完成的章节/页 UUID、缺图与下一步；还能调用工具时导出 Markdown/ZIP，缺图用 true 并标注。不要自动切换到付费 API，也不要求 API key。
+
+批量设定中断后先 `setting_boards list/get` 检查已保存总览图与 `latest_breakdown`；已保存图片无需重新生成。按批量参考中的幂等与版本规则恢复。
 
 恢复时从 `project_overview → project_setup get → book_outline` 开始，分页读取有需要的章节/设定/页面；以当前工具事实判断缺失环节。重新取 revision、重新渲染剩余任务和读取参考图，只补缺失或用户指定修改的内容。旧生图路径失效且未导入时再生成，不扫描宿主目录寻找替代文件。

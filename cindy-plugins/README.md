@@ -1,6 +1,6 @@
 # Lumi Cindy 插件作者源码
 
-`lumi/` 是独立作者目录，交付浏览器 `main.js`、零第三方依赖的 Node worker 与制作时编译的 Go CLI。当前实现 Step 1 运行时与 [Step 2 项目绑定](../docs/features/cindy-plugins/project-binding.md)，尚未安装或发布。
+`lumi/` 是独立作者目录，交付浏览器 `main.js`、零第三方依赖的 Node worker 与制作时编译的 Go CLI。当前实现运行时、项目绑定及 [Step 3 文本创作工具](../docs/features/cindy-plugins/tools.md)，尚未安装或发布。Agent 通过 list_tools / call_tool 两段式目录完成无需 Lumi 服务商的文本作品，完整流程见包内 authoring Manual。
 
 当前包身份仍为 `lumi`，运行使用 `production + ~/.lumi`；测试临时 data-dir 不代表已有独立开发版。`lumi-dev`、`make cindy-dev` 和 `make cindy-dev-stop` 是[新增待实现要求](../docs/features/cindy-plugins/development.md)，当前不能执行这些计划命令。
 
@@ -8,8 +8,8 @@
 
 ```sh
 node cindy-plugins/scripts/build.mjs
-node cindy-plugins/scripts/verify.mjs
-go test ./internal/textmcp ./internal/project ./cmd/lumi
+node cindy-plugins/scripts/verify.mjs step3
+go test ./internal/promptcatalog ./internal/story ./internal/textmcp ./internal/project ./cmd/lumi ./cindy-plugins/schema
 ```
 
 构建只支持当前已验证的 macOS arm64，使用本机 Go 1.27.3。它生成 `lumi/bin/lumi` 与 `lumi/build-info.json`；测试使用独立临时 HOME、项目与 data-dir，需要 loopback bind/connect 权限。测试结束核对并停止自己的隔离实例、移除临时目录。不会使用默认用户数据目录、安装插件或运行 Cargo/Rust。
@@ -17,7 +17,7 @@ go test ./internal/textmcp ./internal/project ./cmd/lumi
 随后用 Cindy 的 `ghost_forge_pack({dir: <仓库>/cindy-plugins/lumi})` 验证并打包，再运行：
 
 ```sh
-python3 cindy-plugins/scripts/verify-package.py
+python3 cindy-plugins/scripts/verify-package.py step3
 ```
 
 不从已安装目录制作，不在运行时安装依赖。Go 二进制、build-info 与 `.cindy` 是 Git 忽略的生成物；包内包含 CLI SHA256、源 commit 和编译平台信息。现有 Lumi 图标复用自 `codex-plugins/lumi/assets/icon.png`。
@@ -32,4 +32,4 @@ manifest 的 `minCindyVersion: 0.1.121` 是本次 Forge scaffold 自动写入的
 
 步骤、安装回执要求、与 Codex 开发版共享目录的注意事项及同版本刷新验收见[开发流程](../docs/features/cindy-plugins/development.md)。实施完成后再把此节改为已验证的执行入口，不提前宣称两版并存或热更新可用。
 
-运行链路和资源归属见 [runtime.md](../docs/features/cindy-plugins/runtime.md)，当前结果与未验证项见 [Step 2 验收记录](../docs/features/cindy-plugins/acceptance/step2-project-binding.md)。验证脚本将结果写到 `acceptance/step2-evidence/`；Step 1 历史记录保持原样。
+运行链路和资源归属见 [runtime.md](../docs/features/cindy-plugins/runtime.md)，本步结果和边界见 [Step 3 验收记录](../docs/features/cindy-plugins/acceptance/step3-authoring-tools.md)。验证脚本默认仍写 Step 2，显式传 step3 写入 `acceptance/step3-evidence/`，不覆盖历史记录。完整文件的原生 Host 服务探针与编译结果边界审计分别使用 scripts/verify-host-file.mjs、scripts/verify-host-boundaries.mjs；它们不等同于用户手机接收或 Agent 自主创作验收。
