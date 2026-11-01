@@ -79,7 +79,13 @@ bash "$lumi_install_tmp/install-codex.sh" --version 0.2.0 \
 "$codex_bin" plugin add lumi@lumi-local --json
 ```
 
-这里的变量取安装日志实际值。只管理 `lumi-local` marketplace 和 `lumi@lumi-local`，不编辑用户配置中的其他项目、模型、权限或插件；同名 marketplace 指向别处时拒绝覆盖。旧 HTTP OAuth 插件 `lumi-prod-plugin` / `lumi-dev-plugin` 保持独立。
+这里的变量取安装日志实际值。只管理 `lumi-local` marketplace 和 `lumi@lumi-local`，不编辑用户配置中的其他项目、模型、权限或插件；同名 marketplace 指向别处时拒绝覆盖。旧 HTTP OAuth 插件已移除；已安装的旧副本需从 Codex 插件管理卸载。
+
+## 本地开发
+
+在 Lumi 仓库根目录执行 `make codex-dev`，从当前源码构建并安装 `lumi-dev@lumi-dev-local`。开发 CLI 为 `build/codex-dev/lumi_dev`，默认环境 `development`、应用数据 `~/.lumi_dev`，与正式插件并存，不需要发布 patch。结束开发任务后用 `make codex-dev-stop` 停止旧后台，再新开 Codex App 会话加载新构建。仅改 skill 或插件配置时执行 `make codex-dev-refresh`。
+
+详细配置、卸载与旧插件迁移见 [Codex 插件开发说明](../../../codex-plugins/README.md)。`install-codex.sh --from-dir` 用于验证本地 Release 资产，仍管理正式插件身份；日常开发使用 `make codex-dev`。
 
 ## 开始创作与续做
 

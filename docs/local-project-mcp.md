@@ -4,7 +4,7 @@ Lumi 作为本机 MCP Server，允许外部 AI 客户端读取、编辑用户授
 
 ## Codex 插件方式
 
-仓库提供与 VACS 相同组件结构的 [Lumi 插件](../codex-plugins/README.md)：桌面正式版 `lumi-prod-plugin`、开发版 `lumi-dev-plugin`。插件配置 HTTP URL，由 Codex 发现完整 `/mcp` OAuth resource 并动态登记实际 loopback 回调，并提供「先读实时文档，再操作授权项目」的技能。插件经目标市场安装后，连接时由 Lumi 授权页选择项目与权限，无须手动填写项目 UUID 或 Token。动态注册不跳过用户授权。
+Codex 绘本创作使用 [Lumi 插件](../codex-plugins/README.md)：正式版 `lumi` 和从源码构建的 `lumi-dev`。两者通过独立 CLI 的 stdio MCP 绑定当前会话项目，使用 Codex 自身的写作和生图能力，不需要 OAuth。旧 `lumi-prod-plugin` / `lumi-dev-plugin` 已移除。本文其余内容描述仍然可用的通用项目 HTTP OAuth 与 Token 桥接服务，客户端可按下面步骤直接配置连接。
 
 ## HTTP OAuth 连接（推荐）
 

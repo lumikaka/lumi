@@ -1,86 +1,64 @@
-# Lumi MCP plugins
+# Lumi Codex 绘本插件
 
-新绘本创作插件位于 [`lumi/`](lumi/)，通过本地 stdio CLI 工作，无需 API key，面向 macOS Codex App。请使用[安装器与完整指南](../docs/features/codex-plugins/install.md)生成绝对 CLI 路径；不要直接安装含占位符的仓库模板。
+两个入口都通过本地 stdio CLI 工作，无需 API key，面向 macOS Codex App：
 
-## 旧 HTTP OAuth 插件
+| 入口 | 插件身份 | CLI | 默认应用数据 |
+|---|---|---|---|
+| 正式版 [`lumi/`](lumi/) | `lumi@lumi-local` | Release 安装的 `lumi` | `~/.lumi` |
+| 开发版 [`lumi-dev/`](lumi-dev/) | `lumi-dev@lumi-dev-local` | 当前源码构建的 `lumi_dev` | `~/.lumi_dev` |
 
-这两个可分发的 Codex 插件参考 VACS 插件的实际结构：`.codex-plugin/plugin.json`、`.mcp.json`、`skills/<name>/SKILL.md`、`agents/openai.yaml`、`assets/icon.png` 和 API 总览参考文档。它们连接正在运行的 Lumi，不启动后端，不携带用户凭据，也不访问项目数据库。
-
-| 插件 | 场景 | MCP URL / OAuth resource |
-|---|---|---|
-| `lumi-prod-plugin` | 桌面正式版 | `http://127.0.0.1:32323/mcp` |
-| `lumi-dev-plugin` | 本地开发版 | `http://127.0.0.1:5801/mcp` |
-
-`.mcp.json` 只配置 `type: http` 与 `url`。Codex 从 MCP 的 401 响应发现资源元数据，再读取授权服务器元数据，通过 `/oauth/register` 动态登记实际的 loopback 回调，包括 `/callback/<server-specific-id>` 后缀。插件不固定 client ID 或 callback，也不重复配置 `oauth_resource`。客户端登记不授予项目权限，仍需授权码、PKCE S256 和 Lumi 用户选择项目与权限。
-
-MCP resource 使用完整 `/mcp` URL，由服务器元数据提供。授权、Token 与注册端点分别是同一地址下的 `/oauth/authorize`、`/oauth/token`、`/oauth/register`。服务端按登记值匹配回调，仅允许 loopback 端口变化，不开放任意回调前缀；授权返回 `iss` 供客户端校验。同一请求可重复携带完全相同的当前 MCP resource，混合资源及其他重复 OAuth 参数会被拒绝。
-
-MCP 与业务服务共用端口。桌面优先 32323，被占用时回退；回退或自定义地址时，从 Lumi 的 MCP 设置复制实际地址，修改插件 `.mcp.json` 的 `url` 及技能依赖 URL，再重新授权。
-
-## 安装与使用
-
-本仓库在 `codex-plugins/` 交付插件源码，不修改已有的 VACS 插件、个人市场或 Codex 已安装配置。
-
-分发时将本仓库 `codex-plugins/` 下所需插件目录完整复制到目标市场的 `plugins/`，在该市场的 `marketplace.json` 中增加对应条目（保留原有插件）：
-
-```json
-{
-  "name": "lumi-prod-plugin",
-  "source": {"source": "local", "path": "./plugins/lumi-prod-plugin"},
-  "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-  "category": "Productivity"
-}
-```
-
-开发插件把名称和路径改为 `lumi-dev-plugin`。在目标市场已配置、能通过 `codex plugin list` 找到插件后，使用 `codex plugin add <plugin-name>@<marketplace-name>` 安装。例如，若将插件加入已有 `hxgdzyuyi` 市场并确认当前市场快照包含它，则安装 `lumi-prod-plugin@hxgdzyuyi`。Git 市场需要先让其配置快照包含新插件；仅复制本地文件不会自动发布或安装插件。
-
-从旧版升级时，先重启 Lumi 后端并更新已安装插件，再重新发起 MCP 登录；旧登录链接仍携带固定 client ID，不能用于验证新版。安装后新建一个 Codex 对话：
-
-1. 启动对应环境的 Lumi。
-2. 发起插件的 MCP 连接；若需要认证，按客户端提示登录。
-3. 在打开的 Lumi 授权页选择一个项目和只读／编辑权限，批准连接。
-4. 使用 `$lumi-prod-plugin` 或 `$lumi-dev-plugin`，例如「查看当前授权项目，汇总章节和待处理任务」。
-5. 技能先通过 `read_agent_doc` 获取授权项目 UUID、外部允许路由和实时契约，再调用 `request_api`。
-
-项目必须保持打开。需要切换授权项目时重新授权或创建独立连接，不能修改工具参数访问其他项目。危险操作在 Lumi 的「设置 → MCP 设置」中确认；任务和确认结果可断开后恢复。完整说明见 [MCP 使用文档](../docs/local-project-mcp.md)。
-
-## Codex CLI 的 iss 回调错误
-
-`Authorization server response missing required issuer` 不一定代表 Lumi 漏发参数。Codex CLI 0.144.1 的回调解析只保留 code/state，丢弃 iss，随后触发 issuer 校验失败；Lumi 的批准和拒绝回调都保留 iss。先用 `command -v codex` 和 `codex --version` 检查实际执行的版本。桌面 App 与 PATH 中的独立 CLI 可能不是同一版本。
-
-macOS 上若存在 App 自带 CLI，可检查并使用较新的版本发起登录：
+正式版使用[一句话安装指南](../docs/features/codex-plugins/install.md)。开发版在仓库根目录执行：
 
 ```sh
-/Applications/ChatGPT.app/Contents/Resources/codex --version
-/Applications/ChatGPT.app/Contents/Resources/codex mcp login lumi-dev-plugin
+make codex-dev
 ```
 
-正式插件将服务器名替换为 `lumi-prod-plugin`。也可以更新独立 CLI 后重试；保留服务端 issuer 支持和回调中的 iss。登录命令会自动打开授权页，不需要重复打开同一 URL。
+此命令构建本机 Go CLI 和前端，生成 `build/codex-dev/marketplace`，然后使用 Codex App 内置 CLI 注册独立开发市场并安装或刷新插件。没有 Release 下载、Tag、版本发布或 Rust 构建。安装后在独立测试绘本文件夹中打开新的 Codex App 会话，使用 `lumi-dev:create-picture-book`。
 
-源码依据：[Codex 0.144.1 OAuth 回调解析](https://github.com/openai/codex/blob/rust-v0.144.1/codex-rs/rmcp-client/src/perform_oauth_login.rs)。
+`lumi-dev/` 只保存 manifest 和 MCP 配置差异。构建脚本从 `lumi/` 复制共享 skill、调用参考和图标，再生成开发 CLI 入口文档；不要维护第二份创作 skill，也不要直接安装含占位符的源码模板。生成的 MCP 配置使用绝对 CLI 路径，固定 `--environment development` 和 `--data-dir`，不指定 cwd。
 
-## 与 VACS 的使用差异
+## 日常开发
 
-- Lumi 用 `read_agent_doc`，不新增没有实际兼容需要的 `read_api_doc` 别名。
-- 授权项目 UUID 来自文档工具返回的 `data.project_uuid`，随后使用原有 `/api/v1/projects/<uuid>/...` 路由；不另建 `/api/mcp/current-project` 业务接口。
-- 文档返回 `external_routes` 和 `external_instructions`。插件随包提供术语表、外部路由索引和典型调用示例；该索引是源码快照，实际调用以实时 `external_routes` 和领域 Contract 为准。
-- 写入保留 `expected_revision`、顶层 `idempotency_key`；确认使用已持久化请求，不能传入 `confirmed=true`。
-- `request_api` 的业务信封位于 `data.result`，调用状态位于 `data.call`；媒体通过 `read_media`，不依赖桌面 Cookie URL。
+```sh
+# 修改 Go / 前端后：重新构建并刷新插件。
+make codex-dev
+# 结束正在进行的开发任务后，停止旧后台；下一次连接自动启动新构建。
+make codex-dev-stop
 
-## 维护插件资源
+# 仅修改 skill / manifest / MCP 配置时：刷新即可，无需重新编译。
+make codex-dev-refresh
 
-两个插件的 `assets/icon.png` 复用 `rel/app/src-tauri/icons/icon.png`，manifest 的 `composerIcon` 与 `logo` 指向该图标。图标更新时同步两份资源。
+# 只构建开发 CLI，不修改 Codex 安装。
+make codex-dev-build
+```
 
-两个技能的 `references/overview.md` 内容保持一致；路由索引按 `internal/agent/external_project_api.go` 的显式允许列表整理，method/path 与 `agent_api_registry.go`、`agent_api_phase3_routes.go` 对照，领域文档来自 `internal/agent/docs/api/`。开放路由变化时同步两份索引，调用示例中的写操作须包含顶层幂等键。
+重建和刷新后新开 App 会话；旧会话不会热加载。只有 CLI 二进制变化时，也必须停止旧开发后台。Codex 使用插件缓存，修改仓库模板后需重新执行 refresh；无需增加 patch 版本。若 App 仍显示旧插件，重启 App 后再开会话。参见 [OpenAI 本地插件说明](https://developers.openai.com/plugins/build/plugins#how-local-marketplaces-work)。
+
+所有目标支持 `CODEX_DEV_OUT`（默认 `build/codex-dev`）和 `CODEX_DEV_DATA_DIR`（默认 `~/.lumi_dev`，自定义必须绝对路径）；后续刷新、停止和卸载使用同一组参数。`CODEX_HOME` 未设置时为 `~/.codex`，应与实际使用的 Codex App 一致。安装器会输出实际 Codex 路径、版本、CODEX_HOME、开发 CLI 和数据目录。
+
+开发 CLI 构建默认环境为 `development`，不读取 `APP_ENV` 来选择环境；普通 Release CLI 默认仍为 `production`。直接调用 CLI 时 `LUMI_DATA_DIR` / `--data-dir` 仍可覆盖目录，生成的开发插件始终显式指定开发目录。应用数据隔离不等于项目文件隔离，请使用独立测试绘本目录。
+
+卸载开发插件（保留二进制、应用数据和项目）：
+
+```sh
+make codex-dev-stop
+node scripts/dev-codex.mjs --uninstall
+```
+
+自定义输出目录时给脚本传 `--out /绝对路径`；沿用安装时的 `CODEX_HOME`。正式插件的注册与文件不受开发安装、刷新或卸载影响。
+
+## 从旧 HTTP OAuth 插件迁移
+
+旧 `lumi-prod-plugin` 和 `lumi-dev-plugin` 已从源码移除。正式版名称固定为 `lumi`，开发版为 `lumi-dev`。旧插件若已通过其他市场安装，源码删除不会自动卸载缓存；在 Codex 插件管理中卸载旧的两个插件，再安装对应的新入口。开发脚本仅管理 `lumi-dev@lumi-dev-local`，不擅自移除其他市场的注册。
+
+新的绘本插件以会话 cwd 绑定项目，使用 Codex 的写作和生图能力；不沿用旧 OAuth 授权，也不要求桌面 Lumi 运行。通用 HTTP OAuth 服务继续可用，连接说明见[本地项目 MCP](../docs/local-project-mcp.md)。
 
 ## 验证
 
-服务端集成测试直接读取这两份 `.mcp.json`，检查 URL 与运行环境默认值相符且无固定 OAuth 配置，通过官方 Go MCP SDK 完成动态注册、带后缀回调、重复 resource、文档读取、自动刷新、只读/编辑和撤销。测试用隔离监听端口替代固定端口，避免连接用户实际项目。动态注册的原有测试继续保留。
-
 ```sh
-go test ./internal/server ./internal/mcpserver -run 'TestMCPOAuth|TestOAuth' -count=1
+node --test scripts/test-package-codex.mjs scripts/test-dev-codex.mjs
+go test ./cmd/lumi
+go test ./internal/server -run TestMCPOAuthOfficialSDK -count=1
 ```
 
-插件 manifest 和 SKILL 已通过对应校验器。未自动安装到用户 Codex 市场，不能将 SDK 配置集成验证等同于已经完成用户 Codex App 的插件安装测试。
-
-回调与配置依据：[Codex MCP OAuth](https://learn.chatgpt.com/docs/extend/mcp?surface=cli#oauth-client-registration-and-callbacks)、[Codex 配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)。
+开发生成测试覆盖共享资源、含空格路径、同版本刷新及目录保护。HTTP OAuth SDK 测试继续覆盖动态注册、带后缀回调和重复 resource，不依赖已删除的插件目录。真实 Codex App 的新会话和原生生图仍需在安装后验证。

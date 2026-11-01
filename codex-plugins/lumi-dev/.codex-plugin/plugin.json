@@ -1,0 +1,20 @@
+{
+  "name": "lumi-dev",
+  "version": "0.1.0-dev",
+  "description": "使用当前 Lumi 源码在 Codex App 中开发和验证绘本创作流程。",
+  "author": { "name": "Lumi" },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Lumi 绘本创作（开发版）",
+    "shortDescription": "连接本地构建的 lumi_dev，使用独立开发数据。",
+    "longDescription": "面向 macOS Codex App 的本地开发插件。通过 make codex-dev 从源码构建并安装，写作和生图使用 Codex 自身额度，无需 API key。使用独立测试项目目录。",
+    "developerName": "Lumi",
+    "category": "Productivity",
+    "capabilities": ["MCP", "Interactive", "Image Generation"],
+    "brandColor": "#2B6B58",
+    "defaultPrompt": ["用 Lumi 开发版在当前测试目录创作并导出一本绘本。"],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +22,7 @@ import (
 // This exercises SDK discovery, dynamic registration, browser redirect, the
 // protected desktop consent API, PKCE token exchange and a real MCP session.
 func TestMCPOAuthOfficialSDK(t *testing.T) {
-	for _, scenario := range []struct{ mode, permission string }{{"dynamic", "read"}, {"dynamic", "edit"}, {"prod", "read"}, {"prod", "edit"}, {"dev", "read"}, {"dev", "edit"}} {
+	for _, scenario := range []struct{ mode, permission string }{{"dynamic", "read"}, {"dynamic", "edit"}, {"callback_suffix", "read"}, {"callback_suffix", "edit"}} {
 		permission := scenario.permission
 		t.Run(scenario.mode+"/"+permission, func(t *testing.T) {
 			h := newMCPHarness(t)
@@ -100,41 +98,9 @@ func TestMCPOAuthOfficialSDK(t *testing.T) {
 				},
 			}
 			if scenario.mode != "dynamic" {
-				serverName := "lumi-" + scenario.mode + "-plugin"
-				raw, err := os.ReadFile(filepath.Join("..", "..", "codex-plugins", serverName, ".mcp.json"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				var plugin struct {
-					Servers map[string]struct {
-						Type     string
-						URL      string
-						Resource json.RawMessage `json:"oauth_resource"`
-						OAuth    json.RawMessage `json:"oauth"`
-					} `json:"mcpServers"`
-				}
-				if err := json.Unmarshal(raw, &plugin); err != nil {
-					t.Fatal(err)
-				}
-				spec, ok := plugin.Servers[serverName]
-				if !ok {
-					t.Fatal("plugin MCP name mismatch")
-				}
-				environment := "development"
-				clientName = "Lumi development plugin"
-				if scenario.mode == "prod" {
-					environment = "production"
-					clientName = "Lumi desktop plugin"
-				}
-				expectedURL := "http://127.0.0.1:5801/mcp"
-				if environment == "production" {
-					expectedURL = "http://127.0.0.1:32323/mcp"
-				}
-				if spec.Type != "http" || spec.URL != expectedURL || len(spec.Resource) != 0 || len(spec.OAuth) != 0 {
-					t.Fatalf("plugin connection drift: %+v", spec)
-				}
-				// A URL-only plugin discovers OAuth metadata and registers the exact
-				// callback selected by Codex, including its server-specific suffix.
+				// HTTP OAuth remains available independently of the retired plugin
+				// packages. Preserve suffix and duplicate-resource interoperability.
+				clientName = "SDK OAuth with callback suffix"
 				oauthConfig.DynamicClientRegistrationConfig.Metadata.ClientName = clientName
 				oauthConfig.DynamicClientRegistrationConfig.Metadata.RedirectURIs = []string{"http://127.0.0.1:50132/callback/VJL--Uj9wWIv"}
 			}

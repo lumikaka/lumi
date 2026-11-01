@@ -53,7 +53,9 @@ WebSocket `mcp:changed` 仅发送项目 UUID，触发相关 TanStack Query 失�
 
 ## commands
 
-`codex-plugins/lumi-prod-plugin` 与 `codex-plugins/lumi-dev-plugin` 包含 manifest、HTTP MCP 配置、技能及流程参考，支持通过现有 Codex 市场分发。插件仅配置 HTTP URL，客户端发现 OAuth 元数据后动态注册实际回调；仍要求 PKCE、resource、精确登记回调及用户项目/权限选择。重复 resource 仅在每个值都等于当前 MCP endpoint 时接受。插件从 `read_agent_doc` 的授权 UUID 和 `external_routes` 开始操作，复用现有 Lumi 路由，不另建 VACS 风格业务接口或复制完整业务文档。
+通用 HTTP OAuth 客户端直接配置 Lumi 设置页的 MCP URL，发现 OAuth 元数据后动态注册实际回调；仍要求 PKCE、resource、精确登记回调及用户项目/权限选择。重复 resource 仅在每个值都等于当前 MCP endpoint 时接受。客户端从 `read_agent_doc` 的授权 UUID 和 `external_routes` 开始操作，复用现有 Lumi 路由，不另建 VACS 风格业务接口或复制完整业务文档。
+
+旧 HTTP OAuth 插件包装已移除。Codex 绘本创作入口为 `codex-plugins/lumi`（正式版）与 `codex-plugins/lumi-dev`（开发版差异），通过独立 CLI 的 stdio MCP 绑定会话目录，使用 Codex 的写作和生图能力。`make codex-dev` 从共享源码生成 `lumi_dev` 和 `lumi-dev@lumi-dev-local`，开发环境及默认 `~/.lumi_dev` 应用数据与正式版分开，支持无需发布版本的本地迭代；使用独立测试项目目录。HTTP OAuth 服务及既有授权的语义不变。
 
 `lumi_web --mcp --environment production|development [--data-dir ABSOLUTE_PATH]`，凭据来自 `LUMI_MCP_TOKEN`。桥接只做发现和协议转发，stdout 仅输出 JSON-RPC，stderr 用于诊断。发现文件按环境隔离，每条消息重读，因此端口变化不修改配置；移动安装目录时仍须更新命令路径。
 

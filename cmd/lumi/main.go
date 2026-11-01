@@ -28,6 +28,10 @@ session import --rollout PATH  Manually save user/assistant text and Lumi tool n
 mcp     Run a cwd-bound stdio MCP server; auto-start the CLI instance.
 `
 
+// The local lumi_dev build selects development through -ldflags -X. Release
+// binaries remain production by default, regardless of the caller's APP_ENV.
+var defaultEnvironment = "production"
+
 type options struct {
 	environment string
 	dataDir     string
@@ -61,7 +65,7 @@ func command(args []string, out, stderr io.Writer) int {
 	}
 	flags := flag.NewFlagSet("lumi "+name, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	flags.StringVar(&opt.environment, "environment", "production", "production or development (ignores APP_ENV)")
+	flags.StringVar(&opt.environment, "environment", defaultEnvironment, "production or development (ignores APP_ENV)")
 	flags.StringVar(&opt.dataDir, "data-dir", os.Getenv("LUMI_DATA_DIR"), "application data directory")
 	flags.BoolVar(&opt.json, "json", false, "output a JSON envelope")
 	flags.DurationVar(&opt.timeout, "timeout", 90*time.Second, "maximum startup or shutdown wait")

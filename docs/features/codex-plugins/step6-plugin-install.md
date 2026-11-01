@@ -9,11 +9,11 @@
 - 方案：`docs/features/codex-plugins/plan.md`。分工：本地 skill 告诉 Codex 如何使用 CLI 和插件；审阅节点按用户提示词决定，确有必要时向用户提问；LLM pipeline 由 Codex subagent 结合 `render_prompt` 完成。
 - 调研结论：`docs/features/codex-plugins/spike.md`（插件安装命令、subagent、所需批准）。
 - Step 1–5 已提供 `lumi` CLI、`lumi init`、stdio MCP 工具、图片导入和 MCP Apps。
-- 旧插件 `codex-plugins/lumi-prod-plugin`、`lumi-dev-plugin` 是 HTTP OAuth 方式，可以参考其目录结构（`.codex-plugin/plugin.json`、`.mcp.json`、`skills/`、`assets/`），但不修改它们。
+- 旧 HTTP OAuth 插件已退役。当前入口为 `codex-plugins/lumi` 和 `codex-plugins/lumi-dev`，开发版共享正式版 skill，通过 `make codex-dev` 从源码构建并独立安装。
 
 ## 范围
 
-1. 新插件放在新目录（例如 `codex-plugins/lumi/`，命名需与旧插件区分）：
+1. 正式插件位于 `codex-plugins/lumi/`；开发差异位于 `codex-plugins/lumi-dev/`：
    - `.mcp.json` 使用 stdio，`command` 指向安装后的**绝对路径**（macOS GUI 应用不继承 shell PATH），不指定 `cwd`（调研证实此时进程 cwd 即会话工作目录）。插件安装时会被复制到 `CODEX_HOME/plugins/cache/`，绝对路径须由安装脚本在生成本地 marketplace 时写入，不在仓库中写死用户路径。
    - manifest 文案说明：无需 API key，使用 Codex 自身额度，数据保存在本地。
 2. 创作 skill，内容覆盖：

@@ -93,6 +93,36 @@ func cliRun(t *testing.T, opt options, action string, wantExit int) instanceStat
 	return result.Data
 }
 
+func TestBuildDefaultEnvironmentAndExplicitOverride(t *testing.T) {
+	original := defaultEnvironment
+	t.Cleanup(func() { defaultEnvironment = original })
+	t.Setenv("APP_ENV", "ignored")
+	for _, tc := range []struct{ build, override, want string }{
+		{"production", "", "production"},
+		{"development", "", "development"},
+		{"development", "production", "production"},
+		{"production", "development", "development"},
+	} {
+		t.Run(tc.build+"/"+tc.override, func(t *testing.T) {
+			defaultEnvironment = tc.build
+			args := []string{"status", "--json", "--data-dir", t.TempDir()}
+			if tc.override != "" {
+				args = append(args, "--environment", tc.override)
+			}
+			var out, stderr bytes.Buffer
+			if code := command(args, &out, &stderr); code != 3 {
+				t.Fatalf("status exit=%d: %s %s", code, out.String(), stderr.String())
+			}
+			var result struct {
+				Data instanceStatus `json:"data"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil || result.Data.Environment != tc.want {
+				t.Fatalf("status=%s error=%v", out.String(), err)
+			}
+		})
+	}
+}
+
 func TestServeReusesInstanceAndRestartsAfterCrash(t *testing.T) {
 	opt := cliOptions(t)
 	cliRun(t, opt, "status", 3)
