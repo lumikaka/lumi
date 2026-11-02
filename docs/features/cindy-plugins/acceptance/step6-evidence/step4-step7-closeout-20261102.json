@@ -1,0 +1,48 @@
+{
+  "recorded_at_utc": "2026-11-02T10:37:47.435420+00:00",
+  "kind": "accepted-scope-closeout-with-explicit-user-skips-and-deferred-items",
+  "scope": {
+    "step4": "passed-real-Core-image-reference-edit-candidate-PDF-ZIP-path",
+    "step5": "temporarily-skipped-by-user-not-passed",
+    "step6": "accepted-local-install-lifecycle-read-stop-recovery-and-two-independent-normal-task-books-verified",
+    "step7": "delivered-user-selected-public-file-manual-archive-path"
+  },
+  "deferred_todos": [
+    "old diagnostic process exit confirmation",
+    "actual configured Codex client sharing"
+  ],
+  "other_explicit_skip": "native Lumi desktop reopen skipped by user",
+  "current_turn_checks": {
+    "production_report_receipts": 69,
+    "complete_text_fields": 9,
+    "complete_before_after_snapshots": 12,
+    "development_reports_preserved": 8,
+    "pdf_zip_files_preserved": 2,
+    "markdown_documents": 13,
+    "local_links_and_anchors": 217,
+    "reviewed_packages": [
+      {
+        "channel": "production",
+        "entries_verified": 21,
+        "package_sha256": "49b6d69807e41182db308b27b06498d4aefbb997140901ab78fc557a4b1e625a"
+      },
+      {
+        "channel": "development",
+        "entries_verified": 21,
+        "package_sha256": "b0aff04095ac2bb62c9bb56c2d6cf0cf70a68dbb7b8aeea4fe94e7b6562f4fd1"
+      }
+    ]
+  },
+  "production_recovery_evidence": "normal-task-production-recovery-success-20261102.json",
+  "development_artifacts_evidence": "production-recovery-preserved-artifacts-20261102.json",
+  "services_evidence": "production-recovery-service-state-20261102.json",
+  "limits": [
+    "No Step 5 production review UI or trusted page identity claim",
+    "No actual configured Codex client sharing or old diagnostic exit claim",
+    "Only specified foreign chapter host-read refusal; automated cross-channel writes are separate evidence",
+    "Read-phase graceful stop does not cover forced in-flight write/RPC/Core cancellation",
+    "PDF one illustrated page and two missing images; no phone receipt claim",
+    "Archive manual text projection only; no automatic/full transcript claim",
+    "macOS arm64 local package only; no public release or all-build minimum-version claim"
+  ]
+}

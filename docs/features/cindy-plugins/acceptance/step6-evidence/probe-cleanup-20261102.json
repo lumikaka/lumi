@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-02T01:42:27.639Z",
+  "kind": "owned-isolated-probe-cli-cleanup",
+  "data_dir": "/private/tmp/lumi-cindy-host-acceptance-20261101",
+  "cli_sha256": "484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1",
+  "before_running": true,
+  "open_project_uuids": [],
+  "only_expected_projects": true,
+  "nonce_matched_stop": true,
+  "after_running": false,
+  "projects_deleted": false,
+  "default_development_or_production_touched": false,
+  "probe_plugin_uninstalled": false
+}

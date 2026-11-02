@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-02",
+  "kind": "actual-browser-manual-text-archive-acceptance-not-host-taskView",
+  "browser": {
+    "backend": "external",
+    "profile": "Cindy",
+    "real_profile_applied": false,
+    "started_for_acceptance": true
+  },
+  "runtime": {
+    "binary": "build/cindy-archive-acceptance/lumi_dev",
+    "binary_sha256": "f96110e9845eea23c594bd0fcc28b2a76c8a02093601e5cdb5ffe7da4317a221",
+    "build_command": "go build -trimpath -tags embed_frontend -ldflags '-X main.defaultEnvironment=development' -o build/cindy-archive-acceptance/lumi_dev ./cmd/lumi",
+    "data_dir": "/private/tmp/lumi-cindy-archive-ui-20261102/data",
+    "plugin_cli_frontend_embedded": false
+  },
+  "project": {
+    "uuid": "01a19a33-cc6e-7ad1-b8bf-b10156294e67",
+    "root": "/private/tmp/lumi-cindy-archive-ui-20261102/project",
+    "name": "Cindy 合成归档验收",
+    "thread_uuid": "01a19a36-1db2-7a35-97d5-48164333cd17",
+    "body_source": "synthetic fixture only",
+    "initial_imported": 3,
+    "incremental_imported": 1,
+    "pagination_imported": 50,
+    "final_saved_items": 54,
+    "omitted_messages": 1,
+    "warnings": [
+      "attachments_omitted",
+      "empty_text_omitted",
+      "inline_media_omitted"
+    ]
+  },
+  "verified": {
+    "new_thread_appeared_without_manual_reload": true,
+    "thread_list_and_detail_show_cindy_readonly": true,
+    "continue_in_cindy_and_no_auto_capture_notice": true,
+    "same_user_text_two_messages_both_rendered": true,
+    "incremental_import_reread_via_rest_and_showed_new_cutoff_and_four_rows": true,
+    "cutoff_and_omission_and_filter_notices_rendered": true,
+    "source_script_literal_escaped_and_not_executed": true,
+    "no_attachment_img_element_or_remote_image_load": true,
+    "chat_input_elements": 0,
+    "fake_trajectory_link": false,
+    "load_more_button_used_with_real_cursor_request": true,
+    "final_dom_rows": 54,
+    "last_row": "分页合成文本 50",
+    "load_more_after_last_page": false,
+    "no_fixture_body_or_source_id_in_server_log": true
+  },
+  "layouts": [
+    {
+      "css_width": 1200,
+      "css_height": 948,
+      "visual_checked": true,
+      "text_wrapped": true
+    },
+    {
+      "css_width": 390,
+      "css_height": 844,
+      "document_width": 390,
+      "record_scroll_width": 366,
+      "record_client_width": 366,
+      "input_count": 0,
+      "visual_checked": true
+    },
+    {
+      "css_width": 320,
+      "css_height": 780,
+      "document_width": 320,
+      "record_scroll_width": 296,
+      "record_client_width": 296,
+      "header_scroll_width": 320,
+      "rows": 4,
+      "input_count": 0,
+      "visual_checked": true
+    }
+  ],
+  "network_examples": [
+    {
+      "timestamp": "2026-11-02T03:03:40.190Z",
+      "method": "GET",
+      "resource": "cindy_session_items?limit=50",
+      "status": 200,
+      "trigger": "initial detail mount"
+    },
+    {
+      "timestamp": "2026-11-02T03:06:00.161Z",
+      "method": "GET",
+      "resource": "cindy_session_items?limit=50",
+      "status": 200,
+      "trigger": "incremental import while page open"
+    },
+    {
+      "timestamp": "2026-11-02T03:12:18.027Z",
+      "method": "GET",
+      "resource": "cindy_session_items?limit=50&after=<public-item-uuidv7>",
+      "status": 200,
+      "trigger": "load more button"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "ui-desktop-20261102.webp",
+      "bytes": 58538,
+      "sha256": "c0e822c3109ee3c9f9bdc2e5cb16f9f67853d63f88a5e3902f6e385e82b2b602",
+      "kind": "actual-browser-screenshot-synthetic-data-only"
+    },
+    {
+      "file": "ui-phone-320-20261102.webp",
+      "bytes": 53574,
+      "sha256": "ec3d72706b7eabb14d66d477782ef60f6f0c2d4bf78e8a726ff2c65a667e27a4",
+      "kind": "actual-browser-screenshot-synthetic-data-only"
+    }
+  ],
+  "scope_limits": [
+    "Uses Lumi existing light desktop theme, not a new Cindy taskView",
+    "Phone widths emulated in actual Chrome; not physical iPhone acceptance",
+    "No real chat imported to a user project",
+    "No Step5 trusted Host page identity or Step6 live image generation proof"
+  ],
+  "sandbox_attempts": {
+    "initial_cli_import_timed_out_before_dispatch": true,
+    "verified_existing_threads_before_retry": 0,
+    "escalated_same_synthetic_file_imported": 3,
+    "plugin_loopback_tests_rerun_after_sandbox_failures": true
+  },
+  "cleanup": {
+    "browser_acceptance_tab_closed": true,
+    "dedicated_stop_requested": true,
+    "project_preserved": true,
+    "dedicated_running_after_stop": false,
+    "discovery_removed": true,
+    "singleton_lock_free": true,
+    "default_or_codex_services_stopped": false
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-02",
+  "kind": "startup-cancellation-regression-and-installed-package-verification",
+  "before_fix": {
+    "worker_tests": 9,
+    "passed": 6,
+    "failed": 3,
+    "failed_cases": [
+      "already exited Host child",
+      "cancel while awaiting spawnEntry",
+      "shutdown while awaiting spawnEntry"
+    ]
+  },
+  "after_fix": {
+    "worker_tests": 9,
+    "passed": 9,
+    "failed": 0,
+    "complete_tests": 77,
+    "complete_passed": 77,
+    "complete_failed": 0,
+    "skipped": 0
+  },
+  "proof_limits": [
+    "Cancellation race cases use a mocked Host lifecycle; actual Host calls only prove the installed build and ordinary request cleanup.",
+    "No previously refused fixture write was retried; no media request was submitted.",
+    "The temporary probe remains on its earlier product snapshot."
+  ],
+  "actual_host": {
+    "currentVersion": "0.1.121",
+    "app_update_status": "no_installable_update",
+    "id": "lumi-dev",
+    "instanceId": "_root__lumi-dev",
+    "namespace": null,
+    "build_id": "bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb",
+    "consecutive_runtime_status_successes": 6,
+    "runtime_release_succeeded": true,
+    "server_running": false
+  },
+  "remaining": [
+    "Renewed user authorization for the refused temporary-project write and dependent media acceptance.",
+    "A verified public taskView sender identity contract.",
+    "Explicitly supplied or authorized public transcript export sample before Cindy archive parser/storage/UI implementation."
+  ]
+}

@@ -3,15 +3,15 @@
   "minCindyVersion": "0.1.121",
   "id": "lumi",
   "name": "Lumi",
-  "description": "在 Cindy 当前 Lumi 项目中完成 setup、故事、设定、章节、页面正文和画面描述，导出完整文本作品；无需 Lumi 模型服务商。媒体交接和审阅界面尚未实现。",
+  "description": "在 Cindy 当前 Lumi 项目中完成故事、设定、章节和页面创作，导入授权图片并导出作品；无需 Lumi 模型服务商。审阅界面尚未实现。",
   "whenToUse": "初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "entry": "main.js",
   "icon": "assets/icon.png",
   "tools": [
     {
       "name": "list_tools",
-      "description": "不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。media/review 未实现，不返回占位工具。",
+      "description": "不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -40,6 +40,54 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "receive_media",
+      "description": "接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fit_mode": {
+            "enum": [
+              "keep",
+              "crop",
+              "pad"
+            ],
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "slot": {
+            "enum": [
+              "page_image",
+              "setting_image"
+            ],
+            "type": "string"
+          },
+          "target_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_uuid",
+          "slot",
+          "expected_revision"
+        ],
+        "type": "object"
+      }
     }
   ],
   "node": {
@@ -55,7 +103,7 @@
   "command": "lumi",
   "launch": "on-demand",
   "sessionContext": true,
-  "releaseNotes": "新增两段式文本工具目录与明确允许列表、action 级读写授权、完整错误自纠、串行创作手册及原生任务文件交付。无需 Lumi 模型服务商即可保存并导出完整文本作品。",
+  "releaseNotes": "新增授权附件原件校验与分块导入、受控参考图回送、开发包身份和运行环境隔离；修复旧共享 CLI 的兼容性检测，明确区分安装包与运行后台，保留项目绑定、文本工具和标准项目格式。",
   "manual": {
     "items": [
       {
@@ -76,6 +124,11 @@
         "description": "项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。",
         "dir": "manual/authoring"
       }
+    ]
+  },
+  "cindy": {
+    "media": [
+      "deposit"
     ]
   }
 }

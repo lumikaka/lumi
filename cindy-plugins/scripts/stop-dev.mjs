@@ -1,0 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { runtimeOptions } = require('../lumi/node/config.cjs');
+const author = fileURLToPath(new URL('../../build/cindy-dev/lumi-dev/', import.meta.url));
+const config = JSON.parse(readFileSync(new URL('../../build/cindy-dev/lumi-dev/node/runtime-config.json', import.meta.url)));
+if (config.channel !== 'development') throw new Error('Refusing to stop a non-development instance');
+const options = runtimeOptions(config, author);
+const result = spawnSync(options.executable, ['stop', '--environment', options.environment, '--data-dir', options.dataDir], { stdio: 'inherit' });
+if (result.error) throw result.error;
+process.exit(result.status ?? 1);

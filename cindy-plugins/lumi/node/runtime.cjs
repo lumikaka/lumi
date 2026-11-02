@@ -9,8 +9,11 @@ const { RuntimeError, aborted, validEnvelope } = require('./errors.cjs');
 const { publicProject, publicFailure, setupState, UUID } = require('./project.cjs');
 const catalog = require('./catalog.cjs');
 const { prepareExport, exportIdentity } = require('./export.cjs');
+const { MediaTransfers, prepareRecovery } = require('./media.cjs');
 
 const METHODS = new Set([...catalog.allowed, 'list_tools', 'call_tool']);
+const MEDIA_METHODS = new Set(['media_begin', 'media_chunk', 'media_commit', 'media_abort']);
+const MEDIA_IMPORT = Symbol('trusted media import');
 const success = data => ({ success: true, data });
 const sameIdentity = (a, b) => a && b && a.nonce === b.nonce && a.pid === b.pid && a.endpoint === b.endpoint;
 function contextFor(params) {
@@ -72,6 +75,9 @@ class Runtime {
     this.connections = new Map();
     this.closing = new Set();
     this.closed = false;
+    this.media = new MediaTransfers({ namespace: JSON.stringify([executable, dataDir, environment]) });
+    this.mediaStarting = 0;
+    this.mediaPending = new Set();
   }
 
   async binary() {
@@ -148,6 +154,8 @@ class Runtime {
     if (this.sessions.get(session.id) === session) this.sessions.delete(session.id);
     clearTimeout(session.timer);
     session.revoked = true;
+    for (const owner of session.mediaOwners?.values() || []) this.media.revoke(owner);
+    session.mediaOwners?.clear();
     for (const controller of session.calls) controller.abort();
     for (const record of this.connections.values()) {
       if (record.sessions.get(session.id) === session) record.sessions.delete(session.id);
@@ -163,15 +171,22 @@ class Runtime {
     }
   }
 
-  async execute(method, params, signal) {
-    if (!METHODS.has(method)) throw new RuntimeError('method_not_found', '运行时方法不存在。', '使用插件声明的工具。');
+  async execute(method, params, signal, token) {
+    if (MEDIA_METHODS.has(method)) {
+      const pending = this.executeMedia(method, params, signal);
+      this.mediaPending.add(pending);
+      try { return await pending; } finally { this.mediaPending.delete(pending); }
+    }
+    const importingMedia = method === 'import_image' && token === MEDIA_IMPORT;
+    if (!importingMedia && !METHODS.has(method)) throw new RuntimeError('method_not_found', '运行时方法不存在。', '使用插件声明的工具。');
     if (method === 'list_tools') return success(catalog.discover(params?.arguments ?? {}));
     if (method === 'call_tool') {
       const wrapper = catalog.validateCall(params?.arguments);
       method = wrapper.name;
       params = { ...params, arguments: wrapper.args ?? {} };
     }
-    const input = catalog.validate(method, params?.arguments ?? {});
+    if (method === 'receive_media') throw new RuntimeError('media_handoff_required', '图片必须通过顶层 receive_media 交接。', '使用 ghost_call.tool=receive_media，并在顶层 attachments 传恰好一个授权图片引用。');
+    const input = importingMedia ? params.arguments : catalog.validate(method, params?.arguments ?? {});
     // Reject the actual MCP parameter budget before acquiring a connection or
     // marking any mutation sent. Oversize input is a known non-write outcome.
     if (Buffer.byteLength(JSON.stringify({ name: method, arguments: input,
@@ -179,7 +194,7 @@ class Runtime {
       const error = new RuntimeError('arguments_too_large', 'MCP 参数超过 240 KiB。', '缩小单次参数；完整正文不能静默截断，必要时调整作品拆分。');
       error.correction = catalog.repair(method); throw error;
     }
-    const mutation = catalog.isWrite(method, input);
+    const mutation = importingMedia || catalog.isWrite(method, input);
     const context = contextFor(params);
     aborted(signal);
     if (this.closed) throw new RuntimeError('runtime_closed', '运行时已释放。', '发起新的工具调用。');
@@ -270,6 +285,7 @@ class Runtime {
       // read-only workdir can contain that data-dir (e.g. HOME), so only perform
       // the side-effect-free MCP handshake/ping in read-only diagnostics.
       const before = context.workdir_is_read_only && method === 'runtime_status' ? null : await this.inspect(dataDir, callSignal, context.workdir_is_read_only);
+      const serverCompatible = before?.running ? Number.isSafeInteger(before.creation_protocol_version) && before.creation_protocol_version >= 1 : null;
       if (record.identity && before && (!before.running || !sameIdentity(record.identity, before))) {
         // MCP is a stateless CLI relay; rediscovery occurs on every call. Never
         // reuse a cached endpoint/nonce or infer permission from an old binding.
@@ -278,10 +294,17 @@ class Runtime {
       if (method === 'runtime_status') {
         await record.peer.request('ping', {}, { signal: callSignal });
         record.identity = before?.running ? before : null;
-        return success({ runtime: 'ready', ...record.peer.info, cli_commit: this.build.source_commit,
+        return success({ runtime: serverCompatible === false ? 'upgrade_required' : 'ready', ...record.peer.info, cli_commit: this.build.source_commit,
+          channel: this.build.channel || this.environment, build_id: this.build.build_id || null,
+          cli_sha256: this.build.cli_sha256, environment: this.environment,
           platform: this.build.platform, arch: this.build.arch, read_only: context.workdir_is_read_only,
           server_running: before?.running ?? null, server_observation: before ? 'verified' : 'not_checked_read_only',
+          server_compatible: serverCompatible, server_creation_protocol_version: before?.creation_protocol_version ?? null,
           server_policy: 'shared_retained' });
+      }
+      if (serverCompatible === false) {
+        throw new RuntimeError('cli_upgrade_required', '正在运行的共享 CLI 服务协议过旧。',
+          '未派发创作请求。先协调同一 environment/data-dir 的使用者，再明确停止旧服务并用新包重连；保留现有 draft，先重读事实，不自动重放写入。');
       }
       const verifyDirectory = async () => {
         const current = await this.directory(context.workdir, !context.workdir_is_read_only);
@@ -354,7 +377,7 @@ class Runtime {
         if (mutation && ['instance_unavailable', 'result_too_large'].includes(result.error.code)) {
           throw new RuntimeError('result_unknown', '写入结果尚未确认。', '先重读目标与作品内容，再决定是否重试；禁止自动重放。');
         }
-        return { ...(['project_init', 'project_overview', 'project_setup'].includes(method) ? publicFailure(result) : result), correction: catalog.repair(method) };
+        return { ...(['project_init', 'project_overview', 'project_setup'].includes(method) ? publicFailure(result) : result), correction: catalog.repair(importingMedia ? 'receive_media' : method) };
       }
       await verifyDirectory();
       const afterFile = await this.projectFile(directory.root);
@@ -416,6 +439,83 @@ class Runtime {
     }
   }
 
+  async executeMedia(method, params, signal) {
+    const fields = {
+      media_begin: ['context', 'invocation', 'input', 'bytes', 'sha256', 'mime'],
+      media_chunk: ['context', 'invocation', 'transfer', 'index', 'base64'],
+      media_commit: ['context', 'invocation', 'transfer'],
+      media_abort: ['context', 'invocation', 'transfer'],
+    };
+    if (!params || Object.keys(params).some(k => !fields[method].includes(k))
+      || typeof params.invocation !== 'string' || !params.invocation || params.invocation.length > 256) {
+      throw new RuntimeError('invalid_arguments', '媒体桥接参数无效。', '由顶层 receive_media 发起授权附件交接。');
+    }
+    const context = contextFor({ context: params.context });
+    if (this.closed) throw new RuntimeError('runtime_closed', '运行时已释放。', '重新建立任务绑定。');
+    if (context.workdir_is_read_only) {
+      const prior = this.sessions.get(context.session_id);
+      if (prior) this.forget(prior);
+      throw new RuntimeError('read_only_context', '只读任务不能导入图片。', '在当前项目的可写任务中交接图片。');
+    }
+    const invocation = crypto.createHash('sha256').update(params.invocation).digest('hex');
+    let session, owner;
+    if (method === 'media_begin') {
+      catalog.validate('receive_media', params.input);
+      if (this.mediaStarting + this.media.items.size >= 2) throw new RuntimeError('media_busy', '媒体接收并发已满。', '等待正在导入的图片完成。');
+      this.mediaStarting++;
+      try {
+        const target = await this.execute('image_target', { context, arguments: { target_uuid: params.input.target_uuid, slot: params.input.slot } }, signal);
+        if (!target.success) return target;
+        // Let the atomic business import check revision after transfer. A stale
+        // target still gets a durable recovery original instead of losing it.
+        session = this.sessions.get(context.session_id);
+        if (!session || session.revoked) throw new RuntimeError('binding_changed', '当前任务绑定已释放。', '重新读取当前项目。');
+        session.mediaOwners ||= new Map();
+        for (const [key, value] of session.mediaOwners) if (![...this.media.items.values()].some(item => item.owner === value)) session.mediaOwners.delete(key);
+        if (session.mediaOwners.has(invocation)) throw new RuntimeError('media_transfer_invalid', '同一调用已开始媒体传输。', '不重放 begin；先取消原传输。');
+        owner = { session, invocation };
+        const result = this.media.begin(owner, params.input, params);
+        session.mediaOwners.set(invocation, owner);
+        this.touch(session);
+        return success(result);
+      } finally { this.mediaStarting--; }
+    }
+    session = this.sessions.get(context.session_id);
+    owner = session?.mediaOwners?.get(invocation);
+    if (!session || session.revoked || !owner || Object.keys(context).some(k => context[k] !== session.permission[k])) {
+      throw new RuntimeError('media_transfer_invalid', '媒体传输不属于当前任务调用。', '只能由原始 receive_media 调用完成，不支持跨任务或 worker 接管。');
+    }
+    try {
+      aborted(signal);
+      const directory = await this.directory(context.workdir, true);
+      if (directory.root !== session.root || directory.stamp !== session.directoryStamp
+        || await this.projectFile(directory.root) !== session.projectFile) {
+        this.forget(session);
+        throw new RuntimeError('binding_changed', '媒体接收期间项目发生变化。', '重新读取当前任务项目。');
+      }
+      this.touch(session);
+      if (method === 'media_chunk') return success(this.media.chunk(owner, params));
+      if (method === 'media_abort') return success(this.media.abort(owner, params.transfer));
+      return await this.media.commit(owner, params.transfer, async (file, input) => {
+        if (session.revoked || this.sessions.get(session.id) !== session) throw new RuntimeError('binding_changed', '媒体调用绑定已撤销。', '重新读取当前项目。');
+        const result = await this.execute('import_image', { context, arguments: { ...input, path: file } }, signal, MEDIA_IMPORT);
+        if (!result.success && result.error.code === 'production_conflict') {
+          try {
+            const current = await this.directory(context.workdir, true);
+            if (current.root !== session.root || current.stamp !== session.directoryStamp || session.revoked) throw new Error('binding');
+            result.correction = { ...result.correction, recovery_file: await prepareRecovery(session.root, file, input) };
+          } catch { result.correction = { ...result.correction, recovery_file: { status: 'failed', instructions: '原图未能在任务目录保留。请保留宿主原附件，先核对目录权限，不自动重新生图。' } }; }
+        }
+        return result;
+      }, signal);
+    } catch (error) {
+      if (signal?.aborted) this.media.revoke(owner);
+      throw error;
+    } finally {
+      if (method !== 'media_chunk') session.mediaOwners.delete(invocation);
+    }
+  }
+
   async close() {
     this.closed = true;
     const sessions = [...this.sessions.values()];
@@ -423,6 +523,10 @@ class Runtime {
     await Promise.all(sessions.flatMap(session => [...session.pending]));
     for (const record of this.connections.values()) this.drop(record);
     await Promise.all([...this.closing]);
+    // Media commit also has a short file-staging phase before acquiring an MCP
+    // call. Drain it so graceful worker shutdown cannot strand those bytes.
+    await Promise.allSettled([...this.mediaPending]);
+    this.media.close();
   }
 }
 

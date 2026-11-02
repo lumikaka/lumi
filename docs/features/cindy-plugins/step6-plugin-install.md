@@ -1,5 +1,7 @@
 # Step 6 · 完整 Manual、插件打包与安装验收
 
+当前状态（2026-11-02）：本次按已确认范围交付；普通开发作品真实媒体/导出与安装生命周期、双版本 CLI 隔离均通过。正式协议修复、包更新与授权后台切换后，普通正式任务已从原 draft 完成 setup、一章三页文字及指定跨项目章节拒绝；父任务独立核对69次回执、9项全文及12份前后快照通过，见[恢复成功证据](acceptance/step6-evidence/normal-task-production-recovery-success-20261102.json)。此前插件回归81/81，验收后两服务保留且连接释放。Step 5 暂时跳过，旧诊断退出与 Codex 共享保留[待办](acceptance/todos.md)，桌面重开跳过。完整目标与标准保留在下文，未验边界不计为通过，见[当前验收汇总](acceptance/step4-step7-status.md)。
+
 ## 目标
 
 交付可以在已验收 macOS Cindy 上安装的 `.cindy` 包，让用户通过对话完成完整绘本流程；说明真实的安装、升级、卸载与模型使用条件。
@@ -8,7 +10,7 @@
 
 Step 1–5 已完成或明确列出仍阻塞的验收项。阅读当前宿主开发 Skill 的 manifest、Manual、packaging 与 compatibility 文档。源码在作者目录，不能从 Host 已安装目录直接修改或打包。
 
-执行前核对 [development.md](development.md) 的正式/开发产物是否已实现；当前独立开发通道仍为待补齐要求，不能把现有 id=lumi 的 Step 2 包当作 lumi-dev 验收。
+执行前核对 [development.md](development.md) 的正式/开发产物；2026-11-02 开发版首次安装、同版本更新与实际诊断已通过，其余矩阵仍待验，见 [Step 6 验收状态](acceptance/step6-install.md)。不能把现有 id=lumi 的历史 Step 2 包当作 lumi-dev 验收。
 
 ## 包与能力声明
 
@@ -40,7 +42,7 @@ Manual 使用 `manual.items` 下的普通 `MANUAL.md` 与引用 Markdown，按�
 
 日常开发不要求发布 patch；完整流程和状态以 [development.md](development.md) 为准：
 
-1. 修改共享源码后执行待实现的 `make cindy-dev`，生成完整开发作者目录 `build/cindy-dev/lumi-dev/`。Go 改动重新编译随包 CLI；JS、Manual、manifest 和 UI 改动也必须进入新目录。
+1. 修改共享源码后执行 `make cindy-dev`，生成完整开发作者目录 `build/cindy-dev/lumi-dev/`。Go 改动重新编译随包 CLI；JS、Manual、manifest 和 UI 改动也必须进入新目录。
 2. 对该目录执行 Forge pack，保存审阅包、版本、条目清单及包/CLI 指纹；同版本本地刷新须按照执行宿主当前契约验证。
 3. 释放正在使用开发实例的任务及旧页面；Go 变化需要重启时，先协调同一开发 environment/data-dir 的使用者，再显式执行 `make cindy-dev-stop`。不得自动停止正式版、Codex 或其他任务使用的服务。
 4. 有开发安装委托时，对同一未再编辑的作者目录执行 Forge install；记录重新打包的实际包和回执，定位正确 `lumi-dev` instanceId/namespace/source，必要时按回执传 `target_instance_id`。不把正式市场 `lumi` 换源为开发安装，也不擅自新建其他 namespace 副本。

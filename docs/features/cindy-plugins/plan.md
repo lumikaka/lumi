@@ -8,15 +8,18 @@
 
 ## 状态与阅读入口
 
-- 本目录建立于 2026-11-01；Step 0 已完成独立探针实测与卸载清理，结果见 [实测报告](spike.md)。Step 1 已实现运行时并完成自动化验证和开发包打包，见 [运行时](runtime.md) 与 [验收记录](acceptance/step1-runtime.md)。Step 2 已实现[项目绑定、初始化与 setup](project-binding.md)，结果见 [Step 2 验收](acceptance/step2-project-binding.md)。Step 3 已完成[文本工具与流程](tools.md)、固定输出三页端到端、用户手机文件接收确认及 Forge 开发包，见 [Step 3 验收](acceptance/step3-authoring-tools.md)。产品插件未安装，真实 Agent 创作留到 Step 6；Step 4–7 尚未实现。
+- 本次验收收尾（2026-11-02）：正式独立作品从原 draft 恢复完成，69次回执中的9项完整内容及12份隔离前后快照均经独立核对通过，见[恢复证据](acceptance/step6-evidence/normal-task-production-recovery-success-20261102.json)。Step 4 Core主线、Step 6本次已验收的本地交付及Step 7手动归档已交付；Step 5、桌面重开跳过和两项待办保留未验状态。下文历史过程与完整能力目标不作为未验项已通过的声明。
+- 最新范围决定（2026-11-02）：按用户要求暂时跳过 Step 5，保留可信任务页身份与四视图的恢复条件；旧诊断进程退出确认、Codex 缺客户端与共享服务验收整理为[待办](acceptance/todos.md)。跳过和待办均未计为通过，下文保留实施目标及历史记录。
+- 当前 Step 4–7 的已交付范围、剩余条件与宿主门槛集中见 [验收汇总](acceptance/step4-step7-status.md)；不把已交付的手动归档或固定素材测试视为真实媒体和四视图通过。
+- 本目录建立于 2026-11-01；Step 0 已完成独立探针实测与卸载清理，结果见 [实测报告](spike.md)。Step 1 已实现运行时并完成自动化验证和开发包打包，见 [运行时](runtime.md) 与 [验收记录](acceptance/step1-runtime.md)。Step 2 已实现[项目绑定、初始化与 setup](project-binding.md)，结果见 [Step 2 验收](acceptance/step2-project-binding.md)。Step 3 已完成[文本工具与流程](tools.md)、固定输出三页端到端、用户手机文件接收确认及 Forge 开发包，见 [Step 3 验收](acceptance/step3-authoring-tools.md)。2026-11-02 开发版 0.4.0 已真实安装并同版本原位更新，工具诊断连续 6 次成功；临时项目已保存 setup、故事和设定，章节正文写入两次在 MCP 层被拒绝，随后曾按用户选择保留 Auto 并暂停真实写入；归档交付后主人选择 Ask 继续，主人已确认工具栏 Ask，但实际 runtime 仍为 auto/generation=0，验收探针的章节写入再次被拒，见 [权限诊断](acceptance/step6-permission-mismatch.md)，详见 [Step 6 状态](acceptance/step6-install.md)；随后用户在原作品任务直接调用正常 lumi-dev，章节一次保存成功，revision 0 → 1、875 字重读一致，见 [正常保存回执](acceptance/step6-evidence/normal-task-chapter-save-20261102.json)；同一正常任务三页正文与画面描述也已保存，六项逐字重读比较通过，见 [页面保存回执](acceptance/step6-evidence/normal-task-pages-save-20261102.json)；第1页真实Core生成、授权附件导入和图片/页面重读也已通过，revision 0 → 1，见 [图片成功回执](acceptance/step6-evidence/normal-task-first-image-success-20261102.json)；随后Lumi受控预览实际进入Core编辑、导入候选2后切回原图、PDF/ZIP各导出一次均通过，交付文件和ZIP全文已独立核对，见 [编辑导出证据](acceptance/step6-evidence/normal-task-reference-export-success-20261102.json)；Step 4已验Core链路通过，开发构建隔离已实现，自动化及 Forge 验收见 [Step 4 记录](acceptance/step4-image-import.md)；原生停用/启用、卸载/同包重装及作品/双图恢复已通过，见 [生命周期记录](acceptance/step6-lifecycle.md)；首次安装拒绝和原生新增权限更新拒绝亦已通过；其余共享矩阵与四视图仍待验；[Step 4.5](task-view-acceptance.md) 已取得真实开页诊断，但页面身份门槛未通过，生产 Step 5 未开始；[Step 7](session-archive.md) 默认不自动采集，公开文件手动导入路径已交付，真实样本解析、独立存储、合成项目端到端、开发包更新和实际浏览器响应式/分页验收通过；不包含完整历史或自动捕获。
 - 参考 [Codex 总体方案](../codex-plugins/plan.md) 的分步方式，复用其已经存在的 CLI、业务工具、素材导入和审阅组件，不重新实现一套 Lumi 内核。
 - 历史公开源码参考为官方 tag `v0.1.121`，commit `727afb1ad6902176e2ec55254154b900c489a998`。Step 0 的真实执行端是 Mac arm64、Cindy `0.1.121`，应用记录的 sourceCommit 为 `0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`，与 tag 不同且该 ref 的公开源码查询返回 404；不能用 tag 代替实际构建源码或证明最低正式版本。证据等级与限制见 [开发依据](references.md)；每次执行仍须确认真正运行插件的电脑与版本。
 - 每一步可复制的任务文本集中在 [Goal 提示词](goals.md)。先完成前置步骤，再执行下一步；不把本目录全部内容一次性交给自动续跑。
-- [本地开发与双版本隔离](development.md) 是新增待实现要求：目前 Step 2 包仍使用正式身份与 production 环境，不等于已有独立开发通道。Step 1 补齐构建/运行隔离，Step 6 补齐同版本更新与两版并存的真实安装验收。
+- [本地开发与双版本隔离](development.md) 已实现构建及运行隔离：历史 Step 2 包使用正式身份与 production 环境；开发版首次安装及同版本刷新、正式/开发并存及普通任务各自独立作品均已通过相应范围验收，实际Codex共享与旧诊断退出保留待办。Step 1提供运行时基线，Step 6记录安装、恢复和共享边界。
 
 ## 产品形态与支持范围
 
-1. **一份源码、正式与开发两个入口**：共享作者源码目录 `cindy-plugins/lumi/`；正式 id/command 为 `lumi`，开发 id/command 为 `lumi-dev`，显示名称明确区分。发布前核查身份冲突。当前已有 Step 2 包，尚未安装或发布；独立开发入口按新增要求实施。
+1. **一份源码、正式与开发两个入口**：共享作者源码目录 `cindy-plugins/lumi/`；正式 id/command 为 `lumi`，开发 id/command 为 `lumi-dev`，显示名称明确区分。发布前核查身份冲突。当前开发包 0.4.0 已安装并更新，正式包 0.4.0 已按授权安装且只读诊断通过，均未发布；独立开发入口已实现。
 2. **对话驱动**：Agent 通过插件工具读写项目，通过插件 Manual 理解创作流程；具体提示词继续来自 Lumi `render_prompt`。
 3. **任务审阅页**：以 `taskView` 为主要界面，展示当前任务对应项目的整本、单页、候选与设定。首版选择仍在对话中提交，页内选中只表示预览。
 4. **本地项目目录**：保留 `project.sqlite`、`assets/`、`.lumi/`、`STORY.md` 等现有格式。项目不放在卸载即删除的插件私有存储中。
@@ -85,7 +88,7 @@ flowchart TD
 ### 本地开发与版本隔离
 
 - 正式包使用随包 `bin/lumi`、`production + ~/.lumi`；开发包使用随包 `bin/lumi_dev`、`development + ~/.lumi_dev`。环境和 data-dir 由构建配置及 worker 显式传入，不能只改 CLI 名称或依赖 `APP_ENV`。两版共用业务、Node、Manual 和 UI 源码，生成不同的身份与运行配置。
-- 规划的 `make cindy-dev` 一次生成完整开发作者目录；随后通过 Forge pack/install 完成本地更新，不要求 Tag、Release、公开 patch 或市场发布。该命令及独立开发包尚未实现，不得在现有 README 中当作可用入口。
+- `make cindy-dev` 一次生成完整开发作者目录；随后通过 Forge pack/install 完成本地更新，不要求 Tag、Release、公开 patch 或市场发布。该命令与独立开发目录已实现，安装后的工具发现及同版本刷新已实测，真实双实例并存仍待验。
 - 改 Go、JS、Manual 或 UI 后都要重新生成、打包并安装开发包；Cindy 使用安装副本，编译仓库二进制或仅 pack 不会刷新已安装实例。Go 后台另按共享服务归属协调并显式停止，再重连验证，不能自动停止正式版或其他开发客户端。
 - 使用独立测试作品；默认开发 data-dir 可能与 Codex 开发版共用，不能宣称宿主间天然隔离。具体身份、安装步骤和验收矩阵以 [development.md](development.md) 为准。
 
@@ -110,7 +113,7 @@ flowchart TD
 
 执行顺序：`0 → 1 → 2 → 3 → 4 → 4.5 → 5 → 6`，之后单独决定是否执行 7。探针暴露问题时修订受影响的后续计划；不把“未验证”转换成“已支持”。
 
-Step 1–2 的运行时与项目绑定基线已实现；新增开发通道仍待补齐，真实 Host 并发、取消及只读上下文等仍按验收记录补测。后续实施先落实开发包隔离，文档修订不自动启动产品开发或安装。Step 4.5 重点补齐产品取图、双任务页隔离、dark 主题、自动恢复与 Query 失效，不能因 Step 0 基础页面闭环通过就跳过；Step 5 仍以这些验收通过为前置。
+Step 1–2 的运行时与项目绑定基线已实现；新增开发通道构建、首次安装及同版本更新已通过，真实安装矩阵仍有待验项；真实 Host 并发、取消及只读上下文等仍按验收记录补测。后续实施先落实开发包隔离，文档修订不自动启动产品开发或安装。Step 4.5 重点补齐产品取图、双任务页隔离、dark 主题、自动恢复与 Query 失效，不能因 Step 0 基础页面闭环通过就跳过；Step 5 仍以这些验收通过为前置。
 
 ## 共同约束与最终验收
 
@@ -136,3 +139,7 @@ Cindy 的上下文、授权附件、页面通信和生命周期策略留在独�
 | 会话归档 | 保留 Codex rollout 导入、已有记录与原生聊天模型，不把 Cindy 字段变成旧记录必填项 | 可选 Step 7 覆盖现有导入 fixture、重复导入及已有项目迁移/读取 |
 
 每步在验收记录列出改动的共用文件、受影响的 Codex 契约、执行命令与结果，复用 [现有回归入口](references.md#codex-兼容验证入口)。Step 6 汇总 Codex 初始化、MCP 文本读写、图片导入/导出及审阅页的兼容证据；真实 Codex 宿主未测的部分单独标为待验收，不能仅凭自动化通过声称两端完整兼容。纯文档修订只检查文档，不在本次运行产品构建或回归测试。
+
+## 2026-11-02 后续验收边界
+
+真实原项目锁已证实可取得且未修改文件；桌面重开按用户要求跳过。正常任务A的读取阶段优雅停止与事实恢复已通过：章节/三页/双图匹配，连接和项目锁释放、原共享服务保留；见[成功证据](acceptance/step6-evidence/normal-task-read-cancel-recovery-success-20261102.json)，不扩大到在途写入强中断。最新决定为暂时跳过 Step 5，恢复时仍需满足[宿主可信任务页身份](host-task-view-identity-needed.md)；旧诊断进程退出确认、Codex 缺客户端与共享服务验收转入[待办](acceptance/todos.md)。详见[剩余验收](acceptance/step6-remaining.md)。

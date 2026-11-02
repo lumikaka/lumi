@@ -1,0 +1,114 @@
+{
+  "date": "2026-11-02",
+  "observed_at_utc": "2026-11-02 07:49:22 UTC",
+  "kind": "user-confirmed-manual-permission-rejection-development-instance-not-found",
+  "target": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "prior_instance_id": "_root__lumi-dev"
+  },
+  "user_observation": {
+    "text": "已拒绝",
+    "source": "当前用户回复，承接本地文件安装确认卡拒绝操作",
+    "evidence_type": "user-reported-native-action"
+  },
+  "development_root_lookup": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"errorCode\":\"GHOST_NOT_FOUND\",\"message\":\"目标插件已卸载或当前不可用；不要重复重试同一目标；可调用 ghost_list 回查当前可用插件，或改用其它可用方式完成。\"}"
+      }
+    ],
+    "isError": true
+  },
+  "development_unscoped_lookup": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"errorCode\":\"GHOST_NOT_FOUND\",\"message\":\"目标插件已卸载或当前不可用；不要重复重试同一目标；可调用 ghost_list 回查当前可用插件，或改用其它可用方式完成。\"}"
+      }
+    ],
+    "isError": true
+  },
+  "available_plugins": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"ghosts\":[{\"id\":\"lumi\",\"namespace\":null,\"name\":\"Lumi\",\"command\":\"lumi\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":1,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}},{\"id\":\"lumi-host-acceptance-20261101\",\"namespace\":null,\"name\":\"Lumi Host Acceptance\",\"recall\":\"仅用于已授权的 Lumi Step 4–6 本机产品验收。\",\"tools\":[{\"name\":\"create_fixture\",\"description\":\"创建本探针拥有的独立空任务；更新后可用前次回执 task_id 经 Host 归属校验恢复，不重复创建。不发送消息、不启动 Agent。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"fixture\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]},\"task_id\":{\"type\":\"string\",\"pattern\":\"^[0-9a-f-]{36}$\"}},\"required\":[\"fixture\"],\"additionalProperties\":false}},{\"name\":\"run\",\"description\":\"在 Host 创建的临时项目执行产品允许工具；不接收任何目录或自报上下文。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"fixture\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]},\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"fixture\",\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"仅把顶层授权图片交给 Host 创建的 a/b 临时项目，使用未修改的产品接收适配器。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"fixture\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\",\"fixture\"],\"type\":\"object\"}},{\"name\":\"open_probe\",\"description\":\"打开当前任务或临时任务的最小只读诊断页；不抢焦点、不读作品。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"fixture\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]}},\"required\":[],\"additionalProperties\":false}},{\"name\":\"report\",\"description\":\"读取有界页面诊断与临时任务标识；不读取任务消息。\",\"parameters\":{\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}},{\"name\":\"release_fixture\",\"description\":\"撤销临时任务连接，保留用户项目与共享服务。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"fixture\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]}},\"required\":[\"fixture\"],\"additionalProperties\":false}}],\"setup\":{\"state\":\"ready\",\"revision\":5,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}],\"hint\":\"按 manual 索引用 ghost_manual 读取手册;有工具时用 ghost_call({ghost_id, namespace, tool, args}) 调用已声明工具。namespace 按条目原样保留类型：JSON null（不带引号）=root，字符串 \\\"null\\\" 是企业名；条目未提供该字段时省略。同名插件须按返回身份区分。清单实时,勿缓存。\"}"
+      }
+    ]
+  },
+  "production_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "production_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "current_plugin_tool_names": [
+    "ghost_market_search",
+    "ghost_market_install",
+    "connect_account",
+    "ghost_list",
+    "ghost_info",
+    "ghost_manual",
+    "ghost_call",
+    "media",
+    "ghost_forge_guide",
+    "ghost_forge_scaffold",
+    "ghost_forge_pack",
+    "ghost_forge_install",
+    "ghost_forge_publish",
+    "ghost_forge_publish_status",
+    "ghost_contribution_prepare",
+    "ghost_contribution_submit",
+    "ghost_contribution_status",
+    "ghost_contribution_stop",
+    "ghost_cancel_plugin_review",
+    "ghost_my_plugins"
+  ],
+  "file_integrity_evidence": "permission-manual-rejection-files-20261102.json",
+  "acceptance": {
+    "user_reported_rejection": true,
+    "pre_import_uninstall_confirmed": true,
+    "development_not_installed_after_first_install_refusal": true,
+    "first_install_refusal_verified": true,
+    "added_permission_update_rejection_verified": false,
+    "result": "本次为先卸载后的首次安装拒绝，GHOST_NOT_FOUND与原生列表无开发版符合预期；未覆盖更新拒绝。"
+  },
+  "pending": "原开发版已经恢复；新增权限更新拒绝需保留已安装开发版直接导入再拒绝，已请求新的原生操作，等待结果。",
+  "actions_this_turn": {
+    "installation_or_update": 0,
+    "enable_disable_or_uninstall": 0,
+    "development_business_calls": 0,
+    "media_generation_or_import": 0,
+    "business_writes": 0,
+    "production_read_only_runtime_check": 1,
+    "production_release": 1
+  },
+  "limits": [
+    "用户已确认先卸载旧版，因此不得将本轮GHOST_NOT_FOUND归因为拒绝删除旧版；本轮未覆盖新增权限更新拒绝。",
+    "当前插件清单只包含已启用且可用工具/手册的插件，不是完整原生安装清单。",
+    "原生文件导入不产生本任务MCP安装调用的MUTATION_CANCELLED；不伪造此结构化回执。",
+    "没有通过重新安装、改namespace、改权限或使用验收探针恢复开发入口；没有读取Host私有数据库。",
+    "既有卸载/重装和双图恢复仍是先前历史已通过结果，不由本轮异常抹除，也不当作本轮旧包保留通过。"
+  ],
+  "native_installed_list_observation": {
+    "text": "列表中已没有 Lumi（开发版）",
+    "source": "主人对本轮原生已安装列表状态问题的直接答复"
+  },
+  "subsequent_restoration_evidence": "permission-manual-rejection-restoration-20261102.json",
+  "user_pre_import_sequence_observation": {
+    "text": "导入前已卸载开发版",
+    "source": "主人本轮明确答复"
+  }
+}

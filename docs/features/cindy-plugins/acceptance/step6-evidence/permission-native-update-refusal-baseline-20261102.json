@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-02",
+  "kind": "native-added-permission-update-refusal-baseline",
+  "target_instance_id": "_root__lumi-dev",
+  "namespace": null,
+  "original_author": "build/cindy-dev/lumi-dev",
+  "test_author": "build/cindy-permission-rejection-20261102/lumi-dev",
+  "test_permission_delta": {
+    "network": {
+      "hosts": [
+        "lumi-permission-check.invalid"
+      ]
+    }
+  },
+  "baseline_install_receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"installed\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和安装，并已启用。\"}"
+      }
+    ]
+  },
+  "baseline_development_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "baseline_development_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "baseline_production_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "baseline_production_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "native_instruction": "保留现在已安装的开发版，不卸载；直接从文件导入同一已审阅测试包，核对更新及新增权限后拒绝。界面要求卸载或没有更新确认时停止。",
+  "status": "awaiting-new-native-update-refusal-observation",
+  "earlier_attempt_classification": "主人已确认先卸载后拒绝，因此上一轮仅验证首次安装拒绝，不能替代本轮更新拒绝。",
+  "expected_postcondition": "未重新安装情况下，旧build_id及CLI摘要继续可调用，正式构建及文件不变。",
+  "no_test_install_tool_submitted_this_turn": true
+}

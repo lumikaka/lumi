@@ -1,35 +1,39 @@
 # Lumi Cindy 插件作者源码
 
-`lumi/` 是独立作者目录，交付浏览器 `main.js`、零第三方依赖的 Node worker 与制作时编译的 Go CLI。当前实现运行时、项目绑定及 [Step 3 文本创作工具](../docs/features/cindy-plugins/tools.md)，尚未安装或发布。Agent 通过 list_tools / call_tool 两段式目录完成无需 Lumi 服务商的文本作品，完整流程见包内 authoring Manual。
+`lumi/` 维护一份浏览器逻辑、零第三方依赖 Node worker、Manual 与构建时编译的 Go CLI。当前实现项目绑定、文本创作、授权图片导入和受控参考图，版本 0.4.0。2026-11-02 开发版已安装并同版本原位更新，早期构建真实诊断连续 6 次成功，归档构建更新后亦已核对新指纹；修复宿主子进程代理清理导致的并发名额泄漏，最新完整自动化 79 项通过。任务审阅页、真实媒体验收及其余安装矩阵仍待完成，没有发布。安装记录与待验项见 [Step 6 状态](../docs/features/cindy-plugins/acceptance/step6-install.md)。
 
-当前包身份仍为 `lumi`，运行使用 `production + ~/.lumi`；测试临时 data-dir 不代表已有独立开发版。`lumi-dev`、`make cindy-dev` 和 `make cindy-dev-stop` 是[新增待实现要求](../docs/features/cindy-plugins/development.md)，当前不能执行这些计划命令。
+## 构建与验证
 
-现有构建与测试可在仓库根运行：
-
-```sh
-node cindy-plugins/scripts/build.mjs
-node cindy-plugins/scripts/verify.mjs step3
-go test ./internal/promptcatalog ./internal/story ./internal/textmcp ./internal/project ./cmd/lumi ./cindy-plugins/schema
-```
-
-构建只支持当前已验证的 macOS arm64，使用本机 Go 1.27.3。它生成 `lumi/bin/lumi` 与 `lumi/build-info.json`；测试使用独立临时 HOME、项目与 data-dir，需要 loopback bind/connect 权限。测试结束核对并停止自己的隔离实例、移除临时目录。不会使用默认用户数据目录、安装插件或运行 Cargo/Rust。
-
-随后用 Cindy 的 `ghost_forge_pack({dir: <仓库>/cindy-plugins/lumi})` 验证并打包，再运行：
+仅支持本次验证的 macOS arm64，使用 Go 1.27.3；运行时使用 Cindy 随包 Node，不要求用户安装 Node/Go/Lumi 桌面版。仓库根执行：
 
 ```sh
-python3 cindy-plugins/scripts/verify-package.py step3
+make cindy-build
+make cindy-dev
+node cindy-plugins/scripts/verify.mjs step4
+go test ./internal/production ./internal/files ./internal/textmcp ./internal/project ./internal/promptcatalog ./cmd/lumi ./cindy-plugins/schema
 ```
 
-不从已安装目录制作，不在运行时安装依赖。Go 二进制、build-info 与 `.cindy` 是 Git 忽略的生成物；包内包含 CLI SHA256、源 commit 和编译平台信息。现有 Lumi 图标复用自 `codex-plugins/lumi/assets/icon.png`。
+正式内容生成于 `cindy-plugins/lumi/`，身份/command 为 lumi，随包 `bin/lumi`、production 与默认 `~/.lumi`。开发内容生成于 `build/cindy-dev/lumi-dev/`，身份/command 为 lumi-dev，随包 `bin/lumi_dev`、development 与默认 `~/.lumi_dev`。源码、Manual 与业务语义共用，身份和受控 runtime-config.json 在构建时生成。build-info.json 包含 CLI SHA256、源 commit/dirty 和全部随包内容的 build_id；同版本下也可区分内容。
 
-manifest 的 `minCindyVersion: 0.1.121` 是本次 Forge scaffold 自动写入的本机版本字段；实际构建 sourceCommit 与官方 tag 不同，**这个字段不是最低正式兼容版本的证明**。本步仅交付本地开发包；正式发布前须取得符合当前 Skill 的正式版本证据并校准该字段。
+自定义开发 data-dir 使用构建参数，例如 `make cindy-dev CINDY_DEV_DATA_DIR=/private/tmp/lumi-cindy-acceptance-data`。业务工具和页面不能更改它。只有协调同一 development/data-dir 的全部使用者后，才手动 `make cindy-dev-stop`；脚本读取刚生成的同一配置，不会停止正式环境。Codex 开发版默认也用 `~/.lumi_dev`，可能共享服务。
 
-## 独立开发通道（待实现）
+自动化使用临时 HOME、作品和 data-dir；需允许本机 loopback bind/connect。测试关闭前核对实例 nonce，只清理自己的目录和服务。没有 Cargo/Rust、运行时安装依赖或公开发布。
 
-目标是同一份源码生成正式 `lumi` 与开发 `lumi-dev`；开发包携带 `bin/lumi_dev`，固定 development 环境和默认 `~/.lumi_dev`。`make cindy-dev` 将生成完整开发作者目录，再由 Forge pack/install 安装到独立开发实例，无需发布 patch。
+## Forge 包与安装
 
-修改 Go、JS、Manual 或 UI 后都要重新生成、打包并安装开发包。Cindy 执行安装后的副本，单独编译仓库 CLI 或只 pack 不会生效；Go 后台已运行时还需协调使用者、显式停止对应开发实例并重连，不能自动停止共享服务。仅改 JS/Manual 且 CLI 未变时不用停止后台。
+先用 Host `ghost_forge_pack({dir:<作者目录绝对路径>})` 打包，再核对确切产物：
 
-步骤、安装回执要求、与 Codex 开发版共享目录的注意事项及同版本刷新验收见[开发流程](../docs/features/cindy-plugins/development.md)。实施完成后再把此节改为已验证的执行入口，不提前宣称两版并存或热更新可用。
+```sh
+python3 cindy-plugins/scripts/verify-package.py step4
+python3 cindy-plugins/scripts/verify-package.py step4 development
+```
 
-运行链路和资源归属见 [runtime.md](../docs/features/cindy-plugins/runtime.md)，本步结果和边界见 [Step 3 验收记录](../docs/features/cindy-plugins/acceptance/step3-authoring-tools.md)。验证脚本默认仍写 Step 2，显式传 step3 写入 `acceptance/step3-evidence/`，不覆盖历史记录。完整文件的原生 Host 服务探针与编译结果边界审计分别使用 scripts/verify-host-file.mjs、scripts/verify-host-boundaries.mjs；它们不等同于用户手机接收或 Agent 自主创作验收。
+第二个命令要求先对 `build/cindy-dev/lumi-dev/` 执行 Forge pack。脚本核对每个包内文件与作者源码、身份、environment、CLI 执行位和 SHA256、build_id 及大小上限；输出保存到该步骤的 evidence，并按 SHA256 固定审阅 ZIP 到 build/cindy-reviewed/，避免 install 重打覆盖原件。Go 二进制、build-info、生成开发目录与 `.cindy` 都是本地生成物。
+
+构建和 pack 不安装。执行包含安装的授权任务时，再用 `ghost_forge_install` 从同一未改动作者目录安装，核对真实 instanceId/namespace/source 和安装时重打的包。开发版同版本刷新、正式/开发同时安装与只读诊断已有真实回执；独立作品主线及 Go 后台切换仍待验，不能靠 build_id 或打包结果推断。不得从 Host 已安装目录制作、改写安装副本、自动停止共享服务或上传市场。
+
+完整流程见 [开发说明](../docs/features/cindy-plugins/development.md)、[媒体契约](../docs/features/cindy-plugins/media.md)、[工具契约](../docs/features/cindy-plugins/tools.md) 和 [Step 4 验收](../docs/features/cindy-plugins/acceptance/step4-image-import.md)。历史 [Step 1](../docs/features/cindy-plugins/acceptance/step1-runtime.md)、[Step 2](../docs/features/cindy-plugins/acceptance/step2-project-binding.md)、[Step 3](../docs/features/cindy-plugins/acceptance/step3-authoring-tools.md) 记录不追记为新能力证明。
+
+manifest 的 minCindyVersion=0.1.121 沿用 Forge scaffold 的本机版本。宿主实际 sourceCommit 与官方 tag 不同，匹配公开 ref 返回 404；这不是正式最低兼容版本证据。当前按随包 Skill 与实测推进本地验收，正式发布前须校准兼容声明。图标复用 Lumi 现有品牌资源。
+
+Step 7 在源码 CLI 中新增显式的 `lumi cindy-session import --file PATH --source-session ID`，将公开文本包装文件保存到当前选择的项目；默认不采集。独立迁移、幂等存储、REST/WS 与桌面“Cindy · 只读”已通过合成项目端到端和原 Codex 回归。开发版已再次原位更新，宿主诊断核对新 build_id=d3452b2a…；实际浏览器的 320/390/1200 px 展示、实时重读和 54 条文本分页已验证。随包 CLI 不内嵌前端，页面验收使用独立 embed_frontend 构建。真实聊天仍只在私有临时样本中。格式、范围与待验项见 [手动归档](../docs/features/cindy-plugins/session-archive.md)。

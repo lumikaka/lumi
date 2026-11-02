@@ -34,7 +34,7 @@ test('unknown write result is not replayed; reread recovers the committed text',
   };
   const runtime = new Runtime({ executable: process.execPath, build: { platform: process.platform, arch: process.arch, cli_sha256: 'fixture' },
     dataDir: root, verifyBinary: false, connectionFactory: () => peer });
-  runtime.inspect = async () => ({ running: true, nonce: 'a'.repeat(64), pid: 1, endpoint: 'http://127.0.0.1:1' });
+  runtime.inspect = async () => ({ running: true, nonce: 'a'.repeat(64), pid: 1, endpoint: 'http://127.0.0.1:1', creation_protocol_version: 1 });
   t.after(async () => { await runtime.close(); await fs.rm(root, { recursive: true }); });
   const call = args => runtime.execute('call_tool', { context: { session_id: 'writer', workdir: root, workdir_is_local: true, workdir_is_read_only: false },
     arguments: { name: 'story_profile', args } });

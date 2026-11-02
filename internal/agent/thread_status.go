@@ -19,7 +19,7 @@ func RecomputeThreadStatusTx(ctx context.Context, tx *sql.Tx, threadID int64, no
 		return "", err
 	}
 
-	if threadType == ThreadTypeMCP || threadType == ThreadTypeCodexSession {
+	if threadType == ThreadTypeMCP || threadType == ThreadTypeCodexSession || threadType == ThreadTypeCindySession {
 		return ThreadIdle, nil
 	}
 

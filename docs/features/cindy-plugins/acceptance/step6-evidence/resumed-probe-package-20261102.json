@@ -1,0 +1,9 @@
+{
+  "date": "2026-11-02",
+  "kind": "resumed-probe-update",
+  "product_build_id": "bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb",
+  "reviewed_sha256": "24615170bd5451612cd0fffe7199020a2cae7478be8e8f4e02317ee25c37195c",
+  "install_repacked_sha256": "c75609e093d7e47ab98f55384e6172951dc835c158dc08bd36ab8ee8e5fa5da8",
+  "entries": 21,
+  "all_entry_bytes_equal": true
+}

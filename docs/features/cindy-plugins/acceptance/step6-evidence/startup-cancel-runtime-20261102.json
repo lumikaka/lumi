@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-02",
+  "kind": "actual-installed-product-read-only-diagnostics-not-cancellation-e2e",
+  "calls": [
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    },
+    {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb\",\"cli_sha256\":\"484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    }
+  ]
+}

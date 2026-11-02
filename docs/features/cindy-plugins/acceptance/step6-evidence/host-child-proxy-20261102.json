@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "kind": "installed-host-compiled-child-proxy-audit",
+  "source": {
+    "sourceCommit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+    "builtAt": "2026-10-30T01:16:08.865+08:00"
+  },
+  "entry": ".vite/build/nodeRuntimeWorkerProcess.js",
+  "entry_sha256": "43cb7ef576d64f2edab401634c42ed857d4a159039da6c99c17733538cba62a6",
+  "proxy_methods": [
+    "on",
+    "once",
+    "off",
+    "kill"
+  ],
+  "removeListener": false,
+  "observed_failure": "Completed calls leaked all four worker slots because removeListener() threw in finally.",
+  "fix": "Use off(); release call slot before best-effort cleanup; ignore late child abort after settlement.",
+  "verification": "Two regressions fail before fix and pass after; complete 74 tests; six consecutive actual product runtime_status calls pass."
+}

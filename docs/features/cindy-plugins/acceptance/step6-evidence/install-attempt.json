@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-01",
+  "operation": "ghost_forge_install",
+  "author": "build/cindy-dev/lumi-dev",
+  "intended_id": "lumi-dev",
+  "intended_version": "0.4.0",
+  "intended_channel": "development",
+  "reviewed_package_sha256": "5a49fd173ce44c3d07cc0f050ee7dc5fa4fef5ff5add83a41ac24731feaa629b",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"errorCode\":\"MUTATION_CANCELLED\",\"message\":\"用户拒绝了这次插件安装或更新。除非用户再次要求，不要重试。\"}"
+      }
+    ],
+    "isError": true
+  },
+  "installed": false,
+  "retried": false,
+  "probe_installed": false,
+  "notes": [
+    "Host requires renewed user instruction before another install attempt.",
+    "No instanceId, namespace or installed package fingerprint was returned."
+  ]
+}

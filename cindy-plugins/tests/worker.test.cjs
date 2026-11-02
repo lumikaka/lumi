@@ -16,12 +16,15 @@ function harness(t, runtime, options = {}) {
   const input = new PassThrough(), output = new PassThrough(), results = [], children = [];
   output.on('data', bytes => { for (const line of bytes.toString().trim().split('\n')) results.push(JSON.parse(line)); });
   const worker = createWorker({ input, output, runtime, spawnLifetime: options.noLifetime ? undefined : () => {
+    if (options.childFactory) {
+      const child = options.childFactory(); children.push(child); return Promise.resolve(child);
+    }
     const child = new EventEmitter();
     child.kill = () => { child.killed = true; child.emit('exit'); };
     children.push(child); return Promise.resolve(child);
   } });
   t.after(() => worker.close());
-  return { results, children, input, send(id, method = 'runtime_status', params = {}, cindy = { cancelWithCall: true }) {
+  return { results, children, input, close: worker.close, send(id, method = 'runtime_status', params = {}, cindy = { cancelWithCall: true }) {
     input.write(JSON.stringify({ jsonrpc: '2.0', id, method, params, cindy }) + '\n');
   } };
 }
@@ -42,6 +45,75 @@ test('Host sentinel exit cancels exactly its call while other calls finish', asy
   assert.equal(h.results.find(r => r.id === '2').result.data, 'b');
   assert.deepEqual(completed, ['b']);
   assert.equal(h.children.every(child => child.killed), true);
+});
+test('an already-exited Host child cannot dispatch a business operation', async t => {
+  let executions = 0;
+  const h = harness(t, { close: async () => {}, async execute() { executions++; return { success: true, data: null }; } }, {
+    childFactory() {
+      const child = new EventEmitter();
+      // Real Host proxy killed becomes true when child-exit was already seen.
+      child.killed = true; child.kill = () => {};
+      return child;
+    },
+  });
+  h.send('expired', 'call_tool', { arguments: { name: 'chapters', args: { action: 'write' } } });
+  await until(() => h.results.length === 1);
+  assert.equal(h.results[0].result.error?.code, 'request_cancelled');
+  assert.equal(executions, 0);
+});
+test('cancellation while awaiting Host child prevents dispatch even if runtime does not check signals', async t => {
+  let executions = 0, deliverChild;
+  const child = new EventEmitter(); child.kill = () => { child.killed = true; };
+  const h = harness(t, { close: async () => {}, async execute() { executions++; return { success: true, data: null }; } }, {
+    childFactory: () => new Promise(resolve => { deliverChild = resolve; }),
+  });
+  h.send('cancelled');
+  h.input.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 'cancelled' } }) + '\n');
+  deliverChild(child);
+  await until(() => h.results.length === 1);
+  assert.equal(h.results[0].result.error?.code, 'request_cancelled');
+  assert.equal(executions, 0); assert.equal(child.killed, true);
+});
+test('shutdown while awaiting Host child never dispatches after runtime close', async t => {
+  let executions = 0, closed = false, deliverChild;
+  const child = new EventEmitter(); child.kill = () => { child.killed = true; };
+  const h = harness(t, { close: async () => { closed = true; }, async execute() { executions++; return { success: true, data: null }; } }, {
+    childFactory: () => new Promise(resolve => { deliverChild = resolve; }),
+  });
+  h.send('closing'); await h.close(); assert.equal(closed, true);
+  deliverChild(child);
+  await until(() => child.killed === true);
+  assert.equal(executions, 0); assert.equal(h.results.length, 0);
+});
+test('Host child proxy supports off, not removeListener; completed requests free all slots', async t => {
+  const h = harness(t, { close: async () => {}, async execute() { return { success: true, data: null }; } }, {
+    childFactory() {
+      const events = new EventEmitter();
+      const child = { on: (...args) => { events.on(...args); return child; },
+        once: (...args) => { events.once(...args); return child; },
+        off: (...args) => { events.off(...args); return child; },
+        kill() { child.killed = true; events.emit('exit'); } };
+      return child;
+    },
+  });
+  for (let i = 0; i < 12; i++) {
+    h.send(String(i)); await until(() => h.results.length === i + 1);
+    assert.equal(h.results[i].result.success, true, JSON.stringify(h.results[i]));
+    assert.equal(h.children[i].killed, true);
+  }
+});
+test('child cleanup failure cannot leak a completed request or reject after replying', async t => {
+  const h = harness(t, { close: async () => {}, async execute() { return { success: true, data: null }; } }, {
+    childFactory() {
+      const events = new EventEmitter();
+      events.kill = () => { throw new Error('child already settled'); };
+      return events;
+    },
+  });
+  for (let i = 0; i < 8; i++) {
+    h.send(String(i)); await until(() => h.results.length === i + 1);
+    assert.equal(h.results[i].result.success, true);
+  }
 });
 test('missing call binding fails before dispatch; malformed JSON can recover', async t => {
   let executions = 0;

@@ -1,8 +1,12 @@
 # Lumi 运行与恢复
 
-本包实现本地运行、项目 setup 与文本创作，支持 macOS arm64。图片交接与任务审阅页尚未实现。文本流程见 `ghost_manual({ghost_id:"lumi",path:"authoring/MANUAL.md"})`。目录与任务身份由 Cindy 注入。初始化与创作规约见 `ghost_manual({ ghost_id: "lumi", path: "project/MANUAL.md" })`。
+本包实现本地运行、项目 setup、文本创作与授权图片导入，支持 macOS arm64。任务审阅页尚未实现。使用当前发现的精确身份（正式 lumi / 开发 lumi-dev）读取 authoring/MANUAL.md 与 project/MANUAL.md。目录与任务身份由 Cindy 注入。
 
-所有工具由 `list_tools` 发现，再通过 `call_tool({name:"工具名",args:{业务参数}})` 执行。先用 `runtime_status` 检查 MCP 初始化与共享服务状态。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时按项目手册调用 `project_init`。需要结束当前任务连接时使用 `runtime_release`。
+所有业务工具由 `list_tools` 发现，除顶层 receive_media 附件入口之外，通过 `call_tool({name:"工具名",args:{业务参数}})` 执行。先用 `runtime_status` 检查 MCP 初始化与共享服务状态；channel、environment、build_id 和 cli_sha256 可区分同版本开发包。已有 Lumi 项目可用 `project_overview` 读取概况；没有项目时按项目手册调用 `project_init`。需要结束当前任务连接时使用 `runtime_release`。
+
+随包 CLI 与正在运行的共享服务分别核对。`runtime_status` 的 `server_compatible=false`、`runtime=upgrade_required` 表示后台尚未支持本包需要的项目绑定与只读协议；包内 build_id/SHA256 不能证明旧后台已升级。此时业务工具在派发前返回 `cli_upgrade_required`，不会通过省略项目绑定继续执行。只读诊断没有检查后台时 `server_compatible=null`，不能据此宣称兼容。
+
+遇到 `cli_upgrade_required`，保留已有 draft、正文与共享服务，先协调同一 environment/data-dir 的其它任务或客户端。在明确获准切换后，只停止该旧服务，再用新包重连；先重读 `project_overview`、`project_setup get` 和各自 revision，再决定后续写入，不重新初始化或自动重放被拒请求。更新安装包本身不会替换已经运行的后台。
 
 `runtime_status` 可以用于只读任务，此时只检查 MCP 初始化和 ping，server_running 为 null，不检查可能创建数据目录锁的 CLI status。只读业务调用使用附加的只读 CLI 模式，只连接已运行的服务并查看已打开项目，不打开、迁移或修复作品。未打开时返回 read_only_project_not_open。不要用设置、嵌套参数、远端同名路径或伪造 `session_context` 绕过此限制。
 
@@ -14,4 +18,4 @@ worker、MCP 代理和共享 server 是三个独立生命周期。worker 回收�
 
 失败结果以 `success:false` 判断。目录或实例身份改变时，重新读取；只读/非本地错误先修正任务条件。初始化或 setup 写入在超时、取消、崩溃和结果复核失败时返回 `result_unknown`，须先重读事实状态再决定是否重试，禁止自动重放。
 
-此包是开发验收产物，未安装实测。打包成功不等于当前构建下的宿主取消、升级或卸载已通过；最低正式兼容版本也尚待正式发布证据确认。
+本包的构建或打包结果不代表当前安装实例的全部验收已经通过。实际安装、取消、升级、卸载与创作结果分别以本次工具回执核实；最低正式兼容版本仍需完整发布证据确认。

@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-02",
+  "kind": "actual-installed-identities-and-readonly-diagnostics-not-dual-project-acceptance",
+  "receipts": {
+    "production_runtime": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+          }
+        ]
+      }
+    },
+    "development_runtime": {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd\",\"cli_sha256\":\"b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+          }
+        ]
+      }
+    },
+    "production_after_release": {
+      "ok": true,
+      "result": {
+        "success": true,
+        "data": {
+          "runtime": "ready",
+          "protocol_version": "2025-03-26",
+          "server_name": "lumi-text",
+          "server_version": "1.0.0",
+          "cli_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+          "channel": "production",
+          "build_id": "bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c",
+          "cli_sha256": "c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a",
+          "environment": "production",
+          "platform": "darwin",
+          "arch": "arm64",
+          "read_only": false,
+          "server_running": true,
+          "server_observation": "verified",
+          "server_policy": "shared_retained"
+        }
+      }
+    },
+    "production_forge_install": {
+      "ok": true,
+      "action": "installed",
+      "id": "lumi",
+      "name": "Lumi",
+      "version": "0.4.0",
+      "enabled": true,
+      "instanceId": "_root__lumi",
+      "namespace": null,
+      "note": "插件已完成校验、打包和安装，并已启用。"
+    },
+    "probe_forge_install": {
+      "ok": true,
+      "action": "updated",
+      "id": "lumi-host-acceptance-20261101",
+      "name": "Lumi Host Acceptance",
+      "version": "0.0.1",
+      "enabled": true,
+      "instanceId": "_root__lumi-host-acceptance-20261101",
+      "namespace": null,
+      "note": "插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。"
+    },
+    "probe_runtime": {
+      "ok": true,
+      "result": {
+        "success": true,
+        "data": {
+          "runtime": "ready",
+          "protocol_version": "2025-03-26",
+          "server_name": "lumi-text",
+          "server_version": "1.0.0",
+          "cli_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+          "channel": "development",
+          "build_id": "d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd",
+          "cli_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+          "environment": "development",
+          "platform": "darwin",
+          "arch": "arm64",
+          "read_only": false,
+          "server_running": false,
+          "server_observation": "verified",
+          "server_policy": "shared_retained"
+        }
+      }
+    }
+  },
+  "production_existing_server_retained": true,
+  "production_backend_upgraded": false,
+  "independent_project_acceptance_pending": true,
+  "current_task_permission_mode": "auto",
+  "fixture_a_permission_mode": "ask",
+  "current_task_permission_switch_applied": false
+}

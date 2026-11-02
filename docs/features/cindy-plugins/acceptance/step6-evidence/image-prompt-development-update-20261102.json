@@ -1,0 +1,110 @@
+{
+  "kind": "forge-install-repacked-content-comparison",
+  "package": "build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy",
+  "bytes": 21341176,
+  "sha256": "e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92",
+  "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+  "cli_mode": "755",
+  "channel": "development",
+  "build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "bytes": 247225
+    },
+    {
+      "name": "bin/lumi_dev",
+      "bytes": 40420498
+    },
+    {
+      "name": "build-info.json",
+      "bytes": 410
+    },
+    {
+      "name": "ghost.json",
+      "bytes": 4337
+    },
+    {
+      "name": "main.js",
+      "bytes": 12564
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "bytes": 11676
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "bytes": 4610
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "bytes": 2675
+    },
+    {
+      "name": "node/business-specs.json",
+      "bytes": 27670
+    },
+    {
+      "name": "node/catalog.cjs",
+      "bytes": 11401
+    },
+    {
+      "name": "node/config.cjs",
+      "bytes": 977
+    },
+    {
+      "name": "node/errors.cjs",
+      "bytes": 1188
+    },
+    {
+      "name": "node/export.cjs",
+      "bytes": 4859
+    },
+    {
+      "name": "node/media.cjs",
+      "bytes": 9143
+    },
+    {
+      "name": "node/project.cjs",
+      "bytes": 5310
+    },
+    {
+      "name": "node/protocol.cjs",
+      "bytes": 9060
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "bytes": 249
+    },
+    {
+      "name": "node/runtime-config.json",
+      "bytes": 143
+    },
+    {
+      "name": "node/runtime.cjs",
+      "bytes": 31321
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "bytes": 4931
+    },
+    {
+      "name": "node/worker.cjs",
+      "bytes": 961
+    }
+  ],
+  "review_archive": "build/cindy-reviewed/lumi-dev/e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92.cindy",
+  "reviewed_archive_sha256": "e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92",
+  "install_package_sha256": "a05c4b3ec159ad2bf3c9b1adcfc6f248870e6b4febdf751a679be41010f135af",
+  "all_21_entries_byte_equal": true,
+  "file_modes_equal": true,
+  "installation": {
+    "ok": true,
+    "action": "updated",
+    "id": "lumi-dev",
+    "version": "0.4.0",
+    "enabled": true,
+    "instanceId": "_root__lumi-dev",
+    "namespace": null
+  }
+}

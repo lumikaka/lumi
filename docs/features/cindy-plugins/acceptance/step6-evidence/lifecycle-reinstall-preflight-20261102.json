@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-02",
+  "kind": "reinstallation-source-preflight-not-installation",
+  "author_dir": "build/cindy-dev/lumi-dev",
+  "review_archive": "build/cindy-reviewed/lumi-dev/e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92.cindy",
+  "review_sha256": "e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92",
+  "current_package": "build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy",
+  "current_package_sha256": "a05c4b3ec159ad2bf3c9b1adcfc6f248870e6b4febdf751a679be41010f135af",
+  "build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+  "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+  "all_21_entries_and_modes_match": true,
+  "author_tree_matches_review": true,
+  "installed_or_uninstalled_by_this_check": false
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "resumed-probe-cleanup-via-public-identity",
+  "projects_deleted": false,
+  "default_development_or_production_touched": false,
+  "diagnostic_process_cancelled": true,
+  "nonce_matched_stop": true,
+  "after_running": false,
+  "singleton_lock_free": true,
+  "diagnostic_process_exit_verified": false,
+  "remaining_owned_status_process": {
+    "pid": 20644,
+    "state": "UE"
+  }
+}

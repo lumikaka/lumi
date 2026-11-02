@@ -8,6 +8,7 @@ CODEX_OUT ?= build/codex
 CODEX_DEV_OUT ?= build/codex-dev
 CODEX_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 PYTHON ?= python3
+CINDY_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 
 deps:
 	go mod download
@@ -70,6 +71,19 @@ codex-release: codex-package
 
 codex-smoke:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/test-install-codex.py --assets "$(CODEX_OUT)"
+
+# Author directories only; Forge pack/install are explicit separate operations.
+.PHONY: cindy-build cindy-dev cindy-dev-stop
+cindy-build:
+	node cindy-plugins/scripts/build.mjs
+
+cindy-dev:
+	node cindy-plugins/scripts/build.mjs --channel development --data-dir "$(CINDY_DEV_DATA_DIR)"
+
+# Reads the generated configuration so it always stops the same development instance.
+# Run only after coordinating every client sharing that data directory.
+cindy-dev-stop:
+	node cindy-plugins/scripts/stop-dev.mjs
 
 build-linux:
 	pnpm --dir web run build

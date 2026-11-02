@@ -1,0 +1,124 @@
+{
+  "kind": "reviewed-shared-service-protocol-fix-not-installed",
+  "channel": "production",
+  "build": {
+    "channel": "production",
+    "source_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+    "source_dirty": true,
+    "go_version": "go version go1.27.3 darwin/arm64",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cli_sha256": "686a608b86fe3651d9f7cc89b57a20658a947ee1a1bea5b898597fa229f20b03",
+    "build_id": "0278cd84b4b5f31b7d64d4f04ba8bdaf197f0679812154c8edd127c73de7f346",
+    "author_source_dirty": true
+  },
+  "package_sha256": "49b6d69807e41182db308b27b06498d4aefbb997140901ab78fc557a4b1e625a",
+  "review_archive": "build/cindy-reviewed/lumi/49b6d69807e41182db308b27b06498d4aefbb997140901ab78fc557a4b1e625a.cindy",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "sha256": "3d15294e0dc184a5c5af0674d35d6d21bdca66466ed7847c1060c70c650e8f7d",
+      "mode": 384
+    },
+    {
+      "name": "bin/lumi",
+      "sha256": "686a608b86fe3651d9f7cc89b57a20658a947ee1a1bea5b898597fa229f20b03",
+      "mode": 493
+    },
+    {
+      "name": "build-info.json",
+      "sha256": "71ebcfc7e40a3708ce03344926ad84f08216c96ae551dc0f5c575666698f334a",
+      "mode": 420
+    },
+    {
+      "name": "ghost.json",
+      "sha256": "83150cc746e5ad356affd7981dfe86b3bf631ed1b11f573825d1180bbf7ff29f",
+      "mode": 384
+    },
+    {
+      "name": "main.js",
+      "sha256": "6f36cda019a64ec589fa83e7dd6233048ccb388abe74945517ff761ce2b2c6d5",
+      "mode": 384
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "sha256": "02c0d1d643ebedce4943343fda56446d27ee40a2556a61f8ba2caec95c90dbb2",
+      "mode": 420
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "sha256": "2adae7490195aba88dce70e3e402501c2f03c6a1d4e2f234a8597267cd2fc4b0",
+      "mode": 420
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "sha256": "af79a45de18065b300236e222f6a8f91e8a4f37e805c59345ba7b0b59b643a09",
+      "mode": 420
+    },
+    {
+      "name": "node/business-specs.json",
+      "sha256": "eecc460db4fe3954f8eeae38138dd597beb26208266f15c27f5fa070215fa8ef",
+      "mode": 420
+    },
+    {
+      "name": "node/catalog.cjs",
+      "sha256": "3112e793a487d9069dba9246fffea5cc47016719cc90f4fb09f6890ecdaee971",
+      "mode": 420
+    },
+    {
+      "name": "node/config.cjs",
+      "sha256": "a4619b417ac1bec72cb40436a3604efda327d44ddb962f2df43cec78e7beb16d",
+      "mode": 420
+    },
+    {
+      "name": "node/errors.cjs",
+      "sha256": "921a17dad820e8f435d7e7db5d86162b0d91066034128e6a475fa867df76c991",
+      "mode": 420
+    },
+    {
+      "name": "node/export.cjs",
+      "sha256": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594",
+      "mode": 420
+    },
+    {
+      "name": "node/media.cjs",
+      "sha256": "a83f6e46fc3f55fd89b7053514f8e6ef0ac34eeea12a23f90c76a59ef1958049",
+      "mode": 420
+    },
+    {
+      "name": "node/project.cjs",
+      "sha256": "012f6c35a52f93cf4434f619898bb45a8e5426a06341e2e98b7acb32d61892b0",
+      "mode": 420
+    },
+    {
+      "name": "node/protocol.cjs",
+      "sha256": "9eaa2959afbd6c1130ce2046e8f441a2f856767f9601523976547bb10ddd801d",
+      "mode": 420
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "sha256": "3b616dc34a6e7287d39ac3e0d0bdf8ca9128f6c924b5bbad123bb6b7fa1452e0",
+      "mode": 420
+    },
+    {
+      "name": "node/runtime-config.json",
+      "sha256": "dab1e201094eda5f4e927d3319817727fc0fc402e30356e7575bb30e006ec94a",
+      "mode": 420
+    },
+    {
+      "name": "node/runtime.cjs",
+      "sha256": "2fd5c7c5e6fe5f02bd14740d7cea85d7a059ea7fed8aae1a597fb33716a1ec87",
+      "mode": 420
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "sha256": "ee0bd77d6418bbfc05fa06ae4ce1035f1e90af43abd68c99350f4244c2e659c7",
+      "mode": 420
+    },
+    {
+      "name": "node/worker.cjs",
+      "sha256": "f7d38d66d81f0d17c92797ed9ff1760334fbc91a06048dbd7b2a900cd5df0385",
+      "mode": 420
+    }
+  ]
+}

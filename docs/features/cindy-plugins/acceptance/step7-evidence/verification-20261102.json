@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-02",
+  "commands": [
+    {
+      "command": "go test ./internal/cindyarchive ./internal/sessionimport ./internal/dbmigrate",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/cindyarchive 0.368s\nok lumi/internal/sessionimport 1.839s\nok lumi/internal/dbmigrate 38.955s",
+      "note": "Includes shared Codex and migration regression; literal synthetic fixture added afterward and checked by targeted parser run."
+    },
+    {
+      "command": "go test ./internal/cindyarchive",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/cindyarchive 0.367s"
+    },
+    {
+      "command": "go run ./cindy-plugins/archive-verify --file <private-authorized-sample> --source-session <explicit-current-task>",
+      "exit_code": 0,
+      "result": {
+        "success": true,
+        "data": {
+          "body_printed": false,
+          "database_written": false,
+          "duplicate_messages": 0,
+          "host_history_read": false,
+          "kind": "explicit-public-history-text-validation-not-import",
+          "messages": 45,
+          "omitted_messages": 1,
+          "warnings": [
+            "injected_context_omitted"
+          ]
+        }
+      }
+    }
+  ],
+  "no_cargo_or_rust": true,
+  "scope": "Parser and readonly verifier only; project import, migration and UI still pending",
+  "scope_checkpoint_note": "This parser-only checkpoint preceded the independent implementation and verification in persistence-20261102.json; pending statements above describe that earlier checkpoint."
+}

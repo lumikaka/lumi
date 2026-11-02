@@ -1,0 +1,271 @@
+{
+  "date": "2026-11-02",
+  "kind": "parent-verified-normal-cindy-production-draft-recovery",
+  "source_task_id": "c18c29ad-7dcc-4ff0-8a32-8e6c14c8858c",
+  "source_report": {
+    "filename": "正式版独立作品恢复验收报告.md",
+    "bytes": 288816,
+    "sha256": "89b0d09d87f4a92b18332f55dce440d5cb0cd96dfa39927a173c80abc9da4aa7",
+    "full_body_copied": false
+  },
+  "original_report_unchanged": true,
+  "original_report_sha256": "f04e3a3ff44e263f26cc5cfeb3bac360d863a51d2ba0f360936303aaf4744449",
+  "business_receipt_count": 69,
+  "business_writes": 9,
+  "project_init_calls": 0,
+  "plugin": {
+    "ghost_id": "lumi",
+    "namespace": null,
+    "runtime": {
+      "runtime": "ready",
+      "protocol_version": "2025-03-26",
+      "server_name": "lumi-text",
+      "server_version": "1.0.0",
+      "cli_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+      "channel": "production",
+      "build_id": "0278cd84b4b5f31b7d64d4f04ba8bdaf197f0679812154c8edd127c73de7f346",
+      "cli_sha256": "686a608b86fe3651d9f7cc89b57a20658a947ee1a1bea5b898597fa229f20b03",
+      "environment": "production",
+      "platform": "darwin",
+      "arch": "arm64",
+      "read_only": false,
+      "server_running": true,
+      "server_observation": "verified",
+      "server_compatible": true,
+      "server_creation_protocol_version": 1,
+      "server_policy": "shared_retained"
+    }
+  },
+  "project_uuid": "01a19b9b-09a5-7e44-8ab7-cc44f90ff109",
+  "project_revision_before": 1,
+  "project_revision_after": 3,
+  "setup_revision_before": 1,
+  "setup_revision_after": 2,
+  "setup_status": "ready",
+  "revision_sources_verified": 9,
+  "full_text_field_comparisons": [
+    {
+      "field": "story_md",
+      "target_uuid": "01a19bbd-edf5-7e50-b77f-a56213de8e0a",
+      "characters": 549,
+      "sha256": "99b844ce47eb6eceb148b7cf04d1a822ca0e7099ce9837e1263b1d5440f2a031",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "setting_summary",
+      "target_uuid": "01a19bbe-cbb5-7b62-bfbe-a202188b633d",
+      "characters": 221,
+      "sha256": "f56f3ada1459509fef92cc03b2c8f47a67a9611438e255179b55eb145eba30ac",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "chapter_content",
+      "target_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+      "characters": 667,
+      "sha256": "5e6605d4e15fe35ee0557a6157c92df631842fc60ca6f2d3edb9fe67b3a42c21",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_1_description_md",
+      "target_uuid": "01a19bc1-f427-77e3-a5de-e56ac17ce140",
+      "characters": 78,
+      "sha256": "c287b9866ad1583bd4194b831dda2d45a3f63114170c3644151b5134c528d7c7",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_1_storyboard_md",
+      "target_uuid": "01a19bc1-f427-77e3-a5de-e56ac17ce140",
+      "characters": 460,
+      "sha256": "ba8db69d45b61673eb4e17c124985fee6cf7d077154aeb1b14e0bdeb8879ddb4",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_2_description_md",
+      "target_uuid": "01a19bc2-dc18-7e1d-8dd1-20c774163215",
+      "characters": 72,
+      "sha256": "63bf049844778e7552872405ee75defbbd361dc1a5faf62b92c7ded161ef47ac",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_2_storyboard_md",
+      "target_uuid": "01a19bc2-dc18-7e1d-8dd1-20c774163215",
+      "characters": 486,
+      "sha256": "a63e07b7c026e08bb12821af4fd39bd9cef322e0a5b67dbd30f977416983e8ae",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_3_description_md",
+      "target_uuid": "01a19bc3-11f0-7e21-b672-611fb815a119",
+      "characters": 89,
+      "sha256": "1a94030d223fafa04c2949fe34de6ef1b998564d76679080d121b2a73915a6af",
+      "submitted_equals_reread": true
+    },
+    {
+      "field": "page_3_storyboard_md",
+      "target_uuid": "01a19bc3-11f0-7e21-b672-611fb815a119",
+      "characters": 503,
+      "sha256": "b4edb026ae0867d5f1feb533f4582facacac897491e9769a073fe89feaff7070",
+      "submitted_equals_reread": true
+    }
+  ],
+  "title_comparisons_passed": 5,
+  "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+  "chapter_revision": 1,
+  "setting_uuid": "01a19bbe-cbb5-7b62-bfbe-a202188b633d",
+  "pages": [
+    {
+      "uuid": "01a19bc1-f427-77e3-a5de-e56ac17ce140",
+      "revision": 0,
+      "section_no": 1,
+      "has_image": false
+    },
+    {
+      "uuid": "01a19bc2-dc18-7e1d-8dd1-20c774163215",
+      "revision": 0,
+      "section_no": 2,
+      "has_image": false
+    },
+    {
+      "uuid": "01a19bc3-11f0-7e21-b672-611fb815a119",
+      "revision": 0,
+      "section_no": 3,
+      "has_image": false
+    }
+  ],
+  "cross_project_read": {
+    "tool": "chapters",
+    "args": {
+      "action": "get",
+      "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8"
+    },
+    "count": 1,
+    "error_code": "LUMI_CHAPTER_NOT_FOUND"
+  },
+  "before_after_complete_data_comparisons": [
+    {
+      "name": "project_overview",
+      "args": {},
+      "complete_data_equal": true,
+      "sha256": "2f169792f6413c042abb2892ca3365e3c598cfa16ac998b14f584aef4d92e740"
+    },
+    {
+      "name": "project_setup",
+      "args": {
+        "action": "get"
+      },
+      "complete_data_equal": true,
+      "sha256": "0d601c9700e39592ea385c5f05dcb63843b84a91fa3316280cc2eed6ba4a7d1a"
+    },
+    {
+      "name": "story_profile",
+      "args": {
+        "action": "get"
+      },
+      "complete_data_equal": true,
+      "sha256": "d3e38218c45685c1034326d508c8814a27a7b8e250249576e405fe1692103fdb"
+    },
+    {
+      "name": "settings",
+      "args": {
+        "action": "list",
+        "limit": 10
+      },
+      "complete_data_equal": true,
+      "sha256": "246969b1402a41067e12fb821776cd7afd9ce87dbfd4fb992b74b0297d814207"
+    },
+    {
+      "name": "settings",
+      "args": {
+        "action": "get",
+        "setting_uuid": "01a19bbe-cbb5-7b62-bfbe-a202188b633d"
+      },
+      "complete_data_equal": true,
+      "sha256": "17a66f33440406caf13795ece839ff03f02b717c8a55ab5c52580811a61eb870"
+    },
+    {
+      "name": "chapters",
+      "args": {
+        "action": "list",
+        "limit": 10
+      },
+      "complete_data_equal": true,
+      "sha256": "aeab50d91734ab4ad1ccfea90847505bdc98d7e7d5498c28be93dd8e18dba732"
+    },
+    {
+      "name": "chapters",
+      "args": {
+        "action": "get",
+        "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d"
+      },
+      "complete_data_equal": true,
+      "sha256": "4680cf4c92ce3ae221491d8c9ded160ac0a2d9104c8c87691598371dbab3a7f3"
+    },
+    {
+      "name": "pages",
+      "args": {
+        "action": "list",
+        "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+        "limit": 10
+      },
+      "complete_data_equal": true,
+      "sha256": "f5868e9b3d54c2eb3634c5b127d49c0af68119052dad14cdde58f392a5020423"
+    },
+    {
+      "name": "pages",
+      "args": {
+        "action": "get",
+        "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+        "page_uuid": "01a19bc1-f427-77e3-a5de-e56ac17ce140"
+      },
+      "complete_data_equal": true,
+      "sha256": "98bb2dd08f73bc738491b6b7e1a328c79edd80905caafc87440fa5ff1a0cab3a"
+    },
+    {
+      "name": "pages",
+      "args": {
+        "action": "get",
+        "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+        "page_uuid": "01a19bc2-dc18-7e1d-8dd1-20c774163215"
+      },
+      "complete_data_equal": true,
+      "sha256": "f22ffbec18662c50b5b09dab7a6f3a16d6bb1bc3ffac1af31315889e363ba10d"
+    },
+    {
+      "name": "pages",
+      "args": {
+        "action": "get",
+        "chapter_uuid": "01a19bbf-768b-71f4-b9ae-c6bae2c8582d",
+        "page_uuid": "01a19bc3-11f0-7e21-b672-611fb815a119"
+      },
+      "complete_data_equal": true,
+      "sha256": "ada9f13fdd8069bfdfcb4deb9d94efe11242c889d0b681b3c2805780b537ee9e"
+    },
+    {
+      "name": "book_outline",
+      "args": {
+        "limit": 10
+      },
+      "complete_data_equal": true,
+      "sha256": "d04138079f73c956a9a1667c8b88c00d58e8df613c1c34c2a7e352c04a472c00"
+    }
+  ],
+  "runtime_release": {
+    "released": true,
+    "server_policy": "shared_retained"
+  },
+  "post_task_service_evidence": "production-recovery-service-state-20261102.json",
+  "scope": [
+    "Normal Cindy production task resumed its existing draft without initialization",
+    "Setup, story, setting, chapter and three full text/storyboard pages persisted and reread",
+    "Specified development chapter is not readable from this production project; all 12 own-data responses unchanged"
+  ],
+  "limits": [
+    "Only the specified chapter UUID rejection is host-verified, not every resource and mutation direction",
+    "Development service identity and prior artifacts are checked separately; no fresh development project business read by parent",
+    "No production images/import/exports performed in this recovery; earlier Core/PDF/ZIP evidence remains separate",
+    "Step 5 skipped; actual Codex sharing and old diagnostic exit remain deferred TODOs",
+    "Read-phase graceful-stop evidence does not claim forced in-flight write/RPC/Core cancellation"
+  ],
+  "verification_method": "Parent independently parsed complete raw tool receipts in the normal task report; no parent business read or database access to either project.",
+  "preserved_development_artifacts_evidence": "production-recovery-preserved-artifacts-20261102.json"
+}

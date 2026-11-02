@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-02",
+  "kind": "second-added-permission-update-returned-updated-and-original-package-restored",
+  "expected": "MUTATION_CANCELLED",
+  "observed": "updated",
+  "negative_acceptance_passed": false,
+  "second_update_receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "final_restore_receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "final_development_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "final_development_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "checks": {
+    "original_build_restored": true,
+    "original_cli_sha256_restored": true,
+    "development_ready": true,
+    "connection_released": true
+  },
+  "limits": [
+    "第一次主人已确认点击允许；第二次没有独立界面点击观察，不推断审批根因。",
+    "两次更新均为updated，不是新增权限拒绝通过。已恢复原包，不继续自动提交测试更新。",
+    "没有网络请求或作品写入；项目重装恢复成功记录早于权限测试，不冒称测试后又重读作品。"
+  ],
+  "final_restored_package": {
+    "sha256": "3ece1569da7587566213d4fc8fc44ab185777892a079663fb24b5f4d60aacda2",
+    "bytes": 21341176,
+    "entries": 21,
+    "frozen_archive": "build/cindy-reviewed/lumi-dev/3ece1569da7587566213d4fc8fc44ab185777892a079663fb24b5f4d60aacda2.cindy",
+    "all_entries_and_modes_match_original_review": true,
+    "network_declaration_absent": true
+  },
+  "preserved_exports": [
+    {
+      "name": "text-01a19aec-299d-7101-b8e1-2f503ef0f150.pdf",
+      "bytes": 361740,
+      "sha256": "67f061080fff48d722bd2ace6c25f936e55608b5594d3952659d7db1d6da3255",
+      "unchanged": true
+    },
+    {
+      "name": "text-01a19aec-4030-7e15-94e8-1e50c3d6d44f.zip",
+      "bytes": 2864730,
+      "sha256": "51bd06fd9a26996505b25b1ac626b55d71926bd7668493cc01a96eb03541dc54",
+      "unchanged": true
+    }
+  ]
+}

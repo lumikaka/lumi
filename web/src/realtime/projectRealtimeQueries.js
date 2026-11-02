@@ -45,11 +45,11 @@ export function projectRealtimeInvalidation(projectUuid, event, payload = {}) {
   let matched = true
   if (event.startsWith('website:')) {
     // Payloads are hints; REST reads the persisted task and website state.
-  } else if (event === 'codex_session:changed') {
+  } else if (event === 'codex_session:changed' || event === 'cindy_session:changed') {
     add('chat-threads')
     if (payload.thread_uuid) {
       add('chat-thread', payload.thread_uuid)
-      add('codex-session-items', payload.thread_uuid)
+      add(event === 'cindy_session:changed' ? 'cindy-session-items' : 'codex-session-items', payload.thread_uuid)
     }
   } else if (event === 'mcp:changed') {
     add('mcp-grants')

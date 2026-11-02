@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "kind": "probe-author-pack-before-update",
+  "reviewed_sha256": "35154b91923aedb080c815bec53ccd926a856763db8fa31f5a8d9995919bfb8a",
+  "review_archive": "build/cindy-reviewed/lumi-host-acceptance-20261101/35154b91923aedb080c815bec53ccd926a856763db8fa31f5a8d9995919bfb8a.cindy",
+  "entries": 21,
+  "cli_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+  "product_build_id": "d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd",
+  "package": "build/cindy-probe/lumi-host-acceptance-20261101/lumi-host-acceptance-20261101-0.0.1.cindy",
+  "action": "updated",
+  "instance_id": "_root__lumi-host-acceptance-20261101",
+  "namespace": null,
+  "version": "0.0.1",
+  "enabled": true,
+  "install_repack_sha256": "606aec5679f0cc7f99910d1c89474e44e297feddfbb367a0c770ee718a596b17",
+  "all_21_contents_equal": true,
+  "runtime_ready_current_build": true,
+  "existing_fixture_a_restored_from_owned_receipt": true,
+  "fixture_a_released_after_diagnostic": true,
+  "a_b_business_writes_resumed": false
+}

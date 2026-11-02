@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-02",
+  "kind": "original-production-build-after-development-read-cancellation",
+  "info": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"ghost\":{\"id\":\"lumi\",\"namespace\":null,\"name\":\"Lumi\",\"command\":\"lumi\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":1,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}}"
+      }
+    ]
+  },
+  "status": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "checks": {
+    "original_production_build_ready": true,
+    "current_connection_released": true
+  }
+}

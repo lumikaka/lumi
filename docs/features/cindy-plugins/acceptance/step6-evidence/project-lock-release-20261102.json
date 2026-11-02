@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-02",
+  "kind": "real-project-exclusive-lock-release-verification",
+  "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+  "project_root_source": "public Host session A workingDir metadata",
+  "lock_relative_path": ".lumi/project.lock",
+  "mechanism": "fcntl.flock(LOCK_EX|LOCK_NB) matches internal/project/lock_unix.go unix.Flock",
+  "open_flags": "O_RDONLY|O_NOFOLLOW on existing regular file",
+  "exclusive_lock_acquired": true,
+  "lock_released": true,
+  "lock_bytes_inode_size_mtime_unchanged": true,
+  "project_db_sha256_before": "ea2a3d095c30d78ba4d28c3c83af7c4470daa6efdb74a8cc2e1fc7dba4dfc895",
+  "project_db_sha256_after": "ea2a3d095c30d78ba4d28c3c83af7c4470daa6efdb74a8cc2e1fc7dba4dfc895",
+  "project_db_unchanged": true,
+  "desktop_ui_opened": false,
+  "limits": [
+    "只证明检查时原正常作品的项目锁可取得；不证明全部代理退出或原生桌面已重开。",
+    "本轮桌面重开已由主人明确跳过；此锁检查不替代被跳过的GUI验收。",
+    "没有写入或迁移项目，没有停止服务或修改Cindy私有数据库。"
+  ],
+  "post_read_cancel_recovery_recheck": {
+    "exclusive_lock_acquired_and_released": true,
+    "db_and_lock_bytes_unchanged": true,
+    "db_sha256": "4f35ec464d4195a01a977a34a3b12bfe1a7a5b65e4df27c9641d5c1a16a74c28",
+    "lock_inode_size_mtime_unchanged": true,
+    "source_report": "normal-task-read-cancel-recovery-success-20261102.json"
+  }
+}

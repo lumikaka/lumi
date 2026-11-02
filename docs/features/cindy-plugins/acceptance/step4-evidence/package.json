@@ -1,0 +1,96 @@
+{
+  "kind": "local-forge-archive-not-installed",
+  "package": "cindy-plugins/lumi/lumi-0.4.0.cindy",
+  "bytes": 21295885,
+  "sha256": "66e72336f0d49c8d140095fa001a043ba35bb4d4187b4d546baf4a1fa9bbda71",
+  "cli_sha256": "585353a3b36c294c6b5180f0eebeed6b0b895f46dd1bc0648c2ab77aa999e6da",
+  "cli_mode": "755",
+  "channel": "production",
+  "build_id": "184d12491aa2c5b555834a4eb99336278c4ddfc2b48287af04a70e81c37f5798",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "bytes": 247225
+    },
+    {
+      "name": "bin/lumi",
+      "bytes": 40316914
+    },
+    {
+      "name": "build-info.json",
+      "bytes": 410
+    },
+    {
+      "name": "ghost.json",
+      "bytes": 4262
+    },
+    {
+      "name": "main.js",
+      "bytes": 12564
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "bytes": 9465
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "bytes": 4610
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "bytes": 2630
+    },
+    {
+      "name": "node/business-specs.json",
+      "bytes": 27670
+    },
+    {
+      "name": "node/catalog.cjs",
+      "bytes": 11022
+    },
+    {
+      "name": "node/config.cjs",
+      "bytes": 977
+    },
+    {
+      "name": "node/errors.cjs",
+      "bytes": 1188
+    },
+    {
+      "name": "node/export.cjs",
+      "bytes": 4859
+    },
+    {
+      "name": "node/media.cjs",
+      "bytes": 9143
+    },
+    {
+      "name": "node/project.cjs",
+      "bytes": 5310
+    },
+    {
+      "name": "node/protocol.cjs",
+      "bytes": 9060
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "bytes": 249
+    },
+    {
+      "name": "node/runtime-config.json",
+      "bytes": 101
+    },
+    {
+      "name": "node/runtime.cjs",
+      "bytes": 31321
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "bytes": 4357
+    },
+    {
+      "name": "node/worker.cjs",
+      "bytes": 961
+    }
+  ]
+}

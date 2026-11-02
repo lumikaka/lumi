@@ -90,6 +90,7 @@ func runDaemon(opt options) error {
 	value := instance{Endpoint: cfg.FrontendURL, PID: os.Getpid(), Environment: opt.environment, Nonce: nonce}
 	registerInitialization(application.Echo, value, projects)
 	registerSessionImports(application.Echo, value, projects, application.RealtimeHub())
+	registerCindySessionImports(application.Echo, value, projects, application.RealtimeHub())
 	registerTextAuthoring(application.Echo, value, projects, application.RealtimeHub())
 	shutdown := make(chan struct{}, 1)
 	application.GET(instanceRoute, func(c echo.Context) error { return serveIdentity(c, value, projects) })
@@ -157,5 +158,5 @@ func serveIdentity(c echo.Context, value instance, projects *project.Manager) er
 		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
-	return httpapi.Success(c, 200, instanceStatus{instance: value, Running: true, OpenProjects: items})
+	return httpapi.Success(c, 200, instanceStatus{instance: value, Running: true, OpenProjects: items, CreationProtocolVersion: creationProtocolVersion})
 }

@@ -1,0 +1,35 @@
+{
+  "format": "lumi.cindy-public-history",
+  "version": 1,
+  "source": "cindy_helper.get_chat_history",
+  "source_session_id": "example-host-task",
+  "captured_at": "2026-01-01T12:01:00Z",
+  "cutoff_at": "2026-01-01T12:00:00Z",
+  "pages": [
+    {
+      "request": {"session_ids": ["example-host-task"], "roles": ["user", "assistant"], "to": "2026-01-01T12:00:00Z", "limit": 2, "order": "desc"},
+      "response": {
+        "ok": true,
+        "sessions": {"example-host-task": {"title": "合成创作示例", "agentKind": "codex", "workingDir": "/example/book"}},
+        "messages": [
+          {"id": "example-003", "sessionId": "example-host-task", "role": "assistant", "content": "灯光照亮了朋友回家的路。", "createdAt": "2026-01-01T11:00:00Z"},
+          {"id": "example-002", "sessionId": "example-host-task", "role": "user", "content": {"text": "再写一页。", "images": [], "files": [], "slashCommandRanges": []}, "createdAt": "2026-01-01T10:00:00Z"}
+        ],
+        "nextCursor": "example-cursor",
+        "hasMore": true,
+        "query": {"session_ids": ["example-host-task"], "to": "2026-01-01T12:00:00Z", "roles": ["user", "assistant"], "roles_defaulted": false, "include_rewound": false, "include_full_history": false, "auto_window_days": 0, "effective_from": null, "limit": 2, "order": "desc"}
+      }
+    },
+    {
+      "request": {"session_ids": ["example-host-task"], "roles": ["user", "assistant"], "to": "2026-01-01T12:00:00Z", "limit": 2, "order": "desc", "cursor": "example-cursor"},
+      "response": {
+        "ok": true,
+        "sessions": {"example-host-task": {"title": "合成创作示例", "agentKind": "codex", "workingDir": "/example/book"}},
+        "messages": [{"id": "example-001", "sessionId": "example-host-task", "role": "user", "content": "再写一页。", "createdAt": "2026-01-01T10:00:00Z"}],
+        "nextCursor": null,
+        "hasMore": false,
+        "query": {"session_ids": ["example-host-task"], "to": "2026-01-01T12:00:00Z", "roles": ["user", "assistant"], "roles_defaulted": false, "include_rewound": false, "include_full_history": false, "auto_window_days": 0, "effective_from": null, "limit": 2, "order": "desc"}
+      }
+    }
+  ]
+}

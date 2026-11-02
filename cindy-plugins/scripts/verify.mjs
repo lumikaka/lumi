@@ -15,6 +15,7 @@ mkdirSync(evidence, { recursive: true });
 const record = { date: new Date().toISOString(), kind: 'automated-not-cindy-host', command: `node cindy-plugins/scripts/verify.mjs ${step}`,
   node: process.version, platform: process.platform, arch: process.arch,
   build: JSON.parse(readFileSync(path.join(repo, 'cindy-plugins/lumi/build-info.json'), 'utf8')),
+  development_build: JSON.parse(readFileSync(path.join(repo, 'build/cindy-dev/lumi-dev/build-info.json'), 'utf8')),
   exit_code: result.status, stdout: result.stdout, stderr: result.stderr };
 writeFileSync(path.join(evidence, 'automated.json'), JSON.stringify(record, null, 2) + '\n');
 process.exit(result.status ?? 1);

@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-02",
+  "kind": "native-cindy-development-plugin-disable-verification",
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "instance_id": "_root__lumi-dev"
+  },
+  "operator": {
+    "action": "Disabled the development plugin using the native Cindy detail-page switch",
+    "user_report": "已停用 Lumi（开发版）"
+  },
+  "disabled_discovery": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":false,\"errorCode\":\"GHOST_ASLEEP\",\"message\":\"目标插件已被停用\"}"
+        }
+      ],
+      "isError": true
+    }
+  },
+  "production_runtime_while_development_disabled": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    }
+  },
+  "exported_files_after_disable": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "39d63c",
+      "wall_time_seconds": 0.045520416,
+      "exit_code": 0,
+      "original_token_count": 59,
+      "output": "PASS after development disable: lumi-exports/text-01a19aec-299d-7101-b8e1-2f503ef0f150.pdf size and SHA256 unchanged\nPASS after development disable: lumi-exports/text-01a19aec-4030-7e15-94e8-1e50c3d6d44f.zip size and SHA256 unchanged\n"
+    }
+  },
+  "checks": {
+    "development_discovery_returns_GHOST_ASLEEP": true,
+    "production_runtime_ready": true,
+    "production_server_running": true,
+    "production_build_id_matches_previous_install": true,
+    "pdf_and_zip_task_files_preserved": true,
+    "project_writes_attempted_while_disabled": 0,
+    "host_install_files_modified_directly": false
+  },
+  "limits": [
+    "停用结果来自实时Host发现；没有在停用状态下尝试业务写入。",
+    "本次验证正式插件只读运行诊断，不代表正式独立作品创建矩阵通过。",
+    "尚未验证开发后台退出、残留进程、Codex同时共享或卸载；不由GHOST_ASLEEP推断这些结果。",
+    "项目的正常重开/两版图片和当前选择需重新启用后在原作品任务读取；现阶段仅独立确认任务导出文件保留。"
+  ],
+  "next": "User has been asked to re-enable the same development plugin so recovery can be checked."
+}

@@ -7,6 +7,16 @@ import { projectRealtimeInvalidation, uniqueQueryKeys } from './projectRealtimeQ
 
 const projectUuid = 'project-uuid'
 
+test('Cindy imports reread their own history without touching Codex records', () => {
+  const result = projectRealtimeInvalidation(projectUuid, 'cindy_session:changed', { thread_uuid: 'cindy-thread' })
+  assert.equal(result.invalidateAll, false)
+  assert.deepEqual(result.queryKeys, [
+    ['chat-threads', projectUuid],
+    ['chat-thread', projectUuid, 'cindy-thread'],
+    ['cindy-session-items', projectUuid, 'cindy-thread'],
+  ])
+})
+
 test('Codex imports invalidate only the imported thread history and shared list', () => {
   const result = projectRealtimeInvalidation(projectUuid, 'codex_session:changed', { thread_uuid: 'imported-thread' })
   assert.equal(result.invalidateAll, false)

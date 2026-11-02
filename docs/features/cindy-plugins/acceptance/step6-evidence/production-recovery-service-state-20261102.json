@@ -1,0 +1,34 @@
+{
+  "recorded_at_utc": "2026-11-02T10:31:28.504Z",
+  "kind": "production-recovery-post-task-read-only-service-observation",
+  "production": {
+    "data": {
+      "endpoint": "http://127.0.0.1:49899",
+      "pid": 9912,
+      "environment": "production",
+      "nonce": "150cf6c9dd364f37fbd34d6516c8795ceeed521a6643fe8234c37d27c064566a",
+      "running": true,
+      "open_projects": [],
+      "creation_protocol_version": 1
+    },
+    "success": true
+  },
+  "development": {
+    "data": {
+      "endpoint": "http://127.0.0.1:61001",
+      "pid": 54965,
+      "environment": "development",
+      "nonce": "188ba91d21ca7689594a6712212a51980f6db55f617eb5e6777d6faec421b798",
+      "running": true,
+      "open_projects": []
+    },
+    "success": true
+  },
+  "task": {
+    "session_id": "c18c29ad-7dcc-4ff0-8a32-8e6c14c8858c",
+    "phase": "finished",
+    "queued_count": 0,
+    "last_summary": "9 项完整内容逐字一致；LUMI_CHAPTER_NOT_FOUND；全文及 revision 未变，连接释放。"
+  },
+  "no_business_calls_by_parent": true
+}

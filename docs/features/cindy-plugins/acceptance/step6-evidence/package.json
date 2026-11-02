@@ -1,0 +1,97 @@
+{
+  "kind": "local-forge-archive-not-installed",
+  "package": "cindy-plugins/lumi/lumi-0.4.0.cindy",
+  "bytes": 21296126,
+  "sha256": "9167b89fdf37e4003de1292bb16cd4961d89e8368d15bf2c86864cc8d6dbf721",
+  "cli_sha256": "585353a3b36c294c6b5180f0eebeed6b0b895f46dd1bc0648c2ab77aa999e6da",
+  "cli_mode": "755",
+  "channel": "production",
+  "build_id": "06eee5467aaed586a67f85a2f4d96f1cd2b57f08602c42990a099b1458942cde",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "bytes": 247225
+    },
+    {
+      "name": "bin/lumi",
+      "bytes": 40316914
+    },
+    {
+      "name": "build-info.json",
+      "bytes": 410
+    },
+    {
+      "name": "ghost.json",
+      "bytes": 4262
+    },
+    {
+      "name": "main.js",
+      "bytes": 12564
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "bytes": 9465
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "bytes": 4610
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "bytes": 2630
+    },
+    {
+      "name": "node/business-specs.json",
+      "bytes": 27670
+    },
+    {
+      "name": "node/catalog.cjs",
+      "bytes": 11022
+    },
+    {
+      "name": "node/config.cjs",
+      "bytes": 977
+    },
+    {
+      "name": "node/errors.cjs",
+      "bytes": 1188
+    },
+    {
+      "name": "node/export.cjs",
+      "bytes": 4859
+    },
+    {
+      "name": "node/media.cjs",
+      "bytes": 9143
+    },
+    {
+      "name": "node/project.cjs",
+      "bytes": 5310
+    },
+    {
+      "name": "node/protocol.cjs",
+      "bytes": 9060
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "bytes": 249
+    },
+    {
+      "name": "node/runtime-config.json",
+      "bytes": 101
+    },
+    {
+      "name": "node/runtime.cjs",
+      "bytes": 31321
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "bytes": 4931
+    },
+    {
+      "name": "node/worker.cjs",
+      "bytes": 961
+    }
+  ],
+  "review_archive": "build/cindy-reviewed/lumi/9167b89fdf37e4003de1292bb16cd4961d89e8368d15bf2c86864cc8d6dbf721.cindy"
+}

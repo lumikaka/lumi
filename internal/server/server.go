@@ -10,6 +10,7 @@ import (
 
 	"lumi/internal/agent"
 	"lumi/internal/appstore"
+	"lumi/internal/cindyarchive"
 	"lumi/internal/config"
 	"lumi/internal/directoryopener"
 	"lumi/internal/directorypicker"
@@ -365,6 +366,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 	}
 	configureMCPManagement(api, mcpService, cfg)
 	httpapi.RegisterCodexSessionHistory(api, &sessionimport.Service{Projects: projects})
+	httpapi.RegisterCindySessionHistory(api, &cindyarchive.Service{Projects: projects})
 	configureAgentProjectAPIGateway(e, agentService)
 	if err := projectCreationService.Reconcile(context.Background()); err != nil {
 		return nil, err

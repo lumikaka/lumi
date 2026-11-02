@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-02",
+  "kind": "native-cindy-development-plugin-uninstall-verification",
+  "operator_report": "已卸载 Lumi（开发版）",
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "previous_instance_id": "_root__lumi-dev"
+  },
+  "development_discovery": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":false,\"errorCode\":\"GHOST_NOT_FOUND\",\"message\":\"目标插件已卸载或当前不可用；不要重复重试同一目标；可调用 ghost_list 回查当前可用插件，或改用其它可用方式完成。\"}"
+        }
+      ],
+      "isError": true
+    }
+  },
+  "production_runtime": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    }
+  },
+  "export_files": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "0b7d5f",
+      "wall_time_seconds": 0.055709,
+      "exit_code": 0,
+      "original_token_count": 33,
+      "output": "PASS after development uninstall: pdf bytes and SHA256 preserved\nPASS after development uninstall: zip bytes and SHA256 preserved\n"
+    }
+  },
+  "development_service_readonly_status": {
+    "command": "build/cindy-dev/lumi-dev/bin/lumi_dev status --environment development --data-dir /private/tmp/lumi-cindy-step4-dev-data --json --timeout 4s --read-only",
+    "exit_code": 0,
+    "receipt": {
+      "data": {
+        "endpoint": "http://127.0.0.1:61001",
+        "pid": 54965,
+        "environment": "development",
+        "nonce": "188ba91d21ca7689594a6712212a51980f6db55f617eb5e6777d6faec421b798",
+        "running": true,
+        "open_projects": []
+      },
+      "success": true
+    }
+  },
+  "checks": {
+    "development_discovery_returns_GHOST_NOT_FOUND": true,
+    "production_still_ready_and_build_unchanged": true,
+    "pdf_and_zip_bytes_preserved": true,
+    "shared_development_service_retained": true,
+    "no_projects_open_in_retained_service": true,
+    "service_started_stopped_or_killed_by_source_task": false
+  },
+  "limits": [
+    "Host发现与原生只读status证明上述状态，不证明全部代理进程退出或真实Codex并发客户端仍在使用。",
+    "卸载后的项目与双图保留将在正常Forge重装后由原作品任务重新读取验证，尚未据导出文件保留推断项目已恢复。"
+  ]
+}

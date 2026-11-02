@@ -1,0 +1,6 @@
+{
+  "channel": "production",
+  "environment": "production",
+  "binary": "lumi",
+  "data_dir": null
+}

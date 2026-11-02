@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-02",
+  "fix": "Host child proxy off() support; release completed RPC capacity even when child cleanup throws",
+  "development": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "probe_initial": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"installed\",\"id\":\"lumi-host-acceptance-20261101\",\"name\":\"Lumi Host Acceptance\",\"version\":\"0.0.1\",\"enabled\":true,\"instanceId\":\"_root__lumi-host-acceptance-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和安装，并已启用。\"}"
+      }
+    ]
+  },
+  "probe_fix": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-host-acceptance-20261101\",\"name\":\"Lumi Host Acceptance\",\"version\":\"0.0.1\",\"enabled\":true,\"instanceId\":\"_root__lumi-host-acceptance-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "probe_recovery": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-host-acceptance-20261101\",\"name\":\"Lumi Host Acceptance\",\"version\":\"0.0.1\",\"enabled\":true,\"instanceId\":\"_root__lumi-host-acceptance-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  }
+}

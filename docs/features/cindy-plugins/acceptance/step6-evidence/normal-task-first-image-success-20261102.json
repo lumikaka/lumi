@@ -1,0 +1,285 @@
+{
+  "date": "2026-11-02",
+  "kind": "normal-lumi-dev-task-first-image-generation-import-reread-success",
+  "source_task_id": "a0964e96-ba88-4c58-af32-4c0d356b7530",
+  "source_report": {
+    "filename": "图片生成导入复验报告.md",
+    "sha256": "c2792972b3ef1d17f339e53ee74fc3f570a29a713df287d75d5c89a12d24d32f",
+    "full_story_or_prompt_copied": false,
+    "binary_image_copied": false,
+    "core_invocation_id_omitted_by_report": true
+  },
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "channel": "development",
+    "environment": "development",
+    "build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+    "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47"
+  },
+  "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+  "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+  "page_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+  "core": {
+    "model_id": "openai/gpt-image-2",
+    "provider_id": "openai",
+    "guide_revision": 3,
+    "requested_size": "1024x768",
+    "reference_images_supplied": 0,
+    "completion_receipt_from_report": {
+      "xdt_image_urls": [
+        "cindy-media://blobs/be9e712ebc226eca2ded54b64a1608a170fb8d194345144118ea01cf21998f16.png"
+      ],
+      "hint": "请在最终回复中使用返回的 cindy-media:// 地址只嵌入展示一次；若未嵌入，客户端会用工具结果兜底展示。",
+      "ok": true,
+      "status": "complete"
+    }
+  },
+  "prompt_composition": {
+    "fragment_keys": [
+      "before_image",
+      "section_reference_absent"
+    ],
+    "final_key": "section_image",
+    "render_calls": 3,
+    "generation_prompt_char_count": 1473,
+    "generation_prompt_sha256": "e8b43f9187e60fa5ff9a5968bad14ae19ede837afee42355fe6b18a4b04279a9",
+    "matches_imported_metadata": true,
+    "project_style_text_conflicts_with_visible_text_requirement": true,
+    "conflicting_style_or_saved_page_edited": false
+  },
+  "image_write_back_from_report": {
+    "expected_revision": 0,
+    "slot": "page_image",
+    "target_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+  },
+  "import_data_from_report_with_prompt_replaced_by_hash": {
+    "asset": {
+      "byte_size": 2861885,
+      "content_url": "/media/projects/01a199d7-323a-7017-a5da-1d93303f487e/assets/01a19ad5-745d-71c1-b6ff-998d15b3f8d6/content",
+      "created_at": "2026-11-02T05:57:22.795875Z",
+      "height": 1086,
+      "kind": "image",
+      "mime_type": "image/png",
+      "original_filename": "source.png",
+      "purpose": "comic_section_image",
+      "source_type": "imported",
+      "status": "ready",
+      "uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+      "width": 1448,
+      "metadata": {
+        "description": "",
+        "fit_mode": "keep",
+        "input_height": 1086,
+        "input_width": 1448,
+        "origin": "host_generated",
+        "target_height": 3,
+        "target_width": 4,
+        "original_prompt_sha256": "e8b43f9187e60fa5ff9a5968bad14ae19ede837afee42355fe6b18a4b04279a9",
+        "original_prompt_char_count": 1473
+      }
+    },
+    "fit_mode": "keep",
+    "input_size": {
+      "height": 1086,
+      "width": 1448
+    },
+    "ratio_deviation": 0,
+    "ratio_matches": true,
+    "revision": 1,
+    "target": {
+      "expected_revision": 1,
+      "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+      "ratio_tolerance": 0.02,
+      "recommended_ratio": {
+        "height": 2,
+        "width": 3
+      },
+      "slot": "page_image",
+      "suggested_fit": "crop",
+      "target_ratio": {
+        "height": 3,
+        "width": 4
+      },
+      "target_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+    },
+    "variant_uuid": "01a19ad5-745c-7ba0-99c8-6b751bb67458",
+    "version_no": 1,
+    "warnings": [],
+    "source_sha256": "be9e712ebc226eca2ded54b64a1608a170fb8d194345144118ea01cf21998f16",
+    "source_bytes": 2861885,
+    "source_mime": "image/png"
+  },
+  "read_image_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+        "mime_type": "image/jpeg",
+        "width": 768,
+        "height": 576,
+        "reference_delivery": {
+          "kind": "bounded_preview",
+          "deposited": true
+        },
+        "reference_media_url": "cindy-media://blobs/8b70f810f3f25f9119b8bf701704b815b45ef8bc0b0cff6addef77f074c35e3e.jpg"
+      }
+    }
+  },
+  "page_image_selection_from_report": {
+    "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+    "revision": 1,
+    "current_storyboard": {
+      "uuid": "01a19a9f-e072-7399-99ec-4e8ab2b56d5a",
+      "version_no": 1
+    },
+    "current_image": {
+      "uuid": "01a19ad5-745c-7ba0-99c8-6b751bb67458",
+      "version_no": 1,
+      "source_type": "host_generated",
+      "asset": {
+        "uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+        "width": 1448,
+        "height": 1086,
+        "byte_size": 2861885,
+        "mime_type": "image/png",
+        "status": "ready"
+      }
+    }
+  },
+  "direct_comparisons_from_report": {
+    "page_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+    "page_uuid_stable": true,
+    "page_revision_before": 0,
+    "page_revision_after": 1,
+    "image_target_expected_revision": 0,
+    "image_write_back_expected_revision": 0,
+    "submitted_expected_revision": 0,
+    "import_revision": 1,
+    "current_image_was_null": true,
+    "asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+    "page_selected_asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+    "read_image_asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+    "asset_uuid_consistent": true,
+    "variant_uuid_consistent": true,
+    "image_version_no": 1,
+    "description_exact_match": true,
+    "storyboard_exact_match": true,
+    "storyboard_uuid_unchanged": true,
+    "generation_import_prompt_exact_match": true,
+    "stored_prompt_exact_match": true,
+    "source_sha256": "be9e712ebc226eca2ded54b64a1608a170fb8d194345144118ea01cf21998f16",
+    "source_bytes": 2861885,
+    "original_width": 1448,
+    "original_height": 1086,
+    "original_ratio_is_4_3": true,
+    "preview_width": 768,
+    "preview_height": 576,
+    "fit_mode": "keep",
+    "ratio_matches": true,
+    "core_request_count": 1,
+    "import_count": 1,
+    "poll_count": 0
+  },
+  "outline_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "cursor_pagination": {
+          "has_more": false,
+          "next_cursor": "4",
+          "per_page": 20,
+          "prev_cursor": "0"
+        },
+        "items": [
+          {
+            "chapter_code": "vol01.ch01",
+            "has_text": true,
+            "kind": "chapter",
+            "revision": 1,
+            "title": "把光放低一点",
+            "uuid": "01a199e6-89e9-7213-a333-924bffa24af8"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": true,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 1,
+            "section_no": 1,
+            "title": "借一盏灯",
+            "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 2,
+            "title": "河边的小声音",
+            "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 3,
+            "title": "把光放低一点",
+            "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3"
+          }
+        ]
+      }
+    }
+  },
+  "release_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "released": true,
+        "server_policy": "shared_retained"
+      }
+    }
+  },
+  "visual_review_reported": {
+    "preview_size": [
+      768,
+      576
+    ],
+    "page_text_visually_matches": true,
+    "independent_ocr_performed": false,
+    "grandmother_more_visible_than_storyboard": true,
+    "additional_background_lamp": true,
+    "artwork_fully_approved": false,
+    "whole_book_character_consistency_verified": false
+  },
+  "scope": {
+    "first_page_core_generation": true,
+    "host_authorized_attachment_import": true,
+    "asset_variant_page_reread": true,
+    "bounded_preview_deposit": true,
+    "reference_image_edit": false,
+    "other_page_images": false,
+    "pdf_zip_export": false,
+    "four_view_task_review": false,
+    "mobile_download_received": false,
+    "permission_mode_verified": false
+  },
+  "limits": [
+    "父任务核对用户提供的指定复验报告、成功回执和公开任务摘要；没有重放生成、导入或独立读取项目。",
+    "正文/分镜逐字一致和画面观察来自执行任务报告，本次不另作独立目视或 OCR 结论。",
+    "受控预览寄存成功不等于参考图参与编辑；第2/3页仍无图片。",
+    "本记录只增加真实第1页链路证据，旧失败、转交拒绝与后台停止回执保持历史原样。"
+  ]
+}

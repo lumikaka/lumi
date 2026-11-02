@@ -2,9 +2,20 @@
 
 ## 状态与实施范围
 
-2026-11-01 补充的开发要求，**尚未实现或完成安装验收**。当前 `cindy-plugins/lumi/` 的 Step 2 包虽然称为“开发包”，插件身份仍为 `lumi`，worker 固定使用 `production + ~/.lumi`；自动化中的临时 HOME/data-dir 只隔离测试，不代表已有可日常使用的独立开发版。
+2026-11-02 已实现构建与运行配置隔离；开发版0.4.0首次安装、同来源同版本刷新及新构建诊断、两身份并存、正常开发作品媒体/候选/PDF/ZIP和旧专用后台切换均已通过。停用/启用、卸载/重装及作品/双图恢复、首次安装和新增权限更新拒绝亦通过，见[生命周期证据](acceptance/step6-lifecycle.md)。正式后台协议修复与授权切换后，普通正式独立作品从已有 draft 完成一章三页，指定开发章节读取被语义拒绝，前后完整数据不变，见[恢复成功证据](acceptance/step6-evidence/normal-task-production-recovery-success-20261102.json)。真实Codex共享与旧诊断退出按用户决定留为[待办](acceptance/todos.md)，历史Step 2/3包不追记为开发通道证明。当前范围见[Step 4–7状态](acceptance/step4-step7-status.md)。
 
-本文的 `make cindy-dev`、`make cindy-dev-stop` 和开发产物目录均为待实现契约，不是当前可执行入口。现有构建命令见[作者 README](../../../cindy-plugins/README.md)。[Step 1](step1-runtime-cli.md) 补齐构建与运行隔离，[Step 6](step6-plugin-install.md) 完成实际安装、同版本更新和并存验收；历史验收记录保持原样。
+`make cindy-build` 在作者目录生成正式包内容；`make cindy-dev` 从同一源码生成完整开发作者目录 `build/cindy-dev/lumi-dev/`。`make cindy-dev-stop` 读取该目录内受控 runtime-config.json，并显式执行对应 development/data-dir 的 stop，不依赖当前环境变量。构建、停止都不会安装或发布；先协调共享该服务的使用者，再手动执行停止。
+
+```sh
+make cindy-build
+make cindy-dev
+# 需要独立验收服务时：
+make cindy-dev CINDY_DEV_DATA_DIR=/private/tmp/lumi-cindy-acceptance-data
+# 仅在协调同一 development 服务的全部使用者之后：
+make cindy-dev-stop
+```
+
+开发 CLI 用 `-X main.defaultEnvironment=development` 编译，worker 再对 mcp/status 显式传 environment/data-dir。自定义 data-dir 固定进入生成包；停止脚本读取同一配置，不能因 make 命令的临时变量变化停错服务。build-info 同时记录 CLI 指纹与全部随包源文件/配置的 build_id；同版本源码变化可以区分，实际安装是否已刷新仍须真实工具回执。
 
 ## 一份源码，两个入口
 
@@ -25,11 +36,11 @@
 
 ## 修改源码后，重新打包并安装开发包
 
-本流程用于开发入口实现之后。日常本地迭代无需发布 GitHub Release、创建 Tag、递增公开 patch 或提交插件市场。执行电脑是实际运行插件的 Mac；手机可作为控制端，安装回执必须核对该 Mac，不能用控制端版本或路径替代。
+以下构建入口已经实现，安装动作仍需走实际 Forge 回执。日常本地迭代无需发布 GitHub Release、创建 Tag、递增公开 patch 或提交插件市场。执行电脑是实际运行插件的 Mac；手机可作为控制端，安装回执必须核对该 Mac，不能用控制端版本或路径替代。
 
-1. **修改共享源码并生成开发目录。** 运行规划的 `make cindy-dev`。Go 变化必须重新编译随包 `bin/lumi_dev`；JS、Manual、manifest 或 UI 变化也必须重新生成相应文件。允许构建器复用已验证未变的 CLI，但不得漏复制变更或使用旧指纹。检查输出身份为 `lumi-dev`、环境为 development、data-dir 为本次开发目录，并校验执行位和包体限制。
+1. **修改共享源码并生成开发目录。** 运行 `make cindy-dev`。Go 变化必须重新编译随包 `bin/lumi_dev`；JS、Manual、manifest 或 UI 变化也必须重新生成相应文件。允许构建器复用已验证未变的 CLI，但不得漏复制变更或使用旧指纹。检查输出身份为 `lumi-dev`、环境为 development、data-dir 为本次开发目录，并校验执行位和包体限制。
 2. **先打包供审阅。** 从生成的开发作者目录调用 `ghost_forge_pack({dir: <开发作者目录绝对路径>})`，记录 `.cindy` 的真实路径、版本、SHA256、条目清单和 CLI 指纹。当前宿主随包打包契约允许同版本重新打包和本地覆盖安装；产品的同版本刷新仍须实测。不能用市场提审的版本规则要求每次本地开发发 patch。
-3. **协调正在运行的开发任务。** 更新前结束或取消本次开发实例的在途操作，释放任务连接，关闭/撤销旧页面的订阅和 focus/wake 唤醒资格。如果 Go CLI 改动需要重启，协调同一 environment/data-dir 的全部使用者，再显式执行规划的 `make cindy-dev-stop`。该命令只能调用对应开发 CLI 的 `stop --environment development --data-dir <同一开发目录>`；不能以默认 `lumi stop`、按 PID 强杀或删锁替代，也不能因是开发目录就认为服务由本插件独占。
+3. **协调正在运行的开发任务。** 更新前结束或取消本次开发实例的在途操作，释放任务连接，关闭/撤销旧页面的订阅和 focus/wake 唤醒资格。如果 Go CLI 改动需要重启，协调同一 environment/data-dir 的全部使用者，再显式执行 `make cindy-dev-stop`。该命令只能调用对应开发 CLI 的 `stop --environment development --data-dir <同一开发目录>`；不能以默认 `lumi stop`、按 PID 强杀或删锁替代，也不能因是开发目录就认为服务由本插件独占。
 4. **安装生成的开发包。** 在已有开发安装委托范围内，从刚审阅且未再编辑的同一作者目录调用 `ghost_forge_install({dir: <同一开发作者目录绝对路径>})`。它会重新打包并安装此次生成的包，不能把先前的 `.cindy` 路径误作 `dir`。首次安装默认个人范围；更新沿用准确的开发 `instanceId`、namespace 和来源。出现多个候选时按回执选择开发实例并传 `target_instance_id`，不能选择正式 `lumi`、改 namespace 或额外装副本来绕过冲突。沿用宿主正常权限确认；拒绝时保留未完成状态，不自动重试。
 5. **核对真正安装的结果。** 留存 install 的实际包指纹、清单、版本、来源、`instanceId`、namespace 和执行电脑，与审阅包逐项比较；Forge 重新打包后的 SHA 可能变化，不假定字节恒定或仅元数据变化。开发更新只替换对应开发实例，正式插件的启用状态、配置和数据不变。同版本下用源 commit/dirty 与内容指纹区分构建，不能只看 manifest version。
 6. **重新建立连接并验证。** 在独立测试绘本目录重新发现开发工具，调用运行诊断和项目概况，核对实际开发 channel、随包 CLI 构建标识、项目 UUID 与新 server 代次。已有会话未刷新时按当前宿主提示重新打开任务/会话，必要时重启宿主；不承诺热加载。诊断仍不向 Agent/页面暴露私有路径、endpoint、PID 或 nonce；实例代次与路径一致性由测试/运行时内部核验。只有实际调用成功后才报告新开发包可用。
@@ -42,7 +53,7 @@
 
 `make cindy-dev` 只生成开发作者目录，不暗中安装或发布；“构建并安装开发版”的明确委托则包含后续 Forge pack/install，沿用已有授权，不重复询问。普通开发不调用公开/组织发布工具，不替换市场中的正式实例或改变其来源。不要把开发身份或 namespace 当作绕过正式版本提交权限的方式。
 
-实施时按真正执行电脑的当前 `cindy-plugin-creator` 核对 Forge 契约和精确源码/运行证据；本文不是新增宿主兼容性证明。现有来源限制见 [开发依据](references.md)。尚未取得同版本更新、双实例并存或新工具发现的真实回执时保留待验，不把 pack 成功当安装成功。
+实施时按真正执行电脑的当前 `cindy-plugin-creator` 核对 Forge 契约和精确源码/运行证据；本文不是新增宿主兼容性证明。现有来源限制见 [开发依据](references.md)。同版本更新、工具发现与诊断回执见 [Step 6 验收](acceptance/step6-install.md)；双实例并存等未测项保留待验，不把 pack 成功当安装成功。
 
 ## 必须补齐的验收
 

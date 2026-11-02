@@ -26,8 +26,9 @@ type instance struct {
 
 type instanceStatus struct {
 	instance
-	Running      bool              `json:"running"`
-	OpenProjects []project.Summary `json:"open_projects"`
+	Running                 bool              `json:"running"`
+	OpenProjects            []project.Summary `json:"open_projects"`
+	CreationProtocolVersion int               `json:"creation_protocol_version,omitempty"`
 }
 
 func stoppedStatus(opt options) instanceStatus {

@@ -15,7 +15,7 @@
 
 ## 创作规约
 
-所有项目业务读写通过 Lumi 工具完成。不要直接读取或写入 `project.sqlite`（含 WAL/SHM/journal）、`.lumi/` 或 `assets/`；`STORY.md` 是只读投影，正文应通过创作工具更新。文本创作流程见 `ghost_manual({ghost_id:"lumi",path:"authoring/MANUAL.md"})`；媒体交接尚未开放，不要用直接改数据库或素材目录来替代缺失能力。
+所有项目业务读写通过 Lumi 工具完成。不要直接读取或写入 `project.sqlite`（含 WAL/SHM/journal）、`.lumi/` 或 `assets/`；`STORY.md` 是只读投影，正文应通过创作工具更新。用当前发现的精确插件身份读取 authoring/MANUAL.md；图片只能通过顶层 receive_media 授权附件交接，不直接改数据库或素材目录。
 
 本手册是行为指引，不是操作系统写保护。Node 具有本机账号权限；不假定 Codex、Claude 或其他引擎加载同一个项目指引文件。Cindy 路径不创建或改写 AGENTS.md、.codex/config.toml、hooks 或用户引擎配置目录。已有这些文件保持原文。不要调用带 Codex 指引副作用的 `lumi init` 作为替代。
 

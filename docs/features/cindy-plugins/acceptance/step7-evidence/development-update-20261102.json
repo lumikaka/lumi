@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-02",
+  "kind": "actual-development-same-instance-update",
+  "instance_id": "_root__lumi-dev",
+  "namespace": null,
+  "version": "0.4.0",
+  "reviewed_sha256": "178e0d04b3aa162cff5b19a78a4e9044e4021e12cb82ee94c1266fd1b56bbc02",
+  "install_repack_sha256": "6acea44694e249715290386ae9d0293c12f1d9c08b051152300d62ba9212dea4",
+  "all_contents_equal": true,
+  "entries": 21,
+  "build": {
+    "channel": "development",
+    "source_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+    "source_dirty": true,
+    "go_version": "go version go1.27.3 darwin/arm64",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cli_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+    "build_id": "d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd",
+    "author_source_dirty": true
+  },
+  "runtime_config": {
+    "channel": "development",
+    "environment": "development",
+    "binary": "lumi_dev",
+    "data_dir": "/private/tmp/lumi-cindy-step4-dev-data"
+  },
+  "includes_manual_archive_cli": true,
+  "frontend_embedded_in_plugin_cli": false,
+  "old_server_was_running": false,
+  "default_or_codex_service_stopped": false,
+  "published": false,
+  "forge_pack": {
+    "ok": true,
+    "id": "lumi-dev",
+    "version": "0.4.0",
+    "cindyPath": "build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy"
+  },
+  "forge_install": {
+    "ok": true,
+    "action": "updated",
+    "id": "lumi-dev",
+    "version": "0.4.0",
+    "enabled": true,
+    "instanceId": "_root__lumi-dev",
+    "namespace": null
+  },
+  "installed_runtime_diagnostic": {
+    "runtime": "ready",
+    "build_id": "d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd",
+    "cli_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+    "channel": "development",
+    "environment": "development",
+    "server_running": false,
+    "server_observation": "verified",
+    "server_policy": "shared_retained"
+  }
+}

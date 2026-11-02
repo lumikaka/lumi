@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-01",
+  "kind": "host-forge-pack-not-installed",
+  "receipts": [
+    {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"cindyPath\":\"/Users/qingyang/mine-work/lumi/cindy-plugins/lumi/lumi-0.4.0.cindy\",\"id\":\"lumi\",\"name\":\"Lumi\",\"version\":\"0.4.0\",\"note\":\"已完成校验和打包；本工具不会安装或更新插件。\"}"
+          }
+        ]
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"cindyPath\":\"/Users/qingyang/mine-work/lumi/build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"note\":\"已完成校验和打包；本工具不会安装或更新插件。\"}"
+          }
+        ]
+      }
+    }
+  ]
+}

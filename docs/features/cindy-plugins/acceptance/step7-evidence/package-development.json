@@ -1,0 +1,97 @@
+{
+  "kind": "local-forge-archive-not-installed",
+  "package": "build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy",
+  "bytes": 21340612,
+  "sha256": "178e0d04b3aa162cff5b19a78a4e9044e4021e12cb82ee94c1266fd1b56bbc02",
+  "cli_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+  "cli_mode": "755",
+  "channel": "development",
+  "build_id": "d3452b2a24b56a97099e568521578daeafdb02ee4dfbb19845c72da80bb94bbd",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "bytes": 247225
+    },
+    {
+      "name": "bin/lumi_dev",
+      "bytes": 40420482
+    },
+    {
+      "name": "build-info.json",
+      "bytes": 410
+    },
+    {
+      "name": "ghost.json",
+      "bytes": 4337
+    },
+    {
+      "name": "main.js",
+      "bytes": 12564
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "bytes": 9465
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "bytes": 4610
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "bytes": 2630
+    },
+    {
+      "name": "node/business-specs.json",
+      "bytes": 27670
+    },
+    {
+      "name": "node/catalog.cjs",
+      "bytes": 11022
+    },
+    {
+      "name": "node/config.cjs",
+      "bytes": 977
+    },
+    {
+      "name": "node/errors.cjs",
+      "bytes": 1188
+    },
+    {
+      "name": "node/export.cjs",
+      "bytes": 4859
+    },
+    {
+      "name": "node/media.cjs",
+      "bytes": 9143
+    },
+    {
+      "name": "node/project.cjs",
+      "bytes": 5310
+    },
+    {
+      "name": "node/protocol.cjs",
+      "bytes": 9060
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "bytes": 249
+    },
+    {
+      "name": "node/runtime-config.json",
+      "bytes": 143
+    },
+    {
+      "name": "node/runtime.cjs",
+      "bytes": 31321
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "bytes": 4931
+    },
+    {
+      "name": "node/worker.cjs",
+      "bytes": 961
+    }
+  ],
+  "review_archive": "build/cindy-reviewed/lumi-dev/178e0d04b3aa162cff5b19a78a4e9044e4021e12cb82ee94c1266fd1b56bbc02.cindy"
+}

@@ -1,0 +1,109 @@
+{
+  "date": "2026-11-02",
+  "kind": "explicit-manual-public-text-import-implementation-and-synthetic-project-verification",
+  "source_format": "lumi.cindy-public-history/version1 (Lumi wrapper, not official Cindy export or permission proof)",
+  "implemented": [
+    "independent cindy_session type and project schema migration 20261102000052",
+    "bounded explicit CLI file/source selection and nonce-protected local server POST",
+    "atomic independent source-ID deduplication, content conflict and missing-source rejection",
+    "UUIDv7 read-only cursor history and UUID-only WebSocket invalidation",
+    "ChatArea read-only text view with cutoff, omissions and coverage explanation"
+  ],
+  "commands": [
+    {
+      "command": "go test ./cmd/lumi -run 'TestManualCindy|TestCindyImport|TestManualSessionCLI' -count=1",
+      "exit_code": 0,
+      "stdout": "ok lumi/cmd/lumi 1.460s"
+    },
+    {
+      "command": "go test ./internal/dbmigrate -run 'TestCindyMigration|TestCodexMigration' -count=1",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/dbmigrate 0.999s"
+    },
+    {
+      "command": "go test ./internal/cindyarchive ./internal/sessionimport ./internal/dbmigrate ./cmd/lumi ./internal/agent ./internal/httpapi ./internal/server",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/cindyarchive 2.144s\nok lumi/internal/sessionimport 2.434s\nok lumi/internal/dbmigrate 44.815s\nok lumi/cmd/lumi 8.561s\nok lumi/internal/agent 88.287s\nok lumi/internal/httpapi 21.300s\nok lumi/internal/server 8.586s"
+    },
+    {
+      "command": "cd web && pnpm test",
+      "exit_code": 0,
+      "stdout_summary": "tests 444; pass 444; fail 0; cancelled 0; skipped 0; duration_ms 7459.034292"
+    },
+    {
+      "command": "cd web && pnpm build",
+      "exit_code": 0,
+      "stdout_summary": "Vite 8.3.5 main build transformed 3424 modules, built in 1.42s; MCP app build transformed 2079 modules, built in 287ms; chunk-size advisory only"
+    },
+    {
+      "command": "go test ./internal/cindyarchive ./cmd/lumi -run 'TestManualImportCannot|TestManualCindyImport' -count=1",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/cindyarchive 0.671s\nok lumi/cmd/lumi 1.000s",
+      "note": "Additional project-lock refusal and failed-import log privacy coverage after full regression; implementation unchanged"
+    },
+    {
+      "command": "go test ./internal/cindyarchive -count=1",
+      "exit_code": 0,
+      "stdout": "ok lumi/internal/cindyarchive 2.415s",
+      "note": "Final parser/service package rerun after adding later-cutoff append, older-file coverage preservation and same-project cross-task cursor rejection tests; implementation unchanged"
+    }
+  ],
+  "verified": {
+    "all_fixture_bodies_synthetic": true,
+    "real_cli_server_process": true,
+    "isolated_temporary_data_dirs_only": true,
+    "explicit_source_and_target": true,
+    "source_metadata_cannot_select_project": true,
+    "exact_repeat_returns_same_import_uuid_without_event": true,
+    "same_text_distinct_ids_preserved": true,
+    "backfill_sorted_by_source_timestamp_and_id": true,
+    "changed_or_missing_prior_source_rejected_atomically": true,
+    "mid_transaction_driver_failure_rolls_back_all_rows": true,
+    "cancel_before_parse_leaves_no_rows": true,
+    "concurrent_identical_imports_no_duplicate_threads_or_items": true,
+    "project_and_cursor_isolation": true,
+    "project_lock_refusal": true,
+    "migration_preserves_codex_data_chat_graph_and_autoincrement_watermark": true,
+    "lossy_downgrade_rejected": true,
+    "no_native_chat_run_turn_or_item_created": true,
+    "real_ws_payload_exactly_project_uuid_and_thread_uuid": true,
+    "rest_history_excludes_internal_and_source_ids": true,
+    "turn_followup_and_trajectory_rejected": true,
+    "desktop_manager_reopens_after_cli_stop": true,
+    "cli_success_and_conflict_logs_do_not_contain_fixture_text_or_source_ids": true,
+    "codex_config_unchanged_and_no_hooks_installed": true,
+    "actual_jsx_ssr_escapes_html_and_shows_coverage_without_inputs": true,
+    "frontend_join_rejoin_focus_reconciles_project_queries": true,
+    "no_http_or_host_history_polling_added": true,
+    "later_snapshot_appends_and_older_cutoff_does_not_regress_coverage": true,
+    "same_project_cross_task_cursor_rejected": true
+  },
+  "not_claimed": [
+    "real chat imported to any user project (private export remains temporary only)",
+    "browser visual acceptance on desktop or phone",
+    "new CLI command installed in the previously accepted plugin binary",
+    "automatic capture, complete transcript, atomic Host snapshot or tool/media history",
+    "mid-write process-kill acceptance (transaction failure and pre-parse cancellation tested)",
+    "Step5 trusted Host task-page identity or Step6 media mainline completion"
+  ],
+  "sandbox_notes": [
+    "CLI tests first failed at loopback bind EPERM and migration cache read EPERM; explicit escalated reruns passed.",
+    "pnpm is provided by the login environment; non-login shell did not find it. Login runs passed.",
+    "Initial SSR helper attempted Vite HMR listener; test now explicitly disables hmr/ws and uses no listener."
+  ],
+  "no_real_body_committed": true,
+  "no_cargo_or_rust": true,
+  "previous_probe_cleanup_followup": {
+    "query": "/bin/ps -p 20644 -o pid=,ppid=,state=,etime=,args=",
+    "exit_code": 0,
+    "matched_previous_owned_status_command": true,
+    "pid": 20644,
+    "parent_pid": 20640,
+    "state": "UE",
+    "elapsed_at_check": "29:03",
+    "additional_termination_attempts": false,
+    "cindy_restarted": false,
+    "dedicated_server_already_stopped_in_previous_receipt": true,
+    "all_diagnostic_processes_exited_claimed": false
+  }
+}

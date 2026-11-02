@@ -1,0 +1,6 @@
+ok  	lumi/internal/textmcp	(cached)
+ok  	lumi/internal/promptcatalog	(cached)
+ok  	lumi/internal/production	28.979s
+ok  	lumi/cmd/lumi	(cached)
+ok  	lumi/internal/dbmigrate	(cached)
+?   	lumi/cindy-plugins/schema	[no test files]

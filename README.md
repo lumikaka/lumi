@@ -88,6 +88,8 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 ## 快速开始
 
+Cindy 插件目前提供 macOS arm64 本地验收包；开发版 0.4.0 已完成真实安装、同版本更新和工具调用，自动化 77 项通过。真实媒体主线与任务审阅页仍未完成，未发布到市场。状态与安装边界见 [Cindy 本地包说明](docs/features/cindy-plugins/install.md)，从源码制作见 [作者指南](cindy-plugins/README.md)。
+
 ### 在 Codex App 中创作（macOS）
 
 `lumi` 插件无需 API key，写作和生图使用 Codex 自身额度，项目数据保存在本地。在 Codex App 中输入一句提示词：

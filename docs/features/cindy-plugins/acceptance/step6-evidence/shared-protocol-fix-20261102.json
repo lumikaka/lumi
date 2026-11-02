@@ -1,0 +1,129 @@
+{
+  "recorded_at_utc": "2026-11-02T09:55:49.688Z",
+  "kind": "shared-production-daemon-binding-protocol-fix",
+  "source_report": {
+    "session_id": "c18c29ad-7dcc-4ff0-8a32-8e6c14c8858c",
+    "filename": "正式版独立作品验收报告.md",
+    "sha256": "f04e3a3ff44e263f26cc5cfeb3bac360d863a51d2ba0f360936303aaf4744449",
+    "business_calls": 25,
+    "project_init_count": 1,
+    "setup_update_attempt_count": 1,
+    "project_uuid": "01a19b9b-09a5-7e44-8ab7-cc44f90ff109",
+    "setup_uuid": "01a19b9b-09a4-7edc-8f91-f1753e984797",
+    "last_reported_project_revision": 1,
+    "last_reported_setup_revision": 1,
+    "setup_status": "draft",
+    "chapter_count": 0,
+    "setting_count": 0,
+    "page_count": 0,
+    "report_modified": false
+  },
+  "root_cause": "The preserved production daemon rejects expected_project_uuid at HTTP decoding. Unbound initial calls work, bound setup and subsequent reads fail. MCP initialize/ping and bundled CLI fingerprint did not verify daemon protocol compatibility.",
+  "real_service_probe": {
+    "kind": "invalid-empty-root-read-probe-no-project-opened",
+    "environment": "production",
+    "data_dir": "/Users/qingyang/.lumi",
+    "pid": 44608,
+    "nonce": "6dd6f0f3f3ca984bd0ab0ce677f7b5aa5daff7fecdd60392d572c89d12e7c18d",
+    "request": {
+      "root_path": "",
+      "tool": "project_overview",
+      "arguments": {}
+    },
+    "unbound": {
+      "http_status": 200,
+      "error_code": "invalid_arguments",
+      "message": "启动目录必须是绝对路径"
+    },
+    "with_expected_project_uuid": {
+      "http_status": 400,
+      "error_code": "invalid_arguments",
+      "message": "创作请求无效"
+    },
+    "before_and_after_open_projects": [],
+    "identity_unchanged": true,
+    "service_stopped": false
+  },
+  "implementation": [
+    "Daemon status declares creation_protocol_version=1 for expected-project UUID and read-only enforcement",
+    "Stdio MCP relay verifies actual live daemon capability before every business request",
+    "Cindy adapter rejects incompatible daemons before dispatch and reports package/service compatibility separately",
+    "No fallback strips the binding constraint; no automatic service stop or write replay",
+    "Runtime Manual explains preserving drafts and coordinating shared service replacement"
+  ],
+  "tests": {
+    "targeted_go": {
+      "exit_code": 0,
+      "stdout": "ok lumi/cmd/lumi 1.061s"
+    },
+    "go_full": {
+      "chunk_id": "c88c66",
+      "wall_time_seconds": 0.000008333,
+      "exit_code": 0,
+      "original_token_count": 16,
+      "output": "ok  \tlumi/cmd/lumi\t9.978s\nok  \tlumi/internal/textmcp\t11.644s\n"
+    },
+    "node_full": {
+      "chunk_id": "d29451",
+      "wall_time_seconds": 0.000007166,
+      "exit_code": 0,
+      "original_token_count": 2283,
+      "output": "{\"kind\":\"fixed-output-not-autonomous-agent\",\"pages\":3,\"prose_and_visuals_verified\":true,\"bytes\":3143,\"sha256\":\"4a8316ab00d032cc8ca2be35845cd598de3c87efb1617e71f2d30efc324f002a\",\"delivery\":\"prepared_not_received\"}\n{\"kind\":\"real-cli-result-boundary\",\"oversize_failed\":true,\"cursor_full_text_recovered\":3,\"narrow_prompt_recovered\":true,\"known_generation_delivery_failure_preserved\":true}\n✔ fixed text through discovery → provider-free setup → story/settings/three pages → export (3806.67ms)\n✔ two-stage catalog discloses schemas and rules; unavailable categories have no tools (1.727042ms)\n✔ unknown tools and invalid arguments carry schema and usable correction rules (1.411083ms)\n✔ every action is classified explicitly; finalize, selection and export are writes (1.482875ms)\n{\"kind\":\"real-cli-channel-isolation-not-cindy-host\",\"books\":2,\"cross_channel_reads_and_writes_rejected\":true,\"development_restart_preserved_text\":true,\"production_generation_and_text_unchanged\":true}\n✔ real production and development CLIs preserve independent books across development shutdown and restart (2527.6345ms)\n✔ build-owned channel configuration separates identities, binaries and data; invalid combinations fail closed (1.608ms)\n✔ generated development bundle is self-contained and its CLI defaults to development without APP_ENV (943.105709ms)\n✔ complete bytes are published atomically in the visible task tree; preparation is not receipt (53.940416ms)\n✔ only the exact CLI export path, format and size are accepted (10.874917ms)\n✔ source and destination links cannot broaden the export path (11.307958ms)\n✔ an existing visible file is never overwritten and temporary files are removed (21.583708ms)\n✔ cancelled preparation does not publish an incomplete work (4.353834ms)\n✔ Host probe only derives fixture directories from owned Host receipts and never starts an Agent (4.086333ms)\n✔ probe rebuild replaces native executables without changing bytes held by an old process (15.342459ms)\n✔ probe native copy rejects destination links and preserves their referenced files (2.853167ms)\n▶ real bundled CLI: isolation, sharing, cancellation, crashes and stale discovery\n  ✔ stale discovery recovers without stopping unknown services (1611.997334ms)\n  ✔ two projects truly overlap and keep cwd, project UUID and names isolated (150.317292ms)\n  ✔ same-project two tasks reuse one MCP proxy; releasing one retains the other (85.697625ms)\n  ✔ read-only diagnosis and overview preserve project files; remote and forged args rejected (39.994917ms)\n  ✔ proxy crash invalidates transport and next invocation reconnects (50.610416ms)\n  ✔ real MCP cancellation removes only the waiting WS subscription and preserves concurrent reads (117.3645ms)\n  ✔ Codex-style ordinary MCP client shares service and survives all Cindy releases (67.49875ms)\n  ✔ worker SIGKILL closes owned proxies via pipe EOF, shared server survives, restart rebinds (262.953ms)\n  ✔ server crash leaves stale discovery; ordinary MCP and restarted Cindy rediscover replacement (174.215875ms)\n  ✔ idle proxy reclamation and trusted invocation reopening preserve server (231.791458ms)\n  ✔ missing CLI and architecture mismatch fail closed (1.170041ms)\n  ✔ symlink rebinding cannot silently switch a live task to another project (118.138125ms)\nCLEANUP: isolated CLI stopped, proxies closed, temporary projects removed; global cwd unchanged\n✔ real bundled CLI: isolation, sharing, cancellation, crashes and stale discovery (2983.335084ms)\n✔ release revokes before awaits, drains that task and preserves another task on the shared proxy (25.954625ms)\n✔ one task cancelling during shared initialize does not cancel the other (16.468458ms)\n✔ release during directory lookup cannot create a late proxy or restore a binding (4.056ms)\n✔ read-only diagnostic avoids CLI status lock writes even when data-dir is inside workdir (4.203ms)\n✔ legacy shared daemon is diagnosed separately from bundled CLI and never receives business operations (10.939458ms)\n✔ graceful shutdown waits for media file cleanup even before an MCP call exists (14.308333ms)\n✔ browser forwards real callId and only the injected context, with scoped cancellation (3.230167ms)\n✔ missing and remote context cannot enter worker (0.847041ms)\n✔ only explicit tools may wake worker; host failure stays failure (0.415166ms)\n✔ project arguments are forwarded separately; context, page and KV cannot choose bindings (0.570333ms)\n✔ missing directory and nonlocal URI fail before entering worker (2.612625ms)\n✔ directory discovery requires no project and failures become Host tool failures with correction (0.527541ms)\n✔ reads in readonly context reach the action-aware Node gate; undeclared top-level tools do not (1.496042ms)\nMEDIA FIXTURE PASS: original 826433 bytes, SHA256 f09a1d3de26dbe010ed12cf9ff6594ea4b064f927c260ca41670e0b055b9652c; bounded preview; 2 variants; PDF/ZIP; isolated CLI cleanup\n✔ fixture original → bounded transfer → real Asset Store → preview, variants, conflict and PDF/ZIP; ordinary MCP stays compatible (3872.462833ms)\n✔ Host-authorized original is hashed, split below Node params limit and scoped to the actual call (181.93125ms)\n✔ attachment absence, forged fields, read-only, denied media, wrong checksum, MIME and size fail before transfer (7.300959ms)\n✔ reference preview is removed from result JSON and delivered via Host images plus an owned Core reference URL (1.189208ms)\n✔ controlled staging preserves exact bytes and cleans on success, failure and cancellation (26.621417ms)\n✔ wrong owner, duplicate/out-of-order/noncanonical/oversize chunks and incomplete files cannot import (3.817ms)\n✔ declared size, checksum, MIME and reserved budgets are enforced before CLI (3.493458ms)\n✔ idle expiry, release and dead-worker cleanup discard uncommitted bytes without touching live workers (39.951291ms)\n▶ Cindy project binding through the real bundled CLI\n  ✔ empty and non-conflicting directories initialize concurrently without engine guidance (1642.981833ms)\n  ✔ two simultaneous first initializations in one root are idempotent (533.315791ms)\n  ✔ setup uses revisions, finalizes through Manager, repeat init preserves story, assets and specification (232.059834ms)\n  ✔ conflicts including dangling symlinks leave only the original files (220.161458ms)\n  ✔ permission downgrade, remote paths and caller-selected identities cannot authorize writes (32.65725ms)\n  ✔ symlink normalization, retargeting and changed working directory require new trusted binding (94.662125ms)\n  ✔ copied projects with identical UUIDs never merge directories (136.610583ms)\n  ✔ fresh task cannot reuse a live store after a same-UUID copy replaces its pathname (84.012125ms)\n  ✔ restart has no cached authority; fresh context reopens the same standard project (108.112167ms)\nBINDING CLEANUP: isolated server stopped; projects, proxies and temporary home removed\n✔ Cindy project binding through the real bundled CLI (3128.28325ms)\n✔ public status and business errors keep internal paths and instance data in the adapter (0.174ms)\n✔ MCP initialize, reverse request rejection, and full business failure envelope (137.096ms)\n✔ cancel one request, preserve a concurrent request and ignore late completion (331.887792ms)\n✔ write timeout reports unknown result and does not replay (317.530625ms)\n✔ reject malformed without converting it to business success (79.29225ms)\n✔ reject oversize without converting it to business success (79.750416ms)\n✔ reject wrongid without converting it to business success (62.224792ms)\n✔ reject crash without converting it to business success (61.372583ms)\n✔ reject invalid-envelope without converting it to business success (61.753666ms)\n✔ reject rpc-error without converting it to business success (70.917542ms)\n✔ incompatible MCP and oversize params fail before a business call (129.473709ms)\n✔ oversize write is a known pre-dispatch rejection with the correct schema (4.159209ms)\n✔ unknown write result is not replayed; reread recovers the committed text (9.629792ms)\n✔ Host sentinel exit cancels exactly its call while other calls finish (15.340167ms)\n✔ an already-exited Host child cannot dispatch a business operation (6.402208ms)\n✔ cancellation while awaiting Host child prevents dispatch even if runtime does not check signals (6.325792ms)\n✔ shutdown while awaiting Host child never dispatches after runtime close (6.466333ms)\n✔ Host child proxy supports off, not removeListener; completed requests free all slots (71.453ms)\n✔ child cleanup failure cannot leak a completed request or reject after replying (50.077333ms)\n✔ missing call binding fails before dispatch; malformed JSON can recover (13.299125ms)\n✔ limits reject oversize params and fifth pending call without spawning extra children (7.190417ms)\n✔ Host-style require(entry) starts worker even though require.main is bootstrap (89.591833ms)\nℹ tests 81\nℹ suites 0\nℹ pass 81\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 4023.579042\n"
+    }
+  },
+  "packages": {
+    "production": "shared-protocol-package-production-20261102.json",
+    "development": "shared-protocol-package-development-20261102.json",
+    "reviewed_and_install_repack_entries_equal": 21
+  },
+  "production_install": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi\",\"name\":\"Lumi\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "runtime_after_install": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"upgrade_required\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"0278cd84b4b5f31b7d64d4f04ba8bdaf197f0679812154c8edd127c73de7f346\",\"cli_sha256\":\"686a608b86fe3651d9f7cc89b57a20658a947ee1a1bea5b898597fa229f20b03\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_compatible\":false,\"server_creation_protocol_version\":null,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "guarded_host_read": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"errorCode\":\"LUMI_CLI_UPGRADE_REQUIRED\",\"message\":\"Lumi cli_upgrade_required：正在运行的共享 CLI 服务协议过旧。 未派发创作请求。先协调同一 environment/data-dir 的使用者，再明确停止旧服务并用新包重连；保留现有 draft，先重读事实，不自动重放写入。\"}"
+      }
+    ],
+    "isError": true
+  },
+  "release_after_guard": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "development_unchanged": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "pending": [
+    "Explicit coordination/authorization to replace only the production shared service generation in /Users/qingyang/.lumi",
+    "After service replacement, normal Cindy task must reread and resume the existing draft before any further setup/story/page writes",
+    "Three-page text and semantic cross-project isolation acceptance remain incomplete",
+    "Step 5 remains temporarily skipped; old diagnostic exit and actual Codex client TODOs unchanged"
+  ],
+  "no_cargo_or_rust": true,
+  "no_user_project_opened_or_written_by_parent": true,
+  "no_new_agents_started": true
+}

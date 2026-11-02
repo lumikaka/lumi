@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "result": "PASS",
+  "id": "lumi-dev",
+  "reviewed_sha256": "984462df6598de5e189d0333c585c8d01d7545e3a55d296f88d57eb2b7cda0f5",
+  "install_repacked_sha256": "e8ab476ed950a4bd68120dbe93e573030a7a34f9d3bf6abbfce847bfa6b1de5d",
+  "entries": 21,
+  "all_entry_bytes_equal": true,
+  "source_tree_equal": true,
+  "build": {
+    "channel": "development",
+    "source_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+    "source_dirty": false,
+    "go_version": "go version go1.27.3 darwin/arm64",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cli_sha256": "484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1",
+    "build_id": "bb0262af16aa166c93751fe10bba39c43529b757dc48e29863030e97d1a239eb",
+    "author_source_dirty": true
+  }
+}

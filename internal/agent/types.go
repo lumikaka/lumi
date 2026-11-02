@@ -24,6 +24,7 @@ const (
 	ThreadTypeWorkflow     = "workflow"
 	ThreadTypeMCP          = "mcp"
 	ThreadTypeCodexSession = "codex_session"
+	ThreadTypeCindySession = "cindy_session"
 	// Recovery-only Scene-era values. New Thread API and storage do not expose
 	// or persist these discriminators.
 	ThreadScopeProject       = "project"

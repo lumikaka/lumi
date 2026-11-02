@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-02",
+  "kind": "restore-original-development-package-after-native-rejection-instance-absence",
+  "pre_restore_evidence": "permission-manual-rejection-20261102.json",
+  "user_native_installed_list_observation": "列表中已没有 Lumi（开发版）",
+  "installation_authorization": "沿用用户此前“授权安装开发包”委托，恢复同一个人开发身份的原基础审阅包；未再次提交已拒绝的新增权限测试包。",
+  "source_directory": "build/cindy-dev/lumi-dev",
+  "install_receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"installed\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和安装，并已启用。\"}"
+      }
+    ]
+  },
+  "restored_info": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"ghost\":{\"id\":\"lumi-dev\",\"namespace\":null,\"name\":\"Lumi（开发版）\",\"command\":\"lumi-dev\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":18,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}}"
+      }
+    ]
+  },
+  "development_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "development_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "production_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "production_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "checks": {
+    "original_identity_installed_enabled": true,
+    "original_development_build_and_cli_verified": true,
+    "development_ready": true,
+    "original_production_build_and_cli_verified": true,
+    "production_ready": true,
+    "both_current_connections_released": true
+  },
+  "negative_permission_acceptance": {
+    "passed": false,
+    "first_install_refusal_verified": true,
+    "reason": "用户先卸载后拒绝首次安装；本次不属于更新拒绝，新的恢复installed不替代该验收。"
+  },
+  "limits": [
+    "当前恢复只验证安装身份、原构建、运行诊断及释放；本轮没有重读业务章节或两版图片，不把先前作品恢复报告冒称本轮结果。",
+    "用户已确认导入前先卸载旧版，故未安装状态符合首次安装拒绝；没有拒绝删除旧版的证据。",
+    "未改Cindy源码/私有数据库、正式插件或运行权限，未执行新生图、导入、导出或作品写入。"
+  ],
+  "actual_repacked_archive": {
+    "sha256": "b55baed27ed5183eca5ae7dce9c8684f1bf16c6c572661dc162dcdc2789eb19c",
+    "bytes": 21341176,
+    "entries": 21,
+    "review_archive": "build/cindy-reviewed/lumi-dev/e1768a435e56568f486612c17c53ebc3d863c629f78d15f562c99f3d657e5f92.cindy",
+    "all_entries_and_modes_match_review": true,
+    "network_declaration_absent": true
+  },
+  "post_restoration_export_integrity": [
+    {
+      "name": "text-01a19aec-299d-7101-b8e1-2f503ef0f150.pdf",
+      "bytes": 361740,
+      "sha256": "67f061080fff48d722bd2ace6c25f936e55608b5594d3952659d7db1d6da3255",
+      "unchanged": true,
+      "independently_checked_now": true
+    },
+    {
+      "name": "text-01a19aec-4030-7e15-94e8-1e50c3d6d44f.zip",
+      "bytes": 2864730,
+      "sha256": "51bd06fd9a26996505b25b1ac626b55d71926bd7668493cc01a96eb03541dc54",
+      "unchanged": true,
+      "independently_checked_now": true
+    }
+  ],
+  "post_restoration_seven_old_reports_unchanged": true,
+  "user_pre_import_sequence_observation": "导入前已卸载开发版"
+}

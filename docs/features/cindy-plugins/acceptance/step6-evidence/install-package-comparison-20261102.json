@@ -1,0 +1,18 @@
+[
+  {
+    "id": "lumi-dev",
+    "reviewed_sha256": "b2b5d10610e3d7d1fedb231ef289684cadd77c5437038cff3c8129945673e820",
+    "install_repacked_sha256": "caa3885676f9b922e4c7e320fd78c1cac79ab6bdb726639bf8fc7c0f07b5b702",
+    "entries": 21,
+    "all_entry_bytes_equal": true,
+    "source_tree_equal": true
+  },
+  {
+    "id": "lumi-host-acceptance-20261101",
+    "reviewed_sha256": "a889d288953722b112640fb7659df10712eae98bd726fe8cc5a38a36336470b8",
+    "install_repacked_sha256": "95971b96ad0ba38fbf36a5307a91ee4f5c9d723643902b0fe29fd58f00961dc1",
+    "entries": 21,
+    "all_entry_bytes_equal": true,
+    "source_tree_equal": true
+  }
+]

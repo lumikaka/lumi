@@ -1,0 +1,291 @@
+{
+  "date": "2026-11-02",
+  "kind": "normal-task-project-reopen-after-uninstall-and-forge-reinstall-success",
+  "source_task_id": "a0964e96-ba88-4c58-af32-4c0d356b7530",
+  "source_report": {
+    "filename": "插件重装恢复复验报告.md",
+    "sha256": "7cb00592ca7fdb0c3b54fe90f4b5de964d80551f9fe63580f028d4b7039dbfc4",
+    "full_story_text_copied": false
+  },
+  "new_explicit_user_request_used_plugin_command": true,
+  "discovery_path": "User supplied plugin metadata followed by fresh ghost_call list_tools; no replay of denied ghost_info",
+  "runtime_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "runtime": "ready",
+        "protocol_version": "2025-03-26",
+        "server_name": "lumi-text",
+        "server_version": "1.0.0",
+        "cli_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+        "channel": "development",
+        "build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+        "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+        "environment": "development",
+        "platform": "darwin",
+        "arch": "arm64",
+        "read_only": false,
+        "server_running": true,
+        "server_observation": "verified",
+        "server_policy": "shared_retained"
+      }
+    }
+  },
+  "comparison_results_from_report": {
+    "initial_checks": {
+      "baseline_zip_hash_matches": true,
+      "baseline_zip_crc_valid": true,
+      "chapter_uuid_matches": true,
+      "chapter_revision_matches": true,
+      "chapter_char_count_matches": true,
+      "chapter_prose_exact_match": true,
+      "chapter_hash_matches": true,
+      "page_count_and_pagination_match": true,
+      "page_uuid_order_matches": true,
+      "page_revisions_match": true,
+      "current_variant_matches": true,
+      "current_asset_matches": true,
+      "other_pages_no_images": true
+    },
+    "page_checks": [
+      {
+        "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+        "section_no": 1,
+        "revision": 3,
+        "description_matches_zip": true,
+        "storyboard_matches_zip": true,
+        "description_matches_page_report": true,
+        "storyboard_matches_page_report": true
+      },
+      {
+        "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694",
+        "section_no": 2,
+        "revision": 0,
+        "description_matches_zip": true,
+        "storyboard_matches_zip": true,
+        "description_matches_page_report": true,
+        "storyboard_matches_page_report": true
+      },
+      {
+        "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3",
+        "section_no": 3,
+        "revision": 0,
+        "description_matches_zip": true,
+        "storyboard_matches_zip": true,
+        "description_matches_page_report": true,
+        "storyboard_matches_page_report": true
+      }
+    ],
+    "image_checks": [
+      {
+        "asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+        "success": true,
+        "asset_uuid_matches": true,
+        "mime_type": "image/jpeg",
+        "mime_matches": true,
+        "width": 768,
+        "height": 576,
+        "preview_dimensions_match": true,
+        "reference_media_url": "cindy-media://blobs/8b70f810f3f25f9119b8bf701704b815b45ef8bc0b0cff6addef77f074c35e3e.jpg",
+        "preview_url_matches": true,
+        "image_blocks": 1
+      },
+      {
+        "asset_uuid": "01a19aeb-076a-7744-a773-c972e1fd8551",
+        "success": true,
+        "asset_uuid_matches": true,
+        "mime_type": "image/jpeg",
+        "mime_matches": true,
+        "width": 768,
+        "height": 576,
+        "preview_dimensions_match": true,
+        "reference_media_url": "cindy-media://blobs/75554aac4aab0bc3c477c053c9e4879be082fd7930df0e9d25b44dd92a1e4c72.jpg",
+        "preview_url_matches": true,
+        "image_blocks": 1
+      }
+    ],
+    "outline_chapter_matches": true,
+    "outline_pages_match": true,
+    "outline_has_no_more": true
+  },
+  "selected_image_from_report": {
+    "page_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+    "page_revision": 3,
+    "current_variant_uuid": "01a19ad5-745c-7ba0-99c8-6b751bb67458",
+    "current_image_version_no": 1,
+    "current_asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+    "storyboard_uuid": "01a19a9f-e072-7399-99ec-4e8ab2b56d5a",
+    "storyboard_version_no": 1
+  },
+  "image_read_receipts_from_report": [
+    {
+      "ok": true,
+      "result": {
+        "success": true,
+        "data": {
+          "asset_uuid": "01a19ad5-745d-71c1-b6ff-998d15b3f8d6",
+          "mime_type": "image/jpeg",
+          "width": 768,
+          "height": 576,
+          "reference_delivery": {
+            "kind": "bounded_preview",
+            "deposited": true
+          },
+          "reference_media_url": "cindy-media://blobs/8b70f810f3f25f9119b8bf701704b815b45ef8bc0b0cff6addef77f074c35e3e.jpg"
+        }
+      }
+    },
+    {
+      "ok": true,
+      "result": {
+        "success": true,
+        "data": {
+          "asset_uuid": "01a19aeb-076a-7744-a773-c972e1fd8551",
+          "mime_type": "image/jpeg",
+          "width": 768,
+          "height": 576,
+          "reference_delivery": {
+            "kind": "bounded_preview",
+            "deposited": true
+          },
+          "reference_media_url": "cindy-media://blobs/75554aac4aab0bc3c477c053c9e4879be082fd7930df0e9d25b44dd92a1e4c72.jpg"
+        }
+      }
+    }
+  ],
+  "outline_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "cursor_pagination": {
+          "has_more": false,
+          "next_cursor": "4",
+          "per_page": 20,
+          "prev_cursor": "0"
+        },
+        "items": [
+          {
+            "chapter_code": "vol01.ch01",
+            "has_text": true,
+            "kind": "chapter",
+            "revision": 1,
+            "title": "把光放低一点",
+            "uuid": "01a199e6-89e9-7213-a333-924bffa24af8"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": true,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 3,
+            "section_no": 1,
+            "title": "借一盏灯",
+            "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 2,
+            "title": "河边的小声音",
+            "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 3,
+            "title": "把光放低一点",
+            "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3"
+          }
+        ]
+      }
+    }
+  },
+  "release_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "released": true,
+        "server_policy": "shared_retained"
+      }
+    }
+  },
+  "old_report_integrity_independently_checked": [
+    {
+      "filename": "章节保存验证报告.md",
+      "sha256": "67ac316e4c1b1638ddbe8c61e6c5fb54315a161775a2825b33be02eaeaa349d7",
+      "unchanged": true
+    },
+    {
+      "filename": "页面保存验证报告.md",
+      "sha256": "e3080864fd4ad305d128b966c26bb804e14a3a7f2c3baafcde244f455744438c",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入验证报告.md",
+      "sha256": "30bb9c67c92841fe41bd4f9daa548d67206134c1a92d25911a162a7cb361afa9",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入复验报告.md",
+      "sha256": "c2792972b3ef1d17f339e53ee74fc3f570a29a713df287d75d5c89a12d24d32f",
+      "unchanged": true
+    },
+    {
+      "filename": "参考图编辑候选与导出验收报告.md",
+      "sha256": "d4d09a2dda98513ab288ece82567230140a1866312b1bc08e35e964d4977aa12",
+      "unchanged": true
+    },
+    {
+      "filename": "插件恢复验证报告.md",
+      "sha256": "7e28e34940d5fe8801752897d8d1a11d519a07debd608f142577d3a5924c267a",
+      "unchanged": true
+    },
+    {
+      "filename": "插件重装恢复验证报告.md",
+      "sha256": "982ffd5c5eb762aa71b3b09c02565ed2eec847f67c0dce84d01da1dd4d87c9f0",
+      "unchanged": true
+    }
+  ],
+  "business_mutations_reported": 0,
+  "generation_import_export_calls_reported": 0,
+  "uninstall_and_reinstall_evidence": [
+    "plugin-uninstall-20261102.json",
+    "plugin-reinstall-20261102.json",
+    "lifecycle-reinstalled-package-20261102.json"
+  ],
+  "checks": {
+    "post_reinstall_project_reopened": true,
+    "chapter_875_characters_unchanged_reported": true,
+    "page_revisions": [
+      3,
+      0,
+      0
+    ],
+    "full_page_text_and_storyboards_unchanged_reported": true,
+    "both_image_previews_readable": true,
+    "original_still_selected": true,
+    "new_connection_released": true,
+    "old_refusal_report_preserved": true
+  },
+  "limits": [
+    "父任务核对执行任务本轮公开工具回执、比较结果和摘要，并独立验证七份旧报告hash；没有重放创作操作。",
+    "原图和候选2本轮验证为受控预览可读，未重新读取原PNG字节或重算素材原件hash。",
+    "不把当前恢复成功解释为前次拒绝根因已确定；新明确用户指令与本轮调用分别记账。",
+    "真实Codex并发、全部代理退出、正式独立作品、四视图和手机接收不由本记录验证。"
+  ]
+}

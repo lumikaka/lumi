@@ -12,7 +12,7 @@ async function until(predicate) {
   throw new Error('condition not reached');
 }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
-const identity = { running: true, nonce: 'a'.repeat(64), pid: 1, endpoint: 'http://127.0.0.1:10000', environment: 'production' };
+const identity = { running: true, nonce: 'a'.repeat(64), pid: 1, endpoint: 'http://127.0.0.1:10000', environment: 'production', creation_protocol_version: 1 };
 const uuid = '01989abc-def0-7000-8000-000000000001';
 const overview = () => ({ success: true, data: { project: { uuid, name: 'test', revision: 0 },
   setup: { project_uuid: uuid, revision: 0, setup_status: 'draft', status: 'draft' } } });
@@ -95,4 +95,41 @@ test('read-only diagnostic avoids CLI status lock writes even when data-dir is i
   assert.equal(result.success, true);
   assert.equal(result.data.server_running, null);
   assert.equal(result.data.server_observation, 'not_checked_read_only');
+  assert.equal(result.data.server_compatible, null);
+});
+
+test('legacy shared daemon is diagnosed separately from bundled CLI and never receives business operations', async t => {
+  const f = await fixture(t);
+  f.runtime.inspect = async () => ({ ...identity, creation_protocol_version: undefined });
+  const diagnostic = await f.runtime.execute('runtime_status', f.context('legacy'));
+  assert.equal(diagnostic.data.runtime, 'upgrade_required');
+  assert.equal(diagnostic.data.server_compatible, false);
+  assert.equal(diagnostic.data.server_creation_protocol_version, null);
+  let dispatched = 0;
+  for (const peer of f.connections) {
+    peer.overview = peer.call = async () => { dispatched++; return overview(); };
+  }
+  for (const [method, args] of [['project_init', { idea: 'must not initialize' }], ['project_overview', {}], ['project_setup', { action: 'get' }]]) {
+    await assert.rejects(f.runtime.execute(method, { ...f.context('legacy'), arguments: args }), { code: 'cli_upgrade_required' });
+  }
+  assert.equal(dispatched, 0);
+  assert.equal(f.runtime.sessions.get('legacy').projectUUID, undefined);
+  assert.equal(f.connections[0].closed, false, 'diagnosis must retain the existing proxy/service');
+});
+
+test('graceful shutdown waits for media file cleanup even before an MCP call exists', async t => {
+  const f = await fixture(t), gate = deferred(), entered = deferred();
+  const staged = path.join(f.context('media').context.workdir, 'uncommitted-image');
+  f.runtime.executeMedia = async () => {
+    await fs.writeFile(staged, 'temporary bytes'); entered.resolve();
+    try { await gate.promise; } finally { await fs.unlink(staged); }
+  };
+  const call = f.runtime.execute('media_commit', {});
+  await entered.promise;
+  let finished = false;
+  const closing = f.runtime.close().then(() => { finished = true; });
+  await pause(10);
+  assert.equal(finished, false, 'shutdown must not exit during the staging phase');
+  gate.resolve(); await Promise.all([call, closing]);
+  assert.equal(await fs.stat(staged).then(() => true, () => false), false);
 });

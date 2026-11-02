@@ -1,0 +1,172 @@
+{
+  "date": "2026-11-02",
+  "kind": "added-permission-update-rejection-preflight-not-installed",
+  "target_instance_id": "_root__lumi-dev",
+  "namespace": null,
+  "version": "0.4.0",
+  "author_directory": "build/cindy-permission-rejection-20261102/lumi-dev",
+  "base_author_directory": "build/cindy-dev/lumi-dev",
+  "base_build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+  "test_build_id": "dfb75de63e24243f2cf0045d6d662dafbb585236a1036aac20dd084b4fe150d2",
+  "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+  "changed_files": [
+    "build-info.json",
+    "ghost.json"
+  ],
+  "manifest_permission_delta": {
+    "network": {
+      "hosts": [
+        "lumi-permission-check.invalid"
+      ]
+    }
+  },
+  "expected_user_action": "在Cindy原生新增权限更新确认卡中拒绝；测试包不应落位",
+  "expected_receipt": "MUTATION_CANCELLED",
+  "files": [
+    {
+      "name": "assets/icon.png",
+      "base_sha256": "3d15294e0dc184a5c5af0674d35d6d21bdca66466ed7847c1060c70c650e8f7d",
+      "test_sha256": "3d15294e0dc184a5c5af0674d35d6d21bdca66466ed7847c1060c70c650e8f7d",
+      "mode": "600"
+    },
+    {
+      "name": "bin/lumi_dev",
+      "base_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+      "test_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+      "mode": "755"
+    },
+    {
+      "name": "build-info.json",
+      "base_sha256": "d748915f4619a4f994689fc9c5142729b463158e17fa17cef778930746f7b50d",
+      "test_sha256": "7aab8d8b3597373ab61e73ceeb28bfabb3f94532132f46711aeca56100da3acb",
+      "mode": "644"
+    },
+    {
+      "name": "ghost.json",
+      "base_sha256": "644bdff0dc58b32be43a0478cb9ce745d63cf0d96d781ce2437eb811b14fe19f",
+      "test_sha256": "89acf076503102b7994c5db3463ff7acda610c6b96ec610b795d1429233a2f53",
+      "mode": "600"
+    },
+    {
+      "name": "main.js",
+      "base_sha256": "6f36cda019a64ec589fa83e7dd6233048ccb388abe74945517ff761ce2b2c6d5",
+      "test_sha256": "6f36cda019a64ec589fa83e7dd6233048ccb388abe74945517ff761ce2b2c6d5",
+      "mode": "600"
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "base_sha256": "02c0d1d643ebedce4943343fda56446d27ee40a2556a61f8ba2caec95c90dbb2",
+      "test_sha256": "02c0d1d643ebedce4943343fda56446d27ee40a2556a61f8ba2caec95c90dbb2",
+      "mode": "644"
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "base_sha256": "2adae7490195aba88dce70e3e402501c2f03c6a1d4e2f234a8597267cd2fc4b0",
+      "test_sha256": "2adae7490195aba88dce70e3e402501c2f03c6a1d4e2f234a8597267cd2fc4b0",
+      "mode": "644"
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "base_sha256": "6125defe7c6b396936913e6f51297792cf09d5594f769b940a45b2cd451e2e5e",
+      "test_sha256": "6125defe7c6b396936913e6f51297792cf09d5594f769b940a45b2cd451e2e5e",
+      "mode": "644"
+    },
+    {
+      "name": "node/business-specs.json",
+      "base_sha256": "eecc460db4fe3954f8eeae38138dd597beb26208266f15c27f5fa070215fa8ef",
+      "test_sha256": "eecc460db4fe3954f8eeae38138dd597beb26208266f15c27f5fa070215fa8ef",
+      "mode": "644"
+    },
+    {
+      "name": "node/catalog.cjs",
+      "base_sha256": "3112e793a487d9069dba9246fffea5cc47016719cc90f4fb09f6890ecdaee971",
+      "test_sha256": "3112e793a487d9069dba9246fffea5cc47016719cc90f4fb09f6890ecdaee971",
+      "mode": "644"
+    },
+    {
+      "name": "node/config.cjs",
+      "base_sha256": "a4619b417ac1bec72cb40436a3604efda327d44ddb962f2df43cec78e7beb16d",
+      "test_sha256": "a4619b417ac1bec72cb40436a3604efda327d44ddb962f2df43cec78e7beb16d",
+      "mode": "644"
+    },
+    {
+      "name": "node/errors.cjs",
+      "base_sha256": "921a17dad820e8f435d7e7db5d86162b0d91066034128e6a475fa867df76c991",
+      "test_sha256": "921a17dad820e8f435d7e7db5d86162b0d91066034128e6a475fa867df76c991",
+      "mode": "644"
+    },
+    {
+      "name": "node/export.cjs",
+      "base_sha256": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594",
+      "test_sha256": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594",
+      "mode": "644"
+    },
+    {
+      "name": "node/media.cjs",
+      "base_sha256": "a83f6e46fc3f55fd89b7053514f8e6ef0ac34eeea12a23f90c76a59ef1958049",
+      "test_sha256": "a83f6e46fc3f55fd89b7053514f8e6ef0ac34eeea12a23f90c76a59ef1958049",
+      "mode": "644"
+    },
+    {
+      "name": "node/project.cjs",
+      "base_sha256": "012f6c35a52f93cf4434f619898bb45a8e5426a06341e2e98b7acb32d61892b0",
+      "test_sha256": "012f6c35a52f93cf4434f619898bb45a8e5426a06341e2e98b7acb32d61892b0",
+      "mode": "644"
+    },
+    {
+      "name": "node/protocol.cjs",
+      "base_sha256": "9eaa2959afbd6c1130ce2046e8f441a2f856767f9601523976547bb10ddd801d",
+      "test_sha256": "9eaa2959afbd6c1130ce2046e8f441a2f856767f9601523976547bb10ddd801d",
+      "mode": "644"
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "base_sha256": "3b616dc34a6e7287d39ac3e0d0bdf8ca9128f6c924b5bbad123bb6b7fa1452e0",
+      "test_sha256": "3b616dc34a6e7287d39ac3e0d0bdf8ca9128f6c924b5bbad123bb6b7fa1452e0",
+      "mode": "644"
+    },
+    {
+      "name": "node/runtime-config.json",
+      "base_sha256": "9fb0d68a6d3b7286fe66a27af1dd14a55f81eed55b546736e9bd7eff21d5c336",
+      "test_sha256": "9fb0d68a6d3b7286fe66a27af1dd14a55f81eed55b546736e9bd7eff21d5c336",
+      "mode": "644"
+    },
+    {
+      "name": "node/runtime.cjs",
+      "base_sha256": "ee8862224248b2619b74bd7bbd492ae1382a76f2d59f8088b8ca6860fd17f58e",
+      "test_sha256": "ee8862224248b2619b74bd7bbd492ae1382a76f2d59f8088b8ca6860fd17f58e",
+      "mode": "644"
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "base_sha256": "ee0bd77d6418bbfc05fa06ae4ce1035f1e90af43abd68c99350f4244c2e659c7",
+      "test_sha256": "ee0bd77d6418bbfc05fa06ae4ce1035f1e90af43abd68c99350f4244c2e659c7",
+      "mode": "644"
+    },
+    {
+      "name": "node/worker.cjs",
+      "base_sha256": "f7d38d66d81f0d17c92797ed9ff1760334fbc91a06048dbd7b2a900cd5df0385",
+      "test_sha256": "f7d38d66d81f0d17c92797ed9ff1760334fbc91a06048dbd7b2a900cd5df0385",
+      "mode": "644"
+    }
+  ],
+  "limits": [
+    "此准备步骤没有安装、更新、网络请求或业务写入。",
+    "实际安装来源/账号影响以Host确认卡为准，不假定不同作者路径等于已验证同来源。",
+    "外层MCP拒绝不能代替原生新增权限确认的MUTATION_CANCELLED证据。"
+  ],
+  "package": {
+    "path": "build/cindy-permission-rejection-20261102/lumi-dev/lumi-dev-0.4.0.cindy",
+    "sha256": "84daa991bd2b55c52439b39cdf912dee71536bcc30b6addb35c994b338f67263",
+    "bytes": 21341249,
+    "entries": 21,
+    "review_archive": "build/cindy-reviewed/permission-rejection/84daa991bd2b55c52439b39cdf912dee71536bcc30b6addb35c994b338f67263.cindy"
+  },
+  "checks": {
+    "all_entries_match_reviewed_test_author": true,
+    "source_author_untouched": true,
+    "business_code_cli_config_unchanged": true,
+    "permission_delta_is_one_unused_host": true,
+    "not_installed": true
+  }
+}

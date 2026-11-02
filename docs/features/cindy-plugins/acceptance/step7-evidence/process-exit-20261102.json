@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-02",
+  "kind": "automated-synthetic-process-exit-recovery-not-cindy-host-or-model",
+  "test_source": "internal/cindyarchive/process_exit_test.go",
+  "commands": [
+    {
+      "command": "go test ./internal/cindyarchive -run TestImportProcessExitRollsBackAndAllowsReplay -count=1 -v",
+      "exit_code": 0,
+      "stdout": "=== RUN   TestImportProcessExitRollsBackAndAllowsReplay\n    process_exit_test.go:119: writer terminated after two uncommitted items; project reopened, no partial rows, retry imported three items once\n--- PASS: TestImportProcessExitRollsBackAndAllowsReplay (0.38s)\nPASS\nok  \tlumi/internal/cindyarchive\t0.769s",
+      "note": "Initial targeted run; final cleanup failure-path adjustment followed by the full package run below."
+    },
+    {
+      "command": "go test ./internal/cindyarchive -count=1",
+      "exit_code": 0,
+      "stdout": "ok  \tlumi/internal/cindyarchive\t2.788s",
+      "note": "Final source, including process-exit recovery, parser, storage, concurrent imports and cursor isolation."
+    },
+    {
+      "command": "go test ./cmd/lumi -run 'TestManualCindyImportCLIWebSocketReadOnlyAndDesktopReopen|TestCindyImportRequiresExplicitFileAndSourceWithoutStartingServer' -count=1",
+      "exit_code": 0,
+      "stdout": "ok  \tlumi/cmd/lumi\t0.910s",
+      "sandbox_initial_attempt": {
+        "exit_code": 1,
+        "reason": "listen tcp 127.0.0.1:0: bind: operation not permitted"
+      },
+      "rerun": "Explicit require_escalated execution of the same isolated tests"
+    }
+  ],
+  "verified": {
+    "owned_subprocess_only": true,
+    "synthetic_temporary_project_only": true,
+    "paused_by_test_only_sql_function_and_trigger": true,
+    "thread_session_and_two_items_uncommitted_at_kill": true,
+    "writer_process_killed_and_reaped": true,
+    "project_lock_reacquired_by_new_manager": true,
+    "no_partial_threads_sessions_items_or_import_receipts": true,
+    "unchanged_file_retry_imported_three_messages": true,
+    "subsequent_exact_replay_same_receipt_imported_zero": true,
+    "production_code_or_installed_package_changed": false,
+    "real_user_history_read_or_imported": false,
+    "live_host_mutation_retried": false,
+    "paid_media_requested": false,
+    "no_cargo_or_rust": true
+  },
+  "limitations": [
+    "Direct archive service writer process termination; not a Cindy host cancellation or app restart acceptance.",
+    "Does not verify taskView identity, production/development desktop coexistence matrix, or actual image generation."
+  ]
+}

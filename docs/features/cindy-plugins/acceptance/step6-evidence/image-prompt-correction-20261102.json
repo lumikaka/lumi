@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-02",
+  "kind": "image-prompt-composition-correction-local-package-installed",
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "instance_id": "_root__lumi-dev",
+    "namespace": null,
+    "version": "0.4.0"
+  },
+  "fixed_inputs": [
+    "section_id derives from freshly read public page UUID",
+    "before_image_prompt from effective fragment_prompt",
+    "reference_usage_text from actual reference-state fragment_prompt"
+  ],
+  "added_result_fields": [
+    "fragment_prompt",
+    "generation_prompt",
+    "image_write_back"
+  ],
+  "regression": {
+    "go_command": "go test ./internal/textmcp ./internal/promptcatalog ./internal/production ./cmd/lumi ./internal/dbmigrate ./cindy-plugins/schema",
+    "go_exit_code": 0,
+    "node_command": "node cindy-plugins/scripts/verify.mjs step6",
+    "node_tests": 79,
+    "node_pass": 79,
+    "node_fail": 0,
+    "local_loopback_required": true,
+    "initial_production_failure": "TestHostSettingBoardMigrationRefusesLossyDowngrade assumed the latest migration was the host history migration; corrected to explicitly reach 20261101000051 before checking its guard",
+    "production_implementation_changed": false,
+    "no_cargo_or_rust": true
+  },
+  "development_service_switch": {
+    "data_dir": "/private/tmp/lumi-cindy-step4-dev-data",
+    "environment": "development",
+    "before": {
+      "running": true,
+      "pid": 80821,
+      "nonce": "a0763ff8d2a24dd18e7acab96bbfd327326ef26b2d092400c23912e90f2318ac",
+      "open_projects": []
+    },
+    "coordination": {
+      "normal_task_phase": "finished",
+      "normal_task_queue_count": 0,
+      "normal_task_released": true
+    },
+    "stop": {
+      "command": "make cindy-dev-stop",
+      "exit_code": 0,
+      "stdout": "Lumi CLI is stopped (development)."
+    },
+    "after": {
+      "running": false,
+      "pid": 0,
+      "open_projects": [],
+      "status_exit_code": 3,
+      "status_success": true
+    },
+    "new_server_started": false,
+    "production_service_stopped": false
+  },
+  "install_receipt": [
+    {
+      "ok": true,
+      "action": "updated",
+      "id": "lumi-dev",
+      "name": "Lumi（开发版）",
+      "version": "0.4.0",
+      "enabled": true,
+      "instanceId": "_root__lumi-dev",
+      "namespace": null,
+      "note": "插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。"
+    }
+  ],
+  "installed_runtime_receipt": [
+    {
+      "ok": true,
+      "result": {
+        "success": true,
+        "data": {
+          "runtime": "ready",
+          "protocol_version": "2025-03-26",
+          "server_name": "lumi-text",
+          "server_version": "1.0.0",
+          "cli_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+          "channel": "development",
+          "build_id": "29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8",
+          "cli_sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+          "environment": "development",
+          "platform": "darwin",
+          "arch": "arm64",
+          "read_only": false,
+          "server_running": false,
+          "server_observation": "verified",
+          "server_policy": "shared_retained"
+        }
+      }
+    }
+  ],
+  "revised_handoff_receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "user rejected MCP tool call"
+      }
+    ],
+    "isError": true
+  },
+  "handoff_result": "rejected before delivery; no automatic retry",
+  "execution": {
+    "core_request_this_source_turn": 0,
+    "receive_media_this_source_turn": 0,
+    "normal_task_started_by_this_handoff": false,
+    "corrected_prompt_live_backend_verified": false
+  },
+  "remaining": "A user-visible instruction in the original normal work task is needed to resume corrected acceptance; Step 5 host identity and other real media/lifecycle acceptance remain open."
+}

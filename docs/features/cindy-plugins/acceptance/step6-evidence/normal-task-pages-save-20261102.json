@@ -1,0 +1,219 @@
+{
+  "date": "2026-11-02",
+  "kind": "normal-lumi-dev-task-three-pages-save-report",
+  "source_task_id": "a0964e96-ba88-4c58-af32-4c0d356b7530",
+  "source_report": {
+    "filename": "页面保存验证报告.md",
+    "sha256": "e3080864fd4ad305d128b966c26bb804e14a3a7f2c3baafcde244f455744438c",
+    "requested_by_this_acceptance": true,
+    "full_page_bodies_copied": false
+  },
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null
+  },
+  "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+  "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+  "chapter_revision_before": 1,
+  "chapter_revision_after": 1,
+  "chapter_hash_unchanged_reported": true,
+  "page_state_revision_before": 0,
+  "page_state_revision_after": 3,
+  "create_count_reported": 3,
+  "pages": [
+    {
+      "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+      "section_no": 1,
+      "title": "借一盏灯",
+      "create_expected_revision": 0,
+      "page_revision_after": 0,
+      "storyboard_version": 1,
+      "description_sha256": "798dad37b303da7d4ae6795a47b8ce20619d89973878a2ffe233a529cfa368b0",
+      "storyboard_sha256": "dc1495d39644754aedfe75f9ca7a19a804808ab07d4a86d314a4c03a22172fb0",
+      "description_equal_on_reread_reported": true,
+      "storyboard_equal_on_reread_reported": true,
+      "create_receipt_from_report": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "created_at": "2026-11-02T04:58:51.378102Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-02T04:58:51.378102Z",
+              "source_type": "manual",
+              "uuid": "01a19a9f-e072-7399-99ec-4e8ab2b56d5a",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 1,
+            "title": "借一盏灯",
+            "updated_at": "2026-11-02T04:58:51.378102Z",
+            "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+          }
+        }
+      }
+    },
+    {
+      "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694",
+      "section_no": 2,
+      "title": "河边的小声音",
+      "create_expected_revision": 1,
+      "page_revision_after": 0,
+      "storyboard_version": 1,
+      "description_sha256": "a1971b53cbe75fb60a2f7de8089867b17fb52769949e4012e56fbc7e31acd9dc",
+      "storyboard_sha256": "8d0d42baa6bcba6a1a45f3f646cab83e41238c420567bf3b00ed15a2354f8835",
+      "description_equal_on_reread_reported": true,
+      "storyboard_equal_on_reread_reported": true,
+      "create_receipt_from_report": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "created_at": "2026-11-02T04:59:12.426614Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-02T04:59:12.426614Z",
+              "source_type": "manual",
+              "uuid": "01a19aa0-32aa-7b71-9a31-f4094398c42f",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 2,
+            "title": "河边的小声音",
+            "updated_at": "2026-11-02T04:59:12.426614Z",
+            "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694"
+          }
+        }
+      }
+    },
+    {
+      "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3",
+      "section_no": 3,
+      "title": "把光放低一点",
+      "create_expected_revision": 2,
+      "page_revision_after": 0,
+      "storyboard_version": 1,
+      "description_sha256": "f0a4b08dc0f4e710dba2b31689830db3b33372f97f1e212d6b8fe520d515546e",
+      "storyboard_sha256": "b24e5ac47b14775566b7cc2467866c6b06df8399c446e4d2748861a32e17fc4b",
+      "description_equal_on_reread_reported": true,
+      "storyboard_equal_on_reread_reported": true,
+      "create_receipt_from_report": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "created_at": "2026-11-02T04:59:30.917023Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-02T04:59:30.917023Z",
+              "source_type": "manual",
+              "uuid": "01a19aa0-7ae5-7284-b269-e1f2f68db0e8",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 3,
+            "title": "把光放低一点",
+            "updated_at": "2026-11-02T04:59:30.917023Z",
+            "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3"
+          }
+        }
+      }
+    }
+  ],
+  "final_outline_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "cursor_pagination": {
+          "has_more": false,
+          "next_cursor": "4",
+          "per_page": 20,
+          "prev_cursor": "0"
+        },
+        "items": [
+          {
+            "chapter_code": "vol01.ch01",
+            "has_text": true,
+            "kind": "chapter",
+            "revision": 1,
+            "title": "把光放低一点",
+            "uuid": "01a199e6-89e9-7213-a333-924bffa24af8"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 1,
+            "title": "借一盏灯",
+            "uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 2,
+            "title": "河边的小声音",
+            "uuid": "01a19aa0-32aa-76c6-a920-e23e33f14694"
+          },
+          {
+            "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+            "has_image": false,
+            "has_storyboard": true,
+            "has_text": true,
+            "kind": "page",
+            "page_role": "body",
+            "revision": 0,
+            "section_no": 3,
+            "title": "把光放低一点",
+            "uuid": "01a19aa0-7ae4-7cc1-b5ad-1480534da4d3"
+          }
+        ]
+      }
+    }
+  },
+  "release_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "released": true,
+        "server_policy": "shared_retained"
+      }
+    }
+  },
+  "scope": {
+    "page_text_and_storyboards": true,
+    "real_image_generation": false,
+    "image_import": false,
+    "reference_edit": false,
+    "export": false,
+    "task_view": false
+  },
+  "limits": [
+    "父任务解析目标任务生成的报告、完整创建回执、大纲与文本结构；未重新执行作品写入。",
+    "正文和画面描述的六项逐字重读一致性为目标任务报告结果，父任务未独立调用作品工具重读。",
+    "业务非只读字段不证明 Ask/Auto/Full Access 档位。"
+  ]
+}

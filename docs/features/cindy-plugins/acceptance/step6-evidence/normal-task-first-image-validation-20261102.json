@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-02",
+  "kind": "normal-lumi-dev-task-first-image-preflight-validation-failure",
+  "source_task_id": "a0964e96-ba88-4c58-af32-4c0d356b7530",
+  "source_report": {
+    "filename": "图片生成导入验证报告.md",
+    "sha256": "30bb9c67c92841fe41bd4f9daa548d67206134c1a92d25911a162a7cb361afa9",
+    "full_task_text_copied": false
+  },
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null
+  },
+  "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+  "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+  "page_uuid": "01a19a9f-e071-7ce8-9e8b-175e4009c456",
+  "failure": {
+    "tool": "render_prompt",
+    "code": "LUMI_PROMPT_INPUTS_MISSING",
+    "missing_placeholders": [
+      "before_image_prompt",
+      "reference_usage_text",
+      "section_id"
+    ],
+    "request_omitted_variables": true,
+    "permission_rejection_observed": false,
+    "paid_submission_result_unknown": false
+  },
+  "core_preparation": {
+    "model_id": "openai/gpt-image-2",
+    "provider_id": "openai",
+    "guide_revision": 3,
+    "prepared": true,
+    "submission_token_saved": false
+  },
+  "call_counts_reported": {
+    "image_target": 1,
+    "render_prompt": 1,
+    "list_models": 1,
+    "prepare": 1,
+    "request": 0,
+    "poll": 0,
+    "receive_media": 0,
+    "read_image": 0,
+    "pages_get": 2
+  },
+  "page_readback_reported": {
+    "revision_before": 0,
+    "revision_after": 0,
+    "current_image_before": null,
+    "current_image_after": null,
+    "description_exact_match": true,
+    "storyboard_exact_match": true,
+    "storyboard_version_before": 1,
+    "storyboard_version_after": 1
+  },
+  "runtime_release_reported": {
+    "released": true,
+    "server_policy": "shared_retained"
+  },
+  "limits": [
+    "父任务核对目标任务公开摘要与指定报告，未独立调用目标项目工具。",
+    "未执行生图、附件交接、导入、参考编辑或导出，不证明这些项目成功或失败。",
+    "已确定执行前校验失败，可修正输入后重新进行准备；权限拒绝和未知付费/写入结果仍必须停止。"
+  ]
+}

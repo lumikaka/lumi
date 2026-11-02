@@ -1,0 +1,15 @@
+{
+  "kind": "forge-archive-verified-not-installed",
+  "id": "lumi-host-acceptance-20261101",
+  "version": "0.0.1",
+  "sha256": "aebc55b33dff29cf99c957e8b5081d9746ce663f042eb97b24e59b401069ad78",
+  "bytes": 21289728,
+  "entry_count": 21,
+  "product_main_sha256": "6f36cda019a64ec589fa83e7dd6233048ccb388abe74945517ff761ce2b2c6d5",
+  "cli_sha256": "484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1",
+  "agent_started": false,
+  "tasks_created": false,
+  "installed": false,
+  "node_modules_unchanged": true,
+  "cli_mode": "755"
+}

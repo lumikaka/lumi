@@ -1,0 +1,10 @@
+$ go test ./internal/production ./internal/files ./internal/textmcp ./internal/project ./internal/promptcatalog ./cmd/lumi ./cindy-plugins/schema
+ok  	lumi/internal/production	24.189s
+ok  	lumi/internal/files	3.726s
+ok  	lumi/internal/textmcp	(cached)
+ok  	lumi/internal/project	(cached)
+ok  	lumi/internal/promptcatalog	(cached)
+ok  	lumi/cmd/lumi	(cached)
+?   	lumi/cindy-plugins/schema	[no test files]
+
+exit_code=0

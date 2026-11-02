@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-02",
+  "kind": "read-only-native-desktop-reopen-compatibility-preflight",
+  "desktop_app_version": "0.2.14",
+  "project_root_source": "public Cindy helper get_chat_history for the user-selected task A; only its session workdir metadata was used",
+  "schema_query": "Read-only immutable SELECT version, dirty FROM schema_migrations after confirming no nonempty WAL",
+  "project_schema_version": 20261102000052,
+  "project_schema_dirty": false,
+  "project_db_modified": false,
+  "binary_observations": [
+    {
+      "label": "installed_desktop",
+      "path": "/Applications/Lumi.app/Contents/Resources/backend/lumi_web",
+      "sha256": "3fe2fb40b16619827fa9217e7bc5648b660bd6942ea3ecb7ab62d342bb79ae2e",
+      "migration_marker_count": 62,
+      "highest_migration_marker": 20261009000013,
+      "project_migration_marker_present": false,
+      "newer_schema_guard_marker_present": true
+    },
+    {
+      "label": "reviewed_development_cli",
+      "path": "/Users/qingyang/mine-work/lumi/build/cindy-dev/lumi-dev/bin/lumi_dev",
+      "sha256": "d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47",
+      "migration_marker_count": 69,
+      "highest_migration_marker": 20261102000052,
+      "project_migration_marker_present": true,
+      "newer_schema_guard_marker_present": true
+    }
+  ],
+  "limits": [
+    "二进制内迁移文件名为静态标记观察，不冒称已执行桌面打开或完整动态兼容性测试。",
+    "未启动或修改Lumi桌面版，未写入项目或迁移数据库，未运行Cargo/Rust。"
+  ]
+}

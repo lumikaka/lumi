@@ -86,6 +86,20 @@ test('fixed text through discovery → provider-free setup → story/settings/th
     assert.equal(read.description_md, fixed.pages[index][1]);
     assert.equal(read.current_storyboard.content_md, fixed.pages[index][2]);
   }
+  // Compose the current project's image template through the same adapter;
+  // rendering is provider-free and must preserve the page's image revision.
+  const imageContext = { prompt_group: 'chapter', target: 'page', chapter_uuid: chapter.uuid, page_uuid: pages[0].uuid };
+  const baseRules = ok(await call('render_prompt', { ...imageContext, prompt_key: 'before_image' }));
+  const absentReferences = ok(await call('render_prompt', { ...imageContext, prompt_key: 'section_reference_absent' }));
+  assert.ok(baseRules.fragment_prompt.includes('4:3'));
+  const imagePrompt = ok(await call('render_prompt', { ...imageContext, prompt_key: 'section_image', variables: {
+    before_image_prompt: baseRules.fragment_prompt, reference_usage_text: absentReferences.fragment_prompt,
+  } }));
+  assert.ok(imagePrompt.generation_prompt.includes(fixed.pages[0][2]));
+  assert.ok(imagePrompt.generation_prompt.includes(pages[0].uuid));
+  assert.equal(imagePrompt.generation_prompt.includes('Write-back contract'), false);
+  assert.deepEqual(imagePrompt.image_write_back, { target_uuid: pages[0].uuid, slot: 'page_image', expected_revision: pages[0].revision });
+  assert.equal(ok(await call('pages', { action: 'get', chapter_uuid: chapter.uuid, page_uuid: pages[0].uuid })).revision, pages[0].revision);
   // Two tasks both read revision N. The stale task must not replace task one's text.
   const before = ok(await call('pages', { action: 'get', chapter_uuid: chapter.uuid, page_uuid: pages[0].uuid }, 'second-task'));
   ok(await call('pages', { action: 'update', chapter_uuid: chapter.uuid, page_uuid: before.uuid, title: '溪边的微光（已审阅）', expected_revision: before.revision }));

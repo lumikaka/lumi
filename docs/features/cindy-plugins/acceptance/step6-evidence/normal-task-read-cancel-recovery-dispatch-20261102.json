@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-02",
+  "trial": "lumi-step6-read-cancel-20261102-02",
+  "instruction": "$lumi-dev 继续 trial=lumi-step6-read-cancel-20261102-02 的停止后事实恢复。控制器在CANCEL_READY标记出现且phase=running时提交stop_session_turn，回执ok=true/status=requested/turn_generation=2；随后本轮active=false/phase=completed，最新助手回复仍停在marker，没有后续完成报告。Host公开状态未保留精确中断原因，所以报告限定“读取阶段优雅停止及事实恢复”，不要写成在途写入、Core请求或RPC被强制中断。现在仅通过正常lumi-dev读取同一项目：runtime_status原build29401ca7…；project_overview；875字章节revision1/version1/原hash；三页完整正文与分镜对照原报告和已交付ZIP，revision=[3,0,0]；第1页仍选原图asset01a19ad5-745d-71c1-b6ff-998d15b3f8d6；原图和候选2 asset01a19aeb-076a-7744-a773-c972e1fd8551均读取受控预览；最终book_outline与图片选择一致。最后runtime_release。不得修改业务、重新生成/编辑/导入/选择/导出，不创建或启动其它任务，不改旧报告。另存《读取阶段取消恢复验收报告.md》，记录本轮完整JSON文本回执与逐字/摘要/版本比较结果，不内联图片二进制；建议一个完整JSON代码块汇总trial、chapter receipt及char_count/sha256/matches_baseline、三个page receipt及text_matches_baseline/storyboard_matches_baseline/revision、两个image JSON metadata及image_block_count、outline和release，计数business_writes=0/media_requests=0/export_calls=0，所有比较填写实际结果。若任何拒绝、未知结果、绑定或版本变化则停止，不重试或补写；保留本轮实际回执。",
+  "receipt": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"target_session_id\":\"a0964e96-ba88-4c58-af32-4c0d356b7530\",\"agent_kind\":\"codex\",\"wake_kind\":\"already-active\",\"target_title\":\"Lumi acceptance · A\",\"target_last_user_send_at\":\"2026-11-02T07:20:28.470Z\",\"worktree_path\":null}"
+      }
+    ]
+  }
+}

@@ -1,6 +1,16 @@
 import { defineMessages } from './defineMessages.js'
 
 export const chat = defineMessages({
+  'chat.cindy.source': ['Cindy · 只读', 'Cindy · Read only'],
+  'chat.cindy.history': ['Cindy 创作记录', 'Cindy writing history'],
+  'chat.cindy.read_only': ['手动导入的用户与助手文本。继续创作请回到 Cindy，完成后再次导入。未启用自动采集。', 'Manually imported user and assistant text. Continue in Cindy, then import again. Automatic collection is off.'],
+  'chat.cindy.cutoff': ['已验证导出的截止时间：', 'Verified export cutoff:'],
+  'chat.cindy.coverage': ['仅包含所选来源公开返回的文本，不含图片、附件或工具轨迹；不保证完整聊天历史或后续编辑已同步。多次导入的文本会合并保留。', 'Only public text from the selected source is included, without images, attachments or tool traces. Full history and later edits are not guaranteed. Text from repeated imports is retained together.'],
+  'chat.cindy.omitted': ['最新覆盖文件省略了 {count} 条无正文或注入上下文消息。', 'The latest coverage file omitted {count} empty or injected context messages.'],
+  'chat.cindy.filtered': ['导入时已过滤上下文或媒体；此记录只展示文本。', 'Context or media was filtered during import; this record shows text only.'],
+  'chat.cindy.empty': ['本次导入没有可展示的文本。', 'This import contains no displayable text.'],
+  'chat.cindy.user': ['你', 'You'],
+  'chat.cindy.assistant': ['助手', 'Assistant'],
   'chat.codex.source': ['Codex · 只读', 'Codex · Read only'],
   'chat.codex.history': ['Codex 会话记录', 'Codex session history'],
   'chat.codex.read_only': ['手动导入的会话记录。继续创作请回到 Codex，完成后再次导入。', 'Manually imported history. Continue in Codex, then import again.'],

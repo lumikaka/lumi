@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-02",
+  "kind": "native-cindy-development-plugin-reenable-verification",
+  "user_report": "已重新启用 Lumi（开发版）",
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "instance_id": "_root__lumi-dev"
+  },
+  "rediscovery": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"ghost\":{\"id\":\"lumi-dev\",\"namespace\":null,\"name\":\"Lumi（开发版）\",\"command\":\"lumi-dev\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":7,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}}"
+        }
+      ]
+    }
+  },
+  "development_runtime": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    }
+  },
+  "production_runtime": {
+    "status": "fulfilled",
+    "value": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+        }
+      ]
+    }
+  },
+  "project_reopen_handoff": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"target_session_id\":\"a0964e96-ba88-4c58-af32-4c0d356b7530\",\"agent_kind\":\"codex\",\"wake_kind\":\"queued\",\"target_title\":\"Lumi acceptance · A\",\"target_last_user_send_at\":\"2026-11-02T06:17:17.207Z\",\"queued_message_id\":\"kp0mtgijojd9zimcf902c47s\",\"worktree_path\":null}"
+      }
+    ]
+  },
+  "checks": {
+    "development_available_again": true,
+    "development_build_unchanged": true,
+    "development_shared_server_running": true,
+    "production_ready_and_build_unchanged": true,
+    "business_writes_submitted_by_this_source_turn": 0
+  },
+  "limits": [
+    "当前诊断属于源码任务；项目完整数据保留仍由原作品任务的正常公开工具读取验证。",
+    "重新启用不代表卸载/重装或共享Codex客户端矩阵通过。"
+  ]
+}

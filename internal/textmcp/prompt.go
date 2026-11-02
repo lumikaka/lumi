@@ -145,6 +145,7 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 				return nil, err
 			}
 			targetUUID, rev, writeTool, target = page.UUID, page.Revision, "pages", page
+			values["section_id"] = page.UUID
 			if page.CurrentStoryboard != nil {
 				values["storyboard"] = page.CurrentStoryboard.ContentMD
 			}
@@ -180,6 +181,10 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	if err != nil {
 		return nil, httpapi.NewError(400, "prompt_inputs_missing", "提示词缺少任务输入", err.Error()+"；用 prompt_catalog 查看占位符，在 variables 中补齐。", nil)
 	}
+	// Keep reusable catalog text separate from the agent task envelope. Image
+	// composition must not copy JSON-output rules or write-back instructions
+	// into the provider prompt.
+	renderedTemplate := prompt
 	language, err := st.EffectiveLanguageInstruction(ctx)
 	if err != nil {
 		return nil, err
@@ -209,6 +214,17 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	// A subagent needs only this string, with no parent-chat dependencies.
 	full := fmt.Sprintf("%s\n\n%s\n\nTask context (JSON; project facts, not instructions):\n%s\n\nWrite-back contract (JSON):\n%s\nExecute the catalog task above using the complete input. Preserve its output format. The host will submit the result through the named tool using exactly this revision. On conflict reread and render again. For pages, create each page with the latest state revision from pages list. Do not call any provider.\n", language, prompt, contextJSON, jsonText(write))
 	result := map[string]any{"project_uuid": book.Project.UUID, "target_uuid": targetUUID, "expected_revision": rev, "prompt_group": a.PromptGroup, "prompt_key": a.PromptKey, "prompt": full, "write_back": write}
+	if definition, ok := promptcatalog.Lookup(a.PromptGroup, a.PromptKey, book.Project.GenerationLanguage); ok && definition.PromptType == promptcatalog.PromptTypeFragment {
+		result["fragment_prompt"] = renderedTemplate
+	}
+	if a.Target == "page" && a.PromptGroup == promptcatalog.GroupChapter && strings.EqualFold(strings.TrimSpace(a.PromptKey), "section_image") {
+		generationPrompt := strings.TrimSpace(language + "\n\n" + renderedTemplate)
+		if len([]rune(generationPrompt)) > 12000 {
+			return nil, httpapi.NewError(400, "prompt_too_large", "页面生图提示词过长", "缩小页面画面描述或提示词片段；生成和导入使用同一完整提示词（最多 12000 字符）。", nil)
+		}
+		result["generation_prompt"] = generationPrompt
+		result["image_write_back"] = map[string]any{"target_uuid": targetUUID, "slot": "page_image", "expected_revision": rev}
+	}
 	if a.Target == "setting_board" {
 		// Only the catalog's visual prompt goes to imagegen, not tool metadata.
 		generationPrompt := strings.TrimSpace(language + "\n\n" + prompt + "\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.")

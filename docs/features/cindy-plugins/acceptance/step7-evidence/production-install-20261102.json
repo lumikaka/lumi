@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-02",
+  "kind": "explicitly-authorized-local-personal-production-identity-install",
+  "action": "installed",
+  "id": "lumi",
+  "instance_id": "_root__lumi",
+  "namespace": null,
+  "version": "0.4.0",
+  "enabled": true,
+  "reviewed_sha256": "cfa2eeb248abc179a9275e84f8fc6735e3db45435c38914d67fcf1d6800ab20c",
+  "install_repack_sha256": "ff747a1def31711cc41aae4d23c8590eeb5aaa3b1c255eb6e6f96f6d0cc22dff",
+  "all_21_contents_equal": true,
+  "build_id": "bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c",
+  "cli_sha256": "c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a",
+  "published": false,
+  "shared_services_stopped": false
+}

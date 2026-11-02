@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-02",
+  "kind": "user-supplied-normal-lumi-dev-task-chapter-save-report",
+  "source_task_id": "a0964e96-ba88-4c58-af32-4c0d356b7530",
+  "source_report": {
+    "filename": "章节保存验证报告.md",
+    "sha256": "67ac316e4c1b1638ddbe8c61e6c5fb54315a161775a2825b33be02eaeaa349d7",
+    "explicitly_provided_by_user": true,
+    "body_text_copied": false
+  },
+  "plugin": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "entry": "call_tool / chapters / action=write"
+  },
+  "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+  "chapter_uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+  "before": {
+    "revision": 0,
+    "current_story": null
+  },
+  "write_count_reported": 1,
+  "request_expected_revision": 0,
+  "write_receipt_from_report": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "chapter_code": "vol01.ch01",
+        "chapter_no": 1,
+        "created_at": "2026-11-02T01:36:25.065137Z",
+        "current_story": {
+          "char_count": 875,
+          "content_format": "txt",
+          "content_hash": "e01ce56fd5ca340bb75ea5af8de7754a96389ff56feaad8bab2ad7bcf79dfd98",
+          "created_at": "2026-11-02T04:22:14.563237Z",
+          "source_item_uuid": "01a19a7e-5b23-7433-858d-7fe798f085ae",
+          "source_type": "manual_edit",
+          "source_uuid": "01a19a7e-5b23-7432-9b7d-a26b2c24a997",
+          "uuid": "01a19a7e-5b23-79c7-a241-de60e692532e",
+          "version_no": 1
+        },
+        "revision": 1,
+        "sort_order": 100001,
+        "title": "把光放低一点",
+        "trashed_at": null,
+        "updated_at": "2026-11-02T04:22:14.563237Z",
+        "uuid": "01a199e6-89e9-7213-a333-924bffa24af8",
+        "volume_no": 1
+      }
+    }
+  },
+  "reread_reported": {
+    "revision": 1,
+    "version_no": 1,
+    "char_count": 875,
+    "content_hash": "e01ce56fd5ca340bb75ea5af8de7754a96389ff56feaad8bab2ad7bcf79dfd98",
+    "content_equal_submitted": true
+  },
+  "permission_evidence": {
+    "runtime_status": {
+      "read_only": false
+    },
+    "project_overview": {
+      "limitations": {
+        "read_only": false,
+        "open_may_write": true
+      }
+    }
+  },
+  "host_permission_mode_verified": false,
+  "scope": {
+    "chapter_body_save": true,
+    "pages_created": false,
+    "image_generation": false,
+    "media_import": false,
+    "export": false,
+    "task_view": false
+  },
+  "limits": [
+    "父任务核对用户提供的完整写入回执及报告；没有通过探针或其它入口再次写入。",
+    "保存后完整正文逐字比较为目标任务报告结果；父任务未另行读取875字正文。",
+    "非只读业务权限不证明宿主 Ask/Auto/Full Access 档位，不能由成功写入推断先前拒绝的根因已查明。"
+  ]
+}

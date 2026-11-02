@@ -1,6 +1,6 @@
 'use strict';
 const { MAX_LINE } = require('./protocol.cjs');
-const { RuntimeError, envelope } = require('./errors.cjs');
+const { RuntimeError, envelope, aborted } = require('./errors.cjs');
 const catalog = require('./catalog.cjs');
 
 function createWorker({ input, output, runtime, spawnLifetime }) {
@@ -47,23 +47,31 @@ function createWorker({ input, output, runtime, spawnLifetime }) {
       lifetime = spawnLifetime('node/request-lifetime.cjs');
     } catch (error) { lifetime = Promise.reject(error); }
     (async () => {
-      let child;
-      const abort = () => controller.abort();
+      let child, settled = false;
+      const abort = () => { if (!settled) controller.abort(); };
       const deadline = setTimeout(abort, 50000);
       try {
         child = await lifetime;
         child.once('exit', abort);
         child.once('error', abort);
+        // Child exit may precede spawnEntry's resolution. The Host proxy
+        // retains that fact in killed; an exit listener alone can miss it.
+        if (child.killed === true) controller.abort();
+        aborted(controller.signal);
         const result = await runtime.execute(request.method, request.params, controller.signal);
         write({ jsonrpc: '2.0', id: request.id, result });
       } catch (error) {
         write({ jsonrpc: '2.0', id: request.id, result: envelope(error) });
       } finally {
+        settled = true;
         clearTimeout(deadline);
-        child?.removeListener('exit', abort);
-        child?.removeListener('error', abort);
-        child?.kill();
+        // The Host returns a narrow child proxy with on/once/off, not a Node
+        // ChildProcess. Release capacity before best-effort external cleanup;
+        // a late child exit or cleanup error must not leak a completed slot.
         calls.delete(request.id);
+        try { child?.off('exit', abort); } catch {}
+        try { child?.off('error', abort); } catch {}
+        try { child?.kill(); } catch {}
       }
     })();
   }

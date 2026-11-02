@@ -109,7 +109,7 @@ class MCPConnection {
 
   async initialize() {
     const result = await this.request('initialize', {
-      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.3.0' },
+      protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'lumi-cindy', version: '0.4.0' },
     });
     if (!['2025-03-26', '2025-06-18', '2024-11-05'].includes(result?.protocolVersion)
       || result.serverInfo?.name !== 'lumi-text' || result.serverInfo.version !== '1.0.0' || !result.capabilities?.tools) {
@@ -139,6 +139,12 @@ class MCPConnection {
       try { value = JSON.parse(result.content[0].text); } catch { throw protocolError(); }
     }
     if (!validEnvelope(value) || (result.isError === true) !== !value.success) throw protocolError();
+    if (name === 'read_image' && value.success) {
+      const images = result.content?.filter(item => item.type === 'image');
+      if (images?.length !== 1 || images[0].mimeType !== 'image/jpeg' || typeof images[0].data !== 'string'
+        || Buffer.from(images[0].data, 'base64').length > 120 * 1024) throw protocolError();
+      return { ...value, transport_image: { data: images[0].data, mime_type: images[0].mimeType } };
+    }
     return value;
   }
 

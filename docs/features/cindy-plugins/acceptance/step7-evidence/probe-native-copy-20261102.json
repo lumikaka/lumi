@@ -1,0 +1,21 @@
+{
+  "old_inode": 324668171,
+  "old_bytes": 40316914,
+  "new_inode": 324868487,
+  "new_sha256": "b74ab5a4ac0af9ce6068cf020c999309d0640ffbcb92a19e4b32f91782fac436",
+  "native_copy_replaced_inode": true,
+  "old_kernel_process_exit_claimed": false,
+  "help_command_exit_code": 0,
+  "help_includes_cindy_session_import": true,
+  "old_process_readonly_check": {
+    "pid": 20644,
+    "parent_pid": 20640,
+    "state": "UE",
+    "elapsed": "56:05"
+  },
+  "fresh_browser_acceptance_server_pid": 42782,
+  "fresh_server_process_after_stop_found": false,
+  "probe_author_rebuilt_only": true,
+  "probe_reinstalled": false,
+  "later_forge_probe_update": "Updated after the original native-copy validation; see probe-update-20261102.json"
+}

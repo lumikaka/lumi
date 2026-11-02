@@ -21,6 +21,10 @@ import (
 
 const creationRoute = "/api/v1/creation-requests"
 
+// Version 1 requires the daemon, not just the stdio relay, to enforce the
+// expected project UUID and read-only transport constraints.
+const creationProtocolVersion = 1
+
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
 	RootPath            string          `json:"root_path"`
@@ -91,6 +95,9 @@ func runMCP(opt options) error {
 		}
 		if err != nil {
 			return textmcp.Failure("instance_unavailable", "CLI 实例不可用", err.Error())
+		}
+		if status.CreationProtocolVersion < creationProtocolVersion {
+			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", "随包 CLI 与正在运行的共享服务协议不兼容；未派发创作请求。请先协调同一 environment/data-dir 的使用者，再明确停止旧服务并用新包重连；不要重放写入。")
 		}
 		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly})
 	})

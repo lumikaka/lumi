@@ -239,6 +239,20 @@ func TestHostSettingBoardMigrationRefusesLossyDowngrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer runner.Close()
+	// Later migrations may legitimately roll back before reaching the host
+	// setting history guard. Exercise that specific migration, not the latest.
+	for {
+		version, dirty, applied, err := runner.Version()
+		if err != nil || dirty || !applied || version < 20261101000051 {
+			t.Fatalf("migration before host guard: version=%d dirty=%v applied=%v err=%v", version, dirty, applied, err)
+		}
+		if version == 20261101000051 {
+			break
+		}
+		if err := runner.Down(1); err != nil {
+			t.Fatalf("rollback before host history migration: %v", err)
+		}
+	}
 	if err := runner.Down(1); err == nil {
 		t.Fatal("lossy host history downgrade accepted")
 	}

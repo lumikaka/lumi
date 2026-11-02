@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-02",
+  "kind": "public-current-task-export-validation-not-project-import",
+  "authorization": "explicit user selection; keep Auto, prioritize code and archive verification",
+  "host": "Cindy 0.1.121 on Mac",
+  "source": "cindy_helper.get_chat_history",
+  "scope": "only current task user/assistant public text",
+  "cutoff_at": "2026-11-02T02:06:09.666Z",
+  "public_messages": 46,
+  "pagination": {
+    "page_counts": [
+      20,
+      20,
+      6
+    ],
+    "has_more_terminal": false,
+    "same_ids_as_single_page": true,
+    "duplicate_ids": 0
+  },
+  "observed_content_shapes": [
+    "string",
+    "object.text with images/files/slashCommandRanges"
+  ],
+  "format": {
+    "name": "lumi.cindy-public-history",
+    "version": 1,
+    "owner": "Lumi Agent-generated wrapper; not an official Cindy file export format",
+    "includes_public_request_and_query_receipt": true
+  },
+  "parser_result": {
+    "success": true,
+    "messages": 45,
+    "omitted_messages": 1,
+    "duplicate_messages": 0,
+    "warnings": [
+      "injected_context_omitted"
+    ],
+    "database_written": false,
+    "body_printed": false
+  },
+  "private_sample": {
+    "stored_outside_repository": true,
+    "directory_mode": "0700",
+    "file_mode": "0600",
+    "local_path": "/private/tmp/lumi-cindy-archive-20261102/public-history.json",
+    "sha256": "642fd6aec637f0a21ab6965c06a0c8c4dfe0d1afbf3c29bd50f71b62afb17f95"
+  },
+  "limitations": [
+    "Public pages are not a server-atomic transcript snapshot; cutoff only bounds message createdAt.",
+    "The file is not a Host authorization or signature.",
+    "No cindy_session migration, REST persistence, product tool or readonly UI is implemented yet.",
+    "Real user transcript text and metadata are not committed as fixtures."
+  ]
+}

@@ -1,10 +1,10 @@
-# Cindy 文本创作工具契约
+# Cindy 创作工具契约
 
-Step 3，2026-11-01。执行 Host 为 Cindy 0.1.121，构建 sourceCommit `0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`；对应公开源码仍返回 404，依当前随包 Skill 与该应用包构建产物核对接口，不以 main 或其他 tag 冒充匹配源码。已核对 Host 错误码格式和失败时只转发 errorCode/message 的行为，因此自纠 schema 与 RULES 也进入 message。共用业务参数及返回见 [现有工具契约](../codex-plugins/tools.md)；权威 schema 为 `internal/textmcp.Specs()`，构建时生成 `cindy-plugins/lumi/node/business-specs.json`，不修改既有 MCP 工具注册或业务参数。验证记录见 [Step 3 验收](acceptance/step3-authoring-tools.md)。
+Step 3/4，2026-11-01；Step 4 的新增能力与未通过项见 [媒体契约](media.md) 和 [验收记录](acceptance/step4-image-import.md)。执行 Host 为 Cindy 0.1.121，构建 sourceCommit `0a7d5a419f5cd3e0fbebc9642dde8388376a68aa`；对应公开源码仍返回 404，依当前随包 Skill 与该应用包构建产物核对接口，不以 main 或其他 tag 冒充匹配源码。已核对 Host 错误码格式和失败时只转发 errorCode/message 的行为，因此自纠 schema 与 RULES 也进入 message。共用业务参数及返回见 [现有工具契约](../codex-plugins/tools.md)；权威 schema 为 `internal/textmcp.Specs()`，构建时生成 `cindy-plugins/lumi/node/business-specs.json`，不修改既有 MCP 工具注册或业务参数。验证记录见 [Step 3 验收](acceptance/step3-authoring-tools.md)。
 
 ## 顶层目录与允许列表
 
-manifest 仅注册两个顶层工具：`list_tools({category?})` 和 `call_tool({name,args?})`。前者不传 category 返回类别名称、数量和状态；指定类别返回工具名称、说明、完整 input_schema（含条件必填）和必要 RULES。后者只执行明确允许列表中的名称，args 为 JSON 对象，省略相当于 `{}`。
+manifest 注册目录与分发两个顶层工具：`list_tools({category?})` 和 `call_tool({name,args?})`。前者不传 category 返回类别名称、数量和状态；指定类别返回工具名称、说明、完整 input_schema（含条件必填）和必要 RULES。后者只执行明确允许列表中的名称，args 为 JSON 对象，省略相当于 `{}`。第三个顶层工具 receive_media 只接收 Host 顶层 attachments，不能经 call_tool 代替。
 
 | 类别 | 当前工具 | 状态 |
 | --- | --- | --- |
@@ -12,8 +12,8 @@ manifest 仅注册两个顶层工具：`list_tools({category?})` 和 `call_tool(
 | story | story_profile、chapters、book_outline | 可用 |
 | settings | settings | 可用 |
 | pages | pages | 可用 |
-| prompts | prompt_catalog、render_prompt | 可用，限定文字目标 |
-| media | 无 | not_implemented |
+| prompts | prompt_catalog、render_prompt | 可用，page/setting 提示词可供当前 Agent 生图；批量 setting_board 未开放 |
+| media | image_target、read_image、receive_media | 已实现；独立receive_media入口，真实Core生成/参考编辑/授权导入已验 |
 | review | 无 | not_implemented，文字审阅使用业务 list/get |
 | export | export_book | 可用，原生任务文件通道已实测 |
 
@@ -21,9 +21,10 @@ manifest 仅注册两个顶层工具：`list_tools({category?})` 和 `call_tool(
 
 ## 有意差异
 
-- Cindy 只声明目录与分发器，原业务工具通过 call_tool 进入；runtime 两项也移入 project 类别。
+- Cindy 声明目录、分发器与独立 receive_media，原业务工具通过 call_tool 进入；runtime 两项也移入 project 类别。
 - project_init、project_overview 和 project_setup 沿用 Step 2 的公开状态投影，内部路径与实例身份留在 Node；其他业务返回沿用 Lumi 信封。写入结果可能是既有业务摘要，完整正文须 get/list 重读核对。
-- render_prompt target 仅提供 setup、story_profile、chapter、pages、page、setting、premise；媒体目标及 board_uuid 在后续媒体交接完成前拒绝。传入的目标和上下文 UUID 先通过当前项目的业务 get 核对，不沿用共享渲染器对未知上下文 UUID 静默过滤的行为。其余参数、变量与业务输出不另造协议。
+- render_prompt target 仅提供 setup、story_profile、chapter、pages、page、setting、premise；setting_board、setting_breakdown 及 board_uuid 仍拒绝；page/setting 提示词可结合 image_target 用于生成与 receive_media 导入。传入的目标和上下文 UUID 先通过当前项目的业务 get 核对，不沿用共享渲染器对未知上下文 UUID 静默过滤的行为。其余参数、变量与业务输出不另造协议。
+- 片段类型模板返回 `fragment_prompt`，不含外层 Agent 任务封装。页面 `chapter/section_image` 的 `section_id` 从真实公共页面 UUID 派生，新增 `generation_prompt`（最多12000字符）和 `image_write_back:{target_uuid,slot,expected_revision}`；原 `prompt` / `write_back` 仍保留兼容性。先用有效基础片段和实际参考状态片段补齐变量，组装成功后才准备媒体调用，详见 [图片契约](media.md)。这些返回字段已通过Go/真实CLI自动化；新开发包已安装，并在正常作品任务第1页完成三次渲染、真实生成、导入与重读，见 [成功证据](acceptance/step6-evidence/normal-task-first-image-success-20261102.json)。
 - 业务目录新增 `premise/text_settings` 文字设定任务，中英文默认模板由 promptcatalog 管理，支持项目覆盖；不把图片生成或拆图模板用于无图文本设定。
 - 不启用 MCP App 审阅界面。book_outline 和业务 list/get 支持当前 Agent 串行文字审阅。
 - export_book 原业务返回的 uuid、format、byte_size、mime_type 等保留，path 改为当前项目可见副本的相对路径 `lumi-exports/text-<uuid>.<ext>`。仅从绑定项目标准 `.lumi/exports/` 中复制成功回执对应的完整文件；拒绝链接、目录替换、大小变化及覆盖，流式复制后原子发布。不新增任意路径读取或命令能力。新增 file_generated、user_received 和 delivery 字段，见下文。
@@ -40,6 +41,8 @@ Node 校验 schema 后按 action 判定权限，业务派发之前拒绝只读�
 | chapters | list、get | create、update、write、delete |
 | settings、pages | list、get | create、update、delete、select_image |
 | project_overview、book_outline、prompt_catalog、render_prompt | 全部 | 无 |
+| image_target、read_image | 目标读取、受控参考预览 | 无作品写入；预览可寄存 Host 媒体 |
+| receive_media | 无 | 授权图片导入，绑定当前可写任务 |
 | export_book | 无 | 所有格式均落盘 |
 | runtime_status、runtime_release | 诊断、当前任务连接释放 | 无作品写入 |
 
@@ -73,4 +76,4 @@ Lumi 保持 `{success,data,error?}`，MCP IsError 必须与 success 对应。mai
 
 另覆盖真实 CLI 大结果拒绝、缩小 limit 后逐页恢复三个十万字节正文、缩小提示词上下文、已生成文件的交付失败恢复、完整文件 SHA256 与原子发布。WS 到既有 REST UI 的 Go/前端回归及 Forge 包校验见验收记录。
 
-该端到端是固定输出模拟，**不是实际 Agent 自主创作验收**，后者留到 Step 6。文件接收有独立用户手机确认；编译 Host 函数审计、原生文件服务实测及用户确认分别记账。插件未安装、未发布，正式最低兼容版本仍须发布证据。
+该端到端是固定输出模拟，**不是实际 Agent 自主创作验收**。Step 6已有实际安装、正常任务三页文字、真实生成/参考编辑/候选选择及PDF/ZIP；四视图与剩余生命周期仍待验，见 [当前状态](acceptance/step4-step7-status.md)。文件接收有独立用户手机确认；编译 Host 函数审计、原生文件服务实测及用户确认分别记账。插件未发布，正式最低兼容版本仍须发布证据。

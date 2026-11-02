@@ -1,0 +1,3 @@
+  }
+  installProduct(sdk);
+})();

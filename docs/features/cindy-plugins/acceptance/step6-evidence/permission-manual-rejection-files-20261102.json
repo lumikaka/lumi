@@ -1,0 +1,64 @@
+{
+  "exports": [
+    {
+      "name": "text-01a19aec-299d-7101-b8e1-2f503ef0f150.pdf",
+      "bytes": 361740,
+      "sha256": "67f061080fff48d722bd2ace6c25f936e55608b5594d3952659d7db1d6da3255",
+      "unchanged": true,
+      "independently_checked_now": true
+    },
+    {
+      "name": "text-01a19aec-4030-7e15-94e8-1e50c3d6d44f.zip",
+      "bytes": 2864730,
+      "sha256": "51bd06fd9a26996505b25b1ac626b55d71926bd7668493cc01a96eb03541dc54",
+      "unchanged": true,
+      "independently_checked_now": true
+    }
+  ],
+  "old_report_integrity": [
+    {
+      "filename": "章节保存验证报告.md",
+      "sha256": "67ac316e4c1b1638ddbe8c61e6c5fb54315a161775a2825b33be02eaeaa349d7",
+      "unchanged": true
+    },
+    {
+      "filename": "页面保存验证报告.md",
+      "sha256": "e3080864fd4ad305d128b966c26bb804e14a3a7f2c3baafcde244f455744438c",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入验证报告.md",
+      "sha256": "30bb9c67c92841fe41bd4f9daa548d67206134c1a92d25911a162a7cb361afa9",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入复验报告.md",
+      "sha256": "c2792972b3ef1d17f339e53ee74fc3f570a29a713df287d75d5c89a12d24d32f",
+      "unchanged": true
+    },
+    {
+      "filename": "参考图编辑候选与导出验收报告.md",
+      "sha256": "d4d09a2dda98513ab288ece82567230140a1866312b1bc08e35e964d4977aa12",
+      "unchanged": true
+    },
+    {
+      "filename": "插件恢复验证报告.md",
+      "sha256": "7e28e34940d5fe8801752897d8d1a11d519a07debd608f142577d3a5924c267a",
+      "unchanged": true
+    },
+    {
+      "filename": "插件重装恢复验证报告.md",
+      "sha256": "982ffd5c5eb762aa71b3b09c02565ed2eec847f67c0dce84d01da1dd4d87c9f0",
+      "unchanged": true
+    }
+  ],
+  "test_package": {
+    "path": "build/cindy-permission-rejection-20261102/lumi-dev/lumi-dev-0.4.0.cindy",
+    "current_zip_sha256": "72c59d474d2b7cdd3044282eba114e0f29d4f9ad46ce9fd83a723fc8c3a13f72",
+    "frozen_review_sha256": "84daa991bd2b55c52439b39cdf912dee71536bcc30b6addb35c994b338f67263",
+    "zip_bytes_identical": false,
+    "all_21_entries_and_modes_match_review": true,
+    "note": "Forge install前次重打包可改变ZIP容器摘要；本次逐条比较内容和权限位，不声称整包字节相同。"
+  },
+  "scope": "仅重读明确交付的两个导出、七份既有报告及作者审阅包；未读取Host私有数据库或作品数据库。"
+}

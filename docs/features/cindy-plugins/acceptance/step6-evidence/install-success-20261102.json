@@ -1,0 +1,31 @@
+{
+  "recorded_date": "2026-11-02",
+  "authorization": "用户明确授权安装开发包并继续真实宿主验收",
+  "operation": "ghost_forge_install",
+  "author": "build/cindy-dev/lumi-dev",
+  "result": {
+    "ok": true,
+    "action": "installed",
+    "id": "lumi-dev",
+    "name": "Lumi（开发版）",
+    "version": "0.4.0",
+    "enabled": true,
+    "instanceId": "_root__lumi-dev",
+    "namespace": null,
+    "note": "插件已完成校验、打包和安装，并已启用。"
+  },
+  "runtime_status": {
+    "runtime": "ready",
+    "channel": "development",
+    "build_id": "c4974a78c0f1ddd87c0355467a4749a18e89be4609f8dd2f7acfacd241fe8eda",
+    "cli_sha256": "484f41b98367503a0cbebfbce807c9efda7b0d3ca30b550a8567d4d79cae37c1",
+    "environment": "development",
+    "platform": "darwin",
+    "arch": "arm64",
+    "read_only": false,
+    "server_running": false,
+    "server_observation": "verified",
+    "server_policy": "shared_retained"
+  },
+  "reviewed_package_sha256": "1f7ac6ebf67b612ca10bcdff050ebe3335fec5bc8a3310fe706b8f3b116ef910"
+}

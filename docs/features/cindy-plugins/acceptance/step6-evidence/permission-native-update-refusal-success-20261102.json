@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-02",
+  "observed_at_utc": "2026-11-02 08:09:09 UTC",
+  "kind": "native-added-permission-update-refusal-preserves-original-development-package",
+  "baseline_evidence": "permission-native-update-refusal-baseline-20261102.json",
+  "target": {
+    "ghost_id": "lumi-dev",
+    "namespace": null,
+    "expected_instance_id": "_root__lumi-dev"
+  },
+  "user_native_observation": {
+    "text": "更新已拒绝。",
+    "source": "主人承接保留开发版、直接文件导入测试包并拒绝更新的操作要求",
+    "evidence_type": "user-reported-native-action"
+  },
+  "development_info": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"ghost\":{\"id\":\"lumi-dev\",\"namespace\":null,\"name\":\"Lumi（开发版）\",\"command\":\"lumi-dev\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":18,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}}"
+      }
+    ]
+  },
+  "development_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"development\",\"build_id\":\"29401ca7cbd2cff3f21d5d2f7c3e2237f31990bfd99ac1e005dfd5faa068c1a8\",\"cli_sha256\":\"d26c4636d6b0116520a3a2baef7cf203676ec6a91d3bc06ea4c58f9aef395c47\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "development_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "production_info": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"ghost\":{\"id\":\"lumi\",\"namespace\":null,\"name\":\"Lumi\",\"command\":\"lumi\",\"recall\":\"初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品。\",\"manual\":[{\"name\":\"runtime\",\"description\":\"诊断、只读限制、释放连接与共享服务边界。\"},{\"name\":\"project\",\"description\":\"目录选择、原地 draft 与 setup、重复初始化、桌面切换与创作边界。\"},{\"name\":\"authoring\",\"description\":\"项目识别、setup、故事、设定、章节和页面、文本审阅与导出，以及冲突、中断和额度耗尽恢复。\"}],\"tools\":[{\"name\":\"list_tools\",\"description\":\"不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"category\":{\"type\":\"string\"}},\"additionalProperties\":false}},{\"name\":\"call_tool\",\"description\":\"执行 list_tools 返回的允许工具；args 必须是该工具的 JSON 对象参数。失败返回 schema 与自纠规则，不代理任意 MCP/CLI/HTTP/SQL。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"args\":{\"type\":\"object\"}},\"required\":[\"name\"],\"additionalProperties\":false}},{\"name\":\"receive_media\",\"description\":\"接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。\",\"parameters\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"maxLength\":12000,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"fit_mode\":{\"enum\":[\"keep\",\"crop\",\"pad\"],\"type\":\"string\"},\"prompt\":{\"maxLength\":12000,\"type\":\"string\"},\"slot\":{\"enum\":[\"page_image\",\"setting_image\"],\"type\":\"string\"},\"target_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"target_uuid\",\"slot\",\"expected_revision\"],\"type\":\"object\"}}],\"setup\":{\"state\":\"ready\",\"revision\":1,\"groups\":[{\"id\":\"host:client_config:model-provider\",\"mode\":\"any_of\",\"items\":[{\"ref\":\"client_config:model-provider\",\"kind\":\"client_config\",\"label\":\"AI 模型服务\",\"description\":\"使用插件声明的图片或视频能力前，需要先连接可用的模型服务\",\"state\":\"satisfied\",\"actions\":[]}]}]}}}"
+      }
+    ]
+  },
+  "production_runtime": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"3764b5647f61856b63ffca5db562408cd4388db3\",\"channel\":\"production\",\"build_id\":\"bbf23278c208c868e77f25d1f1dbdab6be3f7d3b287b78ab5df7f7a515c5d91c\",\"cli_sha256\":\"c9065d2e934e566a518cc659f278cd81fd4cc7cf834421ce30bfc29933e53b5a\",\"environment\":\"production\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "production_release": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "actions_this_turn": {
+    "installation_or_update": 0,
+    "enable_disable_or_uninstall": 0,
+    "media_calls": 0,
+    "business_writes": 0,
+    "read_only_runtime_calls": 2,
+    "connection_releases": 2
+  },
+  "verification_status": "passed-for-native-file-update-refusal-scope",
+  "limits": [
+    "原生拒绝点击来自用户明确回报；当前记录没有本任务MCP安装调用，不能伪造MUTATION_CANCELLED结构化回执。",
+    "验证范围为正常工具可发现、原构建和CLI摘要保持、实际runtime_status可调用、正式版及明确交付文件保留。",
+    "没有重读业务章节或两版素材，不把此前项目恢复报告冒称为本轮业务读取；没有进行新的生图、导入或导出。",
+    "本轮没有安装/恢复旧包，故旧构建持续可调用不是由本轮重装掩盖拒绝结果。"
+  ],
+  "checks": {
+    "development_original_build_and_cli_callable": true,
+    "production_original_build_and_cli_callable": true,
+    "test_build_not_active": true,
+    "both_connections_released": true,
+    "no_installation_after_native_rejection": true,
+    "both_exports_unchanged": true,
+    "seven_old_reports_unchanged": true,
+    "refused_test_package_matches_21_reviewed_entries_and_permission_delta": true
+  },
+  "acceptance": {
+    "native_added_permission_update_refusal_passed": true,
+    "basis": "用户明确拒绝更新 + 拒绝前后原开发构建/CLI的真实runtime_status成功 + 原正式构建保持 + 文件摘要保持；本轮无重装。",
+    "mcp_structured_mutation_cancelled_verified": false,
+    "business_project_read_this_turn": false
+  },
+  "preserved_exports": [
+    {
+      "name": "text-01a19aec-299d-7101-b8e1-2f503ef0f150.pdf",
+      "bytes": 361740,
+      "sha256": "67f061080fff48d722bd2ace6c25f936e55608b5594d3952659d7db1d6da3255",
+      "unchanged": true,
+      "independently_checked_now": true
+    },
+    {
+      "name": "text-01a19aec-4030-7e15-94e8-1e50c3d6d44f.zip",
+      "bytes": 2864730,
+      "sha256": "51bd06fd9a26996505b25b1ac626b55d71926bd7668493cc01a96eb03541dc54",
+      "unchanged": true,
+      "independently_checked_now": true
+    }
+  ],
+  "old_report_integrity": [
+    {
+      "filename": "章节保存验证报告.md",
+      "sha256": "67ac316e4c1b1638ddbe8c61e6c5fb54315a161775a2825b33be02eaeaa349d7",
+      "unchanged": true
+    },
+    {
+      "filename": "页面保存验证报告.md",
+      "sha256": "e3080864fd4ad305d128b966c26bb804e14a3a7f2c3baafcde244f455744438c",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入验证报告.md",
+      "sha256": "30bb9c67c92841fe41bd4f9daa548d67206134c1a92d25911a162a7cb361afa9",
+      "unchanged": true
+    },
+    {
+      "filename": "图片生成导入复验报告.md",
+      "sha256": "c2792972b3ef1d17f339e53ee74fc3f570a29a713df287d75d5c89a12d24d32f",
+      "unchanged": true
+    },
+    {
+      "filename": "参考图编辑候选与导出验收报告.md",
+      "sha256": "d4d09a2dda98513ab288ece82567230140a1866312b1bc08e35e964d4977aa12",
+      "unchanged": true
+    },
+    {
+      "filename": "插件恢复验证报告.md",
+      "sha256": "7e28e34940d5fe8801752897d8d1a11d519a07debd608f142577d3a5924c267a",
+      "unchanged": true
+    },
+    {
+      "filename": "插件重装恢复验证报告.md",
+      "sha256": "982ffd5c5eb762aa71b3b09c02565ed2eec847f67c0dce84d01da1dd4d87c9f0",
+      "unchanged": true
+    }
+  ]
+}
