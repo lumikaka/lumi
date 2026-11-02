@@ -19,7 +19,10 @@ const agentsGuidance = `# Lumi 项目
 禁止直接读取或写入 project.sqlite（包括 -wal、-shm、-journal）、.lumi/、assets/。
 STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi 插件工具。
 
+首次创作带页面生图时，先生成并拆分必要设定图，复用已有资产；“只生成第一页”只限制正文图。
+只有用户明确要求纯文字、跳过设定图或限制全部生图次数时才调整，不自行添加额度限制。
 生图前调用 image_target 查询比例和构图建议；角色、场景参考先用 read_image 放入对话。
+页面 image_target 返回 setting_readiness；选择本页 setting_uuids 检查缺图，补齐后再读取参考。
 页面生图先按插件技能渲染项目当前的基础规则与参考图说明，再 render_prompt chapter/section_image，
 target=page；使用完整 generation_prompt 和 image_write_back，不自行从分镜另写生图提示词。
 comic_storyboard 和 image_target 不能替代生图模板；生图与 import_image.prompt 保存同一完整提示词。

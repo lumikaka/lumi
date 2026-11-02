@@ -25,11 +25,13 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 遵循用户已经给出的语言、年龄、页数、风格、审阅和交付要求。没指定的可逆细节做合理假设并说明；绘本格式与比例定稿后不可变，若用户未指定也未授权自行决定，在 setup 定稿前确认。
 
+分别规划**设定图、封面图、正文图**的范围。“条漫图片只生成到第一页”只限制正文图；首次创作默认先完成本次所需的角色、场景和关键道具设定图，再生成第一页。设定图不占正文页数或正文图数量，无需另加确认。只有用户明确要求纯文字、跳过设定图、直接使用文字参考，或限制了全部生图次数时，才按该要求调整；不得自行假设额度不足，或把正文限制扩写成“所有设定只做文字”。`generation_brief` 区分用户要求与代理的执行选择，不把自行省略设定图写成用户约束；恢复任务时也按原始用户要求校核 brief，代理自行写入的限制不视为用户要求。
+
 首次选择 setup 参数、组织规格选项或写入前，先读 [MCP 调用参考](references/mcp-usage.md) 的「Setup 与规格」；其余操作按需读「动作参数与版本」和「渲染与写回」。参数声明显示 `unknown`、缺失或不足以确定必填项时，先查对应段落，不用连续失败的写调用猜参数。参考中的示例值不能替代本项目刚读取的 UUID 和 revision。
 
 1. **想法 → setup**：按参考中的合法组合和 `get → update → finalize` 顺序写入。已有明确规格直接沿用；形式与比例冲突时先说明可行选择及影响，不自行替换形式。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
-3. **设定**：从已保存故事提取角色、场景、道具和参考。用户要求批量设定图，或需要为多个独立主体建立初版设定图时，先读 [批量设定图](references/batch-settings.md)，用 Codex 生成总览图、识图，再由 Lumi 裁切入库。每张总览图放 1–6 个主体，超过时分批；共享画面、复杂场景或单项精修沿用单张流程。纯文字设定可逐项 `settings create`；批量拆分会创建图文设定，无需先重复创建。已有文字设定需按 UUID 和 revision 明确匹配后更新。
+3. **设定**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；先 `settings list/get` 复用已有图片，只有文字不算视觉准备完成。首次带页面生图的创作必须先补齐必要设定图。多个独立主体按 [批量设定图](references/batch-settings.md) 生成总览图、识图，再由 Lumi 裁切入库；每批 1–6 个，复杂场景或精修单独处理。已有文字设定按 UUID 和最新 revision 补图，批量拆分可直接创建新图文设定，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
 5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 渲染 `chapter/section_image`，把完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与最终预览**：按用户要求完成创作、生图挂载和保存，再 `export_book`；导出完成后调用 `review_book` 展示当前采用图片的最终只读预览。只交付指定章节时传 `chapter_uuid`，整本时省略；多章节按章节分组阅读。用户明确要求的中途审阅仍按约定使用 `review_settings`、`review_page` 或 `review_book`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
@@ -46,7 +48,9 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 宿主生图与一致性
 
-**页面生图前必须读 [页面生图提示词](references/page-images.md)**，通过 `render_prompt` 组合项目当前生效的基础规则、画风、参考图说明和已保存分镜。`comic_storyboard` 是分镜创作模板，`image_target` 只提供比例和版本信息，两者都不能替代 `section_image`。保留返回的完整 `generation_prompt`，不得自行另写、翻译或摘要替换；生图与 `import_image.prompt` 使用同一份最终提示词。
+**页面生图前必须读 [页面生图提示词](references/page-images.md)**，通过 `render_prompt` 组合项目当前生效的基础规则、画风、参考图说明和已保存分镜。`comic_storyboard` 是分镜创作模板，`image_target` 提供比例、版本和设定资产检查，两者都不能替代 `section_image`。保留返回的完整 `generation_prompt`，不得自行另写、翻译或摘要替换；生图与 `import_image.prompt` 使用同一份最终提示词。
+
+页面的 `image_target` 还返回 `setting_readiness`。先查看候选，再用 `setting_uuids` 选择本页需要的设定；`missing_images` 时先补图，`ready` 后按返回的 `asset_uuid` 实际 `read_image`。候选列表和空选择都不表示准备完成；用户明确跳过时保留其理由，不假报设定图已就绪。这个检查只读项目事实，不自动生成图片。
 
 页面和单项设定图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。页面按参考文档核对渲染版本，可在完整生图提示词末尾追加宿主比例和安全边距说明。`target_ratio` 是项目画布；`recommended_ratio` 仅为宿主兼容建议，不覆盖项目比例、分镜构图或用户画风，也不是像素保证。
 

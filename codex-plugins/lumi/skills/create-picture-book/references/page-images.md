@@ -6,6 +6,19 @@
 
 先 `pages get` 读取实际 `chapter_uuid`、`page_uuid`、`page_role`、完整分镜及 revision，再 `image_target(target_uuid=page_uuid, slot=page_image)` 查询比例。画面描述缺失时先保存分镜；需要按用户要求修改内容时，先更新页面再重新渲染。
 
+检查返回的 `setting_readiness`：
+
+| status | 含义与下一步 |
+| --- | --- |
+| `selection_required` | 当前为项目候选，不是本页依赖。按分镜选择实际需要的 `setting_uuids` 再查；没有候选时先从故事提取视觉设定。 |
+| `missing_images` | 已选设定中有缺图项。先按 [批量设定图](batch-settings.md) 或单项流程补齐，再重查；仅有文字描述不算完成。 |
+| `ready` | 已选设定都有当前图片。按 `items[].asset_uuid` 实际 `read_image`，这不代表图片已传给宿主。 |
+| `no_settings_selected` | 显式选择了空列表，不能据此宣称已准备好。核对页面是否确实无需可复用视觉设定。 |
+
+`items` 包含 `setting_uuid/title/asset_type/expected_revision/has_image`，有图时附 `asset_uuid`；`available_count/missing_count` 只统计当前 scope。省略 `setting_uuids` 时 `scope=project_candidates`，纯文字 `reference` 备注不列入候选；显式选择时 `scope=selected_settings`，按所选 UUID 检查，不受其他章节缺图影响。准备结果不持久化选图，也不修改页面或设定。
+
+只有用户明确要求跳过设定图／直接使用文字参考，或明确的全部生图次数限制需要如此时，才能在缺图情况下继续。记录实际用户要求，准确使用无参考图说明，不通过空选择伪装为 `ready`；“正文只生成第一页”不是跳过理由。
+
 读取 `prompt_catalog(prompt_group=chapter)` 的模板和 placeholders。以下 `render_prompt` 均使用 `target=page`、同一组实际 `chapter_uuid/page_uuid`，不能用 `target=pages`，也不能只传 `target_uuid`。
 
 按页面角色选择基础片段，调用 `render_prompt`，保存返回的 **`data.fragment_prompt`**：

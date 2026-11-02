@@ -65,6 +65,7 @@ type arguments struct {
 	Variables        map[string]string         `json:"variables"`
 	ContextChapters  *[]string                 `json:"context_chapter_uuids"`
 	ContextSettings  *[]string                 `json:"context_setting_uuids"`
+	ImageSettings    *[]string                 `json:"setting_uuids"`
 	Format           string                    `json:"format"`
 	AllowMissing     bool                      `json:"allow_missing_images"`
 	Path             string                    `json:"path"`
@@ -236,7 +237,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result, callErr = prod.ApplyHostSettingBreakdown(ctx, production.ApplyHostSettingBreakdownInput{BoardUUID: a.BoardUUID, IdempotencyKey: a.IdempotencyKey, ExpectedRevision: value(a.ExpectedRevision), ExpectedPremiseRevision: a.ExpectedPremiseRevision, Assets: a.Crops})
 
 		case "image_target":
-			result, callErr = prod.HostImageTarget(ctx, a.TargetUUID, a.Slot)
+			result, callErr = imageTarget(ctx, prod, a)
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision)})
 		case "read_image", "read_app_image":

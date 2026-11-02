@@ -212,7 +212,20 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 必填：`target_uuid`、`slot`（`page_image` / `setting_image`）。页面 UUID 可直接从 pages 或 book_outline 取得，不需要 chapter_uuid；设定 UUID 来自 settings。
 
-返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`。ratio 为 `{width,height}`，不是输出像素要求。
+可选：`setting_uuids`，仅用于 `page_image`，最多 100 个不重复的当前项目 active 设定 UUID，按参考图顺序传入。
+
+返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`，页面额外返回 `setting_readiness`。ratio 为 `{width,height}`，不是输出像素要求。
+
+`setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid`，需实际 `read_image` 后才可作为宿主参考。
+
+| 选择 | scope / status | 下一步 |
+| --- | --- | --- |
+| 省略 `setting_uuids` | `project_candidates / selection_required` | 返回视觉候选，排除无图的 reference 文字备注；按当前页面选择设定。无候选时先提取视觉设定。 |
+| 已选设定有缺图项 | `selected_settings / missing_images` | 批量或逐项补齐所选缺图，不要求补齐其他章节资产。 |
+| 已选设定均有图片 | `selected_settings / ready` | 按返回顺序读取当前 `asset_uuid`。 |
+| 显式传 `[]` | `selected_settings / no_settings_selected` | 核对页面是否无需视觉设定，不将空选择当成就绪批准。 |
+
+该检查不持久化页面依赖或选图，不修改 revision，也不自动生成图片。首次创作默认先完成必要设定图；“正文只生成第一页”不取消设定图阶段。用户明确要求跳过或限制全部生图次数时按实际要求执行，不伪报就绪。
 
 - 页面目标比例沿用项目绘本规格（包括封面、封底和 1:3 条漫）。
 - 角色、道具和参考设定建议 1:1；场景建议沿用项目比例。设定没有持久化的强制画布约束，这里仅提供创作建议。
@@ -226,7 +239,7 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 path 必须是宿主生图结果实际给出的本地绝对路径；可以来自结果提示文本。工具不接收 base64，不假定 `savedPath` 字段、宿主目录或文件名，也不扫描目录。文件必须是可读的普通文件，支持 PNG、JPEG、WebP；最多 32 MiB、4000 万像素，先校验限制再完整解码。以真实内容判断格式，即使 PNG 文件被命名为 `.jpg` 也按 PNG 提交；伪装成图片的文本和损坏图片会被拒绝。
 
-返回 `{target,revision,variant_uuid,version_no,asset,input_size,fit_mode,ratio_deviation,ratio_matches,warnings}`，target 与 image_target 结构一致并携带新 revision。`ratio_deviation=(输入宽/输入高)/(目标宽/目标高)-1`，正值表示更宽；`ratio_matches` 表示输入是否在容差内。超出容差时仍导入，并通过 warnings 返回偏差和下一次生图建议。
+返回 `{target,revision,variant_uuid,version_no,asset,input_size,fit_mode,ratio_deviation,ratio_matches,warnings}`，target 为 image_target 的比例与版本字段（不含 setting_readiness）并携带新 revision。`ratio_deviation=(输入宽/输入高)/(目标宽/目标高)-1`，正值表示更宽；`ratio_matches` 表示输入是否在容差内。超出容差时仍导入，并通过 warnings 返回偏差和下一次生图建议。
 
 | fit_mode | 行为 |
 | --- | --- |
@@ -252,8 +265,8 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 
 宿主创作流程（后续插件 skill 也应遵守）：
 
-1. 调用 image_target；如果需要角色或场景一致性，用 read_image 把所需设定图片放入对话。
-2. 使用宿主自带生图能力，参考推荐比例和构图描述；使用最近对话图片作为参考（Codex App 的 `num_last_images_to_include`），确认引用的是所需图片。
+1. 首次创作先复用或生成必要设定图，批量总览图需完成拆分。页面调用 image_target 选择所需 setting_uuids，补齐缺图，再用 read_image 把参考图片放入对话；正文图片数量限制不取消此阶段。
+2. 按页面角色和实际参考图状态渲染基础片段，再 render_prompt chapter/section_image target=page，保留完整 generation_prompt 和 image_write_back。将完整提示词交给宿主生图，参考推荐比例；使用最近对话图片作为参考（Codex App 的 `num_last_images_to_include`），确认引用的是所需图片。
 3. **生图后立即调用 import_image**，传入本次结果中实际给出的绝对路径和原始提示词；保留期限未知，不延后到创作结束。不要把像素不精确当作失败，也不要因比例偏差阻塞用户。
 4. 冲突时重读目标和内容后重新判断；不要只更换 revision 覆盖他人的新版本。调用中断后也先重读确认是否已导入。
 
