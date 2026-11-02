@@ -31,7 +31,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
 3. **设定**：从已保存故事提取角色、场景、道具和参考。用户要求批量设定图，或需要为多个独立主体建立初版设定图时，先读 [批量设定图](references/batch-settings.md)，用 Codex 生成总览图、识图，再由 Lumi 裁切入库。每张总览图放 1–6 个主体，超过时分批；共享画面、复杂场景或单项精修沿用单张流程。纯文字设定可逐项 `settings create`；批量拆分会创建图文设定，无需先重复创建。已有文字设定需按 UUID 和 revision 明确匹配后更新。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
-5. **生图与挂载**：页面和单项设定按下节逐张生成并立即导入；批量设定每张总览图生成后立即 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
+5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 渲染 `chapter/section_image`，把完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与最终预览**：按用户要求完成创作、生图挂载和保存，再 `export_book`；导出完成后调用 `review_book` 展示当前采用图片的最终只读预览。只交付指定章节时传 `chapter_uuid`，整本时省略；多章节按章节分组阅读。用户明确要求的中途审阅仍按约定使用 `review_settings`、`review_page` 或 `review_book`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
@@ -46,7 +46,9 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 宿主生图与一致性
 
-页面和单项设定图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。提示词写出目标比例及宿主推荐比例，让主体、文字和装订边留出安全区；推荐值是比例，不是像素保证。
+**页面生图前必须读 [页面生图提示词](references/page-images.md)**，通过 `render_prompt` 组合项目当前生效的基础规则、画风、参考图说明和已保存分镜。`comic_storyboard` 是分镜创作模板，`image_target` 只提供比例和版本信息，两者都不能替代 `section_image`。保留返回的完整 `generation_prompt`，不得自行另写、翻译或摘要替换；生图与 `import_image.prompt` 使用同一份最终提示词。
+
+页面和单项设定图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。页面按参考文档核对渲染版本，可在完整生图提示词末尾追加宿主比例和安全边距说明。`target_ratio` 是项目画布；`recommended_ratio` 仅为宿主兼容建议，不覆盖项目比例、分镜构图或用户画风，也不是像素保证。
 
 需要角色/场景一致性时，先 `settings get` 取得 `current_variant.asset.uuid`，再 `read_image(asset_uuid)` 把相关设定图实际放进当前对话。可补充上一页 `current_image.asset.uuid` 的参考。紧接着调用 App 原生生图，以最近图片为参考（如 `num_last_images_to_include`），确认最近几张确实是本页所需图，遵守宿主参考图数量上限；跨会话/压缩后重新读图，不把 UUID 当成生图工具可见的图像。不要直接读取资产目录来传路径。
 

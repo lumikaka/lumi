@@ -115,7 +115,7 @@
 | `story_profile` | 无 | `story_profile write`；profile revision |
 | `chapter` | `chapter_uuid` | `chapters write`；章节 revision |
 | `pages` | `chapter_uuid` | `pages create`；页面集合 revision |
-| `page` | `chapter_uuid`、`page_uuid` | `pages update`；单页 revision |
+| `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；`chapter/section_image` 生图用 `generation_prompt` 和 `image_write_back` 导入，见 [页面生图提示词](page-images.md)；单页 revision |
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
 | `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；额外返回供宿主生图使用的 `generation_prompt` |
@@ -125,7 +125,7 @@
 {"name":"render_prompt","arguments":{"prompt_group":"story","prompt_key":"story_profile","target":"story_profile","variables":{"chapter_count":"1"}}}
 ```
 
-按返回的完整 `prompt` 执行任务，用 `write_back` 映射输出；渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
+文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出；页面生图使用 `generation_prompt` 和 `image_write_back`，片段组合使用 `fragment_prompt`，不要把外层任务说明传给生图工具。渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
 
 ```json
 {"name":"story_profile","arguments":{"action":"write","story_md":"# 回家的星星\n\n小狐狸帮助迷路的星星回家。","expected_revision":0}}
