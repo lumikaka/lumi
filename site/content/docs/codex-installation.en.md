@@ -20,7 +20,7 @@ The Lumi picture-book plugin lets you create and export books in a Codex App cha
 Click “Copy prompt”, paste the full text below into a Codex App chat, and send it:
 
 {{< copy-prompt >}}
-Read https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md and follow it to install the Lumi picture-book plugin for macOS Codex App. Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
+Read https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md and follow it to install the Lumi picture-book plugin for macOS Codex App. Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
 {{< /copy-prompt >}}
 
 Codex will read the guide and perform the installation. Downloading files, writing the user installation directory and `~/.codex`, registering the plugin marketplace, and enabling the plugin may require approval. Follow the prompts shown in the app.
@@ -37,6 +37,6 @@ After the book is initialized, trust the project yourself and open a new chat to
 
 ## Updates and installation issues
 
-To upgrade, run the latest installer again as described in the [full installation guide](https://github.com/lumikaka/lumi/blob/main/docs/features/codex-plugins/install.md), then open a new chat. The guide also covers uninstallation, which preserves your books and Lumi application data.
+To upgrade, run the latest installer again as described in the [full installation guide](https://github.com/lumikaka/lumi/blob/master/docs/features/codex-plugins/install.md), then open a new chat. The guide also covers uninstallation, which preserves your books and Lumi application data.
 
 If a download fails, check your network connection and whether the latest Release includes the Codex plugin installation assets. The installer needs those published files; source code in the repository alone is not enough.

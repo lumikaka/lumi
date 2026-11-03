@@ -94,7 +94,7 @@ Cindy 插件目前提供 macOS arm64 本地验收包；开发版 0.4.0 已完成
 
 `lumi` 插件无需 API key，写作和生图使用 Codex 自身额度，项目数据保存在本地。在 Codex App 中输入一句提示词：
 
-> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 
 下载二进制、写用户安装目录和 `~/.codex`（注册 marketplace、启用插件）可能需要宿主批准；**安装后须新开 App 会话**。项目写保护还需要用户信任项目。仅支持 macOS Codex App，不支持 Codex TUI 或 IDE 扩展。入口从首个含 Codex 资产的 Release 起可用；自动化测试不能替代真实 App 人工验收。
 

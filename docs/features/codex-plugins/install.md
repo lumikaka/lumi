@@ -10,7 +10,7 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 在已登录的 Codex App 中粘贴：
 
-> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 
 一句提示词会让 Codex 执行安装流程，不等于零批准，也不保证当前会话热加载。可能需要用户处理的步骤：
 

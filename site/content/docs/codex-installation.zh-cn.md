@@ -20,7 +20,7 @@ Lumi 绘本插件让你在 Codex App 对话中创作和导出绘本。写作与�
 点击“复制提示词”，将下面的完整内容粘贴到 Codex App 对话中并发送：
 
 {{< copy-prompt >}}
-请阅读 https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 {{< /copy-prompt >}}
 
 Codex 会读取安装指南并执行安装。下载文件、写入用户安装目录和 `~/.codex`、注册插件市场及启用插件时，可能会请求批准；根据界面提示处理即可。
@@ -37,6 +37,6 @@ Codex 会读取安装指南并执行安装。下载文件、写入用户安装�
 
 ## 升级与安装问题
 
-升级时，按[完整安装指南](https://github.com/lumikaka/lumi/blob/main/docs/features/codex-plugins/install.md)重新运行最新安装脚本，完成后新开会话。指南也包含卸载步骤；卸载插件会保留绘本与 Lumi 应用数据。
+升级时，按[完整安装指南](https://github.com/lumikaka/lumi/blob/master/docs/features/codex-plugins/install.md)重新运行最新安装脚本，完成后新开会话。指南也包含卸载步骤；卸载插件会保留绘本与 Lumi 应用数据。
 
 如果下载失败，先检查网络和最新 Release 是否包含 Codex 插件安装资产。安装入口需要对应发布文件，不能仅凭仓库中存在源码就完成安装。

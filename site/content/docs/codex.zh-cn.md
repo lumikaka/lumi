@@ -34,4 +34,4 @@ Lumi 插件让你在 Codex App 对话中完成故事、角色设定、分页、�
 
 额度不足或对话中断时，在同一目录新开会话说“继续这个 Lumi 绘本”；模型读取已有进度，再补缺失部分。不要自己修改项目内部的数据文件。
 
-升级时重新运行最新安装脚本，完成后新开会话。卸载会保留你的绘本与 Lumi 应用数据。具体命令、故障排查及人工验收记录见 [完整安装指南](https://github.com/lumikaka/lumi/blob/main/docs/features/codex-plugins/install.md)。
+升级时重新运行最新安装脚本，完成后新开会话。卸载会保留你的绘本与 Lumi 应用数据。具体命令、故障排查及人工验收记录见 [完整安装指南](https://github.com/lumikaka/lumi/blob/master/docs/features/codex-plugins/install.md)。

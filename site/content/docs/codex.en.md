@@ -34,4 +34,4 @@ Generated images are imported immediately. Character and scene reference images 
 
 If generation stops or your allowance runs out, open a new chat in the same folder and ask to continue. Lumi reads saved progress before filling gaps. Avoid editing the project's internal data files.
 
-Run the latest installer again to upgrade, then open a new chat. Uninstallation preserves your books and Lumi application data. See the [installation guide and acceptance status](https://github.com/lumikaka/lumi/blob/main/docs/features/codex-plugins/install.md) for commands and troubleshooting.
+Run the latest installer again to upgrade, then open a new chat. Uninstallation preserves your books and Lumi application data. See the [installation guide and acceptance status](https://github.com/lumikaka/lumi/blob/master/docs/features/codex-plugins/install.md) for commands and troubleshooting.
