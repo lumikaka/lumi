@@ -565,6 +565,15 @@ kbd { padding: 2px 6px; border: 1px solid var(--line-strong); border-bottom-widt
 .prose .product-demo__app { min-height: 405px; }
 .prose .demo-story { min-height: 343px; }
 
+.copy-prompt { margin: 26px 0; padding: 22px; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-deep); }
+.copy-prompt blockquote { margin: 0; padding-left: 18px; border-left: 3px solid var(--blue); overflow-wrap: anywhere; }
+.copy-prompt blockquote p { margin: 0; }
+.copy-prompt__actions:not([hidden]) { margin-top: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.copy-prompt__button { min-height: 44px; padding: 9px 18px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 650; cursor: pointer; }
+.copy-prompt__button:hover { background: var(--yellow-soft); border-color: var(--ink-soft); }
+.copy-prompt__button:disabled { opacity: .65; cursor: wait; }
+.copy-prompt__status { color: var(--ink-soft); font-size: 13px; }
+
 .callout { margin: 28px 0; padding: 20px 22px; border: 1px solid #cbdde9; border-radius: 13px; background: #f1f7fb; }
 .callout--warning { border-color: #efd1b5; background: var(--danger-soft); }
 .callout > strong { display: block; margin-bottom: 5px; color: var(--ink); }

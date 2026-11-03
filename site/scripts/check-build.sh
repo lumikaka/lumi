@@ -11,6 +11,7 @@ fi
 
 docs_slugs=(
   installation
+  codex-installation
   codex
   providers
   first-picture-book

@@ -54,6 +54,12 @@
   translation: 教程总览
 - id: read_tutorial
   translation: 阅读教程
+- id: copy_prompt
+  translation: 复制提示词
+- id: copy_prompt_success
+  translation: 已复制，可粘贴到 Codex App。
+- id: copy_prompt_error
+  translation: 未能自动复制，请手动复制上方已选中的提示词。
 - id: on_this_page
   translation: 本页内容
 - id: breadcrumbs

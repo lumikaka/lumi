@@ -14,9 +14,7 @@ Lumi 插件让你在 Codex App 对话中完成故事、角色设定、分页、�
 
 ## 一句话安装
 
-在已登录的 Codex App 中粘贴：
-
-> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+前往[安装 Codex 插件]({{< relref "codex-installation" >}})页面，复制安装提示词，并粘贴到已登录的 Codex App 中发送。
 
 下载二进制、写用户安装目录和 `~/.codex`、注册 marketplace 和启用插件可能需要宿主批准。批准次数取决于你的权限设置。安装器不要求 API key，也不会替你信任项目。
 

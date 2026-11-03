@@ -54,6 +54,12 @@
   translation: Guide overview
 - id: read_tutorial
   translation: Read guide
+- id: copy_prompt
+  translation: Copy prompt
+- id: copy_prompt_success
+  translation: Copied. Paste it into Codex App.
+- id: copy_prompt_error
+  translation: Could not copy automatically. Please copy the selected prompt above manually.
 - id: on_this_page
   translation: On this page
 - id: breadcrumbs

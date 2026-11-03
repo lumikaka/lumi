@@ -32,6 +32,31 @@
     window.addEventListener('scroll', updateHeader, { passive: true })
   }
 
+  document.querySelectorAll('[data-copy-prompt]').forEach((prompt) => {
+    const text = prompt.querySelector('[data-copy-prompt-text]')
+    const button = prompt.querySelector('[data-copy-prompt-button]')
+    const status = prompt.querySelector('[data-copy-prompt-status]')
+    prompt.querySelector('[data-copy-prompt-actions]').hidden = false
+
+    button.addEventListener('click', async () => {
+      button.disabled = true
+      status.textContent = ''
+      try {
+        await navigator.clipboard.writeText(text.textContent.trim())
+        status.textContent = prompt.dataset.copySuccess
+      } catch {
+        const selection = window.getSelection()
+        const range = document.createRange()
+        range.selectNodeContents(text)
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+        status.textContent = prompt.dataset.copyError
+      } finally {
+        button.disabled = false
+      }
+    })
+  })
+
   const docsSidebar = document.querySelector('[data-docs-sidebar]')
   const docsOpen = document.querySelector('[data-docs-open]')
   const docsClose = document.querySelector('[data-docs-close]')

@@ -14,9 +14,7 @@ The first version supports **Codex App on macOS only**, with Apple Silicon and I
 
 ## Install with one prompt
 
-Paste this into Codex App while signed in:
-
-> Read https://raw.githubusercontent.com/lumikaka/lumi/main/docs/features/codex-plugins/install.md and follow it to install the Lumi picture-book plugin for macOS Codex App. Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
+Open [Install the Codex plugin]({{< relref "codex-installation" >}}), copy the installation prompt, and send it in Codex App while signed in.
 
 Downloading binaries, writing the user installation directory and `~/.codex`, registering the marketplace, and enabling the plugin may require host approval. The number of approvals depends on your permissions. The installer does not request an API key or trust a project on your behalf.
 

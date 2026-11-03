@@ -1,0 +1,8 @@
+{{ $promptID := printf "copy-prompt-%d" .Ordinal }}
+<div class="copy-prompt" data-copy-prompt data-copy-success="{{ i18n "copy_prompt_success" }}" data-copy-error="{{ i18n "copy_prompt_error" }}">
+  <blockquote id="{{ $promptID }}" data-copy-prompt-text><p>{{ strings.TrimSpace .Inner }}</p></blockquote>
+  <div class="copy-prompt__actions" data-copy-prompt-actions hidden>
+    <button class="copy-prompt__button" type="button" data-copy-prompt-button aria-controls="{{ $promptID }}">{{ i18n "copy_prompt" }}</button>
+    <span class="copy-prompt__status" role="status" data-copy-prompt-status></span>
+  </div>
+</div>
