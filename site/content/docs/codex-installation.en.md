@@ -31,7 +31,7 @@ When installation finishes, check the result reported by Codex. The release plug
 
 1. Choose a local folder for your picture-book project.
 2. **Open a new Codex App chat** with that folder as its working directory. A chat started before installation will not automatically load the new plugin.
-3. Tell Codex what you want to create with Lumi. See [Create in Codex App]({{< relref "codex" >}}) for an example.
+3. Tell Codex what you want to create with Lumi. See [Create in Codex App](../codex/) for an example.
 
 After the book is initialized, trust the project yourself and open a new chat to check write protection. The installer does not set project trust for you, and creating a configuration file alone does not activate protection.
 

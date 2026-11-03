@@ -14,7 +14,7 @@ The first version supports **Codex App on macOS only**, with Apple Silicon and I
 
 ## Install with one prompt
 
-Open [Install the Codex plugin]({{< relref "codex-installation" >}}), copy the installation prompt, and send it in Codex App while signed in.
+Open [Install the Codex plugin](../codex-installation/), copy the installation prompt, and send it in Codex App while signed in.
 
 Downloading binaries, writing the user installation directory and `~/.codex`, registering the marketplace, and enabling the plugin may require host approval. The number of approvals depends on your permissions. The installer does not request an API key or trust a project on your behalf.
 
