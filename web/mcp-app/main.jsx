@@ -38,7 +38,6 @@ function Workspace({launch}) {
     <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
     {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
     {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
-    <details className="mcp-workspace__capabilities"><summary>宿主能力与替代入口</summary><p>编辑、排序、回收站与版本采用在此工作区直接保存到同一项目。文件导入支持单次 6 MiB，下载入口仅请求宿主打开服务地址；若无跳转，请复制链接到浏览器。AI 生成和聊天引用需在 Lumi Web 中继续；不会自动调用模型或切换付费渠道。</p></details>
     <section className={`simple-project-body mcp-workspace__body${/\/sections\//.test(location.pathname)?' mcp-workspace__body--page':''}`}>
       {projectQuery.error?<SimpleError error={projectQuery.error} onRetry={()=>projectQuery.refetch()}/>:!project?<SimpleLoading message="正在读取作品…"/>:<Routes>
         <Route path={`${base}/`} element={<SimpleHomePage project={project} projectUuid={launch.project_uuid} projectQuery={projectQuery}/>}/>
