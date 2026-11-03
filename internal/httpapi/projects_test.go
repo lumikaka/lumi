@@ -51,6 +51,7 @@ func projectAPIHarness(t *testing.T) (*echo.Echo, *project.Manager) {
 	e.POST("/api/v1/open-projects", open.Create)
 	e.PUT("/api/v1/open-projects/:project_uuid", open.Update)
 	e.DELETE("/api/v1/open-projects/:project_uuid", open.Delete)
+	e.GET("/api/v1/project-locks/:project_uuid", open.LockStatus)
 	e.GET("/api/v1/recent-projects", recent.Index)
 	e.PATCH("/api/v1/recent-projects/:project_uuid", recent.Update)
 	e.DELETE("/api/v1/recent-projects/:project_uuid", recent.Delete)
@@ -462,4 +463,25 @@ func envelopeData(t *testing.T, recorder *httptest.ResponseRecorder) map[string]
 		t.Fatalf("response = %s", recorder.Body.String())
 	}
 	return envelope.Data
+}
+
+func TestProjectLockStatusEndpoint(t *testing.T) {
+	e, _ := projectAPIHarness(t)
+	created := requestJSON(t, e, http.MethodPost, "/api/v1/projects", map[string]any{"name": "Lock Book", "parent_path": t.TempDir()})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
+	}
+	projectUUID := envelopeData(t, created)["uuid"].(string)
+	response := requestJSON(t, e, http.MethodGet, "/api/v1/project-locks/"+projectUUID, nil)
+	if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	data := envelopeData(t, response)
+	if data["project_uuid"] != projectUUID || data["locked"] != true || data["held_by_current_instance"] != true || data["owner"] == nil {
+		t.Fatalf("lock status = %+v", data)
+	}
+	missing := requestJSON(t, e, http.MethodGet, "/api/v1/project-locks/"+uuid.Must(uuid.NewV7()).String(), nil)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing status=%d body=%s", missing.Code, missing.Body.String())
+	}
 }

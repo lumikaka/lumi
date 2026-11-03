@@ -43,6 +43,8 @@ CLI 的 `ProjectManager.InitAt` 是独立的原地创建入口，不改变上述
 
 Lumi 在一个进程内可以同时打开多个项目，每个项目各自持有 `ProjectStore`、River Runtime 和 `.lumi/project.lock`。lock 文件中的 JSON 仅用于向本机用户展示 PID、主机和项目 UUID；互斥性来自该项目目录上的操作系统文件锁。进程正常关闭会解锁，崩溃后内核也会释放锁，因此遗留 lock 文件可以安全复用，不需要按时间猜测或删除。
 
+lock JSON 另记录持有者类型 `owner`：`cli`（`lumi serve` daemon）、`desktop`（带桌面访问令牌的 `lumi_web`）或 `web`；旧版本写入的元数据视为 `unknown`。`project_locked` 的 `details` 按持有者给出下一步：CLI 持有时提示在 Agent 中结束任务并关闭审阅界面等待约 15 秒空闲释放，或执行 `lumi stop`；桌面版持有时提示在桌面版中关闭项目。错误信封保持 `code/message/details` 不变，前端需要结构化信息时，在收到 `project_locked` 后读取 `GET /api/v1/project-locks/:project_uuid`，`data` 为 `{ project_uuid, locked, held_by_current_instance, owner: { kind, pid, hostname, acquired_at } | null, release_details }`。该接口只读：本进程已持有或正在打开时直接返回当前实例，不探测自己的锁；否则对最近项目路径的 lock 做一次非阻塞探测并立即释放，以区分在线持有者与已退出进程遗留的元数据。
+
 关闭某个项目时，注册表先把该 entry 标记为 draining 并拒绝新的请求 lease，等待该项目已有请求退出，再调用它自己的 `StopProject`。Runtime 未成功停止时不得关闭数据库。停止成功后才执行 `PRAGMA wal_checkpoint(TRUNCATE)`、关闭数据库句柄并释放锁；其他项目的请求与任务不经过这个关闭临界区。
 
 打开和关闭属于服务端生命周期，不是浏览器标签页共享的“当前项目”状态。每个标签页的当前上下文只由 `/projects/:project_uuid` URL 决定；进入项目路由时前端幂等调用 `PUT /api/v1/open-projects/:project_uuid`，已回收项目会透明重开，打开新项目不会关闭旧项目。服务端不保存“最后聚焦项目”，也不提供 `/api/v1/current-project`。

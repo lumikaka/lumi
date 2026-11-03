@@ -59,6 +59,7 @@ func runDaemon(opt options) error {
 		return err
 	}
 	defer store.Close()
+	project.SetLockOwner(project.LockOwnerCLI)
 	projects := project.NewManager(store)
 	defer projects.Close()
 	application, err := server.New(cfg, store, projects)

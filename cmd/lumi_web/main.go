@@ -65,6 +65,11 @@ func run(args []string, output io.Writer) error {
 	}
 	defer appStore.Close()
 
+	if cfg.DesktopAuth != nil {
+		project.SetLockOwner(project.LockOwnerDesktop)
+	} else {
+		project.SetLockOwner(project.LockOwnerWeb)
+	}
 	projectManager := project.NewManager(appStore)
 	application, err := server.New(cfg, appStore, projectManager)
 	if err != nil {

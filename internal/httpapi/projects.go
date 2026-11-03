@@ -134,6 +134,17 @@ func (handler *OpenProjectHandler) Delete(c echo.Context) error {
 	return Success(c, http.StatusOK, nil)
 }
 
+// LockStatus explains who holds a project after an open returned
+// project_locked, so the UI can show owner-specific release guidance.
+func (handler *OpenProjectHandler) LockStatus(c echo.Context) error {
+	status, err := handler.manager.LockStatus(c.Request().Context(), c.Param("project_uuid"))
+	if err != nil {
+		return projectAPIError(err)
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return Success(c, http.StatusOK, status)
+}
+
 type RecentProjectHandler struct {
 	manager *project.Manager
 }

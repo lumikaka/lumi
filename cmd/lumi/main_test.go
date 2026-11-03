@@ -257,7 +257,7 @@ func TestDesktopAndCLIShareAppStoreButKeepIndependentInstancesAndProjectLocks(t 
 	}
 	root, _ := json.Marshal(projectInfo.RootPath)
 	locked := apiRequest(t, cli.Endpoint, "POST", "/api/v1/open-projects", `{"root_path":`+string(root)+`}`, "", "", "", http.StatusLocked)
-	if locked.errorCode != "project_locked" || !strings.Contains(locked.details, fmt.Sprint(desktop.Process.Pid)) || !strings.Contains(locked.details, "lumi stop") {
+	if locked.errorCode != "project_locked" || !strings.Contains(locked.details, fmt.Sprint(desktop.Process.Pid)) || !strings.Contains(locked.details, "桌面版中关闭该项目") {
 		t.Fatalf("lock error missing owner/release advice: %+v", locked)
 	}
 	apiRequest(t, desktopURL, "DELETE", "/api/v1/open-projects/"+projectInfo.UUID, "", desktopURL, cookie, "", 200)

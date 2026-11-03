@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,5 +55,65 @@ func TestReadLegacyLockMetadata(t *testing.T) {
 	}
 	if got := readLockMetadata(file); got != want {
 		t.Fatalf("legacy metadata = %+v, want %+v", got, want)
+	}
+}
+
+func TestLockedDetailsGuideByOwner(t *testing.T) {
+	cases := map[string]string{
+		LockOwnerCLI:     "lumi stop",
+		LockOwnerDesktop: "桌面版中关闭该项目",
+		LockOwnerWeb:     "Web 服务",
+		"":               "执行 lumi stop",
+	}
+	for owner, want := range cases {
+		details := lockedDetails(lockMetadata{PID: 42, Hostname: "host", Owner: owner})
+		if !strings.Contains(details, want) || !strings.Contains(details, "42") {
+			t.Fatalf("owner %q details = %q, want %q", owner, details, want)
+		}
+	}
+}
+
+func TestLockStatusReportsOwnerKind(t *testing.T) {
+	t.Cleanup(func() { SetLockOwner("") })
+	ctx := context.Background()
+	SetLockOwner(LockOwnerCLI)
+	first, store := testManager(t)
+	created, err := first.Create(ctx, "Owned", ExplicitNewProjectParent(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	local, err := first.LockStatus(ctx, created.UUID)
+	if err != nil || !local.Locked || !local.HeldByCurrentInstance || local.Owner.Kind != LockOwnerCLI {
+		t.Fatalf("owner instance status = %+v error=%v", local, err)
+	}
+
+	SetLockOwner(LockOwnerDesktop)
+	second := NewManager(store)
+	t.Cleanup(func() { _ = second.Close() })
+	_, err = second.OpenRecent(ctx, created.UUID)
+	var conflict *Error
+	if !errors.As(err, &conflict) || conflict.Code != CodeLocked || !strings.Contains(conflict.Details, "Lumi CLI") {
+		t.Fatalf("open conflict = %v", err)
+	}
+	remote, err := second.LockStatus(ctx, created.UUID)
+	if err != nil || !remote.Locked || remote.HeldByCurrentInstance || remote.Owner == nil ||
+		remote.Owner.Kind != LockOwnerCLI || remote.Owner.PID != os.Getpid() || remote.Owner.AcquiredAt == nil ||
+		!strings.Contains(remote.ReleaseDetails, "lumi stop") {
+		t.Fatalf("remote status = %+v owner=%+v error=%v", remote, remote.Owner, err)
+	}
+
+	if _, err := first.CloseProject(ctx, created.UUID); err != nil {
+		t.Fatal(err)
+	}
+	released, err := second.LockStatus(ctx, created.UUID)
+	if err != nil || released.Locked || released.Owner != nil {
+		t.Fatalf("released status = %+v error=%v", released, err)
+	}
+	// The probe must not leave the lock held.
+	if _, err := second.OpenRecent(ctx, created.UUID); err != nil {
+		t.Fatalf("open after probe: %v", err)
+	}
+	if _, err := second.LockStatus(ctx, "not-a-uuid"); errorCode(err) != CodeInvalidUUID {
+		t.Fatalf("invalid uuid error = %v", err)
 	}
 }
