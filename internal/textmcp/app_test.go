@@ -49,21 +49,21 @@ func TestAppResourceAssociationCSPAndReadOnlyVisibility(t *testing.T) {
 		if tool.Name == "read_app_connection" {
 			t.Fatal("internal connection descriptor exposed")
 		}
-		if tool.Name == "read_app_image" || tool.Name == "watch_app_changes" {
+		if tool.Name == "read_app_image" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "write_app_resource" || tool.Name == "read_app_review" {
 			appOnly++
 			b, _ := json.Marshal(tool.Meta)
 			if !strings.Contains(string(b), `"visibility":["app"]`) {
 				t.Fatal(string(b))
 			}
 		}
-		if strings.HasPrefix(tool.Name, "review_") || tool.Name == "read_app_image" || tool.Name == "watch_app_changes" {
+		if strings.HasPrefix(tool.Name, "review_") || tool.Name == "read_app_image" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "read_app_review" {
 			hints := tool.Annotations
 			if hints == nil || !hints.ReadOnlyHint || hints.DestructiveHint == nil || *hints.DestructiveHint || hints.OpenWorldHint == nil || *hints.OpenWorldHint {
 				t.Fatalf("hints=%+v", hints)
 			}
 		}
 	}
-	if reviews != 4 || appOnly != 2 {
+	if reviews != 6 || appOnly != 5 {
 		t.Fatalf("reviews=%d app=%d", reviews, appOnly)
 	}
 	resources, err := client.ListResources(t.Context(), nil)
@@ -97,7 +97,7 @@ func TestReviewTextFallbackAndConversationCandidateSubmission(t *testing.T) {
 		object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
 		setting = object(t, invoke(t, s, root, "settings", map[string]any{"action": "get", "setting_uuid": setting["uuid"]}))
 	}
-	review := invoke(t, s, root, "review_candidates", map[string]any{"kind": "setting", "setting_uuid": setting["uuid"]})
+	review := invokeReviewDetails(t, s, root, "review_candidates", map[string]any{"kind": "setting", "setting_uuid": setting["uuid"]})
 	result, err := boundedResult(review)
 	if err != nil || result.IsError {
 		t.Fatal(result, err)
@@ -121,9 +121,25 @@ func TestReviewTextFallbackAndConversationCandidateSubmission(t *testing.T) {
 	if !failed.IsError {
 		t.Fatal("expected image fallback")
 	}
+	// The compact v3 launch no longer returns the UI's complete history.
+	// Conversation selections explicitly read a bounded version UUID manifest.
+	explicit := object(t, invoke(t, s, root, "settings", map[string]any{"action": "get", "setting_uuid": setting["uuid"], "include_versions": true, "limit": 1}))
+	identities := explicit["image_versions"].(map[string]any)
+	if identities["total"] != float64(2) || len(identities["items"].([]any)) != 1 {
+		t.Fatal(identities)
+	}
+	older := object(t, invoke(t, s, root, "settings", map[string]any{"action": "get", "setting_uuid": setting["uuid"], "include_versions": true, "limit": 1, "after": "1"}))
+	identity := older["image_versions"].(map[string]any)["items"].([]any)[0].(map[string]any)
+	if identity["version_no"] != float64(1) || identity["uuid"] != variants[1].UUID || identity["asset_uuid"] == "" {
+		t.Fatal(identity)
+	}
+	if invoke(t, s, root, "settings", map[string]any{"action": "get", "setting_uuid": setting["uuid"], "include_versions": true, "after": "99"}).Success {
+		t.Fatal("version cursor escaped range")
+	}
 	submit := envelope.Data.Submit
 	delete(submit, "tool")
-	submit["variant_uuid"] = variants[1].UUID
+	submit["variant_uuid"] = identity["uuid"]
+	submit["expected_revision"] = older["revision"]
 	selected := object(t, invoke(t, s, root, "settings", submit))
 	if selected["current_variant"].(map[string]any)["uuid"] != variants[1].UUID {
 		t.Fatal("conversation selection failed")
@@ -132,7 +148,7 @@ func TestReviewTextFallbackAndConversationCandidateSubmission(t *testing.T) {
 		t.Fatalf("repeated stale submission=%s", got)
 	}
 	// The number remains stable after selection and text settings remain complete.
-	after := object(t, invoke(t, s, root, "review_settings", map[string]any{}))
+	after := object(t, invokeReviewDetails(t, s, root, "review_settings", map[string]any{}))
 	if after["items"].([]any)[0].(map[string]any)["text"] != "完整角色说明" {
 		t.Fatal(after)
 	}
@@ -161,7 +177,7 @@ func TestAppImageEnvelopeBoundsIsolationAndFailures(t *testing.T) {
 
 func TestTextReviewOnlyPublishesExistingUUIDv7Resources(t *testing.T) {
 	s, root, _ := harness(t)
-	result := object(t, invoke(t, s, root, "review_candidates", map[string]any{
+	result := object(t, invokeReviewDetails(t, s, root, "review_candidates", map[string]any{
 		"kind":       "text",
 		"candidates": []map[string]any{{"title": "星光", "text": "星星照亮森林。"}, {"title": "月光", "text": "月亮照亮回家的路。"}},
 	}))

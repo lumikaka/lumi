@@ -1,6 +1,10 @@
 import { defineMessages } from './defineMessages.js'
 
 export const simpleDashboard = defineMessages({
+  'workspace.text_candidates.title': ['文本候选', 'Text candidates'],
+  'workspace.text_candidates.body': ['候选切换仅用于本地预览，不会自动写入作品。', 'Switching candidates only previews locally and never writes to the work.'],
+  'workspace.text_candidates.unavailable': ['宿主未转交候选文本，请查看对话中的候选内容。', 'The host did not deliver candidate text. Please use the candidates in the conversation.'],
+  'workspace.text_candidates.selection': ['已选择候选 {number}（尚未保存），请在对话中回复编号以应用文本。', 'Candidate {number} selected locally (unsaved). Reply with its number to apply the text.'],
   'simple.mode.simple': ['简易模式', 'Simple mode'],
   'simple.mode.expert': ['专家模式', 'Expert mode'],
   'simple.mode.switch_to_simple': ['切换到简易模式', 'Switch to simple mode'],
@@ -143,6 +147,8 @@ export const simpleDashboard = defineMessages({
   'simple.books.trash_title': ['将绘本移入回收站', 'Move picture book to trash'],
   'simple.books.trash_body': ['将“{title}”移入回收站？其中页面会随绘本一起保留，恢复后仍可继续编辑。', 'Move “{title}” to trash? Its pages will stay with it and remain editable after restoration.'],
   'simple.books.open_pages': ['查看页面', 'View pages'],
+  'simple.books.image_progress': ['图片 {count}/{total}', 'Images {count}/{total}'],
+  'simple.chapter.story': ['章节故事', 'Chapter story'],
   'simple.books.page_count': ['{count} 页', '{count} pages'],
   'simple.pages.back': ['返回绘本列表', 'Back to picture books'],
   'simple.pages.title': ['页面列表', 'Page list'],
@@ -187,6 +193,7 @@ export const simpleDashboard = defineMessages({
   'simple.pages.has_image': ['已有画面', 'Artwork ready'],
   'simple.page.current_image': ['当前使用 · 第 {version} 稿', 'Current · version {version}'],
   'simple.page.open_image_preview': ['查看当前画面大图', 'View current artwork full size'],
+  'simple.page.candidate_preview_title': ['预览候选稿 · v{version}', 'Preview candidate · v{version}'],
   'simple.page.image_preview': ['当前画面大图', 'Current artwork'],
   'simple.page.content': ['页面内容', 'Page content'],
   'simple.page.reference_content': ['引用页面内容到新会话', 'Reference page content in a new thread'],

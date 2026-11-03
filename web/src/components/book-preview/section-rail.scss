@@ -1,0 +1,27 @@
+.review-workspace { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: start; }
+.review-section-rail {
+  position: sticky; top: 16px; min-width: 0; border: 1px solid var(--line, #dedfd8); border-radius: 10px; background: var(--card, #fff); overflow: hidden;
+  h2 { margin: 0; padding: 16px; font-size: 14px; }
+  > a, > button { display: block; margin: 0 12px 12px; font-size: 12px; }
+  &__list { max-height: calc(100vh - 250px); overflow-y: auto; padding: 0 8px 8px; }
+  &__link { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; margin: 4px 0; text-align: left; text-decoration: none; color: inherit; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; }
+  &__image { display: block; flex: 0 0 48px; width: 48px; height: 52px; overflow: hidden; border-radius: 4px; background: var(--soft, #f1f2ed); }
+  .book-preview__image { width: 100%; height: 100%; }
+  img { width: 100%; height: 100%; object-fit: contain; }
+  .simple-image-placeholder { display: grid; place-content: center; height: 100%; color: var(--muted, #72766d); }
+  .simple-image-placeholder svg { width: 15px; height: 15px; }
+  .simple-image-placeholder span { display: none; }
+  .simple-image-placeholder button { font-size: 10px; padding: 0; }
+  &__link > span:last-child { min-width: 0; }
+  small { display: block; color: var(--muted, #72766d); font-size: 11px; margin-bottom: 5px; }
+  strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+  &__link:hover { background: var(--soft, #f1f2ed); }
+  &__link[aria-current='page'] { background: var(--soft, #eaf0e6); border-color: var(--accent, #365b3e); }
+  &__link[aria-current='page']:hover { background: var(--hover, #dde8d8); }
+}
+@media (max-width: 640px) {
+  .review-workspace { grid-template-columns: minmax(0, 1fr); }
+  .review-section-rail { position: static; }
+  .review-section-rail__list { display: flex; max-height: none; overflow-x: auto; }
+  .review-section-rail__row { flex: 0 0 150px; }
+}

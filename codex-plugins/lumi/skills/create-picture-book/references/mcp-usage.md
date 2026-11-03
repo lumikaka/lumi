@@ -133,7 +133,7 @@
 {"name":"story_profile","arguments":{"action":"write","story_md":"# 回家的星星\n\n小狐狸帮助迷路的星星回家。","expected_revision":0}}
 ```
 
-`review_candidates` 按 `kind` 决定参数：`page` 要 `chapter_uuid/page_uuid`；`setting` 要 `setting_uuid`；`text` 要 2–12 个 `candidates`，每项为 `{"title":"...","text":"..."}`。界面切换只预览，选择图片的持久化写回使用上表的 `select_image`。
+`review_candidates` 按 `kind` 决定参数：`page` 要 `chapter_uuid/page_uuid`；`setting` 要 `setting_uuid`；`text` 要 2–12 个 `candidates`，每项为 `{"title":"...","text":"..."}`。点击预览不保存；共享工作区的“使用此稿”通过现有接口采用。对话编号选择用 `pages/settings {action:"get",include_versions:true,...目标 UUID}` 重读。返回的 `image_versions` 是分页的 `{items,total,snapshot,cursor_pagination}`，每项仅含 uuid、version_no、asset_uuid、is_current。按用户编号匹配 version_no，再用目标最新 revision 和 variant UUID 调用上表的 `select_image`；需要后续页时使用 after/limit，不从 UI 本地选中推断采用事实。
 
 ```json
 {"name":"review_candidates","arguments":{"kind":"text","candidates":[{"title":"温暖结局","text":"星星点亮了狐狸回家的路。"},{"title":"幽默结局","text":"星星约狐狸下次带一把更大的伞。"}]}}
@@ -160,8 +160,26 @@
 
 ## 最终绘本预览
 
-完成用户要求的创作、保存与 `export_book` 后调用 `review_book`。整本传 `{}`；指定章节传 `{"chapter_uuid":"刚读取的章节 UUID"}`。不等待用户打开或操作 App，不新增确认节点；用户明确要求的中途审阅仍保留。
+完成用户要求的创作、保存与 `export_book` 后调用 `review_book`。整本传 `{"mode":"preview"}`；指定章节传 `{"mode":"preview","chapter_uuid":"刚读取的章节 UUID"}`。不等待用户打开或操作 App，不新增确认节点；用户明确要求的中途审阅仍保留。
 
 工具继续使用统一 JSON 信封，`data.items` 只携带当前采用的 `asset_uuid`、正文和真实 `open_url`。可选 `chapter_uuid` 为向后兼容的范围参数；新增 `scope`（`book`/`chapter`）、`total`，各页含 `chapter_title` 和正文 `page_number`（封面/封底无正文页码）。`target_uuid` 仍为项目 UUID。默认每批 20 页，按 `cursor_pagination` 继续读取；App 自动从首批读全后展示，跨章节保持顺序。模型需要完整文字时也必须继续分页，不能把首批当整本。
 
 App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在 App 内进入单页阅读。完整原图经工具返回的 Lumi 链接查看。UI 失败仍交付文本摘要、准确导出路径及 Web 入口；不改变 `import_image` 立即导入/采用语义。
+
+### 四层共享工作区
+
+- 作品简介、规格、进度：`review_book({})`。
+- 章节编号、标题、摘要、页数、图片完成数：`review_chapters({limit:20})`。
+- 整章故事和页面结构：`review_chapter({chapter_uuid})`，不以首张页面代替整章。
+- 单页当前图片、完整正文、分镜和图片版本：`review_page({chapter_uuid,page_uuid})`。App 保留左侧本章 section 快速切换，并支持返回章节和章内上一页/下一页；章节视图也保留该侧栏。
+- 整本阅读：`review_book({mode:"preview"})`；本章阅读：`review_book({mode:"preview",chapter_uuid})`。封面/正文/封底有序、缺图有提示。
+- 设定与候选仍用 `review_settings` / `review_candidates`。本地预览不会改变采用结果；界面显式采用会保存。对话编号选择重读后再 `select_image`。
+
+旧指定章 `review_book({chapter_uuid})` 只保留旧阅读范围；新调用应明确选章节结构或阅读模式。工具不接收任意项目或路径，Web 入口使用返回的实际 URL。
+
+
+`review_*` 的 `contract_version:3` 是小型启动描述，包括项目/目标 UUID、revision、标题、简短摘要、状态与实际 Web URL。四层界面实际导入 Web 的同一套页面主体，普通编辑、排序、软删除/恢复、脚本与图片版本操作直接经宿主桥接完成，不要求用户每次回聊天。
+
+完整业务对象通过 App-only `read_app_resource` / `write_app_resource` 的 `_meta["lumi/app_response"]` 交给 UI；图片亦在 `_meta`，不复制到模型可见文本或 structuredContent。模型要读具体正文时使用原有 `chapters/pages/settings` 读取工具。App-only 可见性不保证宿主一定排除上下文，真实宿主验证状态见仓库验收文档。
+
+文件导入支持宿主附件单次 6 MiB；下载交给宿主打开同一 Lumi 资源。AI 生成、聊天引用和系统配置保留“在 Lumi 中打开”入口，不自动触发生成或切换付费渠道。宿主不可用不阻塞用户已授权的创作流程。

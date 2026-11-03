@@ -190,11 +190,12 @@ func (service *Service) ListSectionsByState(ctx context.Context, chapterUUID, se
 	if sectionState != "active" && sectionState != "trashed" {
 		return nil, domainError(CodeValidation, "页面状态筛选无效", "state 只支持 active/trashed。", nil)
 	}
-	state, chapter, err := service.ensureComicState(ctx, service.store.DB(), chapterUUID)
+	chapter, err := service.chapterByUUID(ctx, service.store.DB(), chapterUUID)
 	if err != nil {
 		return nil, err
 	}
-	query := service.store.DB().WithContext(ctx).Where("chapter_comic_state_id = ?", state.ID)
+	// Listing an empty chapter must not create a comic state as a side effect.
+	query := service.store.DB().WithContext(ctx).Where("chapter_comic_state_id IN (SELECT id FROM chapter_comic_states WHERE chapter_id = ?)", chapter.ID)
 	if sectionState == "trashed" {
 		query = query.Where("deleted_at IS NOT NULL").Order("deleted_at DESC, id DESC")
 	} else {

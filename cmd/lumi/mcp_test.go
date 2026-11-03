@@ -78,6 +78,12 @@ func callText(t *testing.T, session *mcp.ClientSession, name string, args map[st
 	if err := json.Unmarshal([]byte(text.Text), &envelope); err != nil {
 		t.Fatal(err)
 	}
+	if ui, ok := result.Meta[textmcp.AppResponseMeta]; ok {
+		encoded, _ := json.Marshal(ui)
+		if err := json.Unmarshal(encoded, &envelope); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if envelope.Error.Code != wantCode || envelope.Success != (wantCode == "") || result.IsError != (wantCode != "") {
 		t.Fatalf("%s(%v): %s", name, args, text.Text)
 	}
@@ -272,7 +278,16 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	}
 	// Step 5 text fallback: do not read any UI resource. A failed preview does
 	// not prevent the complete Step 3 creation/export workflow below.
-	review := callText(t, client, "review_book", map[string]any{}, "")
+	overviewReview := callText(t, client, "review_book", map[string]any{}, "")
+	if overviewReview["view"] != "book" || overviewReview["contract_version"] != float64(3) {
+		t.Fatal(overviewReview)
+	}
+	callText(t, client, "review_chapters", map[string]any{}, "")
+	chapterReview := callText(t, client, "review_chapter", map[string]any{"chapter_uuid": chapterUUID}, "")
+	if chapterReview["target_uuid"] != chapterUUID {
+		t.Fatal(chapterReview)
+	}
+	review := callReviewDetails(t, client, "reader", map[string]any{}, "")
 	if len(review["items"].([]any)) != 3 || review["items"].([]any)[0].(map[string]any)["text"] != "第一页旁白：我陪你回家。" {
 		t.Fatal(review)
 	}
@@ -535,4 +550,13 @@ func TestCreationForwardHasNoOriginOrCredentialsAndRejectsOversize(t *testing.T)
 	if result := forwardCreation(t.Context(), identity, input); result.Error == nil || result.Error.Code != "result_too_large" {
 		t.Fatalf("oversize=%+v", result)
 	}
+}
+
+func callReviewDetails(t *testing.T, session *mcp.ClientSession, view string, args map[string]any, wantCode string) map[string]any {
+	t.Helper()
+	copy := map[string]any{"view": view}
+	for k, v := range args {
+		copy[k] = v
+	}
+	return callText(t, session, "read_app_review", copy, wantCode)
 }

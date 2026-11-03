@@ -52,8 +52,8 @@ func TestMCPRejectsLegacyDaemonBeforeCreationWithoutStoppingIt(t *testing.T) {
 	var creations, deletes atomic.Int32
 	web := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == instanceRoute && r.Method == http.MethodGet {
-			// Absence of capability metadata models the preserved legacy service.
-			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true}})
+			// Version 1 supports older authoring, but not workspace REST/UI contracts.
+			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true, CreationProtocolVersion: creationProtocolVersion - 1}})
 			return
 		}
 		if r.Method == http.MethodDelete {

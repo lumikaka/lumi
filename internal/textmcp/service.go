@@ -23,9 +23,15 @@ type Service struct {
 	Events        *realtime.Hub
 	Endpoint      string
 	AppConnection func(string) any
+	AppRequest    func(context.Context, string, AppResourceRequest) (any, error)
 }
 
 type arguments struct {
+	ReviewView              string                       `json:"view"`
+	Resource                string                       `json:"resource"`
+	Method                  string                       `json:"method"`
+	Query                   map[string]string            `json:"query"`
+	Body                    json.RawMessage              `json:"body"`
 	BoardUUID               string                       `json:"board_uuid"`
 	SourceText              string                       `json:"source_text"`
 	StyleSnapshot           string                       `json:"style_snapshot"`
@@ -59,6 +65,7 @@ type arguments struct {
 	After            string                    `json:"after"`
 	Before           string                    `json:"before"`
 	Limit            int                       `json:"limit"`
+	IncludeVersions  bool                      `json:"include_versions"`
 	PromptGroup      string                    `json:"prompt_group"`
 	PromptKey        string                    `json:"prompt_key"`
 	Target           string                    `json:"target"`
@@ -78,6 +85,7 @@ type arguments struct {
 	MaxEdge          int                       `json:"max_edge"`
 	VariantUUID      string                    `json:"variant_uuid"`
 	SlotKind         string                    `json:"kind"`
+	Mode             string                    `json:"mode"`
 	Candidates       []reviewCandidate         `json:"candidates"`
 }
 
@@ -92,7 +100,11 @@ func value[T any](v *T) (zero T) {
 // stdio process, never exposed as a tool argument. Every operation acquires a
 // manager lease; no separate SQLite handle or legacy MCP grant is used.
 func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessage) httpapi.Envelope {
-	if len(raw) > MaxBytes {
+	inputLimit := MaxBytes
+	if name == "write_app_resource" {
+		inputLimit = MaxAppInputBytes
+	}
+	if len(raw) > inputLimit {
 		return Failure("arguments_too_large", "工具输入过大", "请缩小单次写入范围（最多 256 KiB）。")
 	}
 	if err := validate(name, raw); err != nil {
@@ -194,6 +206,15 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		}
 		var callErr error
 		switch name {
+		case "read_app_review":
+			reviewName := "review_" + a.ReviewView
+			if a.ReviewView == "reader" {
+				reviewName = "review_book"
+				a.Mode = "preview"
+			}
+			result, callErr = s.reviewLegacy(ctx, store, st, prod, reviewName, a)
+		case "read_app_resource", "write_app_resource":
+			result, callErr = s.appResource(ctx, store.ProjectUUID(), name, a)
 		case "project_init", "project_overview":
 			result, callErr = overview(ctx, store, st, prod)
 		case "project_setup":
@@ -249,7 +270,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result = s.AppConnection(store.ProjectUUID())
 		case "watch_app_changes":
 			return httpapi.NewError(400, "app_watch_transport_required", "实时提示需要 MCP 会话", "请通过 MCP Apps 的 watch_app_changes 调用。", nil)
-		case "review_book", "review_page", "review_candidates", "review_settings":
+		case "review_book", "review_chapters", "review_chapter", "review_page", "review_candidates", "review_settings":
 			result, callErr = s.review(ctx, store, st, prod, name, a)
 		case "export_book":
 			var book production.TextBook
@@ -263,21 +284,25 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if err != nil {
 		return publicError(err)
 	}
-	if isMutation(name, a.Action) {
+	if isMutation(name, a.Action) && name != "write_app_resource" {
 		result = mutationSummary(result)
 	}
 	b, err := json.Marshal(result)
 	if err != nil {
 		return publicError(err)
 	}
-	if len(b) > MaxBytes-1024 {
+	resultLimit := MaxBytes
+	if name == "read_app_resource" || name == "write_app_resource" || name == "read_app_review" {
+		resultLimit = MaxAppBytes
+	}
+	if len(b) > resultLimit-1024 {
 		return Failure("result_too_large", "工具结果超过 256 KiB", "减小 limit、按单个 UUID 读取，或用 context_chapter_uuids / context_setting_uuids 缩小提示词上下文；大文本可用 export_book 导出。")
 	}
 	return httpapi.Envelope{Success: true, Data: result}
 }
 
 func isMutation(name, action string) bool {
-	return name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
+	return name == "write_app_resource" || name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
 }
 
 func mutationSummary(result any) any {
@@ -430,7 +455,26 @@ func settings(ctx context.Context, prod *production.Service, a arguments) (any, 
 		result["premise"] = map[string]any{"uuid": p.UUID, "revision": p.Revision, "default_style": p.DefaultStyle}
 		return result, err
 	case "get":
-		return prod.GetPremiseAsset(ctx, a.SettingUUID)
+		item, err := prod.GetPremiseAsset(ctx, a.SettingUUID)
+		if err != nil || !a.IncludeVersions {
+			return item, err
+		}
+		versions, err := prod.ListAssetVariants(ctx, a.SettingUUID)
+		if err != nil {
+			return nil, err
+		}
+		identities := []imageVersionIdentity{}
+		for _, v := range versions {
+			identities = append(identities, imageVersionIdentity{UUID: v.UUID, VersionNo: v.VersionNo, AssetUUID: v.Asset.UUID, IsCurrent: item.CurrentVariant != nil && item.CurrentVariant.UUID == v.UUID})
+		}
+		listing := map[string]any{}
+		if err := reviewPageSlice(listing, "items", identities, a); err != nil {
+			return nil, err
+		}
+		return struct {
+			production.PremiseAsset
+			ImageVersions map[string]any `json:"image_versions"`
+		}{item, listing}, nil
 	case "select_image":
 		return prod.SelectAssetVariant(ctx, a.SettingUUID, a.VariantUUID, value(a.ExpectedRevision))
 	case "create":
@@ -457,7 +501,26 @@ func pages(ctx context.Context, prod *production.Service, a arguments) (any, err
 		result["state"] = state
 		return result, err
 	case "get":
-		return prod.GetSection(ctx, a.ChapterUUID, a.PageUUID)
+		item, err := prod.GetSection(ctx, a.ChapterUUID, a.PageUUID)
+		if err != nil || !a.IncludeVersions {
+			return item, err
+		}
+		versions, err := prod.ListImageVariants(ctx, a.ChapterUUID, a.PageUUID)
+		if err != nil {
+			return nil, err
+		}
+		identities := []imageVersionIdentity{}
+		for _, v := range versions {
+			identities = append(identities, imageVersionIdentity{UUID: v.UUID, VersionNo: v.VersionNo, AssetUUID: v.Asset.UUID, IsCurrent: item.CurrentImage != nil && item.CurrentImage.UUID == v.UUID})
+		}
+		listing := map[string]any{}
+		if err := reviewPageSlice(listing, "items", identities, a); err != nil {
+			return nil, err
+		}
+		return struct {
+			production.ComicSection
+			ImageVersions map[string]any `json:"image_versions"`
+		}{item, listing}, nil
 	case "select_image":
 		return prod.SelectImageVariant(ctx, a.ChapterUUID, a.PageUUID, a.VariantUUID, value(a.ExpectedRevision))
 	case "create":
@@ -490,4 +553,14 @@ func outline(ctx context.Context, st *story.Service, prod *production.Service, a
 		}
 	}
 	return paginate(items, a), nil
+}
+
+// Explicit model reads can resolve a conversation candidate number without
+// relying on UI-only results, defaulting every launch to full history, or
+// duplicating image bytes/prose in the version manifest.
+type imageVersionIdentity struct {
+	UUID      string `json:"uuid"`
+	VersionNo int    `json:"version_no"`
+	AssetUUID string `json:"asset_uuid"`
+	IsCurrent bool   `json:"is_current"`
 }

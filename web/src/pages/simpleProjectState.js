@@ -3,6 +3,22 @@ import { comicBodyPageNumber, comicPageRole } from './comicPageRoles.js'
 const SIMPLE_PROJECT_SETTINGS_TABS = new Set(['summary', 'profile', 'prompts'])
 const SIMPLE_PROJECT_SETTINGS_SUMMARY_SECTIONS = new Set(['project', 'format', 'language', 'models', 'style'])
 
+export function createPageImageReviewState(candidates = false) {
+  return { mode: candidates ? 'candidates' : null, variant: null }
+}
+
+// The gallery and preview share one modal slot so neither can cover the other.
+export function pageImageReviewReducer(state, action) {
+  switch (action.type) {
+    case 'open_candidates': return createPageImageReviewState(true)
+    case 'preview_current': return { mode: 'current_preview', variant: null }
+    case 'preview_candidate': return { mode: 'candidate_preview', variant: action.variant }
+    case 'close': return createPageImageReviewState(state.mode === 'candidate_preview')
+    case 'reset': return createPageImageReviewState()
+    default: return state
+  }
+}
+
 export function normalizedSimpleProjectSettingsTab(value) {
   return SIMPLE_PROJECT_SETTINGS_TABS.has(value) ? value : 'summary'
 }
@@ -33,6 +49,7 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   if (trajectory) return { key: 'trajectory', assetUuid: '', chapterUuid: '', sectionUuid: '', threadUuid: decodeSegment(trajectory[1]) }
   const setting = route.match(/^premise\/assets\/([^/]+)$/)
   if (setting) return { key: 'setting', assetUuid: decodeSegment(setting[1]), chapterUuid: '', sectionUuid: '' }
+  if (route === 'preview') return { key: 'book', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'chapters') return { key: 'books', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   const page = route.match(/^chapters\/([^/]+)\/sections\/([^/]+)$/)
   if (page) return { key: 'page', assetUuid: '', chapterUuid: decodeSegment(page[1]), sectionUuid: decodeSegment(page[2]) }

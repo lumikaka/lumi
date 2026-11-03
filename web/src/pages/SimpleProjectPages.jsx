@@ -1,7 +1,9 @@
+import { useWorkspaceRuntime } from '../workspace/runtime.jsx'
+import SectionRail from '../components/book-preview/SectionRail.jsx'
 import BookPreview from '../components/book-preview/BookPreview.jsx'
-import { webBookPages, loadWebBookImage, webBookLabels } from '../components/book-preview/webAdapter.js'
+import { webBookPages, webBookLabels } from '../components/book-preview/webAdapter.js'
 import ImageTaskProgress from '../components/ImageTaskProgress.jsx'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -34,57 +36,6 @@ import {
 } from 'lucide-react'
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { createAssetUpload } from '../api/assets.js'
-import {
-  createStoryProfileGeneration,
-  createStoryProfileReconstruction,
-  listTasks,
-} from '../api/ai.js'
-import {
-  cancelProductionTask,
-  createComicSection,
-  createPremiseAsset,
-  createPremiseAssetVariant,
-  createStoryboard,
-  deleteComicSection,
-  generateChapterImagesBatch,
-  generatePremiseAssetVariant,
-  generateSectionImage,
-  getPremise,
-  getPremiseAsset,
-  importSectionImage,
-  listComicSections,
-  listImageVariants,
-  listPremiseAssets,
-  listPremiseAssetVariants,
-  listProductionTasks,
-  listStoryboards,
-  reorderComicSections,
-  restoreComicSection,
-  restorePremiseAsset,
-  selectImageVariant,
-  selectPremiseAssetVariant,
-  selectStoryboard,
-  setComicSectionPremiseAssets,
-  trashPremiseAsset,
-  updateComicSection,
-  updatePremiseAsset,
-} from '../api/production.js'
-import {
-  createChapter,
-  getChapter,
-  getStoryProfile,
-  importExternalStoryMD,
-  listChapters,
-  listStoryProfileVersions,
-  regenerateStoryMD,
-  reorderChapters,
-  restoreChapter,
-  restoreStoryProfileVersion,
-  trashChapter,
-  updateChapter,
-  updateStoryProfile,
-} from '../api/story.js'
 import { useI18n } from '../i18n/useI18n.js'
 import { sourceTypeLabel } from '../i18n/labels.js'
 import { projectRoute } from '../projectRoutes.js'
@@ -106,10 +57,12 @@ import { OverviewSummaryPanel } from './ProjectOverviewPanels.jsx'
 import { PromptPanel, StoryProfilePanel } from './ProjectOverviewContentPanels.jsx'
 import { premiseAssetTitleFromFile } from './productionWorkspaceState.js'
 import {
+  createPageImageReviewState,
   firstReadySimpleImage,
   normalizedSimpleProjectSettingsSection,
   normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
+  pageImageReviewReducer,
   patchSimpleProjectSettingsSearch,
   simpleStoryExcerpt,
   storyDocumentBlocks,
@@ -140,32 +93,31 @@ function isEditableTarget(target) {
 }
 
 export function SimpleHomePage({ project, projectUuid, projectQuery }) {
+  const { api: { getPremise, listPremiseAssets, getStoryProfileSummary: getStoryProfile, listChapterSummaries: listChapters } } = useWorkspaceRuntime()
   const { t } = useI18n()
   const location = useLocation()
-  const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid], queryFn: () => getStoryProfile(projectUuid) })
+  const profileQuery = useQuery({ queryKey: ['story-profile', projectUuid, 'summary'], queryFn: () => getStoryProfile(projectUuid) })
   const premiseQuery = useQuery({ queryKey: ['premise', projectUuid], queryFn: () => getPremise(projectUuid) })
   const assetsQuery = useQuery({ queryKey: ['premise-assets', projectUuid, '', false], queryFn: () => listPremiseAssets(projectUuid, { state: 'active' }) })
   const chaptersQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
   const chapters = chaptersQuery.data?.items || []
-  const sectionQueries = useQueries({ queries: chapters.map((chapter) => ({ queryKey: ['comic-sections', projectUuid, chapter.uuid], queryFn: () => listComicSections(projectUuid, chapter.uuid) })) })
-  const sections = sectionQueries.flatMap((query) => query.data?.items || [])
-  const cover = firstReadySimpleImage(sections)
+  const cover = chapters.find(chapter => chapter.cover_asset)?.cover_asset
   const assets = assetsQuery.data?.items || []
   const ratio = pictureBookRatio(project?.picture_book)
   const story = profileQuery.data?.story_md || ''
   const displayDescription = project?.description || simpleStoryExcerpt(story) || t('simple.home.description_fallback')
   const loading = projectQuery.isLoading || profileQuery.isLoading || premiseQuery.isLoading || assetsQuery.isLoading || chaptersQuery.isLoading
-  const error = projectQuery.error || profileQuery.error || premiseQuery.error || assetsQuery.error || chaptersQuery.error || sectionQueries.find((query) => query.error)?.error
+  const error = projectQuery.error || profileQuery.error || premiseQuery.error || assetsQuery.error || chaptersQuery.error
   if (loading && !project) return <SimpleLoading message={t('simple.loading.project')} />
   return (
     <div className="simple-project-page simple-project-home">
-      <SimpleError error={error} onRetry={() => { projectQuery.refetch(); profileQuery.refetch(); premiseQuery.refetch(); assetsQuery.refetch(); chaptersQuery.refetch(); sectionQueries.forEach((query) => query.refetch()) }} />
+      <SimpleError error={error} onRetry={() => { projectQuery.refetch(); profileQuery.refetch(); premiseQuery.refetch(); assetsQuery.refetch(); chaptersQuery.refetch() }} />
       <section className="simple-home-hero">
         <div className="simple-home-cover" style={{ '--simple-page-ratio': ratio ? `${ratio.width} / ${ratio.height}` : '4 / 3' }}>
           <SimpleImage asset={cover} alt={project?.name || t('projects.fallback_name')} fallbackIcon={<BookOpenText size={28} aria-hidden="true" />} />
         </div>
         <div className="simple-home-hero__copy">
-          <header><h1 data-no-i18n>{project?.name || t('projects.fallback_name')}</h1><div><Link className="simple-button" to={projectRoute(projectUuid, 'story', location.search)}><BookOpenText size={15} aria-hidden="true" />{t('simple.home.story_action')}</Link><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'settings', location.search)}><Pencil size={15} aria-hidden="true" />{t('projects.configuration')}</Link></div></header>
+          <header><h1 data-no-i18n>{project?.name || t('projects.fallback_name')}</h1><div><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'preview', location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><Link className="simple-button" to={projectRoute(projectUuid, 'story', location.search)}><BookOpenText size={15} aria-hidden="true" />{t('simple.home.story_action')}</Link><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'settings', location.search)}><Pencil size={15} aria-hidden="true" />{t('projects.configuration')}</Link></div></header>
           <p data-user-content>{displayDescription}</p>
           <dl>
             <div><dt>{t('simple.home.style')}</dt><dd data-user-content>{premiseQuery.data?.default_style || '—'}</dd></div>
@@ -180,8 +132,8 @@ export function SimpleHomePage({ project, projectUuid, projectQuery }) {
         {assets.length ? <div className="simple-setting-grid simple-setting-grid--preview">{assets.slice(0, 3).map((asset) => <SimpleSettingCard asset={asset} key={asset.uuid} projectUuid={projectUuid} />)}</div> : <p className="simple-empty-copy">{t('simple.home.no_settings')}</p>}
       </section>
       <section className="simple-home-section">
-        <header><div><h2>{t('simple.home.books_title')}</h2><p>{t('simple.home.books_progress', { count: chapters.length })}</p></div><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'chapters', location.search)}>{t('simple.home.books_action')}<ChevronRight size={15} aria-hidden="true" /></Link></header>
-        {chapters.length ? <SimpleBookPreviewGrid projectUuid={projectUuid} chapters={chapters} sectionQueries={sectionQueries} /> : <p className="simple-empty-copy">{t('simple.home.no_books')}</p>}
+        <header><div><h2>{t('simple.home.books_title')}</h2><p>{t('simple.home.books_progress', { count: chapters.length })} · {t('simple.books.page_count', { count: chapters.reduce((sum, chapter) => sum + chapter.page_count, 0) })} · {t('simple.books.image_progress', { count: chapters.reduce((sum, chapter) => sum + chapter.image_count, 0), total: chapters.reduce((sum, chapter) => sum + chapter.page_count, 0) })}</p></div><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, 'chapters', location.search)}>{t('simple.home.books_action')}<ChevronRight size={15} aria-hidden="true" /></Link></header>
+        {chapters.length ? <SimpleBookPreviewGrid projectUuid={projectUuid} chapters={chapters} /> : <p className="simple-empty-copy">{t('simple.home.no_books')}</p>}
       </section>
     </div>
   )
@@ -237,6 +189,7 @@ export function SimpleProjectSettingsPage({ project, projectUuid, projectQuery }
 }
 
 export function SimpleStoryPage({ project, projectUuid }) {
+  const { api: { createStoryProfileGeneration, createStoryProfileReconstruction, listTasks, getStoryProfile, importExternalStoryMD, listStoryProfileVersions, regenerateStoryMD, restoreStoryProfileVersion, updateStoryProfile } } = useWorkspaceRuntime()
   const { formatDateTime, t } = useI18n()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -328,6 +281,7 @@ export function SimpleStoryPage({ project, projectUuid }) {
 }
 
 export function SimpleSettingsPage({ projectUuid }) {
+  const { api: { createAssetUpload, createPremiseAsset, listPremiseAssets, restorePremiseAsset, trashPremiseAsset } } = useWorkspaceRuntime()
   const { t } = useI18n()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -379,6 +333,7 @@ export function SimpleSettingsPage({ projectUuid }) {
 }
 
 export function SimpleSettingDetailPage({ projectUuid }) {
+  const { api: { createAssetUpload, createPremiseAssetVariant, generatePremiseAssetVariant, getPremiseAsset, listPremiseAssetVariants, listProductionTasks, restorePremiseAsset, selectPremiseAssetVariant, trashPremiseAsset, updatePremiseAsset } } = useWorkspaceRuntime()
   const { formatDateTime, t } = useI18n()
   const { assetUuid } = useParams()
   const location = useLocation()
@@ -463,6 +418,7 @@ export function SimpleSettingDetailPage({ projectUuid }) {
 }
 
 export function SimpleBooksPage({ projectUuid }) {
+  const { api: { listComicSectionSummaries: listComicSections, createChapter, listChapterSummaries: listChapters, reorderChapters, restoreChapter, trashChapter, updateChapter } } = useWorkspaceRuntime()
   const { t } = useI18n()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -483,7 +439,6 @@ export function SimpleBooksPage({ projectUuid }) {
   const trashQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'trashed'], queryFn: () => listChapters(projectUuid, 'trashed') })
   const chapters = activeQuery.data?.items || []
   const selected = showTrash ? (trashQuery.data?.items || []) : chapters
-  const sectionQueries = useQueries({ queries: selected.map((chapter) => ({ queryKey: ['comic-sections', projectUuid, chapter.uuid], queryFn: () => listComicSections(projectUuid, chapter.uuid), enabled: !showTrash })) })
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['story-chapters', projectUuid] })
     void queryClient.invalidateQueries({ queryKey: ['story-project', projectUuid] })
@@ -551,15 +506,14 @@ export function SimpleBooksPage({ projectUuid }) {
       <SimplePageHeading title={t('simple.books.title')} description={t('simple.books.description_manage')} backTo={projectRoute(projectUuid, '', homeSearch)} actions={<button className="simple-button" type="button" onClick={openCreate}><Plus size={15} aria-hidden="true" />{t('simple.books.add')}</button>} />
       <div className="simple-segmented" role="group" aria-label={t('simple.books.filter')}><button type="button" aria-pressed={!showTrash} onClick={() => selectTrash(false)}>{t('simple.settings.active')}</button><button type="button" aria-pressed={showTrash} onClick={() => selectTrash(true)}>{t('simple.settings.trash')}</button></div>
       <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
-      <SimpleError error={(showTrash ? trashQuery : activeQuery).error || sectionQueries.find((query) => query.error)?.error} onRetry={() => { activeQuery.refetch(); trashQuery.refetch(); sectionQueries.forEach((query) => query.refetch()) }} />
+      <SimpleError error={(showTrash ? trashQuery : activeQuery).error} onRetry={() => { activeQuery.refetch(); trashQuery.refetch() }} />
       {selected.length ? <div className="simple-book-list">{selected.map((chapter, index) => {
-        const sections = sectionQueries[index]?.data?.items || []
-        const cover = firstReadySimpleImage(sections)
+        const cover = chapter.cover_asset
         const chatSearch = withChatReference(location.search, 'chapter', chapter.uuid, [chapter.chapter_code, chapter.title].filter(Boolean).join(' · '))
         const menuOpen = openBookMenuUuid === chapter.uuid
         const menuLabel = t('simple.books.more_actions', { title: chapter.title || chapter.chapter_code })
         return <article className={menuOpen ? 'is-menu-open' : undefined} key={chapter.uuid}>
-          <Link className="simple-book-list__main" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: sections.length })}</em><b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link>
+          <Link className="simple-book-list__main" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: chapter.page_count })} · {t('simple.books.image_progress', { count: chapter.image_count, total: chapter.page_count })}</em>{chapter.summary ? <small className="simple-book-summary" data-user-content>{chapter.summary}</small> : null}<b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link>
           <footer>{showTrash ? <button type="button" disabled={restore.isPending} onClick={() => restore.mutate(chapter)}>{t('common.action.restore')}</button> : <>
             <Link to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`).pathname, search: chatSearch }}><Bot size={14} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
             <button type="button" onClick={() => { setEditing(chapter); setTitle(chapter.title || '') }}><Pencil size={14} aria-hidden="true" />{t('common.action.edit')}</button>
@@ -622,7 +576,7 @@ function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate,
           <ol>
             <li><Link to={projectRoute(projectUuid, '', location.search)} onClick={onNavigate}>{t('simple.shell.page.home')}</Link></li>
             <li><ChevronRight size={13} aria-hidden="true" /><Link to={projectRoute(projectUuid, 'chapters', location.search)} onClick={onNavigate}>{t('simple.shell.page.books')}</Link></li>
-            <li><ChevronRight size={13} aria-hidden="true" /><span aria-current="location" title={bookTitle} data-user-content>{bookTitle}</span></li>
+            <li><ChevronRight size={13} aria-hidden="true" /><Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}`, location.search)} onClick={onNavigate} aria-current="location" title={bookTitle} data-user-content>{bookTitle}</Link></li>
           </ol>
         </nav>
         <div className="simple-page-view__actions">
@@ -638,6 +592,7 @@ function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate,
 }
 
 export function SimplePagesPage({ project, projectUuid }) {
+  const { api: { createComicSection, deleteComicSection, generateChapterImagesBatch, listComicSectionSummaries: listComicSections, listProductionTasks, reorderComicSections, getChapter, listChapterSummaries: listChapters }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
   const { t } = useI18n()
   const { chapterUuid } = useParams()
   const location = useLocation()
@@ -660,16 +615,18 @@ export function SimplePagesPage({ project, projectUuid }) {
   const create = useMutation({ mutationFn: () => createComicSection(projectUuid, chapterUuid, { title: newPage.title.trim(), description_md: newPage.direction.trim(), storyboard_md: newPage.text.trim(), page_role: newPage.role }), onSuccess: (created) => { refresh(); setCreating(false); setNewPage(emptyPageDraft()); setFeedback({ kind: 'success', message: t('simple.pages.created') }); navigateToPage(created) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const remove = useMutation({ mutationFn: (section) => deleteComicSection(projectUuid, chapterUuid, section.uuid, section.revision), onSuccess: () => { refresh(); setDeleting(null); setFeedback({ kind: 'success', message: t('simple.pages.deleted') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const reorder = useMutation({ mutationFn: (uuids) => reorderComicSections(projectUuid, chapterUuid, uuids), onSuccess: (data) => { queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], data); setFeedback({ kind: 'success', message: t('simple.pages.reordered') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
-  const batch = useMutation({ mutationFn: () => generateChapterImagesBatch(projectUuid, chapterUuid, { section_uuids: sections.filter((section) => !section.current_image && section.current_storyboard).map((section) => section.uuid), idempotency_key: `simple-book-missing-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.pages.batch_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
+  const batch = useMutation({ mutationFn: () => generateChapterImagesBatch(projectUuid, chapterUuid, { section_uuids: sections.filter((section) => !section.current_image && (section.has_storyboard ?? Boolean(section.current_storyboard))).map((section) => section.uuid), idempotency_key: `simple-book-missing-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.pages.batch_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   const navigate = useNavigate()
   const navigateToPage = (section) => navigate(projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search))
   const move = (section, direction) => {
     const uuids = comicBodyReorderUuids(sections, section.uuid, direction)
     if (uuids) reorder.mutate(uuids)
   }
-  const missingCount = sections.filter((section) => !section.current_image && section.current_storyboard).length
+  const missingCount = sections.filter((section) => !section.current_image && (section.has_storyboard ?? Boolean(section.current_storyboard))).length
   const activeTaskCount = (tasksQuery.data?.items || []).filter((task) => task.kind === 'comic_image_generation' && ACTIVE_TASK_STATUSES.has(task.status) && sections.some((section) => section.uuid === task.resource_uuid)).length
   if (chaptersQuery.isLoading || chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
+  if (chapterQuery.data?.trashed_at) return <SimpleNotFound projectUuid={projectUuid} />
+  if (chapterQuery.error || sectionsQuery.error) return <div className="simple-project-page"><SimpleError error={chapterQuery.error || sectionsQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch() }} /><Link to={projectRoute(projectUuid, 'chapters', location.search)}>{t('simple.pages.back')}</Link></div>
   return (
     <div className="simple-book-workspace">
       <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={chapterQuery.data?.title} />
@@ -677,8 +634,11 @@ export function SimplePagesPage({ project, projectUuid }) {
         <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
         <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
         <SimpleError error={chaptersQuery.error || chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chaptersQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
+        <div className="review-workspace"><SectionRail title={t('simple.pages.title')} pages={webBookPages(sections, t)} loadImage={loadWebBookImage} labels={webBookLabels(t)} renderLink={(page, props, children) => <Link {...props} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(page.uuid)}`, location.search)}>{children}</Link>} /><div>
+        <section className="simple-home-section"><header><h2>{t('simple.chapter.story')}</h2></header><p className="simple-review-story" data-user-content>{chapterQuery.data?.current_story?.content || t('story.chapter.placeholder')}</p></section>
         {activeTaskCount ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTaskCount })}</p> : null}
         {sections.length ? <div className="simple-page-grid">{sections.map((section, index) => <SimpleManagedPageCard key={section.uuid} projectUuid={projectUuid} chapterUuid={chapterUuid} section={section} sections={sections} index={index} pending={remove.isPending || reorder.isPending} onDelete={() => setDeleting(section)} onMove={move} />)}</div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} actions={<button className="simple-button" type="button" onClick={() => setCreating(true)}>{t('simple.pages.add')}</button>} />}
+        </div></div>
         {trashOpen ? <SimplePageTrashDialog projectUuid={projectUuid} chapterUuid={chapterUuid} activeSections={sections} requiresBodyPage={project?.picture_book?.format !== 'vertical_strip'} onClose={() => setTrashOpen(false)} onRestored={() => setFeedback({ kind: 'success', message: t('simple.pages.restored') })} /> : null}
         {creating ? <SimpleDialog title={t('simple.pages.add_title')} onClose={() => !create.isPending && setCreating(false)}><form className="simple-form" onSubmit={(event) => { event.preventDefault(); create.mutate() }}><label>{t('simple.page.role')}<select value={newPage.role} onChange={(event) => setNewPage((value) => ({ ...value, role: event.target.value }))}><option value="body">{t('simple.page.role_body')}</option>{project?.picture_book?.format !== 'vertical_strip' ? <><option value="front_cover" disabled={comicPageRoleOptionDisabled(sections, 'front_cover')}>{t('simple.page.role_front')}</option><option value="back_cover" disabled={comicPageRoleOptionDisabled(sections, 'back_cover')}>{t('simple.page.role_back')}</option></> : null}</select></label><label>{t('simple.page.title_label')}<input autoFocus maxLength={160} value={newPage.title} onChange={(event) => setNewPage((value) => ({ ...value, title: event.target.value }))} /></label><label>{t('simple.page.text')}<textarea value={newPage.text} onChange={(event) => setNewPage((value) => ({ ...value, text: event.target.value }))} /></label><label>{t('simple.page.visual_direction')}<textarea value={newPage.direction} onChange={(event) => setNewPage((value) => ({ ...value, direction: event.target.value }))} /></label><SimpleDialogActions pending={create.isPending} submitDisabled={false} onCancel={() => setCreating(false)} /></form></SimpleDialog> : null}
         {deleting ? <SimpleConfirm danger title={t('simple.pages.delete_title')} body={t('simple.pages.delete_body', { page: comicPageLabel(t, sections, deleting) })} pending={remove.isPending} onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)} /> : null}
@@ -687,7 +647,13 @@ export function SimplePagesPage({ project, projectUuid }) {
   )
 }
 
-export function SimplePageView({ project, projectUuid }) {
+export function SimplePageView(props) {
+  const { chapterUuid, sectionUuid } = useParams()
+  return <SimplePageEditor key={`${chapterUuid}/${sectionUuid || ''}`} {...props} />
+}
+
+function SimplePageEditor({ project, projectUuid }) {
+  const { api: { createAssetUpload, cancelProductionTask, createComicSection, createStoryboard, deleteComicSection, generateSectionImage, importSectionImage, listComicSectionSummaries: listComicSections, listImageVariants, listProductionTasks, listStoryboards, reorderComicSections, selectImageVariant, selectStoryboard, setComicSectionPremiseAssets, updateComicSection, getChapterSummary: getChapter, getComicSection } } = useWorkspaceRuntime()
   const { formatDateTime, t } = useI18n()
   const { chapterUuid, sectionUuid: routeSectionUuid } = useParams()
   const location = useLocation()
@@ -702,15 +668,21 @@ export function SimplePageView({ project, projectUuid }) {
   const pageDragRef = useRef(null)
   const pageDragClickSuppressed = useRef(false)
   const scriptEditorRef = useRef(null)
-  const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid], queryFn: () => getChapter(projectUuid, chapterUuid) })
-  const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid], queryFn: () => listComicSections(projectUuid, chapterUuid) })
+  const [imageReview, dispatchImageReview] = useReducer(pageImageReviewReducer, new URLSearchParams(location.search).get('panel') === 'candidates', createPageImageReviewState)
+  const imageCandidatesOpen = imageReview.mode === 'candidates'
+  const imagePreviewOpen = imageReview.mode === 'current_preview' || imageReview.mode === 'candidate_preview'
+  const previewImage = imageReview.variant
+  const [scriptEditorOpen, setScriptEditorOpen] = useState(false)
+  const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid, 'summary'], queryFn: () => getChapter(projectUuid, chapterUuid) })
+  const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'], queryFn: () => listComicSections(projectUuid, chapterUuid) })
   const sections = orderedSimplePages(sectionsQuery.data?.items || [])
   const sectionUuid = routeSectionUuid || sections[0]?.uuid || ''
-  const storyboardsQuery = useQuery({ queryKey: ['comic-storyboards', projectUuid, chapterUuid, sectionUuid], queryFn: () => listStoryboards(projectUuid, chapterUuid, sectionUuid), enabled: Boolean(sectionUuid) })
-  const imagesQuery = useQuery({ queryKey: ['comic-images', projectUuid, chapterUuid, sectionUuid], queryFn: () => listImageVariants(projectUuid, chapterUuid, sectionUuid), enabled: Boolean(sectionUuid) })
+  const storyboardsQuery = useQuery({ queryKey: ['comic-storyboards', projectUuid, chapterUuid, sectionUuid], queryFn: () => listStoryboards(projectUuid, chapterUuid, sectionUuid), enabled: Boolean(sectionUuid) && scriptEditorOpen })
+  const imagesQuery = useQuery({ queryKey: ['comic-images', projectUuid, chapterUuid, sectionUuid], queryFn: () => listImageVariants(projectUuid, chapterUuid, sectionUuid), enabled: Boolean(sectionUuid) && imageCandidatesOpen })
   const tasksQuery = useQuery({ queryKey: ['production-tasks', projectUuid], queryFn: () => listProductionTasks(projectUuid) })
   const index = sections.findIndex((item) => item.uuid === sectionUuid)
-  const section = sections[index]
+  const detailQuery = useQuery({ queryKey: ['comic-section', projectUuid, chapterUuid, sectionUuid], queryFn: ({signal}) => getComicSection(projectUuid, chapterUuid, sectionUuid, {signal}), enabled: Boolean(sectionUuid) })
+  const section = detailQuery.data
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
   const [direction, setDirection] = useState('')
@@ -723,10 +695,8 @@ export function SimplePageView({ project, projectUuid }) {
   const [pageItemMenu, setPageItemMenu] = useState(null)
   const [pageTrashOpen, setPageTrashOpen] = useState(false)
   const [deletingPage, setDeletingPage] = useState(null)
-  const [imageCandidatesOpen, setImageCandidatesOpen] = useState(false)
-  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState(null)
   const [artworkReferencesHelpOpen, setArtworkReferencesHelpOpen] = useState(false)
-  const [scriptEditorOpen, setScriptEditorOpen] = useState(false)
   const [pageDrag, setPageDrag] = useState(null)
   const [freshImageTask, setFreshImageTask] = useState('')
   const taskStateRef = useRef(null)
@@ -751,10 +721,18 @@ export function SimplePageView({ project, projectUuid }) {
   useEffect(() => {
     taskStateRef.current = null
     setFreshImageTask('')
-    setImagePreviewOpen(false)
+    dispatchImageReview({ type: 'reset' })
     setArtworkReferencesHelpOpen(false)
     setScriptEditorOpen(false)
   }, [sectionUuid])
+
+  useEffect(() => {
+    const search = new URLSearchParams(location.search)
+    if (search.get('panel') !== 'candidates') return
+    dispatchImageReview({ type: 'open_candidates' })
+    search.delete('panel')
+    navigate({ pathname: location.pathname, search: search.toString() }, { replace: true })
+  }, [location.search, location.pathname, navigate])
 
   useEffect(() => {
     if (!scriptEditorOpen) return undefined
@@ -767,7 +745,7 @@ export function SimplePageView({ project, projectUuid }) {
     const previous = taskStateRef.current
     taskStateRef.current = { uuid: task.uuid, status: task.status }
     if (task.status !== 'completed' || previous?.uuid !== task.uuid || !ACTIVE_TASK_STATUSES.has(previous.status)) return
-    void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'] })
     void queryClient.invalidateQueries({ queryKey: ['comic-images', projectUuid, chapterUuid, sectionUuid] })
     setFreshImageTask(task.uuid)
     setFeedback({ kind: 'success', message: t('simple.page.generation_complete') })
@@ -914,10 +892,12 @@ export function SimplePageView({ project, projectUuid }) {
   }
 
   const updateSectionCache = (updated) => {
-    queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], (current) => ({ ...current, items: (current?.items || []).map((item) => item.uuid === updated.uuid ? updated : item) }))
+    queryClient.setQueryData(['comic-section', projectUuid, chapterUuid, updated.uuid], updated)
+    queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid, 'summary'], (current) => ({ ...current, items: (current?.items || []).map((item) => item.uuid === updated.uuid ? updated : item) }))
   }
   const refreshPage = () => {
-    void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-section', projectUuid, chapterUuid, sectionUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'] })
     void queryClient.invalidateQueries({ queryKey: ['comic-storyboards', projectUuid, chapterUuid, sectionUuid] })
     void queryClient.invalidateQueries({ queryKey: ['comic-images', projectUuid, chapterUuid, sectionUuid] })
   }
@@ -951,7 +931,7 @@ export function SimplePageView({ project, projectUuid }) {
     },
   })
   const importImage = useMutation({ mutationFn: async () => { const upload = await createAssetUpload(projectUuid, { purpose: 'comic_section_image', displayName: section.title || sectionUuid, file: imageFile }); return importSectionImage(projectUuid, chapterUuid, sectionUuid, { upload_uuid: upload.uuid, expected_revision: section.revision }) }, onSuccess: (updated) => { setImageFile(null); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_imported') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
-  const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { setImageCandidatesOpen(false); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
+  const chooseImage = useMutation({ mutationFn: (variant) => selectImageVariant(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { dispatchImageReview({ type: 'reset' }); updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.image_selected') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const chooseStoryboard = useMutation({ mutationFn: (variant) => selectStoryboard(projectUuid, chapterUuid, sectionUuid, variant.uuid, section.revision), onSuccess: (updated) => { updateSectionCache(updated); refreshPage(); setFeedback({ kind: 'success', message: t('simple.page.text_restored') }) }, onError: (error) => { setFeedback({ kind: 'error', error }); void sectionsQuery.refetch() } })
   const createPage = useMutation({
     mutationFn: async (pageRole) => {
@@ -959,9 +939,10 @@ export function SimplePageView({ project, projectUuid }) {
       return createComicSection(projectUuid, chapterUuid, { title: '', description_md: '', storyboard_md: '', page_role: pageRole })
     },
     onSuccess: (created) => {
-      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], (current) => ({ ...current, items: [...(current?.items || []), created] }))
-      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid, 'summary'], (current) => ({ ...current, items: [...(current?.items || []), created] }))
+      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'] })
       void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-section', projectUuid, chapterUuid] })
       setCreateMenuOpen(false)
       setFeedback({ kind: 'success', message: t('simple.pages.created') })
       navigate(projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(created.uuid)}`, location.search))
@@ -978,9 +959,10 @@ export function SimplePageView({ project, projectUuid }) {
       return { created, reordered }
     },
     onSuccess: ({ created, reordered }) => {
-      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], reordered)
-      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid, 'summary'], reordered)
+      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'] })
       void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-section', projectUuid, chapterUuid] })
       setPageItemMenu(null)
       setFeedback({ kind: 'success', message: t('simple.pages.inserted') })
       navigate(projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(created.uuid)}`, location.search))
@@ -997,9 +979,10 @@ export function SimplePageView({ project, projectUuid }) {
       const deletedIndex = sections.findIndex((item) => item.uuid === deletedPage.uuid)
       const destination = sections[deletedIndex + 1] || sections[deletedIndex - 1]
       const deletingCurrentPage = deletedPage.uuid === sectionUuid
-      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], (current) => current ? { ...current, items: (current.items || []).filter((item) => item.uuid !== deletedPage.uuid) } : current)
-      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid] })
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid, 'summary'], (current) => current ? { ...current, items: (current.items || []).filter((item) => item.uuid !== deletedPage.uuid) } : current)
+      void queryClient.invalidateQueries({ queryKey: ['comic-sections', projectUuid, chapterUuid, 'summary'] })
       void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-section', projectUuid, chapterUuid] })
       setPageItemMenu(null)
       setDeletingPage(null)
       setFeedback({ kind: 'success', message: t('simple.pages.deleted') })
@@ -1013,8 +996,9 @@ export function SimplePageView({ project, projectUuid }) {
   const reorderPages = useMutation({
     mutationFn: (uuids) => reorderComicSections(projectUuid, chapterUuid, uuids),
     onSuccess: (data) => {
-      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid], data)
+      queryClient.setQueryData(['comic-sections', projectUuid, chapterUuid, 'summary'], data)
       void queryClient.invalidateQueries({ queryKey: ['comic-state', projectUuid, chapterUuid] })
+    void queryClient.invalidateQueries({ queryKey: ['comic-section', projectUuid, chapterUuid] })
       setFeedback({ kind: 'success', message: t('simple.pages.reordered') })
     },
     onError: (error) => {
@@ -1106,14 +1090,19 @@ export function SimplePageView({ project, projectUuid }) {
     clearPageDrag()
   }
 
-  if (chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
+  if (chapterQuery.isLoading || sectionsQuery.isLoading || detailQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
+  if (detailQuery.error || chapterQuery.error || sectionsQuery.error) return <div className="simple-project-page"><SimpleError error={detailQuery.error || chapterQuery.error || sectionsQuery.error} onRetry={() => { detailQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch() }} /><Link to={projectRoute(projectUuid, `chapters/${chapterUuid}`, location.search)}>{t('simple.pages.back')}</Link></div>
   if (!section) return routeSectionUuid ? <SimpleNotFound projectUuid={projectUuid} /> : <SimplePagesPage project={project} projectUuid={projectUuid} />
   const label = comicPageLabel(t, sections, section)
   const bookTitle = chapterQuery.data?.title || t('projects.unnamed_picture_book')
   const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label)
   const confirmBreadcrumbNavigation = (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    if ((dirty || refsDirty) && !window.confirm(t('simple.page.leave_unsaved'))) event.preventDefault()
+    if (dirty || refsDirty) {
+      event.preventDefault()
+      const target = new URL(event.currentTarget.href)
+      setPendingNavigation(target.pathname + target.search)
+    }
   }
   const previous = sections[index - 1]
   const next = sections[index + 1]
@@ -1131,7 +1120,8 @@ export function SimplePageView({ project, projectUuid }) {
   const pageItemMenuLabel = pageItemMenuPage ? comicPageLabel(t, sections, pageItemMenuPage) : ''
   const pageItemMenuKeepsRequiredBody = Boolean(pageItemMenuPage) && project?.picture_book?.format !== 'vertical_strip' && comicPageRole(pageItemMenuPage) === 'body' && bodyPageCount <= 1
   return (
-    <div className="simple-project-page simple-page-view">
+    <div className="simple-project-page simple-page-view" onClickCapture={(event) => { if (event.target.closest('a[href]')) { const link = event.target.closest('a[href]'); if ((dirty || refsDirty) && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); event.stopPropagation(); const target = new URL(link.href); setPendingNavigation(target.pathname + target.search) } } }}>
+      {pendingNavigation ? <SimpleConfirm title={t('simple.page.leave_unsaved')} body={t('simple.page.leave_unsaved')} onCancel={() => setPendingNavigation(null)} onConfirm={() => { const target = pendingNavigation; setPendingNavigation(null); navigate(target) }} /> : null}
       <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={bookTitle} onNavigate={confirmBreadcrumbNavigation}>
         <Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
         <button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button>
@@ -1245,7 +1235,7 @@ export function SimplePageView({ project, projectUuid }) {
               aria-haspopup="dialog"
               aria-expanded={imagePreviewOpen}
               title={t('simple.page.open_image_preview')}
-              onClick={() => setImagePreviewOpen(true)}
+              onClick={() => dispatchImageReview({ type: 'preview_current' })}
             >
               <SimpleImage asset={currentImageAsset} alt={section.title || label} />
               <span>{t('simple.page.current_image', { version: section.current_image.version_no })} · {sourceTypeLabel(t, section.current_image.source_type)}</span>
@@ -1254,7 +1244,7 @@ export function SimplePageView({ project, projectUuid }) {
             <div className={`simple-page-current-image${freshImageTask ? ' is-fresh' : ''}`}><SimpleImage asset={currentImageAsset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} />{section.current_image ? <span>{t('simple.page.current_image', { version: section.current_image.version_no })} · {sourceTypeLabel(t, section.current_image.source_type)}</span> : null}</div>
           )}
           <div className="simple-illustration-actions">
-            <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => setImageCandidatesOpen(true)}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{t(imageVariants.length === 1 ? 'simple.page.image_drafts_count.one' : 'simple.page.image_drafts_count.other', { count: imageVariants.length })}</span></button>
+            <button type="button" className="simple-illustration-actions__drafts" aria-haspopup="dialog" aria-expanded={imageCandidatesOpen} onClick={() => dispatchImageReview({ type: 'open_candidates' })}><Images size={16} strokeWidth={1.6} aria-hidden="true" /><span>{imagesQuery.data ? t(imageVariants.length === 1 ? 'simple.page.image_drafts_count.one' : 'simple.page.image_drafts_count.other', { count: imageVariants.length }) : t('simple.page.image_candidates')}</span></button>
             {task ? <ImageTaskProgress task={task} /> : null}
             {taskActive ? <button type="button" className="simple-button" disabled={cancelImage.isPending} onClick={() => cancelImage.mutate(task.uuid)}>{t(cancelImage.isPending ? 'image.task.stage.cancelling' : task.cancel_requested_at ? 'image.task.retry_cancel' : 'image.task.cancel')}</button> : null}
             <button className="simple-button simple-illustration-actions__generate" type="button" disabled={!section.current_storyboard || taskActive || generate.isPending || refsDirty} onClick={() => generate.mutate()}><Sparkles size={16} strokeWidth={1.6} aria-hidden="true" />{t(generate.isPending ? 'simple.page.generation_starting' : section.current_image ? 'simple.setting.generate_title' : 'simple.page.generate')}</button>
@@ -1288,6 +1278,7 @@ export function SimplePageView({ project, projectUuid }) {
               </label>
             )}
           </section>
+          <section className="simple-page-content-card"><header className="simple-page-content-card__header"><h2>{t('simple.page.visual_direction')}</h2></header><label><span>{t('simple.page.visual_direction')}</span><textarea value={direction} onChange={(event) => setDirection(event.target.value)} /></label></section>
           <section className="simple-page-artwork-references">
             <header>
               <div>
@@ -1360,8 +1351,8 @@ export function SimplePageView({ project, projectUuid }) {
           {scriptDirty ? <p>{t('simple.page.script_switch_blocked')}</p> : null}
         </aside>
       </div></SimpleDialog> : null}
-      {imagePreviewOpen ? <SimpleDialog wide title={t('simple.page.image_preview')} onClose={() => setImagePreviewOpen(false)}><div className="simple-page-image-preview"><SimpleImage asset={currentImageAsset} alt={section.title || label} /></div></SimpleDialog> : null}
-      {imageCandidatesOpen ? <SimpleDialog title={t('simple.page.image_candidates')} onClose={() => !importImage.isPending && !chooseImage.isPending && setImageCandidatesOpen(false)}><div className="simple-page-candidates-dialog"><header><p>{t('simple.page.image_candidates_body')}</p><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" disabled={importImage.isPending} onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{imageVariants.map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /><footer><div><strong>v{variant.version_no}</strong><span>{sourceTypeLabel(t, variant.source_type)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending || importImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></div></SimpleDialog> : null}
+      {imagePreviewOpen ? <SimpleDialog wide title={previewImage ? t('simple.page.candidate_preview_title', { version: previewImage.version_no }) : t('simple.page.image_preview')} onClose={() => dispatchImageReview({ type: 'close' })}><div className="simple-page-image-preview"><SimpleImage asset={previewImage?.asset || currentImageAsset} alt={section.title || label} /></div></SimpleDialog> : null}
+      {imageCandidatesOpen ? <SimpleDialog title={t('simple.page.image_candidates')} onClose={() => !importImage.isPending && !chooseImage.isPending && dispatchImageReview({ type: 'close' })}><div className="simple-page-candidates-dialog"><header><p>{t('simple.page.image_candidates_body')}</p><label className="simple-button simple-button--secondary"><Upload size={15} aria-hidden="true" />{t('simple.page.import_image')}<input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files?.[0] || null)} /></label></header>{imageFile ? <div className="simple-upload-confirm"><span data-user-content>{imageFile.name}</span><button type="button" disabled={importImage.isPending} onClick={() => importImage.mutate()}>{t('simple.setting.import_now')}</button><button type="button" className="simple-button--secondary" disabled={importImage.isPending} onClick={() => setImageFile(null)}>{t('common.action.cancel')}</button></div> : null}<div className="simple-candidate-grid">{imageVariants.map((variant) => <article className={variant.uuid === section.current_image?.uuid ? 'is-current' : ''} key={variant.uuid}><button type="button" className="simple-candidate-preview" aria-label={t('common.action.preview')} onClick={() => dispatchImageReview({ type: 'preview_candidate', variant })}><SimpleImage asset={variant.asset} alt={`${label} v${variant.version_no}`} /></button><footer><div><strong>v{variant.version_no}</strong><span>{sourceTypeLabel(t, variant.source_type)}</span><time dateTime={variant.created_at}>{formatDateTime(variant.created_at)}</time></div><button type="button" disabled={variant.uuid === section.current_image?.uuid || chooseImage.isPending || importImage.isPending} onClick={() => chooseImage.mutate(variant)}>{variant.uuid === section.current_image?.uuid ? t('simple.version.current') : t('simple.version.use')}</button></footer></article>)}</div></div></SimpleDialog> : null}
       {artworkReferencesHelpOpen ? (
         <SimpleDialog title={t('simple.page.current_artwork_references_help_title')} onClose={() => setArtworkReferencesHelpOpen(false)}>
           <div className="simple-artwork-references-help">
@@ -1383,6 +1374,7 @@ export function SimplePageView({ project, projectUuid }) {
 }
 
 function SimplePageTrashDialog({ projectUuid, chapterUuid, activeSections, requiresBodyPage, onClose, onRestored }) {
+  const { api: { listComicSectionSummaries: listComicSections, restoreComicSection } } = useWorkspaceRuntime()
   const { formatDateTime, t } = useI18n()
   const queryClient = useQueryClient()
   const activeQueryKey = ['comic-sections', projectUuid, chapterUuid]
@@ -1430,7 +1422,21 @@ function SimplePageTrashDialog({ projectUuid, chapterUuid, activeSections, requi
   )
 }
 
+export function SimpleWorkPreview({ projectUuid }) {
+  const { api: { listComicSectionSummaries: listComicSections, listChapterSummaries: listChapters }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
+  const { t } = useI18n()
+  const location = useLocation()
+  const chaptersQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
+  const chapters = chaptersQuery.data?.items || []
+  const sectionQueries = useQueries({ queries: chapters.map(chapter => ({ queryKey: ['comic-sections', projectUuid, chapter.uuid], queryFn: () => listComicSections(projectUuid, chapter.uuid) })) })
+  const error = chaptersQuery.error || sectionQueries.find(query => query.error)?.error
+  const loading = chaptersQuery.isPending || sectionQueries.some(query => query.isPending)
+  const groups = !error && !loading ? chapters.map((chapter, index) => ({ uuid: chapter.uuid, title: chapter.title || chapter.chapter_code, pages: webBookPages(orderedSimplePages(sectionQueries[index].data?.items || []), t) })) : []
+  return <div className="simple-project-page simple-book-view"><SimplePageHeading title={t('simple.book.title')} backTo={projectRoute(projectUuid, '', location.search)} /><BookPreview title={t('simple.book.title')} groups={groups} loadImage={loadWebBookImage} labels={webBookLabels(t)} loading={loading} error={error?.message} onRetry={() => { chaptersQuery.refetch(); sectionQueries.forEach(query => query.refetch()) }} /></div>
+}
+
 export function SimpleBookView({ projectUuid }) {
+  const { api: { generateChapterImagesBatch, listComicSectionSummaries: listComicSections, listProductionTasks, getChapter }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
   const { t } = useI18n()
   const { chapterUuid } = useParams()
   const location = useLocation()
@@ -1442,7 +1448,7 @@ export function SimpleBookView({ projectUuid }) {
   const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid], queryFn: () => listComicSections(projectUuid, chapterUuid) })
   const tasksQuery = useQuery({ queryKey: ['production-tasks', projectUuid], queryFn: () => listProductionTasks(projectUuid) })
   const sections = orderedSimplePages(sectionsQuery.data?.items || [])
-  const missing = sections.filter((section) => !section.current_image && section.current_storyboard)
+  const missing = sections.filter((section) => !section.current_image && (section.has_storyboard ?? Boolean(section.current_storyboard)))
   const activeTasks = (tasksQuery.data?.items || []).filter((task) => task.kind === 'comic_image_generation' && ACTIVE_TASK_STATUSES.has(task.status) && sections.some((section) => section.uuid === task.resource_uuid))
   const batch = useMutation({ mutationFn: () => generateChapterImagesBatch(projectUuid, chapterUuid, { section_uuids: missing.map((section) => section.uuid), idempotency_key: `simple-book-view-missing-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.pages.batch_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
   useEffect(() => {
@@ -1474,9 +1480,9 @@ export function SimpleBookView({ projectUuid }) {
         <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
         <SimpleError error={chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
         {activeTasks.length ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTasks.length })}</p> : null}
-        {sections.length ? <div className={`simple-book-reader${fullscreen ? ' is-fullscreen' : ''}`} ref={readerRef} aria-label={t('simple.book.reader')}><header><strong data-user-content>{chapterQuery.data?.title}</strong>{fullscreen ? <button type="button" onClick={toggleFullscreen}><Minimize2 size={18} aria-hidden="true" />{t('simple.book.exit_fullscreen')}</button> : null}</header><BookPreview key={chapterUuid} title={chapterQuery.data?.title} groups={[{ uuid: chapterUuid, title: '', pages: webBookPages(sections, t) }]} loadImage={loadWebBookImage} labels={webBookLabels(t)} renderPageLink={(section, props) => <Link {...props} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)} aria-label={t('simple.book.open_page', { page: section.label })} />} renderThumbnailActions={(section) => {
+        {sections.length ? <div className={`simple-book-reader${fullscreen ? ' is-fullscreen' : ''}`} ref={readerRef} aria-label={t('simple.book.reader')}><header><strong data-user-content>{chapterQuery.data?.title}</strong>{fullscreen ? <button type="button" onClick={toggleFullscreen}><Minimize2 size={18} aria-hidden="true" />{t('simple.book.exit_fullscreen')}</button> : null}</header><BookPreview key={chapterUuid} title={chapterQuery.data?.title} groups={[{ uuid: chapterUuid, title: '', pages: webBookPages(sections, t) }]} loadImage={loadWebBookImage} labels={webBookLabels(t)} renderPageActions={(section) => <Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)}>{t('simple.book.open_page', { page: section.label })}</Link>} renderThumbnailActions={(section) => {
           const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || section.label)
-          return <Link className="simple-book-grid__agent" to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`).pathname, search: chatSearch }}><Bot size={13} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
+          return <><Link className="simple-book-grid__agent" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)}>{t('simple.book.open_page', { page: section.label })}</Link><Link className="simple-book-grid__agent" to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`).pathname, search: chatSearch }}><Bot size={13} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link></>
         }} /></div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} />}
       </div>
     </div>
@@ -1504,10 +1510,10 @@ function SimpleSettingCard({ asset, projectUuid }) {
   return <Link className="simple-setting-card" to={projectRoute(projectUuid, `premise/assets/${encodeURIComponent(asset.uuid)}`, location.search)}><SimpleImage asset={asset.current_variant?.asset} alt={asset.title} fallbackIcon={<Shapes size={24} aria-hidden="true" />} /><span><strong data-user-content>{asset.title}</strong><small>{assetTypeLabel(t, asset.asset_type)} · {t('simple.setting.version', { version: asset.current_variant?.version_no || '—' })}</small></span></Link>
 }
 
-function SimpleBookPreviewGrid({ projectUuid, chapters, sectionQueries }) {
+function SimpleBookPreviewGrid({ projectUuid, chapters }) {
   const { t } = useI18n()
   const location = useLocation()
-  return <div className="simple-book-list simple-book-list--preview">{chapters.slice(0, 3).map((chapter, index) => { const sections = sectionQueries[index]?.data?.items || []; const cover = firstReadySimpleImage(sections); return <Link key={chapter.uuid} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: sections.length })}</em><b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link> })}</div>
+  return <div className="simple-book-list simple-book-list--preview">{chapters.slice(0, 3).map((chapter, index) => { const cover = chapter.cover_asset; return <Link key={chapter.uuid} to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: chapter.page_count })} · {t('simple.books.image_progress', { count: chapter.image_count, total: chapter.page_count })}</em>{chapter.summary ? <small className="simple-book-summary" data-user-content>{chapter.summary}</small> : null}<b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link> })}</div>
 }
 
 function SimpleTaskStatus({ task }) {
@@ -1597,11 +1603,9 @@ export function SimplePageHeading({ title, eyebrow, description, backLabel, back
   return <header className="simple-page-heading"><div>{backTo ? <Link to={backTo}><ArrowLeft size={15} aria-hidden="true" />{backLabel || t('simple.shell.page.home')}</Link> : null}<span>{eyebrow}</span><h1 data-user-content>{title}</h1>{description ? <p>{description}</p> : null}</div>{actions ? <div className="simple-page-heading__actions">{actions}</div> : null}</header>
 }
 
-export function SimpleImage({ asset, alt, fallbackIcon, fallbackText }) {
-  const [failed, setFailed] = useState(false)
-  useEffect(() => setFailed(false), [asset?.uuid, asset?.content_url])
-  if (!asset || asset.status !== 'ready' || !asset.content_url || failed) return <div className="simple-image-placeholder" role="img" aria-label={alt || fallbackText}>{fallbackIcon || <Sparkles size={22} aria-hidden="true" />}{fallbackText ? <span>{fallbackText}</span> : null}</div>
-  return <img src={asset.content_url} alt={alt || ''} loading="lazy" onError={() => setFailed(true)} />
+export function SimpleImage(props) {
+  const { Image } = useWorkspaceRuntime()
+  return <Image {...props} />
 }
 
 export function SimpleError({ error, onRetry }) {

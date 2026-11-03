@@ -35,6 +35,7 @@ import ChapterComicPreviewPage from './ChapterComicPreviewPage.jsx'
 import ChapterWorkbenchPage from './ChapterWorkbenchPage.jsx'
 import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import SimpleProjectWorkspace from './SimpleProjectWorkspace.jsx'
+import { SimpleWorkPreview } from './SimpleProjectPages.jsx'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { localizedErrorPresentation } from '../i18n/errorLocalization.js'
 import { useI18n } from '../i18n/useI18n.js'
@@ -518,6 +519,7 @@ function StoryWorkspaceContent({ projectUuid }) {
           <Route path="prompts" element={<PromptPanel projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />
           <Route path="exports" element={<OverviewExportsPanel projectUuid={projectUuid} />} />
+          <Route path="preview" element={<SimpleWorkPreview projectUuid={projectUuid} />} />
           <Route path="chapters" element={<ChapterCollectionRoute projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
           <Route path="chapters/:chapterUuid/preview" element={<ChapterComicPreviewPage projectUuid={projectUuid} />} />
           <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />

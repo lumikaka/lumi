@@ -58,7 +58,7 @@ func TestHostSettingBoardsThroughMCPWithoutProviders(t *testing.T) {
 	if repeat["uuid"] != result["uuid"] {
 		t.Fatal(repeat)
 	}
-	review := object(t, invoke(t, s, root, "review_settings", map[string]any{}))
+	review := object(t, invokeReviewDetails(t, s, root, "review_settings", map[string]any{}))
 	wire, _ := json.Marshal(review)
 	if !strings.Contains(string(wire), "Fox") || !strings.Contains(string(wire), "Lantern") {
 		t.Fatalf("review=%s", wire)

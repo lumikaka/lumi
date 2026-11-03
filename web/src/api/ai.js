@@ -1,4 +1,7 @@
-import { apiRequest } from './client.js'
+import { apiRequest as webRequest } from './client.js'
+
+// One endpoint contract; callers inject only the transport.
+export function createAiAPI(apiRequest = webRequest) {
 
 function jsonRequest(method, body = {}) {
   return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
@@ -13,60 +16,60 @@ function taskPath(projectUuid, suffix = '') {
   return `/api/v1/projects/${encodeURIComponent(projectUuid)}${suffix}`
 }
 
-export function listProviders() {
+function listProviders() {
   return apiRequest(providerPath())
 }
 
-export function getActiveProvider() {
+function getActiveProvider() {
   return apiRequest(providerPath('', '/active'))
 }
 
-export function getModelSettings() {
+function getModelSettings() {
   return apiRequest('/api/v1/model-settings')
 }
 
-export function updateModelSettings(expectedRevision, overrides) {
+function updateModelSettings(expectedRevision, overrides) {
   return apiRequest('/api/v1/model-settings', jsonRequest('PATCH', {
     expected_revision: expectedRevision,
     overrides,
   }))
 }
 
-export function updateModelRateLimits(expectedRevision, rateLimitUpdates) {
+function updateModelRateLimits(expectedRevision, rateLimitUpdates) {
   return apiRequest('/api/v1/model-settings', jsonRequest('PATCH', {
     expected_revision: expectedRevision,
     rate_limit_updates: rateLimitUpdates,
   }))
 }
 
-export function getProjectModelSettings(projectUuid) {
+function getProjectModelSettings(projectUuid) {
   return apiRequest(taskPath(projectUuid, '/model-settings'))
 }
 
-export function updateProjectModelSettings(projectUuid, expectedRevision, overrides) {
+function updateProjectModelSettings(projectUuid, expectedRevision, overrides) {
   return apiRequest(taskPath(projectUuid, '/model-settings'), jsonRequest('PATCH', {
     expected_revision: expectedRevision,
     overrides,
   }))
 }
 
-export function getSiteSettings() {
+function getSiteSettings() {
   return apiRequest('/api/v1/site-settings')
 }
 
-export function updateSiteSettings(settings) {
+function updateSiteSettings(settings) {
   return apiRequest('/api/v1/site-settings', jsonRequest('PATCH', { settings }))
 }
 
-export function resetSiteSettings(keys) {
+function resetSiteSettings(keys) {
   return apiRequest('/api/v1/site-settings/resets', jsonRequest('POST', { keys }))
 }
 
-export function checkProvider(providerUuid) {
+function checkProvider(providerUuid) {
   return apiRequest(providerPath(providerUuid, '/connection-checks'), jsonRequest('POST'))
 }
 
-export function listProjectLLMLogs(projectUuid, {
+function listProjectLLMLogs(projectUuid, {
   page = 1,
   perPage = 12,
   scope = '',
@@ -94,41 +97,41 @@ export function listProjectLLMLogs(projectUuid, {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/llm-logs?${query}`)
 }
 
-export function getProjectLLMLog(projectUuid, logUuid) {
+function getProjectLLMLog(projectUuid, logUuid) {
   return apiRequest(`/api/v1/projects/${encodeURIComponent(projectUuid)}/llm-logs/${encodeURIComponent(logUuid)}`)
 }
 
-export function createChapterGeneration(projectUuid, chapterUuid, payload) {
+function createChapterGeneration(projectUuid, chapterUuid, payload) {
   return apiRequest(taskPath(projectUuid, `/chapters/${encodeURIComponent(chapterUuid)}/generations`), jsonRequest('POST', payload))
 }
 
-export function createStoryProfileGeneration(projectUuid, payload) {
+function createStoryProfileGeneration(projectUuid, payload) {
   return apiRequest(taskPath(projectUuid, '/story-profile/generations'), jsonRequest('POST', payload))
 }
 
-export function createStoryProfileReconstruction(projectUuid, payload) {
+function createStoryProfileReconstruction(projectUuid, payload) {
   return apiRequest(taskPath(projectUuid, '/story-profile/reconstructions'), jsonRequest('POST', payload))
 }
 
-export function createChapterBatch(projectUuid, payload) {
+function createChapterBatch(projectUuid, payload) {
   return apiRequest(taskPath(projectUuid, '/chapter-batches'), jsonRequest('POST', payload))
 }
 
-export function createComicStoryboardGeneration(projectUuid, chapterUuid, payload) {
+function createComicStoryboardGeneration(projectUuid, chapterUuid, payload) {
   return apiRequest(taskPath(projectUuid, `/chapters/${encodeURIComponent(chapterUuid)}/comic-storyboard-generations`), jsonRequest('POST', payload))
 }
 
-export function listTasks(projectUuid, { status = '', limit = 50 } = {}) {
+function listTasks(projectUuid, { status = '', limit = 50 } = {}) {
   const search = new URLSearchParams({ limit: String(limit) })
   if (status) search.set('status', status)
   return apiRequest(taskPath(projectUuid, `/tasks?${search}`))
 }
 
-export function getTask(projectUuid, taskUuid) {
+function getTask(projectUuid, taskUuid) {
   return apiRequest(taskPath(projectUuid, `/tasks/${encodeURIComponent(taskUuid)}`))
 }
 
-export function listTaskEvents(projectUuid, taskUuid, { before = 0, after = 0, limit = 50 } = {}) {
+function listTaskEvents(projectUuid, taskUuid, { before = 0, after = 0, limit = 50 } = {}) {
   const search = new URLSearchParams()
   if (before) search.set('before', String(before))
   else search.set('after', String(after))
@@ -136,10 +139,15 @@ export function listTaskEvents(projectUuid, taskUuid, { before = 0, after = 0, l
   return apiRequest(taskPath(projectUuid, `/tasks/${encodeURIComponent(taskUuid)}/events?${search}`))
 }
 
-export function cancelTask(projectUuid, taskUuid) {
+function cancelTask(projectUuid, taskUuid) {
   return apiRequest(taskPath(projectUuid, `/tasks/${encodeURIComponent(taskUuid)}/cancellations`), jsonRequest('POST'))
 }
 
-export function retryTask(projectUuid, taskUuid) {
+function retryTask(projectUuid, taskUuid) {
   return apiRequest(taskPath(projectUuid, `/tasks/${encodeURIComponent(taskUuid)}/retries`), jsonRequest('POST'))
 }
+
+  return { listProviders, getActiveProvider, getModelSettings, updateModelSettings, updateModelRateLimits, getProjectModelSettings, updateProjectModelSettings, getSiteSettings, updateSiteSettings, resetSiteSettings, checkProvider, listProjectLLMLogs, getProjectLLMLog, createChapterGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, createChapterBatch, createComicStoryboardGeneration, listTasks, getTask, listTaskEvents, cancelTask, retryTask }
+}
+
+export const { listProviders, getActiveProvider, getModelSettings, updateModelSettings, updateModelRateLimits, getProjectModelSettings, updateProjectModelSettings, getSiteSettings, updateSiteSettings, resetSiteSettings, checkProvider, listProjectLLMLogs, getProjectLLMLog, createChapterGeneration, createStoryProfileGeneration, createStoryProfileReconstruction, createChapterBatch, createComicStoryboardGeneration, listTasks, getTask, listTaskEvents, cancelTask, retryTask } = createAiAPI()

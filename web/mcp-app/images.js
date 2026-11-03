@@ -14,7 +14,7 @@ export class PreviewCache {
     const key = `${project}:${asset}:${edge}`
     if (this.cache.has(key)) { const hit = this.cache.get(key); this.cache.delete(key); this.cache.set(key, hit); return Promise.resolve(hit) }
     if (this.pending.has(key)) return this.subscribe(this.pending.get(key), signal)
-    const job = { key, asset, edge, signals: new Set(), keep: false }
+    const job = { key, project, asset, edge, signals: new Set(), keep: false }
     job.promise = new Promise((resolve, reject) => { Object.assign(job, { resolve, reject }) })
     this.pending.set(key, job); this.queue.push(job)
     const result = this.subscribe(job, signal); this.pump(); return result
@@ -39,7 +39,7 @@ export class PreviewCache {
   pump() {
     while (this.active < this.concurrency && this.queue.length) {
       const job = this.queue.shift(); this.active++
-      Promise.resolve().then(() => this.call('read_app_image', { asset_uuid: job.asset, max_edge: job.edge }))
+      Promise.resolve().then(() => this.call('read_app_image', { asset_uuid: job.asset, max_edge: job.edge }, {meta:{'lumi/expected_project_uuid':job.project}}))
         .then((result) => {
           const data = imageData(result, job.asset, job.edge)
           this.cache.set(job.key, data); this.bytes += data.data_uri.length * 2

@@ -114,7 +114,7 @@ func TestStdioAppReviewImageAndScopedRealtimeReadback(t *testing.T) {
 	if json.Unmarshal(output, &opened) != nil || !opened.Success || opened.Data["url"] != book["open_url"] {
 		t.Fatalf("open=%s", output)
 	}
-	candidates := callText(t, client, "review_candidates", map[string]any{"kind": "text", "candidates": []any{map[string]any{"title": "One", "text": "Full first candidate"}, map[string]any{"title": "Two", "text": "Full second candidate"}}}, "")
+	candidates := callReviewDetails(t, client, "candidates", map[string]any{"kind": "text", "candidates": []any{map[string]any{"title": "One", "text": "Full first candidate"}, map[string]any{"title": "Two", "text": "Full second candidate"}}}, "")
 	if len(candidates["items"].([]any)) != 1 {
 		t.Fatal(candidates)
 	}

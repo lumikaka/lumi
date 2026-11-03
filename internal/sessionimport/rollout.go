@@ -220,7 +220,7 @@ var knownLumiTools = map[string]bool{
 	"book_outline": true, "prompt_catalog": true, "render_prompt": true,
 	"image_target": true, "import_image": true, "read_image": true, "export_book": true,
 	"read_app_image": true, "read_app_connection": true, "watch_app_changes": true,
-	"review_book": true, "review_page": true, "review_settings": true, "review_candidates": true,
+	"review_book": true, "review_chapters": true, "review_chapter": true, "review_page": true, "review_settings": true, "review_candidates": true,
 }
 
 func blankLine(line []byte) bool { return len(bytes.TrimSpace(line)) == 0 }

@@ -1,16 +1,8 @@
+import { useWorkspaceRuntime } from '../workspace/runtime.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, Download, FileText, X } from 'lucide-react'
 
-import {
-  cancelProductionTask,
-  createComicExport,
-  getComicExportReadiness,
-  getProductionTask,
-  listComicExports,
-  retryProductionTask,
-} from '../api/production.js'
-import { getStoryProject } from '../api/story.js'
 import LocalizedErrorMessage from '../i18n/LocalizedErrorMessage.jsx'
 import { statusLabel } from '../i18n/labels.js'
 import { useI18n } from '../i18n/useI18n.js'
@@ -25,6 +17,7 @@ import { comicPageFallbackTitle, comicPageLabel } from '../pages/comicPageRoles.
 import LumiDialog from './LumiDialog.jsx'
 
 export default function ComicExportDialog({ projectUuid, request, onClose }) {
+  const { DownloadLink, api: { cancelProductionTask, createComicExport, getComicExportReadiness, getProductionTask, listComicExports, retryProductionTask, getStoryProject } } = useWorkspaceRuntime()
   const { formatDateTime, formatNumber, t } = useI18n()
   const queryClient = useQueryClient()
   const projectQuery = useQuery({ queryKey: ['story-project', projectUuid], queryFn: () => getStoryProject(projectUuid) })
@@ -262,7 +255,7 @@ export default function ComicExportDialog({ projectUuid, request, onClose }) {
           <button type="button" className="button-secondary" disabled={busy} onClick={onClose}>{t(active ? 'projects.exports.dialog.background' : 'common.action.close')}</button>
           {active ? <button type="button" disabled={busy} onClick={() => cancelMutation.mutate()}>{t(cancelMutation.isPending ? 'projects.exports.dialog.cancelling' : 'common.action.cancel')}</button> : null}
           {retryable ? <button type="button" disabled={busy} onClick={() => retryMutation.mutate()}>{t(retryMutation.isPending ? 'projects.exports.dialog.retrying' : 'common.action.retry')}</button> : null}
-          {ready ? <a className="button-link" href={exportRecord.download_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download_format', { format: exportRecord.format?.toUpperCase() || 'ZIP' })}</a> : null}
+          {ready ? <DownloadLink className="button-link" href={exportRecord.download_url} download={filename}><Download size={15} aria-hidden="true" />{t('projects.exports.dialog.download_format', { format: exportRecord.format?.toUpperCase() || 'ZIP' })}</DownloadLink> : null}
         </> : null}
       </footer>
     </LumiDialog>

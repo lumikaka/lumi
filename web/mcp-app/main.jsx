@@ -1,131 +1,74 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { AppRealtime } from './realtime.js'
+import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AppBridge } from './bridge.js'
-import { reviewContext, failureKind, failureLabels, acceptReviewResult } from './contracts.js'
-import { PreviewCache, PreviewRequest } from './images.js'
+import { AppRealtime } from './realtime.js'
 import { bindReviewSync } from './sync.js'
-import BookReview from './BookReview.jsx'
-import './review.scss'
+import { PreviewCache } from './images.js'
+import { createAppAPI, workspaceLaunch, workspaceOrigin } from './workspace.js'
+import { createAppImage } from './WorkspaceImage.jsx'
+import TextCandidates from '../src/workspace/TextCandidates.jsx'
+import { WorkspaceRuntime } from '../src/workspace/runtime.jsx'
+import { SimpleHomePage, SimpleBooksPage, SimplePagesPage, SimplePageView, SimpleSettingsPage, SimpleSettingDetailPage, SimpleStoryPage, SimpleBookView, SimpleWorkPreview, SimpleLoading, SimpleError } from '../src/pages/SimpleProjectPages.jsx'
+import './workspace.scss'
 
 const bridge = new AppBridge()
-const previews = new PreviewCache((...args) => bridge.call(...args))
-const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false, staleTime: Infinity, gcTime: 5 * 60 * 1000 } } })
-function OpenLumi({ url }) {
-  const [error, setError] = useState(false)
-  return <span className="open-lumi"><a href={url} target="_blank" rel="noreferrer" onClick={(event) => {
-    event.preventDefault(); bridge.request('ui/open-link', { url }).then((r) => { if (r?.isError) setError(true) }).catch(() => setError(true))
-  }}>在 Lumi 中打开 ↗</a>{error && <small>请复制入口：<a href={url} target="_blank" rel="noreferrer">{url}</a>，或在项目目录运行 lumi open。</small>}</span>
+const previews = new PreviewCache((...args)=>bridge.call(...args))
+const client = new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,staleTime:Infinity,gcTime:300000}}})
+function OpenLumi({url}) {
+  const [error,setError] = useState('')
+  return <span><a href={url} onClick={event=>{event.preventDefault();bridge.request('ui/open-link',{url}).then(r=>{if(r?.isError)setError('请复制链接到 Lumi 中打开。')}).catch(()=>setError('请复制链接到 Lumi 中打开。'))}}>在 Lumi 中打开 ↗</a>{error&&<small>{error} {url}</small>}</span>
 }
-function Preview({ project, asset, title, large = false }) {
-  const ref = useRef(null)
-  const [visible, setVisible] = useState(false)
-  const [attempt, setAttempt] = useState(0)
-  const [preview, setPreview] = useState({ state: asset ? 'waiting' : 'missing' })
-  const loader = useRef(null)
-  if (!loader.current) loader.current = new PreviewRequest(previews, setPreview)
-  useEffect(() => {
-    if (!asset) return undefined
-    if (!globalThis.IntersectionObserver) { setVisible(true); return undefined }
-    const observer = new IntersectionObserver((entries) => { if (entries.some((v) => v.isIntersecting)) { setVisible(true); observer.disconnect() } })
-    observer.observe(ref.current); return () => observer.disconnect()
-  }, [asset])
-  useEffect(() => { loader.current.show(project, asset, large ? 1024 : 384, visible); return () => loader.current.cancel() }, [project, asset, large, visible, attempt])
-  useEffect(() => {
-    if (preview.state !== 'ready') return undefined
-    const timer = setTimeout(() => setPreview((p) => p.state === 'ready' ? { state: 'error', error: { kind: 'timeout' } } : p), 15000)
-    return () => clearTimeout(timer)
-  }, [preview.state, preview.data])
-  const labels = { missing: '暂无图片', waiting: '图片将在可见时加载', loading: '正在读取预览…' }
-  const ready = preview.state === 'ready' || preview.state === 'decoded'
-  return <div className={`preview ${large ? 'large' : ''}`} ref={ref} aria-busy={preview.state === 'loading'}>
-    {ready ? <img key={`${asset}:${attempt}`} src={preview.data.data_uri} alt={title} onLoad={() => setPreview((p) => ({ ...p, state: 'decoded' }))} onError={() => setPreview({ state: 'error', error: { kind: 'decode_error' } })} /> :
-      <div className="image-placeholder" role="status"><span className="image-symbol" aria-hidden="true">◩</span><span>{preview.state === 'error' ? (failureLabels[failureKind(preview.error)] ?? '预览失败') : labels[preview.state]}</span>
-        {preview.state === 'error' && <button onClick={() => setAttempt((n) => n + 1)}>重试这张图片</button>}</div>}
-  </div>
-}
-function PageCard({ item, project, detailed, navigate }) {
-  const [variant, setVariant] = useState('')
-  const selected = item.variants?.find((v) => v.uuid === variant)
-  return <article className={`card ${detailed ? 'detail' : ''}`}>
-    <Preview key={selected?.asset_uuid ?? item.asset_uuid ?? item.uuid} project={project} asset={selected?.asset_uuid ?? item.asset_uuid} title={item.title} large={detailed} />
-    <div className="card-copy"><p className="eyebrow">{item.kind} · r{item.revision}</p><h2>{item.title}</h2>
-      {detailed && item.variants?.length > 0 && <label className="versions">图片版本<select value={variant} onChange={(e) => setVariant(e.target.value)}><option value="">当前图片</option>{item.variants.map((v) => <option key={v.uuid} value={v.uuid}>{v.title}（仅预览）</option>)}</select></label>}
-      <p className="page-text">{!detailed && item.text.length > 180 ? `${item.text.slice(0,180)}…` : item.text || '暂无正文'}</p>
-      {!detailed && item.text.length > 180 && <details><summary>完整正文</summary><p className="page-text">{item.text}</p></details>}
-      {item.scene && <details open={detailed}><summary>画面描述</summary><p className="page-text">{item.scene}</p></details>}
-      <OpenLumi url={item.open_url} />
-      <div className="card-actions">{item.chapter_uuid && !detailed && <button onClick={() => navigate('review_page', {chapter_uuid:item.chapter_uuid,page_uuid:item.uuid})}>预览本页</button>}
-        {(detailed || !item.chapter_uuid) && <button onClick={() => navigate('review_candidates', item.chapter_uuid ? {kind:'page',chapter_uuid:item.chapter_uuid,page_uuid:item.uuid} : {kind:'setting',setting_uuid:item.uuid})}>查看图片候选</button>}</div>
-    </div>
-  </article>
-}
-function Candidates({ data }) {
-  const [selected, setSelected] = useState(null)
-  const item = data.items[0]
-  return <><p className="notice">{data.selection_notice}</p><div className="grid choices">{item.variants?.map((v) => <article className="card" key={v.uuid || v.number}>
-    {v.asset_uuid && <Preview project={data.project_uuid} asset={v.asset_uuid} title={`候选 ${v.number}：${v.title}`} />}
-    <div className="card-copy"><button className="candidate" aria-pressed={selected === v.number} onClick={() => setSelected(v.number)}><span className="number">{String(v.number).padStart(2, '0')}</span><span>{v.title}</span><span aria-hidden="true">{selected === v.number ? '●' : '○'}</span></button><p className="page-text">{v.text}</p>{v.asset_uuid === item.asset_uuid && <small>当前使用</small>}</div>
-  </article>)}</div>{!item.variants?.length && <p>暂无候选图片，可在对话中继续创作。</p>}
-    {selected !== null && <p role="status" className="selection">已在界面选中 {selected}，尚未保存。请在对话中回复“选择 {selected}”。</p>}</>
-}
-function Review({ seed, navigate }) {
-  const [request, setRequest] = useState(seed.request)
-  const [lastData, setLastData] = useState(seed)
-  const [status, setStatus] = useState('正在连接实时提示…')
-  const [connectionAttempt, setConnectionAttempt] = useState(0)
-  const query = useQuery({ queryKey: ['app-review', seed.project_uuid, request], queryFn: async () => {
-    const next = reviewContext(await bridge.call(request.name, request.arguments))
-    if (next.project_uuid !== seed.project_uuid || next.view !== seed.view || (seed.view !== 'book' && seed.view !== 'settings' && next.target_uuid !== seed.target_uuid)) throw new Error('审阅目标发生变化')
-    return next
-  }, initialData: JSON.stringify(request) === JSON.stringify(seed.request) ? seed : undefined })
-  useEffect(() => { if (query.data) setLastData(query.data) }, [query.data])
-  useEffect(() => {
-    return bindReviewSync({ socket: new AppRealtime(bridge, seed.project_uuid), project: seed.project_uuid, queryClient: client, onStatus: setStatus })
-  }, [seed.project_uuid, connectionAttempt])
-  const data = query.data ?? lastData
-  const labels = { book: '整本概览', page: '单页预览', candidates: '候选审阅', settings: '设定卡片' }
-  const pagination = data.cursor_pagination
-  return <main><header><div><p className="eyebrow">LUMI / {labels[data.view]}</p><h1>{data.title}</h1></div><OpenLumi url={data.open_url} /></header>
-    <div className="toolbar"><span role="status">{query.isFetching ? '正在校准最新内容…' : status}</span><button onClick={() => query.refetch()}>刷新内容</button><button onClick={() => setConnectionAttempt((n) => n + 1)}>重新连接</button></div>
-    <nav className="view-nav" aria-label="审阅视图"><button aria-pressed={data.view === 'book'} onClick={() => navigate('review_book',{})}>整本</button><button aria-pressed={data.view === 'settings'} onClick={() => navigate('review_settings',{})}>设定</button>
-      {data.view === 'candidates' && data.request.arguments.kind === 'page' && <button onClick={() => navigate('review_page',{chapter_uuid:data.request.arguments.chapter_uuid,page_uuid:data.request.arguments.page_uuid})}>返回单页</button>}</nav>
-    {query.error && <p role="alert" className="notice">读取失败，保留上次内容。{query.error.message} <OpenLumi url={data.open_url} /></p>}
-    {data.view === 'candidates' ? <Candidates key={`${data.target_uuid}:${data.revision}`} data={data} /> : <div className={data.view === 'page' ? 'single' : 'grid'}>{data.items.map((item) => <PageCard key={`${item.uuid}:${item.revision}`} item={item} project={data.project_uuid} detailed={data.view === 'page'} navigate={navigate} />)}</div>}
-    {data.items.length === 0 && <p className="empty">还没有可审阅的内容。可以在对话中继续创作。</p>}
-    {pagination && <nav aria-label="审阅分页"><button disabled={pagination.prev_cursor === '0'} onClick={() => setRequest({ ...request, arguments: { ...request.arguments, before: pagination.prev_cursor, after: undefined } })}>上一组</button><span>每组 {pagination.per_page} 项</span><button disabled={!pagination.has_more} onClick={() => setRequest({ ...request, arguments: { ...request.arguments, after: pagination.next_cursor, before: undefined } })}>下一组</button></nav>}
-    <footer>缩略图供审阅使用 · 原图与完整编辑请在 Lumi 中打开</footer>
-  </main>
+function Workspace({launch}) {
+  const location = useLocation(), navigate = useNavigate()
+  const [status,setStatus] = useState('正在连接实时提示…')
+  const [connection,setConnection] = useState(0)
+  const api = useMemo(()=>createAppAPI(bridge,launch.project_uuid,{canWrite:launch.permissions?.can_write !== false}),[launch.project_uuid,launch.permissions?.can_write])
+  const projectQuery = useQuery({queryKey:['story-project',launch.project_uuid],queryFn:()=>api.getStoryProject(launch.project_uuid)})
+  const project = projectQuery.data
+  const origin = workspaceOrigin(project,launch)
+  const runtime = useMemo(()=>({DownloadLink:({href,children,...props})=><a {...props} href={origin+href} onClick={event=>{event.preventDefault();if(!href.startsWith(`/media/projects/${launch.project_uuid}/comic-exports/`))return;bridge.request('ui/open-link',{url:origin+href}).then(result=>{if(result?.isError)setStatus('下载入口未打开，请在 Lumi 中继续')}).catch(()=>setStatus('下载入口未打开，请在 Lumi 中继续'))}}>{children}</a>,api,Image:createAppImage(previews,launch.project_uuid),loadImage:async(page,{large,signal,attempt})=>{const uuid=page.current_image?.asset?.uuid||page.asset_uuid;const edge=large?1024:384;if(attempt)previews.evict(launch.project_uuid,uuid,edge);return{src:(await previews.load(launch.project_uuid,uuid,edge,signal)).data_uri}},capabilities:{fileUpload:true,download:true,generation:false,chat:false}}),[api,launch.project_uuid,origin])
+  const base = `/projects/${launch.project_uuid}`
+  const url = location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
+  useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
+  useEffect(()=>{navigate(launch.path,{replace:true});void client.invalidateQueries({predicate:query=>query.queryKey?.[1]===launch.project_uuid,refetchType:'active'})},[launch.path,launch.sequence])
+  return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
+    <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link><Link to={`${base}/preview`}>阅读预览</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
+    {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
+    {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
+    <details className="mcp-workspace__capabilities"><summary>宿主能力与替代入口</summary><p>编辑、排序、回收站与版本采用在此工作区直接保存到同一项目。文件导入支持单次 6 MiB，导出下载通过宿主在 Lumi 服务中打开。AI 生成和聊天引用需在 Lumi 中继续；不会自动调用模型或切换付费渠道。</p></details>
+    <section className={`simple-project-body mcp-workspace__body${/\/sections\//.test(location.pathname)?' mcp-workspace__body--page':''}`}>
+      {projectQuery.error?<SimpleError error={projectQuery.error} onRetry={()=>projectQuery.refetch()}/>:!project?<SimpleLoading message="正在读取作品…"/>:<Routes>
+        <Route path={`${base}/`} element={<SimpleHomePage project={project} projectUuid={launch.project_uuid} projectQuery={projectQuery}/>}/>
+        <Route path={`${base}/chapters`} element={<SimpleBooksPage projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/chapters/:chapterUuid`} element={<SimplePagesPage project={project} projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/chapters/:chapterUuid/sections/:sectionUuid`} element={<SimplePageView project={project} projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/premise`} element={<SimpleSettingsPage projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/premise/assets/:assetUuid`} element={<SimpleSettingDetailPage projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/story`} element={<SimpleStoryPage project={project} projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/preview`} element={<SimpleWorkPreview projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/chapters/:chapterUuid/preview`} element={<SimpleBookView projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/candidates`} element={<TextCandidates key={launch.sequence} candidates={launch.ui_arguments?.candidates || launch.request.arguments.candidates}/>}/>
+        <Route path="*" element={<div className="simple-project-page"><p>此页面需要 Lumi 的完整运行环境。</p><OpenLumi url={url}/></div>}/>
+      </Routes>}
+    </section>
+  </div></WorkspaceRuntime.Provider>
 }
 function App() {
-  const [seed, setSeed] = useState(null); const [fallback, setFallback] = useState('等待审阅工具结果…'); const [error, setError] = useState('')
+  const [launch,setLaunch] = useState(null), [error,setError] = useState(''), [fallback,setFallback] = useState('等待作品工作区工具结果…')
   const sequence = useRef(0)
-  const navigation = useRef(0)
-  const [theme, setTheme] = useState('auto')
-  const [effectiveTheme, setEffectiveTheme] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-  const themeRef = useRef('auto'); const hostTheme = useRef('light')
-  const showReview = async (name, args) => {
-    const token = ++navigation.current
-    try { const result = await bridge.call(name,args); if (token !== navigation.current) return; const next=acceptReviewResult(client,result);setSeed({context:next,sequence:++sequence.current});setError('') }
-    catch(e) { if(token === navigation.current) setError(e.message) }
-  }
-  useEffect(() => {
-    const applyTheme = (context) => { if (['dark', 'light'].includes(context?.theme)) {hostTheme.current=context.theme;if(themeRef.current==='auto'){document.documentElement.dataset.theme=context.theme;setEffectiveTheme(context.theme)}} }
-    const off = bridge.onNotification((method, params) => {
-      if (method === 'ui/notifications/host-context-changed') applyTheme(params)
-      if (method === 'ui/resource-teardown') {reactRoot.unmount();bridge.dispose();return}
-      if (method !== 'ui/notifications/tool-result') return
-      setFallback(params?.content?.filter((b) => b.type === 'text').map((b) => b.text).join('\n') || '工具未返回文本，请查看对话中的结果。')
-      navigation.current++
-      try { setSeed({ context: acceptReviewResult(client, params), sequence: ++sequence.current }); setError('') } catch (e) { setSeed(null); setError(e.message) }
+  useEffect(()=>{
+    const off = bridge.onNotification((method,params)=>{
+      if(method==='ui/resource-teardown'){root.unmount();bridge.dispose();return}
+      if(method!=='ui/notifications/tool-result')return
+      try{const next=workspaceLaunch(params);setLaunch({...next,sequence:++sequence.current});setError('')}catch(e){setLaunch(null);setError(e.message);setFallback(params?.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n')||'请在项目目录运行 lumi open。')}
     })
-    bridge.initialize().then((r) => applyTheme(r.hostContext)).catch((e) => setError(failureLabels[failureKind(e)] ?? e.message))
-    const observer = new ResizeObserver(() => bridge.notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight }))
-    observer.observe(document.body)
-    return () => { off(); observer.disconnect() }
-  }, [])
-  return <div className="lumi-app" data-theme={effectiveTheme}><label className="theme-control">外观<select aria-label="审阅外观" value={theme} onChange={e=>{const value=e.target.value;themeRef.current=value;setTheme(value);const next=value==='auto'?hostTheme.current:value;document.documentElement.dataset.theme=next;setEffectiveTheme(next)}}><option value="auto">跟随宿主</option><option value="light">浅色</option><option value="dark">深色</option></select></label>{seed ? <>{error && <p role="alert" className="notice">{error}</p>}{seed.context.view === 'book' ? <BookReview key={`${seed.context.project_uuid}:${seed.context.request.arguments.chapter_uuid || ''}`} seed={seed.context} bridge={bridge} previews={previews} client={client} OpenLumi={OpenLumi} /> : <Review key={seed.sequence} seed={seed.context} navigate={showReview} />}</> : <main><p className="eyebrow">LUMI / 创作审阅</p><h1>审阅内容</h1>{error && <p role="alert">{error}</p>}<p>正文、候选编号和 Lumi 入口保留在工具文本中。也可在项目目录运行 <code>lumi open</code>。</p><pre>{fallback}</pre></main>}</div>
+    bridge.initialize().catch(e=>setError(e.message))
+    const observer=new ResizeObserver(()=>bridge.notify('ui/notifications/size-changed',{height:Math.min(1000,document.documentElement.scrollHeight)}));observer.observe(document.body)
+    return()=>{off();observer.disconnect()}
+  },[])
+  return launch?<MemoryRouter key={launch.project_uuid} initialEntries={[launch.path]}><Workspace launch={launch}/></MemoryRouter>:<main className="mcp-fallback"><h1>Lumi 作品工作区</h1>{error&&<p role="alert">{error}</p>}<pre>{fallback}</pre></main>
 }
-const reactRoot=createRoot(document.getElementById('root'))
-reactRoot.render(<QueryClientProvider client={client}><App /></QueryClientProvider>)
+const root = createRoot(document.getElementById('root'))
+root.render(<QueryClientProvider client={client}><App/></QueryClientProvider>)

@@ -186,3 +186,28 @@ test('host teardown requests are handled even when their id equals a pending vie
   await assert.rejects(pending, e => e.kind === 'cancelled')
   assert.deepEqual(sent.at(-1), { jsonrpc: '2.0', id: 1, result: {} })
 })
+
+test('shared workspace calibrates every active bound-project resource without touching other projects', async()=>{
+ const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}})
+ const reads=new Map(),offs=[]
+ for(const key of [['story-project',project],['comic-sections',project,asset,'summary'],['comic-section',project,asset,asset],['comic-images',project,asset,asset],['story-project',asset]]){
+  const id=JSON.stringify(key);reads.set(id,0)
+  const observer=new QueryObserver(client,{queryKey:key,queryFn:async()=>{reads.set(id,reads.get(id)+1);return{id}}})
+  offs.push(observer.subscribe(()=>{}))
+ }
+ await tick()
+ const callbacks={};let message
+ const channel={on:(key,fn)=>{callbacks[key]=fn;return()=>{}},onMessage:fn=>{message=fn;return()=>{}},join(){},leave(){}}
+ const surface=events(),doc=events()
+ const stop=bindReviewSync({socket:{channel:()=>channel,disconnect(){}},project,queryClient:client,surface,documentSurface:doc,workspace:true})
+ for(const trigger of [()=>callbacks.phx_joined(),()=>message('comic:section_changed'),()=>callbacks.phx_joined(),()=>surface.emit('focus'),()=>doc.emit('visibilitychange')]){trigger();await tick()}
+ for(const [key,count]of reads)assert.equal(count,key.includes(`"${asset}"]`)&&JSON.parse(key).length===2?1:6)
+ stop();offs.forEach(off=>off());client.clear()
+})
+
+test('image requests carry the displayed project as an identity constraint, never a project selector',async()=>{
+ let metadata
+ const cache=new PreviewCache(async(_name,_args,options)=>{metadata=options.meta;return preview()})
+ await cache.load(project,asset,384)
+ assert.deepEqual(metadata,{'lumi/expected_project_uuid':project})
+})

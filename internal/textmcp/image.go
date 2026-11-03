@@ -96,8 +96,7 @@ func imageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
 	return boundedResult(envelope, content)
 }
 
-// The App gets exactly one representation. Only structured content carries the
-// data URI; the text block remains a small, readable metadata envelope.
+// The UI gets the image in _meta. Model-visible fields contain only metadata.
 func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
 	if !envelope.Success {
 		return boundedResult(envelope)
@@ -118,7 +117,7 @@ func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) 
 		return nil, err
 	}
 	envelope.Data = map[string]any{"asset_uuid": p.AssetUUID, "mime_type": p.MIMEType, "width": p.Width, "height": p.Height, "data_uri": uri}
-	result := &mcp.CallToolResult{StructuredContent: envelope, Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}
+	result := &mcp.CallToolResult{StructuredContent: summary, Meta: mcp.Meta{AppResponseMeta: envelope}, Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}
 	wire, err := json.Marshal(result)
 	if err != nil {
 		return nil, err

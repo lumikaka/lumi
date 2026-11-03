@@ -462,6 +462,17 @@ func (handler *ProductionHandler) ShowComicState(c echo.Context) error {
 	return Success(c, http.StatusOK, value)
 }
 func (handler *ProductionHandler) ListSections(c echo.Context) error {
+	if c.QueryParam("view") == "summary" {
+		var items []production.SectionSummary
+		if err := handler.withService(c, func(service *production.Service) error {
+			var err error
+			items, err = service.ListSectionSummaries(c.Request().Context(), c.Param("chapter_uuid"), c.QueryParam("state"))
+			return err
+		}); err != nil {
+			return err
+		}
+		return summaryPage(c, items)
+	}
 	var items []production.ComicSection
 	if err := handler.withService(c, func(service *production.Service) error {
 		var err error

@@ -25,6 +25,17 @@
 /web/node_modules/
 /web/dist/
 /web/.env.local
+/.vite/
+/web/.vite/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated acceptance artifacts; keep summaries and selected screenshots only
+/docs/features/codex-plugins/acceptance/evidence/
+/docs/features/codex-plugins/acceptance/results/
 
 # Hugo site
 /site/.hugo_build.lock

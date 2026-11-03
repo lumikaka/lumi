@@ -1,0 +1,2819 @@
+@use './design-tokens' as *
+
+.simple-project-body
+  --simple-page-ratio: 4 / 3
+  color: $color-text
+  font-family: $font-family-base
+  font-size: $font-size-body
+  font-weight: $font-weight-regular
+  line-height: $line-height-body
+
+  .simple-review-story
+    white-space: pre-wrap
+    overflow-wrap: anywhere
+    line-height: 1.8
+
+  .simple-project-page
+    width: min(100%, 1160px)
+    min-height: 100%
+    margin: 0 auto
+    padding: 32px 34px 64px
+
+  .simple-button
+    min-height: 36px
+    padding: 0 13px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 7px
+    border: 1px solid $color-accent
+    border-radius: $radius-sm
+    color: #fff
+    background: $color-accent
+    font-size: 12px
+    font-weight: $font-weight-semibold
+    line-height: 1
+    text-decoration: none
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent-strong
+      color: #fff
+      background: $color-accent-strong
+
+  .simple-button--secondary
+    border-color: $color-border
+    color: $color-text
+    background: $color-surface
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-home-hero
+    min-width: 0
+    padding-bottom: 28px
+    display: grid
+    grid-template-columns: 108px minmax(0, 1fr)
+    align-items: start
+    gap: 24px
+    border-bottom: 1px solid $color-border
+
+  .simple-home-cover
+    width: 108px
+    aspect-ratio: var(--simple-page-ratio)
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      object-fit: cover
+
+  .simple-home-hero__copy
+    min-width: 0
+
+    header
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 18px
+
+      > div
+        display: flex
+        flex-wrap: wrap
+        justify-content: flex-end
+        gap: 8px
+
+    h1
+      margin: 0
+      font-size: 28px
+      font-weight: $font-weight-semibold
+      letter-spacing: -.02em
+
+    > p
+      max-width: 850px
+      margin: 12px 0 16px
+      color: $color-muted
+      font-size: 14px
+      line-height: 1.8
+
+    dl
+      margin: 0
+      display: flex
+      flex-wrap: wrap
+      gap: 18px 30px
+
+      div
+        display: grid
+        gap: 2px
+
+      dt
+        color: $color-muted
+        font-size: $font-size-small
+
+      dd
+        margin: 0
+        font-size: 13px
+        font-weight: $font-weight-semibold
+
+  .simple-home-section
+    padding: 27px 0
+    border-bottom: 1px solid $color-border
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 16px
+
+      h2,
+      p
+        margin: 0
+
+      h2
+        font-size: 18px
+        font-weight: $font-weight-semibold
+
+      p
+        margin-top: 3px
+        color: $color-muted
+        font-size: $font-size-small
+
+  .simple-setting-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 14px
+
+  .simple-setting-card
+    min-width: 0
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    color: $color-text
+    background: $color-surface
+    text-decoration: none
+    transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      height: 154px
+
+    > img
+      display: block
+      object-fit: contain
+
+    > span
+      min-width: 0
+      padding: 11px 12px 12px
+      display: grid
+      gap: 2px
+
+    strong,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    strong
+      font-size: 14px
+
+    small
+      color: $color-muted
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      transform: translateY(-1px)
+      box-shadow: 0 9px 22px rgba(34, 45, 38, .08)
+
+  .simple-empty-copy
+    margin: 12px 0
+    color: $color-muted
+    font-size: 13px
+
+  .simple-page-heading
+    min-width: 0
+    margin-bottom: 26px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 18px
+
+    > div:first-child
+      min-width: 0
+
+      > a
+        margin-bottom: 8px
+        display: inline-flex
+        align-items: center
+        gap: 5px
+        color: $color-muted
+        font-size: 12px
+        font-weight: $font-weight-medium
+
+        &:hover,
+        &:focus-visible
+          color: $color-accent-strong
+
+      > span
+        display: block
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    h1
+      margin: 0
+      font-size: 25px
+      font-weight: $font-weight-semibold
+      letter-spacing: -.02em
+
+    p
+      max-width: 720px
+      margin: 7px 0 0
+      color: $color-muted
+      font-size: 13px
+      line-height: 1.65
+
+  .simple-page-heading__actions
+    display: flex
+    flex-wrap: wrap
+    justify-content: flex-end
+    gap: 8px
+
+  .simple-project-settings-card
+    width: 100%
+    min-width: 0
+    display: grid
+    grid-template-columns: 180px minmax(0, 1fr)
+    align-items: stretch
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+  .simple-project-settings-sidebar
+    min-width: 0
+    border-right: 1px solid $color-border
+    border-radius: $radius-md 0 0 $radius-md
+    background: $color-surface-subtle
+
+  .simple-project-settings-nav
+    position: sticky
+    top: 18px
+    padding: 16px 12px
+    display: grid
+    gap: 5px
+
+    button
+      width: 100%
+      min-height: 40px
+      padding: 0 12px
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+      font-size: 13px
+      font-weight: $font-weight-semibold
+      text-align: left
+
+      &:hover,
+      &:focus-visible
+        border-color: rgba($color-accent, .24)
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &:focus-visible
+        outline: 2px solid rgba($color-accent, .18)
+        outline-offset: 1px
+
+      &[aria-selected="true"]
+        border-color: rgba($color-accent, .34)
+        color: #fff
+        background: $color-accent
+
+      &[aria-selected="true"]:hover,
+      &[aria-selected="true"]:focus-visible
+        border-color: $color-accent-strong
+        color: #fff
+        background: $color-accent-strong
+
+  .simple-project-settings-content
+    min-width: 0
+    padding: 18px
+    container: simple-project-settings-content / inline-size
+    background: #f7f7f3
+    border-radius: 0 $radius-md $radius-md 0
+
+    .project-overview
+      width: 100%
+      margin: 0
+
+  @container simple-project-settings-content (max-width: 860px)
+    .simple-project-settings-content
+      .project-overview-grid
+        grid-template-columns: 1fr
+
+      .overview-progress-card
+        position: static
+
+      .overview-project-facts
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+      .overview-model-setting label
+        grid-template-columns: 1fr
+        align-items: start
+
+      .prompt-catalog-editor__intro,
+      .prompt-group__header,
+      .prompt-card__header,
+      .prompt-card__meta
+        align-items: stretch
+        flex-direction: column
+
+      .prompt-group__actions,
+      .prompt-card__actions
+        width: 100%
+        justify-content: stretch
+
+        button
+          flex: 1 1 140px
+
+  @container simple-project-settings-content (max-width: 560px)
+    .simple-project-settings-content
+      .overview-project-facts,
+      .overview-progress-grid,
+      .overview-profile-facts,
+      .overview-work-links
+        grid-template-columns: 1fr
+
+      .overview-picture-book-compatibility
+        grid-template-columns: 1fr
+
+        small
+          grid-column: auto
+
+      .overview-profile-history article
+        grid-template-columns: 44px minmax(0, 1fr)
+
+        small,
+        time
+          grid-column: 2
+
+  .simple-story-layout
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 210px
+    align-items: start
+    gap: 24px
+
+  .simple-story-document
+    min-height: 490px
+    padding: 28px 32px 40px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: #fdfdf9
+
+    h2
+      margin: 0 0 22px
+      font-family: Georgia, "Songti SC", serif
+      font-size: 26px
+      font-weight: $font-weight-medium
+
+    p
+      margin: 0 0 18px
+      font-family: Georgia, "Songti SC", serif
+      font-size: 15px
+      line-height: 2
+      white-space: pre-wrap
+
+  .simple-story-meta
+    padding-left: 22px
+    display: grid
+    gap: 7px
+    border-left: 1px solid $color-border
+
+    > span,
+    > small
+      color: $color-muted
+      font-size: $font-size-small
+
+    > strong
+      margin-bottom: 12px
+      font-size: 16px
+
+    > p
+      margin: 10px 0 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.6
+
+    .simple-button
+      margin-top: 12px
+
+  .simple-setting-detail__layout
+    display: grid
+    grid-template-columns: minmax(0, 1.35fr) minmax(270px, .65fr)
+    align-items: start
+    gap: 24px
+
+  .simple-setting-detail__image
+    min-height: 440px
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: min(62vh, 650px)
+
+    img
+      display: block
+      object-fit: contain
+
+  .simple-setting-detail__copy
+    display: grid
+    gap: 20px
+
+    > .simple-danger-action
+      justify-self: start
+
+    section
+      padding-bottom: 18px
+      border-bottom: 1px solid $color-border
+
+      > span
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+      p
+        margin: 8px 0 0
+        font-size: 14px
+        line-height: 1.75
+
+    dl
+      margin: 0
+      display: grid
+      gap: 10px
+
+      div
+        display: flex
+        justify-content: space-between
+        gap: 14px
+
+      dt
+        color: $color-muted
+        font-size: $font-size-small
+
+      dd
+        margin: 0
+        font-size: 12px
+        font-weight: $font-weight-semibold
+
+  .simple-tag-list
+    margin-top: 10px
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+    i
+      padding: 4px 8px
+      border-radius: 999px
+      color: $color-accent-strong
+      background: $color-accent-muted
+      font-size: $font-size-small
+      font-style: normal
+      font-weight: $font-weight-medium
+
+  .simple-read-only-notice
+    margin: 0
+    padding: 11px 12px
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface-muted
+    font-size: $font-size-small
+    line-height: 1.6
+
+  .simple-book-summary
+    display: -webkit-box
+    -webkit-line-clamp: 2
+    -webkit-box-orient: vertical
+    overflow: hidden
+    white-space: normal
+    line-height: 1.6
+
+  .simple-book-list
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+    > a
+      min-width: 0
+      overflow: hidden
+      display: grid
+      grid-template-rows: 178px auto
+      border: 1px solid $color-border
+      border-radius: $radius-md
+      color: $color-text
+      background: $color-surface
+
+      > img,
+      > .simple-image-placeholder
+        width: 100%
+        height: 178px
+
+      > img
+        display: block
+        object-fit: cover
+
+      > span
+        padding: 13px
+        display: grid
+        gap: 4px
+
+      small,
+      em
+        color: $color-muted
+        font-size: $font-size-small
+        font-style: normal
+
+      strong
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+        font-size: 15px
+
+      b
+        margin-top: 8px
+        display: flex
+        align-items: center
+        gap: 5px
+        color: $color-accent-strong
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        box-shadow: 0 9px 22px rgba(34, 45, 38, .08)
+
+  .simple-page-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 16px
+
+  .simple-page-card
+    min-width: 0
+    padding-bottom: 12px
+    overflow: hidden
+    display: grid
+    gap: 3px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    color: $color-text
+    background: $color-surface
+
+    > div
+      position: relative
+      width: 100%
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      background: $color-surface-muted
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        display: block
+        object-fit: cover
+
+      > span
+        position: absolute
+        left: 8px
+        bottom: 8px
+        min-width: 26px
+        min-height: 24px
+        padding: 3px 6px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        color: $color-text
+        background: rgba($color-surface, .92)
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    > strong,
+    > small
+      margin-inline: 12px
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    > strong
+      margin-top: 8px
+      font-size: 14px
+
+    > small
+      color: $color-muted
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      transform: translateY(-1px)
+
+  .simple-page-view
+    position: relative
+    width: 100%
+    height: 100%
+    min-height: 0
+    max-width: none
+    padding: 0
+    display: flex
+    flex-direction: column
+    overflow: hidden
+
+  .simple-book-workspace
+    min-height: 100%
+
+    > .simple-project-page
+      min-height: 0
+
+  .simple-page-view__toolbar
+    position: sticky
+    top: 0
+    z-index: 20
+    flex: 0 0 auto
+    min-height: 54px
+    padding: 9px 22px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    border-bottom: 1px solid $color-border
+    background: $color-surface
+
+    .simple-page-view__breadcrumb
+      flex: 1 1 auto
+      min-width: 0
+
+      ol
+        min-width: 0
+        margin: 0
+        padding: 0
+        display: flex
+        align-items: center
+        gap: 6px
+        list-style: none
+
+      li
+        flex: 0 0 auto
+        min-width: 0
+        display: flex
+        align-items: center
+        gap: 6px
+
+        &:last-child
+          flex: 1 1 auto
+
+      svg
+        flex: 0 0 auto
+        color: $color-muted
+
+      a,
+      span
+        font-size: 12px
+        font-weight: $font-weight-semibold
+        white-space: nowrap
+
+      a
+        color: $color-muted
+
+        &:hover,
+        &:focus-visible
+          color: $color-accent
+          text-decoration: underline
+
+      span
+        min-width: 0
+        overflow: hidden
+        color: $color-text
+        text-overflow: ellipsis
+
+    .simple-page-view__actions
+      flex: 0 0 auto
+      display: flex
+      flex-wrap: wrap
+      justify-content: flex-end
+      gap: 8px
+
+      > .simple-button
+        white-space: nowrap
+
+      > .simple-page-view__export
+        flex: 0 0 36px
+        width: 36px
+        padding: 0
+
+  .simple-page-editor-layout
+    flex: 1 1 auto
+    min-height: 0
+    display: grid
+    grid-template-columns: 154px minmax(0, 1fr)
+    overflow: hidden
+
+  .simple-page-rail
+    position: relative
+    height: 100%
+    min-height: 0
+    display: flex
+    flex-direction: column
+    overflow: visible
+    border-right: 1px solid $color-border
+    background: $color-surface-muted
+
+  .simple-page-rail__header
+    position: relative
+    flex: 0 0 auto
+    min-height: 54px
+    padding: 14px 16px 10px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+    h2
+      margin: 0
+      color: $color-muted
+      font-size: 13px
+      font-weight: $font-weight-semibold
+
+    &:hover .simple-page-rail__more > button,
+    &:focus-within .simple-page-rail__more > button
+      opacity: 1
+      pointer-events: auto
+
+  .simple-page-rail__header-actions
+    display: flex
+    align-items: center
+    gap: 2px
+
+  .simple-page-rail__create,
+  .simple-page-rail__more
+    position: relative
+
+    > button
+      width: 28px
+      height: 28px
+      min-height: 28px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 0
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: rgba($color-surface, .9)
+
+      &[aria-expanded="true"]
+        color: $color-accent-strong
+        background: $color-surface
+
+      &[aria-expanded="true"]:hover,
+      &[aria-expanded="true"]:focus-visible
+        color: $color-accent-strong
+        background: $color-surface
+
+  .simple-page-rail__more
+    > button
+      opacity: 0
+      pointer-events: none
+      transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease
+
+      &[aria-expanded="true"]
+        opacity: 1
+        pointer-events: auto
+
+  .simple-page-rail__menu
+    position: absolute
+    top: calc(100% + 5px)
+    right: -4px
+    z-index: 8
+    width: 154px
+    padding: 5px
+    display: grid
+    gap: 2px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface
+    box-shadow: $shadow-floating
+
+    button
+      width: 100%
+      min-height: 34px
+      padding: 7px 10px
+      border: 0
+      border-radius: 5px
+      color: $color-text
+      background: transparent
+      text-align: left
+      font-size: $font-size-small
+      font-weight: $font-weight-medium
+
+      &:hover,
+      &:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &:disabled
+        color: $color-muted
+        background: transparent
+        cursor: not-allowed
+        opacity: .48
+
+      &:disabled:hover
+        color: $color-muted
+        background: transparent
+
+  .simple-page-rail__menu--actions
+    right: -34px
+
+  .simple-page-rail__item-menu
+    position: fixed
+    z-index: 100
+    top: auto
+    right: auto
+    width: 156px
+
+  .simple-page-rail__menu-action
+    display: flex
+    align-items: center
+    gap: 8px
+
+    svg
+      flex: 0 0 auto
+
+    &.is-danger
+      color: $color-danger
+
+      &:hover,
+      &:focus-visible
+        color: $color-danger
+        background: rgba($color-danger, .08)
+
+  .simple-page-rail__list
+    flex: 1 1 auto
+    min-height: 0
+    padding: 4px 16px 14px
+    display: grid
+    align-content: start
+    gap: 9px
+    overflow-x: hidden
+    overflow-y: auto
+    overscroll-behavior: contain
+
+  .simple-page-rail__item
+    position: relative
+    min-width: 0
+    border-radius: $radius-sm
+
+    &.is-dragging
+      opacity: .46
+      transform: scale(.98)
+
+    &.is-drop-before::before,
+    &.is-drop-after::after
+      content: ''
+      position: absolute
+      z-index: 5
+      left: -5px
+      right: -5px
+      height: 3px
+      border-radius: 999px
+      background: $color-accent-strong
+      box-shadow: 0 0 0 2px rgba($color-surface, .9)
+      pointer-events: none
+
+    &.is-drop-before::before
+      top: -6px
+
+    &.is-drop-after::after
+      bottom: -6px
+
+  .simple-page-rail__drag-handle
+    position: absolute
+    z-index: 3
+    top: 5px
+    right: 5px
+    width: 22px
+    height: 22px
+    padding: 0
+    display: grid
+    place-items: center
+    border: 1px solid rgba($color-border-strong, .72)
+    border-radius: 5px
+    color: $color-muted
+    background: rgba($color-surface, .9)
+    box-shadow: 0 2px 6px rgba($color-text, .08)
+    cursor: grab
+    pointer-events: auto
+
+    &:active
+      cursor: grabbing
+
+  .simple-page-rail
+    a
+      position: relative
+      width: 100%
+      display: block
+      min-width: 0
+      aspect-ratio: 4 / 3
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+
+      img,
+      .simple-image-placeholder
+        width: 100%
+        height: 100%
+
+      img
+        object-fit: contain
+        -webkit-user-drag: none
+
+      > span
+        position: absolute
+        left: 5px
+        bottom: 5px
+        min-width: 23px
+        min-height: 21px
+        padding: 2px 5px
+        display: grid
+        place-items: center
+        border-radius: 4px
+        background: rgba($color-surface, .92)
+        font-size: $font-size-micro
+        font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+
+      &.is-active
+        border-color: $color-accent-strong
+        box-shadow: 0 0 0 2px rgba($color-accent, .16)
+
+    a.is-active:hover,
+    a.is-active:focus-visible
+      border-color: $color-accent-strong
+      box-shadow: 0 0 0 3px rgba($color-accent, .22)
+
+  .simple-page-editor
+    width: min(100%, 860px)
+    height: 100%
+    min-height: 0
+    margin: 0 auto
+    padding: 26px 30px 52px
+    overflow-y: auto
+    overscroll-behavior: contain
+
+    > header
+      margin-bottom: 18px
+      display: flex
+      align-items: flex-start
+      justify-content: space-between
+      gap: 16px
+
+      span,
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+      h1
+        margin: 2px 0 0
+        font-size: 24px
+        font-weight: $font-weight-semibold
+
+  .simple-page-current-image
+    position: relative
+    width: 100%
+    aspect-ratio: 4 / 3
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface-muted
+
+    &.is-fresh
+      animation: simple-page-image-fresh 2200ms ease-out
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      display: block
+      object-fit: contain
+
+    > span
+      position: absolute
+      left: 12px
+      bottom: 12px
+      padding: 5px 8px
+      border-radius: 4px
+      color: #fff
+      background: rgba($color-text, .78)
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+  button.simple-page-current-image
+    padding: 0
+    display: block
+    color: inherit
+    text-align: inherit
+    cursor: zoom-in
+    transition: border-color 120ms ease, box-shadow 120ms ease
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      box-shadow: 0 0 0 3px rgba($color-accent, .12)
+
+  .simple-page-image-preview
+    min-height: 0
+    padding: 18px
+    display: grid
+    place-items: center
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+
+    img
+      height: auto
+      display: block
+      object-fit: contain
+
+  .simple-illustration-actions
+    flex-wrap: wrap
+    min-height: 34px
+    margin-top: 10px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: 10px
+
+  .simple-illustration-actions__drafts
+    min-height: 30px
+    margin-right: auto
+    padding: 0 6px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 7px
+    border: 0
+    border-radius: $radius-sm
+    color: #747970
+    background: transparent
+    font-size: 14px
+    font-weight: $font-weight-regular
+    line-height: 21px
+
+    &:hover,
+    &:focus-visible
+      color: $color-text
+      background: $color-surface-muted
+
+    &[aria-expanded="true"]
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]:hover,
+    &[aria-expanded="true"]:focus-visible
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-illustration-actions__generate
+    min-height: 34px
+    padding: 0 12px
+    border: 0
+    font-size: 14px
+    font-weight: $font-weight-regular
+    line-height: 21px
+
+  .simple-page-content-card
+    margin-top: 20px
+    padding: 20px
+    display: grid
+    gap: 17px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    h2
+      margin: 0
+      font-size: 17px
+      font-weight: $font-weight-semibold
+
+    > div
+      display: grid
+      gap: 6px
+
+      > span
+        color: $color-muted
+        font-size: $font-size-small
+        font-weight: $font-weight-semibold
+
+    pre
+      margin: 0
+      padding: 12px
+      overflow: auto
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      font-family: $font-family-base
+      font-size: 13px
+      line-height: 1.75
+      white-space: pre-wrap
+      word-break: break-word
+      background: $color-surface-subtle
+
+  .simple-page-content-card__header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+  .simple-page-content-card__actions
+    display: flex
+    align-items: center
+    gap: 6px
+
+  .simple-page-content-card__reference,
+  .simple-page-content-card__edit
+    width: 30px
+    height: 30px
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    color: $color-muted
+    background: $color-surface
+    font-size: 18px
+    font-weight: $font-weight-semibold
+    line-height: 1
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-page-script-dialog
+    min-width: 0
+    height: min(68dvh, 640px)
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 260px
+    overflow: hidden
+
+  .simple-page-script-dialog__workspace
+    min-width: 0
+    min-height: 0
+    padding: 18px
+    display: grid
+    grid-template-rows: auto minmax(0, 1fr)
+    gap: 12px
+
+    > header
+      min-width: 0
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+
+      > div
+        min-width: 0
+        display: flex
+        align-items: center
+        gap: 8px
+
+        &:first-child
+          display: grid
+          gap: 3px
+
+        &:last-child
+          flex: 0 0 auto
+
+      strong
+        overflow: hidden
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      small
+        color: $color-muted
+        font-size: $font-size-small
+
+      button
+        min-height: 32px
+        display: inline-flex
+        align-items: center
+        gap: 5px
+
+  .simple-page-script-dialog__markdown
+    min-width: 0
+    min-height: 0
+    height: 100%
+    overflow: hidden
+
+  .simple-page-script-dialog__versions
+    min-width: 0
+    min-height: 0
+    padding: 16px
+    display: grid
+    grid-template-rows: auto minmax(0, 1fr) auto
+    gap: 10px
+    border-left: 1px solid $color-border
+    background: $color-surface-subtle
+
+    > header
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 8px
+
+      h3
+        margin: 0
+        font-size: 14px
+
+      span
+        color: $color-muted
+        font-size: $font-size-small
+
+    > div
+      min-height: 0
+      overflow-y: auto
+      display: grid
+      align-content: start
+      gap: 8px
+
+      > button
+        min-width: 0
+        padding: 10px
+        display: grid
+        grid-template-columns: minmax(0, 1fr) auto
+        gap: 6px 8px
+        text-align: left
+        border: 1px solid $color-border
+        border-radius: $radius-sm
+        color: $color-text
+        background: $color-surface
+
+        &:hover,
+        &:focus-visible
+          border-color: $color-accent
+          background: $color-accent-muted
+
+        &[aria-pressed="true"]
+          border-color: $color-accent
+          background: $color-accent-muted
+
+        &[aria-pressed="true"]:hover,
+        &[aria-pressed="true"]:focus-visible
+          border-color: $color-accent-strong
+          background: $color-accent-muted
+
+        &:disabled:not([aria-pressed="true"])
+          opacity: .55
+
+        > span:first-child
+          min-width: 0
+          display: flex
+          align-items: center
+          gap: 6px
+
+        strong
+          font-size: 13px
+
+        small,
+        time,
+        em
+          color: $color-muted
+          font-size: $font-size-micro
+          font-style: normal
+
+        > span:nth-child(2)
+          grid-column: 1 / -1
+          overflow: hidden
+          display: -webkit-box
+          color: $color-muted
+          font-size: $font-size-small
+          line-height: 1.55
+          -webkit-box-orient: vertical
+          -webkit-line-clamp: 3
+
+        time
+          min-width: 0
+          overflow: hidden
+          text-overflow: ellipsis
+          white-space: nowrap
+
+        em
+          color: $color-accent-strong
+          font-weight: $font-weight-semibold
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.5
+
+  .simple-page-stepper
+    margin-top: 18px
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    a
+      min-height: 34px
+      padding: 0 10px
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+  .simple-image-placeholder
+    min-height: 80px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 7px
+    color: $color-muted
+    background: repeating-linear-gradient(135deg, #fbfbf8, #fbfbf8 10px, #f5f5f0 10px, #f5f5f0 20px)
+    font-size: $font-size-small
+    text-align: center
+
+  .simple-error
+    margin-bottom: 18px
+    padding: 12px 14px
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 14px
+    border: 1px solid rgba($color-danger, .24)
+    border-radius: $radius-sm
+    color: $color-danger
+    background: $color-danger-muted
+
+    strong,
+    p
+      margin: 0
+
+    p
+      margin-top: 3px
+      font-size: $font-size-small
+
+    code
+      display: block
+      margin-top: 4px
+      font-size: $font-size-micro
+
+  .simple-loading
+    min-height: 320px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 10px
+    color: $color-muted
+
+    span
+      width: 24px
+      height: 24px
+      border: 2px solid $color-border
+      border-top-color: $color-accent
+      border-radius: 50%
+      animation: simple-project-spin 700ms linear infinite
+
+    p
+      margin: 0
+      font-size: 13px
+
+  .simple-empty-state
+    min-height: 280px
+    padding: 34px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 10px
+    border: 1px dashed $color-border-strong
+    border-radius: $radius-md
+    color: $color-muted
+    background: $color-surface-subtle
+    text-align: center
+
+    h2
+      max-width: 520px
+      margin: 0
+      color: $color-text
+      font-size: 17px
+      font-weight: $font-weight-semibold
+
+    > div
+      margin-top: 4px
+
+  .simple-button:disabled,
+  button:disabled
+    cursor: not-allowed
+    opacity: .5
+
+  .simple-button--danger
+    border-color: $color-danger
+    color: #fff
+    background: $color-danger
+
+    &:hover,
+    &:focus-visible
+      border-color: $color-danger
+      color: #fff
+      background: #8f1d14
+
+  .simple-danger-action
+    color: $color-danger
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled)
+      color: #8f1d14
+      background: $color-danger-muted
+
+  .simple-button--danger-secondary
+    min-height: 38px
+    padding: 0 12px
+    gap: 6px
+    border-color: rgba($color-danger, .35)
+    color: $color-danger
+    background: $color-danger-muted
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled)
+      border-color: $color-danger
+      color: $color-surface
+      background: $color-danger
+
+  .simple-feedback
+    min-height: 44px
+    margin: 0 0 18px
+    padding: 10px 12px
+    display: flex
+    align-items: center
+    gap: 9px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    font-size: 12px
+
+    &.is-success
+      border-color: rgba($color-accent, .28)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &.is-error
+      align-items: flex-start
+      border-color: rgba($color-danger, .28)
+      color: $color-danger
+      background: $color-danger-muted
+
+    > div
+      min-width: 0
+      flex: 1
+
+    strong,
+    p
+      margin: 0
+
+    p,
+    code
+      display: block
+      margin-top: 3px
+      font-size: $font-size-small
+
+    > button
+      width: 28px
+      height: 28px
+      padding: 0
+      display: grid
+      place-items: center
+      border: 0
+      color: inherit
+      background: transparent
+
+  .simple-feedback--floating
+    --simple-feedback-x: -50%
+    position: absolute
+    z-index: 20
+    top: 8px
+    left: 50%
+    width: max-content
+    max-width: min(320px, calc(100% - 340px))
+    min-height: 38px
+    margin: 0
+    padding: 5px 6px 5px 11px
+    border-radius: $radius-md
+    box-shadow: $shadow-floating
+    transform: translateX(var(--simple-feedback-x))
+    animation: simple-feedback-in 160ms ease-out
+
+    > svg
+      flex: 0 0 auto
+
+    > span
+      min-width: 0
+      overflow-wrap: anywhere
+
+    > button
+      width: 30px
+      height: 30px
+
+      &:hover,
+      &:focus-visible
+        background: rgba($color-accent, .1)
+
+    &.is-error
+      --simple-feedback-x: 0%
+      top: 66px
+      right: 16px
+      left: auto
+      width: min(420px, calc(100% - 32px))
+      max-width: none
+
+      > button:hover,
+      > button:focus-visible
+        background: rgba($color-danger, .1)
+
+  .simple-conflict
+    margin-bottom: 18px
+    padding: 14px
+    display: flex
+    align-items: center
+    gap: 10px
+    border: 1px solid rgba($color-warning, .36)
+    border-radius: $radius-md
+    background: $color-warning-muted
+
+    > div
+      min-width: 0
+      flex: 1
+
+    strong,
+    p
+      margin: 0
+
+    p
+      margin-top: 3px
+      color: $color-muted
+      font-size: 12px
+
+    > button
+      min-height: 34px
+      padding: 0 11px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font-size: 12px
+
+  .simple-segmented
+    width: max-content
+    margin-bottom: 18px
+    padding: 3px
+    display: flex
+    gap: 2px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-muted
+
+    button
+      min-height: 32px
+      padding: 0 12px
+      border: 0
+      border-radius: 5px
+      color: $color-muted
+      background: transparent
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+      &:hover,
+      &:focus-visible
+        color: $color-text
+        background: rgba($color-surface, .7)
+
+      &[aria-pressed="true"]
+        color: $color-accent-strong
+        background: $color-surface
+        box-shadow: 0 1px 2px rgba(26, 31, 27, .1)
+
+    button[aria-pressed="true"]:hover,
+    button[aria-pressed="true"]:focus-visible
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-story-meta dl
+    margin: 14px 0
+    display: grid
+    gap: 8px
+
+    div
+      display: flex
+      justify-content: space-between
+      gap: 12px
+      font-size: $font-size-small
+
+    dt
+      color: $color-muted
+
+    dd
+      margin: 0
+      font-weight: $font-weight-semibold
+
+  .simple-story-generation,
+  .simple-generation-card,
+  .simple-version-list,
+  .simple-version-gallery,
+  .simple-page-artwork-references
+    margin-top: 22px
+    padding: 18px
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: flex-start
+      justify-content: space-between
+      gap: 14px
+
+      h2,
+      p
+        margin: 0
+
+      h2
+        font-size: 17px
+
+      p
+        margin-top: 3px
+        color: $color-muted
+        font-size: 12px
+
+  .simple-story-generation > div,
+  .simple-generation-card > div
+    display: flex
+    align-items: center
+    gap: 8px
+
+    input
+      min-width: 0
+      flex: 1
+      min-height: 38px
+      padding: 0 11px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+
+    button
+      min-height: 38px
+      padding: 0 12px
+      display: inline-flex
+      align-items: center
+      gap: 6px
+      border: 1px solid $color-accent
+      border-radius: $radius-sm
+      color: #fff
+      background: $color-accent
+      font-size: 12px
+      font-weight: $font-weight-semibold
+
+    button.simple-button--secondary
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface
+
+  .simple-task-status
+    flex: 0 0 auto
+    padding: 5px 8px
+    border-radius: 999px
+    color: $color-muted
+    background: $color-surface-muted
+    font-size: $font-size-small
+
+    &.is-running,
+    &.is-queued
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &.is-failed,
+    &.is-interrupted
+      color: $color-danger
+      background: $color-danger-muted
+
+  .simple-version-list
+    > header > span
+      color: $color-muted
+      font-size: 12px
+
+    > div
+      display: grid
+      grid-template-columns: minmax(0, 1fr)
+      gap: 7px
+
+    article
+      min-width: 0
+      padding: 10px 11px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 12px
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      &.is-current
+        border-color: rgba($color-accent, .34)
+        background: $color-accent-muted
+
+      > div
+        min-width: 0
+        flex: 1 1 auto
+        display: flex
+        align-items: center
+        gap: 9px
+        overflow: hidden
+
+      strong
+        flex: 0 0 auto
+
+      span,
+      time
+        min-width: 0
+        overflow: hidden
+        color: $color-muted
+        font-size: $font-size-small
+        text-overflow: ellipsis
+        white-space: nowrap
+
+      span
+        flex: 1 1 auto
+
+      time,
+      button
+        flex: 0 0 auto
+
+      button
+        min-height: 30px
+        padding: 0 9px
+        border: 1px solid $color-border
+        border-radius: $radius-sm
+        color: $color-text
+        background: $color-surface
+        font-size: $font-size-small
+
+  .simple-setting-card-wrap,
+  .simple-page-card-wrap,
+  .simple-book-list > article
+    min-width: 0
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: $radius-md
+    background: $color-surface
+
+  .simple-setting-card-wrap .simple-setting-card,
+  .simple-page-card-wrap .simple-page-card
+    border: 0
+    border-radius: 0
+
+  .simple-setting-card-wrap > footer,
+  .simple-page-card-wrap > footer,
+  .simple-book-list > article > footer
+    min-height: 42px
+    padding: 6px 9px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: 5px
+    border-top: 1px solid $color-border-subtle
+
+    a,
+    button
+      min-height: 29px
+      padding: 0 8px
+      display: inline-flex
+      align-items: center
+      gap: 5px
+      border: 1px solid transparent
+      border-radius: $radius-sm
+      color: $color-muted
+      background: transparent
+      font-size: $font-size-small
+      text-decoration: none
+
+      &:hover,
+      &:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+    > span
+      margin-left: auto
+      color: $color-muted
+      font-size: $font-size-micro
+
+  .simple-book-list > article
+    position: relative
+    display: grid
+    grid-template-rows: minmax(0, 1fr) auto
+    overflow: visible
+
+    &.is-menu-open
+      z-index: 2
+
+    > footer
+      flex-wrap: nowrap
+
+      > a
+        min-width: 0
+        margin-right: auto
+        white-space: nowrap
+
+      > button,
+      > .simple-book-list__more
+        flex: 0 0 auto
+
+  .simple-book-list__more
+    position: relative
+
+    > button
+      width: 32px
+      min-width: 32px
+      padding: 0
+      justify-content: center
+
+      &[aria-expanded="true"]
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+      &[aria-expanded="true"]:hover,
+      &[aria-expanded="true"]:focus-visible
+        color: $color-accent-strong
+        background: $color-accent-muted
+
+  .simple-book-list__menu
+    position: absolute
+    z-index: 3
+    right: 0
+    bottom: calc(100% + 6px)
+    width: 184px
+    padding: 5px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface
+    box-shadow: $shadow-floating
+
+    > button
+      width: 100%
+      min-height: 34px
+      padding: 0 9px
+      justify-content: flex-start
+      white-space: nowrap
+      color: $color-text
+
+      > span
+        margin-left: 0
+        color: inherit
+        font-size: inherit
+
+      &:disabled
+        opacity: .45
+        cursor: not-allowed
+
+      &:disabled:hover,
+      &:disabled:focus-visible
+        color: $color-text
+        background: transparent
+
+      &.simple-danger-action
+        color: $color-danger
+
+        &:hover,
+        &:focus-visible
+          color: $color-danger
+          background: $color-danger-muted
+
+    > button:last-child
+      margin-top: 4px
+      border-top: 1px solid $color-border-subtle
+      border-radius: 0 0 $radius-sm $radius-sm
+
+  .simple-book-list__main
+    min-width: 0
+    overflow: hidden
+    display: grid
+    grid-template-rows: 178px auto
+    border-radius: $radius-md $radius-md 0 0
+    color: $color-text
+    text-decoration: none
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      height: 178px
+
+    > img
+      object-fit: cover
+
+    > span
+      padding: 13px
+      display: grid
+      gap: 4px
+
+    small,
+    em
+      color: $color-muted
+      font-size: $font-size-small
+      font-style: normal
+
+    strong
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    b
+      margin-top: 8px
+      display: flex
+      align-items: center
+      gap: 5px
+      color: $color-accent-strong
+      font-size: $font-size-small
+
+    &:hover,
+    &:focus-visible
+      background: $color-surface-subtle
+
+  .simple-page-card-wrap > footer
+    justify-content: flex-start
+
+  .simple-inline-status
+    margin: 0 0 14px
+    padding: 9px 11px
+    border-radius: $radius-sm
+    color: $color-accent-strong
+    background: $color-accent-muted
+    font-size: 12px
+
+  .simple-dialog
+    position: fixed
+    z-index: 110
+    inset: 0
+    padding: 24px
+    display: grid
+    place-items: center
+
+    .simple-dialog__backdrop
+      position: absolute
+      inset: 0
+      width: 100%
+      height: 100%
+      border: 0
+      border-radius: 0
+      background: rgba($color-text, .38)
+
+    > section
+      position: relative
+      z-index: 1
+      width: min(100%, 560px)
+      max-height: min(88dvh, 820px)
+      overflow: auto
+      border: 1px solid $color-border
+      border-radius: $radius-lg
+      background: $color-surface
+      box-shadow: $shadow-floating
+
+      &.is-wide
+        width: min(100%, 900px)
+
+      > header
+        position: sticky
+        z-index: 2
+        top: 0
+        min-height: 54px
+        padding: 0 18px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        border-bottom: 1px solid $color-border
+        background: $color-surface
+
+        h2
+          margin: 0
+          font-size: 17px
+
+        button
+          width: 32px
+          height: 32px
+          padding: 0
+          display: grid
+          place-items: center
+          border: 0
+          border-radius: $radius-sm
+          color: $color-muted
+          background: transparent
+
+          &:hover,
+          &:focus-visible
+            color: $color-text
+            background: $color-surface-muted
+
+  .simple-form
+    padding: 18px
+    display: grid
+    gap: 14px
+
+    label
+      display: grid
+      gap: 6px
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+    input,
+    select,
+    textarea
+      width: 100%
+      min-height: 38px
+      padding: 8px 10px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-text
+      background: $color-surface
+      font: inherit
+
+      &:focus
+        border-color: $color-accent
+        outline: 2px solid rgba($color-accent, .14)
+
+      &:disabled
+        color: $color-muted
+        background: $color-surface-muted
+
+    textarea
+      min-height: 110px
+      resize: vertical
+
+    .simple-story-editor
+      min-height: 58dvh
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+      line-height: 1.65
+
+  .simple-form__hint
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+
+  .simple-form__actions,
+  .simple-confirm > div
+    padding-top: 12px
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+    border-top: 1px solid $color-border-subtle
+
+  .simple-confirm
+    padding: 20px
+
+    p
+      margin: 0 0 18px
+      line-height: 1.65
+
+  .simple-page-trash
+    padding: 18px
+
+    > p
+      margin: 0 0 16px
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.6
+
+    .simple-error
+      margin-bottom: 12px
+
+  .simple-page-trash__status
+    min-height: 190px
+    display: grid
+    place-content: center
+    justify-items: center
+    gap: 9px
+    color: $color-muted
+    font-size: $font-size-small
+
+  .simple-page-trash__list
+    margin: 0
+    padding: 0
+    display: grid
+    gap: 9px
+    list-style: none
+
+    > li
+      min-width: 0
+      padding: 10px
+      display: grid
+      grid-template-columns: 92px minmax(0, 1fr) auto
+      align-items: center
+      gap: 12px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      > button
+        align-self: center
+
+  .simple-page-trash__image
+    width: 92px
+    aspect-ratio: 4 / 3
+    overflow: hidden
+    border: 1px solid $color-border
+    border-radius: 5px
+    background: $color-surface-muted
+
+    img,
+    .simple-image-placeholder
+      width: 100%
+      height: 100%
+
+    img
+      display: block
+      object-fit: cover
+
+    .simple-image-placeholder
+      min-height: 0
+
+  .simple-page-trash__details
+    min-width: 0
+    display: grid
+    gap: 3px
+
+    strong,
+    span,
+    time,
+    small
+      overflow: hidden
+      text-overflow: ellipsis
+
+    strong
+      white-space: nowrap
+
+    span,
+    time,
+    small
+      color: $color-muted
+      font-size: $font-size-micro
+
+    small
+      color: $color-danger
+      white-space: normal
+
+  .simple-upload-confirm
+    margin-bottom: 12px
+    padding: 9px 10px
+    display: flex
+    align-items: center
+    gap: 7px
+    border: 1px solid $color-border
+    border-radius: $radius-sm
+    background: $color-surface-muted
+
+    span
+      min-width: 0
+      flex: 1
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+    button
+      min-height: 31px
+      padding: 0 9px
+      border: 1px solid $color-accent
+      border-radius: $radius-sm
+      color: #fff
+      background: $color-accent
+      font-size: $font-size-small
+
+    button.simple-button--secondary
+      border-color: $color-border
+      color: $color-text
+      background: $color-surface
+
+  .simple-version-gallery > header label,
+  .simple-page-candidates-dialog > header label
+    position: relative
+
+    input
+      position: absolute
+      width: 1px
+      height: 1px
+      overflow: hidden
+      opacity: 0
+
+  .simple-page-candidates-dialog
+    padding: 18px
+
+    > header
+      margin-bottom: 14px
+      display: flex
+      align-items: center
+      justify-content: space-between
+      gap: 14px
+
+      p
+        margin: 0
+        color: $color-muted
+        font-size: $font-size-small
+
+  .simple-version-gallery > div:last-child,
+  .simple-candidate-preview
+    width: 100%
+    height: 180px
+    padding: 0
+    border: 0
+    background: $color-surface-muted
+    cursor: zoom-in
+
+    img
+      width: 100%
+      height: 100%
+      object-fit: contain
+
+  .simple-candidate-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 12px
+
+    article
+      min-width: 0
+      overflow: hidden
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      &.is-current
+        border-color: $color-accent
+        box-shadow: 0 0 0 2px rgba($color-accent, .12)
+
+      > img,
+      > .simple-image-placeholder
+        width: 100%
+        aspect-ratio: 1
+        object-fit: cover
+
+      footer
+        padding: 9px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 8px
+
+        > div
+          min-width: 0
+          display: grid
+
+        span,
+        time
+          overflow: hidden
+          color: $color-muted
+          font-size: $font-size-micro
+          text-overflow: ellipsis
+          white-space: nowrap
+
+        button
+          min-height: 29px
+          padding: 0 8px
+          border: 1px solid $color-border
+          border-radius: $radius-sm
+          color: $color-text
+          background: $color-surface
+          font-size: $font-size-small
+
+  .simple-version-gallery > div:last-child article > img
+    object-fit: contain
+
+  .simple-page-meta-form
+    margin-bottom: 14px
+    display: grid
+    grid-template-columns: minmax(130px, .34fr) minmax(0, 1fr)
+    gap: 10px
+
+    label
+      display: grid
+      gap: 5px
+      color: $color-muted
+      font-size: $font-size-small
+
+    input,
+    select
+      min-height: 36px
+      padding: 0 9px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface
+
+  .simple-page-content-card label
+    display: grid
+    gap: 6px
+
+    > span
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+
+    textarea
+      width: 100%
+      min-height: 110px
+      padding: 11px
+      border: 1px solid $color-border-subtle
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+      font: inherit
+      line-height: 1.65
+      resize: vertical
+
+  .simple-page-artwork-references__figure
+    margin: 0
+    display: grid
+    gap: 12px
+
+  .simple-page-artwork-references > header
+    position: relative
+
+    > div
+      padding-right: 44px
+
+  .simple-page-artwork-references__help
+    position: absolute
+    top: 0
+    right: 0
+    width: 32px
+    height: 32px
+    padding: 0
+    flex: 0 0 auto
+    display: grid
+    place-items: center
+    border: 1px solid $color-border
+    border-radius: 50%
+    color: $color-muted
+    background: $color-surface
+
+    &:hover,
+    &:focus-visible
+      border-color: rgba($color-accent, .42)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]
+      border-color: rgba($color-accent, .42)
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+    &[aria-expanded="true"]:hover,
+    &[aria-expanded="true"]:focus-visible
+      border-color: $color-accent
+      color: $color-accent-strong
+      background: $color-accent-muted
+
+  .simple-page-artwork-references__image
+    min-height: 160px
+    overflow: hidden
+    display: grid
+    place-items: center
+    border: 1px solid $color-border-subtle
+    border-radius: $radius-sm
+    background: $color-surface-subtle
+
+    > img,
+    > .simple-image-placeholder
+      width: 100%
+      max-height: 360px
+
+    > img
+      display: block
+      object-fit: contain
+
+  .simple-page-artwork-references__figure figcaption
+    display: grid
+    gap: 10px
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.65
+
+  .simple-page-artwork-references__metadata,
+  .simple-page-artwork-references__titles
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+    > span
+      min-width: 0
+      padding: 4px 8px
+      overflow: hidden
+      border-radius: 999px
+      text-overflow: ellipsis
+      white-space: nowrap
+      font-size: $font-size-micro
+
+  .simple-page-artwork-references__metadata > span
+    color: $color-muted
+    background: $color-surface-muted
+
+  .simple-page-artwork-references__titles > span
+    color: $color-accent-strong
+    background: $color-accent-muted
+
+  .simple-page-artwork-references__empty
+    min-height: 180px
+    padding: 28px
+    display: grid
+    place-items: center
+    align-content: center
+    gap: 8px
+    border: 1px dashed $color-border
+    border-radius: $radius-sm
+    color: $color-muted
+    text-align: center
+    background: $color-surface-subtle
+
+    strong
+      color: $color-text
+      font-size: 14px
+
+    p
+      max-width: 400px
+      margin: 0
+      font-size: $font-size-small
+      line-height: 1.6
+
+  .simple-artwork-references-help
+    padding: 18px
+
+    > p
+      margin: 0
+      color: $color-muted
+      font-size: $font-size-small
+      line-height: 1.7
+
+    > ol
+      margin: 16px 0
+      padding-left: 24px
+      display: grid
+      gap: 14px
+
+      li
+        padding-left: 4px
+
+        &::marker
+          color: $color-accent-strong
+          font-weight: $font-weight-semibold
+
+        strong
+          color: $color-text
+          font-size: 14px
+          font-weight: $font-weight-semibold
+
+        p
+          margin: 5px 0 0
+          color: $color-muted
+          font-size: $font-size-small
+          line-height: 1.7
+
+    > .simple-artwork-references-help__tip
+      padding: 11px 12px
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      background: $color-surface-subtle
+
+      strong
+        color: $color-text
+        font-size: $font-size-small
+
+      p
+        margin: 5px 0 0
+        color: $color-muted
+        font-size: $font-size-small
+        line-height: 1.7
+
+  .simple-book-reader
+    min-height: 300px
+
+    > header
+      display: none
+
+    &:fullscreen,
+    &.is-fullscreen
+      padding: 24px
+      overflow: auto
+      color: $color-text
+      background: #111713
+
+      > header
+        margin-bottom: 18px
+        display: flex
+        align-items: center
+        justify-content: space-between
+        color: #fff
+
+        button
+          min-height: 34px
+          padding: 0 10px
+          display: flex
+          align-items: center
+          gap: 6px
+          border: 1px solid rgba(255,255,255,.28)
+          border-radius: $radius-sm
+          color: #fff
+          background: rgba(255,255,255,.08)
+
+      .simple-book-grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        max-width: 1200px
+        margin: 0 auto
+
+    &.is-fullscreen
+      position: fixed
+      z-index: 120
+      inset: 0
+
+  @media (hover: none)
+    .simple-page-rail__more > button
+      opacity: 1
+      pointer-events: auto
+
+  @media (max-width: 900px)
+    .simple-version-gallery > div:last-child,
+    .simple-candidate-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+
+  @media (max-width: 760px)
+    .simple-dialog
+      padding: 10px
+
+    .simple-page-script-dialog
+      height: auto
+      grid-template-columns: 1fr
+
+    .simple-page-script-dialog__workspace
+      height: 58dvh
+      min-height: 0
+      padding: 14px
+
+      > header
+        align-items: stretch
+        flex-direction: column
+
+        > div:last-child
+          flex-wrap: wrap
+
+    .simple-page-script-dialog__versions
+      max-height: 300px
+      border-top: 1px solid $color-border
+      border-left: 0
+
+    .simple-conflict,
+    .simple-story-generation > div,
+    .simple-generation-card > div,
+    .simple-page-candidates-dialog > header,
+    .simple-upload-confirm
+      align-items: stretch
+      flex-direction: column
+
+    .simple-version-gallery > div:last-child,
+    .simple-candidate-grid,
+    .simple-page-meta-form
+      grid-template-columns: 1fr
+
+    .simple-page-artwork-references > header
+      align-items: stretch
+      flex-direction: column
+
+    .simple-version-list article,
+    .simple-version-list article > div
+      align-items: flex-start
+      flex-direction: column
+
+    .simple-page-trash__list > li
+      grid-template-columns: 72px minmax(0, 1fr)
+
+      > button
+        grid-column: 1 / -1
+        justify-self: stretch
+
+    .simple-page-trash__image
+      width: 72px
+
+    .simple-book-reader:fullscreen,
+    .simple-book-reader.is-fullscreen
+      padding: 14px
+
+      .simple-book-grid
+        grid-template-columns: 1fr
+
+  @media (max-width: 900px)
+    .simple-setting-grid,
+    .simple-book-list,
+    .simple-page-grid,
+    .simple-book-grid
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .simple-setting-detail__layout
+      grid-template-columns: 1fr
+
+    .simple-setting-detail__image
+      min-height: 320px
+
+  @media (max-width: 760px)
+    .simple-page-view
+      height: auto
+      min-height: 100%
+      overflow: visible
+
+    .simple-feedback--floating,
+    .simple-feedback--floating.is-error
+      --simple-feedback-x: 0%
+      position: fixed
+      z-index: 70
+      top: auto
+      right: 16px
+      bottom: 16px
+      left: 16px
+      width: auto
+      max-width: none
+
+    .simple-page-view
+      padding: 0
+
+    .simple-home-hero
+      grid-template-columns: 86px minmax(0, 1fr)
+      gap: 16px
+
+    .simple-home-cover
+      width: 86px
+
+    .simple-home-hero__copy header
+      align-items: flex-start
+      display: grid
+
+      > div
+        justify-content: flex-start
+
+    .simple-home-hero__copy h1
+      font-size: 23px
+
+    .simple-setting-grid,
+    .simple-book-list,
+    .simple-page-grid,
+    .simple-book-grid
+      grid-template-columns: 1fr
+
+    .simple-page-heading,
+    .simple-page-view__toolbar
+      display: grid
+      grid-template-columns: minmax(0, 1fr)
+
+    .simple-page-heading__actions
+      justify-content: flex-start
+
+    .simple-page-view__actions
+      justify-content: flex-end
+
+    .simple-story-layout
+      grid-template-columns: 1fr
+
+    .simple-story-document
+      padding: 22px 20px 32px
+
+    .simple-story-meta
+      padding: 18px 0 0
+      border-top: 1px solid $color-border
+      border-left: 0
+
+    .simple-page-editor-layout
+      display: block
+      overflow: visible
+
+    .simple-page-rail
+      height: auto
+      display: block
+      overflow: visible
+      border-right: 0
+      border-bottom: 1px solid $color-border
+
+    .simple-page-rail__header
+      min-height: 48px
+      padding: 9px 12px 7px
+
+    .simple-page-rail__menu
+      right: -2px
+
+    .simple-page-rail__menu--actions
+      right: -34px
+
+    .simple-page-rail__list
+      padding: 2px 10px 10px
+      display: flex
+      gap: 9px
+      overflow-x: auto
+      overflow-y: hidden
+
+      .simple-page-rail__item
+        flex: 0 0 104px
+
+        &.is-drop-before::before,
+        &.is-drop-after::after
+          top: -4px
+          bottom: -4px
+          width: 3px
+          height: auto
+
+        &.is-drop-before::before
+          left: -6px
+          right: auto
+
+        &.is-drop-after::after
+          right: -6px
+          left: auto
+
+    .simple-page-editor
+      height: auto
+      padding: 22px 18px 44px
+      overflow: visible
+
+  @media (prefers-reduced-motion: reduce)
+    .simple-page-current-image.is-fresh
+      border-color: $color-accent
+      box-shadow: 0 0 0 3px rgba($color-accent, .2)
+
+
+@keyframes simple-project-spin
+  to
+    transform: rotate(360deg)
+
+
+@keyframes simple-feedback-in
+  from
+    opacity: 0
+    transform: translateX(var(--simple-feedback-x)) translateY(-5px)
+
+  to
+    opacity: 1
+    transform: translateX(var(--simple-feedback-x)) translateY(0)
+
+
+@keyframes simple-page-image-fresh
+  0%
+    border-color: $color-accent
+    box-shadow: 0 0 0 0 rgba($color-accent, 0)
+
+  26%
+    border-color: $color-accent
+    box-shadow: 0 0 0 4px rgba($color-accent, .22)
+
+  100%
+    border-color: $color-border
+    box-shadow: 0 0 0 0 rgba($color-accent, 0)

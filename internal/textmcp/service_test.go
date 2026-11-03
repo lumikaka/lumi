@@ -170,3 +170,16 @@ func TestBoundedResultsAndSmallerReadRecovery(t *testing.T) {
 		t.Fatalf("ambiguous cursor=%s", got)
 	}
 }
+
+func invokeReviewDetails(t *testing.T, s *Service, root, name string, args map[string]any) httpapi.Envelope {
+	t.Helper()
+	copy := map[string]any{"view": strings.TrimPrefix(name, "review_")}
+	for k, v := range args {
+		copy[k] = v
+	}
+	if copy["view"] == "book" && (copy["mode"] == "preview" || copy["chapter_uuid"] != nil) {
+		copy["view"] = "reader"
+	}
+	delete(copy, "mode")
+	return invoke(t, s, root, "read_app_review", copy)
+}

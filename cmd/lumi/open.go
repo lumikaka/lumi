@@ -29,7 +29,7 @@ func openProjectCommand(ctx context.Context, opt options, out, stderr io.Writer)
 	if uuid == "" {
 		return printError(opt, out, stderr, "invalid_response", fmt.Errorf("CLI returned no project UUID"), 1)
 	}
-	address := status.Endpoint + "/projects/" + uuid + "/chapters"
+	address := status.Endpoint + "/projects/" + uuid + "/"
 	if opt.json {
 		if err := json.NewEncoder(out).Encode(map[string]any{"success": true, "data": map[string]any{"url": address}}); err != nil {
 			fmt.Fprintln(stderr, err)

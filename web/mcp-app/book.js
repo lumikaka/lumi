@@ -1,9 +1,13 @@
-import { reviewContext } from './contracts.js'
+import { reviewContext, isReader, assertReviewTarget } from './contracts.js'
 
 // Rebuild from the first cursor on every calibration. Never combine an old
 // prefix with a new suffix, or call an arbitrary seed page the whole book.
 export async function readWholeBook(call, seed, signal) {
-  const args = seed.request.arguments
+  return readAllReview(call, seed, signal)
+}
+export async function readAllReview(call, seed, signal) {
+  const args = { ...seed.request.arguments, ...(isReader(seed) ? { mode: 'preview' } : {}) }
+  const name = seed.request.name
   let limit = args.limit || 20
   let after = ''
   let first
@@ -13,15 +17,15 @@ export async function readWholeBook(call, seed, signal) {
     signal?.throwIfAborted()
     let next
     try {
-      next = reviewContext(await call('review_book', { ...(args.chapter_uuid ? { chapter_uuid: args.chapter_uuid } : {}), limit, ...(after ? { after } : {}) }, { signal }))
+      next = reviewContext(await call(name, { ...args, before: undefined, after: after || undefined, limit }, { signal }))
     } catch (error) {
       if (error.code === 'result_too_large' && limit > 1) { limit = Math.max(1, Math.floor(limit / 2)); continue }
       throw error
     }
     signal?.throwIfAborted()
-    if (next.view !== 'book' || next.project_uuid !== seed.project_uuid || (next.request.arguments.chapter_uuid || '') !== (args.chapter_uuid || '')) throw new Error('预览范围发生变化，请刷新')
+    assertReviewTarget(next, seed.project_uuid, name, args)
     first ??= next
-    if (next.total !== first.total) throw new Error('页面数量已变化，请刷新')
+    if (next.snapshot !== first.snapshot || next.revision !== first.revision || next.total !== first.total) throw new Error('页面数量已变化，请刷新')
     for (const item of next.items) {
       if (seen.has(item.uuid)) throw new Error('页面顺序已变化，请刷新')
       seen.add(item.uuid); items.push(item)

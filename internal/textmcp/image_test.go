@@ -57,7 +57,7 @@ func TestImageReferenceContentIsBoundedAndNotDuplicatedInJSON(t *testing.T) {
 			Width, Height int
 		} `json:"data"`
 	}
-	appBytes, _ := json.Marshal(app.StructuredContent)
+	appBytes, _ := json.Marshal(app.Meta[AppResponseMeta])
 	_ = json.Unmarshal(appBytes, &appEnvelope)
 	previewBytes, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(appEnvelope.Data.URI, "data:image/jpeg;base64,"))
 	if err != nil || len(previewBytes) > maxPreviewBytes || max(appEnvelope.Data.Width, appEnvelope.Data.Height) > 1024 {

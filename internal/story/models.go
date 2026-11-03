@@ -143,7 +143,7 @@ type Chapter struct {
 	Title        string        `json:"title"`
 	Revision     int64         `json:"revision"`
 	TrashedAt    *time.Time    `json:"trashed_at"`
-	CurrentStory *ChapterStory `json:"current_story"`
+	CurrentStory *ChapterStory `json:"current_story" gorm:"-"`
 	CreatedAt    time.Time     `json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
 }

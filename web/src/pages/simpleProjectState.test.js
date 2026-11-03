@@ -2,10 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  createPageImageReviewState,
   firstReadySimpleImage,
   normalizedSimpleProjectSettingsSection,
   normalizedSimpleProjectSettingsTab,
   orderedSimplePages,
+  pageImageReviewReducer,
   patchSimpleProjectSettingsSearch,
   simplePageCounts,
   simpleProjectChatReference,
@@ -21,6 +23,37 @@ const chapterUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff811'
 const sectionUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff812'
 const assetUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff813'
 const threadUuid = '01990c73-4ca2-7aa1-8f4b-0555633ff814'
+
+test('candidate preview replaces the gallery and returns with the preview target cleared', () => {
+  const candidate = Object.freeze({ uuid: assetUuid, version_no: 1 })
+  const gallery = Object.freeze(createPageImageReviewState(true))
+  const preview = pageImageReviewReducer(gallery, { type: 'preview_candidate', variant: candidate })
+  assert.deepEqual(preview, { mode: 'candidate_preview', variant: candidate })
+  assert.deepEqual(gallery, { mode: 'candidates', variant: null })
+  assert.deepEqual(pageImageReviewReducer(preview, { type: 'close' }), { mode: 'candidates', variant: null })
+})
+
+test('current image preview closes without opening a candidate gallery', () => {
+  const preview = pageImageReviewReducer(createPageImageReviewState(), { type: 'preview_current' })
+  assert.deepEqual(preview, { mode: 'current_preview', variant: null })
+  assert.deepEqual(pageImageReviewReducer(preview, { type: 'close' }), { mode: null, variant: null })
+})
+
+test('page changes clear the image dialog and the previous candidate target', () => {
+  for (const state of [
+    createPageImageReviewState(true),
+    { mode: 'current_preview', variant: null },
+    { mode: 'candidate_preview', variant: { uuid: assetUuid, version_no: 1 } },
+  ]) {
+    assert.deepEqual(pageImageReviewReducer(state, { type: 'reset' }), { mode: null, variant: null })
+  }
+})
+
+test('candidate deep links and explicit openings start with only the gallery', () => {
+  assert.deepEqual(createPageImageReviewState(true), { mode: 'candidates', variant: null })
+  assert.deepEqual(pageImageReviewReducer({ mode: 'candidate_preview', variant: { uuid: assetUuid } }, { type: 'open_candidates' }), { mode: 'candidates', variant: null })
+  assert.deepEqual(pageImageReviewReducer(createPageImageReviewState(true), { type: 'close' }), { mode: null, variant: null })
+})
 
 test('simple project settings tabs and summary sections normalize while preserving unrelated query state', () => {
   assert.equal(normalizedSimpleProjectSettingsTab('summary'), 'summary')

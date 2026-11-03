@@ -91,7 +91,10 @@ func (handler *StoryHandler) ShowProject(c echo.Context) error {
 	}); err != nil {
 		return err
 	}
-	return Success(c, http.StatusOK, detail)
+	return Success(c, http.StatusOK, struct {
+		story.ProjectDetail
+		OpenURL string `json:"open_url"`
+	}{detail, c.Scheme() + "://" + c.Request().Host + "/projects/" + detail.UUID + "/"})
 }
 
 type updateStoryProjectRequest struct {
@@ -140,6 +143,17 @@ func (handler *StoryHandler) UpdateProject(c echo.Context) error {
 }
 
 func (handler *StoryHandler) ListChapters(c echo.Context) error {
+	if c.QueryParam("view") == "summary" {
+		var items []story.ChapterSummary
+		if err := handler.withService(c, func(service *story.Service) error {
+			var err error
+			items, err = service.ListChapterSummaries(c.Request().Context(), c.QueryParam("state"))
+			return err
+		}); err != nil {
+			return err
+		}
+		return summaryPage(c, items)
+	}
 	var items []story.Chapter
 	if err := handler.withService(c, func(service *story.Service) error {
 		var err error
@@ -196,6 +210,28 @@ func (handler *StoryHandler) CreateChapter(c echo.Context) error {
 }
 
 func (handler *StoryHandler) ShowChapter(c echo.Context) error {
+	if c.QueryParam("view") == "summary" {
+		var found *story.ChapterSummary
+		if err := handler.withService(c, func(service *story.Service) error {
+			items, err := service.ListChapterSummaries(c.Request().Context(), "active")
+			if err != nil {
+				return err
+			}
+			for i := range items {
+				if items[i].UUID == c.Param("chapter_uuid") {
+					found = &items[i]
+					break
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if found == nil {
+			return NewError(404, "chapter_not_found", "章节不存在", "请返回章节列表。", nil)
+		}
+		return Success(c, http.StatusOK, found)
+	}
 	var chapter story.Chapter
 	if err := handler.withService(c, func(service *story.Service) error {
 		var err error
@@ -422,6 +458,17 @@ func (handler *StoryHandler) ImportChapters(c echo.Context) error {
 }
 
 func (handler *StoryHandler) ShowStoryProfile(c echo.Context) error {
+	if c.QueryParam("view") == "summary" {
+		var value story.StoryProfileSummary
+		if err := handler.withService(c, func(service *story.Service) error {
+			var err error
+			value, err = service.GetStoryProfileSummary(c.Request().Context())
+			return err
+		}); err != nil {
+			return err
+		}
+		return Success(c, http.StatusOK, value)
+	}
 	var profile story.StoryProfile
 	if err := handler.withService(c, func(service *story.Service) error {
 		var err error

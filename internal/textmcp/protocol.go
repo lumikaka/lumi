@@ -34,9 +34,14 @@ func Protocol(forward Forward) *mcp.Server {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"resourceUri": ReviewURI}}
 			tool.Annotations = appReadAnnotations()
 		}
-		if spec.Name == "read_app_image" || spec.Name == "watch_app_changes" {
+		if spec.Name == "read_app_image" || spec.Name == "watch_app_changes" || spec.Name == "read_app_resource" || spec.Name == "write_app_resource" || spec.Name == "read_app_review" {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"visibility": []string{"app"}}}
 			tool.Annotations = appReadAnnotations()
+			if spec.Name == "write_app_resource" {
+				destructive := false
+				openWorld := false
+				tool.Annotations = &mcp.ToolAnnotations{DestructiveHint: &destructive, OpenWorldHint: &openWorld}
+			}
 		}
 		s.AddTool(tool, func(ctx context.Context, r *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// A local adapter may constrain the cwd identity. This never selects
@@ -51,7 +56,36 @@ func Protocol(forward Forward) *mcp.Server {
 			if spec.Name == "watch_app_changes" {
 				return watches.call(ctx, r)
 			}
-			result := forward(ctx, spec.Name, r.Params.Arguments)
+			args := r.Params.Arguments
+			if upload, ok := r.Params.Meta["lumi/upload"]; ok {
+				if spec.Name != "write_app_resource" {
+					return boundedResult(Failure("app_resource_forbidden", "文件只允许由用户导入当前项目", ""))
+				}
+				var input map[string]any
+				if json.Unmarshal(args, &input) != nil || input["resource"] != "asset-uploads" || input["method"] != "POST" {
+					return boundedResult(Failure("app_resource_forbidden", "文件请求超出范围", ""))
+				}
+				encoded, _ := json.Marshal(upload)
+				var attachment struct {
+					Data string `json:"data_base64"`
+				}
+				if json.Unmarshal(encoded, &attachment) != nil || len(attachment.Data) > 8<<20 {
+					return boundedResult(Failure("arguments_too_large", "文件传输超限", "单次支持 6 MiB 文件。"))
+				}
+				body, ok := input["body"].(map[string]any)
+				if !ok {
+					return boundedResult(Failure("invalid_arguments", "缺少文件元数据", ""))
+				}
+				body["upload_data"] = attachment.Data
+				args, _ = json.Marshal(input)
+			}
+			result := forward(ctx, spec.Name, args)
+			if spec.Name == "read_app_resource" || spec.Name == "write_app_resource" || spec.Name == "read_app_review" {
+				return appResourceToolResult(result)
+			}
+			if strings.HasPrefix(spec.Name, "review_") {
+				return reviewLaunchToolResult(result)
+			}
 			if spec.Name == "read_app_image" {
 				return appImageToolResult(result)
 			}

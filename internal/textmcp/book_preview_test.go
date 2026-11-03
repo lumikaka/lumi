@@ -64,11 +64,11 @@ func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 	var all []reviewItem
 	after := ""
 	for {
-		args := map[string]any{"limit": 2}
+		args := map[string]any{"mode": "preview", "limit": 2}
 		if after != "" {
 			args["after"] = after
 		}
-		result := object(t, invoke(t, s, root, "review_book", args))
+		result := object(t, invokeReviewDetails(t, s, root, "review_book", args))
 		if result["total"] != float64(25) || result["scope"] != "book" {
 			t.Fatal(result)
 		}
@@ -95,7 +95,7 @@ func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 			t.Fatalf("page %d=%+v", i, item)
 		}
 	}
-	scoped := invoke(t, s, root, "review_book", map[string]any{"chapter_uuid": first})
+	scoped := invokeReviewDetails(t, s, root, "review_book", map[string]any{"chapter_uuid": first})
 	data := object(t, scoped)
 	if data["total"] != float64(3) || data["scope"] != "chapter" || !strings.HasSuffix(data["open_url"].(string), "/"+first+"/preview") {
 		t.Fatal(data)
@@ -107,7 +107,7 @@ func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 	if !strings.Contains(text.Content[0].(*mcp.TextContent).Text, "完整正文") {
 		t.Fatal("missing text fallback")
 	}
-	if got := code(invoke(t, s, root, "review_book", map[string]any{"chapter_uuid": "01989abc-def0-7000-8000-000000000099"})); got != "invalid_arguments" {
+	if got := code(invokeReviewDetails(t, s, root, "review_book", map[string]any{"chapter_uuid": "01989abc-def0-7000-8000-000000000099"})); got != "invalid_arguments" {
 		t.Fatal(got)
 	}
 	if validate("review_book", json.RawMessage(fmt.Sprintf(`{"chapter_uuid":%q,"limit":2}`, first))) != nil {
