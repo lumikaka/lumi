@@ -1,0 +1,92 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Asia/Shanghai",
+  "implementation_commit": "4e797de",
+  "scope": "Committed HostLink and AppBridge source bundled into an isolated real Codex MCP App; not a full development workspace reload",
+  "service_url_source": "Real review_book result from the connected disposable workspace",
+  "service_url": "http://127.0.0.1:57738/projects/01a19f54-83ce-75df-93aa-3274fb4ea18c/",
+  "observation_source": "Real MCP App side-panel DOM, original-exchange and mcp-host-link__diagnostics pre; user screenshot and explicit user answers",
+  "initialize_projection": {
+    "protocolVersion": "2026-01-26",
+    "hostInfo": {"name": "chatgpt", "version": "26.1027.61615"},
+    "hostCapabilities": {
+      "experimental": {
+        "openai/modelContext": {},
+        "openai/find": {},
+        "openai/message": {"draft": {}},
+        "openai/skillsDeepLinks": {},
+        "openai/files": {}
+      },
+      "logging": {},
+      "openLinks": {},
+      "serverResources": {},
+      "serverTools": {},
+      "message": {"text": {}, "image": {}, "resourceLink": {}, "resource": {}},
+      "updateModelContext": {"resource": {}, "resourceLink": {}, "image": {}, "structuredContent": {}, "text": {}},
+      "sandbox": {"csp": {"baseUriDomains": [], "connectDomains": [], "frameDomains": [], "resourceDomains": []}}
+    }
+  },
+  "original_request_exchange": [
+    {
+      "stage": "sending",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "ui/open-link",
+        "params": {"url": "http://127.0.0.1:57738/projects/01a19f54-83ce-75df-93aa-3274fb4ea18c/"}
+      }
+    },
+    {"stage": "sent"},
+    {"stage": "response", "response": {"result": {}, "jsonrpc": "2.0", "id": 4}},
+    {"outcome": "resolved", "result": {}}
+  ],
+  "fixed_component_exchange": [
+    {
+      "stage": "sending",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "ui/open-link",
+        "params": {"url": "http://127.0.0.1:57738/projects/01a19f54-83ce-75df-93aa-3274fb4ea18c/"}
+      }
+    },
+    {"stage": "sent"},
+    {"stage": "response", "response": {"result": {}, "jsonrpc": "2.0", "id": 6}}
+  ],
+  "open_feedback_observed": "已请求打开，无法确认外部页面是否已显示；若无跳转，请复制链接到浏览器打开。",
+  "user_manual_open_report": "没有可见跳转",
+  "user_manual_copy_report": "显示“链接已复制”",
+  "user_manual_paste_report": "能正常打开作品",
+  "copy_feedback_confirmed_in_dom": "链接已复制，请粘贴到浏览器打开。",
+  "synthetic_copy_click": {
+    "result": "failed",
+    "failure_reason": "Not exposed by the component; no conclusion about clipboard permissions or host implementation",
+    "feedback": "复制失败，请选择下方完整地址后手动复制到浏览器。",
+    "manual_address": {
+      "read_only": true,
+      "value": "http://127.0.0.1:57738/projects/01a19f54-83ce-75df-93aa-3274fb4ea18c/",
+      "length": 69,
+      "selection_start_after_click": 0,
+      "selection_end_after_click": 69,
+      "entire_url_selected": true
+    }
+  },
+  "browser_session_clipboard_read": {
+    "characters": 0,
+    "conclusion": "This tool reads a browser-session clipboard. It does not establish the OS clipboard contents or invalidate the user's manual copy feedback."
+  },
+  "direct_chrome_url_observation": "Same service URL loads Lumi work overview successfully; this was direct URL navigation, not an assertion that the host open request navigated",
+  "classification": "Host returned a protocol-valid empty acknowledgement without a visible navigation. These requests were sent and received a response without explicit isError/JSON-RPC rejection or timeout. No method/parameter error was reported; the host's internal execution remains unknown.",
+  "host_internal_reason": "Unknown; no localhost-policy conclusion",
+  "diagnostic_html_sha256": "5fcd82fb580020a035ed5cf0c21f86dc964649d1bb0e9c136c77390286f0e15f",
+  "component_sha256": {
+    "web/mcp-app/HostLink.jsx": "83e8356ec35ec6cfcf2b4723e46510ccfe06dbedd95e4ce273dd0a59d7d00ca2",
+    "web/mcp-app/link-action.js": "7d329e039d5fd9167415b42cc02d2bcd85943f781079cd36f4d0a14dcd8a880c",
+    "web/mcp-app/bridge.js": "cfd6f8cb7f3efc5577ef4e0069401f8c449b96e93bf18fb6c823dc5e0ae111f2",
+    "web/mcp-app/contracts.js": "764b455da433b00c2ddf170682447f0a6207b536810a600354e742779ee29055"
+  },
+  "full_development_workspace_reloaded_in_this_chat": false,
+  "shared_backends_stopped": false,
+  "permission_or_url_policy_changes": false,
+  "book_content_writes_or_generation_or_export": false
+}
