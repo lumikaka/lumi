@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AppBridge } from './bridge.js'
+import { HostLink, HostDownloadLink } from './HostLink.jsx'
 import { AppRealtime } from './realtime.js'
 import { bindReviewSync } from './sync.js'
 import { PreviewCache } from './images.js'
@@ -18,8 +19,7 @@ const bridge = new AppBridge()
 const previews = new PreviewCache((...args)=>bridge.call(...args))
 const client = new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,staleTime:Infinity,gcTime:300000}}})
 function OpenLumi({url}) {
-  const [error,setError] = useState('')
-  return <span><a href={url} onClick={event=>{event.preventDefault();bridge.request('ui/open-link',{url}).then(r=>{if(r?.isError)setError('请复制链接到 Lumi 中打开。')}).catch(()=>setError('请复制链接到 Lumi 中打开。'))}}>在 Lumi 中打开 ↗</a>{error&&<small>{error} {url}</small>}</span>
+  return <HostLink bridge={bridge} url={url}/>
 }
 function Workspace({launch}) {
   const location = useLocation(), navigate = useNavigate()
@@ -29,7 +29,7 @@ function Workspace({launch}) {
   const projectQuery = useQuery({queryKey:['story-project',launch.project_uuid],queryFn:()=>api.getStoryProject(launch.project_uuid)})
   const project = projectQuery.data
   const origin = workspaceOrigin(project,launch)
-  const runtime = useMemo(()=>({DownloadLink:({href,children,...props})=><a {...props} href={origin+href} onClick={event=>{event.preventDefault();if(!href.startsWith(`/media/projects/${launch.project_uuid}/comic-exports/`))return;bridge.request('ui/open-link',{url:origin+href}).then(result=>{if(result?.isError)setStatus('下载入口未打开，请在 Lumi 中继续')}).catch(()=>setStatus('下载入口未打开，请在 Lumi 中继续'))}}>{children}</a>,api,Image:createAppImage(previews,launch.project_uuid),loadImage:async(page,{large,signal,attempt})=>{const uuid=page.current_image?.asset?.uuid||page.asset_uuid;const edge=large?1024:384;if(attempt)previews.evict(launch.project_uuid,uuid,edge);return{src:(await previews.load(launch.project_uuid,uuid,edge,signal)).data_uri}},capabilities:{fileUpload:true,download:true,generation:false,chat:false}}),[api,launch.project_uuid,origin])
+  const runtime = useMemo(()=>({DownloadLink:props=><HostDownloadLink {...props} bridge={bridge} origin={origin} project={launch.project_uuid}/>,api,Image:createAppImage(previews,launch.project_uuid),loadImage:async(page,{large,signal,attempt})=>{const uuid=page.current_image?.asset?.uuid||page.asset_uuid;const edge=large?1024:384;if(attempt)previews.evict(launch.project_uuid,uuid,edge);return{src:(await previews.load(launch.project_uuid,uuid,edge,signal)).data_uri}},capabilities:{fileUpload:true,download:true,generation:false,chat:false}}),[api,launch.project_uuid,origin])
   const base = `/projects/${launch.project_uuid}`
   const url = location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
   useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
@@ -38,7 +38,7 @@ function Workspace({launch}) {
     <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
     {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
     {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
-    <details className="mcp-workspace__capabilities"><summary>宿主能力与替代入口</summary><p>编辑、排序、回收站与版本采用在此工作区直接保存到同一项目。文件导入支持单次 6 MiB，导出下载通过宿主在 Lumi 服务中打开。AI 生成和聊天引用需在 Lumi 中继续；不会自动调用模型或切换付费渠道。</p></details>
+    <details className="mcp-workspace__capabilities"><summary>宿主能力与替代入口</summary><p>编辑、排序、回收站与版本采用在此工作区直接保存到同一项目。文件导入支持单次 6 MiB，下载入口仅请求宿主打开服务地址；若无跳转，请复制链接到浏览器。AI 生成和聊天引用需在 Lumi Web 中继续；不会自动调用模型或切换付费渠道。</p></details>
     <section className={`simple-project-body mcp-workspace__body${/\/sections\//.test(location.pathname)?' mcp-workspace__body--page':''}`}>
       {projectQuery.error?<SimpleError error={projectQuery.error} onRetry={()=>projectQuery.refetch()}/>:!project?<SimpleLoading message="正在读取作品…"/>:<Routes>
         <Route path={`${base}/`} element={<SimpleHomePage project={project} projectUuid={launch.project_uuid} projectQuery={projectQuery}/>}/>

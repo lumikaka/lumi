@@ -13,35 +13,52 @@ export class AppBridge {
       const pending = this.pending.get(data.id)
       if (pending) {
         this.pending.delete(data.id); pending.cleanup()
-        if (data.error) pending.reject(Object.assign(new Error(data.error.message ?? '宿主请求失败'), data.error, { kind: failureKind(data.error) }))
+        pending.trace({ stage: 'response', response: data })
+        const hasResult = Object.hasOwn(data, 'result'), hasError = Object.hasOwn(data, 'error')
+        if (hasResult === hasError || (hasError && (!data.error || typeof data.error.message !== 'string'))) {
+          pending.reject(Object.assign(new Error('宿主返回了无效的 JSON-RPC 响应'), { kind: 'protocol_error' }))
+        } else if (hasError) pending.reject(Object.assign(new Error(data.error.message), data.error, { kind: [-32700, -32600, -32601, -32602].includes(data.error.code) ? 'protocol_error' : failureKind(data.error) }))
         else pending.resolve(data.result)
       }
     }
     surface.addEventListener('message', this.receive)
   }
-  request(method, params, { timeoutMs = this.timeout, signal } = {}) {
+  request(method, params, { timeoutMs = this.timeout, signal, onExchange } = {}) {
     const id = ++this.serial
     return new Promise((resolve, reject) => {
       let timer
+      // Diagnostics must never affect dispatch or response handling.
+      const trace = event => { try { onExchange?.(event) } catch {} }
       const stop = (kind, message) => {
         if (!this.pending.has(id)) return
         this.pending.delete(id); cleanup()
-        this.notify('notifications/cancelled', { requestId: id, reason: message })
+        trace({ stage: kind })
+        try { this.notify('notifications/cancelled', { requestId: id, reason: message }) } catch {}
         reject(Object.assign(new Error(message), { kind }))
       }
       const abort = () => stop('cancelled', '审阅界面已切换或关闭')
       const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort) }
       if (timeoutMs > 0) timer = setTimeout(() => stop('timeout', '请求超时，可手动重试'), timeoutMs)
-      this.pending.set(id, { resolve, reject, cleanup })
+      this.pending.set(id, { resolve, reject, cleanup, trace })
       signal?.addEventListener('abort', abort, { once: true })
-      this.surface.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*')
-      if (signal?.aborted) abort()
+      if (signal?.aborted) { abort(); return }
+      const request = { jsonrpc: '2.0', id, method, params }
+      trace({ stage: 'sending', request })
+      try {
+        this.surface.parent.postMessage(request, '*')
+        trace({ stage: 'sent' })
+      } catch (error) {
+        this.pending.delete(id); cleanup()
+        trace({ stage: 'transport_error', message: error.message })
+        reject(Object.assign(new Error(error.message || '请求未能发出'), { kind: 'transport_error' }))
+      }
     })
   }
   notify(method, params = {}) { this.surface.parent.postMessage({ jsonrpc: '2.0', method, params }, '*') }
   call(name, args, {meta, ...options} = {}) { return this.request('tools/call', { name, arguments: args, ...(meta ? {_meta:meta} : {}) }, options) }
   async initialize() {
     const result = await this.request('ui/initialize', { appInfo: { name: 'Lumi review', version: '1.0.2' }, appCapabilities: {}, protocolVersion: '2026-01-26' })
+    this.initialization = result
     this.notify('ui/notifications/initialized'); return result
   }
   onNotification(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn) }

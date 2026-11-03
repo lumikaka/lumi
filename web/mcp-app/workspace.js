@@ -39,7 +39,7 @@ export function createAppRequest(bridge, project, {canWrite=true} = {}) {
     return appResponse(await bridge.call(method === 'GET' ? 'read_app_resource' : 'write_app_resource', args, {signal:options.signal,meta:{'lumi/expected_project_uuid':project,...uploadMeta}}))
   }
 }
-function unavailable(message) { return new ApiError({code:'workspace_capability_unavailable',message,details:'已保留原有功能入口。请使用“在 Lumi 中打开”在同一业务资源继续操作。'},501) }
+function unavailable(message) { return new ApiError({code:'workspace_capability_unavailable',message,details:'已保留原有功能入口。请使用“在 Lumi Web 中打开”在同一业务资源继续操作。'},501) }
 export function createAppAPI(bridge, project, options) { return createWorkspaceAPI(createAppRequest(bridge, project, options)) }
 
 export function workspaceLaunch(result) {

@@ -109,7 +109,7 @@ export function imageData(result, asset, edge) {
 }
 export function failureKind(error) {
   if (error?.kind) return error.kind
-  if (['permission_denied', 'user_rejected', 'host_denied'].includes(error?.code) || /\b(denied|rejected)\b|拒绝/.test(error?.message ?? '')) return 'host_denied'
+  if (['permission_denied', 'user_rejected', 'host_denied'].includes(error?.code) || /\b(denied|rejected)\b|拒绝/i.test(error?.message ?? '')) return 'host_denied'
   return 'host_error'
 }
 export const failureLabels = { resource_error: '资源读取失败', host_denied: '宿主拒绝了请求', host_error: '宿主连接失败', timeout: '请求超时', decode_error: '图片解码失败' }
