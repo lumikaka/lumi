@@ -103,7 +103,7 @@ func conditionalRequired(raw any, properties map[string]any, baseRequired []stri
 		}
 	}
 	for selector, raw := range selectors {
-		if !slices.Contains([]string{"action", "target", "kind"}, selector) || !slices.Contains(baseRequired, selector) {
+		if !slices.Contains([]string{"action", "target", "kind", "slot"}, selector) || !slices.Contains(baseRequired, selector) {
 			return fail()
 		}
 		property, ok := properties[selector].(map[string]any)

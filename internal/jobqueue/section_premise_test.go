@@ -63,6 +63,13 @@ func TestPremiseReferenceUUIDsPreservesPersistedSelectionOrder(t *testing.T) {
 	}
 }
 
+const (
+	sectionPremiseGap         = 24
+	sectionPremiseTileWidth   = 360
+	sectionPremiseTileHeight  = 300
+	sectionPremiseLabelHeight = 72
+)
+
 func TestComposeSectionPremiseFiveAssetsUsesSelectionGridAndCJKLabels(t *testing.T) {
 	sources := make([]sectionPremiseSource, 5)
 	colors := []color.RGBA{{R: 210, A: 255}, {G: 210, A: 255}, {B: 210, A: 255}, {R: 210, G: 160, A: 255}, {G: 180, B: 210, A: 255}}

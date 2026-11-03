@@ -59,7 +59,7 @@ func imageTarget(ctx context.Context, prod *production.Service, a arguments) (an
 			settings = append(settings, setting)
 			delete(byUUID, uuid)
 		}
-		readiness.Scope, readiness.Status, readiness.NextAction = "selected_settings", "ready", "read_reference_images"
+		readiness.Scope, readiness.Status, readiness.NextAction = "selected_settings", "ready", "prepare_page_image"
 	}
 	for _, setting := range settings {
 		hasImage := setting.CurrentVariant != nil && setting.CurrentVariant.Asset.UUID != "" && setting.CurrentVariant.Asset.Kind == "image"

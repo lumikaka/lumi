@@ -51,7 +51,13 @@ test('fixture original → bounded transfer → real Asset Store → preview, va
   assert.ok(bytes.length > CHUNK_BYTES, 'real multichunk fixture');
   const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
   const input = () => ({ target_uuid: page.uuid, slot: 'page_image', expected_revision: page.revision, prompt: 'Fixture fox and star', fit_mode: 'keep' });
-  const begin = async (args = input(), content = bytes, ctx = context(), invocation) => ok(await media('media_begin', { input: args, bytes: content.length, sha256: crypto.createHash('sha256').update(content).digest('hex'), mime: mimeFor(content) }, ctx, invocation)).transfer;
+  const begin = async (args = input(), content = bytes, ctx = context(), invocation) => {
+    if (args.slot === 'page_image' && !args.preparation) {
+      const prepared = ok(await call('prepare_page_image', { page_uuid: args.target_uuid, setting_uuids: [], additional_direction: args.prompt || '' }, ctx));
+      args = { ...args, prompt: prepared.generation_prompt, preparation: prepared.preparation };
+    }
+    return ok(await media('media_begin', { input: args, bytes: content.length, sha256: crypto.createHash('sha256').update(content).digest('hex'), mime: mimeFor(content) }, ctx, invocation)).transfer;
+  };
   const chunks = async (transfer, content = bytes, ctx = context(), invocation) => {
     for (let pos = 0, index = 0; pos < content.length; pos += CHUNK_BYTES, index++) ok(await media('media_chunk', { transfer, index, base64: content.subarray(pos, pos + CHUNK_BYTES).toString('base64') }, ctx, invocation));
   };
@@ -92,8 +98,8 @@ test('fixture original → bounded transfer → real Asset Store → preview, va
   assert.equal(cropResult.fit_mode, 'crop'); assert.equal(cropResult.version_no, 2);
   page = ok(await call('pages', { action: 'get', chapter_uuid: chapter.uuid, page_uuid: page.uuid }));
   assert.equal(page.current_image.uuid, cropResult.variant_uuid);
-  const candidates = await peer.call('review_candidates', { kind: 'page', chapter_uuid: chapter.uuid, page_uuid: page.uuid });
-  assert.equal(ok(candidates).items[0].variants.length, 2);
+  const candidates = await peer.call('pages', { action: 'get', chapter_uuid: chapter.uuid, page_uuid: page.uuid, include_versions: true });
+  assert.equal(ok(candidates).image_versions.items.length, 2);
   page = ok(await call('pages', { action: 'select_image', chapter_uuid: chapter.uuid, page_uuid: page.uuid, variant_uuid: imported.variant_uuid, expected_revision: page.revision }));
   assert.equal(page.current_image.uuid, imported.variant_uuid);
   const settingTransfer = await begin({ target_uuid: setting.uuid, slot: 'setting_image', expected_revision: setting.revision, fit_mode: 'pad' }); await chunks(settingTransfer);

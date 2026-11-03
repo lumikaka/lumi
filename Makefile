@@ -46,6 +46,7 @@ codex-dev-build:
 	@if command -v pnpm >/dev/null 2>&1; then pnpm --dir web run build; else corepack pnpm --dir web run build; fi
 	mkdir -p "$(CODEX_DEV_OUT)"
 	go build -trimpath -tags embed_frontend -ldflags="-X main.defaultEnvironment=development" -o "$(CODEX_DEV_OUT)/lumi_dev" ./cmd/lumi
+	node scripts/dev-codex.mjs --out "$(CODEX_DEV_OUT)" --data-dir "$(CODEX_DEV_DATA_DIR)"
 
 codex-dev-refresh:
 	node scripts/dev-codex.mjs --out "$(CODEX_DEV_OUT)" --data-dir "$(CODEX_DEV_DATA_DIR)" --install

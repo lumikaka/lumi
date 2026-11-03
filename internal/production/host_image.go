@@ -15,6 +15,7 @@ import (
 
 	"gorm.io/gorm"
 	"lumi/internal/files"
+	"lumi/internal/project"
 )
 
 // Host imports deliberately do not use picturebook.ResolveImageSize: a host
@@ -96,6 +97,7 @@ func (service *Service) HostImageTarget(ctx context.Context, targetUUID, slot st
 type ImportHostImageInput struct {
 	Path, TargetUUID, Slot, FitMode, Description, Prompt string
 	ExpectedRevision                                     int64
+	Preparation                                          *PageImagePreparationReceipt
 }
 
 type HostImageImport struct {
@@ -191,7 +193,15 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		return result, err
 	}
 	if target.ExpectedRevision != input.ExpectedRevision {
+		if input.Slot == "page_image" {
+			return result, domainError(CodeConflict, "页面生图准备已失效", "页面已被修改；重新 prepare_page_image、读图并生图，不能只替换 revision 或摘要导入。", nil)
+		}
 		return result, domainError(CodeConflict, "图片目标已被修改", "重新读取目标内容和 revision 后再决定是否导入。", nil)
+	}
+	if input.Slot == "page_image" {
+		if err := service.validatePageImagePreparation(ctx, input); err != nil {
+			return result, err
+		}
 	}
 	data, decoded, err := readHostImage(ctx, input.Path)
 	if err != nil {
@@ -208,6 +218,9 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		purpose = "comic_section_image"
 	}
 	metadata := map[string]any{"origin": "host_generated", "original_prompt": input.Prompt, "description": input.Description, "fit_mode": input.FitMode, "input_width": w, "input_height": h, "target_width": target.TargetRatio.Width, "target_height": target.TargetRatio.Height}
+	if input.Preparation != nil {
+		metadata["page_image_preparation"] = input.Preparation
+	}
 	commitInput := files.CommitInput{Purpose: purpose, OriginalFilename: filepath.Base(input.Path), SourceType: "imported", Metadata: metadata, Reader: bytes.NewReader(data)}
 	if input.FitMode != "keep" && !result.RatioMatches {
 		processed, err := fitHostImage(decoded, target.TargetRatio, input.FitMode)
@@ -229,7 +242,16 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		commitInput.Reader = bytes.NewReader(encoded.Bytes())
 	}
 	commit := func(bind func(*gorm.DB, int64) error) error {
-		commitInput.Bind = bind
+		commitInput.Bind = func(tx *gorm.DB, fileID int64) error {
+			if input.Slot == "page_image" {
+				if err := service.store.WithReadView(tx, func(view *project.Store) error {
+					return NewService(view, nil).validatePageImagePreparation(ctx, input)
+				}); err != nil {
+					return err
+				}
+			}
+			return bind(tx, fileID)
+		}
 		_, err := service.files.CommitReader(ctx, commitInput)
 		return err
 	}

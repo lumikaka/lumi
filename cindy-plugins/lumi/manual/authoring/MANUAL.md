@@ -28,21 +28,18 @@
 
 ### 先组装页面图片提示词
 
-`chapter/section_image` 是组合模板，不能只传 page_uuid 就直接渲染。先读取 `prompt_catalog` 的 placeholders，然后通过同一目标页面的 `render_prompt` 获取所需片段：
+页面先选择实际所需的 setting_uuids，再调用 `prepare_page_image(page_uuid, setting_uuids, additional_direction?)`。最多 12 项，明确无参考图时为 []；缺图先补齐，不静默遗漏。Lumi 读取当前图片版本，现拼带编号名称的 PNG 并按 page_role、有效 project_overall_style、语言指令、参考标签、已保存分镜及用户补充要求组装完整提示词，复用 Web 的规则。
 
-1. 正文页用 `chapter/before_image`，封面用 `cover_before_image`，封底用 `back_cover_before_image`。以返回的 `fragment_prompt` 作为 `variables.before_image_prompt`，保留项目自定义规则；不要复制外层 `prompt` 的 JSON 输出要求、任务上下文或写回说明。
-2. 本次确实没有设定参考图时，渲染 `chapter/section_reference_absent`，以其 `fragment_prompt` 作为 `variables.reference_usage_text`。只有实际向生图模型提供了对应设定拼贴图时，才渲染 `section_reference_present` 并补齐 `reference_titles`；已有文字设定不代表提供了参考图片。
-3. 调用 `render_prompt`，使用 `prompt_group=chapter`、`prompt_key=section_image`、`target=page`、实际 chapter_uuid/page_uuid，以及上述两个变量。`section_id`、storyboard、画风由服务端从当前页面/项目读取，不能伪造；旧 CLI 若仍要求 section_id，使用刚读取的页面公开 UUID，不能用序号或内部 id。
-4. 图片模型只使用返回的完整 `generation_prompt`；导入使用 `image_write_back` 中的目标、slot 与 expected_revision。外层 `prompt` 和原 `write_back` 保留为任务说明，不因此更新页面文字。生图和导入保存同一完整提示词，最多12000字符。
+保留返回的 generation_prompt、image_write_back 和整个 preparation（含 digest/signature）。使用当前宿主读图能力查看 reference_image_path，生图只引用同一个临时绝对路径；none 模式省略参考参数。不要逐张读取设定源图、改写参考说明、访问项目资产目录或写拼图脚本。若当前宿主无法读取该临时路径，说明能力缺失并保留已保存内容，不虚构参考传递或改用付费 pipeline。
 
-若当前返回没有 `fragment_prompt` / `generation_prompt`，说明实际 CLI 尚未包含该能力；先核对构建并协调开发后台更新，不从输出里猜边界或硬编默认模板。提示词组装全部成功后再 Core prepare，避免拿到提交令牌后才发现输入不完整。
+生成和 receive_media 使用同一完整 prompt，页面还需原样传 preparation。服务端预检和最终事务都重算摘要；页面、设定当前版本、语言/画风/规则发生变化时拒绝导入，需重新准备、读图和生图，不能只换 revision/摘要。服务重启后也需重新准备。提示词最多 12000 字符，不截断对白或规则。
 
 ### 生成与交接
 
-1. image_target 使用目标公开 target_uuid 与 page_image / setting_image 槽位，获取最新 expected_revision、推荐比例与构图提示。画面提示词来自 render_prompt；需要文本修改时先按其 write_back 保存，再重新读取图片目标版本。
-2. 用 read_image 读取项目设定或已有插图的 Asset UUID。它附给当前 Agent 一张受控 JPEG 预览，最长边不超过 1024、最多 120 KiB；不是原图。Core image.edit 使用返回的 reference_media_url；引擎原生生图使用当前对话刚读到的参考图机制。reference_delivery.deposited=false 时仍可看图，不能假设 Core 已取得输入。
+1. image_target 使用目标公开 target_uuid 与 page_image / setting_image 槽位，获取最新 expected_revision、推荐比例与构图提示。页面完整提示词来自 prepare_page_image；设定提示词可用 render_prompt；需要文本修改时先按其 write_back 保存，再重新读取图片目标版本。
+2. 页面遵循上节的单张临时合图路径；单项设定可用 read_image 读取项目设定或已有插图的 Asset UUID。它附给当前 Agent 一张受控 JPEG 预览，最长边不超过 1024、最多 120 KiB；不是原图。Core image.edit 使用返回的 reference_media_url；引擎原生生图使用当前对话刚读到的参考图机制。reference_delivery.deposited=false 时仍可看图，不能假设 Core 已取得输入。
 3. 由当前 Cindy Agent 调用当前可用生图能力。Core 使用本次模型目录与 Guide；已经选定的 provider/model 不擅自换源。引擎原生路径与 Core 分开验收，不根据聊天模型名称宣传订阅生图。
-4. 生图成功后立即调用 `ghost_call({ghost_id:"<当前插件 id>",tool:"receive_media",args:{target_uuid,slot,expected_revision,fit_mode:"keep",prompt},attachments:[实际生成图片引用]})`。attachments 必须在 ghost_call 顶层，恰好一张；不要放进业务 args，不自报路径、指纹、base64 或 session_context。call_tool 无法代替附件入口。
+4. 生图成功后立即调用 `ghost_call({ghost_id:"<当前插件 id>",tool:"receive_media",args:{target_uuid,slot,expected_revision,fit_mode:"keep",prompt,preparation},attachments:[实际生成图片引用]})`。attachments 必须在 ghost_call 顶层，恰好一张；不要放进业务 args，不自报路径、指纹、base64 或 session_context。call_tool 无法代替附件入口。
 5. 单张最多 20 MiB，只收实际 PNG/JPEG/WebP，完整解码不超过 4000 万像素。比例偏差不代表失败；默认 keep，用户需要时 crop/pad，沿用不可变原图与历史。成功回执的 Asset UUID、版本、尺寸和 source_sha256 表示 Lumi 已落盘；再 get 核对当前选择，不重复导入。
 6. production_conflict 保留用户最新选择；correction.recovery_file 给出当前任务 lumi-media-recovery/ 下原图的相对路径、SHA256 和大小。重读目标并判断后，可把这个已知恢复文件再次作为顶层附件交接；不能只换 revision 自动覆盖。恢复文件失败时明确保留原 Host 附件，不能承诺其永久有效。取消、结果未知及 worker 重启后先读当前选择和历史，再决定下一步。
 

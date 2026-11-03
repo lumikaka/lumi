@@ -111,7 +111,7 @@ ${prefix} stop ${flags} --json
 \`\`\`
 
 重新构建后，先结束开发任务并停止旧开发后台实例，再新开 Codex App 会话。
-仅刷新二进制不会替换已经运行的后台。使用独立的测试绘本目录，应用数据隔离不会复制项目文件。
+仅刷新二进制不会替换已经运行的后台。新后台必须支持 prepare_page_image 及带签名摘要的页面 import_image；旧后台会返回 cli_upgrade_required，不能回退到逐张参考或 provider pipeline。使用独立的测试绘本目录，应用数据隔离不会复制项目文件。
 `);
   mkdirSync(join(payload, '.agents/plugins'), { recursive: true });
   writeFileSync(join(payload, '.agents/plugins/marketplace.json'), JSON.stringify({

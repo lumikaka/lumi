@@ -40,7 +40,7 @@ cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后�
 | 修改、删除设定 | 设定 revision |
 | 创建页面 | `pages list.state.revision`；页面结构或内容变化都会更新此版本 |
 | 修改、删除页面 | 页面 revision |
-| 导入页面 / 设定图片 | `image_target.expected_revision` 或对应页面 / 设定 revision |
+| 导入页面 / 设定图片 | 页面用 `prepare_page_image.image_write_back` 及原样 preparation；设定用 image_target 或对应设定 revision |
 
 版本冲突时重读并重新判断；不要把旧模型输出直接换上新 revision 再覆盖。工具调用中断时写入可能已经提交，先重读确认结果。
 
@@ -224,13 +224,13 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`，页面额外返回 `setting_readiness`。ratio 为 `{width,height}`，不是输出像素要求。
 
-`setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid`，需实际 `read_image` 后才可作为宿主参考。
+`setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid`。页面随后调用 `prepare_page_image`，由服务端读取源图并合图，agent 不逐张读取。
 
 | 选择 | scope / status | 下一步 |
 | --- | --- | --- |
 | 省略 `setting_uuids` | `project_candidates / selection_required` | 返回视觉候选，排除无图的 reference 文字备注；按当前页面选择设定。无候选时先提取视觉设定。 |
 | 已选设定有缺图项 | `selected_settings / missing_images` | 批量或逐项补齐所选缺图，不要求补齐其他章节资产。 |
-| 已选设定均有图片 | `selected_settings / ready` | 按返回顺序读取当前 `asset_uuid`。 |
+| 已选设定均有图片 | `selected_settings / ready` | 调用 `prepare_page_image` 现拼本页参考图。 |
 | 显式传 `[]` | `selected_settings / no_settings_selected` | 核对页面是否无需视觉设定，不将空选择当成就绪批准。 |
 
 该检查不持久化页面依赖或选图，不修改 revision，也不自动生成图片。首次创作默认先完成必要设定图；“正文只生成第一页”不取消设定图阶段。用户明确要求跳过或限制全部生图次数时按实际要求执行，不伪报就绪。
@@ -241,9 +241,19 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 - 建议页面 `crop`，设定 `pad`；这是生图前的处理建议，**import_image 的默认行为仍是 keep**。
 - 容差为相对目标比例的 2%。宿主路径不调用 `ResolveImageSize`，服务商生图的精确比例规则保持原有行为。
 
+### prepare_page_image
+
+必填 `page_uuid,setting_uuids`；可选 `additional_direction`（最多 12000 字符）。明确选择本页所需的当前项目 active 设定，最多 12 项、不得重复，数组顺序就是标签顺序。缺少选择和 null 无效；明确 `[]` 返回真实无参考模式。缺图、跨项目、无效或不可读源图明确报错。
+
+Go 使用与 Web 相同的 production 合图实现，维持原始比例、完整主体、中文编号名称及留白，每次现拼 PNG 到系统临时目录。返回真实绝对 `reference_image_path`、`reference_mode`、有序 `sources`（设定 UUID/revision、图片 variant_uuid/version_no/file_uuid、标签和内容 SHA-256）、`image_info`、`target`、完整 `generation_prompt`、`image_write_back` 与 `preparation`。none 模式路径为空、sources=[]、image_info=null。不注册项目 Asset、不建立合图缓存，不返回合图 Base64、data URI 或 MCP image content。
+
+提示词复用 Web 的有效角色基础规则、project_overall_style 及旧数据回退、语言指令、参考说明、已保存分镜、用户补充要求。agent 使用宿主读图能力查看返回路径，再用 imagegen `referenced_image_paths=[同一路径]`，仅这一张参考图；none 模式省略参考参数。保持完整提示词原样，不在返回后追加说明或重写参考描述。
+
+`preparation` 含项目/页面身份、revision、所选 UUID、补充要求、SHA-256 digest 与服务进程 HMAC 签名。摘要覆盖当前页面、设定版本及源字节、标签顺序、有效模板/画风/语言、项目规格、完整提示词与合图输入/合成器版本；临时路径不参与来源身份。凭据不缓存，后台重启需重新准备。
+
 ### import_image
 
-必填：`path,target_uuid,slot,expected_revision`；可选：`fit_mode`（`keep/crop/pad`）、`description`、`prompt`（原始提示词）。说明和提示词各最多 12000 字符，超过限制返回错误，不静默截断。
+必填：`path,target_uuid,slot,expected_revision`；页面额外必填与本轮准备逐字一致的 `prompt` 和原样 `preparation`（含 digest/signature），设定图不要求 preparation。可选：`fit_mode`（`keep/crop/pad`）、`description`、`prompt`（原始提示词）。说明和提示词各最多 12000 字符，超过限制返回错误，不静默截断。
 
 path 必须是宿主生图结果实际给出的本地绝对路径；可以来自结果提示文本。工具不接收 base64，不假定 `savedPath` 字段、宿主目录或文件名，也不扫描目录。文件必须是可读的普通文件，支持 PNG、JPEG、WebP；最多 32 MiB、4000 万像素，先校验限制再完整解码。以真实内容判断格式，即使 PNG 文件被命名为 `.jpg` 也按 PNG 提交；伪装成图片的文本和损坏图片会被拒绝。
 
@@ -257,7 +267,7 @@ path 必须是宿主生图结果实际给出的本地绝对路径；可以来自
 
 在容差内直接使用原图，即使请求 crop/pad 也不重复处理。补边后的画布也受 4000 万像素限制；超限时可缩小原图或选择 keep/crop。
 
-所有文件都由 Asset Store 提交。处理后的图片是新的派生 Asset，并以 `source_asset_uuid` 关联不可变原图。每次导入增加图片版本并切换 current；历史版本不被覆盖。Asset 与业务版本、current 指针在同一最终 SQLite 事务中提交，事务内再次检查 revision，冲突不创建可见图片版本。
+所有文件都由 Asset Store 提交。处理后的图片是新的派生 Asset，并以 `source_asset_uuid` 关联不可变原图。每次导入增加图片版本并切换 current；历史版本不被覆盖。Asset 与业务版本、current 指针在同一最终 SQLite 事务中提交，事务内再次检查 revision；页面导入还会在预检及最终事务中重新组装当前事实并校验准备摘要和完整提示词。页面、设定当前图、规则等变化返回 `page_image_preparation_stale`，不创建图片版本。签名禁止仅替换 revision/digest 绕过；需重新准备、读图和生图。
 
 Asset 的公开 metadata 保存 `origin:"host_generated"`、`original_prompt`、`description`、`fit_mode`、输入宽高和目标比例，不保存原始绝对路径。兼容现有数据库枚举：File source_type 使用 imported/derived，业务版本沿用 manual/replacement；页面和设定的版本 DTO 根据 origin 将 `source_type` 显示为 `host_generated`。web UI 当前图和历史版本显示“宿主生图 / Host generated”。无需数据库迁移，桌面版和 CLI 共用项目格式。
 
@@ -271,12 +281,13 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 
 成功返回 text/structured 信封 `{asset_uuid,mime_type,width,height}`，另附一个真正的 MCP `content.type=image` 块。预览等比缩小、透明区域铺白，并编码成 JPEG；最长边不超过 max_edge，编码最多 120 KiB，必要时进一步缩小。包含图片的整个 MCP 结果仍不超过 256 KiB；二进制不重复出现在 text/structured content 中。原图不变。
 
-宿主创作流程（后续插件 skill 也应遵守）：
+宿主创作流程：
 
-1. 首次创作先复用或生成必要设定图，批量总览图需完成拆分。页面调用 image_target 选择所需 setting_uuids，补齐缺图，再用 read_image 把参考图片放入对话；正文图片数量限制不取消此阶段。
-2. 按页面角色和实际参考图状态渲染基础片段，再 render_prompt chapter/section_image target=page，保留完整 generation_prompt 和 image_write_back。将完整提示词交给宿主生图，参考推荐比例；使用最近对话图片作为参考（Codex App 的 `num_last_images_to_include`），确认引用的是所需图片。
-3. **生图后立即调用 import_image**，传入本次结果中实际给出的绝对路径和原始提示词；保留期限未知，不延后到创作结束。不要把像素不精确当作失败，也不要因比例偏差阻塞用户。
-4. 冲突时重读目标和内容后重新判断；不要只更换 revision 覆盖他人的新版本。调用中断后也先重读确认是否已导入。
+1. 选择本页设定，补齐所选缺图；批量总览图需完成拆分。
+2. `prepare_page_image` 返回临时合图路径、来源版本、完整提示词及签名摘要。
+3. 宿主读图能力查看该路径，imagegen 只用 `referenced_image_paths=[同一路径]` 和返回的完整 generation_prompt。none 模式不传参考图。
+4. 立即 `import_image`，传实际宿主输出路径、image_write_back、同一提示词与原 preparation。
+5. 冲突或准备失效时重新准备、读图和生图；不能仅换 revision/摘要。无 provider pipeline 或付费回退。
 
 ### export_book
 

@@ -46,6 +46,23 @@
       "description": "接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。",
       "parameters": {
         "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "slot": {
+                  "const": "page_image"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "prompt",
+                "preparation"
+              ]
+            }
+          }
+        ],
         "properties": {
           "description": {
             "maxLength": 12000,
@@ -63,6 +80,59 @@
               "pad"
             ],
             "type": "string"
+          },
+          "preparation": {
+            "additionalProperties": false,
+            "properties": {
+              "additional_direction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "expected_revision": {
+                "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "page_uuid": {
+                "description": "Public UUIDv7 from a previous read.",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                "type": "string"
+              },
+              "project_uuid": {
+                "description": "Public UUIDv7 from a previous read.",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                "type": "string"
+              },
+              "setting_uuids": {
+                "description": "Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.",
+                "items": {
+                  "description": "Public UUIDv7 from a previous read.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                  "type": "string"
+                },
+                "maxItems": 12,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "signature": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "project_uuid",
+              "page_uuid",
+              "expected_revision",
+              "setting_uuids",
+              "additional_direction",
+              "digest",
+              "signature"
+            ],
+            "type": "object"
           },
           "prompt": {
             "maxLength": 12000,

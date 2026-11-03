@@ -36,7 +36,7 @@ test('development plugin shares authoring resources and keeps its CLI isolated a
     command: join(f.out, 'lumi_dev'),
     args: ['mcp', '--environment', 'development', '--data-dir', f.data],
   });
-  for (const path of ['skills/create-picture-book/SKILL.md', 'skills/create-picture-book/references/mcp-usage.md', 'assets/icon.png']) {
+  for (const path of ['skills/create-picture-book/SKILL.md', 'skills/create-picture-book/references/mcp-usage.md', 'skills/create-picture-book/references/page-images.md', 'skills/create-picture-book/references/batch-settings.md', 'assets/icon.png']) {
     assert.deepEqual(readFileSync(join(f.plugin, path)), readFileSync(join(repo, 'codex-plugins/lumi', path)));
   }
   const skill = readFileSync(join(f.plugin, 'skills/create-picture-book/SKILL.md'), 'utf8');

@@ -26,9 +26,9 @@ import (
 
 const creationRoute = "/api/v1/creation-requests"
 
-// Version 1 requires the daemon, not just the stdio relay, to enforce the
-// expected project UUID and read-only transport constraints.
-const creationProtocolVersion = 2
+// Version 3 requires shared page preparation and signed import validation in
+// the daemon. A rebuilt relay must never dispatch to an older running backend.
+const creationProtocolVersion = 3
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {

@@ -3,19 +3,20 @@ package production
 import "fmt"
 
 const (
-	CodeNotFound            = "production_resource_not_found"
-	CodeValidation          = "production_validation_failed"
-	CodeConflict            = "production_conflict"
-	CodeStateConflict       = "production_state_conflict"
-	CodeSnapshotInvalid     = "production_snapshot_invalid"
-	CodeSnapshotBusy        = "production_snapshot_restore_blocked"
-	CodeExportEmpty         = "comic_export_empty"
-	CodeExportIncomplete    = "comic_export_incomplete"
-	CodeExportChanged       = "comic_export_readiness_changed"
-	CodeExportExpired       = "comic_export_expired"
-	CodeExportUnavailable   = "comic_export_unavailable"
-	CodeDeleteBlocked       = "premise_asset_delete_blocked"
-	CodeImageSourceMismatch = "premise_asset_image_source_mismatch"
+	CodePageImagePreparationStale = "page_image_preparation_stale"
+	CodeNotFound                  = "production_resource_not_found"
+	CodeValidation                = "production_validation_failed"
+	CodeConflict                  = "production_conflict"
+	CodeStateConflict             = "production_state_conflict"
+	CodeSnapshotInvalid           = "production_snapshot_invalid"
+	CodeSnapshotBusy              = "production_snapshot_restore_blocked"
+	CodeExportEmpty               = "comic_export_empty"
+	CodeExportIncomplete          = "comic_export_incomplete"
+	CodeExportChanged             = "comic_export_readiness_changed"
+	CodeExportExpired             = "comic_export_expired"
+	CodeExportUnavailable         = "comic_export_unavailable"
+	CodeDeleteBlocked             = "premise_asset_delete_blocked"
+	CodeImageSourceMismatch       = "premise_asset_image_source_mismatch"
 )
 
 type Error struct {

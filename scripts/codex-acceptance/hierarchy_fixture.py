@@ -136,11 +136,13 @@ def main():
                    'expected_revision': state['revision']})
             pages.append(page)
             if i in (0, 1, 2, 23, 24):
-                mcp.tool('import_image', {'path': str(image), 'target_uuid': page['uuid'], 'slot': 'page_image', 'expected_revision': page['revision'], 'fit_mode': 'pad'})
+                prepared=mcp.tool('prepare_page_image', {'page_uuid': page['uuid'], 'setting_uuids': []})
+                mcp.tool('import_image', {'path': str(image), **prepared['image_write_back'], 'prompt': prepared['generation_prompt'], 'preparation': prepared['preparation'], 'fit_mode': 'pad'})
         pages = mcp.tool('pages', {'action': 'list', 'chapter_uuid': chapters[0]['uuid'], 'limit': 100})['items'] + mcp.tool('pages', {'action': 'list', 'chapter_uuid': chapters[1]['uuid'], 'limit': 100})['items']
         current = mcp.tool('pages', {'action': 'get', 'chapter_uuid': chapters[0]['uuid'], 'page_uuid': pages[1]['uuid']})
         adopted = current['current_image']['uuid']
-        mcp.tool('import_image', {'path': str(image), 'target_uuid': current['uuid'], 'slot': 'page_image', 'expected_revision': current['revision'], 'fit_mode': 'pad'})
+        prepared=mcp.tool('prepare_page_image', {'page_uuid': current['uuid'], 'setting_uuids': []})
+        mcp.tool('import_image', {'path': str(image), **prepared['image_write_back'], 'prompt': prepared['generation_prompt'], 'preparation': prepared['preparation'], 'fit_mode': 'pad'})
         current = mcp.tool('pages', {'action': 'get', 'chapter_uuid': chapters[0]['uuid'], 'page_uuid': current['uuid']})
         mcp.tool('pages', {'action': 'select_image', 'chapter_uuid': chapters[0]['uuid'], 'page_uuid': current['uuid'], 'variant_uuid': adopted, 'expected_revision': current['revision']})
         listing = mcp.tool('settings', {'action': 'list'})

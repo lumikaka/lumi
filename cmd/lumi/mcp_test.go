@@ -371,7 +371,8 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 		if err := os.WriteFile(path, pngData.Bytes(), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		args := map[string]any{"path": path, "target_uuid": pageUUIDs[i], "slot": "page_image", "expected_revision": target["expected_revision"], "fit_mode": []string{"keep", "crop", "pad"}[i], "prompt": "同一只小狐狸，温暖水彩，保持黄色雨衣。"}
+		prepared := callText(t, client, "prepare_page_image", map[string]any{"page_uuid": pageUUIDs[i], "setting_uuids": []string{}, "additional_direction": "同一只小狐狸，温暖水彩，保持黄色雨衣。"}, "")
+		args := map[string]any{"path": path, "target_uuid": pageUUIDs[i], "slot": "page_image", "expected_revision": target["expected_revision"], "fit_mode": []string{"keep", "crop", "pad"}[i], "prompt": prepared["generation_prompt"], "preparation": prepared["preparation"]}
 		imported := callText(t, client, "import_image", args, "")
 		if imported["ratio_matches"] != false || len(imported["warnings"].([]any)) != 1 || field(field(imported, "asset"), "metadata")["origin"] != "host_generated" {
 			t.Fatalf("import=%v", imported)
@@ -380,6 +381,9 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 		callText(t, second, "import_image", args, "production_conflict")
 		if i == 0 {
 			args["expected_revision"] = imported["revision"]
+			callText(t, client, "import_image", args, "page_image_preparation_stale")
+			prepared = callText(t, client, "prepare_page_image", map[string]any{"page_uuid": pageUUIDs[i], "setting_uuids": []string{}, "additional_direction": "同一只小狐狸，温暖水彩，保持黄色雨衣。"}, "")
+			args["prompt"], args["preparation"] = prepared["generation_prompt"], prepared["preparation"]
 			callText(t, client, "import_image", args, "")
 			expectHint(t, conn, "comic:section_changed")
 		}

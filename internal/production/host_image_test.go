@@ -61,6 +61,15 @@ func hostPage(t *testing.T, h *productionHarness) (string, ComicSection) {
 	return ch.UUID, p
 }
 
+func prepareHostPageFixture(t *testing.T, service *Service, pageUUID, direction string) PreparedPageImage {
+	t.Helper()
+	prepared, err := service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: pageUUID, SettingUUIDs: []string{}, AdditionalDirection: direction})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return prepared
+}
+
 func TestHostImageRatiosAndImmutableVersions(t *testing.T) {
 	for _, tc := range []struct {
 		name, fit        string
@@ -77,7 +86,8 @@ func TestHostImageRatiosAndImmutableVersions(t *testing.T) {
 			h := newProductionHarnessWithFormat(t, project.PictureBookClassic)
 			chapter, page := hostPage(t, h)
 			path, original := hostFixture(t, tc.w, tc.h, false)
-			input := ImportHostImageInput{Path: path, TargetUUID: page.UUID, Slot: "page_image", FitMode: tc.fit, ExpectedRevision: page.Revision, Prompt: strings.Repeat("原始提示词\n", 300), Description: "宿主画面"}
+			prepared := prepareHostPageFixture(t, h.service, page.UUID, strings.Repeat("原始提示词\n", 300))
+			input := ImportHostImageInput{Path: path, TargetUUID: page.UUID, Slot: "page_image", FitMode: tc.fit, ExpectedRevision: page.Revision, Prompt: prepared.GenerationPrompt, Description: "宿主画面", Preparation: &prepared.Preparation}
 			result, err := h.service.ImportHostImage(t.Context(), input)
 			if err != nil {
 				t.Fatal(err)
@@ -126,7 +136,9 @@ func TestHostImageRatiosAndImmutableVersions(t *testing.T) {
 					t.Fatal("original bytes changed")
 				}
 			}
+			prepared = prepareHostPageFixture(t, h.service, page.UUID, strings.Repeat("原始提示词\n", 300))
 			input.ExpectedRevision = result.Revision
+			input.Preparation, input.Prompt = &prepared.Preparation, prepared.GenerationPrompt
 			second, err := h.service.ImportHostImage(t.Context(), input)
 			if err != nil || second.VersionNo != 2 || second.Asset.UUID == result.Asset.UUID {
 				t.Fatalf("replacement=%+v err=%v", second, err)
@@ -185,6 +197,7 @@ func TestHostImageInvalidInputsDoNotCreateVersions(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Close()
+	prepared := prepareHostPageFixture(t, h.service, page.UUID, "")
 	for _, tc := range []struct{ path, target, fit, code string }{
 		{filepath.Join(t.TempDir(), "missing.png"), page.UUID, "", "image_path_unavailable"},
 		{t.TempDir(), page.UUID, "", "image_path_unavailable"},
@@ -196,7 +209,7 @@ func TestHostImageInvalidInputsDoNotCreateVersions(t *testing.T) {
 		{valid, mustUUID(t), "", CodeNotFound},
 		{valid, page.UUID, "stretch", CodeValidation},
 	} {
-		_, err := h.service.ImportHostImage(t.Context(), ImportHostImageInput{Path: tc.path, TargetUUID: tc.target, Slot: "page_image", FitMode: tc.fit, ExpectedRevision: page.Revision})
+		_, err := h.service.ImportHostImage(t.Context(), ImportHostImageInput{Path: tc.path, TargetUUID: tc.target, Slot: "page_image", FitMode: tc.fit, ExpectedRevision: page.Revision, Preparation: &prepared.Preparation, Prompt: prepared.GenerationPrompt})
 		assertHostError(t, err, tc.code)
 	}
 	versions, err := h.service.ListImageVariants(t.Context(), chapter, page.UUID)
@@ -257,7 +270,8 @@ func TestHostImageWebPUsesContentFormat(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := h.service.ImportHostImage(t.Context(), ImportHostImageInput{Path: path, TargetUUID: page.UUID, Slot: "page_image", ExpectedRevision: page.Revision})
+	prepared := prepareHostPageFixture(t, h.service, page.UUID, "")
+	result, err := h.service.ImportHostImage(t.Context(), ImportHostImageInput{Path: path, TargetUUID: page.UUID, Slot: "page_image", ExpectedRevision: page.Revision, Preparation: &prepared.Preparation, Prompt: prepared.GenerationPrompt})
 	if err != nil || result.Asset.MIMEType != "image/webp" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}

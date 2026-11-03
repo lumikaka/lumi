@@ -430,48 +430,9 @@ func (runtime *projectRuntime) generateComicImage(ctx context.Context, service *
 	if len(references) > maxSectionPremiseAssets {
 		return productionError("too_many_section_premise_assets", fmt.Sprintf("Section 设定参考图最多允许 %d 个", maxSectionPremiseAssets), false)
 	}
-	prompt := ""
-	if snapshot.Version >= 2 && strings.TrimSpace(snapshot.PromptTemplate) != "" {
-		referenceUsage := sectionReferenceUsage(references, snapshot.GenerationLanguage)
-		if snapshot.Version >= 3 {
-			referenceUsage, err = renderSectionReferenceUsage(references, snapshot.ReferencePresentPrompt, snapshot.ReferenceAbsentPrompt)
-			if err != nil {
-				return productionError("invalid_prompt_snapshot", "Section 参考图说明提示词快照无法渲染", false)
-			}
-		}
-		prompt, err = promptcatalog.Render(snapshot.PromptTemplate, map[string]string{
-			"style_prompt": snapshot.StyleSnapshot, "reference_usage_text": referenceUsage,
-			"section_id": snapshot.ResourceUUID, "storyboard": snapshot.StoryboardMD,
-		})
-		if err != nil {
-			return productionError("invalid_prompt_snapshot", "Section 图片提示词快照无法渲染", false)
-		}
-		languageInstruction := snapshot.LanguageInstruction
-		if strings.TrimSpace(languageInstruction) == "" {
-			languageInstruction = promptcatalog.LanguageInstruction(snapshot.GenerationLanguage)
-		}
-		prompt = promptcatalog.WithInstruction(prompt, languageInstruction)
-		if guidance := strings.TrimSpace(snapshot.Prompt); guidance != "" && guidance != strings.TrimSpace(snapshot.StoryboardMD) {
-			if snapshot.Version >= 3 {
-				additional, renderErr := promptcatalog.Render(snapshot.AdditionalDirectionPrompt, map[string]string{"guidance_prompt": guidance})
-				if renderErr != nil {
-					return productionError("invalid_prompt_snapshot", "Section 用户补充要求提示词快照无法渲染", false)
-				}
-				prompt += "\n\n" + additional
-			} else if promptcatalog.NormalizeLanguage(snapshot.GenerationLanguage) == promptcatalog.LanguageEnglish {
-				prompt += "\n\n## Additional user direction\n" + guidance
-			} else {
-				prompt += "\n\n## 用户补充要求\n" + guidance
-			}
-		}
-	} else {
-		// Version 1 Comic snapshots store the pre-catalog prompt pieces rather
-		// than a rendered template; keep this deterministic compatibility path
-		// solely for retries of those already-durable tasks.
-		prompt = strings.TrimSpace(snapshot.Prompt + "\n\nStoryboard:\n" + snapshot.StoryboardMD + "\n\nStyle:\n" + snapshot.StyleSnapshot + "\n\n" + project.GenerationLanguageVisualInstruction(snapshot.GenerationLanguage))
-		if len(references) > 0 {
-			prompt += fmt.Sprintf("\n\nUse the single Section setting collage to keep visual continuity with its %d labeled premise items.", len(references))
-		}
+	prompt, err := production.RenderSectionImagePrompt(snapshot, references)
+	if err != nil {
+		return productionError("invalid_prompt_snapshot", err.Error(), false)
 	}
 	referenceImages := []imagegen.ImageInput{}
 	if len(references) > 0 {
@@ -676,32 +637,8 @@ func frozenSectionReferences(candidates []production.PremiseAssetReference, titl
 	return result, nil
 }
 
-func sectionReferenceUsage(references []production.PremiseAssetReference, language string) string {
-	if len(references) == 0 {
-		if promptcatalog.NormalizeLanguage(language) == promptcatalog.LanguageEnglish {
-			return "No setting reference images are available for this generation. Generate only from the storyboard and art style, and do not claim consistency with character or scene references that were not provided."
-		}
-		return "本次没有可用的设定参考图。仅根据 Storyboard 与画风生成，不要声称遵循未提供的角色或场景设定。"
-	}
-	titles := make([]string, 0, len(references))
-	for index, reference := range references {
-		titles = append(titles, fmt.Sprintf("%d. %s", index+1, reference.Title))
-	}
-	if promptcatalog.NormalizeLanguage(language) == promptcatalog.LanguageEnglish {
-		return "One Section-specific setting collage image is provided. It contains the following setting items; use their labeled visual references to preserve identity and core visual features:\n" + strings.Join(titles, "\n")
-	}
-	return "本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n" + strings.Join(titles, "\n")
-}
-
 func renderSectionReferenceUsage(references []production.PremiseAssetReference, presentTemplate, absentTemplate string) (string, error) {
-	if len(references) == 0 {
-		return promptcatalog.Render(absentTemplate, map[string]string{})
-	}
-	titles := make([]string, 0, len(references))
-	for index, reference := range references {
-		titles = append(titles, fmt.Sprintf("%d. %s", index+1, reference.Title))
-	}
-	return promptcatalog.Render(presentTemplate, map[string]string{"reference_titles": strings.Join(titles, "\n")})
+	return production.RenderSectionReferenceUsage(references, presentTemplate, absentTemplate)
 }
 
 func (runtime *projectRuntime) appendProductionEvent(ctx context.Context, taskID int64, eventType string, payload any) error {

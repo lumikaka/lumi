@@ -675,47 +675,14 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	if err != nil {
 		return preparedComicImageGeneration{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", picturebook.SizeErrorDetails(err, "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。"), err)
 	}
-	profile, err := service.GetPremise(ctx)
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
 	storyService := story.NewService(runtime.store)
-	styleSnapshot, err := effectiveProductionStyle(ctx, runtime, storyService, profile.DefaultStyle, generationLanguage)
+	rules, err := service.SectionImageRules(ctx, section.PageRole)
 	if err != nil {
 		return preparedComicImageGeneration{}, err
 	}
-	imageTemplate, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_image")
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	beforeImagePromptKey := "before_image"
-	switch section.PageRole {
-	case production.PageRoleFrontCover:
-		beforeImagePromptKey = "cover_before_image"
-	case production.PageRoleBackCover:
-		beforeImagePromptKey = "back_cover_before_image"
-	}
-	beforeImagePrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, beforeImagePromptKey)
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	imageTemplate = strings.ReplaceAll(imageTemplate, "{{before_image_prompt}}", beforeImagePrompt)
-	referencePresentPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_reference_present")
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	referenceAbsentPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_reference_absent")
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	additionalDirectionPrompt, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_additional_direction")
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	languageInstruction, err := storyService.EffectiveLanguageInstruction(ctx)
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
+	styleSnapshot := rules.StyleSnapshot
+	imageTemplate, referencePresentPrompt, referenceAbsentPrompt := rules.PromptTemplate, rules.ReferencePresentPrompt, rules.ReferenceAbsentPrompt
+	additionalDirectionPrompt, languageInstruction := rules.AdditionalDirectionPrompt, rules.LanguageInstruction
 	selectionTemplate, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_premise_selection")
 	if err != nil {
 		return preparedComicImageGeneration{}, err
@@ -1093,19 +1060,7 @@ func (manager *Manager) ListProductionTaskEvents(ctx context.Context, projectUUI
 }
 
 func effectiveProductionStyle(ctx context.Context, runtime *projectRuntime, storyService *story.Service, legacyStyle, language string) (string, error) {
-	style, err := storyService.EffectivePrompt(ctx, promptcatalog.GroupPremiseStyle, "project_overall_style")
-	if err != nil {
-		return "", err
-	}
-	var canonicalVersions int64
-	if err := runtime.store.DB().WithContext(ctx).Table("project_prompt_versions").Where("project_id=? AND prompt_group=? AND prompt_key=?", runtime.projectID, promptcatalog.GroupPremiseStyle, "project_overall_style").Count(&canonicalVersions).Error; err != nil {
-		return "", err
-	}
-	legacyStyle = strings.TrimSpace(legacyStyle)
-	if canonicalVersions == 0 && legacyStyle != "" && legacyStyle != strings.TrimSpace(production.DefaultPremiseStyle(language)) {
-		return legacyStyle, nil
-	}
-	return style, nil
+	return production.EffectiveImageStyle(ctx, runtime.store, storyService, legacyStyle, language)
 }
 
 func (manager *Manager) CancelProductionTask(ctx context.Context, projectUUID, taskUUID string) (ProductionTask, error) {

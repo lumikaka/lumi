@@ -9,7 +9,7 @@ const source = fs.readFileSync(path.resolve(__dirname, '../lumi/main.js'), 'utf8
 const png = fs.readFileSync(path.resolve(__dirname, '../../docs/features/cindy-plugins/spike/media/core-fox.png'));
 const hash = crypto.createHash('sha256').update(png).digest('hex');
 const context = { session_id: 'host-task', workdir: '/temporary/project', workdir_is_local: true, workdir_is_read_only: false };
-const input = { target_uuid: '01989abc-def0-7000-8000-000000000001', slot: 'page_image', expected_revision: 0 };
+const input = { target_uuid: '01989abc-def0-7000-8000-000000000001', slot: 'page_image', expected_revision: 0, prompt: 'Exact complete prompt', preparation: { project_uuid: '01989abc-def0-7000-8000-000000000001', page_uuid: '01989abc-def0-7000-8000-000000000001', expected_revision: 0, setting_uuids: [], additional_direction: '', digest: 'a'.repeat(64), signature: 'b'.repeat(64) } };
 function host({ bytes = png, contentLength = bytes.length, mime = 'image/png', responseHash = hash, nodeResult, denied = false } = {}) {
   let callback;
   const requests = [], replies = [], urls = [];
@@ -35,6 +35,8 @@ test('Host-authorized original is hashed, split below Node params limit and scop
   const begin = h.requests.find(r => r.method === 'media_begin');
   assert.equal(begin.params.sha256, hash); assert.equal(begin.params.bytes, png.length);
   assert.equal(begin.params.invocation, 'host-call');
+  assert.equal(JSON.stringify(begin.params.input.preparation), JSON.stringify(input.preparation));
+  assert.equal(begin.params.input.prompt, input.prompt);
   const chunks = h.requests.filter(r => r.method === 'media_chunk');
   assert.ok(chunks.length > 1);
   assert.deepEqual(Buffer.concat(chunks.map(r => Buffer.from(r.params.base64, 'base64'))), png);

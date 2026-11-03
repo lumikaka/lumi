@@ -43,7 +43,8 @@ func TestNormalReviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, page := range []map[string]any{body, back, front} {
-		object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": page["uuid"], "slot": "page_image", "expected_revision": page["revision"]}))
+		prepared := preparePageFixture(t, s, root, page["uuid"].(string), []string{}, "")
+		object(t, invoke(t, s, root, "import_image", preparedImportArgs(prepared, path)))
 	}
 	// No review/resource/UI call is needed between import and a complete export.
 	for _, format := range []string{"markdown", "zip", "pdf"} {
@@ -54,7 +55,8 @@ func TestNormalReviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 	}
 	body = readBody()
 	adopted := body["current_image"].(map[string]any)
-	object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": body["uuid"], "slot": "page_image", "expected_revision": body["revision"]}))
+	prepared := preparePageFixture(t, s, root, body["uuid"].(string), []string{}, "")
+	object(t, invoke(t, s, root, "import_image", preparedImportArgs(prepared, path)))
 	body = readBody()
 	object(t, invoke(t, s, root, "pages", map[string]any{"action": "select_image", "chapter_uuid": first, "page_uuid": body["uuid"], "variant_uuid": adopted["uuid"], "expected_revision": body["revision"]}))
 	second := chapter("vol01.ch02")

@@ -47,7 +47,7 @@
 
 提交后用 `review_settings` 展示，用 `settings get/read_image` 检查裁切是否完整、是否混入邻近主体。修正裁切时沿用原 board_uuid，重读批次、设定集合及目标设定 revision，使用新幂等键，并显式指定要更新的 setting_uuid；只重做需要修正的项。需要重新设计主体时走单项生图。
 
-完成必要设定图后继续分页与画面描述。目标页面生图前，带所需 `setting_uuids` 再调用 `image_target`；确认 `setting_readiness.status=ready`，用返回的当前 `asset_uuid` 读入参考图，再按页面生图流程渲染提示词。总览图已导入但未完成拆分，不等于各设定已有可复用图片。
+完成必要设定图后继续分页与画面描述。目标页面生图前，带所需 `setting_uuids` 再调用 `image_target`；确认缺图已补齐，调用 `prepare_page_image` 现拼本页合图；宿主查看返回的临时路径，再用 `referenced_image_paths` 仅传这一个路径。页面生图和导入使用同一份服务端完整提示词及准备摘要，见 [页面生图](page-images.md)。总览图已导入但未完成拆分，不等于各设定已有可复用图片。
 
 - 导入或拆分响应中断：先 `setting_boards list/get`；保存了原请求就按**原键、原参数**重放。已成功的请求返回原结果，不重复创建设定或版本。
 - `latest_breakdown` 为最后一次成功提交的 UUID 清单，可据此读取各项；当前图片可能被后续操作更改，以 `settings get` 为准。

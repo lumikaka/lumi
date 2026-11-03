@@ -58,3 +58,5 @@ go test ./internal/server -run TestMCPOAuthOfficialSDK -count=1
 ```
 
 开发生成测试覆盖共享资源、含空格路径、同版本刷新及目录保护。HTTP OAuth SDK 测试覆盖通用 MCP 服务的动态注册、带后缀回调和重复 resource。真实 Codex App 的新会话和原生生图仍需在安装后验证。
+
+页面宿主生图现使用 `prepare_page_image → 宿主读临时合图 → imagegen referenced_image_paths=[同一路径] → import_image（同一提示词和 preparation）`。`codex-dev-build` 同时生成开发市场源，`codex-dev-refresh` 才通过官方 CLI 刷新安装；不手工改插件缓存。服务协议现为 3，旧后台会返回 `cli_upgrade_required`，需协调现有连接后停止旧开发后台并新开会话。临时合图和准备签名不跨后台重启复用。

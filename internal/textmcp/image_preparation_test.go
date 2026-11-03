@@ -58,7 +58,7 @@ func TestPageImageReadinessResumesBatchIntoExistingSettings(t *testing.T) {
 	raw, _ := json.Marshal(request)
 	target = object(t, s.CallReadOnly(t.Context(), root, "image_target", raw))
 	ready := target["setting_readiness"].(map[string]any)
-	if ready["scope"] != "selected_settings" || ready["status"] != "ready" || ready["available_count"] != float64(2) || ready["missing_count"] != float64(0) || ready["next_action"] != "read_reference_images" {
+	if ready["scope"] != "selected_settings" || ready["status"] != "ready" || ready["available_count"] != float64(2) || ready["missing_count"] != float64(0) || ready["next_action"] != "prepare_page_image" {
 		t.Fatalf("ready=%v", ready)
 	}
 	for i, setting := range []map[string]any{owl, fox} {

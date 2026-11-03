@@ -21,3 +21,18 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/hierarchy_fixture.py 
 `log_stdio.py` 接受一个隔离夹具根目录，其中 `manifest.json` 提供 binary、project 和 data_dir。它透明转发 JSON-RPC，把请求及结果写到该目录的 `host-mcp.jsonl`，图片、HTML 和连接票据保留长度/摘要。仅用于自己的测试连接，不自动安装或切换插件。
 
 完整业务文本可能出现在记录中，所以使用测试内容并将输出留在仓库外。正式保留结果时，只更新验收摘要和少量必要截图。
+
+## 页面参考合图夹具
+
+```bash
+make codex-dev-build
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/page_image_fixture.py --binary "$PWD/build/codex-dev/lumi_dev"
+```
+
+夹具通过真实 stdio MCP 创建四项中文设定和一页分镜，使用仓库图标作为明确的图片替身。它返回 `manifest`、真实 `reference_image_path` 和正常 Web 页面地址。使用宿主读图工具实际查看该路径，再执行：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/page_image_fixture.py --complete /实际返回的/manifest.json --viewed-path /实际返回的/合图.png
+```
+
+完成阶段明确模拟宿主 imagegen，只记录 `referenced_image_paths=[同一路径]` 与原提示词，再经真实 MCP 导入相同 preparation。此夹具不调用图片模型、不消耗生图额度，不能证明真实宿主 imagegen 已接受图片。manifest 保留输入、摘要及导入回执。结束后用 manifest 中的 binary 和 data_dir 执行 `stop --data-dir`，只停止该隔离后台；不停止其他开发实例。

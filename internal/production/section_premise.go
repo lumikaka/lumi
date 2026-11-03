@@ -1,8 +1,13 @@
 package production
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"image"
 	"io"
 	"strings"
 
@@ -112,4 +117,34 @@ func sectionPremiseFromMetadata(asset files.Asset, metadata SectionPremiseMetada
 		SelectionReason: metadata.SelectionReason,
 		ImageInfo:       metadata.ImageInfo,
 	}
+}
+
+// ReadSectionPremiseSources is the common bounded Asset Store reader. Only the
+// service opens internal assets; callers receive a temporary collage, not paths
+// to source files. Decoding and composition preserve the original Web behavior.
+func (service *Service) ReadSectionPremiseSources(ctx context.Context, references []PremiseAssetReference) ([]SectionPremiseSource, []string, error) {
+	sources := make([]SectionPremiseSource, 0, len(references))
+	hashes := make([]string, 0, len(references))
+	for index, reference := range references {
+		if strings.TrimSpace(reference.FileUUID) == "" {
+			return nil, nil, domainError("section_premise_source_unreadable", "设定源图缺少公开 file UUID", fmt.Sprintf("%d「%s」", index+1, reference.Title), nil)
+		}
+		content, err := service.files.OpenContent(ctx, reference.FileUUID)
+		if err != nil {
+			return nil, nil, domainError("section_premise_source_unreadable", "无法读取设定源图", fmt.Sprintf("%d「%s」", index+1, reference.Title), err)
+		}
+		data, readErr := io.ReadAll(io.LimitReader(content.File, 64<<20+1))
+		closeErr := content.File.Close()
+		if readErr != nil || closeErr != nil || len(data) == 0 || len(data) > 64<<20 {
+			return nil, nil, domainError("section_premise_source_unreadable", "设定源图为空、过大或无法读取", fmt.Sprintf("%d「%s」", index+1, reference.Title), readErr)
+		}
+		decoded, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil || decoded.Bounds().Dx() <= 0 || decoded.Bounds().Dy() <= 0 {
+			return nil, nil, domainError("invalid_section_premise_source", "设定源图不是有效图片", fmt.Sprintf("%d「%s」", index+1, reference.Title), err)
+		}
+		sources = append(sources, SectionPremiseSource{Reference: reference, Image: decoded})
+		hash := sha256.Sum256(data)
+		hashes = append(hashes, hex.EncodeToString(hash[:]))
+	}
+	return sources, hashes, nil
 }

@@ -5,15 +5,15 @@ const { RuntimeError } = require('./errors.cjs');
 const categories = {
   project: ['project_init', 'project_overview', 'project_setup', 'runtime_status', 'runtime_release'],
   story: ['story_profile', 'chapters', 'book_outline'], settings: ['settings'], pages: ['pages'],
-  prompts: ['prompt_catalog', 'render_prompt'], media: ['image_target', 'read_image', 'receive_media'], review: [], export: ['export_book'],
+  prompts: ['prompt_catalog', 'render_prompt'], media: ['image_target', 'prepare_page_image', 'read_image', 'receive_media'], review: [], export: ['export_book'],
 };
 const rules = {
   project: ['使用 Host 当前任务绑定；不接收路径或项目标识。project_init 会写入；project_setup 仅 get 只读，update/finalize 需最新 revision。只读业务读取要求项目已由可写任务打开。'],
   story: ['story_profile get、chapters list/get、book_outline 只读。create 使用 project.revision，其他修改使用目标 revision。正文 write 必须提交完整文本；历史不可变，delete 为软删除。'],
   settings: ['list/get 只读。create 使用 list 的 premise.revision；update/delete/select_image 使用目标 revision。select_image 是写入，receive_media 导入授权图片。'],
   pages: ['list/get 只读。create 使用 list 的 state.revision，逐页重读；update/delete/select_image 使用 page.revision。description_md 为正文，storyboard_md 为完整画面描述，不能省略或截断。'],
-  prompts: ['render_prompt 是业务提示词唯一来源，返回完整任务、目标 UUID、expected_revision 和写回契约；当前 Agent 执行后调用业务工具保存。page / setting 可渲染图片提示词；生图由当前 Agent 执行，不启动 Lumi pipeline。setting_board / setting_breakdown 尚未开放。', '所有传入的目标与 context UUID 必须属于当前项目；page_uuid 同时需要 chapter_uuid。不存在或跨项目的上下文 UUID 会拒绝，不默默忽略。', '页面 section_image 先用 render_prompt 取得 before_image 和真实参考状态片段的 fragment_prompt，补入 before_image_prompt/reference_usage_text；section_id 由页面读取。图片模型使用 generation_prompt，导入使用 image_write_back；校验缺参且未执行副作用时可按 schema 补齐，权限拒绝或未知写入/付费提交不得重放。'],
-  media: ['先 image_target 获取比例与最新 revision，再 render_prompt；生图由当前 Agent 使用已可用能力执行。完成后立即调用顶层 receive_media，并在 ghost_call.attachments 交接恰好一张图，不在 args 中自报路径、指纹、字节或 session。call_tool 不能代替附件入口。',
+  prompts: ['render_prompt 提供文本任务，prepare_page_image 提供页面完整生图提示词和签名准备凭据；当前 Agent 执行后调用业务工具保存。page / setting 可渲染图片提示词；生图由当前 Agent 执行，不启动 Lumi pipeline。setting_board / setting_breakdown 尚未开放。', '所有传入的目标与 context UUID 必须属于当前项目；page_uuid 同时需要 chapter_uuid。不存在或跨项目的上下文 UUID 会拒绝，不默默忽略。', '页面使用 prepare_page_image(page_uuid, setting_uuids, additional_direction?)，服务端组装完整 generation_prompt、临时合图路径、image_write_back 与含摘要签名的 preparation；宿主查看该路径后仅引用同一张合图，明确 [] 时不传参考图。receive_media 原样带回 prompt/preparation；校验缺参且未执行副作用时可按 schema 补齐，权限拒绝或未知写入/付费提交不得重放。'],
+  media: ['设定先 image_target；页面先 prepare_page_image 获取完整提示词、现拼合图路径与 preparation，宿主只读并引用该路径，none 模式不传参考。生图由当前 Agent 使用已可用能力执行；若宿主不能读取临时路径则说明能力缺失，不逐张替代或切付费 pipeline。完成后立即调用顶层 receive_media，并在 ghost_call.attachments 交接恰好一张图，不在 args 中自报路径、指纹、字节或 session。call_tool 不能代替附件入口。',
     '单图最多 20 MiB；PNG/JPEG/WebP，完整解码最多 4000 万像素。默认 keep，可选 crop/pad 并保留原图历史。冲突或结果未知先重读目标，不自动重新生成或覆盖。',
     'read_image 返回最长边不超过 1024、JPEG 不超过 120 KiB 的受控参考图。Core 使用返回的 reference_media_url；引擎原生生图使用刚读到的对话参考图。寄存预览成功不代表编辑成功，也不能证明订阅额度来源。'],
   review: ['尚未实现 Cindy 审阅界面；以 book_outline、chapters/settings/pages 的 list/get 逐页读取完整文本进行审阅。'],
@@ -52,7 +52,7 @@ function invalid(name, message) {
   error.correction = repair(name); throw error;
 }
 // The generated schema vocabulary is intentionally small. Fail closed on drift.
-const supported = new Set(['type', 'properties', 'required', 'additionalProperties', 'description', 'enum', 'const', 'allOf', 'if', 'then', 'pattern', 'minimum', 'maximum', 'minLength', 'maxLength', 'minItems', 'maxItems', 'items']);
+const supported = new Set(['type', 'properties', 'required', 'additionalProperties', 'description', 'enum', 'const', 'allOf', 'if', 'then', 'pattern', 'minimum', 'maximum', 'minLength', 'maxLength', 'minItems', 'maxItems', 'uniqueItems', 'items']);
 function check(schema, value, at = '$') {
   for (const k of Object.keys(schema)) if (!supported.has(k)) throw new Error(`Unsupported schema keyword ${k}`);
   if (schema.type) {
@@ -70,6 +70,7 @@ function check(schema, value, at = '$') {
   if (typeof value === 'number' && ((schema.minimum !== undefined && value < schema.minimum) || (schema.maximum !== undefined && value > schema.maximum))) return `${at}: out of bounds`;
   if (Array.isArray(value)) {
     if ((schema.minItems !== undefined && value.length < schema.minItems) || (schema.maxItems !== undefined && value.length > schema.maxItems)) return `${at}: array size`;
+    if (schema.uniqueItems && new Set(value.map(v => JSON.stringify(v))).size !== value.length) return `${at}: duplicate items`;
     if (schema.items) for (let i = 0; i < value.length; i++) { const e = check(schema.items, value[i], `${at}[${i}]`); if (e) return e; }
   } else if (value !== null && typeof value === 'object') {
     for (const k of schema.required || []) if (!Object.hasOwn(value, k)) return `${at}.${k}: required`;
@@ -105,6 +106,6 @@ function validateCall(wrapper) {
   return wrapper;
 }
 const reads = { project_setup: ['get'], story_profile: ['get'], chapters: ['list', 'get'], settings: ['list', 'get'], pages: ['list', 'get'] };
-const readTools = new Set(['project_overview', 'book_outline', 'prompt_catalog', 'render_prompt', 'runtime_status', 'runtime_release', 'image_target', 'read_image']);
+const readTools = new Set(['project_overview', 'book_outline', 'prompt_catalog', 'render_prompt', 'runtime_status', 'runtime_release', 'image_target', 'prepare_page_image', 'read_image']);
 function isWrite(name, input) { validate(name, input); return !readTools.has(name) && !(reads[name]?.includes(input.action)); }
 module.exports = { categories, allowed, specs, discover, repair, validate, validateCall, isWrite, check };

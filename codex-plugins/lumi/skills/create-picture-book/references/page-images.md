@@ -1,67 +1,57 @@
-# 页面生图提示词
+# 页面生图：服务端现拼参考图
 
-适用于正文、封面、封底的宿主生图。Lumi 的 `chapter/section_image` 组合项目当前生效的基础规则、画风、参考图说明和已保存分镜；Codex 负责把渲染结果交给宿主生图并导入。不要仅凭 `comic_storyboard` 的输出自行重写生图提示词，也不要把条漫默认简化为固定三格、四格或 Q 版画风。
+正文、封面、封底统一使用 `prepare_page_image`。Lumi 复用 Web 的合图和完整提示词组装，Codex 负责读临时合图、交给宿主 imagegen，再立即导入。不启动 Lumi provider pipeline，不自动切换付费 API。
 
-## 读取页面和规则
+## 1. 明确本页设定
 
-先 `pages get` 读取实际 `chapter_uuid`、`page_uuid`、`page_role`、完整分镜及 revision，再 `image_target(target_uuid=page_uuid, slot=page_image)` 查询比例。画面描述缺失时先保存分镜；需要按用户要求修改内容时，先更新页面再重新渲染。
+用 `pages get` 读取实际 `page_uuid/page_role`、完整分镜和对白；没有分镜时先保存。用 `image_target(target_uuid=page_uuid, slot=page_image)` 查看项目候选和画布比例，按本页分镜选择实际需要的设定。
 
-检查返回的 `setting_readiness`：
+- `selection_required`：候选清单尚不是本页依赖。明确选择 `setting_uuids`。
+- `missing_images`：先按 [批量设定图](batch-settings.md) 或单项流程补齐。仅有文字、已导入但尚未拆分的总览图都不算设定图就绪。
+- `ready`：可以准备合图；不要逐项 `read_image` 或直接读取资产文件。
+- `no_settings_selected`：核对是否确实无需视觉参考。明确无参考图时传 `[]`，执行真实无参考流程。
 
-| status | 含义与下一步 |
+正文只生成第一页不取消必要设定图。用户明确要求跳过设定图或限制全部生图次数时，遵循其要求，选择 `[]` 并保留其理由；不能把缺图选择静默丢弃或伪报为 ready。
+
+## 2. 准备本次生图
+
+`prepare_page_image` 必填 `page_uuid, setting_uuids`，可选 `additional_direction`（用户本次补充要求）。`setting_uuids` 最多 12 项、不得重复，顺序就是合图编号。Lumi 读取当前采用的图片版本，每次现拼一张 PNG；不调用模型拼图、不创建项目资产或复用合图缓存。缺图、失效或跨项目引用会明确失败。
+
+| 返回字段 | 使用方式 |
 | --- | --- |
-| `selection_required` | 当前为项目候选，不是本页依赖。按分镜选择实际需要的 `setting_uuids` 再查；没有候选时先从故事提取视觉设定。 |
-| `missing_images` | 已选设定中有缺图项。先按 [批量设定图](batch-settings.md) 或单项流程补齐，再重查；仅有文字描述不算完成。 |
-| `ready` | 已选设定都有当前图片。按 `items[].asset_uuid` 实际 `read_image`，这不代表图片已传给宿主。 |
-| `no_settings_selected` | 显式选择了空列表，不能据此宣称已准备好。核对页面是否确实无需可复用视觉设定。 |
+| `reference_mode` | `collage` 或 `none` |
+| `reference_image_path` | 真实可读的临时绝对路径；none 时为空字符串 |
+| `sources` | 有序的 setting_uuid、名称、编号标签、revision、实际 variant_uuid/version_no/file_uuid 和图片 SHA-256 |
+| `image_info` | 合图尺寸、PNG 类型与合成器版本；none 时为 null |
+| `generation_prompt` | 原样提交宿主的完整提示词，最多 12000 字符 |
+| `target` | 项目比例、宿主建议比例、留白及导入建议 |
+| `image_write_back` | 导入目标 target_uuid、slot 和 expected_revision |
+| `preparation` | 原样保留的准备凭据，含选择、补充要求、revision、digest 和 signature |
 
-`items` 包含 `setting_uuid/title/asset_type/expected_revision/has_image`，有图时附 `asset_uuid`；`available_count/missing_count` 只统计当前 scope。省略 `setting_uuids` 时 `scope=project_candidates`，纯文字 `reference` 备注不列入候选；显式选择时 `scope=selected_settings`，按所选 UUID 检查，不受其他章节缺图影响。准备结果不持久化选图，也不修改页面或设定。
+服务端按 `page_role` 解析正文／封面／封底有效基础规则，使用有效 `project_overall_style`（含 Web 的旧数据回退），组装语言指令、实际参考标签、已保存分镜及用户补充要求。不要自行渲染或手改参考说明，不在返回后追加比例、画风或安全边距文字。需要补充时放入 `additional_direction` 后重新准备；需要改分镜时先更新页面。保留项目规格、对白和原有美术规则。
 
-只有用户明确要求跳过设定图／直接使用文字参考，或明确的全部生图次数限制需要如此时，才能在缺图情况下继续。记录实际用户要求，准确使用无参考图说明，不通过空选择伪装为 `ready`；“正文只生成第一页”不是跳过理由。
+## 3. 宿主读图和生图
 
-读取 `prompt_catalog(prompt_group=chapter)` 的模板和 placeholders。以下 `render_prompt` 均使用 `target=page`、同一组实际 `chapter_uuid/page_uuid`，不能用 `target=pages`，也不能只传 `target_uuid`。
+`reference_mode=collage` 时：
 
-按页面角色选择基础片段，调用 `render_prompt`，保存返回的 **`data.fragment_prompt`**：
+1. 使用宿主读图能力（例如 `view_image`）实际查看 **`reference_image_path`**。
+2. 调用宿主 imagegen，`prompt` 原样使用 **`generation_prompt`**，`referenced_image_paths` 仅包含 **同一个绝对路径**。
+3. 不同时传 `num_last_images_to_include`，不传独立设定图、旧合图或额外图片。
 
-| page_role | prompt_group / prompt_key |
-| --- | --- |
-| `body` | `chapter/before_image` |
-| `front_cover` | `chapter/cover_before_image` |
-| `back_cover` | `chapter/back_cover_before_image` |
+`reference_mode=none` 时，不读合图，不传任何参考图片参数；使用服务端已组装的无参考提示词。
 
-模板通过 Lumi 读取项目自定义版本和绘本规格；不要复制仓库默认文字或凭记忆补规则。用户明确的画风要求继续遵循，但不要为了采用自己偏好的画风而丢掉模板中的阅读动线、对白保真和构图约束。
+agent 只读取工具返回的临时合图路径，不读取 `project.sqlite`、`.lumi` 或 `assets`，不扫描目录猜文件，不临时写拼图脚本。工具只返回结构化数据和路径，不返回合图 Base64、data URI 或图片内容块。路径丢失或跨会话不确定时重新 prepare 和读图。
 
-## 准确描述实际参考图
+## 4. 立即导入同一轮结果
 
-- 没有向生图工具提供参考图片时，渲染 `chapter/section_reference_absent`，保存其 `fragment_prompt`。只有文字设定、图片 UUID 或网页链接不代表已提供图片。
-- 实际提供一张带标签的设定拼贴图时，渲染 `chapter/section_reference_present`，通过 `variables.reference_titles` 填写该图中本页涉及的设定项，保存其 `fragment_prompt`。
-- 宿主使用多张独立设定图、上一页或外部角色参考图时，仍读取 `section_reference_present` 的有效片段；仅将其中关于“一张拼贴图／标签”的交付描述改为真实的图片数量、顺序和用途，保留身份一致性要求。不要声称提供了不存在的拼贴图，也不要因此重写基础规则或整份提示词。
+生成后立即调用 `import_image`：
 
-项目图片通过 `read_image(asset_uuid)` 实际放入当前对话；外部参考遵守宿主读图规则。临近生图时核对最近图片确实是本页所需参考，再选择宿主参考图参数；压缩或跨会话后重新读图。
+- `path`：本次宿主实际返回的输出绝对路径，可能在 output hint 文本里；不猜文件名。
+- `target_uuid/slot/expected_revision`：本轮 `image_write_back`。
+- `prompt`：与宿主使用的 `generation_prompt` 逐字一致。
+- `preparation`：本轮返回的整个对象，包括原 digest 和 signature，不编辑任何字段。
+- `fit_mode`：默认 keep，已约定时可选 crop/pad；建议比例不覆盖项目画布或阅读结构。
 
-## 组合并使用完整提示词
+服务端在导入前及最终写入事务内重读当前事实并校验摘要。摘要绑定页面、设定图片版本及内容、顺序标签、有效规则／画风／语言、完整提示词、补充要求和合图输入；随机临时路径不参与来源身份。任一输入变更、提示词不一致或凭据被改写都会拒绝，不创建图片版本。Lumi 服务重启也需重新准备。
 
-调用 `render_prompt`：
-
-| 参数 | 值 |
-| --- | --- |
-| `prompt_group` | `chapter` |
-| `prompt_key` | `section_image` |
-| `target` | `page` |
-| `chapter_uuid` / `page_uuid` | 刚读取的实际 UUID |
-| `variables.before_image_prompt` | 上述基础片段的完整 `fragment_prompt` |
-| `variables.reference_usage_text` | 上述与实际参考图一致的说明 |
-
-`section_id`、`storyboard`、`style_prompt` 由服务端读取当前页面和项目，不在 `variables` 中伪造或覆盖。目录若有项目自定义模板的其他占位符，按实际任务补齐。
-
-返回值各有用途：
-
-- **`generation_prompt`**：传给宿主生图的完整视觉提示词。保留所有基础规则、画风、参考说明和分镜；不翻译、摘要或另写一份替代。
-- **`image_write_back`**：导入用的 `target_uuid`、`slot=page_image` 和 `expected_revision`。核对其目标及版本与本次 `image_target` 一致；不一致时重读页面并重新渲染，不能只换 revision。
-- `prompt` / `write_back`：外层任务上下文和文本写回说明。不要把其中的 JSON 输出要求或写回指令传给图片模型，也不要因此调用 `pages update`。
-
-可在完整 `generation_prompt` 末尾追加本次宿主的比例、安全边距和参考图传递说明，不能覆盖原有规则。明确项目 `target_ratio`；`recommended_ratio` 仅是宿主兼容建议。需要兼容输出时保留完整构图和文字，再按已约定的 `keep/crop/pad` 导入，不因建议比例擅自改变条漫阅读结构。
-
-最终提示词最多 12000 字符，生图和导入保存同一完整字符串。超限时先精简已保存分镜中的冗余描述或缩小任务，再重新渲染，不直接截断基础规则或对白。若缺少 `fragment_prompt`、`generation_prompt` 或 `image_write_back`，先核对并更新实际 CLI；本页暂不生图，不从外层任务文字猜边界或自行编造模板。
-
-生成完成后立即 `import_image`：使用宿主本次返回的真实路径、`image_write_back` 的目标和版本，以及实际发送的完整提示词。继续遵循主技能中的导入、比例检查和审阅流程。
+出现 `page_image_preparation_stale` 或 revision 冲突时，重新准备、读图和生图，不能只替换 revision、digest 或 signature 强行导入。缺少 `prepare_page_image` 或返回字段时先更新实际 CLI／开发后台并新开宿主会话，不回退到逐张设定图或付费 pipeline。

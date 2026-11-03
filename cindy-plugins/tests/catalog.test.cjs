@@ -13,7 +13,7 @@ test('two-stage catalog discloses schemas and rules; unavailable categories have
     for (const spec of d.tools) { assert.ok(spec.description); assert.equal(spec.input_schema.additionalProperties, false); }
   }
   assert.equal(discover({ category: 'media' }).status, 'available');
-  assert.deepEqual(discover({ category: 'media' }).tools.map(t => t.name), ['image_target', 'read_image', 'receive_media']);
+  assert.deepEqual(discover({ category: 'media' }).tools.map(t => t.name), ['image_target', 'prepare_page_image', 'read_image', 'receive_media']);
   assert.deepEqual(discover({ category: 'review' }).tools, []);
   for (const name of ['read_app_connection', 'watch_app_changes', 'read_app_image', 'import_image', 'setting_boards', 'review_book', 'exec', 'tools/call']) assert.equal(allowed.has(name), false);
 });
@@ -49,7 +49,8 @@ test('every action is classified explicitly; finalize, selection and export are 
     pages: { chapter_uuid: uuid, page_uuid: uuid, title: 'x', description_md: 'x', storyboard_md: 'x', variant_uuid: uuid, expected_revision: 0 },
     render_prompt: { prompt_group: 'story', prompt_key: 'story_profile', target: 'story_profile' }, export_book: { format: 'markdown', allow_missing_images: true },
     image_target: { target_uuid: uuid, slot: 'page_image' }, read_image: { asset_uuid: uuid },
-    receive_media: { target_uuid: uuid, slot: 'page_image', expected_revision: 0 },
+    prepare_page_image: { page_uuid: uuid, setting_uuids: [] },
+    receive_media: { target_uuid: uuid, slot: 'setting_image', expected_revision: 0 },
   };
   for (const name of allowed) {
     for (const action of specs[name].input_schema.properties.action?.enum || [undefined]) {

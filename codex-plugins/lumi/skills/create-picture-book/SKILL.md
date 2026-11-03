@@ -33,7 +33,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
 3. **设定**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；先 `settings list/get` 复用已有图片，只有文字不算视觉准备完成。首次带页面生图的创作必须先补齐必要设定图。多个独立主体按 [批量设定图](references/batch-settings.md) 生成总览图、识图，再由 Lumi 裁切入库；每批 1–6 个，复杂场景或精修单独处理。已有文字设定按 UUID 和最新 revision 补图，批量拆分可直接创建新图文设定，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
-5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 渲染 `chapter/section_image`，把完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
+5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 调用 `prepare_page_image`，由宿主读图能力查看返回的临时合图路径，再将同一路径和完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
@@ -48,15 +48,15 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 宿主生图与一致性
 
-**页面生图前必须读 [页面生图提示词](references/page-images.md)**，通过 `render_prompt` 组合项目当前生效的基础规则、画风、参考图说明和已保存分镜。`comic_storyboard` 是分镜创作模板，`image_target` 提供比例、版本和设定资产检查，两者都不能替代 `section_image`。保留返回的完整 `generation_prompt`，不得自行另写、翻译或摘要替换；生图与 `import_image.prompt` 使用同一份最终提示词。
+**页面生图前必须读 [页面生图提示词](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐，然后调用 `prepare_page_image(page_uuid, setting_uuids, additional_direction?)`。Lumi 使用与 Web 相同的有效规则和画风，动态现拼一张带编号、名称的 PNG，返回真实临时绝对路径、来源版本清单、完整 `generation_prompt`、`image_write_back` 和带摘要签名的 `preparation`。明确无需图片参考时传 `[]`，走真实无参考流程。
 
-页面的 `image_target` 还返回 `setting_readiness`。先查看候选，再用 `setting_uuids` 选择本页需要的设定；`missing_images` 时先补图，`ready` 后按返回的 `asset_uuid` 实际 `read_image`。候选列表和空选择都不表示准备完成；用户明确跳过时保留其理由，不假报设定图已就绪。这个检查只读项目事实，不自动生成图片。
+使用宿主读图能力实际查看返回的 `reference_image_path`，紧接着调用 App 原生 imagegen，`referenced_image_paths` **只传这一个相同路径**；none 模式不传参考参数。页面不再逐张 `read_image`，不使用 `num_last_images_to_include`，不改写参考说明，不编写拼图脚本，不直接读取项目数据库、`.lumi` 或资产目录。保留项目画布、对白和阅读结构，完整提示词不追加、不翻译、不摘要；本次补充要求通过 `additional_direction` 交给服务端。
 
-页面和单项设定图先 `image_target(target_uuid, slot)`，保存 `expected_revision`，读取 `target_ratio`、`recommended_ratio`、`generation_hint` 和 `suggested_fit`。页面按参考文档核对渲染版本，可在完整生图提示词末尾追加宿主比例和安全边距说明。`target_ratio` 是项目画布；`recommended_ratio` 仅为宿主兼容建议，不覆盖项目比例、分镜构图或用户画风，也不是像素保证。
+页面导入原样带回同一 `generation_prompt` 和整个 `preparation`。服务端重算当前事实摘要，所选图片版本、页面或规则变化时拒绝导入且不创建图片版本；重新准备、读图和生图，不能仅替换 revision 或摘要。临时路径失效或 Lumi 服务重启时重新准备。
 
-需要角色/场景一致性时，先 `settings get` 取得 `current_variant.asset.uuid`，再 `read_image(asset_uuid)` 把相关设定图实际放进当前对话。可补充上一页 `current_image.asset.uuid` 的参考。紧接着调用 App 原生生图，以最近图片为参考（如 `num_last_images_to_include`），确认最近几张确实是本页所需图，遵守宿主参考图数量上限；跨会话/压缩后重新读图，不把 UUID 当成生图工具可见的图像。不要直接读取资产目录来传路径。
+单项设定图先 `image_target(target_uuid, slot=setting_image)` 查询比例和 revision；需要视觉参考时 `settings get → read_image` 后使用宿主参考机制。`target_ratio` 是项目画布，`recommended_ratio` 仅为宿主兼容建议。页面的 `image_target` 只负责候选／缺图检查，实际生成输入来自 `prepare_page_image`。
 
-**页面和单项设定图生成完成后立即 `import_image`**：`path` 必须取宿主本次返回的真实绝对路径（也可能在 output hint 文本里），传目标 UUID、slot、revision、原始 prompt。不能假定有 `savedPath` 字段，不能猜目录或扫描生成文件。宿主没提供可访问路径时说明缺失，不能伪造导入成功。
+**页面和单项设定图生成完成后立即 `import_image`**：`path` 必须取宿主本次返回的真实绝对路径（也可能在 output hint 文本里），传目标 UUID、slot、revision、原始 prompt；页面还必须带回本轮完整 `preparation`。不能假定有 `savedPath` 字段，不能猜目录或扫描生成文件。宿主没提供可访问路径时说明缺失，不能伪造导入成功。
 
 默认先用 `fit_mode=keep` 保留原图；已约定居中裁切/补边时用 `crop/pad`。查看导入返回的 `ratio_matches`、`ratio_deviation`、`warnings`：偏差不阻塞导入；页面适合在主体安全时 crop，设定或边缘文字宜 pad，必要时下一张调整构图。不要仅因像素不精确反复重生。处理后的图有独立版本，原图保留。
 

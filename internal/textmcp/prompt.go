@@ -160,7 +160,11 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	values["chapters_json"] = jsonText(book.Chapters)
 	values["project_context_json"] = jsonText(book.Project)
 	values["premise_context_json"] = jsonText(book.Settings)
-	values["style_name"], values["style_prompt"] = book.Premise.DefaultStyle, book.Premise.DefaultStyle
+	style, err := production.EffectiveImageStyle(ctx, store, st, book.Premise.DefaultStyle, book.Project.GenerationLanguage)
+	if err != nil {
+		return nil, err
+	}
+	values["style_name"], values["style_prompt"] = style, style
 	if _, ok := values["input_prompt"]; !ok {
 		values["input_prompt"] = book.Setup.OriginalInput
 	}

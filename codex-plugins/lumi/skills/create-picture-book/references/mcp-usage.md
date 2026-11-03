@@ -117,7 +117,7 @@
 | `story_profile` | 无 | `story_profile write`；profile revision |
 | `chapter` | `chapter_uuid` | `chapters write`；章节 revision |
 | `pages` | `chapter_uuid` | `pages create`；页面集合 revision |
-| `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；`chapter/section_image` 生图用 `generation_prompt` 和 `image_write_back` 导入，见 [页面生图提示词](page-images.md)；单页 revision |
+| `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `prepare_page_image` 的 `generation_prompt/image_write_back/preparation` 导入，见 [页面生图提示词](page-images.md)；单页 revision |
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
 | `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；额外返回供宿主生图使用的 `generation_prompt` |
@@ -142,7 +142,7 @@
 
 ## 批量设定图
 
-页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图，已有图按 `asset_uuid` 读取；详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
+页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图，再调用 `prepare_page_image(page_uuid, setting_uuids, additional_direction?)` 返回现拼合图路径；宿主读该路径并通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
 执行前读 [批量设定图流程](batch-settings.md)。这些工具只保存、裁切和绑定图片；生成及视觉定位由 Codex 完成。
 
