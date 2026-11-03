@@ -92,7 +92,7 @@ func TestAgentHandlersExposeProjectScopedResourcesWithoutInternalIDs(t *testing.
 		t.Fatal(err)
 	}
 	providers := provider.NewService(app, provider.NewMemorySecretStore())
-	_, err = providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/agent-model", APIKey: "http-agent-secret"})
+	_, err = providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/agent-model", DefaultImageModel: "openai/gpt-6-sol", APIKey: "http-agent-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}

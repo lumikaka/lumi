@@ -184,7 +184,11 @@ func newQueueHarnessWithPictureBook(t *testing.T, pictureBook *project.PictureBo
 		t.Fatal(err)
 	}
 	providerService := provider.NewService(app, provider.NewMemorySecretStore())
-	configured, err := providerService.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/story-model", DefaultImageModel: "openai/gpt-image-1.5", APIKey: "project-must-never-contain-this-api-key"})
+	imageModel := "openai/gpt-image-1.5"
+	if pictureBook != nil && pictureBook.Format == project.PictureBookVertical {
+		imageModel = "openai/gpt-6-sol"
+	}
+	configured, err := providerService.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/story-model", DefaultImageModel: imageModel, APIKey: "project-must-never-contain-this-api-key"})
 	if err != nil {
 		t.Fatal(err)
 	}

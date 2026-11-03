@@ -266,7 +266,11 @@ func newAgentHarnessWithCreateInput(t *testing.T, input project.CreateInput, res
 		t.Fatal(err)
 	}
 	providers := provider.NewService(app, provider.NewMemorySecretStore())
-	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/agent-model", DefaultImageModel: "test/image-model", APIKey: "must-not-leak"})
+	imageModel := "test/image-model"
+	if input.PictureBook != nil && input.PictureBook.Format == project.PictureBookVertical {
+		imageModel = "openai/gpt-6-sol"
+	}
+	configured, err := providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/agent-model", DefaultImageModel: imageModel, APIKey: "must-not-leak"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1655,7 +1659,7 @@ func TestChatImageGenRunsSynchronouslyWritesBackAndRecoversIdempotently(t *testi
 	requests := append([]imagegen.Request(nil), imageClient.requests...)
 	deadlines := append([]time.Time(nil), imageClient.deadlines...)
 	imageClient.mu.Unlock()
-	if len(requests) != 1 || len(deadlines) != 1 || time.Until(deadlines[0]) < 9*time.Minute || requests[0].Model != "test/image-model" || requests[0].Size != "1536x1024" || requests[0].Quality != "medium" || len(requests[0].Images) != 1 {
+	if len(requests) != 1 || len(deadlines) != 1 || time.Until(deadlines[0]) < 9*time.Minute || requests[0].Model != "openai/gpt-6-sol" || requests[0].Size != "1536x1024" || requests[0].Quality != "medium" || len(requests[0].Images) != 1 {
 		t.Fatalf("image requests=%+v", requests)
 	}
 	assets, err := production.NewService(harness.store, nil).ListPremiseAssets(ctx, "", "active")

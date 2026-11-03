@@ -67,12 +67,8 @@ func ResolveImageSize(profile project.PictureBookProfile, providerType, model, i
 			return ImageSize{}, &UnsupportedError{ProviderType: providerType, Model: model, Ratio: profile.AspectRatio, ImageAPIMode: imageAPIMode, ModelModeMismatch: true}
 		}
 	}
-	if profile.Format == project.PictureBookVertical {
-		if providerType == provider.TypeAliyunBailian {
-			return ImageSize{Width: 768, Height: 2304}, nil
-		}
-		return ImageSize{Width: 1024, Height: 1536}, nil
-	}
+	// Vertical strips use the same exact-ratio capability checks as other
+	// formats. A portrait 2:3 canvas cannot stand in for their fixed 1:3 ratio.
 	ratio := profile.AspectRatio
 	switch providerType {
 	case provider.TypeCloudflareAIGateway, provider.LegacyTypeOpenAICompatible:
@@ -100,6 +96,9 @@ func ResolveImageSize(profile project.PictureBookProfile, providerType, model, i
 		}
 	case provider.TypeAliyunBailian:
 		if model == provider.BailianImageModel || model == provider.BailianImageModelPro {
+			if profile.Format == project.PictureBookVertical {
+				return ImageSize{Width: 768, Height: 2304}, nil
+			}
 			switch ratio.Mode {
 			case project.AspectLandscape:
 				return ImageSize{Width: 1536, Height: 1152}, nil

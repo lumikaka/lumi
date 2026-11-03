@@ -105,16 +105,26 @@ func TestRelayProductionImageUsesImageGroup(t *testing.T) {
 	}
 }
 
-func TestRelayImagesComicTaskValidatesExactLandscapeSize(t *testing.T) {
+func TestRelayImagesComicTaskValidatesExactSize(t *testing.T) {
 	for _, global := range []bool{false, true} {
 		for _, ratio := range []struct {
 			name          string
+			format        string
 			width, height int
 			supported     bool
-		}{{"3:2", 3, 2, true}, {"4:3", 4, 3, false}} {
+		}{
+			{"3:2", project.PictureBookComicStory, 3, 2, true},
+			{"4:3", project.PictureBookComicStory, 4, 3, false},
+			{"vertical strip 1:3", project.PictureBookVertical, 1, 3, false},
+		} {
 			t.Run(map[bool]string{false: "project", true: "global"}[global]+"/"+ratio.name, func(t *testing.T) {
 				layout := project.ComicLayoutPageComic
-				h := newQueueHarnessWithPictureBook(t, &project.PictureBookInput{Format: project.PictureBookComicStory, AspectRatio: &project.AspectRatioInput{Mode: project.AspectCustom, Width: ratio.width, Height: ratio.height}, ComicLayout: &layout})
+				pictureBook := &project.PictureBookInput{Format: ratio.format}
+				if ratio.format == project.PictureBookComicStory {
+					pictureBook.AspectRatio = &project.AspectRatioInput{Mode: project.AspectCustom, Width: ratio.width, Height: ratio.height}
+					pictureBook.ComicLayout = &layout
+				}
+				h := newQueueHarnessWithPictureBook(t, pictureBook)
 				ctx := context.Background()
 				imageClient := &recordingImageProvider{content: productionPNG(t)}
 				h.queue.WithImageClient(imageClient)

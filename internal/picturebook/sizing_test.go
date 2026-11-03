@@ -38,8 +38,10 @@ func TestResolveImageSizeUsesExactRegisteredCapabilities(t *testing.T) {
 		{"terra square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1024, 1024}},
 		{"terra custom", profile(project.PictureBookClassic, project.AspectCustom, 5, 2), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1520, 608}},
 		{"terra custom larger exact size", profile(project.PictureBookClassic, project.AspectCustom, 100, 99), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{1600, 1584}},
-		{"vertical strip bailian", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeAliyunBailian, "anything", ImageSize{768, 2304}},
-		{"vertical strip cloudflare", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeCloudflareAIGateway, "anything", ImageSize{1024, 1536}},
+		{"vertical strip bailian", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeAliyunBailian, provider.BailianImageModel, ImageSize{768, 2304}},
+		{"vertical strip cloudflare gpt 6 sol", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeCloudflareAIGateway, "openai/gpt-6-sol", ImageSize{512, 1536}},
+		{"vertical strip cloudflare terra", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-terra", ImageSize{512, 1536}},
+		{"vertical strip cloudflare sol", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeCloudflareAIGateway, "openai/gpt-5.6-sol", ImageSize{512, 1536}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -65,6 +67,9 @@ func TestResolveImageSizeRejectsUnknownOrInexactCapabilities(t *testing.T) {
 		{provider.TypeAliyunBailian, "qwen-image-3.0-unknown", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 		{provider.TypeCloudflareAIGateway, "unknown/image-model", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
 		{"unknown", "unknown", profile(project.PictureBookClassic, project.AspectSquare, 1, 1)},
+		{provider.TypeCloudflareAIGateway, "openai/gpt-image-1.5", profile(project.PictureBookVertical, project.AspectFixed, 1, 3)},
+		{provider.TypeCloudflareAIGateway, "unknown", profile(project.PictureBookVertical, project.AspectFixed, 1, 3)},
+		{provider.TypeAliyunBailian, "unknown", profile(project.PictureBookVertical, project.AspectFixed, 1, 3)},
 	} {
 		_, err := ResolveImageSize(test.profile, test.providerType, test.model, "")
 		var unsupported *UnsupportedError

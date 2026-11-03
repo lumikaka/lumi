@@ -459,7 +459,7 @@ func (service *Service) loadContextPrompts(ctx context.Context, store *project.S
 	// proposes the immutable page ratio. Finalization still validates it again.
 	resolved, _, _, resolveErr := service.resolveProjectModel(ctx, store, modelsettings.ProjectImage, modelsettings.KindImage, "", "")
 	if resolveErr == nil && resolved.ProviderType == provider.TypeOpenAIRelay {
-		prompts.Assistant += "\n\n当前项目图片供应商为中转站，Images 和 Responses 模式均仅按三档尺寸接入：1024x1024（1:1）、1536x1024（3:2）、1024x1536（2:3）。规划 Project Setup 和后续自动生成前必须考虑此限制。用户没有指定精确比例时，横版建议使用 aspect_ratio={\"mode\":\"custom\",\"width\":3,\"height\":2}，竖版建议使用 custom 2:3，方形使用 square；作为 Agent 建议向用户说明。landscape/portrait 预设实际为 4:3/3:4，不适用于当前中转站。用户明确要求其他比例时不得擅自改动，说明需更换支持该比例的图片供应商或由用户调整比例。vertical_strip 保持既有分段尺寸规则。"
+		prompts.Assistant += "\n\n当前项目图片供应商为中转站，Images 和 Responses 模式均仅按三档尺寸接入：1024x1024（1:1）、1536x1024（3:2）、1024x1536（2:3）。规划 Project Setup 和后续自动生成前必须考虑此限制。用户没有指定精确比例时，横版建议使用 aspect_ratio={\"mode\":\"custom\",\"width\":3,\"height\":2}，竖版建议使用 custom 2:3，方形使用 square；作为 Agent 建议向用户说明。landscape/portrait 预设实际为 4:3/3:4，不适用于当前中转站。用户明确要求其他比例时不得擅自改动，说明需更换支持该比例的图片供应商或由用户调整比例。vertical_strip 固定为 1:3，当前中转站不支持；必须切换到支持 1:3 的图片供应商，不能改成 2:3。"
 	}
 	return prompts, nil
 }

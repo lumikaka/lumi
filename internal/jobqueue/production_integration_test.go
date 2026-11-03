@@ -2258,7 +2258,7 @@ func TestComicGenerationSnapshotFreezesCurrentStoryboardAndPremiseVariants(t *te
 	if err := json.Unmarshal(task.InputSnapshot, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Version != 5 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || snapshot.OutputSize != "1024x1536" || snapshot.StoryboardUUID != section.CurrentStoryboard.UUID || len(snapshot.PremiseAssets) != 1 || snapshot.PremiseAssets[0].AssetUUID != asset.UUID || snapshot.PremiseAssets[0].VariantUUID != asset.CurrentVariant.UUID || !strings.Contains(snapshot.PromptTemplate, "FROZEN BASE IMAGE RULES") || strings.Contains(snapshot.PromptTemplate, "{{before_image_prompt}}") || snapshot.ReferencePresentPrompt != "FROZEN REFERENCES\n{{reference_titles}}" || snapshot.ReferenceAbsentPrompt != "FROZEN NO REFERENCES" || snapshot.AdditionalDirectionPrompt != "FROZEN DIRECTION\n{{guidance_prompt}}" || snapshot.LanguageInstruction != "FROZEN COMIC LANGUAGE" {
+	if snapshot.Version != 5 || snapshot.PictureBook == nil || snapshot.PictureBook.Format != project.PictureBookVertical || snapshot.OutputSize != "512x1536" || snapshot.StoryboardUUID != section.CurrentStoryboard.UUID || len(snapshot.PremiseAssets) != 1 || snapshot.PremiseAssets[0].AssetUUID != asset.UUID || snapshot.PremiseAssets[0].VariantUUID != asset.CurrentVariant.UUID || !strings.Contains(snapshot.PromptTemplate, "FROZEN BASE IMAGE RULES") || strings.Contains(snapshot.PromptTemplate, "{{before_image_prompt}}") || snapshot.ReferencePresentPrompt != "FROZEN REFERENCES\n{{reference_titles}}" || snapshot.ReferenceAbsentPrompt != "FROZEN NO REFERENCES" || snapshot.AdditionalDirectionPrompt != "FROZEN DIRECTION\n{{guidance_prompt}}" || snapshot.LanguageInstruction != "FROZEN COMIC LANGUAGE" {
 		t.Fatalf("snapshot=%+v", snapshot)
 	}
 	if _, err := harness.stories.UpdatePromptGroup(ctx, story.UpdatePromptGroupInput{
@@ -2400,10 +2400,10 @@ func TestComicSectionAutomaticallySelectsReferencesAndSendsFinalRequest(t *testi
 		t.Fatalf("image requests = %d", len(requests))
 	}
 	request := requests[0]
-	if request.Size != defaultComicImageSize {
+	if request.Size != "512x1536" {
 		t.Fatalf("Cloudflare AI Gateway section image size=%q", request.Size)
 	}
-	if request.Model != "openai/gpt-image-1.5" {
+	if request.Model != "openai/gpt-6-sol" {
 		t.Fatalf("Cloudflare AI Gateway section image model=%q", request.Model)
 	}
 	for _, required := range []string{"## 生成规则", "## 分镜构图要求", "## 设定图约束", "一张 Section 专属设定拼贴图", asset.Title, section.CurrentStoryboard.ContentMD, "项目语言：简体中文"} {

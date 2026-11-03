@@ -41,7 +41,6 @@ func TestRelayImagesKeepsExactStandardSizes(t *testing.T) {
 			{"landscape", profile(project.PictureBookComicStory, project.AspectCustom, 3, 2), ImageSize{1536, 1024}},
 			{"portrait", profile(project.PictureBookClassic, project.AspectCustom, 2, 3), ImageSize{1024, 1536}},
 			{"square", profile(project.PictureBookClassic, project.AspectSquare, 1, 1), ImageSize{1024, 1024}},
-			{"vertical compatibility", profile(project.PictureBookVertical, project.AspectFixed, 1, 3), ImageSize{1024, 1536}},
 		} {
 			t.Run(model+"/"+tc.name, func(t *testing.T) {
 				got, err := ResolveImageSize(tc.profile, provider.TypeOpenAIRelay, model, sitesettings.ImageAPIImages)
@@ -59,6 +58,23 @@ func TestRelayImagesKeepsExactStandardSizes(t *testing.T) {
 			if !strings.Contains(SizeErrorDetails(err, ""), "三档尺寸") {
 				t.Fatal("missing relay size restriction in error details")
 			}
+		}
+	}
+}
+
+func TestRelayRejectsVerticalStripInEveryAPIMode(t *testing.T) {
+	for _, mode := range []string{"", sitesettings.ImageAPIResponses, sitesettings.ImageAPIImages} {
+		for _, model := range sitesettings.RelayImageModels(mode) {
+			t.Run(mode+"/"+model, func(t *testing.T) {
+				_, err := ResolveImageSize(profile(project.PictureBookVertical, project.AspectFixed, 1, 3), provider.TypeOpenAIRelay, model, mode)
+				var unsupported *UnsupportedError
+				if !errors.As(err, &unsupported) || unsupported.ModelModeMismatch {
+					t.Fatalf("vertical strip must fail exact-ratio validation: %v", err)
+				}
+				if details := SizeErrorDetails(err, ""); !strings.Contains(details, "目标比例=1:3") || !strings.Contains(details, "三档尺寸") {
+					t.Fatalf("missing ratio restriction: %s", details)
+				}
+			})
 		}
 	}
 }

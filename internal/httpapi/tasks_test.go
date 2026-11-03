@@ -116,7 +116,7 @@ func TestComicImageBatchHandlerUsesPublicEnvelopeAndPreflightStatuses(t *testing
 		t.Fatal(err)
 	}
 	providers := provider.NewService(app, provider.NewMemorySecretStore())
-	_, err = providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/story-model", DefaultImageModel: "openai/gpt-image-1.5", APIKey: "batch-handler-secret"})
+	_, err = providers.Create(ctx, provider.CreateInput{AccountID: "0123456789abcdef0123456789abcdef", DefaultModel: "test/story-model", DefaultImageModel: "openai/gpt-6-sol", APIKey: "batch-handler-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}

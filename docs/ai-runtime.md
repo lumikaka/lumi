@@ -25,7 +25,7 @@ Responses 请求使用 `input`、`max_output_tokens` 和 `store: false`。文本
 
 Responses 模式保留原 `image_generation` 工具调用及模型选项。Images 模式提供 `gpt-image-2`、`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`，具体可用性取决于中转站。模型与请求格式参考 [GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill/blob/main/src/gpt_image_cli/cli.py)：无参考图请求 `POST {base_url}/images/generations`（JSON）；有参考图请求 `POST {base_url}/images/edits`（multipart，按顺序上传 `image[]`）。显式发送模型、`n=1` 和 PNG 输出格式，不传 `response_format`。解析 `data[].b64_json`，兼容图片 URL 的受限下载。请求失败不自动切换协议。
 
-图片预检、草稿定稿、自动生成工作流及漫画图片任务使用同一个尺寸解析器，显式传入当前图片调用模式。中转站 Responses（含缺省模式）和 Images 均按 `1024×1024`、`1536×1024`、`1024×1536` 三档精确比例接入，分别对应 1:1、3:2、2:3；Images 仍按图片模型目录校验，不因模型名称较新就开放自定义尺寸。4:3、3:4 等比例在预检、定稿和 YOLO 创建前返回 `image_aspect_ratio_unsupported`，不裁剪或近似替换。新项目对话按实际图片供应商提供比例建议；中转站且用户未指定精确比例时建议 custom 3:2、custom 2:3 或 square，用户明确指定的比例不得擅自改动。竖条继续沿用现有分段尺寸。百炼和 Cloudflare 的尺寸规则保持不变，Cloudflare 图片工具继续支持自定义尺寸。错误详情区分模式／模型不匹配与三档尺寸限制，并附带公开模型、模式和比例信息。历史任务重试仍沿用已冻结的输入快照。
+图片预检、草稿定稿、自动生成工作流及漫画图片任务使用同一个尺寸解析器，显式传入当前图片调用模式。中转站 Responses（含缺省模式）和 Images 均按 `1024×1024`、`1536×1024`、`1024×1536` 三档精确比例接入，分别对应 1:1、3:2、2:3；Images 仍按图片模型目录校验，不因模型名称较新就开放自定义尺寸。4:3、3:4 等比例在预检、定稿和 YOLO 创建前返回 `image_aspect_ratio_unsupported`，不裁剪或近似替换。新项目对话按实际图片供应商提供比例建议；中转站且用户未指定精确比例时建议 custom 3:2、custom 2:3 或 square，用户明确指定的比例不得擅自改动。条漫 `vertical_strip` 的固定 1:3 同样参与精确比例校验：中转站拒绝该比例；Cloudflare 的 `openai/gpt-6-sol`、`openai/gpt-5.6-terra`、`openai/gpt-5.6-sol` 使用图片工具自定义尺寸，当前为 `512×1536`；百炼保持 `768×2304`。不得把条漫静默改成 2:3。错误详情区分模式／模型不匹配与三档尺寸限制，并附带公开模型、模式和比例信息。历史任务重试仍沿用已冻结的输入快照。
 
 Provider 响应提供 `image_api_mode`、`image_models_by_mode` 和 `text_models`，设置页及全局、项目模型选项使用后端目录。切换模式后，不兼容的项目或全局图片覆盖保留并显示失效，不静默改用其他模型。切换时需要重新选择兼容模型。
 
