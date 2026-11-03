@@ -12,7 +12,7 @@ Lumi 的教程围绕一条完整路径组织：先让软件和模型服务可以
 
 ## 推荐学习路径
 
-已有 Codex App 的 macOS 用户也可以[安装 Codex 绘本插件](codex-installation/)，复制一句提示词即可开始安装，无需配置 API key。
+已有 Codex App 的 macOS 用户也可以{{< doc-link "codex-installation" >}}安装 Codex 绘本插件{{< /doc-link >}}，复制一句提示词即可开始安装，无需配置 API key。
 
 1. 完成安装并通过首次启动提醒。
 2. 连接模型服务，确认 Lumi 显示“连接已验证”。

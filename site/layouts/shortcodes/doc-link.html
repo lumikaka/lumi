@@ -1,0 +1,2 @@
+{{- $url := .Page.RelRef (dict "path" (.Get 0)) -}}
+<a href="{{ partial "relative-url.html" (dict "Page" .Page "URL" $url) }}">{{ .Inner }}</a>
