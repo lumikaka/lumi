@@ -49,7 +49,7 @@ func (s *Service) review(ctx context.Context, store *project.Store, st *story.Se
 		if a.ChapterUUID != "" {
 			data["scope"], data["open_url"] = "chapter", base+"/chapters/"+a.ChapterUUID+"/preview"
 		} else {
-			data["open_url"] = base + "/preview"
+			data["open_url"] = base + "/"
 		}
 		if a.Mode == "" {
 			data["compatibility"] = "legacy_chapter_preview"

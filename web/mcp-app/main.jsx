@@ -9,6 +9,7 @@ import { PreviewCache } from './images.js'
 import { createAppAPI, workspaceLaunch, workspaceOrigin } from './workspace.js'
 import { createAppImage } from './WorkspaceImage.jsx'
 import TextCandidates from '../src/workspace/TextCandidates.jsx'
+import ChapterReview from './ChapterReview.jsx'
 import { WorkspaceRuntime } from '../src/workspace/runtime.jsx'
 import { SimpleHomePage, SimpleBooksPage, SimplePagesPage, SimplePageView, SimpleSettingsPage, SimpleSettingDetailPage, SimpleStoryPage, SimpleBookView, SimpleWorkPreview, SimpleLoading, SimpleError } from '../src/pages/SimpleProjectPages.jsx'
 import './workspace.scss'
@@ -30,7 +31,7 @@ function Workspace({launch}) {
   const origin = workspaceOrigin(project,launch)
   const runtime = useMemo(()=>({DownloadLink:({href,children,...props})=><a {...props} href={origin+href} onClick={event=>{event.preventDefault();if(!href.startsWith(`/media/projects/${launch.project_uuid}/comic-exports/`))return;bridge.request('ui/open-link',{url:origin+href}).then(result=>{if(result?.isError)setStatus('下载入口未打开，请在 Lumi 中继续')}).catch(()=>setStatus('下载入口未打开，请在 Lumi 中继续'))}}>{children}</a>,api,Image:createAppImage(previews,launch.project_uuid),loadImage:async(page,{large,signal,attempt})=>{const uuid=page.current_image?.asset?.uuid||page.asset_uuid;const edge=large?1024:384;if(attempt)previews.evict(launch.project_uuid,uuid,edge);return{src:(await previews.load(launch.project_uuid,uuid,edge,signal)).data_uri}},capabilities:{fileUpload:true,download:true,generation:false,chat:false}}),[api,launch.project_uuid,origin])
   const base = `/projects/${launch.project_uuid}`
-  const url = location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
+  const url = location.pathname === `${base}/preview` ? `${origin}${base}/` : location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
   useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
   useEffect(()=>{navigate(launch.path,{replace:true});void client.invalidateQueries({predicate:query=>query.queryKey?.[1]===launch.project_uuid,refetchType:'active'})},[launch.path,launch.sequence])
   return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
@@ -42,8 +43,8 @@ function Workspace({launch}) {
       {projectQuery.error?<SimpleError error={projectQuery.error} onRetry={()=>projectQuery.refetch()}/>:!project?<SimpleLoading message="正在读取作品…"/>:<Routes>
         <Route path={`${base}/`} element={<SimpleHomePage project={project} projectUuid={launch.project_uuid} projectQuery={projectQuery}/>}/>
         <Route path={`${base}/chapters`} element={<SimpleBooksPage projectUuid={launch.project_uuid}/>}/>
-        <Route path={`${base}/chapters/:chapterUuid`} element={<SimplePagesPage project={project} projectUuid={launch.project_uuid}/>}/>
-        <Route path={`${base}/chapters/:chapterUuid/sections/:sectionUuid`} element={<SimplePageView project={project} projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/chapters/:chapterUuid`} element={<ChapterReview project={project} projectUuid={launch.project_uuid}/>}/>
+        <Route path={`${base}/chapters/:chapterUuid/sections/:sectionUuid`} element={<SimplePageView key={location.pathname + location.search} project={project} projectUuid={launch.project_uuid} initialCandidatesOpen={new URLSearchParams(location.search).get('panel') === 'candidates'}/>}/>
         <Route path={`${base}/premise`} element={<SimpleSettingsPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/premise/assets/:assetUuid`} element={<SimpleSettingDetailPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/story`} element={<SimpleStoryPage project={project} projectUuid={launch.project_uuid}/>}/>

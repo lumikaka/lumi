@@ -1,6 +1,5 @@
 @use 'sass:color'
 @use './design-tokens' as *
-@use './comic-export-dialog'
 
 $ink: $color-text
 $muted: $color-muted
@@ -3418,6 +3417,215 @@ $sage: $color-success
   color: $color-danger
   font-size: $font-size-small
 
+.lumi-dialog.comic-export-dialog
+  width: min(720px, calc(100vw - 32px))
+  max-height: calc(100vh - 32px)
+  overflow: hidden
+
+.comic-export-dialog__body
+  max-height: calc(100vh - 156px)
+  overflow: auto
+
+.comic-export-dialog__formats
+  margin: 0
+  padding: 0
+  display: grid
+  gap: 7px
+  border: 0
+
+  legend
+    padding: 0
+    font-size: $font-size-small
+    font-weight: $font-weight-semibold
+
+  > p
+    margin: 0
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.5
+
+  > div
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 10px
+
+.comic-export-dialog__format-option
+  min-width: 0
+  min-height: 88px
+  padding: 14px
+  display: flex
+  align-items: flex-start
+  gap: 11px
+  border: 1px solid $color-border-subtle
+  color: $color-text
+  background: $color-surface
+  text-align: left
+
+  > svg
+    flex: 0 0 auto
+    color: $color-muted
+
+  > span
+    min-width: 0
+    display: grid
+    gap: 4px
+
+  strong
+    font-size: $font-size-small
+
+  small
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: 600
+    line-height: 1.45
+
+  &:hover:not(:disabled)
+    border-color: $color-accent
+    background: $color-surface-subtle
+
+  &[aria-pressed="true"]
+    border-color: $color-accent
+    color: $color-link
+    background: $color-accent-muted
+    box-shadow: 0 0 0 1px $color-accent
+
+    > svg
+      color: $color-accent
+
+  &[aria-pressed="true"]:hover:not(:disabled)
+    border-color: $color-link
+    color: $color-link
+    background: rgba($color-accent, .16)
+    box-shadow: 0 0 0 2px rgba($color-accent, .35)
+
+.comic-export-dialog__pending,
+.comic-export-dialog__empty,
+.comic-export-dialog__summary
+  padding: 14px
+  display: grid
+  gap: 7px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  strong,
+  p
+    margin: 0
+
+  p
+    color: $color-muted
+    font-size: $font-size-small
+    line-height: 1.55
+
+.comic-export-dialog__empty
+  border-color: rgba($color-warning, .3)
+  background: $color-warning-muted
+
+.comic-export-dialog__pending progress
+  width: 100%
+
+.comic-export-dialog__facts
+  margin: 0
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 1px
+  overflow: hidden
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+  background: $color-border-subtle
+
+  div
+    min-width: 0
+    padding: 10px 12px
+    display: grid
+    gap: 3px
+    background: $color-surface
+
+  dt
+    color: $color-muted
+    font-size: $font-size-micro
+    font-weight: $font-weight-semibold
+
+  dd
+    min-width: 0
+    margin: 0
+    overflow: hidden
+    font-size: $font-size-small
+    font-weight: $font-weight-semibold
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  code
+    font-size: inherit
+
+  .comic-export-dialog__hash
+    grid-column: 1 / -1
+
+    dd
+      overflow: visible
+      overflow-wrap: anywhere
+      text-overflow: clip
+      white-space: normal
+
+.comic-export-dialog__progress
+  padding: 12px
+  display: grid
+  gap: 8px
+  border-radius: $radius-sm
+  background: $color-accent-muted
+
+  > div
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    font-size: $font-size-small
+
+  progress
+    width: 100%
+    accent-color: $color-accent
+
+.comic-export-dialog__hint
+  margin: 0
+  color: $color-muted
+  font-size: $font-size-small
+  line-height: 1.55
+
+.comic-export-dialog__missing
+  max-height: min(360px, 45vh)
+  margin: 0
+  padding: 0
+  display: grid
+  overflow: auto
+  list-style: none
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-sm
+
+  li
+    min-width: 0
+    padding: 9px 11px
+    display: flex
+    align-items: baseline
+    gap: 10px
+
+    & + li
+      border-top: 1px solid $color-border-subtle
+
+  strong
+    flex: 0 0 auto
+    font-size: $font-size-small
+
+  span
+    min-width: 0
+    overflow: hidden
+    color: $color-muted
+    font-size: $font-size-small
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.comic-export-dialog .lumi-dialog__actions .button-link
+  flex: 0 0 auto
+
 .premise-danger-button
   border-color: rgba($color-danger, .35)
   color: $color-danger
@@ -5132,6 +5340,127 @@ $sage: $color-success
     font-weight: $font-weight-semibold
     white-space: nowrap
 
+.chapter-preview__strip
+  width: min(100%, 760px)
+  margin: 0 auto
+  display: grid
+  gap: 16px
+
+.chapter-preview__pager
+  width: min(100%, 980px)
+  margin: 0 auto
+  display: grid
+  gap: 12px
+
+  > .chapter-preview__section
+    width: 100%
+
+.chapter-preview__pager-controls
+  min-height: 40px
+  display: grid
+  grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr)
+  align-items: center
+  gap: 12px
+
+  button
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 6px
+
+  button:first-child
+    justify-self: start
+
+  button:last-child
+    justify-self: end
+
+  strong
+    color: $color-muted
+    font-size: 12px
+    text-align: center
+
+.chapter-preview__section
+  min-width: 0
+  padding: 12px
+  display: grid
+  gap: 10px
+  border: 1px solid $color-border-subtle
+  border-radius: $radius-md
+  background: $color-surface
+  box-shadow: 0 1px 0 rgba($color-text, .03)
+
+  > header
+    min-width: 0
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    > div
+      min-width: 0
+
+    p,
+    h2
+      margin: 0
+
+    p
+      color: $color-muted
+      font-size: $font-size-small
+      font-weight: $font-weight-semibold
+      letter-spacing: .06em
+      text-transform: uppercase
+
+    h2
+      overflow-wrap: anywhere
+      font-size: 17px
+      line-height: 1.25
+      letter-spacing: 0
+
+    a
+      flex: 0 0 auto
+      width: 34px
+      height: 34px
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      border: 1px solid $color-border
+      border-radius: $radius-sm
+      color: $color-accent
+      background: $color-surface-subtle
+
+      &:hover,
+      &:focus-visible
+        border-color: $color-accent
+        background: $color-accent-muted
+
+.chapter-preview__media
+  width: 100%
+  overflow: hidden
+  border: 1px solid $color-border
+  border-radius: $radius-sm
+  background: $color-surface-subtle
+
+  > img
+    width: 100%
+    height: 100%
+    display: block
+    object-fit: contain
+
+.chapter-preview__placeholder
+  height: 100%
+  display: grid
+  place-items: center
+  align-content: center
+  gap: 10px
+  color: $color-muted
+  font-size: 13px
+  font-weight: $font-weight-semibold
+  text-align: center
+
+  span
+    padding: 0 16px
+    overflow-wrap: anywhere
+
 .chapter-preview__empty
   width: min(100%, 640px)
   margin: 32px auto 0
@@ -6563,6 +6892,16 @@ $sage: $color-success
 
   .chapter-preview__back
     width: 100%
+
+  .chapter-preview__pager-controls
+    grid-template-columns: 1fr 1fr
+
+    strong
+      grid-column: 1 / -1
+      grid-row: 1
+
+    button
+      grid-row: 2
 
 @media (max-width: 560px)
   .storyboard-search

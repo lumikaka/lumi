@@ -12,9 +12,7 @@ const modeSettingSource = readFileSync(new URL('../components/ProjectDashboardMo
 const expertLayoutSource = readFileSync(new URL('../components/ProjectWorkspaceLayout.jsx', import.meta.url), 'utf8')
 const appPageShellSource = readFileSync(new URL('../components/AppPageShell.jsx', import.meta.url), 'utf8')
 const globalSidebarSource = readFileSync(new URL('../components/GlobalSidebar.jsx', import.meta.url), 'utf8')
-const shellStyles = readFileSync(new URL('../styles/simple-project.sass', import.meta.url), 'utf8')
-const bodyStyles = readFileSync(new URL('../styles/simple-project-body.sass', import.meta.url), 'utf8')
-const styles = shellStyles + '\n' + bodyStyles
+const styles = readFileSync(new URL('../styles/simple-project.sass', import.meta.url), 'utf8')
 const projectStyles = readFileSync(new URL('../styles/projects.sass', import.meta.url), 'utf8')
 const messages = readFileSync(new URL('../i18n/messages/simpleDashboard.js', import.meta.url), 'utf8')
 const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import.meta.url), 'utf8')
@@ -22,7 +20,7 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'ProjectInitializationGate.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'book-preview/SectionRail.jsx', 'book-preview/BookPreview.jsx', 'book-preview/webAdapter.js', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx', 'ComicExportDialog.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'ProjectInitializationGate.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'book-preview/BookPreview.jsx', 'book-preview/webAdapter.js', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx', 'ComicExportDialog.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
@@ -119,7 +117,7 @@ test('simple setting detail uses the shared button geometry for its danger-secon
   assert.match(pagesSource, /className="simple-button simple-button--danger-secondary simple-danger-action"/)
   const detailStyles = styles.slice(styles.indexOf('  .simple-setting-detail__copy'), styles.indexOf('  .simple-tag-list'))
   assert.match(detailStyles, /> \.simple-danger-action[\s\S]*justify-self: start/)
-  const dangerStyles = styles.slice(styles.indexOf('  .simple-button--danger-secondary'), styles.indexOf('  .simple-feedback', styles.indexOf('  .simple-button--danger-secondary')))
+  const dangerStyles = styles.slice(styles.indexOf('  .simple-button--danger-secondary'), styles.indexOf('  .simple-feedback'))
   assert.match(dangerStyles, /min-height: 38px[\s\S]*padding: 0 12px[\s\S]*gap: 6px/)
   assert.match(dangerStyles, /border-color: rgba\(\$color-danger, \.35\)[\s\S]*background: \$color-danger-muted/)
   assert.match(dangerStyles, /&:hover:not\(:disabled\),[\s\S]*&:focus-visible:not\(:disabled\)[\s\S]*background: \$color-danger/)
@@ -193,7 +191,7 @@ test('every simple workflow is independently deep-linkable through the shared re
     assert.ok(workspaceSource.includes(`path="${route}"`), `missing simple route ${route}`)
   }
   assert.match(workspaceSource, /<Route index element=\{<SimpleHomePage/)
-  assert.match(workspaceSource, /path="chapters\/:chapterUuid" element=\{<SimplePagesPage project=\{project\} projectUuid=\{projectUuid\} \/>\}/)
+  assert.match(workspaceSource, /path="chapters\/:chapterUuid" element=\{<SimplePageView project=\{project\} projectUuid=\{projectUuid\} \/>\}/)
   assert.match(workspaceSource, /enabled: \['page', 'pages'\]\.includes\(routeState\.key\)/)
   assert.match(pagesSource, /<SimpleBookPreviewGrid projectUuid=\{projectUuid\} chapters=\{chapters\}/)
   assert.match(pagesSource, /projectRoute\(projectUuid, `chapters\/\$\{encodeURIComponent\(chapter\.uuid\)\}`/)
@@ -291,12 +289,13 @@ test('simple per-page rail drag-sorts body pages while covers stay fixed', () =>
 })
 
 test('simple page candidates use the reference action row and open the existing grid in a dialog', () => {
-  assert.match(pagesSource, /useReducer\(pageImageReviewReducer, new URLSearchParams\(location\.search\)\.get\('panel'\) === 'candidates', createPageImageReviewState\)/)
+  assert.match(pagesSource, /SimplePageView\(\{ project, projectUuid, initialCandidatesOpen = false \}\)/)
+  assert.match(pagesSource, /const \[imageCandidatesOpen, setImageCandidatesOpen\] = useState\(initialCandidatesOpen\)/)
   assert.match(pagesSource, /className="simple-illustration-actions"[\s\S]*aria-haspopup="dialog"[\s\S]*simple\.page\.image_drafts_count/)
   assert.match(pagesSource, /simple-illustration-actions__generate[\s\S]*generate\.mutate\(\)/)
   assert.match(pagesSource, /imageCandidatesOpen \? <SimpleDialog title=\{t\('simple\.page\.image_candidates'\)\}/)
   assert.match(pagesSource, /className="simple-page-candidates-dialog"[\s\S]*className="simple-candidate-grid"/)
-  assert.match(pagesSource, /const chooseImage = useMutation\([\s\S]*onSuccess: \(updated\) => \{ dispatchImageReview\(\{ type: 'reset' \}\)/)
+  assert.match(pagesSource, /const chooseImage = useMutation\([\s\S]*onSuccess: \(updated\) => \{ setImageCandidatesOpen\(false\)/)
   assert.doesNotMatch(pagesSource, /<section className="simple-page-candidates"/)
   assert.match(styles, /\.simple-illustration-actions[\s\S]*justify-content: flex-end[\s\S]*gap: 10px/)
   assert.match(styles, /\.simple-illustration-actions__drafts[\s\S]*margin-right: auto[\s\S]*\[aria-expanded="true"\]:hover/)
@@ -311,7 +310,7 @@ test('simple page content card quick-edits storyboard bodies by level-two headin
   assert.match(pageViewSource, /storyboardFields\.map\(\(field, fieldIndex\)/)
   assert.match(pageViewSource, /<span data-user-content>\{field\.label\}<\/span>/)
   assert.match(pageViewSource, /updateStoryboardQuickEditSection\(current, fieldIndex, event\.target\.value\)/)
-  assert.match(pageViewSource, /simple\.page\.visual_direction[\s\S]*value=\{direction\}[\s\S]*setDirection\(event\.target\.value\)/)
+  assert.doesNotMatch(pageViewSource, /simple-page-content-card[\s\S]*simple\.page\.visual_direction/)
 })
 
 test('simple page content card can open a new Agent thread with the page reference', () => {
@@ -386,9 +385,9 @@ test('simple page current image opens an accessible large-image dialog', () => {
     pagesSource.indexOf('export function SimplePageView'),
     pagesSource.indexOf('export function SimpleBookView'),
   )
-  assert.match(pageViewSource, /const imagePreviewOpen = imageReview\.mode === 'current_preview' \|\| imageReview\.mode === 'candidate_preview'/)
-  assert.match(pageViewSource, /currentImageReady \? \([\s\S]*<button[\s\S]*className=\{`simple-page-current-image[\s\S]*aria-haspopup="dialog"[\s\S]*onClick=\{\(\) => dispatchImageReview\(\{ type: 'preview_current' \}\)\}/)
-  assert.match(pageViewSource, /imagePreviewOpen \? <SimpleDialog wide title=\{previewImage \? t\('simple\.page\.candidate_preview_title', \{ version: previewImage\.version_no \}\) : t\('simple\.page\.image_preview'\)\}[\s\S]*className="simple-page-image-preview"/)
+  assert.match(pageViewSource, /const \[imagePreviewOpen, setImagePreviewOpen\] = useState\(false\)/)
+  assert.match(pageViewSource, /currentImageReady \? \([\s\S]*<button[\s\S]*className=\{`simple-page-current-image[\s\S]*aria-haspopup="dialog"[\s\S]*onClick=\{\(\) => setImagePreviewOpen\(true\)\}/)
+  assert.match(pageViewSource, /imagePreviewOpen \? <SimpleDialog wide title=\{t\('simple\.page\.image_preview'\)\}[\s\S]*className="simple-page-image-preview"/)
   assert.match(messages, /'simple\.page\.open_image_preview': \['查看当前画面大图', 'View current artwork full size'\]/)
   assert.match(styles, /button\.simple-page-current-image[\s\S]*cursor: zoom-in[\s\S]*&:hover,[\s\S]*&:focus-visible/)
   const previewStyles = styles.slice(styles.indexOf('  .simple-page-image-preview'), styles.indexOf('  .simple-illustration-actions'))
@@ -398,8 +397,8 @@ test('simple page current image opens an accessible large-image dialog', () => {
 })
 
 test('simple per-page workspace keeps the page rail fixed while the editor and thumbnail list scroll independently', () => {
-  assert.match(workspaceSource, /const pageEditorActive = !initializationBlocked && project\?\.setup_status !== 'draft' && routeState\.key === 'page'/)
-  assert.match(workspaceSource, /simple-project-content simple-project-body\$\{pageEditorActive \? ' simple-project-content--page-editor' : ''\}/)
+  assert.match(workspaceSource, /const pageEditorActive = !initializationBlocked && project\?\.setup_status !== 'draft' && \['page', 'pages'\]\.includes\(routeState\.key\)/)
+  assert.match(workspaceSource, /simple-project-content\$\{pageEditorActive \? ' simple-project-content--page-editor' : ''\}/)
   assert.match(styles, /\.simple-project-content--page-editor\s+overflow: hidden/)
   assert.match(styles, /\.simple-page-view\s+[\s\S]*?height: 100%[\s\S]*?overflow: hidden/)
   assert.match(styles, /\.simple-page-editor-layout\s+[\s\S]*?flex: 1 1 auto[\s\S]*?min-height: 0[\s\S]*?overflow: hidden/)
@@ -485,7 +484,7 @@ test('every statically referenced simple message exists in both language diction
 
 test('simple styles leave the global sidebar untouched, stay namespaced, and retain active-hover feedback', () => {
   const unscopedSelectors = styles.split('\n').filter((line) => line.trim() && !/^\s/.test(line) && !line.startsWith('@use') && !line.startsWith('@keyframes'))
-  assert.deepEqual(unscopedSelectors, ['.simple-project-shell', '.simple-project-body'])
+  assert.deepEqual(unscopedSelectors, ['.simple-project-shell'])
   assert.doesNotMatch(styles, /simple-project-sidebar/)
   assert.match(styles, /&\.global-sidebar-collapsed/)
   assert.doesNotMatch(styles, /\.simple-project-topbar__nav/)

@@ -49,7 +49,6 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   if (trajectory) return { key: 'trajectory', assetUuid: '', chapterUuid: '', sectionUuid: '', threadUuid: decodeSegment(trajectory[1]) }
   const setting = route.match(/^premise\/assets\/([^/]+)$/)
   if (setting) return { key: 'setting', assetUuid: decodeSegment(setting[1]), chapterUuid: '', sectionUuid: '' }
-  if (route === 'preview') return { key: 'book', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   if (route === 'chapters') return { key: 'books', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   const page = route.match(/^chapters\/([^/]+)\/sections\/([^/]+)$/)
   if (page) return { key: 'page', assetUuid: '', chapterUuid: decodeSegment(page[1]), sectionUuid: decodeSegment(page[2]) }

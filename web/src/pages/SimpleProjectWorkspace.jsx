@@ -30,8 +30,6 @@ import { OverviewExportsPanel } from './ProjectOverviewPanels.jsx'
 import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import {
   SimpleBookView,
-  SimpleWorkPreview,
-  SimplePagesPage,
   SimpleBooksPage,
   SimpleHomePage,
   SimpleNotFound,
@@ -84,7 +82,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   const trajectoryView = routeState.key === 'trajectory' && !initializationBlocked
   const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book', trajectory: 'trajectory.title' }[routeState.key] || 'simple.shell.page.home')
   const chatOpen = !trajectoryView && (compact ? chatOverlayOpen : !chatCollapsed)
-  const pageEditorActive = !initializationBlocked && project?.setup_status !== 'draft' && routeState.key === 'page'
+  const pageEditorActive = !initializationBlocked && project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
   useProjectRealtimeSync(projectUuid)
 
@@ -161,7 +159,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
         onOpenNavigation={() => setMobileNavigationOpen(true)}
       />
       <div className={`simple-project-workbench${trajectoryView ? ' simple-project-workbench--solo' : !compact && chatCollapsed ? ' is-chat-collapsed' : ''}`}>
-        <section className={`simple-project-content simple-project-body${pageEditorActive ? ' simple-project-content--page-editor' : ''}${trajectoryView ? ' simple-project-content--trajectory' : ''}`} aria-label={t('projects.workspace')}>
+        <section className={`simple-project-content${pageEditorActive ? ' simple-project-content--page-editor' : ''}${trajectoryView ? ' simple-project-content--trajectory' : ''}`} aria-label={t('projects.workspace')}>
           {initializationBlocked ? <ProjectInitializationGate projectUuid={projectUuid} query={initializationQuery} onOpenChat={openInitializationChat} /> : project?.setup_status === 'draft' ? <DraftProjectWorkspace /> : (
             <Routes>
               <Route index element={<SimpleHomePage project={project} projectUuid={projectUuid} projectQuery={projectQuery} />} />
@@ -171,9 +169,8 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
               <Route path="exports" element={<div className="simple-project-page simple-exports-page"><OverviewExportsPanel projectUuid={projectUuid} standalone /></div>} />
               <Route path="premise" element={<SimpleSettingsPage projectUuid={projectUuid} />} />
               <Route path="premise/assets/:assetUuid" element={<SimpleSettingDetailPage projectUuid={projectUuid} />} />
-              <Route path="preview" element={<SimpleWorkPreview projectUuid={projectUuid} />} />
               <Route path="chapters" element={<SimpleBooksPage projectUuid={projectUuid} />} />
-              <Route path="chapters/:chapterUuid" element={<SimplePagesPage project={project} projectUuid={projectUuid} />} />
+              <Route path="chapters/:chapterUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/preview" element={<SimpleBookView projectUuid={projectUuid} />} />
               <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} pictureBook={project?.picture_book} />} />

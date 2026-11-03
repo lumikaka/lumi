@@ -127,7 +127,7 @@ func (s *Service) reviewLegacy(ctx context.Context, store *project.Store, st *st
 			if a.ChapterUUID != "" {
 				data["scope"], data["title"], data["open_url"] = "chapter", summaries[0].Title, summaries[0].OpenURL+"/preview"
 			} else {
-				data["open_url"] = base + "/preview"
+				data["open_url"] = base + "/"
 			}
 			if a.Mode == "" {
 				data["compatibility"] = "legacy_chapter_preview"

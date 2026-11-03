@@ -137,7 +137,7 @@ review_* 只打开当前 stdio cwd 绑定项目的工作区，不接收任意项
 | `review_chapters` | 可保留历史分页参数 | 业务顺序章节列表、摘要、页数和图片完成数；`/projects/:project_uuid/chapters` |
 | `review_chapter` | `chapter_uuid` | 整章故事、页面网格、section 快速切换及阅读入口；`/projects/:project_uuid/chapters/:chapter_uuid` |
 | `review_page` | `chapter_uuid,page_uuid` | 当前图、页面内容与说明、版本、章内切换；章节的 `/sections/:page_uuid` |
-| `review_book` | `mode:"preview",chapter_uuid?` | 采用图片阅读器；全书 `/preview`，单章 `/chapters/:chapter_uuid/preview` |
+| `review_book` | `mode:"preview",chapter_uuid?` | MCP 内整本或单章阅读；Web 入口仅使用既有页面：全书回作品首页，单章 `/chapters/:chapter_uuid/preview` |
 | `review_settings` | `setting_uuid?` | 设定列表或详情；`/premise` 或 `/premise/assets/:setting_uuid` |
 | `review_candidates` | `kind:"page"` + 章/页，`kind:"setting"` + 设定，或 `kind:"text"` + 2–12 项 `{title,text}` | 共享详情候选弹窗，或本地文字候选；预览不保存，显式采用才持久化 |
 

@@ -61,16 +61,20 @@ func TestReviewLaunchIsCompactAndKeepsLegacyChapterScope(t *testing.T) {
 		target string
 	}{
 		{"review_book", map[string]any{}, "book", projectUUID},
+		{"review_book", map[string]any{"mode": "preview"}, "reader", projectUUID},
 		{"review_chapters", map[string]any{}, "chapters", projectUUID},
 		{"review_chapter", map[string]any{"chapter_uuid": ch}, "chapter", ch},
 		{"review_book", map[string]any{"chapter_uuid": ch}, "reader", projectUUID},
 	} {
 		result := object(t, invoke(t, s, root, call.name, call.args))
+		if call.args["mode"] == "preview" && result["open_url"] != s.Endpoint+"/projects/"+projectUUID+"/" {
+			t.Fatal("whole-work preview must link to the existing Web project page", result)
+		}
 		wire, _ := json.Marshal(result)
 		if result["view"] != call.view || result["target_uuid"] != call.target || result["contract_version"] != float64(3) || len(wire) > 3000 || strings.Contains(string(wire), "current_story") || result["items"] != nil {
 			t.Fatal(result)
 		}
-		if call.view == "reader" && (result["scope"] != "chapter" || result["request"].(map[string]any)["arguments"].(map[string]any)["chapter_uuid"] != ch) {
+		if call.view == "reader" && call.args["chapter_uuid"] != nil && (result["scope"] != "chapter" || result["request"].(map[string]any)["arguments"].(map[string]any)["chapter_uuid"] != ch) {
 			t.Fatal("legacy scope expanded")
 		}
 	}
