@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronUp,
   Download,
-  Eye,
   GripVertical,
   History,
   ImagePlus,
@@ -220,7 +219,6 @@ export default function ChapterWorkbenchPage({ projectUuid, renderBody }) {
         <Link className="chapter-workbench__back" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters`, search: chapterListSearch ? `?${chapterListSearch}` : '' }} aria-label={term('story.chapters.list')}><ArrowLeft size={14} aria-hidden="true" />{term('story.chapters.list')}</Link>
         <div className="chapter-workbench__header-controls">
           <button type="button" className="button-secondary chapter-workbench__history" onClick={() => setHistoryOpen(true)}><History size={16} aria-hidden="true" />{t('comic.workbench.history')}</button>
-          <Link className="button-secondary chapter-workbench__preview-link" to={{ pathname: `/projects/${encodeURIComponent(projectUuid)}/chapters/${encodeURIComponent(chapterUuid)}/preview`, search: searchParams.toString() ? `?${searchParams.toString()}` : '' }}><Eye size={16} aria-hidden="true" />{t(unit === 'page' ? 'comic.workbench.preview_page.open_pages' : 'comic.workbench.preview_page.open')}</Link>
           <div className="chapter-workbench__tabs" role="tablist" aria-label={t('projects.group_navigation', { section: term('story.chapter') })}>
             <button id="chapter-tab-storyboard" type="button" role="tab" aria-selected={activeTab === 'storyboard'} aria-controls="chapter-panel-storyboard" onClick={() => setTab('storyboard')}>{t(unit === 'page' ? 'comic.workbench.tabs.pages' : 'comic.workbench.tabs.storyboard')}<span>{sections.length}</span></button>
             <button id="chapter-tab-body" type="button" role="tab" aria-selected={activeTab === 'body'} aria-controls="chapter-panel-body" onClick={() => setTab('body')}>{t(unit === 'page' ? 'comic.workbench.tabs.picture_book_body' : 'comic.workbench.tabs.body')}<span>{bodyVersions.length}</span></button>

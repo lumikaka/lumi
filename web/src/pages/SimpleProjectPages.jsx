@@ -1,6 +1,4 @@
 import { useWorkspaceRuntime } from '../workspace/runtime.jsx'
-import BookPreview from '../components/book-preview/BookPreview.jsx'
-import { webBookPages, loadWebBookImage, webBookLabels } from '../components/book-preview/webAdapter.js'
 import ImageTaskProgress from '../components/ImageTaskProgress.jsx'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,8 +17,6 @@ import {
   History,
   Images,
   Layers3,
-  Maximize2,
-  Minimize2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -644,7 +640,7 @@ function SimpleBookToolbar({ projectUuid, chapterUuid, chapterTitle, onNavigate,
 }
 
 export function SimplePagesPage({ project, projectUuid }) {
-  const { api: { createComicSection, deleteComicSection, generateChapterImagesBatch, listComicSections, listProductionTasks, reorderComicSections, getChapter, listChapters }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
+  const { api: { createComicSection, deleteComicSection, generateChapterImagesBatch, listComicSections, listProductionTasks, reorderComicSections, getChapter, listChapters } } = useWorkspaceRuntime()
   const { t } = useI18n()
   const { chapterUuid } = useParams()
   const location = useLocation()
@@ -681,7 +677,7 @@ export function SimplePagesPage({ project, projectUuid }) {
     <div className="simple-book-workspace">
       <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={chapterQuery.data?.title} />
       <div className="simple-project-page simple-pages-page">
-        <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><Link className="simple-button simple-button--secondary" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/preview`, location.search)}><Images size={15} aria-hidden="true" />{t('simple.pages.book_view')}</Link><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
+        <SimplePageHeading title={chapterQuery.data?.title || t('simple.pages.title')} eyebrow={chapterQuery.data?.chapter_code} description={t('simple.pages.description_manage')} backLabel={t(multipleChapters ? 'simple.pages.back' : 'simple.shell.page.home')} backTo={projectRoute(projectUuid, multipleChapters ? 'chapters' : '', location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" onClick={() => setTrashOpen(true)}><Trash2 size={15} aria-hidden="true" />{t('simple.pages.open_trash')}</button><button className="simple-button simple-button--secondary" type="button" disabled={!missingCount || activeTaskCount > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missingCount })}</button><button className="simple-button" type="button" onClick={() => { setNewPage(emptyPageDraft()); setCreating(true) }}><Plus size={15} aria-hidden="true" />{t('simple.pages.add')}</button></>} />
         <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
         <SimpleError error={chaptersQuery.error || chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chaptersQuery.refetch(); chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
         {activeTaskCount ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTaskCount })}</p> : null}
@@ -1439,57 +1435,6 @@ function SimplePageTrashDialog({ projectUuid, chapterUuid, activeSections, requi
   )
 }
 
-export function SimpleBookView({ projectUuid }) {
-  const { api: { generateChapterImagesBatch, listComicSections, listProductionTasks, getChapter }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
-  const { t } = useI18n()
-  const { chapterUuid } = useParams()
-  const location = useLocation()
-  const queryClient = useQueryClient()
-  const readerRef = useRef(null)
-  const [fullscreen, setFullscreen] = useState(false)
-  const [feedback, setFeedback] = useState(null)
-  const chapterQuery = useQuery({ queryKey: ['story-chapter', projectUuid, chapterUuid], queryFn: () => getChapter(projectUuid, chapterUuid) })
-  const sectionsQuery = useQuery({ queryKey: ['comic-sections', projectUuid, chapterUuid], queryFn: () => listComicSections(projectUuid, chapterUuid) })
-  const tasksQuery = useQuery({ queryKey: ['production-tasks', projectUuid], queryFn: () => listProductionTasks(projectUuid) })
-  const sections = orderedSimplePages(sectionsQuery.data?.items || [])
-  const missing = sections.filter((section) => !section.current_image && section.current_storyboard)
-  const activeTasks = (tasksQuery.data?.items || []).filter((task) => task.kind === 'comic_image_generation' && ACTIVE_TASK_STATUSES.has(task.status) && sections.some((section) => section.uuid === task.resource_uuid))
-  const batch = useMutation({ mutationFn: () => generateChapterImagesBatch(projectUuid, chapterUuid, { section_uuids: missing.map((section) => section.uuid), idempotency_key: `simple-book-view-missing-${Date.now()}` }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['production-tasks', projectUuid] }); setFeedback({ kind: 'success', message: t('simple.pages.batch_started') }) }, onError: (error) => setFeedback({ kind: 'error', error }) })
-  useEffect(() => {
-    const handle = () => setFullscreen(document.fullscreenElement === readerRef.current)
-    document.addEventListener('fullscreenchange', handle)
-    return () => document.removeEventListener('fullscreenchange', handle)
-  }, [])
-  const toggleFullscreen = async () => {
-    if (fullscreen && !document.fullscreenElement) {
-      setFullscreen(false)
-      return
-    }
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen()
-      else await readerRef.current?.requestFullscreen()
-    } catch {
-      // Browsers embedded in desktop shells can deny the Fullscreen API even
-      // after a user gesture. Keep the reading experience available with the
-      // same viewport-filling layout instead of surfacing a dead-end error.
-      setFullscreen(true)
-    }
-  }
-  if (chapterQuery.isLoading || sectionsQuery.isLoading) return <SimpleLoading message={t('simple.loading.pages')} />
-  return (
-    <div className="simple-book-workspace">
-      <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={chapterQuery.data?.title} />
-      <div className="simple-project-page simple-book-view">
-        <SimplePageHeading title={t('simple.book.title')} eyebrow={chapterQuery.data?.title} description={t('simple.book.description_manage')} backLabel={t('simple.book.back')} backTo={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}`, location.search)} actions={<><button className="simple-button simple-button--secondary" type="button" disabled={!missing.length || activeTasks.length > 0 || batch.isPending} onClick={() => batch.mutate()}><Sparkles size={15} aria-hidden="true" />{t('simple.pages.batch_missing', { count: missing.length })}</button><button className="simple-button" type="button" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={15} aria-hidden="true" /> : <Maximize2 size={15} aria-hidden="true" />}{t(fullscreen ? 'simple.book.exit_fullscreen' : 'simple.book.fullscreen')}</button></>} />
-        <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
-        <SimpleError error={chapterQuery.error || sectionsQuery.error || tasksQuery.error} onRetry={() => { chapterQuery.refetch(); sectionsQuery.refetch(); tasksQuery.refetch() }} />
-        {activeTasks.length ? <p className="simple-inline-status" role="status">{t('simple.pages.generating_count', { count: activeTasks.length })}</p> : null}
-        {sections.length ? <div className={`simple-book-reader${fullscreen ? ' is-fullscreen' : ''}`} ref={readerRef} aria-label={t('simple.book.reader')}><header><strong data-user-content>{chapterQuery.data?.title}</strong>{fullscreen ? <button type="button" onClick={toggleFullscreen}><Minimize2 size={18} aria-hidden="true" />{t('simple.book.exit_fullscreen')}</button> : null}</header><div className="simple-book-grid">{sections.map((section) => { const label = comicPageLabel(t, sections, section); const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label); return <article key={section.uuid}><Link to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`, location.search)} aria-label={t('simple.book.open_page', { page: label })}><SimpleImage asset={section.current_image?.asset} alt={section.title || label} fallbackText={t('simple.pages.no_image')} /><span>{label}</span></Link><Link className="simple-book-grid__agent" to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid)}/sections/${encodeURIComponent(section.uuid)}`).pathname, search: chatSearch }}><Bot size={13} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link></article> })}</div></div> : <SimpleEmptyState icon={<Images size={25} aria-hidden="true" />} title={t('simple.pages.empty_manage')} />}
-      </div>
-    </div>
-  )
-}
-
 function SimpleManagedPageCard({ projectUuid, chapterUuid, section, sections, index, pending, onDelete, onMove }) {
   const { t } = useI18n()
   const location = useLocation()
@@ -1672,18 +1617,4 @@ function nextChapterCode(chapters) {
   const volume = Math.max(1, ...chapters.map((chapter) => Number(chapter.volume_no) || 1))
   const number = Math.max(0, ...chapters.filter((chapter) => Number(chapter.volume_no) === volume).map((chapter) => Number(chapter.chapter_no) || 0)) + 1
   return `vol${String(volume).padStart(2, '0')}.ch${String(number).padStart(2, '0')}`
-}
-
-// MCP-only reader entry; the Web route tree remains unchanged.
-export function SimpleWorkPreview({ projectUuid }) {
-  const { api: { listComicSectionSummaries: listComicSections, listChapterSummaries: listChapters }, loadImage: loadWebBookImage } = useWorkspaceRuntime()
-  const { t } = useI18n()
-  const location = useLocation()
-  const chaptersQuery = useQuery({ queryKey: ['story-chapters', projectUuid, 'active'], queryFn: () => listChapters(projectUuid, 'active') })
-  const chapters = chaptersQuery.data?.items || []
-  const sectionQueries = useQueries({ queries: chapters.map(chapter => ({ queryKey: ['comic-sections', projectUuid, chapter.uuid], queryFn: () => listComicSections(projectUuid, chapter.uuid) })) })
-  const error = chaptersQuery.error || sectionQueries.find(query => query.error)?.error
-  const loading = chaptersQuery.isPending || sectionQueries.some(query => query.isPending)
-  const groups = !error && !loading ? chapters.map((chapter, index) => ({ uuid: chapter.uuid, title: chapter.title || chapter.chapter_code, pages: webBookPages(orderedSimplePages(sectionQueries[index].data?.items || []), t) })) : []
-  return <div className="simple-project-page simple-book-view"><SimplePageHeading title={t('simple.book.title')} backTo={projectRoute(projectUuid, '', location.search)} /><BookPreview title={t('simple.book.title')} groups={groups} loadImage={loadWebBookImage} labels={webBookLabels(t)} loading={loading} error={error?.message} onRetry={() => { chaptersQuery.refetch(); sectionQueries.forEach(query => query.refetch()) }} /></div>
 }

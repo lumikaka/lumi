@@ -1,4 +1,4 @@
-import { BookPreviewImage } from './BookPreview.jsx'
+import SectionImage from './SectionImage.jsx'
 import './section-rail.scss'
 
 // Transport-free section navigation shared by Web chapter structure and MCP reviews.
@@ -7,7 +7,7 @@ export default function SectionRail({ pages, currentUUID, title, overview, rende
     <h2>{title}</h2>{overview}
     <div className="review-section-rail__list">{pages.map(page => <div className="review-section-rail__row" key={page.uuid}>
       {renderLink(page, railLinkProps(page, currentUUID), <>
-        <span className="review-section-rail__image"><BookPreviewImage key={`${page.uuid}:${page.image_key || 'missing'}`} page={page} loadImage={loadImage} labels={labels} /></span>
+        <span className="review-section-rail__image"><SectionImage key={`${page.uuid}:${page.image_key || 'missing'}`} page={page} loadImage={loadImage} labels={labels} /></span>
         <span><small>{page.label}</small><strong>{page.title}</strong></span>
       </>)}
     </div>)}</div>

@@ -96,7 +96,7 @@ test('simple dashboard deep links parse into stable public-resource route state'
   assert.deepEqual(simpleProjectRouteState(`${base}/premise/assets/${assetUuid}`, projectUuid), { key: 'setting', assetUuid, chapterUuid: '', sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}`, projectUuid), { key: 'pages', assetUuid: '', chapterUuid, sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}/sections/${sectionUuid}`, projectUuid), { key: 'page', assetUuid: '', chapterUuid, sectionUuid })
-  assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}/preview`, projectUuid), { key: 'book', assetUuid: '', chapterUuid, sectionUuid: '' })
+  assert.deepEqual(simpleProjectRouteState(`${base}/chapters/${chapterUuid}/preview`, projectUuid), { key: 'not_found', assetUuid: '', chapterUuid: '', sectionUuid: '' })
   assert.deepEqual(simpleProjectRouteState(`${base}/threads/${threadUuid}/trajectory`, projectUuid), { key: 'trajectory', assetUuid: '', chapterUuid: '', sectionUuid: '', threadUuid })
   assert.equal(simpleProjectRouteState(`${base}/unknown`, projectUuid).key, 'not_found')
 })
@@ -118,7 +118,7 @@ test('ChatArea receives exact setting, chapter, and page reference contexts', ()
   })
 
   const chapter = simpleProjectChatReference(
-    { key: 'book', chapterUuid },
+    { key: 'pages', chapterUuid },
     { chapter: { uuid: chapterUuid, chapter_code: 'CH-01', title: '月光森林' } },
   )
   assert.equal(chapter.resource_type, 'chapter')

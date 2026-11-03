@@ -20,7 +20,7 @@ const commonMessages = readFileSync(new URL('../i18n/messages/common.js', import
 test('simple mode owns its project workspace while reusing the app sidebar, ChatArea, and shared lifecycle UI', () => {
   const combined = `${workspaceSource}\n${pagesSource}`
   const componentImports = [...combined.matchAll(/from '\.\.\/components\/([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'ProjectInitializationGate.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'book-preview/BookPreview.jsx', 'book-preview/webAdapter.js', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx', 'ComicExportDialog.jsx'])
+  assert.deepEqual(componentImports, ['ChatArea.jsx', 'DraftProjectWorkspace.jsx', 'ProjectInitializationGate.jsx', 'GlobalSidebar.jsx', 'ProjectDashboardModeContext.jsx', 'ImageTaskProgress.jsx', 'MarkdownEditor.jsx', 'ComicExportDialog.jsx'])
   assert.match(workspaceSource, /<main className=\{`simple-project-shell/)
   assert.match(workspaceSource, /<GlobalSidebar/)
   assert.match(workspaceSource, /useGlobalSidebarState\(\)/)
@@ -186,7 +186,6 @@ test('every simple workflow is independently deep-linkable through the shared re
     'chapters',
     'chapters/:chapterUuid',
     'chapters/:chapterUuid/sections/:sectionUuid',
-    'chapters/:chapterUuid/preview',
   ]) {
     assert.ok(workspaceSource.includes(`path="${route}"`), `missing simple route ${route}`)
   }
@@ -304,7 +303,7 @@ test('simple page candidates use the reference action row and open the existing 
 test('simple page content card quick-edits storyboard bodies by level-two heading', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pageViewSource, /const storyboardFields = storyboardQuickEditSections\(text\)/)
   assert.match(pageViewSource, /storyboardFields\.map\(\(field, fieldIndex\)/)
@@ -316,7 +315,7 @@ test('simple page content card quick-edits storyboard bodies by level-two headin
 test('simple page content card can open a new Agent thread with the page reference', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   const contentCardSource = pageViewSource.slice(
     pageViewSource.indexOf('className="simple-page-content-card"'),
@@ -331,7 +330,7 @@ test('simple page content card can open a new Agent thread with the page referen
 test('simple page shows the images actually referenced by the current artwork without a future-reference override', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pageViewSource, /currentArtworkPremise = section\.current_image\?\.section_premise/)
   assert.match(pageViewSource, /className="simple-page-artwork-references"[\s\S]*simple\.page\.current_artwork_references/)
@@ -345,7 +344,7 @@ test('simple page shows the images actually referenced by the current artwork wi
 test('simple page explains how artwork setting references are matched', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pageViewSource, /const \[artworkReferencesHelpOpen, setArtworkReferencesHelpOpen\] = useState\(false\)/)
   assert.match(pageViewSource, /className="simple-page-artwork-references__help"[\s\S]*aria-haspopup="dialog"[\s\S]*aria-expanded=\{artworkReferencesHelpOpen\}[\s\S]*<HelpCircle/)
@@ -363,7 +362,7 @@ test('simple page explains how artwork setting references are matched', () => {
 test('simple page content card opens a full Markdown script editor with version selection', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pagesSource, /import MarkdownEditor from '\.\.\/components\/MarkdownEditor\.jsx'/)
   assert.match(pageViewSource, /const \[scriptEditorOpen, setScriptEditorOpen\] = useState\(false\)/)
@@ -383,7 +382,7 @@ test('simple page content card opens a full Markdown script editor with version 
 test('simple page current image opens an accessible large-image dialog', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pageViewSource, /const \[imagePreviewOpen, setImagePreviewOpen\] = useState\(false\)/)
   assert.match(pageViewSource, /currentImageReady \? \([\s\S]*<button[\s\S]*className=\{`simple-page-current-image[\s\S]*aria-haspopup="dialog"[\s\S]*onClick=\{\(\) => setImagePreviewOpen\(true\)\}/)
@@ -424,10 +423,6 @@ test('simple pages read and mutate the shared REST facts through TanStack Query'
   ]) {
     assert.ok(simpleFeatureSource.includes(`${operation}(`), `missing native simple operation ${operation}`)
   }
-  assert.match(pagesSource, /document\.fullscreenElement/)
-  assert.match(pagesSource, /requestFullscreen/)
-  assert.match(pagesSource, /catch \{[\s\S]*setFullscreen\(true\)/)
-  assert.match(pagesSource, /simple-book-reader\$\{fullscreen \? ' is-fullscreen' : ''\}/)
   assert.match(pagesSource, /expected_revision/)
   assert.match(pagesSource, /SimpleFeedback/)
   assert.match(pagesSource, /SimpleConfirm/)
@@ -436,7 +431,7 @@ test('simple pages read and mutate the shared REST facts through TanStack Query'
 test('page editor feedback floats without shifting the workspace and only announces new completions', () => {
   const pageViewSource = pagesSource.slice(
     pagesSource.indexOf('export function SimplePageView'),
-    pagesSource.indexOf('export function SimpleBookView'),
+    pagesSource.indexOf('function SimpleManagedPageCard'),
   )
   assert.match(pageViewSource, /<SimpleFeedback feedback=\{feedback\} floating autoDismiss/)
   assert.match(pageViewSource, /taskStateRef\.current = \{ uuid: task\.uuid, status: task\.status \}/)
@@ -496,7 +491,6 @@ test('simple styles leave the global sidebar untouched, stay namespaced, and ret
   assert.match(styles, /container: simple-project-settings-content \/ inline-size/)
   assert.match(styles, /@container simple-project-settings-content \(max-width: 860px\)[\s\S]*\.project-overview-grid[\s\S]*grid-template-columns: 1fr/)
   assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.simple-project-settings-card[\s\S]*grid-template-columns: 1fr[\s\S]*\.simple-project-settings-nav[\s\S]*overflow-x: auto/)
-  assert.match(styles, /&\.is-fullscreen[\s\S]*position: fixed[\s\S]*inset: 0/)
   assert.match(styles, /@media \(max-width: 1199px\)/)
   assert.match(styles, /@media \(max-width: 760px\)/)
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/)

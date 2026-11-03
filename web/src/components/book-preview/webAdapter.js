@@ -15,9 +15,7 @@ export async function loadWebBookImage(page, { attempt }) {
 }
 export function webBookLabels(t) {
   return {
-    thumbnails: t('simple.book.reader'), previous: t('common.action.previous_page'), next: t('common.action.next_page'),
-    back: t('simple.pages.book_view'), loading: t('common.loading'), waiting: t('comic.workbench.preview_page.page_lazy'),
-    missing: t('simple.pages.no_image'), imageError: t('comic.image_unavailable'), retry: t('common.action.reload'), empty: t('simple.pages.empty_manage'),
-    position: (current, total, label) => t('comic.workbench.preview_page.page_position_role', { label, current, total }),
+    loading: t('common.loading'), waiting: t('common.loading'),
+    missing: t('simple.pages.no_image'), imageError: t('comic.image_unavailable'), retry: t('common.action.reload'),
   }
 }

@@ -54,6 +54,9 @@ func TestReviewLaunchIsCompactAndKeepsLegacyChapterScope(t *testing.T) {
 	chapter := object(t, invoke(t, s, root, "chapters", map[string]any{"action": "create", "chapter_code": "vol01.ch01", "title": "Chapter", "expected_revision": p["revision"]}))
 	ch := chapter["uuid"].(string)
 	object(t, invoke(t, s, root, "chapters", map[string]any{"action": "write", "chapter_uuid": ch, "expected_revision": chapter["revision"], "content": strings.Repeat("Long story ", 4000), "content_format": "txt"}))
+	state := object(t, invoke(t, s, root, "pages", map[string]any{"action": "list", "chapter_uuid": ch}))["state"].(map[string]any)
+	page := object(t, invoke(t, s, root, "pages", map[string]any{"action": "create", "chapter_uuid": ch, "title": "Only first page", "description_md": "Saved text", "storyboard_md": "Saved scene", "expected_revision": state["revision"]}))
+	pageUUID := page["uuid"].(string)
 	for _, call := range []struct {
 		name   string
 		args   map[string]any
@@ -61,21 +64,50 @@ func TestReviewLaunchIsCompactAndKeepsLegacyChapterScope(t *testing.T) {
 		target string
 	}{
 		{"review_book", map[string]any{}, "book", projectUUID},
-		{"review_book", map[string]any{"mode": "preview"}, "reader", projectUUID},
+		{"review_book", map[string]any{"mode": "preview"}, "book", projectUUID},
 		{"review_chapters", map[string]any{}, "chapters", projectUUID},
 		{"review_chapter", map[string]any{"chapter_uuid": ch}, "chapter", ch},
-		{"review_book", map[string]any{"chapter_uuid": ch}, "reader", projectUUID},
+		{"review_book", map[string]any{"chapter_uuid": ch}, "chapter", ch},
+		{"review_book", map[string]any{"mode": "preview", "chapter_uuid": ch}, "chapter", ch},
+		{"review_book", map[string]any{"mode": "overview", "chapter_uuid": ch}, "chapter", ch},
+		{"review_page", map[string]any{"chapter_uuid": ch, "page_uuid": pageUUID}, "page", pageUUID},
 	} {
 		result := object(t, invoke(t, s, root, call.name, call.args))
-		if call.args["mode"] == "preview" && result["open_url"] != s.Endpoint+"/projects/"+projectUUID+"/" {
-			t.Fatal("whole-work preview must link to the existing Web project page", result)
-		}
 		wire, _ := json.Marshal(result)
 		if result["view"] != call.view || result["target_uuid"] != call.target || result["contract_version"] != float64(3) || len(wire) > 3000 || strings.Contains(string(wire), "current_story") || result["items"] != nil {
 			t.Fatal(result)
 		}
-		if call.view == "reader" && call.args["chapter_uuid"] != nil && (result["scope"] != "chapter" || result["request"].(map[string]any)["arguments"].(map[string]any)["chapter_uuid"] != ch) {
+		if call.view == "chapter" && call.args["chapter_uuid"] != nil && (result["request"].(map[string]any)["arguments"].(map[string]any)["chapter_uuid"] != ch) {
 			t.Fatal("legacy scope expanded")
+		}
+		request := result["request"].(map[string]any)
+		if request["name"] != "review_"+call.view || request["arguments"].(map[string]any)["mode"] != nil {
+			t.Fatal("noncanonical review request", request)
+		}
+		path := "/"
+		switch call.view {
+		case "chapters":
+			path = "/chapters"
+		case "chapter":
+			path = "/chapters/" + ch
+		case "page":
+			path = "/chapters/" + ch + "/sections/" + pageUUID
+		}
+		if result["open_url"] != s.Endpoint+"/projects/"+projectUUID+path {
+			t.Fatal(result)
+		}
+	}
+	for _, args := range []map[string]any{{"mode": "reader"}, {"mode": nil}, {"chapter_uuid": "invalid"}, {"mode": "preview", "page_uuid": pageUUID}, {"mode": "preview", "chapter_uuid": projectUUID}} {
+		if invoke(t, s, root, "review_book", args).Success {
+			t.Fatal("accepted invalid legacy target", args)
+		}
+	}
+	for _, spec := range Specs() {
+		if spec.Name == "review_book" {
+			props := spec.Schema["properties"].(map[string]any)
+			if props["mode"] != nil || props["chapter_uuid"] != nil {
+				t.Fatal("retired options advertised", props)
+			}
 		}
 	}
 	calls := 0

@@ -21,10 +21,6 @@ export function projectSectionRoute(projectUuid, chapterUuid, sectionUuid, searc
   return projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid || '')}/sections/${encodeURIComponent(sectionUuid || '')}`, search)
 }
 
-export function projectPreviewRoute(projectUuid, chapterUuid, search = '') {
-  return projectRoute(projectUuid, `chapters/${encodeURIComponent(chapterUuid || '')}/preview`, search)
-}
-
 export function projectRouteRequiresExpert(pathname = '', projectUuid = '') {
   const route = projectRelativePath(pathname, projectUuid)
   if (/^threads\/[^/]+\/trajectory$/.test(route)) return false
@@ -50,7 +46,7 @@ export function canonicalProjectLocation({ projectUuid, pathname = '', search = 
   let canonicalRoute = route
   let changed = false
 
-  if (route === 'simple' || route === 'simple/home' || route === 'overview' || route === 'overview/summary') {
+  if (route === 'preview' || route === 'simple' || route === 'simple/home' || route === 'overview' || route === 'overview/summary') {
     canonicalRoute = ''
     changed = true
   } else if (route === 'simple/story' || route === 'overview/profile') {
@@ -81,6 +77,7 @@ export function canonicalProjectLocation({ projectUuid, pathname = '', search = 
     const simplePreview = route.match(/^simple\/books\/([^/]+)\/book$/)
     const simpleChapter = route.match(/^simple\/books\/([^/]+)(?:\/pages)?$/)
     const comicChapter = route.match(/^comic\/([^/]+)$/)
+    const chapterPreview = route.match(/^chapters\/([^/]+)\/preview$/)
 
     if (simpleAsset) {
       canonicalRoute = `premise/assets/${encodeSegment(simpleAsset[1])}`
@@ -89,13 +86,16 @@ export function canonicalProjectLocation({ projectUuid, pathname = '', search = 
       canonicalRoute = `chapters/${encodeSegment(simpleSection[1])}/sections/${encodeSegment(simpleSection[2])}`
       changed = true
     } else if (simplePreview) {
-      canonicalRoute = `chapters/${encodeSegment(simplePreview[1])}/preview`
+      canonicalRoute = `chapters/${encodeSegment(simplePreview[1])}`
       changed = true
     } else if (simpleChapter) {
       canonicalRoute = `chapters/${encodeSegment(simpleChapter[1])}`
       changed = true
     } else if (comicChapter) {
       canonicalRoute = `chapters/${encodeSegment(comicChapter[1])}`
+      changed = true
+    } else if (chapterPreview) {
+      canonicalRoute = `chapters/${encodeSegment(chapterPreview[1])}`
       changed = true
     }
   }

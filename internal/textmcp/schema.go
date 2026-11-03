@@ -121,15 +121,15 @@ func Specs() []Spec {
 	}
 	watchSchema := actionSchema(map[string]any{"action": enum("open", "next", "close"), "project_uuid": uuid, "subscription_uuid": uuid, "cursor": map[string]any{"type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$"}}, map[string][]string{"open": {"project_uuid"}, "next": {"project_uuid", "subscription_uuid", "cursor"}, "close": {"project_uuid", "subscription_uuid"}})
 	return append(specs,
-		Spec{"read_app_review", "App-only legacy review details/candidates. Payload is UI-only _meta; use read_app_resource for normal workspace pages.", obj(paged(map[string]any{"view": enum("book", "chapters", "chapter", "page", "settings", "candidates", "reader"), "chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid, "kind": enum("page", "setting", "text"), "candidates": map[string]any{"type": "array", "minItems": 2, "maxItems": 12, "items": obj(map[string]any{"title": str("Candidate title"), "text": str("Candidate prose")}, "title", "text")}}), "view")},
+		Spec{"read_app_review", "App-only legacy review details/candidates. Payload is UI-only _meta; use read_app_resource for normal workspace pages.", obj(paged(map[string]any{"view": enum("book", "chapters", "chapter", "page", "settings", "candidates"), "chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid, "kind": enum("page", "setting", "text"), "candidates": map[string]any{"type": "array", "minItems": 2, "maxItems": 12, "items": obj(map[string]any{"title": str("Candidate title"), "text": str("Candidate prose")}, "title", "text")}}), "view")},
 		Spec{"read_app_resource", "App-only on-demand read of an allowlisted resource in the bound project. Business data is delivered in _meta, not model-visible content. No project/path/URL switching.", obj(map[string]any{"resource": str("Allowlisted project-relative resource, or project for the work itself."), "query": map[string]any{"type": "object", "additionalProperties": str("Validated REST query value.")}}, "resource")},
 		Spec{"write_app_resource", "App-only user-submitted operation using the existing project REST contract, permissions and revisions. Never invoke automatically on mount, navigation or local version preview. File, export and AI generation require a supported host flow.", obj(map[string]any{"resource": str("Allowlisted project-relative resource."), "method": enum("POST", "PUT", "PATCH", "DELETE"), "query": map[string]any{"type": "object", "additionalProperties": str("Validated REST query value.")}, "body": map[string]any{"type": "object", "additionalProperties": true}}, "resource", "method")},
 		Spec{"read_app_image", "App-only bounded JPEG preview. No filesystem paths; use read_image for model references.", obj(map[string]any{"asset_uuid": uuid, "max_edge": map[string]any{"type": "integer", "minimum": 256, "maximum": 1024}}, "asset_uuid")},
 		Spec{"read_app_connection", "Internal CLI connection descriptor for the bound project's hint relay; not registered as an MCP tool.", obj(map[string]any{})},
 		Spec{"watch_app_changes", "App-only WS event subscription. open joins the bound project, next blocks for a real WS change or keepalive, close releases it. Cursor prevents missed changes between calls. No timed business-state queries or writes.", watchSchema},
-		Spec{"review_book", "Launch the shared Web work overview with description, format, progress and chapter/settings entries. Returns a compact identity/summary; UI details load on demand. The launch itself is read-only; explicit user submissions use normal workspace permissions. mode=preview explicitly opens the adopted-image reader (whole book or chapter_uuid), with complete cursor loading and page turns. Legacy chapter_uuid without mode retains chapter-only preview. Finish requested creation/export before final mode=preview; never wait for UI interaction.", obj(paged(map[string]any{"mode": enum("overview", "preview"), "chapter_uuid": uuid}))},
+		Spec{"review_book", "Launch the normal shared Web work overview with description, format, progress and chapter/settings entries. Returns a compact identity/summary; UI details load on demand. The launch itself is read-only; explicit user submissions use normal workspace permissions. After requested creation/export, open this overview for a whole work, review_chapter for one chapter or review_page for one page; never wait for UI interaction.", obj(paged(map[string]any{}))},
 		Spec{"review_chapters", "Launch the shared chapter list in business order with codes, summaries, page and adopted-image counts. Returns a compact identity/summary; UI loads details and ordinary user operations through the host. Navigate inside the App to a chapter.", obj(paged(map[string]any{}))},
-		Spec{"review_chapter", "Open the shared chapter workspace with story, ordered pages and reading preview. The UI reads details on demand; this tool returns only identity and a short summary. Does not default to the first page.", obj(paged(map[string]any{"chapter_uuid": uuid}), "chapter_uuid")},
+		Spec{"review_chapter", "Open the normal shared chapter workspace with story, ordered pages and adopted images. The UI reads details on demand; this tool returns only identity and a short summary. Does not default to the first page.", obj(paged(map[string]any{"chapter_uuid": uuid}), "chapter_uuid")},
 		Spec{"review_page", "Open the shared page workspace. The UI loads complete text, scene and versions on demand and supports user-submitted edits. Local version preview never adopts a version automatically.", obj(map[string]any{"chapter_uuid": uuid, "page_uuid": uuid}, "chapter_uuid", "page_uuid")},
 		Spec{"review_settings", "Launch shared setting cards/detail. Returns compact identity and summary; the UI loads complete text, images and versions on demand. Optionally focus one setting.", obj(paged(map[string]any{"setting_uuid": uuid}))},
 		Spec{"review_candidates", "Open shared page/setting candidate versions or supplied text candidates. Preview never writes; explicit UI adoption uses the existing revision flow. For conversation number choices, reread the target and use the indicated authoring selection with expected_revision.", candidateSchema},
@@ -161,6 +161,23 @@ func validate(name string, raw json.RawMessage) error {
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {
 		return err
+	}
+	// Accept historical inputs without advertising retired navigation options.
+	if args, ok := value.(map[string]any); ok {
+		if name == "review_book" {
+			if mode, exists := args["mode"]; exists {
+				if mode != "overview" && mode != "preview" {
+					return fmt.Errorf("invalid legacy review mode")
+				}
+				delete(args, "mode")
+			}
+			if _, exists := args["chapter_uuid"]; exists {
+				s = schemas()["review_chapter"]
+			}
+		}
+		if name == "read_app_review" && args["view"] == "reader" {
+			args["view"] = "book"
+		}
 	}
 	return s.Validate(value)
 }

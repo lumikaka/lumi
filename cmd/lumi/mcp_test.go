@@ -287,9 +287,23 @@ func TestStdioTextCreationEndToEndWithoutProviders(t *testing.T) {
 	if chapterReview["target_uuid"] != chapterUUID {
 		t.Fatal(chapterReview)
 	}
-	review := callReviewDetails(t, client, "reader", map[string]any{}, "")
+	review := callReviewDetails(t, client, "chapter", map[string]any{"chapter_uuid": chapterUUID}, "")
 	if len(review["items"].([]any)) != 3 || review["items"].([]any)[0].(map[string]any)["text"] != "第一页旁白：我陪你回家。" {
 		t.Fatal(review)
+	}
+	for _, args := range []map[string]any{{"chapter_uuid": chapterUUID}, {"mode": "preview", "chapter_uuid": chapterUUID}} {
+		legacy := callText(t, client, "review_book", args, "")
+		if legacy["view"] != "chapter" || legacy["target_uuid"] != chapterUUID || strings.HasSuffix(legacy["open_url"].(string), "/preview") {
+			t.Fatal(legacy)
+		}
+	}
+	legacyBook := callText(t, client, "review_book", map[string]any{"mode": "preview"}, "")
+	if legacyBook["view"] != "book" || legacyBook["open_url"] != overviewReview["open_url"] {
+		t.Fatal(legacyBook)
+	}
+	legacyChapter := callReviewDetails(t, client, "reader", map[string]any{"chapter_uuid": chapterUUID}, "")
+	if legacyChapter["view"] != "chapter" || legacyChapter["target_uuid"] != chapterUUID {
+		t.Fatal(legacyChapter)
 	}
 	callText(t, client, "review_page", map[string]any{"chapter_uuid": chapterUUID, "page_uuid": pageUUIDs[0]}, "")
 	callText(t, client, "review_settings", map[string]any{"setting_uuid": setting["uuid"]}, "")

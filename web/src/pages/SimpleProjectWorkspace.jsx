@@ -29,7 +29,6 @@ import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import { OverviewExportsPanel } from './ProjectOverviewPanels.jsx'
 import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import {
-  SimpleBookView,
   SimpleBooksPage,
   SimpleHomePage,
   SimpleNotFound,
@@ -80,7 +79,7 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
   const chatReference = simpleProjectChatReference(routeState, { asset: referenceAssetQuery.data, chapter: referenceChapterQuery.data, section: referenceSection })
   const project = projectQuery.data
   const trajectoryView = routeState.key === 'trajectory' && !initializationBlocked
-  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', book: 'simple.shell.page.book', trajectory: 'trajectory.title' }[routeState.key] || 'simple.shell.page.home')
+  const pageTitle = t({ home: 'simple.shell.page.home', story: 'simple.shell.page.story', configuration: 'projects.configuration', llm_logs: 'settings.llm_logs', exports: 'projects.tab.exports', settings: 'simple.shell.page.settings', setting: 'simple.shell.page.settings', books: 'simple.shell.page.books', chapter: 'simple.shell.page.pages', pages: 'simple.shell.page.pages', page: 'simple.shell.page.page', trajectory: 'trajectory.title' }[routeState.key] || 'simple.shell.page.home')
   const chatOpen = !trajectoryView && (compact ? chatOverlayOpen : !chatCollapsed)
   const pageEditorActive = !initializationBlocked && project?.setup_status !== 'draft' && ['page', 'pages'].includes(routeState.key)
 
@@ -172,7 +171,6 @@ export default function SimpleProjectWorkspace({ projectUuid, projectQuery }) {
               <Route path="chapters" element={<SimpleBooksPage projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
               <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<SimplePageView project={project} projectUuid={projectUuid} />} />
-              <Route path="chapters/:chapterUuid/preview" element={<SimpleBookView projectUuid={projectUuid} />} />
               <Route path="threads/:threadUuid/trajectory" element={<ThreadTrajectoryPage projectUuid={projectUuid} pictureBook={project?.picture_book} />} />
               <Route path="*" element={<SimpleNotFound projectUuid={projectUuid} />} />
             </Routes>

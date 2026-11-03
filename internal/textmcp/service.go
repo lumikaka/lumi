@@ -210,7 +210,6 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			reviewName := "review_" + a.ReviewView
 			if a.ReviewView == "reader" {
 				reviewName = "review_book"
-				a.Mode = "preview"
 			}
 			result, callErr = s.reviewLegacy(ctx, store, st, prod, reviewName, a)
 		case "read_app_resource", "write_app_resource":

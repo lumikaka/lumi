@@ -15,7 +15,7 @@ const simpleStyles = readFileSync(new URL('../../styles/simple-project.sass', im
 
 test('trajectory registers one shared project URL and only the mode-specific topbar changes', () => {
   assert.match(workspace, /threads\/:threadUuid\/trajectory["']\s+element=\{<ThreadTrajectoryPage/)
-  assert.match(workspace, /hideChat=\{chapterPreview \|\| trajectoryView\}/)
+  assert.match(workspace, /hideChat=\{trajectoryView\}/)
   assert.match(workspace, /!trajectoryView \? <WorkspaceGroupTabs/)
   assert.match(simpleWorkspace, /import ThreadTrajectoryPage from '\.\/trajectory\/ThreadTrajectoryPage\.jsx'/)
   assert.match(simpleWorkspace, /trajectoryView = routeState\.key === 'trajectory'/)

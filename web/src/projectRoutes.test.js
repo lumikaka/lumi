@@ -32,7 +32,9 @@ test('legacy simple and expert locations normalize to one resource URL and prese
     [`/projects/${projectUuid}/simple/settings`, '', `/projects/${projectUuid}/premise`, ''],
     [`/projects/${projectUuid}/simple/settings/${assetUuid}`, '', `/projects/${projectUuid}/premise/assets/${assetUuid}`, ''],
     [`/projects/${projectUuid}/simple/books/${chapterUuid}/pages/${sectionUuid}`, '?chat_new=1', `/projects/${projectUuid}/chapters/${chapterUuid}/sections/${sectionUuid}`, '?chat_new=1'],
-    [`/projects/${projectUuid}/simple/books/${chapterUuid}/book`, '', `/projects/${projectUuid}/chapters/${chapterUuid}/preview`, ''],
+    [`/projects/${projectUuid}/simple/books/${chapterUuid}/book`, '', `/projects/${projectUuid}/chapters/${chapterUuid}`, ''],
+    [`/projects/${projectUuid}/preview`, '?workspace_mode=simple', `/projects/${projectUuid}`, '?workspace_mode=simple'],
+    [`/projects/${projectUuid}/chapters/${chapterUuid}/preview`, '?workspace_mode=expert', `/projects/${projectUuid}/chapters/${chapterUuid}`, '?workspace_mode=expert'],
     [`/projects/${projectUuid}/overview/exports`, '', `/projects/${projectUuid}/exports`, ''],
     [`/projects/${projectUuid}/trash`, '?chat_thread_uuid=thread', `/projects/${projectUuid}/chapters`, '?chat_thread_uuid=thread&state=trashed'],
   ]

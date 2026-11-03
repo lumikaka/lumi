@@ -31,7 +31,6 @@ import { OverviewExportsPanel, OverviewSummaryPanel } from './ProjectOverviewPan
 import { PromptPanel, StoryProfilePanel } from './ProjectOverviewContentPanels.jsx'
 import ProjectLLMLogsPanel from './ProjectLLMLogsPanel.jsx'
 import ChaptersWorkspace from './ChaptersWorkspace.jsx'
-import ChapterComicPreviewPage from './ChapterComicPreviewPage.jsx'
 import ChapterWorkbenchPage from './ChapterWorkbenchPage.jsx'
 import ThreadTrajectoryPage from './trajectory/ThreadTrajectoryPage.jsx'
 import SimpleProjectWorkspace from './SimpleProjectWorkspace.jsx'
@@ -504,11 +503,10 @@ function StoryWorkspaceContent({ projectUuid }) {
   }
 
   const activeSection = workspaceSectionForPath(location.pathname)
-  const chapterPreview = /\/chapters\/[^/]+\/preview$/.test(location.pathname)
   const trajectoryView = /\/threads\/[^/]+\/trajectory$/.test(location.pathname)
   const draftProject = projectQuery.data?.setup_status === 'draft'
   return (
-    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} forcedExpert={forcedExpert} hideChat={chapterPreview || trajectoryView}>
+    <ProjectWorkspaceLayout project={projectQuery.data} projectUuid={projectUuid} activeSection={activeSection} forcedExpert={forcedExpert} hideChat={trajectoryView}>
       {!trajectoryView ? <WorkspaceGroupTabs projectUuid={projectUuid} activeSection={activeSection} pictureBook={projectQuery.data?.picture_book} hidden={draftProject} /> : null}
       <main className={`workspace-main ${trajectoryView ? 'workspace-main--trajectory' : ''}`}>
         {draftProject ? <DraftProjectWorkspace /> : <Routes>
@@ -519,7 +517,6 @@ function StoryWorkspaceContent({ projectUuid }) {
           <Route path="llm-logs" element={<ProjectLLMLogsPanel projectUuid={projectUuid} />} />
           <Route path="exports" element={<OverviewExportsPanel projectUuid={projectUuid} />} />
           <Route path="chapters" element={<ChapterCollectionRoute projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />
-          <Route path="chapters/:chapterUuid/preview" element={<ChapterComicPreviewPage projectUuid={projectUuid} />} />
           <Route path="chapters/:chapterUuid/sections/:sectionUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
           <Route path="chapters/:chapterUuid" element={<ChapterWorkbenchPage projectUuid={projectUuid} renderBody={() => <ChapterEditorPanel projectUuid={projectUuid} embedded />} />} />
           <Route path="premise" element={<PremiseWorkspace projectUuid={projectUuid} pictureBook={projectQuery.data?.picture_book} />} />

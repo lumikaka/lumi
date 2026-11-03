@@ -11,7 +11,7 @@ import { createAppImage } from './WorkspaceImage.jsx'
 import TextCandidates from '../src/workspace/TextCandidates.jsx'
 import ChapterReview from './ChapterReview.jsx'
 import { WorkspaceRuntime } from '../src/workspace/runtime.jsx'
-import { SimpleHomePage, SimpleBooksPage, SimplePagesPage, SimplePageView, SimpleSettingsPage, SimpleSettingDetailPage, SimpleStoryPage, SimpleBookView, SimpleWorkPreview, SimpleLoading, SimpleError } from '../src/pages/SimpleProjectPages.jsx'
+import { SimpleHomePage, SimpleBooksPage, SimplePageView, SimpleSettingsPage, SimpleSettingDetailPage, SimpleStoryPage, SimpleLoading, SimpleError } from '../src/pages/SimpleProjectPages.jsx'
 import './workspace.scss'
 
 const bridge = new AppBridge()
@@ -31,11 +31,11 @@ function Workspace({launch}) {
   const origin = workspaceOrigin(project,launch)
   const runtime = useMemo(()=>({DownloadLink:({href,children,...props})=><a {...props} href={origin+href} onClick={event=>{event.preventDefault();if(!href.startsWith(`/media/projects/${launch.project_uuid}/comic-exports/`))return;bridge.request('ui/open-link',{url:origin+href}).then(result=>{if(result?.isError)setStatus('下载入口未打开，请在 Lumi 中继续')}).catch(()=>setStatus('下载入口未打开，请在 Lumi 中继续'))}}>{children}</a>,api,Image:createAppImage(previews,launch.project_uuid),loadImage:async(page,{large,signal,attempt})=>{const uuid=page.current_image?.asset?.uuid||page.asset_uuid;const edge=large?1024:384;if(attempt)previews.evict(launch.project_uuid,uuid,edge);return{src:(await previews.load(launch.project_uuid,uuid,edge,signal)).data_uri}},capabilities:{fileUpload:true,download:true,generation:false,chat:false}}),[api,launch.project_uuid,origin])
   const base = `/projects/${launch.project_uuid}`
-  const url = location.pathname === `${base}/preview` ? `${origin}${base}/` : location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
+  const url = location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
   useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
   useEffect(()=>{navigate(launch.path,{replace:true});void client.invalidateQueries({predicate:query=>query.queryKey?.[1]===launch.project_uuid,refetchType:'active'})},[launch.path,launch.sequence])
   return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
-    <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link><Link to={`${base}/preview`}>阅读预览</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
+    <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
     {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
     {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
     <details className="mcp-workspace__capabilities"><summary>宿主能力与替代入口</summary><p>编辑、排序、回收站与版本采用在此工作区直接保存到同一项目。文件导入支持单次 6 MiB，导出下载通过宿主在 Lumi 服务中打开。AI 生成和聊天引用需在 Lumi 中继续；不会自动调用模型或切换付费渠道。</p></details>
@@ -48,8 +48,6 @@ function Workspace({launch}) {
         <Route path={`${base}/premise`} element={<SimpleSettingsPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/premise/assets/:assetUuid`} element={<SimpleSettingDetailPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/story`} element={<SimpleStoryPage project={project} projectUuid={launch.project_uuid}/>}/>
-        <Route path={`${base}/preview`} element={<SimpleWorkPreview projectUuid={launch.project_uuid}/>}/>
-        <Route path={`${base}/chapters/:chapterUuid/preview`} element={<SimpleBookView projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/candidates`} element={<TextCandidates key={launch.sequence} candidates={launch.ui_arguments?.candidates || launch.request.arguments.candidates}/>}/>
         <Route path="*" element={<div className="simple-project-page"><p>此页面需要 Lumi 的完整运行环境。</p><OpenLumi url={url}/></div>}/>
       </Routes>}

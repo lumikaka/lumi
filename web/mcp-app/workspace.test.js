@@ -29,12 +29,44 @@ test('v3 and historical launch identities preserve chapter scope and runtime Web
  const launch={contract_version:3,view:'book',project_uuid:project,target_uuid:project,revision:0,title:'Book',summary:'Short',open_url:`http://127.0.0.1:49123/projects/${project}/`,request:{name:'review_book',arguments:{}}}
  assert.equal(workspaceLaunch({structuredContent:{success:true,data:launch}}).path,`/projects/${project}/`)
  const legacy={...launch,contract_version:undefined,scope:'chapter',request:{name:'review_book',arguments:{chapter_uuid:chapter}}}
- assert.equal(workspaceLaunch({structuredContent:{success:true,data:legacy}}).path,`/projects/${project}/chapters/${chapter}/preview`)
+ assert.equal(workspaceLaunch({structuredContent:{success:true,data:legacy}}).path,`/projects/${project}/chapters/${chapter}`)
  assert.throws(()=>workspaceLaunch({structuredContent:{success:true,data:{...legacy,request:{name:'review_book',arguments:{}}}}}),/未扩大为整本/)
  const single={...launch,view:'page',target_uuid:page,request:{name:'review_page',arguments:{chapter_uuid:chapter,page_uuid:page}}}
  assert.equal(workspaceLaunch({structuredContent:{success:true,data:single}}).origin,'http://127.0.0.1:49123')
  assert.throws(()=>workspaceLaunch({structuredContent:{success:true,data:{...single,revision:-1}}}))
  assert.throws(()=>workspaceLaunch({structuredContent:{success:true,data:{...single,target_uuid:chapter}}}),/目标/)
+})
+test('all review launches and historical reader results open normal pages at the same scope',()=>{
+ const base=`/projects/${project}`
+ const launch={contract_version:3,view:'book',project_uuid:project,target_uuid:project,revision:4,title:'Book',open_url:`http://127.0.0.1:49123${base}/`,request:{name:'review_book',arguments:{}}}
+ const open=data=>workspaceLaunch({structuredContent:{success:true,data}})
+ for(const [view,args,target,path] of [
+  ['book',{},project,`${base}/`],
+  ['chapters',{},project,`${base}/chapters`],
+  ['chapter',{chapter_uuid:chapter},chapter,`${base}/chapters/${chapter}`],
+  ['page',{chapter_uuid:chapter,page_uuid:page},page,`${base}/chapters/${chapter}/sections/${page}`],
+ ]) {
+  assert.equal(open({...launch,view,target_uuid:target,request:{name:`review_${view}`,arguments:args}}).path,path)
+ }
+ for(const view of ['book','reader']) for(const contract_version of [undefined,2,3]) for(const scoped of [false,true]) {
+  const args={mode:'preview',...(scoped?{chapter_uuid:chapter}:{})}
+  const result=open({...launch,view,contract_version,scope:scoped?'chapter':'book',open_url:launch.open_url+(scoped?`chapters/${chapter}/preview`:'preview'),request:{name:'review_book',arguments:args}})
+  assert.equal(result.path,scoped?`${base}/chapters/${chapter}`:`${base}/`)
+  assert.equal(result.open_url,`http://127.0.0.1:49123${result.path}`)
+  assert.equal(result.view,scoped?'chapter':'book')
+  assert.equal(result.target_uuid,scoped?chapter:project)
+  assert.equal(result.request.arguments.mode,undefined)
+  assert.equal(result.request.name,scoped?'review_chapter':'review_book')
+ }
+ const old={...launch,view:'reader',scope:'chapter',request:{name:'review_book',arguments:{chapter_uuid:chapter}}}
+ for(const invalid of [
+  {...old,chapter_uuid:page},
+  {...old,scope:'book'},
+  {...old,request:{name:'review_book',arguments:{}}},
+  {...old,request:{name:'review_book',arguments:{chapter_uuid:'invalid'}}},
+ ]) assert.throws(()=>open(invalid))
+ const textCandidates=open({...launch,view:'candidates',request:{name:'review_candidates',arguments:{kind:'text',candidates:[{title:'A',text:'A'},{title:'B',text:'B'}]}}})
+ assert.equal(textCandidates.open_url,launch.open_url,'text candidates retain a real Web fallback')
 })
 test('summary navigation drains cursor pages without prose and rejects changed or incomplete snapshots',async()=>{
  const calls=[]

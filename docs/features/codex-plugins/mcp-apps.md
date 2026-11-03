@@ -10,12 +10,13 @@
 | `review_chapters()` | 按业务顺序排列的章节列表 |
 | `review_chapter(chapter_uuid)` | 章节故事、完整页面网格和 section 栏 |
 | `review_page(chapter_uuid, page_uuid)` | 单页编辑、正文、分镜、版本和本章切换 |
-| `review_book({mode:"preview",chapter_uuid?})` | 整本或指定章节图片阅读器 |
 | `review_settings` / `review_candidates` | 设定和候选入口，区分本地预览与显式采用 |
 
-Web 与 MCP 导入同一 `SimpleProjectPages.jsx`、SectionRail、BookPreview、表单和弹窗；MCP 没有复制另一套精简 JSX，也没有嵌入整个 Web 应用。Web 保留全局外壳，MCP 由 `web/mcp-app/main.jsx` 装配内存路由和宿主适配，保留章内 section 导航。
+Web 与 MCP 导入同一 `SimpleProjectPages.jsx`、SectionRail、图片、表单和弹窗；MCP 没有复制另一套精简 JSX，也没有嵌入整个 Web 应用。Web 保留全局外壳，MCP 由 `web/mcp-app/main.jsx` 装配内存路由和宿主适配，保留章内 section 导航。
 
 `pnpm --dir web build:app` 生成单个 `internal/textmcp/appdist/review.html`，由 Go embed 内嵌。URI 为 `ui://lumi/review/<内容哈希>.html`，目标和视图由工具结果及内部导航状态决定。只有显式“在 Lumi 中打开”等 Web 入口交由宿主打开链接，地址来自当前服务实例。
+
+完成创作或导出时，按整本、指定章节、单页范围分别打开作品总览、章节或单页；仅生成第一页也打开该单页。旧 preview/reader 参数和历史结果只兼容到同范围正常页面，不渲染独立阅读器。
 
 ## 数据、权限和图片
 
@@ -35,6 +36,6 @@ App-only 可见性本身不证明数据未进入模型上下文；实际宿主�
 
 ## 验收及历史
 
-当前共享工作区的保存、版本恢复、真实宿主 25 页阅读、异常与边界覆盖见 [2026-11-03 摘要](acceptance/shared-workspace-20261103.md)。文件/下载、生成及原生自动化的具体限制同样保留在该摘要。
+历史共享工作区的保存、版本恢复、真实宿主 25 页阅读、异常与边界覆盖见 [2026-11-03 摘要](acceptance/shared-workspace-20261103.md)。文件/下载、生成及原生自动化的具体限制同样保留在该摘要。
 
 早期只读 0.5.4、最终阅读器及安装流程的历史结论见 [验收索引](acceptance/README.md)。旧版“全量工具结果”“UI 只能本地选择”“仅通过对话采用”的描述不适用于当前工作区。

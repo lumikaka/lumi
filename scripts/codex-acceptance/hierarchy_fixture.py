@@ -60,7 +60,7 @@ class MCP:
 
 PAGE = '''<!doctype html><html><meta charset="utf-8"><title>Lumi 四层审阅验收</title>
 <style>body{margin:0;background:#e6e9e2;font:13px system-ui}header{padding:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{padding:6px}iframe{width:100%;height:calc(100vh - 100px);border:0;display:block}</style>
-<header>测试宿主 · 真实 Lumi CLI <button data-view="book">作品</button><button data-view="chapters">章节列表</button><button data-view="chapter">章节</button><button data-view="page">单页</button><button data-view="empty">空章节</button><button data-view="legacy">历史章节结果</button><button data-view="empty_book">空作品</button><button id="theme">深/浅色</button><button id="mutate">实时修改测试正文</button><button id="delete">删除测试第2页</button><button id="delay">延迟下次单页</button><button id="fail">下次读取失败</button><button id="facts">读取采用结果</button><output id="fact-result"></output></header>
+<header>测试宿主 · 真实 Lumi CLI <button data-view="book">作品</button><button data-view="chapters">章节列表</button><button data-view="chapter">章节</button><button data-view="page">单页</button><button data-view="empty">空章节</button><button data-view="legacy">历史章节结果</button><button data-view="legacy_book">旧整本参数</button><button data-view="legacy_chapter">旧章节参数</button><button data-view="empty_book">空作品</button><button id="theme">深/浅色</button><button id="mutate">实时修改测试正文</button><button id="delete">删除测试第2页</button><button id="delay">延迟下次单页</button><button id="fail">下次读取失败</button><button id="facts">读取采用结果</button><output id="fact-result"></output></header>
 <iframe sandbox="allow-scripts allow-same-origin allow-forms" src="/review.html"></iframe><script>
 const frame=document.querySelector('iframe');let current='book',dark=false,fixtureProject=null;window.fixtureEvents=[];window.openedLinks=[];window.delayNextPage=false;window.failNextReview=false;
 async function show(view=current){current=view;const params=await fetch('/view/'+view).then(r=>r.json());fixtureProject=params.structuredContent.data.project_uuid;frame.contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params},'*')}
@@ -152,6 +152,8 @@ def main():
                     'chapter': {'name': 'review_chapter', 'arguments': {'chapter_uuid': chapters[0]['uuid']}},
                     'page': {'name': 'review_page', 'arguments': {'chapter_uuid': chapters[0]['uuid'], 'page_uuid': pages[1]['uuid']}},
                     'empty': {'name': 'review_chapter', 'arguments': {'chapter_uuid': chapters[2]['uuid']}},
+                    'legacy_book': {'name': 'review_book', 'arguments': {'mode': 'preview'}},
+                    'legacy_chapter': {'name': 'review_book', 'arguments': {'mode': 'preview', 'chapter_uuid': chapters[0]['uuid']}},
                     'legacy': {'name': 'review_book', 'arguments': {'chapter_uuid': chapters[0]['uuid'], 'limit': 2}}}
         tools = mcp.rpc('tools/list', {})['tools']
         uri = next(t for t in tools if t['name'] == 'review_book')['_meta']['ui']['resourceUri']
@@ -167,6 +169,9 @@ def main():
                     'pages': [p['uuid'] for p in pages], 'resource_uri': uri}
         (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
         allowed = {t['name'] for t in tools if t['name'].startswith('review_')} | {'read_app_image', 'watch_app_changes', 'read_app_resource', 'write_app_resource', 'read_app_review'}
+    # Reused fixtures can predate the retired-mode compatibility cases.
+    requests.setdefault('legacy_book', {'name': 'review_book', 'arguments': {'mode': 'preview'}})
+    requests.setdefault('legacy_chapter', {'name': 'review_book', 'arguments': {'mode': 'preview', 'chapter_uuid': chapters[0]['uuid']}})
     class Handler(BaseHTTPRequestHandler):
         def reply(self, body, kind='application/json'):
             if not isinstance(body, bytes): body = json.dumps(body, ensure_ascii=False).encode()
@@ -182,6 +187,8 @@ def main():
                     legacy = mcp.rpc('tools/call', {'name':'read_app_review','arguments':{'view':'reader', **requests['legacy']['arguments']}})
                     envelope = legacy['_meta']['lumi/app_response']
                     d=envelope['data'];d.pop('contract_version',None);d['view']='book'
+                    # Reconstruct the historical project-targeted chapter snapshot.
+                    d['target_uuid']=project_uuid;d['scope']='chapter';d['open_url']+='/preview'
                     d['request']={'name':'review_book','arguments':requests['legacy']['arguments']}
                     result={'structuredContent':envelope,'content':[{'type':'text','text':json.dumps(envelope,ensure_ascii=False)}]}
                 else:

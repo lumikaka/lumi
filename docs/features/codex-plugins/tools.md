@@ -133,11 +133,10 @@ review_* 只打开当前 stdio cwd 绑定项目的工作区，不接收任意项
 
 | 工具 | 参数 | 共享页面与 Web 入口 |
 | --- | --- | --- |
-| `review_book` | `{}`，`mode:"overview"` 可省略 | 作品简介、规格、进度及各入口；`/projects/:project_uuid/` |
+| `review_book` | 可保留历史分页参数 | 作品简介、规格、进度和章节/设定入口；`/projects/:project_uuid/` |
 | `review_chapters` | 可保留历史分页参数 | 业务顺序章节列表、摘要、页数和图片完成数；`/projects/:project_uuid/chapters` |
-| `review_chapter` | `chapter_uuid` | 整章故事、页面网格、section 快速切换及阅读入口；`/projects/:project_uuid/chapters/:chapter_uuid` |
+| `review_chapter` | `chapter_uuid` | 整章故事、页面网格、section 快速切换及当前图片；`/projects/:project_uuid/chapters/:chapter_uuid` |
 | `review_page` | `chapter_uuid,page_uuid` | 当前图、页面内容与说明、版本、章内切换；章节的 `/sections/:page_uuid` |
-| `review_book` | `mode:"preview",chapter_uuid?` | MCP 内整本或单章阅读；Web 入口仅使用既有页面：全书回作品首页，单章 `/chapters/:chapter_uuid/preview` |
 | `review_settings` | `setting_uuid?` | 设定列表或详情；`/premise` 或 `/premise/assets/:setting_uuid` |
 | `review_candidates` | `kind:"page"` + 章/页，`kind:"setting"` + 设定，或 `kind:"text"` + 2–12 项 `{title,text}` | 共享详情候选弹窗，或本地文字候选；预览不保存，显式采用才持久化 |
 
@@ -155,7 +154,9 @@ App-only 资源适配器使用项目相对资源名（如 `chapters/<uuid>/comic
 
 文件导入在工具参数中仅传文件元数据，字节通过请求 `_meta["lumi/upload"].data_base64` 传递；仅 asset-uploads POST 接受附件，最大 6 MiB，服务端转换为已有 multipart 上传流程，不接受本地路径。导出弹窗保留现有确认与 readiness，下载由宿主打开同一绑定项目的 Lumi 下载路径。AI 生成、聊天引用、系统配置使用同资源 Web 替代入口，界面不自动生图或切换渠道。
 
-`read_app_review` 保留旧详情 DTO 的 App-only 兼容读取；正常工作区使用资源读取。旧 `review_book({chapter_uuid})` 返回 `view:"reader",compatibility:"legacy_chapter_preview"`，始终保留指定章范围，不能与 overview 同用。历史 book 阅读快照按其 chapter_uuid 进入单章 reader；旧无参数调用现在打开总览。最终预览仓库调用使用 `review_book({mode:"preview",chapter_uuid?})`。
+`read_app_review` 保留旧详情 DTO 的 App-only 兼容读取；正常工作区使用资源读取。新 schema 不提供 `mode`、reader 或作品工具的章节参数。旧 `review_book({chapter_uuid})`、旧 `mode:"preview"` 调用与历史 book/reader 快照都映射到相同范围的正常业务页面；指定章返回规范的 `review_chapter` 请求、章节身份及章节 URL，整本返回作品总览。旧 `/preview` URL 仅重定向到作品或章节，不渲染独立预览。
+
+创作或导出完成后只打开与交付范围对应的页面：整本 `review_book()`，指定章 `review_chapter(chapter_uuid)`，单页（包括仅第一页）`review_page(chapter_uuid,page_uuid)`。章节列表使用 `review_chapters()`。不追加另一轮整本阅读。
 
 仅“在 Lumi 中打开”或明确下载交给宿主打开实际运行端口，普通导航留在 App。WebSocket 提示触发 Query 失效并经 REST 重读 SQLite；首次 join、重新 join、窗口聚焦校准，无定时 HTTP 轮询。项目 GET 响应的 open_url 提供当前 REST 服务 origin，重连后相同资源链接随运行时端口校准。审阅入口不增加创作或导出的确认节点；UI 失败仍交付摘要、路径和真实 Lumi 入口。
 

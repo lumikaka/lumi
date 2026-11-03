@@ -14,7 +14,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
+func TestNormalReviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 	s, _, _ := harness(t)
 	s.Endpoint = "http://127.0.0.1:12345"
 	root := t.TempDir()
@@ -64,12 +64,12 @@ func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 	var all []reviewItem
 	after := ""
 	for {
-		args := map[string]any{"mode": "preview", "limit": 2}
+		args := map[string]any{"chapter_uuid": second, "limit": 2}
 		if after != "" {
 			args["after"] = after
 		}
-		result := object(t, invokeReviewDetails(t, s, root, "review_book", args))
-		if result["total"] != float64(25) || result["scope"] != "book" {
+		result := object(t, invokeReviewDetails(t, s, root, "review_chapter", args))
+		if result["total"] != float64(22) || result["view"] != "chapter" {
 			t.Fatal(result)
 		}
 		encoded, _ := json.Marshal(result["items"])
@@ -84,21 +84,26 @@ func TestFinalBookPreviewScopeOrderPaginationAndHeadlessExport(t *testing.T) {
 		}
 		after = pagination["next_cursor"].(string)
 	}
-	if len(all) != 25 || all[0].UUID != front["uuid"] || all[1].UUID != body["uuid"] || all[2].UUID != back["uuid"] {
+	if len(all) != 22 {
 		t.Fatalf("order=%+v", all)
 	}
-	if all[1].AssetUUID != adopted["asset"].(map[string]any)["uuid"] || len(all[1].Variants) != 0 {
-		t.Fatal("preview did not use only the adopted asset")
-	}
-	for i, item := range all[3:] {
+	for i, item := range all {
 		if item.ChapterUUID != second || item.ChapterTitle != "vol01.ch02" || item.PageNumber != i+1 || item.AssetUUID != "" {
 			t.Fatalf("page %d=%+v", i, item)
 		}
 	}
 	scoped := invokeReviewDetails(t, s, root, "review_book", map[string]any{"chapter_uuid": first})
 	data := object(t, scoped)
-	if data["total"] != float64(3) || data["scope"] != "chapter" || !strings.HasSuffix(data["open_url"].(string), "/"+first+"/preview") {
+	if data["total"] != float64(3) || data["view"] != "chapter" || !strings.HasSuffix(data["open_url"].(string), "/chapters/"+first) {
 		t.Fatal(data)
+	}
+	encoded, _ := json.Marshal(data["items"])
+	var firstPages []reviewItem
+	if err := json.Unmarshal(encoded, &firstPages); err != nil {
+		t.Fatal(err)
+	}
+	if firstPages[0].UUID != front["uuid"] || firstPages[1].UUID != body["uuid"] || firstPages[2].UUID != back["uuid"] || firstPages[1].AssetUUID != adopted["asset"].(map[string]any)["uuid"] {
+		t.Fatal(firstPages)
 	}
 	text, err := boundedResult(scoped)
 	if err != nil || text.IsError {

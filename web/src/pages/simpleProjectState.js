@@ -52,8 +52,6 @@ export function simpleProjectRouteState(pathname = '', projectUuid = '') {
   if (route === 'chapters') return { key: 'books', assetUuid: '', chapterUuid: '', sectionUuid: '' }
   const page = route.match(/^chapters\/([^/]+)\/sections\/([^/]+)$/)
   if (page) return { key: 'page', assetUuid: '', chapterUuid: decodeSegment(page[1]), sectionUuid: decodeSegment(page[2]) }
-  const book = route.match(/^chapters\/([^/]+)\/preview$/)
-  if (book) return { key: 'book', assetUuid: '', chapterUuid: decodeSegment(book[1]), sectionUuid: '' }
   const pages = route.match(/^chapters\/([^/]+)$/)
   if (pages) return { key: 'pages', assetUuid: '', chapterUuid: decodeSegment(pages[1]), sectionUuid: '' }
   return { key: 'not_found', assetUuid: '', chapterUuid: '', sectionUuid: '' }
@@ -72,7 +70,7 @@ export function simpleProjectChatReference(routeState, { asset, chapter, section
     const imageUuid = section.current_image?.asset?.uuid || ''
     return readyReference('comic_section', section.uuid, section.title, imageUuid)
   }
-  if (['chapter', 'pages', 'book'].includes(routeState?.key) && chapter?.uuid === routeState.chapterUuid) {
+  if (['chapter', 'pages'].includes(routeState?.key) && chapter?.uuid === routeState.chapterUuid) {
     return readyReference('chapter', chapter.uuid, [chapter.chapter_code, chapter.title].filter(Boolean).join(' · '))
   }
   return null

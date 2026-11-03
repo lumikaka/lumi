@@ -61,6 +61,7 @@ func settingReview(p production.PremiseAsset, base string) reviewItem {
 }
 
 func (s *Service) reviewLegacy(ctx context.Context, store *project.Store, st *story.Service, prod *production.Service, name string, a arguments) (any, error) {
+	name, a = normalReviewTarget(name, a)
 	p, err := st.GetProject(ctx)
 	if err != nil {
 		return nil, err
@@ -72,10 +73,6 @@ func (s *Service) reviewLegacy(ctx context.Context, store *project.Store, st *st
 	items := []reviewItem{}
 	switch name {
 	case "review_book", "review_chapters", "review_chapter":
-		if name == "review_book" && a.Mode == "overview" && a.ChapterUUID != "" {
-			return nil, reviewArguments("作品总览不能指定章节；请使用 review_chapter 或 mode=preview。")
-		}
-		reader := name == "review_book" && (a.Mode == "preview" || a.ChapterUUID != "")
 		chapters, err := st.ListChapters(ctx, "active")
 		if err != nil {
 			return nil, err
@@ -96,7 +93,7 @@ func (s *Service) reviewLegacy(ctx context.Context, store *project.Store, st *st
 			summaries = append(summaries, summary)
 			pageCount += summary.PageCount
 			imageCount += summary.ImageCount
-			if name == "review_chapter" || reader {
+			if name == "review_chapter" {
 				bodyNumber := 0
 				for _, page := range pages {
 					item := pageReview(page, base)
@@ -121,21 +118,6 @@ func (s *Service) reviewLegacy(ctx context.Context, store *project.Store, st *st
 			return nil, reviewArguments("指定章节不在当前项目的有效章节中。")
 		}
 		switch {
-		case reader:
-			data["view"], data["scope"] = "reader", "book"
-			data["selection_notice"] = "只读预览当前采用的页面图片；本地翻页和版本预览不修改采用结果。"
-			if a.ChapterUUID != "" {
-				data["scope"], data["title"], data["open_url"] = "chapter", summaries[0].Title, summaries[0].OpenURL+"/preview"
-			} else {
-				data["open_url"] = base + "/"
-			}
-			if a.Mode == "" {
-				data["compatibility"] = "legacy_chapter_preview"
-			}
-			if err := reviewPageSlice(data, "items", items, a); err != nil {
-				return nil, err
-			}
-			return data, nil
 		case name == "review_chapters":
 			data["open_url"] = base + "/chapters"
 			if err := reviewPageSlice(data, "chapters", summaries, a); err != nil {
@@ -277,9 +259,6 @@ func reviewArguments(details string) error {
 }
 func aReviewArgs(name string, a arguments) map[string]any {
 	args := map[string]any{}
-	if a.Mode != "" {
-		args["mode"] = a.Mode
-	}
 	if a.After != "" {
 		args["after"] = a.After
 	}

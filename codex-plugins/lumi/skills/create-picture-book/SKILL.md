@@ -34,7 +34,7 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 3. **设定**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；先 `settings list/get` 复用已有图片，只有文字不算视觉准备完成。首次带页面生图的创作必须先补齐必要设定图。多个独立主体按 [批量设定图](references/batch-settings.md) 生成总览图、识图，再由 Lumi 裁切入库；每批 1–6 个，复杂场景或精修单独处理。已有文字设定按 UUID 和最新 revision 补图，批量拆分可直接创建新图文设定，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
 5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 渲染 `chapter/section_image`，把完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
-6. **导出与最终预览**：按用户要求完成创作、生图挂载和保存，再 `export_book`；导出完成后调用 `review_book({mode:"preview"})` 展示当前采用图片的最终只读预览。只交付指定章节时使用 `{mode:"preview",chapter_uuid}`，整本使用 `{mode:"preview"}`；多章节按章节分组阅读。用户明确要求的中途审阅仍按约定使用 `review_book()`（作品总览）、`review_chapters()`（章节列表）、`review_chapter(chapter_uuid)`（整章结构）、`review_page(chapter_uuid,page_uuid)`（单页）或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
+6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
 
@@ -62,9 +62,9 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 ## 审阅与提问
 
-用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。完成用户要求的创作、保存和导出后展示最终预览；不增加确认节点，不等待用户打开、翻页或操作 MCP Apps。用户要求一次生成时连续做完。
+用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。完成用户要求的创作、保存和导出后打开对应范围的正常业务页面；不增加确认节点，不等待用户打开、翻页或操作 MCP Apps。用户要求一次生成时连续做完。
 
-只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。MCP Apps 关闭、不可用或加载失败均不阻塞创作与导出；仍交付文本摘要、准确导出路径和工具返回的真实 Lumi Web 预览入口/命令，不把界面加载失败当作内容丢失。`review_book({mode:"preview",chapter_uuid?})` 的缩略图、大图和翻页只读当前采用图片，不能以预览点击作为保存、审批或 `import_image` 的前置条件。`review_candidates` 的预览不写入；用户可在共享工作区显式“使用此稿”直接采用。若用户在对话回复编号，先用 `pages/settings get include_versions:true` 读取版本身份，按 version_no 核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。普通编辑、保存、排序和版本操作由页面经宿主完成，无需额外模型回合。
+只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。MCP Apps 关闭、不可用或加载失败均不阻塞创作与导出；仍交付文本摘要、准确导出路径和工具返回的真实 Lumi Web 业务页面入口/命令，不把界面加载失败当作内容丢失。正常页面保留图片展示、点击大图和本地版本预览，不能以界面点击作为保存、审批或 `import_image` 的前置条件。`review_candidates` 的预览不写入；用户可在共享工作区显式“使用此稿”直接采用。若用户在对话回复编号，先用 `pages/settings get include_versions:true` 读取版本身份，按 version_no 核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。普通编辑、保存、排序和版本操作由页面经宿主完成，无需额外模型回合。
 
 ## 额度耗尽、中断与续做
 
@@ -74,4 +74,4 @@ description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅�
 
 恢复时从 `project_overview → project_setup get → book_outline` 开始，分页读取有需要的章节/设定/页面；以当前工具事实判断缺失环节。重新取 revision、重新渲染剩余任务和读取参考图，只补缺失或用户指定修改的内容。旧生图路径失效且未导入时再生成，不扫描宿主目录寻找替代文件。
 
-作品工作区复用 Web 页面主体；仅隐藏全局顶栏、导航与聊天，保留章内 section 快速切换。`review_*` 仅返回身份、摘要和入口，完整正文、历史和图片由页面经宿主按需读取，不把大对象或 Base64 重复放进模型上下文。四层入口：`review_book()` 总览 → `review_chapters()` → `review_chapter(chapter_uuid)` → `review_page(chapter_uuid,page_uuid)`。章节审阅必须展示整章故事和全部页面结构，不得以第一页替代。内部导航在 App 完成；“在 Lumi 中打开”使用工具给出的真实端口与资源 URL。最终阅读预览使用显式 `mode:"preview"`；旧 `review_book({chapter_uuid})` 仅为兼容指定章阅读，不应用于新的章节结构审阅。
+作品工作区复用 Web 页面主体；仅隐藏全局顶栏、导航与聊天，保留章内 section 快速切换。`review_*` 仅返回身份、摘要和入口，完整正文、历史和图片由页面经宿主按需读取，不把大对象或 Base64 重复放进模型上下文。四层入口：`review_book()` 总览 → `review_chapters()` → `review_chapter(chapter_uuid)` → `review_page(chapter_uuid,page_uuid)`。章节审阅必须展示整章故事和全部页面结构，不得以第一页替代。内部导航在 App 完成；“在 Lumi 中打开”使用工具给出的真实端口与资源 URL。新调用不传 `mode`，不进入独立阅读器。旧 `review_book({chapter_uuid})`、旧 preview 参数和历史 reader 结果兼容到相同范围的正常页面，指定章节始终进入该章节。

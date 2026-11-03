@@ -1,6 +1,8 @@
 # 最终绘本预览：历史验收摘要
 
-日期：2026-11-01（macOS）。本记录保留当时结果和限制；当前四层工作区及后续真实宿主验收见 [2026-11-03 摘要](acceptance/shared-workspace-20261103.md)。默认 `review_book()` 现为作品总览，最终阅读使用 `review_book({mode:"preview",chapter_uuid?})`。
+状态更新：独立阅读器及其路由已移除，以下阅读器结果仅代表当时验收。当前入口与验证见 [正常业务页面验收](acceptance/normal-review-pages-20261103.md)。
+
+日期：2026-11-01（macOS）。本记录保留当时结果和限制；当前四层工作区及后续真实宿主验收见 [2026-11-03 摘要](acceptance/shared-workspace-20261103.md)。当前独立预览已移除，整本使用 `review_book()`，指定章使用 `review_chapter`，单页使用 `review_page`；下文保留历史阅读器验收证据。
 
 ## 当时完成的工作
 

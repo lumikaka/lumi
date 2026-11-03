@@ -122,11 +122,6 @@ export function acceptReviewResult(queryClient, result) {
   return next
 }
 
-// Historical book results are reader snapshots, never reinterpret their scope as an overview.
+// Only used to validate historical DTOs; workspaceLaunch routes their resource
+// scope to normal pages without rendering a reader.
 export function isReader(data) { return data.view === 'reader' || (data.view === 'book' && !data.book) }
-export function assertReviewTarget(next, project, name, args) {
-  const view = name === 'review_book' && (args.mode === 'preview' || args.chapter_uuid) ? 'reader' : name.slice(7)
-  if (next.project_uuid !== project || (isReader(next) ? 'reader' : next.view) !== view) throw new Error('审阅项目或视图发生变化')
-  for (const key of ['chapter_uuid', 'page_uuid', 'setting_uuid', 'kind']) if ((next.request.arguments[key] || '') !== (args[key] || '')) throw new Error('审阅目标发生变化')
-  return next
-}

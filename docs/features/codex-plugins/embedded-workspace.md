@@ -1,20 +1,21 @@
 # MCP 嵌入式作品工作区
 
-本次将四层审阅升级为复用 Web 简洁模式完整页面主体的工作区。四层导航、阅读器和兼容能力保留；旧的简化版 BookReview / StructureReview 及专属正文样式已移除，两端直接渲染共享主体。此文件同时作为功能验收清单；未验证项不表示完成。
+独立 `/preview` 页面已移除；创作与导出后按交付范围直接进入作品总览、章节或单页。旧入口仅保留同范围的正常页面映射。
+
+本次将四层审阅升级为复用 Web 简洁模式完整页面主体的工作区。四层导航、图片展示和历史入口兼容能力保留；旧的简化版 BookReview / StructureReview 及专属正文样式已移除，两端直接渲染共享主体。此文件同时作为功能验收清单；未验证项不表示完成。
 
 Web 既有界面是约束基准，不允许为 MCP 调整其路由默认视图、布局、字段或交互。008eafc 曾错误改变 Web 章节根路由及相关呈现，现已按父提交 5058a39 撤回；Web 章根继续使用原有 SimplePageView 逐页编辑。MCP 的章节故事与 section 结构由 `web/mcp-app/ChapterReview.jsx` 组合共享页面管理组件，仅作用于 MCP 入口。共享页面只保留数据/图片适配，不改 Web 原有呈现。
 
-后续补查还恢复了插件接入前的 Web 绘本缩略图、章节预览、图片加载和画稿标签。共享 API/runtime/Image/DownloadLink 继续保留；共享 BookPreview 的样式全部限定在 `.book-preview` 内，避免改变原有 Web 网格与章节预览。复用源码必须保持 Web 的默认表现，不能用插件的交互替换 Web 默认交互。
 
 ## 功能对照与依赖
 
 | 页面 | 共享主体 | 已有业务交互（两端应保留） | 依赖运行环境的操作 |
 | --- | --- | --- | --- |
-| 作品 | SimpleHomePage | 简介、规格、设定预览、章节卡片、故事/配置/阅读入口 | 配置中的服务商及系统能力可在 Web 打开 |
+| 作品 | SimpleHomePage | 简介、规格、设定预览、章节卡片、故事/配置/章节入口 | 配置中的服务商及系统能力可在 Web 打开 |
 | 章节列表 | SimpleBooksPage | 有效/回收站切换、新建、改名、排序、软删除、恢复、章节入口 | 请求 AI 助手的聊天入口需宿主适配 |
-| 章节 | SimplePagesPage | 完整故事、section 导航、页面缩略图、新建、排序、软删除、回收站/恢复、阅读预览 | 批量生成、导出 |
+| 章节 | SimplePagesPage | 完整故事、section 导航、页面缩略图、新建、排序、软删除、回收站/恢复、当前图片 | 批量生成、导出 |
 | 单页 | SimplePageView | 本章侧栏、前后页、标题/类型/正文/分镜保存、脚本编辑弹窗、脚本版本采用、图片版本列表与采用、当前图片预览、参考信息、插入/排序/删除/恢复 | 导入文件、生成、导出、聊天引用 |
-| 相关入口 | SimpleSettingsPage / SimpleSettingDetailPage / SimpleBookView / SimpleWorkPreview | 设定 CRUD、历史版本、采用；整本/单章阅读；候选预览 | 文件、生成、下载按宿主能力给出替代入口 |
+| 相关入口 | SimpleSettingsPage / SimpleSettingDetailPage | 设定 CRUD、历史版本、采用；候选预览 | 文件、生成、下载按宿主能力给出替代入口 |
 
 主体及多数弹窗位于 `web/src/pages/SimpleProjectPages.jsx`，导出弹窗位于 `web/src/components/ComicExportDialog.jsx`。这些 JSX 与业务状态逻辑由 Web 和 MCP 共同使用，不再另写对应精简页面。Web 保留全局布局；MCP 仅装配页面路由、宿主工具传输和实时适配。
 

@@ -88,7 +88,7 @@ func TestReviewHierarchyContractsPaginationIsolationAndDeletion(t *testing.T) {
 	}
 	for _, args := range []map[string]any{{"chapter_uuid": chapters[0]}, {"mode": "preview", "chapter_uuid": chapters[0]}} {
 		preview := read("review_book", args)
-		if preview["view"] != "reader" || preview["scope"] != "chapter" || preview["total"] != float64(23) {
+		if preview["view"] != "chapter" || preview["target_uuid"] != chapters[0] || preview["total"] != float64(23) {
 			t.Fatal(preview)
 		}
 	}

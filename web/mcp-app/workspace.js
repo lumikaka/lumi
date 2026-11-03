@@ -49,26 +49,29 @@ export function workspaceLaunch(result) {
   const args = data.request?.arguments || {}
   for (const key of ['chapter_uuid','page_uuid','setting_uuid']) if (args[key] && !uuidV7.test(args[key])) throw new Error('工作区目标无效')
   let view = data.view
-  // Historical book snapshots always mean reader; keep their chapter scope.
-  if (view === 'book' && data.contract_version !== 3 && !data.book) view = 'reader'
   const base = `/projects/${data.project_uuid}`
   const ch = args.chapter_uuid
-  if (view === 'reader' && data.scope === 'chapter' && !ch) throw new Error('指定章节阅读缺少章节 UUID，未扩大为整本')
-  if (view === 'reader' && data.scope && !['book','chapter'].includes(data.scope)) throw new Error('阅读范围无效')
+  const legacyBook = view === 'reader' || view === 'book'
+  if (legacyBook && data.scope === 'chapter' && !ch) throw new Error('指定章节缺少章节 UUID，未扩大为整本')
+  if (legacyBook && data.scope && (data.scope !== (ch ? 'chapter' : 'book'))) throw new Error('作品范围无效')
   if (data.chapter_uuid && data.chapter_uuid !== ch) throw new Error('章节身份与入口参数不一致')
   const expectedTarget = view === 'chapter' ? ch : view === 'page' || (view === 'candidates' && args.kind === 'page') ? args.page_uuid : ((view === 'settings' || (view === 'candidates' && args.kind === 'setting')) && args.setting_uuid) || data.project_uuid
   if (data.target_uuid !== expectedTarget) throw new Error('工作区目标与入口参数不一致')
+  // Historical reader/book results carry a project target even for one chapter.
+  // Validate that identity first, then route to the same normal business scope.
+  if (legacyBook) view = ch ? 'chapter' : 'book'
   let path = `${base}/`
   if (view === 'chapters') path = `${base}/chapters`
   else if (view === 'chapter' && ch) path = `${base}/chapters/${ch}`
   else if (view === 'page' && ch && args.page_uuid) path = `${base}/chapters/${ch}/sections/${args.page_uuid}`
-  else if (view === 'reader') path = ch ? `${base}/chapters/${ch}/preview` : `${base}/preview`
   else if (view === 'settings') path = args.setting_uuid ? `${base}/premise/assets/${args.setting_uuid}` : `${base}/premise`
   else if (view === 'candidates' && args.kind === 'page' && (!ch || !args.page_uuid)) throw new Error('候选页面目标不完整')
   else if (view === 'candidates' && args.kind === 'setting' && !args.setting_uuid) throw new Error('候选设定目标不完整')
   else if (view === 'candidates') path = args.kind === 'page' ? `${base}/chapters/${ch}/sections/${args.page_uuid}?panel=candidates` : args.kind === 'setting' ? `${base}/premise/assets/${args.setting_uuid}?panel=candidates` : `${base}/candidates`
   else if (view !== 'book') throw new Error('工作区视图或目标不完整')
-  return {...data,view,path,ui_arguments:result?._meta?.['lumi/launch_arguments'],origin:new URL(data.open_url).origin}
+  const origin = new URL(data.open_url).origin
+  const {mode, ...normalArgs} = args
+  return {...data,view,path,open_url:legacyBook ? origin + path : data.open_url,target_uuid:legacyBook && ch ? ch : data.target_uuid,request:legacyBook ? {name:`review_${view}`,arguments:normalArgs} : data.request,ui_arguments:result?._meta?.['lumi/launch_arguments'],origin}
 }
 
 // A rejoin can connect to a restarted CLI on another port. The calibrated

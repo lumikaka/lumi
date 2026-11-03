@@ -12,9 +12,21 @@ import (
 	"lumi/internal/story"
 )
 
+// Old book preview calls keep their resource scope, but launch normal pages.
+func normalReviewTarget(name string, a arguments) (string, arguments) {
+	if name == "review_book" {
+		if a.ChapterUUID != "" {
+			name = "review_chapter"
+		}
+		a.Mode = ""
+	}
+	return name, a
+}
+
 // Review tools launch a workspace. Details belong to the UI resource channel,
 // and explicit authoring reads remain available when the model needs prose.
 func (s *Service) review(ctx context.Context, store *project.Store, st *story.Service, prod *production.Service, name string, a arguments) (any, error) {
+	name, a = normalReviewTarget(name, a)
 	p, err := st.GetProject(ctx)
 	if err != nil {
 		return nil, err
@@ -23,12 +35,8 @@ func (s *Service) review(ctx context.Context, store *project.Store, st *story.Se
 	view := strings.TrimPrefix(name, "review_")
 	args := aReviewArgs(name, a)
 	data := map[string]any{"contract_version": 3, "view": view, "project_uuid": store.ProjectUUID(), "target_uuid": store.ProjectUUID(), "revision": p.Revision, "title": p.Name, "summary": reviewExcerpt(p.Description, 300), "open_url": base + "/", "open_command": "lumi open", "request": map[string]any{"name": name, "arguments": args}, "permissions": map[string]any{"can_write": !project.IsReadOnly(ctx)}, "data_source": "app_resource", "state": map[string]any{"setup_status": p.SetupStatus, "chapter_count": p.ChapterCount}}
-	if name == "review_book" && a.Mode == "overview" && a.ChapterUUID != "" {
-		return nil, reviewArguments("作品总览不能指定章节；请使用 review_chapter 或 mode=preview。")
-	}
-	reader := name == "review_book" && (a.Mode == "preview" || a.ChapterUUID != "")
 	pageTarget := name == "review_page" || (name == "review_candidates" && a.SlotKind == "page")
-	chapterTarget := name == "review_chapter" || pageTarget || (reader && a.ChapterUUID != "")
+	chapterTarget := name == "review_chapter" || pageTarget
 	if chapterTarget {
 		ch, err := st.GetChapter(ctx, a.ChapterUUID)
 		if err != nil {
@@ -43,17 +51,6 @@ func (s *Service) review(ctx context.Context, store *project.Store, st *story.Se
 		}
 	}
 	switch {
-	case reader:
-		data["view"], data["scope"] = "reader", "book"
-		data["target_uuid"], data["revision"] = store.ProjectUUID(), p.Revision
-		if a.ChapterUUID != "" {
-			data["scope"], data["open_url"] = "chapter", base+"/chapters/"+a.ChapterUUID+"/preview"
-		} else {
-			data["open_url"] = base + "/"
-		}
-		if a.Mode == "" {
-			data["compatibility"] = "legacy_chapter_preview"
-		}
 	case name == "review_chapters":
 		data["open_url"] = base + "/chapters"
 	case pageTarget:
