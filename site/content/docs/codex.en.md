@@ -10,7 +10,7 @@ keywords: [Codex, plugin, installation, picture book, local, images]
 
 The Lumi plugin brings stories, character references, page planning, artwork, review, and export into a Codex App chat. It uses your Codex allowance without an API key and saves projects locally. Text and reference images needed for generation are still sent to Codex.
 
-The first version supports **Codex App on macOS only**, with Apple Silicon and Intel CLI builds. Codex TUI and IDE extensions are not supported. Installation becomes available with the first Lumi Release containing Codex assets. Real App installation and autonomous book creation still require manual acceptance; approval-free installation is not promised.
+Codex App on macOS has Apple Silicon and Intel CLI builds. A native Windows x64 installation preview is also available in source, with Windows App acceptance still pending. Codex TUI and IDE extensions are not supported. Installation becomes available with the first Lumi Release containing Codex assets. Real App installation and autonomous book creation still require manual acceptance; approval-free installation is not promised.
 
 ## Install with one prompt
 

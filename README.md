@@ -90,13 +90,13 @@ Lumi 会按项目的绘本形式显示创作术语：`project` 称“项目”�
 
 Cindy 插件目前提供 macOS arm64 本地验收包；开发版 0.4.0 已完成真实安装、同版本更新和工具调用，自动化 77 项通过。真实媒体主线与任务审阅页仍未完成，未发布到市场。状态与安装边界见 [Cindy 本地包说明](docs/features/cindy-plugins/install.md)，从源码制作见 [作者指南](cindy-plugins/README.md)。
 
-### 在 Codex App 中创作（macOS）
+### 在 Codex App 中创作
 
 `lumi` 插件无需 API key，写作和生图使用 Codex 自身额度，项目数据保存在本地。在 Codex App 中输入一句提示词：
 
-> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，识别当前 Agent 执行环境，按文档安装 Lumi 绘本插件（macOS；Windows 原生 x64 预览）；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 
-下载二进制、写用户安装目录和 `~/.codex`（注册 marketplace、启用插件）可能需要宿主批准；**安装后须新开 App 会话**。项目写保护还需要用户信任项目。仅支持 macOS Codex App，不支持 Codex TUI 或 IDE 扩展。入口从首个含 Codex 资产的 Release 起可用；自动化测试不能替代真实 App 人工验收。
+下载二进制、写用户安装目录和 `~/.codex`（注册 marketplace、启用插件）可能需要宿主批准；**安装后须新开 App 会话**。项目写保护还需要用户信任项目。macOS 提供正式安装入口，另有 [Windows 原生 x64 预览](docs/features/codex-plugins/install-windows.md)，Windows 实机验收待完成；不支持 WSL2、TUI 或 IDE 扩展。入口从首个含 Codex 资产的 Release 起可用；自动化测试不能替代真实 App 人工验收。
 
 正式版安装为 `lumi@lumi-local`。完整的安装、升级、卸载、创作提示词和验收状态见 [Codex App 安装指南](docs/features/codex-plugins/install.md)；从当前源码开发插件使用独立的 `lumi-dev@lumi-dev-local`，见下方[插件本地开发](#codex-插件本地开发macos)。
 

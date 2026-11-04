@@ -124,8 +124,25 @@ jobs:
       build_updater: ${{ needs.prepare.outputs.publish == 'true' }}
     secrets: inherit
 
+  codex-package:
+    name: Codex shared plugin assets
+    needs: prepare
+    uses: ./.github/workflows/codex-package.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+
+  codex-windows:
+    name: Codex Windows CLI
+    needs: [prepare, codex-package]
+    uses: ./.github/workflows/codex-windows.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+      package_artifact: Lumi-codex-common
+
   codex:
-    name: Codex App CLI and plugin
+    name: Codex macOS CLI
     needs: prepare
     uses: ./.github/workflows/codex-macos.yml
     with:
@@ -136,7 +153,7 @@ jobs:
   publish:
     name: Publish complete desktop release
     if: ${{ needs.prepare.outputs.publish == 'true' }}
-    needs: [prepare, macos, windows, codex]
+    needs: [prepare, macos, windows, codex, codex-package, codex-windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout release source
@@ -163,6 +180,18 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: Lumi-codex-macos
+          path: artifacts/codex
+
+      - name: Download shared Codex plugin assets
+        uses: actions/download-artifact@v7
+        with:
+          name: Lumi-codex-common
+          path: artifacts/codex
+
+      - name: Download Windows Codex CLI
+        uses: actions/download-artifact@v7
+        with:
+          name: Lumi-codex-windows
           path: artifacts/codex
 
       - name: Assemble and validate release assets
@@ -192,6 +221,12 @@ jobs:
             artifacts/codex/install-codex.sh
             artifacts/codex/install-codex.sh.sha256
             artifacts/codex/lumi-codex-version.txt
+            artifacts/codex/lumi-windows-amd64.exe
+            artifacts/codex/lumi-windows-amd64.exe.sha256
+            artifacts/codex/lumi-codex-plugin.zip
+            artifacts/codex/lumi-codex-plugin.zip.sha256
+            artifacts/codex/install-codex.ps1
+            artifacts/codex/install-codex.ps1.sha256
           )
           for asset in "${required_assets[@]}"; do
             if [ ! -s "$asset" ]; then
@@ -199,6 +234,9 @@ jobs:
               exit 1
             fi
           done
+
+          test "$(cat artifacts/codex/lumi-codex-version.txt)" = "$RELEASE_VERSION"
+          (cd artifacts/codex && sha256sum -c -- *.sha256)
 
           mkdir release-assets
           cp artifacts/macos/* release-assets/
@@ -235,7 +273,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          notes="Desktop and Codex App builds for ${RELEASE_TAG}. The macOS desktop build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen. Codex CLI assets include SHA256 checksums; see the Codex macOS assets job for signing/notarization status and docs/features/codex-plugins/install.md for installation."
+          notes="Desktop and Codex App builds for ${RELEASE_TAG}. The macOS desktop build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen. Codex CLI assets include SHA256 checksums; native Windows x64 Codex installation is a preview pending real App acceptance; see the Codex macOS assets job for signing/notarization status and docs/features/codex-plugins/install.md for installation."
           release_state="missing"
           if release_json="$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease 2>/dev/null)"; then
             if [ "$(jq -r '.isDraft' <<<"$release_json")" = "true" ]; then

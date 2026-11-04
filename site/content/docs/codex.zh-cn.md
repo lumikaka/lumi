@@ -10,7 +10,7 @@ keywords: [Codex, 插件, 安装, 绘本, 本地, 生图]
 
 Lumi 插件让你在 Codex App 对话中完成故事、角色设定、分页、画面、审阅和导出。无需 API key，写作和生图使用 Codex 自身额度，作品保存在本地。生成所需的文字和参考图片仍会交给 Codex。
 
-首版仅支持 macOS Codex App，提供 Apple Silicon 与 Intel CLI；不支持 Codex TUI 或 IDE 扩展。安装入口从首个包含 Codex 资产的 Lumi Release 起可用。真实 App 的一句话安装和自主整本创作仍待人工验收，不能承诺零批准。
+macOS Codex App 提供 Apple Silicon 与 Intel CLI；Windows 原生 x64 另有安装预览，实机验收尚未完成；不支持 Codex TUI 或 IDE 扩展。安装入口从首个包含 Codex 资产的 Lumi Release 起可用。真实 App 的一句话安装和自主整本创作仍待人工验收，不能承诺零批准。
 
 ## 一句话安装
 

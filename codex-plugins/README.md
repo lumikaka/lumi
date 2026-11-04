@@ -1,6 +1,6 @@
 # Lumi Codex 绘本插件
 
-两个入口都通过本地 stdio CLI 工作，无需 API key，面向 macOS Codex App：
+两个入口都通过本地 stdio CLI 工作，无需 API key，面向 Codex App。macOS 保留正式版和开发版；正式版另有 [Windows 原生 x64 安装预览](../docs/features/codex-plugins/install-windows.md)，实机验收尚未完成，开发版脚本仍面向 macOS：
 
 | 入口 | 插件身份 | CLI | 默认应用数据 |
 |---|---|---|---|

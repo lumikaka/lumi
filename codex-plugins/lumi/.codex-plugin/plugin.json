@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "Lumi 绘本创作",
     "shortDescription": "用 Codex 写故事、画绘本并导出，本地保存。",
-    "longDescription": "面向 macOS Codex App 的本地绘本创作插件。无需 API key，写作与生图使用 Codex 自身额度，项目数据保存在本地。安装后请新开会话；项目写保护需要用户信任项目。",
+    "longDescription": "面向 Codex App 的本地绘本创作插件。macOS 可用，Windows 原生 x64 为待实机验收的预览。无需 API key，写作与生图使用 Codex 自身额度，项目数据保存在本地。安装后请新开会话；项目写保护需要用户信任项目。",
     "developerName": "Lumi",
     "category": "Productivity",
     "capabilities": ["MCP", "Interactive", "Image Generation"],

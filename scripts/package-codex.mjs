@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { zipDirectory } from './zip-directory.mjs';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const [version = '0.1.0', output = 'build/codex'] = process.argv.slice(2);
@@ -30,9 +31,11 @@ try {
   execFileSync('tar', ['-czf', archive, '-C', stage, 'lumi'], {
     env: { ...process.env, COPYFILE_DISABLE: '1' },
   });
+  zipDirectory(join(stage, 'lumi'), join(out, 'lumi-codex-plugin.zip'), 'lumi');
   cpSync(join(repo, 'scripts/install-codex.sh'), join(out, 'install-codex.sh'));
+  cpSync(join(repo, 'scripts/install-codex.ps1'), join(out, 'install-codex.ps1'));
   writeFileSync(join(out, 'lumi-codex-version.txt'), version + '\n');
-  for (const name of ['lumi-codex-plugin.tar.gz', 'install-codex.sh']) {
+  for (const name of ['lumi-codex-plugin.tar.gz', 'lumi-codex-plugin.zip', 'install-codex.sh', 'install-codex.ps1']) {
     const sha = createHash('sha256').update(readFileSync(join(out, name))).digest('hex');
     writeFileSync(join(out, `${name}.sha256`), `${sha}  ${name}\n`);
   }

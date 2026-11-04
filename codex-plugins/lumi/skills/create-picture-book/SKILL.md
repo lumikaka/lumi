@@ -1,11 +1,11 @@
 ---
 name: create-picture-book
-description: 在 macOS Codex App 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及宿主生图。用于新建绘本或续做当前 Lumi 项目。
+description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及宿主生图。用于新建绘本或续做当前 Lumi 项目。
 ---
 
 # Lumi 绘本创作
 
-写作、推理和图片生成使用 Codex 的能力与额度；Lumi 负责项目事实、版本、图片挂载、审阅和导出。无需 API key，不配置 Lumi 模型服务商。本插件支持 macOS Codex App；不支持 TUI 或 IDE 扩展。
+写作、推理和图片生成使用 Codex 的能力与额度；Lumi 负责项目事实、版本、图片挂载、审阅和导出。无需 API key，不配置 Lumi 模型服务商。本插件面向 macOS Codex App，并提供 Windows 原生 x64 安装预览；Windows 实机验收尚未完成，使用前按当前会话核实 MCP Apps、宿主读图和生图工具能力。不支持 WSL2、Windows ARM64、TUI 或 IDE 扩展。
 
 ## 打开或创建项目
 

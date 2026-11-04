@@ -1,0 +1,38 @@
+name: Codex shared plugin assets
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      checkout_ref:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+      - name: Test and package shared plugin assets
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          node --test scripts/test-package-codex.mjs
+          node scripts/package-codex.mjs "${RELEASE_TAG#v}" build/codex-common
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Lumi-codex-common
+          path: build/codex-common/*
+          if-no-files-found: error

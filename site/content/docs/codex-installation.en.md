@@ -15,12 +15,14 @@ The Lumi picture-book plugin lets you create and export books in a Codex App cha
 - Use **Codex App on macOS** and sign in. Apple Silicon and Intel builds are available; Codex TUI and IDE extensions are not supported.
 - Make sure you can access GitHub. Installation downloads files from a Lumi release.
 
+A [native Windows x64 installation preview](https://github.com/lumikaka/lumi/blob/master/docs/features/codex-plugins/install-windows.md) is also available in source. Windows App acceptance is pending, and installation requires a Release containing Windows Codex assets. WSL2 and Windows ARM64 are not supported yet.
+
 ## Install with one prompt
 
 Click “Copy prompt”, paste the full text below into a Codex App chat, and send it:
 
 {{< copy-prompt >}}
-Read https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md and follow it to install the Lumi picture-book plugin for macOS Codex App. Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
+Read https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md and detect the actual agent environment and install Lumi for Codex App (macOS, or the native Windows x64 preview). Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
 {{< /copy-prompt >}}
 
 Codex will read the guide and perform the installation. Downloading files, writing the user installation directory and `~/.codex`, registering the plugin marketplace, and enabling the plugin may require approval. Follow the prompts shown in the app.

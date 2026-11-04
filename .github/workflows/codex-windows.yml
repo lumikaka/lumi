@@ -1,0 +1,99 @@
+name: Codex Windows CLI
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      checkout_ref:
+        required: true
+        type: string
+      package_artifact:
+        required: false
+        type: string
+        default: ''
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Preview asset version (does not publish a Release)'
+        required: true
+        default: v0.0.0-preview
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: ${{ inputs.package_artifact == '' }}
+    uses: ./.github/workflows/codex-package.yml
+    with:
+      release_tag: ${{ inputs.release_tag || 'v0.0.0-preview' }}
+      checkout_ref: ${{ inputs.checkout_ref || github.ref }}
+  build:
+    needs: package
+    if: ${{ always() && !cancelled() && (needs.package.result == 'success' || needs.package.result == 'skipped') }}
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.checkout_ref || github.ref }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.package_artifact || 'Lumi-codex-common' }}
+          path: build/codex-test-assets
+      - uses: actions/setup-go@v6
+        id: go
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.16.1
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build native CLI and record phase timings (no Rust)
+        shell: pwsh
+        run: ./scripts/build-codex-windows.ps1
+      - name: Assemble isolated installer test assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Copy-Item build/codex-windows/lumi-windows-amd64.exe* build/codex-test-assets/
+          "Go cache hit: ${{ steps.go.outputs.cache-hit }}" | Add-Content $env:GITHUB_STEP_SUMMARY
+      - name: Installer contracts on Windows PowerShell 5.1
+        shell: powershell
+        run: ./scripts/test-install-codex-windows.ps1 -Assets build/codex-test-assets
+      - name: Installer contracts on PowerShell 7
+        shell: pwsh
+        run: ./scripts/test-install-codex-windows.ps1 -Assets build/codex-test-assets
+      - name: Test CLI and MCP runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go test -timeout=15m ./cmd/lumi ./internal/textmcp
+          if ($LASTEXITCODE -ne 0) { throw 'CLI/MCP tests failed.' }
+          python scripts/test-codex-cli.py --binary build/codex-windows/lumi-windows-amd64.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged CLI smoke failed.' }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Lumi-codex-windows
+          path: |
+            build/codex-windows/lumi-windows-amd64.exe
+            build/codex-windows/lumi-windows-amd64.exe.sha256
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Lumi-codex-windows-timings
+          path: build/codex-windows/timings.json
+          if-no-files-found: warn

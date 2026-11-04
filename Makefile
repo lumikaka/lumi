@@ -5,6 +5,7 @@ TAG_INITIAL_VERSION ?= 0.1.0
 TAG_REMOTE ?= origin
 CODEX_VERSION ?= 0.1.0
 CODEX_OUT ?= build/codex
+CODEX_WINDOWS_OUT ?= build/codex-windows
 CODEX_DEV_OUT ?= build/codex-dev
 CODEX_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 PYTHON ?= python3
@@ -62,13 +63,24 @@ codex-build:
 codex-package:
 	node scripts/package-codex.mjs "$(CODEX_VERSION)" "$(CODEX_OUT)"
 
-codex-release: codex-package
+.PHONY: codex-macos-binaries codex-windows-build
+codex-release: codex-package codex-macos-binaries
+
+codex-macos-binaries:
 	pnpm --dir web run build
+	mkdir -p "$(CODEX_OUT)"
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_OUT)/lumi-darwin-arm64" ./cmd/lumi
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_OUT)/lumi-darwin-amd64" ./cmd/lumi
 	cd "$(CODEX_OUT)" && shasum -a 256 lumi-darwin-arm64 > lumi-darwin-arm64.sha256
 	cd "$(CODEX_OUT)" && shasum -a 256 lumi-darwin-amd64 > lumi-darwin-amd64.sha256
 	@echo "CI signs macOS binaries and regenerates their SHA256 files (see install.md)."
+
+# Cross-build from macOS/Linux; Windows CI uses build-codex-windows.ps1.
+codex-windows-build:
+	pnpm --dir web run build
+	mkdir -p "$(CODEX_WINDOWS_OUT)"
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -tags embed_frontend -ldflags="-s -w" -o "$(CODEX_WINDOWS_OUT)/lumi-windows-amd64.exe" ./cmd/lumi
+	cd "$(CODEX_WINDOWS_OUT)" && shasum -a 256 lumi-windows-amd64.exe > lumi-windows-amd64.exe.sha256
 
 codex-smoke:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/test-install-codex.py --assets "$(CODEX_OUT)"

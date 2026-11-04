@@ -17,10 +17,12 @@ lumi-darwin-arm64                 lumi-darwin-arm64.sha256
 lumi-darwin-amd64                 lumi-darwin-amd64.sha256
 lumi-codex-plugin.tar.gz          lumi-codex-plugin.tar.gz.sha256
 install-codex.sh                  install-codex.sh.sha256
+lumi-codex-plugin.zip             lumi-codex-plugin.zip.sha256
+install-codex.ps1                 install-codex.ps1.sha256
 lumi-codex-version.txt
 ```
 
-沿用 `make tag-patch/minor/major → git push origin vX.Y.Z`，不由安装脚本创建或发布 Tag。[发布协调 workflow](../../../.github/workflows/desktop-release.yml) 增加 [Codex macOS assets job](../../../.github/workflows/codex-macos.yml)，所有桌面和 Codex job 都成功后才发布完整 Release。Tag 版本写入包内 manifest 和版本文件，仓库模板不注入用户路径。
+沿用 `make tag-patch/minor/major → git push origin vX.Y.Z`，不由安装脚本创建或发布 Tag。[发布协调 workflow](../../../.github/workflows/desktop-release.yml) 增加 [Codex macOS assets job](../../../.github/workflows/codex-macos.yml)，通用插件资产由 `codex-package.yml` 单独生成，macOS job 只上传二进制；`codex-windows.yml` 消费同一份通用包并上传 Windows CLI。所有桌面和 Codex job 都成功后才发布完整 Release。Tag 版本写入包内 manifest 和版本文件，仓库模板不注入用户路径。
 
 CI 顺序：构建 Go/web → Go 定向测试 → 两架构 codesign 与 verify → 可选 notarization → **重新计算签名后 SHA256** → 上传 artifact → 协调 Release 发布。没有证书时仅 ad-hoc 签名，不宣称 Apple 公证。
 
@@ -81,3 +83,21 @@ python3 /Users/你的用户名/.codex/skills/.system/skill-creator/scripts/quick
 | 真实升级/卸载、Intel | 在相应机器复测新会话可用性及项目保留；记录 Gatekeeper、签名/公证状态 | 待人工确认 |
 
 验收记录模板：日期/架构；App 版本；codex 路径与版本；Release；原始提示词；批准列表（序号、动作、截图、结果）；项目 UUID；至少一张原生图导入证据；PDF/ZIP 路径与页数；通过项与未通过项。批准数应填实际观察值，不能预填 0。
+
+## Windows CLI 本地构建与测试
+
+Windows 原生 x64 安装当前为预览，见 [Windows 安装指南](install-windows.md) 与 [实施验收记录](acceptance/windows-cli.md)。
+
+macOS/Linux 使用 `make codex-windows-build` 交叉编译 `build/codex-windows/lumi-windows-amd64.exe`，再用 `make codex-package CODEX_VERSION=X.Y.Z CODEX_OUT=build/codex-windows` 生成完整离线资产。Windows 原生构建使用 `scripts/build-codex-windows.ps1`，它记录依赖、前端和 Go 编译的分段耗时。两条链路均无 Rust/Tauri。
+
+自动化检查：
+
+```powershell
+# 在 Windows 分别用 powershell.exe 和 pwsh 执行；资产需包含 exe 及通用插件包。
+./scripts/test-install-codex-windows.ps1 -Assets build/codex-windows
+python scripts/test-codex-cli.py --binary build/codex-windows/lumi-windows-amd64.exe
+```
+
+安装器测试将宿主命令和下载替换为隔离夹具，覆盖真实文件操作、缓存、归属、事务回滚、重试和恶意 ZIP；Windows 额外使用真实文件占用句柄验证延迟清理。测试不会安装到用户 Codex。CLI 冒烟使用真正发布的程序，在临时项目验证后台单例、嵌入前端、stdio MCP、中文路径、页面准备签名、合成 PNG 导入、PDF/ZIP 导出与重启。标准 CI 不具备真实 App 的宿主能力时，不将这些测试称为 App 验收。
+
+发布协调器继续等待 Desktop，因此 CLI 提前构建成功不代表提前公开发布。工作流支持 PR、手动预览和被发布协调器调用；手动构建不发布 Release。冷/热缓存耗时与 Windows 原生执行结果均须从实际 CI 记录，不从 macOS 交叉编译时间推算。

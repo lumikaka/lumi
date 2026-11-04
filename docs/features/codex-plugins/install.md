@@ -2,7 +2,7 @@
 
 Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图使用 Codex 自身额度，**无需 API key**。项目保存在本地；需要生成的文字和参考图片仍会交给 Codex，不能把“本地保存”理解为离线推理。
 
-首版仅支持 **macOS 上的 Codex App**，提供 Apple Silicon（arm64）和 Intel（amd64）CLI；不支持 Codex TUI 和 IDE 扩展。`codex app-server` 是自动化验收手段，不是另一种产品入口。Intel 构建不代表已经完成 Intel App 人工验收。
+正式入口支持 **macOS 上的 Codex App**，提供 Apple Silicon（arm64）和 Intel（amd64）CLI。新增 [Windows 原生 x64 安装预览](install-windows.md)，实机验收尚未完成；不支持 WSL2、Windows ARM64、Codex TUI 和 IDE 扩展。`codex app-server` 是自动化验收手段，不是另一种产品入口。Intel 构建不代表已经完成 Intel App 人工验收。
 
 这套安装入口从首个包含 `lumi-codex-version.txt`、CLI 和插件包的 Release 起可用。若当前 Latest Release 尚无这些资产，下载会明确失败；开发者可按[开发与验收说明](installation-development.md)使用本地构建验证，不能把源码实现完成说成已公开发布。
 
@@ -10,7 +10,7 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 在已登录的 Codex App 中粘贴：
 
-> 请按 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md 的普通用户安装流程，为我安装或更新 macOS Codex App 的 Lumi 正式插件；完成安装与启用状态验证后，报告实际使用的 codex 路径和版本、Lumi 版本、安装结果，以及新开会话开始创作的方法。
+> 请按 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md 的普通用户安装流程，识别当前 Agent 执行环境，为我安装或更新 Lumi 插件（macOS 正式入口；Windows 原生 x64 预览）；完成安装与启用状态验证后，报告实际使用的 codex 路径和版本、Lumi 版本、安装结果，以及新开会话开始创作的方法。
 
 一句提示词会让 Codex 执行安装流程，不等于零批准，也不保证当前会话热加载。可能需要用户处理的步骤：
 
@@ -23,7 +23,11 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 插件没有 hooks，不需要 hook 信任或 OAuth。若组织策略禁止插件，应由用户按实际策略处理，不通过覆盖配置绕过。
 
-## Codex 安装执行流程
+## 平台分流
+
+先确认 Agent 的实际执行环境。macOS 使用下文 Bash 流程；Windows 原生 x64 使用 [PowerShell 安装预览](install-windows.md)，不要执行 Bash 脚本。Windows App 内的 WSL Agent 不属于 Windows 原生环境。未包含 Windows 资产的 Release 无法安装预览版；本地验证使用完整构建资产与 `-FromDir`。
+
+## Codex 安装执行流程（macOS）
 
 普通安装按以下步骤完成；源码构建、发布和全书创作验收属于[开发流程](installation-development.md)。
 
@@ -35,7 +39,7 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 安装器把阶段、累计耗时、下载字节数、下载耗时和缓存命中写入 stderr；成功安装的 stdout 为 `{"success":true,"data":{...}}`，其中包含 `codex_path`、`codex_version`、`codex_home`、`lumi_version`、`installed`、`enabled`、`cli_path` 和 `installed_path`。
 
-## 安装命令
+## 安装命令（macOS）
 
 先解析 Release 版本，再从同一 Tag 下载脚本和校验文件。以下下载块任一步失败都会停止：
 
@@ -125,7 +129,7 @@ bash "$lumi_install_tmp/install-codex.sh" --version "$(cat "$lumi_install_tmp/lu
 
 skill 先用 `project_init` 建 setup 草稿，再在同一目录用绝对路径的 `lumi init --json` 为已有项目幂等补齐保护配置，不重置草稿。用户信任项目后才能加载该项目级配置；`lumi project info --json` 只能报告配置及可检测的冲突，不能证明实际沙箱策略已生效。旧 `sandbox_mode`、会话参数或更高优先级规则可能覆盖它，见 [Step 2 / 写保护调研](spike.md#5-沙箱写保护与项目配置的信任)。
 
-## 升级与卸载
+## 升级与卸载（macOS）
 
 升级前结束正在创作的会话，并在可以关闭所有 CLI 项目时运行：
 
