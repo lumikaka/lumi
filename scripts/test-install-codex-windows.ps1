@@ -115,18 +115,30 @@ function Change-Zip([string]$Directory, [string]$Member, [string]$Content) {
 try {
     [void][IO.Directory]::CreateDirectory($testRoot)
     $script:installContext = @{ scratch = $testRoot }
-    $currentShell = (Get-Process -Id $PID).Path
-    # Windows PowerShell 5.1 strips embedded double quotes from native arguments.
-    # Encode the probe as UTF-16LE so both shells execute the same source text.
-    $nativeProbe = '[Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); [Console]::Error.WriteLine("diagnostic"); [Console]::WriteLine([char]0x7ed8); exit 0'
-    $encodedProbe = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($nativeProbe))
-    # This probe writes raw console text; prevent Windows PowerShell from
-    # selecting CLIXML for the nested shell's redirected error stream.
-    $nativeText = & $realNative $currentShell @('-NoProfile','-NonInteractive','-OutputFormat','Text','-EncodedCommand', $encodedProbe)
+    # Use the Node runtime already installed by CI to emit ordinary native
+    # streams. Windows PowerShell 5.1 can emit a CLIXML header on stderr for
+    # -EncodedCommand even with -OutputFormat Text, corrupting this probe.
+    # A script file also avoids passing source quotes through native arguments.
+    $node = (Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $nativeProbePath = Join-Path $testRoot 'native stream probe.cjs'
+    $nativeProbe = @'
+const { writeSync } = require('node:fs');
+writeSync(2, 'diagnostic ' + String.fromCodePoint(0x7ed8) + '\n');
+writeSync(1, String.fromCodePoint(0x7ed8) + '\n');
+process.exitCode = Number(process.argv[2]);
+'@
+    [IO.File]::WriteAllText($nativeProbePath, $nativeProbe, (New-Object Text.UTF8Encoding($false)))
+    $nativeText = & $realNative $node @($nativeProbePath, '0')
     Assert ($nativeText.Trim() -eq [string][char]0x7ed8) 'Native UTF-8 stdout was corrupted or mixed with stderr'
     $nativeErrorFile = Get-ChildItem -LiteralPath $testRoot -Filter '*.stderr' -File | Select-Object -First 1
-    Assert ($null -ne $nativeErrorFile -and [IO.File]::ReadAllText($nativeErrorFile.FullName) -match 'diagnostic') 'Native stderr diagnostic was lost'
-    Expect-Failure { & $realNative $currentShell @('-NoProfile','-NonInteractive','-Command','exit 7') } 'Command failed \(7\)'
+    Assert ($null -ne $nativeErrorFile -and [IO.File]::ReadAllText($nativeErrorFile.FullName).Contains('diagnostic ' + [char]0x7ed8)) 'Native UTF-8 stderr diagnostic was lost or corrupted'
+    Expect-Failure { & $realNative $node @($nativeProbePath, '7') } 'Command failed \(7\)'
+    $nativeText = & $realNative $node @($nativeProbePath, '7') @(0, 7)
+    Assert ($nativeText.Trim() -eq [string][char]0x7ed8) 'Allowed native exit status lost stdout'
+    # GitHub's PowerShell wrapper propagates LASTEXITCODE after this script.
+    # Finish with a successful command so the expected failure cannot leak out.
+    $nativeText = & $realNative $node @($nativeProbePath, '0')
+    Assert ($nativeText.Trim() -eq [string][char]0x7ed8) 'Native command did not recover after a nonzero exit'
     Pass 'native subprocess preserves UTF-8, separates stderr and checks exit status'
     $env:CODEX_HOME = Join-Path $testRoot 'codex configuration'
     [void][IO.Directory]::CreateDirectory($env:CODEX_HOME)
