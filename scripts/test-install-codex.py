@@ -106,6 +106,7 @@ class Rpc:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--assets', type=Path, required=True, help='Release artifact directory, including checksums')
+    parser.add_argument('--install-only', action='store_true', help='Test installation with the real App CLI, without starting MCP or creating a book')
     args = parser.parse_args()
     if platform.system() != 'Darwin' or not APP_CODEX.is_file():
         parser.error('This acceptance requires macOS and the actual App-bundled codex')
@@ -121,6 +122,9 @@ def main():
     config = home / 'config.toml'
     config.write_text('# preserve this comment\nmodel = "test-unrelated-model"\n'
                       '[plugins."other@elsewhere"]\nenabled = false\n')
+    broken_market = ('\n[marketplaces.install-test-missing]\nsource_type = "local"\n'
+                     f'source = "{root / "missing-marketplace"}"\n')
+    config.write_text(config.read_text() + broken_market)
     report = {'root': str(root), 'codex': str(APP_CODEX), 'commands': [], 'checks': [],
               'limitations': ['No model inference, App GUI, native image generation or real-user approvals',
                               'Downloads supplied by local release fixtures, not a published GitHub release']}
@@ -153,12 +157,16 @@ def main():
         report['version'] = command([APP_CODEX, '--version']).strip()
         installer = ['bash', REPO / 'scripts/install-codex.sh', '--install-dir', install]
         assets = args.assets.resolve()
-        command(installer + ['--from-dir', assets])
+        result = json.loads(command(installer + ['--from-dir', assets]))
+        assert result['success'] and result['data']['installed'] and result['data']['enabled']
+        assert result['data']['cli_path'] == str(binary)
         first, first_config = snapshot(), config.read_bytes()
         command(installer + ['--from-dir', assets])
         assert snapshot() == first and config.read_bytes() == first_config
         unchanged_other_config()
+        assert broken_market.strip() in config.read_text()
         check('two installs produce identical payload and Codex config (path contains spaces)')
+        check('fresh install and refresh tolerate an unrelated missing marketplace; final JSON verifies installed/enabled')
         mcp_path = install / 'current/marketplace/plugins/lumi/.mcp.json'
         mcp = json.loads(mcp_path.read_text())
         assert mcp['mcpServers']['lumi'] == {'command': str(binary), 'args': ['mcp']}
@@ -220,6 +228,20 @@ def main():
         command([APP_CODEX, 'plugin', 'add', 'lumi@lumi-local', '--json'])
         assert json.loads((cached / '.mcp.json').read_text()) == mcp
         check('same-version add refreshes MCP config in cache')
+        if args.install_only:
+            command(['bash', install / 'current/install-codex.sh', '--install-dir', install, '--uninstall'])
+            command(installer + ['--uninstall'])
+            assert not (install / 'current').exists()
+            assert not (home / 'plugins/cache/lumi-local/lumi').exists()
+            unchanged_other_config()
+            assert broken_market.strip() in config.read_text()
+            assert not list(project.iterdir())
+            check('real CLI uninstall tolerates unrelated broken marketplace and preserves unrelated config and empty project')
+            report['success'] = True
+            return
+        # The full App-loader smoke intentionally requires no marketplace load
+        # errors. The broken-market install regression above is already proven.
+        command([APP_CODEX, 'plugin', 'marketplace', 'remove', 'install-test-missing', '--json'])
         rpc = Rpc(env, root, report)
         skills = rpc.call('skills/list', {'cwds': [str(project)], 'forceReload': True})
         skill_entries = [entry for item in skills['data'] for entry in item.get('skills', [])]

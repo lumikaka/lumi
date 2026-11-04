@@ -4,13 +4,13 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 首版仅支持 **macOS 上的 Codex App**，提供 Apple Silicon（arm64）和 Intel（amd64）CLI；不支持 Codex TUI 和 IDE 扩展。`codex app-server` 是自动化验收手段，不是另一种产品入口。Intel 构建不代表已经完成 Intel App 人工验收。
 
-这套安装入口从首个包含 `lumi-codex-version.txt`、CLI 和插件包的 Release 起可用。若当前 Latest Release 尚无这些资产，下载会明确失败；开发者可按后文使用本地构建验证，不能把源码实现完成说成已公开发布。
+这套安装入口从首个包含 `lumi-codex-version.txt`、CLI 和插件包的 Release 起可用。若当前 Latest Release 尚无这些资产，下载会明确失败；开发者可按[开发与验收说明](installation-development.md)使用本地构建验证，不能把源码实现完成说成已公开发布。
 
 ## 一句提示词
 
 在已登录的 Codex App 中粘贴：
 
-> 请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，按文档为我安装 macOS Codex App 的 Lumi 绘本插件；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
+> 请按 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md 的普通用户安装流程，为我安装或更新 macOS Codex App 的 Lumi 正式插件；完成安装与启用状态验证后，报告实际使用的 codex 路径和版本、Lumi 版本、安装结果，以及新开会话开始创作的方法。
 
 一句提示词会让 Codex 执行安装流程，不等于零批准，也不保证当前会话热加载。可能需要用户处理的步骤：
 
@@ -23,34 +23,66 @@ Lumi 的新 `lumi` 插件通过本地 stdio CLI 管理绘本，写作和生图�
 
 插件没有 hooks，不需要 hook 信任或 OAuth。若组织策略禁止插件，应由用户按实际策略处理，不通过覆盖配置绕过。
 
+## Codex 安装执行流程
+
+普通安装按以下步骤完成；源码构建、发布和全书创作验收属于[开发流程](installation-development.md)。
+
+1. 下载下面的 Release 安装脚本及同版本 SHA256，校验后阅读脚本，再执行。安装器负责选择 Codex、检查架构、目录归属和安装锁，并在下载资产前定向检查 `lumi-local`。
+2. 安装器将 Release 固定到同一版本，下载并校验 CLI 和插件包。已校验的网络下载按版本、架构和 SHA256 缓存，重试会重新校验并复用；无需反复重新下载整个安装包。
+3. 安装器只注册 `lumi-local`、安装 `lumi@lumi-local`，随后定向验证版本、`installed=true`、`enabled=true`、缓存中的绝对 CLI 路径及创作技能。以退出码 0 和最终成功 JSON 作为本次安装完成条件。
+4. 遇到错误，按日志中的阶段处理后用同版本、同安装目录和缓存目录重试。无关市场失效由安装器隔离；Lumi 自身市场损坏、同名来源冲突或策略拒绝需要处理具体原因。保留原错误，不把查询失败解释为“尚未安装”，不临时修改脚本或其他插件配置来跳过检查。
+5. 向用户报告成功 JSON 中的 Codex 路径、版本、`CODEX_HOME`、Lumi 版本、安装/启用状态和路径，然后给出新开目录会话的创作方法。安装任务到此完成；新会话发现、项目信任和原生生图是后续使用步骤。
+
+安装器把阶段、累计耗时、下载字节数、下载耗时和缓存命中写入 stderr；成功安装的 stdout 为 `{"success":true,"data":{...}}`，其中包含 `codex_path`、`codex_version`、`codex_home`、`lumi_version`、`installed`、`enabled`、`cli_path` 和 `installed_path`。
+
 ## 安装命令
 
-先下载可审阅的脚本和同版本校验文件，再校验执行；不要把未检查的网络输出直接 pipe 给 shell：
+先解析 Release 版本，再从同一 Tag 下载脚本和校验文件。以下下载块任一步失败都会停止：
 
 ```bash
 lumi_install_tmp="$(mktemp -d)"
-curl --fail --location --proto '=https' --proto-redir '=https' \
-  https://github.com/lumikaka/lumi/releases/latest/download/install-codex.sh \
-  -o "$lumi_install_tmp/install-codex.sh"
-curl --fail --location --proto '=https' --proto-redir '=https' \
-  https://github.com/lumikaka/lumi/releases/latest/download/install-codex.sh.sha256 \
-  -o "$lumi_install_tmp/install-codex.sh.sha256"
-(cd "$lumi_install_tmp" && shasum -a 256 -c install-codex.sh.sha256)
-# 查看脚本；上一条校验成功后才执行：
-bash "$lumi_install_tmp/install-codex.sh"
+(
+  set -e
+  curl --fail --location --proto '=https' --proto-redir '=https' \
+    https://github.com/lumikaka/lumi/releases/latest/download/lumi-codex-version.txt \
+    -o "$lumi_install_tmp/lumi-codex-version.txt"
+  lumi_release_version="$(cat "$lumi_install_tmp/lumi-codex-version.txt")"
+  [[ "$lumi_release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]
+  for lumi_file in install-codex.sh install-codex.sh.sha256; do
+    curl --fail --location --proto '=https' --proto-redir '=https' \
+      "https://github.com/lumikaka/lumi/releases/download/v$lumi_release_version/$lumi_file" \
+      -o "$lumi_install_tmp/$lumi_file"
+  done
+  cd "$lumi_install_tmp"
+  shasum -a 256 -c install-codex.sh.sha256
+)
+```
+
+检查下载的 `install-codex.sh` 内容后执行下面的块；它会再次校验，再安装刚才固定的版本：
+
+```bash
+(
+  set -e
+  cd "$lumi_install_tmp"
+  shasum -a 256 -c install-codex.sh.sha256
+  bash ./install-codex.sh --version "$(cat lumi-codex-version.txt)"
+)
 ```
 
 下载/校验任何一步失败就停止，不继续执行旧文件。SHA256 用于发现损坏或资产混用，不代替可信 Release 来源或 Apple 签名。安装器只依赖 macOS 自带 Bash、curl、shasum、tar、plutil，无需 Python、Node、Homebrew、sudo 或 API key。
 
-安装器先读取 stable 版本文件，再固定到同一个 `vX.Y.Z` Tag 下载该架构 CLI、插件包及各自 `.sha256`。两者全部校验通过后才切换安装。自定义安装示例：
+直接运行安装器且未指定版本时，它先读取 stable 版本文件，再固定到同一个 `vX.Y.Z` Tag。CLI 和插件包全部校验通过后才切换安装。自定义安装示例：
 
 ```bash
 # 指定已发布版本；升级、卸载时沿用同一个目录和 CODEX_HOME。
-bash "$lumi_install_tmp/install-codex.sh" --version 0.2.0 \
-  --install-dir "$HOME/.local/share/lumi-codex"
+bash "$lumi_install_tmp/install-codex.sh" --version "$(cat "$lumi_install_tmp/lumi-codex-version.txt")" \
+  --install-dir "$HOME/.local/share/lumi-codex" \
+  --cache-dir "$HOME/Library/Caches/lumi-codex"
 ```
 
-默认布局：
+缓存默认位于 `~/Library/Caches/lumi-codex/<版本>/<架构>/<SHA256>/`。失败会清理本次暂存文件并回滚安装，已校验的下载缓存保留；缓存损坏会重新下载。每次重试仍从固定 Tag 读取校验文件。`--from-dir` 始终检查传入的本地资产，不用网络缓存替代它。
+
+默认安装布局：
 
 ```text
 ~/.local/share/lumi-codex/
@@ -81,12 +113,6 @@ bash "$lumi_install_tmp/install-codex.sh" --version 0.2.0 \
 
 这里的变量取安装日志实际值。只管理 `lumi-local` marketplace 和 `lumi@lumi-local`，不编辑用户配置中的其他项目、模型、权限或插件；同名 marketplace 指向别处时拒绝覆盖。旧 HTTP OAuth 插件已移除；已安装的旧副本需从 Codex 插件管理卸载。
 
-## 本地开发
-
-在 Lumi 仓库根目录执行 `make codex-dev`，从当前源码构建并安装 `lumi-dev@lumi-dev-local`。开发 CLI 为 `build/codex-dev/lumi_dev`，默认环境 `development`、应用数据 `~/.lumi_dev`，与正式插件并存，不需要发布 patch。结束开发任务后用 `make codex-dev-stop` 停止旧后台，再新开 Codex App 会话加载新构建。仅改 skill 或插件配置时执行 `make codex-dev-refresh`。
-
-详细配置、卸载与旧插件迁移见 [Codex 插件开发说明](../../../codex-plugins/README.md)。`install-codex.sh --from-dir` 用于验证本地 Release 资产，仍管理正式插件身份；日常开发使用 `make codex-dev`。
-
 ## 开始创作与续做
 
 新建一个空文件夹，在 Codex App 中以它为项目目录新开会话，例如说：
@@ -116,14 +142,18 @@ skill 先用 `project_init` 建 setup 草稿，再在同一目录用绝对路径
 bash "$HOME/.local/share/lumi-codex/current/install-codex.sh" --uninstall
 ```
 
-只移除新插件缓存、它的 marketplace 和安装器管理的 `current/` 内容；不删除绘本项目、Lumi 应用数据或旧插件。不退出仍打开的旧会话就不能保证工具立即消失。无运行任务后可用 `rmdir "$HOME/.local/share/lumi-codex"` 清理留下的空目录。若忘记 stop，已有 CLI 进程可能仍在运行；先重新安装相同目录，再用 `lumi stop` 正常退出，不删除实例文件强行解锁。
+只移除新插件缓存、它的 marketplace 和安装器管理的 `current/` 内容；不删除绘本项目、Lumi 应用数据、下载缓存或旧插件。不退出仍打开的旧会话就不能保证工具立即消失。无运行任务后可用 `rmdir "$HOME/.local/share/lumi-codex"` 清理留下的空目录。若忘记 stop，已有 CLI 进程可能仍在运行；先重新安装相同目录，再用 `lumi stop` 正常退出，不删除实例文件强行解锁。
 
 ## 常见问题
 
 | 现象 | 处理 |
 | --- | --- |
 | Release 404 / 下载失败 | 检查最新版本是否含 Codex 资产、网络是否获批；不跳过校验 |
-| SHA256 不一致 | 停止安装，重新从同一 Tag 下载；旧安装不会因此被替换 |
+| SHA256 不一致 | 网络资产校验不符则停止；缓存校验不符会自动重下；本地 `--from-dir` 资产应修复后重试。旧安装保持不变 |
+| 无关 marketplace 源目录失效 | 安装器定向检查 Lumi，正常安装/升级可继续；不必删除其他市场或修改安装脚本 |
+| `Cannot inspect lumi-local` | Lumi 自身市场或配置加载失败；按紧邻错误修复其源目录，再重试。此错误发生在资产下载前 |
+| 注册/最终验证失败 | 先处理日志中的具体原因，再用同版本参数重试；已校验资产自动复用，失败不会报告成功 |
+| 无法核对空市场归属 | 空目录没有插件条目可用于核对来源；安装时仍由 Codex 拒绝来源冲突，卸载时须先恢复可读取的市场信息 |
 | App 中没有工具 | 新开以项目目录为 cwd 的会话；查安装日志中的 codex 路径、版本、CODEX_HOME，确认插件启用。必要时重启 App |
 | 找不到 CLI / exec format error | 检查架构、安装目录是否被移动。用当前架构重装，不能把缓存中的 command 改成裸 `lumi` |
 | Gatekeeper 阻止 | 核对 Release 来源、SHA256 和 CI 签名/公证状态，再按系统“隐私与安全性”提示处理；脚本不会移除 quarantine 或关闭系统检查 |
@@ -135,59 +165,6 @@ bash "$HOME/.local/share/lumi-codex/current/install-codex.sh" --uninstall
 | 没有图片额度 / 生图工具 | 保留已写入内容，先导出文字 ZIP；额度恢复或宿主能力可用后继续，不要求 API key |
 | 画面比例略有偏差 | 导入会提示偏差；可保留原图、裁切或补边，不能以精确像素作为继续创作的前提 |
 
-## 发布与 CI
+## 开发、发布与验收
 
-`make build` 继续构建 `lumi`，并增加插件包产出。`make codex-build` 构建带 web UI/MCP Apps 的本机 CLI；`make codex-release CODEX_VERSION=X.Y.Z` 构建两个 macOS 架构和以下资产，**没有 Cargo/Rust 命令**：
-
-```text
-lumi-darwin-arm64                 lumi-darwin-arm64.sha256
-lumi-darwin-amd64                 lumi-darwin-amd64.sha256
-lumi-codex-plugin.tar.gz          lumi-codex-plugin.tar.gz.sha256
-install-codex.sh                  install-codex.sh.sha256
-lumi-codex-version.txt
-```
-
-沿用 `make tag-patch/minor/major → git push origin vX.Y.Z`，不由安装脚本创建或发布 Tag。[发布协调 workflow](../../../.github/workflows/desktop-release.yml) 增加 [Codex macOS assets job](../../../.github/workflows/codex-macos.yml)，所有桌面和 Codex job 都成功后才发布完整 Release。Tag 版本写入包内 manifest 和版本文件，仓库模板不注入用户路径。
-
-CI 顺序：构建 Go/web → Go 定向测试 → 两架构 codesign 与 verify → 可选 notarization → **重新计算签名后 SHA256** → 上传 artifact → 协调 Release 发布。没有证书时仅 ad-hoc 签名，不宣称 Apple 公证。
-
-Developer ID 沿用 `APPLE_SIGNING_IDENTITY` repository variable，以及 `APPLE_CERTIFICATE_BASE64`、`APPLE_CERTIFICATE_PASSWORD` secrets。公证另设置 `APPLE_NOTARY_APPLE_ID`、`APPLE_NOTARY_PASSWORD`（app-specific password）、`APPLE_NOTARY_TEAM_ID` secrets；必须同时配置 Developer ID。CI 把已签名 CLI 打成临时 ZIP，`xcrun notarytool submit --wait` 后检查 `Accepted`，失败阻止发布，流程依据 [Apple 公证文档](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)。独立 CLI 不执行 `.app` 的 stapling；签名、远程公证和 Gatekeeper 实机行为仍需真实发布验收。此改动没有本地执行 Cargo/Rust，也没有触发 CI 或发布 Release。
-
-## 自动化验收与证据
-
-在 macOS、有 Codex App、Go、pnpm/Node 和 Python 3.9+ 的开发环境运行：
-
-```bash
-make codex-release CODEX_VERSION=0.1.0 CODEX_OUT=/private/tmp/lumi-codex-assets
-make codex-smoke CODEX_OUT=/private/tmp/lumi-codex-assets
-# 可指定 PYTHON=/path/to/native/python3；建议与当前 Mac 原生架构一致。
-python3 /Users/你的用户名/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
-  codex-plugins/lumi/skills/create-picture-book
-```
-
-最后一条是本机有该 Codex skill 校验器时的示例，不要求普通安装用户具备它。测试可能需要允许本机 loopback 监听；这与真实用户的一句话安装批准次数无关。
-
-[`scripts/test-install-codex.py`](../../../scripts/test-install-codex.py) 创建临时 `CODEX_HOME`、含空格安装目录、空项目和独立 Lumi data-dir，不复用登录凭据、没有模型推理。测试两次安装结果相同、校验失败不覆盖旧版本、版本升级/同版本缓存刷新、无关配置保留、卸载与重复卸载。新 App `app-server` thread 依次调用 `project_init → project_setup → chapters → pages → image_target → import_image → export_book`，核对返回路径的 PDF 文件头、字节数和无缺图。
-
-测试夹具只在临时生成的 `.mcp.json` 加入独立 `LUMI_DATA_DIR`，不加 cwd；重新 `plugin add` 后从实际插件缓存启动。测试图片是合成 PNG，**不能当作 App 原生生图端到端通过**。
-
-每次运行打印新临时目录，其中 `report.json` 记录命令、stdout/stderr、codex 版本和 RPC 输入输出，`exported-book.pdf` 保存交付结果；测试结束停止自己的 CLI 并卸载自己的插件。检查证据后只清理本次临时目录。仓库验收记录见 [Step 6 自动化记录](acceptance/step6-install.md)。
-
-本机没有发现独立 `codex plugin validate` 子命令：manifest 采用当前仍受支持的兼容目录格式，验证采用真实 App 插件加载、`skills/list` 无错误、MCP 工具发现及调用，另外运行 skill-creator 的 `quick_validate.py`。依据见 [OpenAI 插件打包文档](https://developers.openai.com/plugins/build/plugins)；本地命令行为以记录的具体版本为准。
-
-## Codex App 人工验收（由用户执行）
-
-**以下全部待人工确认**，不能用 app-server 冒烟或 Step 0/5 的旧样本代替。
-
-| 项目 | 操作与要记录的证据 | 状态 |
-| --- | --- | --- |
-| 一句话真实安装 | 在用户 Codex App 执行本页提示词；记录 App 版本、内置 CLI 路径/版本、Release 版本、每次批准的动作与界面截图，以及批准总次数 | 待人工确认；次数未知 |
-| 新会话发现 | 安装后新开目录会话，确认 `lumi:create-picture-book` 与项目工具被模型识别 | 待人工确认 |
-| 项目信任与保护 | 初始化后由用户信任项目；新开会话记录有效权限。用临时测试项目验证受管路径写保护，不让模型修改真实项目数据库 | 待人工确认 |
-| 自主完整创作 | 用上方小狐狸提示词，让模型自行从想法完成 setup、故事、设定、分页、生图、导入和整本导出；记录各审阅节点，确认没有索取 API key | 待人工确认 |
-| 原生生图导入 | 至少一张图由 App 原生生图产生；记录工具实际返回路径、随后 import_image 成功结果、页面/图片 UUID 和审阅截图 | 待人工确认 |
-| 一致性与参考 | 记录 `read_image` 的设定参考、紧随其后的生图及实际画面效果 | 待人工确认 |
-| 最终交付 | 在 App 打开全书审阅并检查 PDF/ZIP，记录页数、文字、图片完整性及文件路径 | 待人工确认 |
-| 真实升级/卸载、Intel | 在相应机器复测新会话可用性及项目保留；记录 Gatekeeper、签名/公证状态 | 待人工确认 |
-
-验收记录模板：日期/架构；App 版本；codex 路径与版本；Release；原始提示词；批准列表（序号、动作、截图、结果）；项目 UUID；至少一张原生图导入证据；PDF/ZIP 路径与页数；通过项与未通过项。批准数应填实际观察值，不能预填 0。
+本地开发插件、Release/CI 和自动化/人工验收步骤见[开发与安装验收说明](installation-development.md)。
