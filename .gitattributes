@@ -9,6 +9,9 @@
 *.jsx text eol=lf
 *.sass text eol=lf
 
+# Release installer checksums must match source checkouts on every platform.
+*.ps1 text eol=lf
+
 # These artifacts carry hashes of their exact bytes; Windows checkout must not rewrite them.
 /evals/baselines/pi/** -text
 /evals/records/** -text

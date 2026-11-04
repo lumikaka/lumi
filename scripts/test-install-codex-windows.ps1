@@ -1,11 +1,12 @@
 #requires -Version 5.1
 param([Parameter(Mandatory = $true)][string]$Assets)
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'install-codex.ps1')
+$testAssets = [IO.Path]::GetFullPath($Assets)
+# Exercise the exact installer bytes shipped with the selected release assets.
+. (Join-Path $testAssets 'install-codex.ps1')
 $testTemp = if (Test-Path -LiteralPath '/private/tmp') { '/private/tmp' } else { [IO.Path]::GetTempPath() }
 $testRoot = Join-Path $testTemp ('lumi-installer-test-' + [guid]::NewGuid().ToString('N'))
 $originalCodexHome = $env:CODEX_HOME
-$testAssets = [IO.Path]::GetFullPath($Assets)
 $script:sourceAssets = $testAssets
 $script:downloads = 0
 $script:failAdd = 0
@@ -119,8 +120,12 @@ try {
     # Encode the probe as UTF-16LE so both shells execute the same source text.
     $nativeProbe = '[Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); [Console]::Error.WriteLine("diagnostic"); [Console]::WriteLine([char]0x7ed8); exit 0'
     $encodedProbe = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($nativeProbe))
-    $nativeText = & $realNative $currentShell @('-NoProfile','-NonInteractive','-EncodedCommand', $encodedProbe)
+    # This probe writes raw console text; prevent Windows PowerShell from
+    # selecting CLIXML for the nested shell's redirected error stream.
+    $nativeText = & $realNative $currentShell @('-NoProfile','-NonInteractive','-OutputFormat','Text','-EncodedCommand', $encodedProbe)
     Assert ($nativeText.Trim() -eq [string][char]0x7ed8) 'Native UTF-8 stdout was corrupted or mixed with stderr'
+    $nativeErrorFile = Get-ChildItem -LiteralPath $testRoot -Filter '*.stderr' -File | Select-Object -First 1
+    Assert ($null -ne $nativeErrorFile -and [IO.File]::ReadAllText($nativeErrorFile.FullName) -match 'diagnostic') 'Native stderr diagnostic was lost'
     Expect-Failure { & $realNative $currentShell @('-NoProfile','-NonInteractive','-Command','exit 7') } 'Command failed \(7\)'
     Pass 'native subprocess preserves UTF-8, separates stderr and checks exit status'
     $env:CODEX_HOME = Join-Path $testRoot 'codex configuration'
@@ -149,6 +154,12 @@ try {
     Expect-Failure { Install-Test $bad } 'SHA256 mismatch'
     Assert ((Read-JsonFile (Join-Path $script:installRoot 'install-state.json')).cli_path -eq $first) 'Checksum failure changed current version'
     Pass 'offline assets are verified even when a valid cache exists'
+    $differentInstaller = Copy-Assets 'different-installer'
+    [IO.File]::AppendAllText((Join-Path $differentInstaller 'install-codex.ps1'), "`n# different release installer`n")
+    Rehash $differentInstaller 'install-codex.ps1'
+    Expect-Failure { Install-Test $differentInstaller } 'script checksum differs'
+    Assert ((Read-JsonFile (Join-Path $script:installRoot 'install-state.json')).cli_path -eq $first) 'Installer mismatch changed current version'
+    Pass 'installer from a different release is rejected even with a valid asset checksum'
     $count = $script:downloads
     Expect-Failure { Install-Test -Root (Join-Path $testRoot 'other install') } 'different source'
     Assert ($script:downloads -eq $count) 'Collision downloaded assets'

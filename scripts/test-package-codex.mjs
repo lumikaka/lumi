@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,25 @@ import test from 'node:test';
 import { createHash } from 'node:crypto';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('Windows Git checkout preserves the release installer checksum', () => {
+  const checkout = mkdtempSync(join(tmpdir(), 'lumi-installer-checkout-'));
+  try {
+    mkdirSync(join(checkout, 'scripts'));
+    copyFileSync(join(repo, '.gitattributes'), join(checkout, '.gitattributes'));
+    const installer = 'scripts/install-codex.ps1';
+    const expected = readFileSync(join(repo, installer));
+    copyFileSync(join(repo, installer), join(checkout, installer));
+    const git = (...args) => execFileSync('git', ['-C', checkout, '-c', 'core.autocrlf=true', '-c', 'core.safecrlf=false', ...args]);
+    git('init', '--quiet');
+    git('add', '--', '.gitattributes', installer);
+    rmSync(join(checkout, installer));
+    git('checkout-index', '--all', '--force');
+    assert.deepEqual(readFileSync(join(checkout, installer)), expected, 'Windows checkout changed installer bytes and invalidated the release checksum');
+  } finally {
+    rmSync(checkout, { recursive: true, force: true });
+  }
+});
 
 test('release archive includes skill references that resolve after relocation', () => {
   const root = mkdtempSync(join(tmpdir(), 'lumi-plugin-contract-'));
