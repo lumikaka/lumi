@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-04",
+  "kind": "browser-integration-synthetic-page-authority-real-cli-not-Cindy-Host",
+  "source_head": "ed935e1469b3f514432c94792f3482da13b26b0d",
+  "baseline": "b4480d9af23db3706a242d6e8e530ff55cfcc43f",
+  "checks": {
+    "title_saved": "Cindy edited title",
+    "image_selection": "current variant changed from version 2 to version 1",
+    "external_ws_change": "a external WS change appeared through REST reread",
+    "project_switch": "B displayed b page 1 and b chapter, retained its version 2",
+    "quiet": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"action\":\"act\",\"status\":200,\"data\":{\"ok\":true,\"targetId\":\"F451B1CF99990E591C1F02F7070AD600\",\"url\":\"http://127.0.0.1:59178/\",\"result\":{\"observed_at\":1793802423987,\"first_read\":1793802204478,\"last_read\":1793802204559,\"quiet_ms\":219429,\"business_reads\":6,\"watch_calls\":6,\"open_pages\":1,\"width\":320,\"scrollWidth\":320}}}"
+        }
+      ],
+      "isError": false
+    },
+    "narrow": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ok\":true,\"action\":\"act\",\"status\":200,\"data\":{\"ok\":true,\"targetId\":\"F451B1CF99990E591C1F02F7070AD600\",\"url\":\"http://127.0.0.1:59178/\",\"result\":{\"width\":320,\"scrollWidth\":320,\"background\":\"rgb(247, 247, 243)\",\"text\":\"rgb(32, 35, 31)\"}}}"
+        }
+      ],
+      "isError": false
+    },
+    "theme": "Host-style variables exercised; white alpha badges fixed in Cindy-only build and verified against computed styles."
+  },
+  "screenshots": [
+    "cindy-dark-390.webp",
+    "cindy-light-320.webp"
+  ],
+  "limitations": [
+    "Synthetic page authorization; not native Cindy taskView identity or write authorization.",
+    "Fixed image fixture; no model calls or real user file delivery.",
+    "Narrow desktop layout is not mobile-native support."
+  ]
+}

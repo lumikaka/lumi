@@ -62,8 +62,9 @@
         return reply(msg, result);
       }
       if (msg.tool === 'receive_media') {
-        const input = Object.fromEntries(['target_uuid', 'slot', 'expected_revision', 'fit_mode', 'description', 'prompt']
-          .filter(key => Object.hasOwn(args, key)).map(key => [key, args[key]]));
+        // Strip only harness/Host fields. The embedded product validates its
+        // complete current schema (including signed reviews and board fields).
+        const { fixture: fixtureName, attachments, session_context, ...input } = args;
         return product({ ...msg, tool: 'receive_media', args: { ...input, attachments: args.attachments, session_context: context } });
       }
       if (msg.tool !== 'run') throw new Error('Unknown fixture tool');

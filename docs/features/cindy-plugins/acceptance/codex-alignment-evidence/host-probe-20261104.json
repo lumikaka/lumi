@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-04",
+  "kind": "installed-historical-diagnostic-probe-not-new-product-ui",
+  "open": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"ok\":true,\"sessionId\":\"191fcbd3-81ea-4c1e-9661-4d8039b60845\"}}"
+      }
+    ]
+  },
+  "report": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"fixture_ids\":[],\"observations\":[],\"page_read_policy\":\"denied_without_host_verified_page_identity\",\"agent_started\":false}}"
+      }
+    ]
+  },
+  "limitations": [
+    "Existing installed diagnostic probe; not the newly built product package.",
+    "No project content or write bridge opened. Public source commit still unavailable.",
+    "Diagnostic receipt does not establish trusted taskView sender identity."
+  ]
+}

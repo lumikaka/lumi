@@ -10,10 +10,15 @@ const { publicProject, publicFailure, setupState, UUID } = require('./project.cj
 const catalog = require('./catalog.cjs');
 const { prepareExport, exportIdentity } = require('./export.cjs');
 const { MediaTransfers, prepareRecovery } = require('./media.cjs');
+const { ReferenceTransfers } = require('./reference.cjs');
+const { adaptAuthoringResult } = require('./authoring.cjs');
+const { workspaceResult, methods: workspaceMethods } = require('./workspace.cjs');
 
 const METHODS = new Set([...catalog.allowed, 'list_tools', 'call_tool']);
 const MEDIA_METHODS = new Set(['media_begin', 'media_chunk', 'media_commit', 'media_abort']);
+const REFERENCE_METHODS = new Set(['reference_prepare', 'reference_chunk', 'reference_release']);
 const MEDIA_IMPORT = Symbol('trusted media import');
+const WORKSPACE_ACCESS = Symbol('internal workspace adapter');
 const success = data => ({ success: true, data });
 const sameIdentity = (a, b) => a && b && a.nonce === b.nonce && a.pid === b.pid && a.endpoint === b.endpoint;
 function contextFor(params) {
@@ -61,7 +66,7 @@ function runCLI(executable, args, { cwd, env, signal, timeoutMs = 5000 }) {
 
 class Runtime {
   constructor({ executable, build, dataDir, environment = 'production', idleMs = 30000, bindingMs = 60000,
-    connectionFactory = options => new MCPConnection(options), env, verifyBinary = true } = {}) {
+    connectionFactory = options => new MCPConnection(options), env, verifyBinary = true, statusRunner = runCLI } = {}) {
     this.executable = executable;
     this.build = build;
     this.dataDir = dataDir;
@@ -70,12 +75,14 @@ class Runtime {
     this.bindingMs = bindingMs;
     this.connectionFactory = connectionFactory;
     this.verifyBinary = verifyBinary;
+    this.statusRunner = statusRunner;
     this.env = env || { HOME: os.homedir(), PATH: '/usr/bin:/bin', TMPDIR: os.tmpdir(), LANG: 'en_US.UTF-8' };
     this.sessions = new Map();
     this.connections = new Map();
     this.closing = new Set();
     this.closed = false;
     this.media = new MediaTransfers({ namespace: JSON.stringify([executable, dataDir, environment]) });
+    this.references = new ReferenceTransfers({ tempDir: this.env.TMPDIR || os.tmpdir() });
     this.mediaStarting = 0;
     this.mediaPending = new Set();
   }
@@ -123,9 +130,21 @@ class Runtime {
   }
 
   async inspect(dataDir, signal, readOnly = false) {
-    const value = await runCLI(this.executable,
-      ['status', '--environment', this.environment, '--data-dir', dataDir, '--json', '--timeout', '4s', ...(readOnly ? ['--read-only'] : [])],
-      { cwd: path.dirname(this.executable), env: this.env, signal });
+    let value;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        value = await this.statusRunner(this.executable,
+          ['status', '--environment', this.environment, '--data-dir', dataDir, '--json', '--timeout', '4s', ...(readOnly ? ['--read-only'] : [])],
+          { cwd: path.dirname(this.executable), env: this.env, signal });
+        break;
+      } catch (error) {
+        if (error.code !== 'instance_unavailable' || attempt >= 3 || signal?.aborted) throw error;
+        // Two startup status probes can briefly contend for the lifetime lock
+        // before an instance exists. Retry only this bounded identity read,
+        // never a business request, mutation or service start/stop.
+        await abortable(new Promise(resolve => setTimeout(resolve, 25 * 2 ** attempt)), signal || new AbortController().signal);
+      }
+    }
     if (typeof value?.running !== 'boolean' || value.environment !== this.environment
       || (value.running && (!Number.isSafeInteger(value.pid) || value.pid <= 0
         || !/^http:\/\/127\.0\.0\.1:\d+$/.test(value.endpoint) || !/^[a-f0-9]{64}$/.test(value.nonce)))) {
@@ -156,6 +175,8 @@ class Runtime {
     session.revoked = true;
     for (const owner of session.mediaOwners?.values() || []) this.media.revoke(owner);
     session.mediaOwners?.clear();
+    for (const owner of session.referenceOwners?.values() || []) this.references.revoke(owner);
+    session.referenceOwners?.clear();
     for (const controller of session.calls) controller.abort();
     for (const record of this.connections.values()) {
       if (record.sessions.get(session.id) === session) record.sessions.delete(session.id);
@@ -171,14 +192,25 @@ class Runtime {
     }
   }
 
-  async execute(method, params, signal, token) {
-    if (MEDIA_METHODS.has(method)) {
-      const pending = this.executeMedia(method, params, signal);
+  // Not dispatched by worker-transport/main.js. Only a verified sender adapter
+  // may use this internal interface; production currently has no such adapter.
+  workspace(method, args, context, project, signal) {
+    if (!workspaceMethods.has(method) || !UUID.test(project)) throw new RuntimeError('workspace_method_forbidden', '工作区目标或操作无效。');
+    if (method === 'write_app_resource' && /^(?:asset-uploads|comic-exports)(?:\/|$)|generations|generation-batches|reconstructions|\/retries$/.test(args?.resource || '')) throw new RuntimeError('workspace_capability_unavailable', '此 Cindy 页面尚未接入文件、生成或导出操作。', '请通过当前任务对话及授权附件继续，未提交此操作。');
+    const error = catalog.check(catalog.specs[method].input_schema, { ...args, ...(method === 'watch_app_changes' ? { project_uuid: project } : {}) });
+    if (error) throw new RuntimeError('invalid_arguments', error);
+    return this.execute(method, { context, arguments: { ...args, ...(method === 'watch_app_changes' ? { project_uuid: project } : {}) } }, signal, WORKSPACE_ACCESS, project);
+  }
+
+  async execute(method, params, signal, token, pageProject) {
+    if (MEDIA_METHODS.has(method) || REFERENCE_METHODS.has(method)) {
+      const pending = REFERENCE_METHODS.has(method) ? this.executeReference(method, params, signal) : this.executeMedia(method, params, signal);
       this.mediaPending.add(pending);
       try { return await pending; } finally { this.mediaPending.delete(pending); }
     }
-    const importingMedia = method === 'import_image' && token === MEDIA_IMPORT;
-    if (!importingMedia && !METHODS.has(method)) throw new RuntimeError('method_not_found', '运行时方法不存在。', '使用插件声明的工具。');
+    const importingMedia = token === MEDIA_IMPORT && (method === 'import_image' || (method === 'setting_boards' && params?.arguments?.action === 'import'));
+    const workspace = token === WORKSPACE_ACCESS && workspaceMethods.has(method);
+    if (!workspace && !importingMedia && !METHODS.has(method)) throw new RuntimeError('method_not_found', '运行时方法不存在。', '使用插件声明的工具。');
     if (method === 'list_tools') return success(catalog.discover(params?.arguments ?? {}));
     if (method === 'call_tool') {
       const wrapper = catalog.validateCall(params?.arguments);
@@ -186,7 +218,7 @@ class Runtime {
       params = { ...params, arguments: wrapper.args ?? {} };
     }
     if (method === 'receive_media') throw new RuntimeError('media_handoff_required', '图片必须通过顶层 receive_media 交接。', '使用 ghost_call.tool=receive_media，并在顶层 attachments 传恰好一个授权图片引用。');
-    const input = importingMedia ? params.arguments : catalog.validate(method, params?.arguments ?? {});
+    const input = importingMedia || workspace ? params.arguments : catalog.validate(method, params?.arguments ?? {});
     // Reject the actual MCP parameter budget before acquiring a connection or
     // marking any mutation sent. Oversize input is a known non-write outcome.
     if (Buffer.byteLength(JSON.stringify({ name: method, arguments: input,
@@ -194,7 +226,7 @@ class Runtime {
       const error = new RuntimeError('arguments_too_large', 'MCP 参数超过 240 KiB。', '缩小单次参数；完整正文不能静默截断，必要时调整作品拆分。');
       error.correction = catalog.repair(method); throw error;
     }
-    const mutation = importingMedia || catalog.isWrite(method, input);
+    const mutation = importingMedia || (workspace ? method === 'write_app_resource' : catalog.isWrite(method, input));
     const context = contextFor(params);
     aborted(signal);
     if (this.closed) throw new RuntimeError('runtime_closed', '运行时已释放。', '发起新的工具调用。');
@@ -366,9 +398,13 @@ class Runtime {
           if (!checked.success) return { ...checked, correction: catalog.repair(method) };
         }
       }
+      if (workspace && expectedUUID !== pageProject) throw new RuntimeError('app_project_mismatch', '页面授权项目与当前任务绑定不一致。');
       mutationSent = mutation;
       const result = method === 'project_overview'
         ? await record.peer.overview(callSignal, expectedUUID)
+        : workspace ? workspaceResult(await record.peer.request('tools/call', { name: method, arguments: input, _meta: { 'lumi/expected_project_uuid': expectedUUID } }, {
+          signal: callSignal, mutation, ...(method === 'watch_app_changes' && input.action === 'next' ? { timeoutMs: 45000 } : {}),
+        }), method)
         : await record.peer.call(method, input, { signal: callSignal, expectedProjectUUID: expectedUUID, mutation });
       aborted(callSignal);
       if (!result.success) {
@@ -416,7 +452,7 @@ class Runtime {
           throw failed;
         }
       }
-      if (!['project_init', 'project_overview'].includes(method)) return result;
+      if (!['project_init', 'project_overview'].includes(method)) return adaptAuthoringResult(method, input, result);
       bind(result);
       const data = publicProject(result.data);
       data.limitations = { ...data.limitations, read_only: context.workdir_is_read_only, open_may_write: !context.workdir_is_read_only };
@@ -436,6 +472,65 @@ class Runtime {
       }
       session.pending.delete(done);
       finish();
+    }
+  }
+
+  async executeReference(method, params, signal) {
+    const fields = method === 'reference_prepare' ? ['context', 'invocation', 'input']
+      : method === 'reference_chunk' ? ['context', 'invocation', 'transfer', 'index'] : ['context', 'invocation', 'transfer'];
+    if (!params || Object.keys(params).some(k => !fields.includes(k)) || typeof params.invocation !== 'string'
+      || !params.invocation || params.invocation.length > 256) throw new RuntimeError('invalid_arguments', '参考交接参数无效。');
+    const context = contextFor({ context: params.context });
+    const invocation = crypto.createHash('sha256').update(params.invocation).digest('hex');
+    let session = this.sessions.get(context.session_id);
+    if (session && Object.keys(context).some(k => context[k] !== session.permission[k])) {
+      this.forget(session);
+      throw new RuntimeError('binding_changed', '参考交接期间任务或权限已改变。', '重新读取并准备当前项目。');
+    }
+    if (this.closed) throw new RuntimeError('runtime_closed', '运行时已释放。');
+    let owner;
+    const validate = async () => {
+      aborted(signal);
+      if (!session || session.revoked || this.sessions.get(session.id) !== session
+        || Object.keys(context).some(k => context[k] !== session.permission[k])) throw new RuntimeError('reference_transfer_invalid', '当前任务参考交接已撤销。');
+      const directory = await this.directory(context.workdir);
+      if (directory.root !== session.root || directory.stamp !== session.directoryStamp
+        || await this.projectFile(directory.root) !== session.projectFile) {
+        this.forget(session);
+        throw new RuntimeError('binding_changed', '参考交接期间项目发生变化。');
+      }
+      aborted(signal);
+      if (session.revoked || this.sessions.get(session.id) !== session) throw new RuntimeError('reference_transfer_invalid', '当前任务参考交接已撤销。');
+    };
+    if (method === 'reference_prepare') {
+      // This wrapper is an internal main→worker transport operation, absent
+      // from the public tool catalog. Only Go chooses the source image path.
+      const result = await this.execute('prepare_page_image', { context, arguments: params.input }, signal);
+      if (!result.success || result.data?.reference_mode === 'none') return result;
+      session = this.sessions.get(context.session_id);
+      await validate();
+      session.referenceOwners ||= new Map();
+      for (const [key, value] of session.referenceOwners) if (![...this.references.items.values()].some(item => item.owner === value)) session.referenceOwners.delete(key);
+      if (session.referenceOwners.has(invocation)) throw new RuntimeError('reference_transfer_invalid', '同一调用已准备参考交接。');
+      owner = { session, invocation };
+      const transport = await this.references.begin(owner, result.data, signal, validate);
+      try {
+        aborted(signal);
+        if (session.revoked || this.sessions.get(session.id) !== session) throw new RuntimeError('reference_transfer_invalid', '当前任务参考交接已撤销。');
+      } catch (error) { this.references.revoke(owner); throw error; }
+      session.referenceOwners.set(invocation, owner);
+      this.touch(session);
+      return { ...result, transport_reference: transport };
+    }
+    owner = session?.referenceOwners?.get(invocation);
+    if (!owner) throw new RuntimeError('reference_transfer_invalid', '参考交接不属于当前任务调用。');
+    try {
+      await validate(); this.touch(session);
+      return success(method === 'reference_chunk' ? this.references.chunk(owner, params) : this.references.release(owner, params.transfer));
+    } catch (error) {
+      this.references.revoke(owner); session.referenceOwners.delete(invocation); throw error;
+    } finally {
+      if (method === 'reference_release') session.referenceOwners.delete(invocation);
     }
   }
 
@@ -464,7 +559,10 @@ class Runtime {
       if (this.mediaStarting + this.media.items.size >= 2) throw new RuntimeError('media_busy', '媒体接收并发已满。', '等待正在导入的图片完成。');
       this.mediaStarting++;
       try {
-        const target = await this.execute('image_target', { context, arguments: { target_uuid: params.input.target_uuid, slot: params.input.slot } }, signal);
+        const board = params.input.slot === 'setting_board';
+        const target = await this.execute(board ? 'settings' : 'image_target', { context, arguments: board
+          ? { action: 'list', limit: 1 }
+          : { target_uuid: params.input.target_uuid, slot: params.input.slot } }, signal);
         if (!target.success) return target;
         // Let the atomic business import check revision after transfer. A stale
         // target still gets a durable recovery original instead of losing it.
@@ -498,7 +596,16 @@ class Runtime {
       if (method === 'media_abort') return success(this.media.abort(owner, params.transfer));
       return await this.media.commit(owner, params.transfer, async (file, input) => {
         if (session.revoked || this.sessions.get(session.id) !== session) throw new RuntimeError('binding_changed', '媒体调用绑定已撤销。', '重新读取当前项目。');
-        const result = await this.execute('import_image', { context, arguments: { ...input, path: file } }, signal, MEDIA_IMPORT);
+        const board = input.slot === 'setting_board';
+        const { slot, ...boardInput } = input;
+        // Go's existing board replay contract includes the original path.
+        // Keep the authorized source at an immutable task-visible hash path so
+        // retrying after a worker restart never substitutes a new staging path.
+        const source = board ? await prepareRecovery(session.root, file, input) : null;
+        const importPath = source ? path.join(session.root, source.relative_path) : file;
+        const result = await this.execute(board ? 'setting_boards' : 'import_image', { context, arguments: board
+          ? { ...boardInput, action: 'import', path: importPath }
+          : { ...input, path: file } }, signal, MEDIA_IMPORT);
         if (!result.success && result.error.code === 'production_conflict') {
           try {
             const current = await this.directory(context.workdir, true);
@@ -518,6 +625,7 @@ class Runtime {
 
   async close() {
     this.closed = true;
+    this.references.close();
     const sessions = [...this.sessions.values()];
     for (const session of sessions) this.forget(session);
     await Promise.all(sessions.flatMap(session => [...session.pending]));

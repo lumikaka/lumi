@@ -43,26 +43,10 @@
     },
     {
       "name": "receive_media",
-      "description": "接收 ghost_call.attachments 中恰好一张授权图片，校验原件并保存到当前任务项目。先 image_target 获取 target_uuid、slot 与 expected_revision。不接受路径、指纹或内联字节。",
+      "description": "接收 ghost_call.attachments 中恰好一张授权图片，导入页面、单项设定或设定总览图。页面须带完整 prompt/preparation；设定板须带 source_text、revision 和幂等键。不接受自报路径、指纹或内联字节。",
       "parameters": {
+        "type": "object",
         "additionalProperties": false,
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "slot": {
-                  "const": "page_image"
-                }
-              }
-            },
-            "then": {
-              "required": [
-                "prompt",
-                "preparation"
-              ]
-            }
-          }
-        ],
         "properties": {
           "description": {
             "maxLength": 12000,
@@ -107,6 +91,62 @@
                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
                 "type": "string"
               },
+              "setting_reviews": {
+                "description": "Host visual assessments of the selected current images. Read image_target for style_digest and image versions. Compare originals and explicit user requirements; record concrete differences or agreement, not just 'checked'. No-reference selection uses [] or omits this field.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "comparison": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "expected_revision": {
+                      "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reference_basis": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "setting_uuid": {
+                      "description": "Public UUIDv7 from a previous read.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    },
+                    "style_digest": {
+                      "pattern": "^[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "variant_uuid": {
+                      "description": "Public UUIDv7 from a previous read.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    },
+                    "verdict": {
+                      "enum": [
+                        "passed",
+                        "needs_revision"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "setting_uuid",
+                    "variant_uuid",
+                    "expected_revision",
+                    "style_digest",
+                    "verdict",
+                    "reference_basis",
+                    "comparison"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 12,
+                "type": "array"
+              },
               "setting_uuids": {
                 "description": "Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.",
                 "items": {
@@ -139,24 +179,268 @@
             "type": "string"
           },
           "slot": {
+            "type": "string",
             "enum": [
               "page_image",
-              "setting_image"
-            ],
-            "type": "string"
+              "setting_image",
+              "setting_board"
+            ]
           },
           "target_uuid": {
             "description": "Public UUIDv7 from a previous read.",
             "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
             "type": "string"
+          },
+          "idempotency_key": {
+            "description": "Stable key for this exact request. Replay original input after interruption; use a new key for a different operation.",
+            "maxLength": 160,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source_text": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "style_snapshot": {
+            "maxLength": 12000,
+            "type": "string"
           }
         },
         "required": [
-          "target_uuid",
           "slot",
           "expected_revision"
         ],
-        "type": "object"
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "slot": {
+                  "enum": [
+                    "page_image",
+                    "setting_image"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "slot": {
+                        "const": "page_image"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "prompt",
+                      "preparation"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "description": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "expected_revision": {
+                  "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "fit_mode": {
+                  "enum": [
+                    "keep",
+                    "crop",
+                    "pad"
+                  ],
+                  "type": "string"
+                },
+                "preparation": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "additional_direction": {
+                      "maxLength": 12000,
+                      "type": "string"
+                    },
+                    "digest": {
+                      "pattern": "^[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "expected_revision": {
+                      "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "page_uuid": {
+                      "description": "Public UUIDv7 from a previous read.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    },
+                    "project_uuid": {
+                      "description": "Public UUIDv7 from a previous read.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    },
+                    "setting_reviews": {
+                      "description": "Host visual assessments of the selected current images. Read image_target for style_digest and image versions. Compare originals and explicit user requirements; record concrete differences or agreement, not just 'checked'. No-reference selection uses [] or omits this field.",
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "comparison": {
+                            "maxLength": 2000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "expected_revision": {
+                            "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "reference_basis": {
+                            "maxLength": 2000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "setting_uuid": {
+                            "description": "Public UUIDv7 from a previous read.",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                            "type": "string"
+                          },
+                          "style_digest": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "variant_uuid": {
+                            "description": "Public UUIDv7 from a previous read.",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                            "type": "string"
+                          },
+                          "verdict": {
+                            "enum": [
+                              "passed",
+                              "needs_revision"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "setting_uuid",
+                          "variant_uuid",
+                          "expected_revision",
+                          "style_digest",
+                          "verdict",
+                          "reference_basis",
+                          "comparison"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 12,
+                      "type": "array"
+                    },
+                    "setting_uuids": {
+                      "description": "Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.",
+                      "items": {
+                        "description": "Public UUIDv7 from a previous read.",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                        "type": "string"
+                      },
+                      "maxItems": 12,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "signature": {
+                      "pattern": "^[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "project_uuid",
+                    "page_uuid",
+                    "expected_revision",
+                    "setting_uuids",
+                    "additional_direction",
+                    "digest",
+                    "signature"
+                  ],
+                  "type": "object"
+                },
+                "prompt": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "slot": {
+                  "enum": [
+                    "page_image",
+                    "setting_image"
+                  ],
+                  "type": "string"
+                },
+                "target_uuid": {
+                  "description": "Public UUIDv7 from a previous read.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "target_uuid",
+                "slot",
+                "expected_revision"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "slot": {
+                  "const": "setting_board"
+                }
+              }
+            },
+            "then": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "expected_revision": {
+                  "description": "Exact revision from the last read or render_prompt; required for every mutation.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idempotency_key": {
+                  "description": "Stable key for this exact request. Replay original input after interruption; use a new key for a different operation.",
+                  "maxLength": 160,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "prompt": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "source_text": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "style_snapshot": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "slot": {
+                  "const": "setting_board"
+                }
+              },
+              "required": [
+                "source_text",
+                "prompt",
+                "expected_revision",
+                "idempotency_key"
+              ]
+            }
+          }
+        ]
       }
     }
   ],
@@ -173,7 +457,7 @@
   "command": "lumi",
   "launch": "on-demand",
   "sessionContext": true,
-  "releaseNotes": "新增授权附件原件校验与分块导入、受控参考图回送、开发包身份和运行环境隔离；修复旧共享 CLI 的兼容性检测，明确区分安装包与运行后台，保留项目绑定、文本工具和标准项目格式。",
+  "releaseNotes": "补齐设定板授权附件导入、原子拆分与稳定幂等恢复；从 Go 契约同步 setting_reviews、preparation 和附件 schema，并增加实际契约漂移检查。作品工作区生产桥仍待可信宿主身份验收。",
   "manual": {
     "items": [
       {

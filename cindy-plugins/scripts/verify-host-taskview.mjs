@@ -51,8 +51,8 @@ try {
     limitations: ['No application source ref matching sourceCommit is publicly available.', 'This audit does not enumerate undocumented capabilities or replace a real taskView test.'],
   };
 } finally { fs.closeSync(fd); }
-const evidence = path.join(repo, 'docs/features/cindy-plugins/acceptance/step45-evidence');
-fs.mkdirSync(evidence, { recursive: true });
-fs.writeFileSync(path.join(evidence, 'host-contract.json'), JSON.stringify(record, null, 2) + '\n');
+const target = process.argv[2] ? path.resolve(process.argv[2]) : path.join(repo, 'docs/features/cindy-plugins/acceptance/step45-evidence/host-contract.json');
+fs.mkdirSync(path.dirname(target), { recursive: true });
+fs.writeFileSync(target, JSON.stringify(record, null, 2) + '\n');
 console.log(JSON.stringify({ result: 'PASS', checked: 'actual taskView query and public route handler',
   verified_page_identity: false, gate: 'business reads remain closed pending a verified binding mechanism', routes: record.exact_public_routes }, null, 2));

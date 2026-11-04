@@ -36,6 +36,8 @@ make cindy-dev-stop
 
 ## 修改源码后，重新打包并安装开发包
 
+完整合图的内部传输和原生固定素材验收见 [Codex 对齐验收](acceptance/codex-alignment.md)。验收探针默认保留历史 data-dir；本次可用 `node docs/features/cindy-plugins/spike/product-probe/build.mjs --data-dir /private/tmp/lumi-cindy-alignment-host-data` 构建隔离服务配置，避免为更新包停止旧共享后台。该参数仅接受明确的 /private/tmp/lumi-cindy-* 目录，不开放给普通模型工具；同一个作品仍受原项目锁约束，不能以切 data-dir 绕过占用。
+
 以下构建入口已经实现，安装动作仍需走实际 Forge 回执。日常本地迭代无需发布 GitHub Release、创建 Tag、递增公开 patch 或提交插件市场。执行电脑是实际运行插件的 Mac；手机可作为控制端，安装回执必须核对该 Mac，不能用控制端版本或路径替代。
 
 1. **修改共享源码并生成开发目录。** 运行 `make cindy-dev`。Go 变化必须重新编译随包 `bin/lumi_dev`；JS、Manual、manifest 或 UI 变化也必须重新生成相应文件。允许构建器复用已验证未变的 CLI，但不得漏复制变更或使用旧指纹。检查输出身份为 `lumi-dev`、环境为 development、data-dir 为本次开发目录，并校验执行位和包体限制。
@@ -68,3 +70,12 @@ make cindy-dev-stop
 | 卸载与恢复 | 只卸载对应开发插件，保留测试作品；先阻止旧页面重连，再核查代理及共享 CLI 状态，不用卸载回执代替进程验证 |
 
 自动化使用临时 HOME、应用数据与作品目录；真实宿主验收记录执行电脑、宿主版本/源码依据、插件身份与来源、两次包指纹、CLI 指纹、调用结果和未验证项。结果分别追加到 Step 1/6 验收记录，不能修改历史证据使其看似已覆盖这些新增要求。
+# Codex 对齐开发增量（2026-11-04）
+
+本次进行中的目标与验收见 [对齐基线](codex-alignment.md) 和 [验收记录](acceptance/codex-alignment.md)。历史 Step 5 四视图范围不再是目标上限；可编辑共享工作区的原生宿主接入仍未完成，当前生产页面桥关闭。
+
+独立工作区入口/构建、内部授权适配接口和共享页面装配已实现，使用方式与失败关闭边界见 [作品工作区](workspace.md)。Cindy 构建会生成并携带 workspace.html；该文件不提交，当前不在 manifest 声明 taskView。`node scripts/cindy-acceptance/workspace.mjs` 可启动模拟页面授权、真实 CLI 的独立浏览器夹具。
+
+`node cindy-plugins/scripts/sync-contracts.mjs` 从实际 Go `textmcp.Specs()` 生成业务快照、manifest receive_media 和 main.js 同一附件 schema；`--check` 只检查漂移，失败时不会修复文件。构建先生成再复制开发目录，不会让开发包继承旧快照。`node cindy-plugins/scripts/verify.mjs codex-alignment` 保存本次独立证据，避免覆盖历史 Step 记录。
+
+设定板导入只走 receive_media(slot=setting_board) 的授权附件。普通 setting_boards 仅 list/get；apply_setting_breakdown 明确开放并沿用 Go 原子事务。为保持 Go 既有的路径参与幂等输入语义，授权总览原件先保存到当前任务 lumi-media-recovery/ 的内容摘要路径，重启后同键同参数仍使用同一来源；不改 Codex 默认契约。不会向用户项目写入 Codex 信任或引擎配置。

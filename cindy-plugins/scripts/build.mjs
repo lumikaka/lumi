@@ -17,6 +17,10 @@ while (args.length) {
 if (!['production', 'development'].includes(channel) || (dataDir !== null
   && (channel !== 'development' || !path.isAbsolute(dataDir) || dataDir.startsWith('//') || dataDir.includes('\0')))) throw new Error('Invalid channel or development data-dir');
 const source = path.join(repo, 'cindy-plugins/lumi');
+const synced = spawnSync(process.execPath, [path.join(repo, 'cindy-plugins/scripts/sync-contracts.mjs')], { cwd: repo, encoding: 'utf8' });
+if (synced.status !== 0) throw new Error(synced.stderr || synced.error?.message || 'Contract generation failed');
+const workspace = spawnSync(process.execPath, [path.join(repo, 'web/cindy-app/build.mjs')], { cwd: repo, encoding: 'utf8' });
+if (workspace.status !== 0) throw new Error(workspace.stderr || workspace.error?.message || 'Cindy workspace build failed');
 const development = channel === 'development';
 const author = development ? path.join(repo, 'build/cindy-dev/lumi-dev') : source;
 if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Currently packages only macOS arm64');
@@ -65,7 +69,6 @@ const info = {
   go_version: run('go', ['version']), platform: process.platform, arch: process.arch,
   cli_sha256: createHash('sha256').update(readFileSync(binary)).digest('hex'),
 };
-writeFileSync(path.join(author, 'node/business-specs.json'), run('go', ['run', './cindy-plugins/schema']) + '\n');
 // Fingerprint every shipped source plus CLI; same-version builds remain distinct.
 const digest = createHash('sha256');
 function fingerprint(dir) {

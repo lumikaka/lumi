@@ -1,0 +1,21 @@
+{
+  "kind": "local-byte-and-actual-backend-verification-not-remote-user-receipt",
+  "date": "2026-11-04",
+  "collage": {
+    "sha256": "5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d",
+    "bytes": 12345,
+    "dimensions": [
+      792,
+      420
+    ],
+    "managed_url": "cindy-media://blobs/5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d.png",
+    "local_go_file_matches_full_collage_receipt": true
+  },
+  "backend": {
+    "running": true,
+    "pid": 44365,
+    "creation_protocol_version": 3,
+    "actual_executable_sha256": "4142d15db995b5fac7fb8535efd5b4fcd07edb6e8ce5edd6aed9bba31cc4812b",
+    "environment": "development"
+  }
+}

@@ -84,3 +84,16 @@ test('probe native copy rejects destination links and preserves their referenced
   assert.equal(fs.readFileSync(untouched, 'utf8'), 'keep');
   assert.equal(fs.existsSync(path.join(root, 'new-file')), false);
 });
+
+test('probe media schema retains current board fields without loosening signed page preparation', async () => {
+  const { fixtureMediaTool } = await import('../../docs/features/cindy-plugins/spike/product-probe/media-schema.mjs');
+  const { check } = require('../lumi/node/catalog.cjs');
+  const productManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../lumi/ghost.json')));
+  const schema = fixtureMediaTool(productManifest.tools.find(t => t.name === 'receive_media')).parameters;
+  const h = fixture(); await h.call('create_fixture', { fixture: 'a' });
+  const board = { fixture: 'a', slot: 'setting_board', expected_revision: 0, source_text: 'Two settings', style_snapshot: 'Saved style', prompt: 'Full prompt', idempotency_key: 'exact-request' };
+  assert.equal(check(schema, board), null);
+  assert.ok(check(schema, { ...board, target_uuid: '01989abc-def0-7000-8000-000000000001' }), 'board branch remains restrictive');
+  // Schema is derived without loosening preparation or any nested object.
+  assert.equal('fixture' in schema.properties.preparation.properties, false);
+});

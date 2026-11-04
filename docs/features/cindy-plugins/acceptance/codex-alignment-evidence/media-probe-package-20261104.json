@@ -1,0 +1,14 @@
+{
+  "kind": "reviewed-probe-archive-not-installation",
+  "sha256": "cd41cfb762ea977dc58bb5fb5d2dd443fff29fe23434552a2088e69428140318",
+  "entries": 25,
+  "review_archive": "build/cindy-reviewed/lumi-host-acceptance-20261101/cd41cfb762ea977dc58bb5fb5d2dd443fff29fe23434552a2088e69428140318.cindy",
+  "build": {
+    "kind": "host-integration-harness-not-normal-product-binding",
+    "author": "build/cindy-probe/lumi-host-acceptance-20261101",
+    "product_build_id": "c97cb3e4ad9b68aa6df77d392b2260a43cf014e1372cc41777b0e4093e427752",
+    "product_main_sha256": "91cbe388ef8ad50f8b25623cfe3af49521833ec1a4f87d95dfc193ac5ad5b0ec",
+    "cli_sha256": "4142d15db995b5fac7fb8535efd5b4fcd07edb6e8ce5edd6aed9bba31cc4812b",
+    "data_dir": "/private/tmp/lumi-cindy-alignment-host-data"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-04",
+  "kind": "automated-regression-not-host-ui",
+  "go": {
+    "command": "go test ./internal/textmcp ./internal/production ./internal/files ./internal/project ./internal/promptcatalog ./cmd/lumi ./cindy-plugins/schema",
+    "exit_code": 0,
+    "results": [
+      "lumi/internal/textmcp: ok (16.777s)",
+      "lumi/internal/production: ok (cached)",
+      "lumi/internal/files: ok (4.611s)",
+      "lumi/internal/project: ok (cached)",
+      "lumi/internal/promptcatalog: ok (cached)",
+      "lumi/cmd/lumi: ok (9.754s)",
+      "lumi/cindy-plugins/schema: no test files"
+    ]
+  },
+  "web": {
+    "cwd": "web",
+    "command": "pnpm test",
+    "exit_code": 0,
+    "tests": 465,
+    "pass": 465,
+    "fail": 0,
+    "duration_ms": 7853.738958
+  },
+  "limitations": [
+    "No Web/shared UI source changes in this increment.",
+    "Automated regression is not native UI/visual acceptance."
+  ]
+}

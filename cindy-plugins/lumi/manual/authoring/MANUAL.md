@@ -1,6 +1,6 @@
 # Lumi 绘本创作
 
-此流程由当前 Cindy Agent 串行执行，不需要多 Agent，也不配置 Lumi 模型服务商。项目事实保存在标准 Lumi 项目中，所有业务读写均通过工具完成；不要直接读写 SQLite、素材目录或 STORY.md 投影。
+此流程由当前 Cindy Agent 编排，不配置 Lumi 模型服务商。文本任务可按宿主可用能力委派；输入事实保存后才启动下游任务，父代理核对草稿和 revision 后串行写回。不支持委派或用户要求直接完成时串行执行同一流程。项目事实保存在标准 Lumi 项目中，所有业务读写均通过工具完成；不要直接读写 SQLite、素材目录或 STORY.md 投影。
 
 ## 发现与项目识别
 
@@ -18,19 +18,21 @@
 
 ## 设定、章节与页面
 
-1. 展开 settings。用 settings list 取得 premise.revision。通过 render_prompt prompt_group=premise、prompt_key=text_settings、target=premise 取得无图片的文字设定任务；按结果逐个保存角色、场景、道具或参考文字，每次 create 都重读父集合 revision。已有设定先 get，再带目标 revision update。文字设定不要求图片。
+1. 展开 settings。用 settings list 取得 premise.revision。通过 render_prompt prompt_group=premise、prompt_key=text_settings、target=premise 取得文字设定任务；按结果保存角色、场景、道具或参考文字，每次 create 都重读父集合 revision。已有设定先 get，再带目标 revision update。带页面图片的创作先准备必要设定图，文字存在不代表视觉准备完成；来源/版权备注无需生图。用户明确纯文字、跳过设定图或总生图次数限制按其范围执行，不把“正文只做第一页”解释为跳过设定图。批量流程见 [设定与视觉核对](references/settings.md)。
 2. 逐章 render_prompt target=chapter。story/story_chapter 的任务输入按 prompt_catalog 补齐，包含章节计划和已生成摘要等；正文用 chapters write 保存。content 是完整章正文，不能只提交摘要。get 核对当前不可变正文版本。
 3. render_prompt target=pages、chapter_uuid 使用当前章。chapter/comic_storyboard 按绘本规格返回页面结构；页数和视觉单位等任务输入由目录 placeholders 决定。保持模板要求的输出格式，再映射到 pages 工具字段。
 4. 每页 create 前 pages list 取得最新 state.revision。description_md 保存完整叙述、对白和字幕；storyboard_md 保存完整构图、动作、表情、光线与画面文字。逐页保存并 get 核对。编辑已有页使用 page.revision，不能把章 revision 当作页 revision。
 5. 展开 media 获取图片目标、参考图和授权交接规则。review 类别尚未实现，先通过完整文字及 read_image 审阅；不调用 MCP App-only 工具。
 
+包内已有可编辑作品工作区的独立代码与隔离测试，但当前原生页面授权通道尚未核验，生产 taskView 未开放。不要把包内 HTML、测试截图、浏览器测试 key 或页面 session 当作当前任务的授权入口，也不要声称已经打开作品/章节/单页。按交付范围提供真实章节/页面 UUID、文本摘要和导出文件，原生工作区恢复后才使用经核验的同范围入口。
+
 ## 图片、参考图与比例
 
 ### 先组装页面图片提示词
 
-页面先选择实际所需的 setting_uuids，再调用 `prepare_page_image(page_uuid, setting_uuids, additional_direction?)`。最多 12 项，明确无参考图时为 []；缺图先补齐，不静默遗漏。Lumi 读取当前图片版本，现拼带编号名称的 PNG 并按 page_role、有效 project_overall_style、语言指令、参考标签、已保存分镜及用户补充要求组装完整提示词，复用 Web 的规则。
+页面先选择实际所需的 setting_uuids，按 [设定与视觉核对](references/settings.md) 实际看图并记录 setting_reviews，再调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)`。最多 12 项，明确无参考图时为 []；缺图先补齐，不静默遗漏。Lumi 读取当前图片版本，现拼带编号名称的 PNG 并按 page_role、有效 project_overall_style、语言指令、参考标签、已保存分镜及用户补充要求组装完整提示词，复用 Web 的规则。
 
-保留返回的 generation_prompt、image_write_back 和整个 preparation（含 digest/signature）。使用当前宿主读图能力查看 reference_image_path，生图只引用同一个临时绝对路径；none 模式省略参考参数。不要逐张读取设定源图、改写参考说明、访问项目资产目录或写拼图脚本。若当前宿主无法读取该临时路径，说明能力缺失并保留已保存内容，不虚构参考传递或改用付费 pipeline。
+保留返回的 generation_prompt、image_write_back 和整个 preparation（含 setting_reviews、digest/signature）。原生引擎只有在实际支持本机路径输入时，才查看并显式引用同一个 reference_image_path；none 模式省略参考参数。Core 必须同时取得 reference_delivery.kind=full_collage、status=ready 与 reference_media_url：这是宿主入库的同一张完整 PNG，摘要、尺寸和 byte_size 随回执返回。先实际查看该合图，再按本次模型 Guide 将该 URL 放入图片输入；generation_prompt 原样传入。路径、设定预览或文字不能替代合图。status=failed 表示准备业务已成功但 Core 交接失败，未提交生图；保留内容，按 instructions 处理，不宣称已传参考。传输自动化不等于真实模型请求已验收。不要逐张读取设定源图、改写参考说明、访问项目资产目录或写拼图脚本。当前通道无法取得合图时说明阻塞并保留内容，不虚构参考传递或改用付费 pipeline。
 
 生成和 receive_media 使用同一完整 prompt，页面还需原样传 preparation。服务端预检和最终事务都重算摘要；页面、设定当前版本、语言/画风/规则发生变化时拒绝导入，需重新准备、读图和生图，不能只换 revision/摘要。服务重启后也需重新准备。提示词最多 12000 字符，不截断对白或规则。
 

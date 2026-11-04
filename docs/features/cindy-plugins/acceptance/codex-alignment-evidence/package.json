@@ -1,0 +1,121 @@
+{
+  "kind": "local-forge-archive-not-installed",
+  "package": "cindy-plugins/lumi/lumi-0.4.0.cindy",
+  "bytes": 22191583,
+  "sha256": "528d881918804b4d5cb143756fb059b825eff05a8cefd763bc16064b049a8d96",
+  "cli_sha256": "3273c4866996cc3c04b148a9ebaee2d23bf8c6ee09d78dcfb1cf1730b6cdfe0f",
+  "cli_mode": "755",
+  "channel": "production",
+  "build_id": "3063b74264ce24a6fdb448c4c602836c69e5ed03d66861a4c46fc184c2a04074",
+  "entries": [
+    {
+      "name": "assets/icon.png",
+      "bytes": 247225
+    },
+    {
+      "name": "bin/lumi",
+      "bytes": 41702882
+    },
+    {
+      "name": "build-info.json",
+      "bytes": 409
+    },
+    {
+      "name": "ghost.json",
+      "bytes": 18391
+    },
+    {
+      "name": "main.js",
+      "bytes": 23493
+    },
+    {
+      "name": "manual/authoring/MANUAL.md",
+      "bytes": 12893
+    },
+    {
+      "name": "manual/authoring/references/settings.md",
+      "bytes": 5638
+    },
+    {
+      "name": "manual/project/MANUAL.md",
+      "bytes": 4610
+    },
+    {
+      "name": "manual/runtime/MANUAL.md",
+      "bytes": 3548
+    },
+    {
+      "name": "node/authoring.cjs",
+      "bytes": 1694
+    },
+    {
+      "name": "node/business-specs.json",
+      "bytes": 39856
+    },
+    {
+      "name": "node/catalog.cjs",
+      "bytes": 14307
+    },
+    {
+      "name": "node/config.cjs",
+      "bytes": 977
+    },
+    {
+      "name": "node/errors.cjs",
+      "bytes": 1188
+    },
+    {
+      "name": "node/export.cjs",
+      "bytes": 4859
+    },
+    {
+      "name": "node/media-contract.cjs",
+      "bytes": 1507
+    },
+    {
+      "name": "node/media.cjs",
+      "bytes": 9143
+    },
+    {
+      "name": "node/project.cjs",
+      "bytes": 5310
+    },
+    {
+      "name": "node/protocol.cjs",
+      "bytes": 9060
+    },
+    {
+      "name": "node/reference.cjs",
+      "bytes": 4782
+    },
+    {
+      "name": "node/request-lifetime.cjs",
+      "bytes": 249
+    },
+    {
+      "name": "node/runtime-config.json",
+      "bytes": 101
+    },
+    {
+      "name": "node/runtime.cjs",
+      "bytes": 39997
+    },
+    {
+      "name": "node/worker-transport.cjs",
+      "bytes": 4931
+    },
+    {
+      "name": "node/worker.cjs",
+      "bytes": 961
+    },
+    {
+      "name": "node/workspace.cjs",
+      "bytes": 3313
+    },
+    {
+      "name": "workspace.html",
+      "bytes": 1352109
+    }
+  ],
+  "review_archive": "build/cindy-reviewed/lumi/528d881918804b4d5cb143756fb059b825eff05a8cefd763bc16064b049a8d96.cindy"
+}

@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-04",
+  "source": "formal observation during first read-only installed-entry verification before final dev/probe updates",
+  "build": {
+    "channel": "production",
+    "source_commit": "3764b5647f61856b63ffca5db562408cd4388db3",
+    "source_dirty": true,
+    "go_version": "go version go1.27.3 darwin/arm64",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cli_sha256": "686a608b86fe3651d9f7cc89b57a20658a947ee1a1bea5b898597fa229f20b03",
+    "build_id": "0278cd84b4b5f31b7d64d4f04ba8bdaf197f0679812154c8edd127c73de7f346",
+    "author_source_dirty": true
+  }
+}

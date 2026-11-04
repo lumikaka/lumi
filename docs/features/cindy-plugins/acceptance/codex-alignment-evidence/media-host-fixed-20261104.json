@@ -1,0 +1,1909 @@
+{
+  "date": "2026-11-04T15:01:40.178Z",
+  "kind": "native-cindy-host-fixed-materials-not-real-model-generation",
+  "authorization": "Current alignment goal and 2026-11-02 resumption limited to existing A/B acceptance projects",
+  "product_binding": "Probe uses host tasks.get on prior owned A/B receipts and embeds product main byte-for-byte; not ordinary product context injection or page authorization",
+  "paid_request_count": 0,
+  "core_prepare_only": true,
+  "events": [
+    {
+      "label": "restore_a",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"fixture\":\"a\",\"task_id\":\"a0964e96-ba88-4c58-af32-4c0d356b7530\",\"permission_mode\":\"ask\",\"empty_task\":true,\"agent_started\":false,\"context_source\":\"host_tasks_get_previous_receipt\"}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "restore_b",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"fixture\":\"b\",\"task_id\":\"862d6471-47aa-4291-a2c0-ac4f906de846\",\"permission_mode\":\"ask\",\"empty_task\":true,\"agent_started\":false,\"context_source\":\"host_tasks_get_previous_receipt\"}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "b_runtime_status",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"upgrade_required\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"ed935e1469b3f514432c94792f3482da13b26b0d\",\"channel\":\"development\",\"build_id\":\"98542cb0983a1cc1b2ca596a110c2f83e2ce5c71d6c882ff69ec90935c49516e\",\"cli_sha256\":\"4142d15db995b5fac7fb8535efd5b4fcd07edb6e8ce5edd6aed9bba31cc4812b\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":true,\"server_observation\":\"verified\",\"server_compatible\":false,\"server_creation_protocol_version\":null,\"server_policy\":\"shared_retained\"}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "b_project_overview",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":false,\"errorCode\":\"LUMI_CLI_UPGRADE_REQUIRED\",\"message\":\"Lumi cli_upgrade_required：正在运行的共享 CLI 服务协议过旧。 未派发创作请求。先协调同一 environment/data-dir 的使用者，再明确停止旧服务并用新包重连；保留现有 draft，先重读事实，不自动重放写入。\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "label": "isolated_restore_a",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"fixture\":\"a\",\"task_id\":\"a0964e96-ba88-4c58-af32-4c0d356b7530\",\"permission_mode\":\"ask\",\"empty_task\":true,\"agent_started\":false,\"context_source\":\"host_tasks_get_previous_receipt\"}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "isolated_restore_b",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"fixture\":\"b\",\"task_id\":\"862d6471-47aa-4291-a2c0-ac4f906de846\",\"permission_mode\":\"ask\",\"empty_task\":true,\"agent_started\":false,\"context_source\":\"host_tasks_get_previous_receipt\"}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "isolated_b_runtime_status",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"ed935e1469b3f514432c94792f3482da13b26b0d\",\"channel\":\"development\",\"build_id\":\"98542cb0983a1cc1b2ca596a110c2f83e2ce5c71d6c882ff69ec90935c49516e\",\"cli_sha256\":\"4142d15db995b5fac7fb8535efd5b4fcd07edb6e8ce5edd6aed9bba31cc4812b\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_compatible\":null,\"server_creation_protocol_version\":null,\"server_policy\":\"shared_retained\"}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "isolated_b_project_overview",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"project\":{\"uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"name\":\"Lumi 隔离验收 B\",\"revision\":1,\"setup_status\":\"draft\",\"generation_language\":\"zh-Hans\",\"chapter_count\":0},\"setup\":{\"uuid\":\"01a199d7-a893-7687-b9f6-1db977a3f9d4\",\"project_uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"revision\":1,\"setup_status\":\"draft\",\"status\":\"draft\",\"original_input\":\"独立隔离验收项目，只用于验证不允许访问 A 的资源。\",\"missing_information\":[\"project_name\",\"overall_style\",\"picture_book.format\"],\"field_sources\":{\"generation_brief\":\"system_default\",\"generation_language\":\"system_default\",\"generation_scope\":\"system_default\"},\"draft_values\":{\"generation_language\":\"zh-Hans\",\"generation_brief\":\"独立隔离验收项目，只用于验证不允许访问 A 的资源。\",\"generation_scope\":\"first_image\"}},\"setting_count\":0,\"page_count\":0,\"limitations\":{\"read_only\":false,\"open_may_write\":true,\"guidance\":\"plugin_manual\",\"server_policy\":\"shared_retained\"}}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "b_project_setup",
+      "args": {
+        "action": "get"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "uuid": "01a199d7-a893-7687-b9f6-1db977a3f9d4",
+            "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+            "revision": 1,
+            "setup_status": "draft",
+            "status": "draft",
+            "original_input": "独立隔离验收项目，只用于验证不允许访问 A 的资源。",
+            "missing_information": [
+              "project_name",
+              "overall_style",
+              "picture_book.format"
+            ],
+            "field_sources": {
+              "generation_brief": "system_default",
+              "generation_language": "system_default",
+              "generation_scope": "system_default"
+            },
+            "draft_values": {
+              "generation_language": "zh-Hans",
+              "generation_brief": "独立隔离验收项目，只用于验证不允许访问 A 的资源。",
+              "generation_scope": "first_image"
+            },
+            "limitations": {
+              "read_only": false,
+              "open_may_write": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_project_setup",
+      "args": {
+        "action": "update",
+        "expected_revision": 1,
+        "project_name": "Lumi 隔离验收 B",
+        "generation_language": "zh-Hans",
+        "overall_style": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+        "generation_brief": "本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。",
+        "picture_book": {
+          "format": "classic_picture_book",
+          "aspect_ratio": {
+            "mode": "landscape"
+          },
+          "large_image_minimal_text": false
+        }
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "uuid": "01a199d7-a893-7687-b9f6-1db977a3f9d4",
+            "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+            "revision": 2,
+            "setup_status": "draft",
+            "status": "pending_confirmation",
+            "missing_information": [],
+            "field_sources": {
+              "aspect_ratio": "agent_proposed",
+              "format": "agent_proposed",
+              "generation_brief": "agent_proposed",
+              "generation_language": "agent_proposed",
+              "generation_scope": "agent_proposed",
+              "large_image_minimal_text": "agent_proposed",
+              "overall_style": "agent_proposed",
+              "project_name": "agent_proposed"
+            },
+            "draft_values": {
+              "project_name": "Lumi 隔离验收 B",
+              "generation_language": "zh-Hans",
+              "overall_style": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+              "generation_brief": "本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。",
+              "generation_scope": "project_only",
+              "picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "limitations": {
+              "read_only": false,
+              "open_may_write": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_project_setup",
+      "args": {
+        "action": "finalize",
+        "expected_revision": 2
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "uuid": "01a199d7-a893-7687-b9f6-1db977a3f9d4",
+            "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+            "revision": 2,
+            "setup_status": "ready",
+            "status": "finalized",
+            "missing_information": [],
+            "field_sources": {
+              "aspect_ratio": "user_confirmed",
+              "format": "user_confirmed",
+              "generation_brief": "user_confirmed",
+              "generation_language": "user_confirmed",
+              "generation_scope": "user_confirmed",
+              "large_image_minimal_text": "user_confirmed",
+              "overall_style": "user_confirmed",
+              "project_name": "user_confirmed"
+            },
+            "draft_values": {
+              "project_name": "Lumi 隔离验收 B",
+              "generation_language": "zh-Hans",
+              "overall_style": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+              "generation_brief": "本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。",
+              "generation_scope": "project_only",
+              "picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "final_picture_book": {
+              "format": "classic_picture_book",
+              "large_image_minimal_text": false,
+              "interaction_mode": null,
+              "comic_layout": null,
+              "aspect_ratio": {
+                "mode": "landscape",
+                "width": 4,
+                "height": 3
+              }
+            },
+            "limitations": {
+              "read_only": false,
+              "open_may_write": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_project_overview",
+      "args": {},
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "project": {
+              "uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+              "name": "Lumi 隔离验收 B",
+              "revision": 2,
+              "setup_status": "ready",
+              "generation_language": "zh-Hans",
+              "chapter_count": 0,
+              "picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "setup": {
+              "uuid": "01a199d7-a893-7687-b9f6-1db977a3f9d4",
+              "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+              "revision": 2,
+              "setup_status": "ready",
+              "status": "finalized",
+              "original_input": "独立隔离验收项目，只用于验证不允许访问 A 的资源。",
+              "missing_information": [],
+              "field_sources": {
+                "aspect_ratio": "user_confirmed",
+                "format": "user_confirmed",
+                "generation_brief": "user_confirmed",
+                "generation_language": "user_confirmed",
+                "generation_scope": "user_confirmed",
+                "large_image_minimal_text": "user_confirmed",
+                "overall_style": "user_confirmed",
+                "project_name": "user_confirmed"
+              },
+              "draft_values": {
+                "project_name": "Lumi 隔离验收 B",
+                "generation_language": "zh-Hans",
+                "overall_style": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+                "generation_brief": "本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。",
+                "generation_scope": "project_only",
+                "picture_book": {
+                  "format": "classic_picture_book",
+                  "large_image_minimal_text": false,
+                  "interaction_mode": null,
+                  "comic_layout": null,
+                  "aspect_ratio": {
+                    "mode": "landscape",
+                    "width": 4,
+                    "height": 3
+                  }
+                }
+              },
+              "final_picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "setting_count": 0,
+            "page_count": 0,
+            "limitations": {
+              "read_only": false,
+              "open_may_write": true,
+              "guidance": "plugin_manual",
+              "server_policy": "shared_retained"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_chapters",
+      "args": {
+        "action": "create",
+        "chapter_code": "vol01.ch01",
+        "title": "测试光的旅程",
+        "expected_revision": 2
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_code": "vol01.ch01",
+            "chapter_no": 1,
+            "created_at": "2026-11-04T14:53:06.2819Z",
+            "current_story": null,
+            "revision": 0,
+            "sort_order": 100001,
+            "title": "测试光的旅程",
+            "trashed_at": null,
+            "updated_at": "2026-11-04T14:53:06.2819Z",
+            "uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+            "volume_no": 1
+          }
+        }
+      }
+    },
+    {
+      "label": "b_chapters",
+      "args": {
+        "action": "write",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+        "expected_revision": 0,
+        "content": "红色小旅人沿着白色小路发现一盏蓝灯。他把蓝灯抱在身前，走过安静的空地。回到家门口，他放低灯笼，让朋友看清脚边的路。三次行动构成这次固定素材验收的完整故事。"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_code": "vol01.ch01",
+            "chapter_no": 1,
+            "created_at": "2026-11-04T14:53:06.2819Z",
+            "current_story": {
+              "char_count": 77,
+              "content_format": "txt",
+              "content_hash": "c0a84adafe281f31a37cd1bbe1ad077925ec916a44b9cac92c2811d591c43168",
+              "created_at": "2026-11-04T14:53:52.126969Z",
+              "source_item_uuid": "01a1a70d-587f-701b-8d85-605caa82a79f",
+              "source_type": "manual_edit",
+              "source_uuid": "01a1a70d-587f-7017-b55c-bf262b524b2b",
+              "uuid": "01a1a70d-587f-7756-ac54-dec46737ea89",
+              "version_no": 1
+            },
+            "revision": 1,
+            "sort_order": 100001,
+            "title": "测试光的旅程",
+            "trashed_at": null,
+            "updated_at": "2026-11-04T14:53:52.126969Z",
+            "uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+            "volume_no": 1
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "list",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "cursor_pagination": {
+              "has_more": false,
+              "next_cursor": "0",
+              "per_page": 20,
+              "prev_cursor": "0"
+            },
+            "items": [],
+            "state": {
+              "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+              "created_at": "2026-11-04T14:53:54.946643Z",
+              "has_premise_assets": false,
+              "premise_asset_count": 0,
+              "revision": 0,
+              "status": "empty",
+              "updated_at": "2026-11-04T14:53:54.946643Z",
+              "uuid": "01a1a70d-6382-79cf-b4ed-16ce688f4628"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "create",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+        "expected_revision": 0,
+        "title": "验收第 1 页",
+        "description_md": "小旅人在路边发现一盏蓝灯。",
+        "storyboard_md": "固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+            "created_at": "2026-11-04T14:53:58.784661Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-04T14:53:58.784661Z",
+              "source_type": "manual",
+              "uuid": "01a1a70d-7281-71c5-b6f3-77a2c58aef40",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 1,
+            "title": "验收第 1 页",
+            "updated_at": "2026-11-04T14:53:58.784661Z",
+            "uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "list",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "cursor_pagination": {
+              "has_more": false,
+              "next_cursor": "1",
+              "per_page": 20,
+              "prev_cursor": "0"
+            },
+            "items": [
+              {
+                "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+                "created_at": "2026-11-04T14:53:58.784661Z",
+                "current_image": null,
+                "current_storyboard": {
+                  "content_md": "固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+                  "created_at": "2026-11-04T14:53:58.784661Z",
+                  "source_type": "manual",
+                  "uuid": "01a1a70d-7281-71c5-b6f3-77a2c58aef40",
+                  "version_no": 1
+                },
+                "description_md": "小旅人在路边发现一盏蓝灯。",
+                "has_storyboard": true,
+                "page_role": "body",
+                "premise_assets": [],
+                "revision": 0,
+                "section_no": 1,
+                "title": "验收第 1 页",
+                "updated_at": "2026-11-04T14:53:58.784661Z",
+                "uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+              }
+            ],
+            "state": {
+              "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+              "created_at": "2026-11-04T14:53:54.946643Z",
+              "has_premise_assets": false,
+              "premise_asset_count": 0,
+              "revision": 1,
+              "status": "storyboarded",
+              "updated_at": "2026-11-04T14:53:58.784661Z",
+              "uuid": "01a1a70d-6382-79cf-b4ed-16ce688f4628"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "create",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+        "expected_revision": 1,
+        "title": "验收第 2 页",
+        "description_md": "他抱着蓝灯，一步一步走向家。",
+        "storyboard_md": "固定素材验收第 2 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他抱着蓝灯，一步一步走向家。"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+            "created_at": "2026-11-04T14:54:05.562871Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-04T14:54:05.562871Z",
+              "source_type": "manual",
+              "uuid": "01a1a70d-8cfb-7007-b7ec-e0e69729cce8",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 2,
+            "title": "验收第 2 页",
+            "updated_at": "2026-11-04T14:54:05.562871Z",
+            "uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "list",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "cursor_pagination": {
+              "has_more": false,
+              "next_cursor": "2",
+              "per_page": 20,
+              "prev_cursor": "0"
+            },
+            "items": [
+              {
+                "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+                "created_at": "2026-11-04T14:53:58.784661Z",
+                "current_image": null,
+                "current_storyboard": {
+                  "content_md": "固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+                  "created_at": "2026-11-04T14:53:58.784661Z",
+                  "source_type": "manual",
+                  "uuid": "01a1a70d-7281-71c5-b6f3-77a2c58aef40",
+                  "version_no": 1
+                },
+                "description_md": "小旅人在路边发现一盏蓝灯。",
+                "has_storyboard": true,
+                "page_role": "body",
+                "premise_assets": [],
+                "revision": 0,
+                "section_no": 1,
+                "title": "验收第 1 页",
+                "updated_at": "2026-11-04T14:54:05.562871Z",
+                "uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+              },
+              {
+                "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+                "created_at": "2026-11-04T14:54:05.562871Z",
+                "current_image": null,
+                "current_storyboard": {
+                  "content_md": "固定素材验收第 2 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他抱着蓝灯，一步一步走向家。",
+                  "created_at": "2026-11-04T14:54:05.562871Z",
+                  "source_type": "manual",
+                  "uuid": "01a1a70d-8cfb-7007-b7ec-e0e69729cce8",
+                  "version_no": 1
+                },
+                "description_md": "他抱着蓝灯，一步一步走向家。",
+                "has_storyboard": true,
+                "page_role": "body",
+                "premise_assets": [],
+                "revision": 0,
+                "section_no": 2,
+                "title": "验收第 2 页",
+                "updated_at": "2026-11-04T14:54:05.562871Z",
+                "uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33"
+              }
+            ],
+            "state": {
+              "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+              "created_at": "2026-11-04T14:53:54.946643Z",
+              "has_premise_assets": false,
+              "premise_asset_count": 0,
+              "revision": 2,
+              "status": "storyboarded",
+              "updated_at": "2026-11-04T14:54:05.562871Z",
+              "uuid": "01a1a70d-6382-79cf-b4ed-16ce688f4628"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_pages",
+      "args": {
+        "action": "create",
+        "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+        "expected_revision": 2,
+        "title": "验收第 3 页",
+        "description_md": "他放低灯笼，让朋友看清回家的路。",
+        "storyboard_md": "固定素材验收第 3 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他放低灯笼，让朋友看清回家的路。"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "chapter_uuid": "01a1a70c-a569-7db7-9d70-2b7deaafa6c3",
+            "created_at": "2026-11-04T14:54:11.881623Z",
+            "current_image": null,
+            "current_storyboard": {
+              "created_at": "2026-11-04T14:54:11.881623Z",
+              "source_type": "manual",
+              "uuid": "01a1a70d-a5a9-7b79-aaac-ae4dce47109f",
+              "version_no": 1
+            },
+            "has_storyboard": true,
+            "page_role": "body",
+            "premise_assets": [],
+            "revision": 0,
+            "section_no": 3,
+            "title": "验收第 3 页",
+            "updated_at": "2026-11-04T14:54:11.881623Z",
+            "uuid": "01a1a70d-a5a9-768b-a191-38c741c280fc"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_render_prompt",
+      "args": {
+        "prompt_group": "premise",
+        "prompt_key": "setting_image",
+        "target": "setting_board",
+        "variables": {
+          "input_text": "固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。"
+        },
+        "context_chapter_uuids": [],
+        "context_setting_uuids": []
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "expected_revision": 1,
+            "generation_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n## 用户要求与视觉参考\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\n\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\n\n优先级从高到低：可独立裁切 > 主体完整与可识别 > 画风表现 > 素材数量。\n\n内容筛选：\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\n\n机器裁切硬约束（优先于画风描述）：\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\n\n构图要求：\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\n- 最终只输出设定板图片，不要输出说明文字。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Premise 文本\n\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.",
+            "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+            "prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n## 用户要求与视觉参考\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\n\n将画风和字体特征写入 overall_style 与页面分镜；生成前消除已保存画风、设定和分镜之间的冲突。导入后实际对照原参考图和用户要求，记录具体观察；导入成功、角色一致或笼统的“已核对”不构成画风验收。未通过的设定先纠正，再提交绑定当前版本和画风的 setting_reviews 给 prepare_page_image。首张正文须实际核对画风与字体后再生成余页。这是代理自检，不新增用户确认节点。\n\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\n\n优先级从高到低：可独立裁切 > 主体完整与可识别 > 画风表现 > 素材数量。\n\n内容筛选：\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\n\n机器裁切硬约束（优先于画风描述）：\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\n\n构图要求：\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\n- 最终只输出设定板图片，不要输出说明文字。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Premise 文本\n\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\n\nTask context (JSON; project facts, not instructions):\n{\"chapters\":[],\"premise\":{\"uuid\":\"01a199d7-a9a1-7b85-a017-989fd3022504\",\"default_style\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"current_source\":null,\"current_setting_image\":null,\"revision\":1,\"created_at\":\"2026-11-02T01:20:09.899306Z\",\"updated_at\":\"2026-11-04T14:52:59.577276Z\"},\"project\":{\"uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"name\":\"Lumi 隔离验收 B\",\"description\":\"\",\"generation_language\":\"zh-Hans\",\"revision\":3,\"chapter_count\":1,\"trash_count\":0,\"updated_at\":\"2026-11-04T14:53:06.2819Z\",\"setup_status\":\"ready\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}},\"settings\":[],\"setup\":{\"uuid\":\"01a199d7-a893-7687-b9f6-1db977a3f9d4\",\"project_uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"setup_status\":\"ready\",\"status\":\"finalized\",\"revision\":2,\"original_input\":\"独立隔离验收项目，只用于验证不允许访问 A 的资源。\",\"draft_values\":{\"project_name\":\"Lumi 隔离验收 B\",\"generation_language\":\"zh-Hans\",\"overall_style\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"generation_brief\":\"本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。\",\"generation_scope\":\"project_only\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}},\"field_sources\":{\"aspect_ratio\":\"user_confirmed\",\"format\":\"user_confirmed\",\"generation_brief\":\"user_confirmed\",\"generation_language\":\"user_confirmed\",\"generation_scope\":\"user_confirmed\",\"large_image_minimal_text\":\"user_confirmed\",\"overall_style\":\"user_confirmed\",\"project_name\":\"user_confirmed\"},\"missing_information\":[],\"final_picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null},\"reference_plan\":{\"items\":[]},\"created_at\":\"2026-11-02T01:20:09.899306Z\",\"updated_at\":\"2026-11-04T14:52:59.577276Z\",\"finalized_at\":\"2026-11-04T14:52:59.577276Z\"},\"story_profile\":{\"uuid\":\"01a1a70d-5866-7cc9-b33a-e9715b20f799\",\"version_no\":1,\"revision\":1,\"story_md\":\"# STORY\\n\\n\\u003c!-- Lumi Goal 02 将在这里维护故事正文。 --\\u003e\\n\",\"content_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"source_type\":\"project_created\",\"projection_state\":\"synced\",\"exported_revision\":1,\"exported_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"observed_file_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"created_at\":\"2026-11-04T14:53:52.102839Z\"},\"target\":{\"uuid\":\"01a199d7-a9a1-7b85-a017-989fd3022504\",\"default_style\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"current_source\":null,\"current_setting_image\":null,\"revision\":1,\"created_at\":\"2026-11-02T01:20:09.899306Z\",\"updated_at\":\"2026-11-04T14:52:59.577276Z\"},\"task_inputs\":{\"input_text\":\"固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\",\"style_prompt\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\"}}\n\nWrite-back contract (JSON):\n{\n  \"tool\": \"receive_media\",\n  \"slot\": \"setting_board\",\n  \"expected_revision\": 1,\n  \"source_text\": \"固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\",\n  \"style_snapshot\": \"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\n  \"required_from_host\": [\n    \"prompt\",\n    \"idempotency_key\"\n  ],\n  \"attachment_delivery\": \"ghost_call top-level attachments: exactly one authorized generated image; not call_tool, no path in args\"\n}\nExecute the catalog task above using the complete input. Preserve its output format. The host will submit the result through the named tool using exactly this revision. On conflict reread and render again. For pages, create each page with the latest state revision from pages list. Do not call any provider.\n",
+            "prompt_group": "premise",
+            "prompt_key": "setting_image",
+            "target_ratio": {
+              "height": 2,
+              "width": 3
+            },
+            "target_uuid": "01a199d7-a9a1-7b85-a017-989fd3022504",
+            "write_back": {
+              "tool": "receive_media",
+              "slot": "setting_board",
+              "expected_revision": 1,
+              "source_text": "固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。",
+              "style_snapshot": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+              "required_from_host": [
+                "prompt",
+                "idempotency_key"
+              ],
+              "attachment_delivery": "ghost_call top-level attachments: exactly one authorized generated image; not call_tool, no path in args"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_receive_fixed_board",
+      "args": {
+        "fixture": "b",
+        "slot": "setting_board",
+        "expected_revision": 1,
+        "source_text": "固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。",
+        "style_snapshot": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+        "prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n## 用户要求与视觉参考\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\n\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\n\n优先级从高到低：可独立裁切 > 主体完整与可识别 > 画风表现 > 素材数量。\n\n内容筛选：\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\n\n机器裁切硬约束（优先于画风描述）：\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\n\n构图要求：\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\n- 最终只输出设定板图片，不要输出说明文字。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Premise 文本\n\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.",
+        "idempotency_key": "codex-alignment-fixed-board-20261104"
+      },
+      "source": {
+        "ok": true,
+        "xdt_image_urls": [
+          "cindy-media://blobs/15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png"
+        ],
+        "url": "cindy-media://blobs/15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png",
+        "filename": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png",
+        "message": "已导入当前 Host 并登记任务引用。请在回复中使用返回的受管地址嵌入图片。此结果不代表远端设备已完成下载。"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "created_at": "2026-11-04T14:54:31.953805Z",
+            "latest_breakdown": null,
+            "revision": 0,
+            "setting_image": {
+              "asset": {
+                "byte_size": 1504,
+                "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a70d-f402-7055-a50a-dd7c806d067f/content",
+                "created_at": "2026-11-04T14:54:31.953228Z",
+                "height": 200,
+                "kind": "image",
+                "metadata": {},
+                "mime_type": "image/png",
+                "original_filename": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png",
+                "purpose": "premise_setting_image",
+                "source_type": "imported",
+                "status": "ready",
+                "uuid": "01a1a70d-f402-7055-a50a-dd7c806d067f",
+                "width": 300
+              },
+              "created_at": "2026-11-04T14:54:31.953805Z",
+              "origin": "generated",
+              "prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n## 用户要求与视觉参考\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\n\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\n\n优先级从高到低：可独立裁切 > 主体完整与可识别 > 画风表现 > 素材数量。\n\n内容筛选：\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\n\n机器裁切硬约束（优先于画风描述）：\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\n\n构图要求：\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\n- 最终只输出设定板图片，不要输出说明文字。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Premise 文本\n\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.",
+              "source_uuid": "01a1a70d-f401-7e01-8eb8-ff5dc735f3e7",
+              "uuid": "01a1a70d-f401-7e02-9ddf-46fece90ef7a"
+            },
+            "source": {
+              "created_at": "2026-11-04T14:54:31.953805Z",
+              "parameters": {
+                "origin": "host_generated"
+              },
+              "revision": 0,
+              "source_text": "固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。",
+              "source_type": "generated",
+              "style_snapshot": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+              "uuid": "01a1a70d-f401-7e01-8eb8-ff5dc735f3e7"
+            },
+            "uuid": "01a1a70d-f401-7df6-90ab-966806b9027d",
+            "source_sha256": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4",
+            "source_bytes": 1504,
+            "source_mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_render_breakdown",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "expected_revision": 0,
+            "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+            "prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n## 用户要求与视觉参考\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\n\n将画风和字体特征写入 overall_style 与页面分镜；生成前消除已保存画风、设定和分镜之间的冲突。导入后实际对照原参考图和用户要求，记录具体观察；导入成功、角色一致或笼统的“已核对”不构成画风验收。未通过的设定先纠正，再提交绑定当前版本和画风的 setting_reviews 给 prepare_page_image。首张正文须实际核对画风与字体后再生成余页。这是代理自检，不新增用户确认节点。\n\n你是漫画制作的视觉资产定位器。分析输入设定图，为每个重要且可复用的单一主体给出可直接执行的裁切框。\n\n关键执行事实：系统会逐字使用 crop_box 做矩形裁切；不会自动添加 padding，不会吸附前景，不会去除背景，也不会执行 plan、tool_options 或 quality_checks。因此 crop_box 必须是包含安全边距的最终可用框，不能只是大致区域。\n\n只返回一个 JSON object，不要返回 Markdown、解释或 schema 之外的顶层字段。格式：\n{\n  \"assets\": [\n    {\n      \"type\": \"character\",\n      \"title\": \"设定项名称\",\n      \"summary\": \"可脱离图片搜索的简短简介\",\n      \"tags\": [\"角色\", \"主角\"],\n      \"crop_box\": {\"x\": 0.1000, \"y\": 0.1000, \"width\": 0.2000, \"height\": 0.3000},\n      \"confidence\": 0.9500\n    }\n  ]\n}\n示例中的中文字符串只表示字段含义；所有可读字符串必须使用当前项目语言。type 的枚举值和 JSON key 保持英文原样。\n\n定位与裁切规则：\n1. 返回 1 到 6 个最重要、最可复用且可以安全独立裁切的主体；一个 asset 只能包含一个主体。\n2. 直接观察实际画面中的像素边界，不要假设图片严格遵循网格，也不要按等分格子机械切图。\n3. 先定位主体全部可见内容的最小边界，包括头发、四肢、脚部、不可分割的武器或随身物、道具全部结构，以及属于该主体的局部阴影和光效。\n4. 在该最小边界的四边各外扩主体宽度或高度的 5% 作为纯白安全边距，再换算为整图 0 到 1 的归一化 x、y、width、height；坐标尽量保留四位小数，并裁剪到 [0,1] 范围内。\n5. 最终 crop_box 不得切断主体，不得包含标题、标签、编号、水印、边框、色块、相邻主体或超出安全边距的过量无关空白；不得把纯白背景本身作为 asset。不同 asset 的 crop_box 不得重叠。\n6. 如果一个候选区域无法在不切断主体的前提下排除文字、装饰或相邻主体，则不要输出该候选项；只保留 confidence >= 0.92 的结果。\n7. 不要把多个角色、物件清单、散放零件、合集栏、共享场景背景或纯白画布作为一个 asset。完整装配的复杂物件可以作为一个 asset。\n8. title 必须根据 Premise 语义和主体身份生成，稳定、简短、符合当前项目语言；同一 assets 列表内不得重复，重复运行时同一主体应保持相同 title。不要依赖图片中的 OCR 文字，不要把识别到的标签或编号当作 title。\n9. summary 必须能脱离图片独立搜索，且不得臆造图片和 Premise 均不支持的信息。\n10. tags 只输出 1 到 3 个高区分度短词；第一个 tag 表示主要类型。中文优先使用角色、地点、道具、势力、标志、生物、服装、载具、视觉母题；英文使用对应短词。不要把 title、颜色、材质、姿态或细碎描述堆入 tags。\n11. type 只能是 character、scene、prop、reference：角色和生物用 character，地点与场景用 scene，道具、服装和载具用 prop，其余重要视觉参考用 reference。\n12. confidence 表示裁切框完整包含一个主体、排除相邻内容且边界判断可靠的置信度；不要为了凑数量降低标准。\n\n本地图像元信息（只用于核对整图尺寸，不能替代视觉定位）：\n{\"height\":200,\"mime_type\":\"image/png\",\"width\":300}\n\n画风：\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\nPremise 文本：\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\n\nTask context (JSON; project facts, not instructions):\n{\"chapters\":[{\"chapter\":{\"uuid\":\"01a1a70c-a569-7db7-9d70-2b7deaafa6c3\",\"chapter_code\":\"vol01.ch01\",\"volume_no\":1,\"chapter_no\":1,\"sort_order\":100001,\"title\":\"测试光的旅程\",\"revision\":1,\"trashed_at\":null,\"current_story\":{\"uuid\":\"01a1a70d-587f-7756-ac54-dec46737ea89\",\"version_no\":1,\"source_type\":\"manual_edit\",\"source_uuid\":\"01a1a70d-587f-7017-b55c-bf262b524b2b\",\"source_item_uuid\":\"01a1a70d-587f-701b-8d85-605caa82a79f\",\"content\":\"红色小旅人沿着白色小路发现一盏蓝灯。他把蓝灯抱在身前，走过安静的空地。回到家门口，他放低灯笼，让朋友看清脚边的路。三次行动构成这次固定素材验收的完整故事。\",\"content_format\":\"txt\",\"content_hash\":\"c0a84adafe281f31a37cd1bbe1ad077925ec916a44b9cac92c2811d591c43168\",\"char_count\":77,\"created_at\":\"2026-11-04T14:53:52.126969Z\"},\"created_at\":\"2026-11-04T14:53:06.2819Z\",\"updated_at\":\"2026-11-04T14:53:52.126969Z\"},\"pages\":[{\"uuid\":\"01a1a70d-7280-775a-8eb0-707c9286485d\",\"chapter_uuid\":\"01a1a70c-a569-7db7-9d70-2b7deaafa6c3\",\"section_no\":1,\"page_role\":\"body\",\"title\":\"验收第 1 页\",\"description_md\":\"小旅人在路边发现一盏蓝灯。\",\"has_storyboard\":true,\"current_storyboard\":{\"uuid\":\"01a1a70d-7281-71c5-b6f3-77a2c58aef40\",\"version_no\":1,\"content_md\":\"固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。\",\"source_type\":\"manual\",\"created_at\":\"2026-11-04T14:53:58.784661Z\"},\"current_image\":null,\"premise_assets\":[],\"revision\":0,\"created_at\":\"2026-11-04T14:53:58.784661Z\",\"updated_at\":\"2026-11-04T14:54:11.881623Z\"},{\"uuid\":\"01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33\",\"chapter_uuid\":\"01a1a70c-a569-7db7-9d70-2b7deaafa6c3\",\"section_no\":2,\"page_role\":\"body\",\"title\":\"验收第 2 页\",\"description_md\":\"他抱着蓝灯，一步一步走向家。\",\"has_storyboard\":true,\"current_storyboard\":{\"uuid\":\"01a1a70d-8cfb-7007-b7ec-e0e69729cce8\",\"version_no\":1,\"content_md\":\"固定素材验收第 2 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他抱着蓝灯，一步一步走向家。\",\"source_type\":\"manual\",\"created_at\":\"2026-11-04T14:54:05.562871Z\"},\"current_image\":null,\"premise_assets\":[],\"revision\":0,\"created_at\":\"2026-11-04T14:54:05.562871Z\",\"updated_at\":\"2026-11-04T14:54:11.881623Z\"},{\"uuid\":\"01a1a70d-a5a9-768b-a191-38c741c280fc\",\"chapter_uuid\":\"01a1a70c-a569-7db7-9d70-2b7deaafa6c3\",\"section_no\":3,\"page_role\":\"body\",\"title\":\"验收第 3 页\",\"description_md\":\"他放低灯笼，让朋友看清回家的路。\",\"has_storyboard\":true,\"current_storyboard\":{\"uuid\":\"01a1a70d-a5a9-7b79-aaac-ae4dce47109f\",\"version_no\":1,\"content_md\":\"固定素材验收第 3 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他放低灯笼，让朋友看清回家的路。\",\"source_type\":\"manual\",\"created_at\":\"2026-11-04T14:54:11.881623Z\"},\"current_image\":null,\"premise_assets\":[],\"revision\":0,\"created_at\":\"2026-11-04T14:54:11.881623Z\",\"updated_at\":\"2026-11-04T14:54:11.881623Z\"}]}],\"premise\":{\"uuid\":\"01a199d7-a9a1-7b85-a017-989fd3022504\",\"default_style\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"current_source\":{\"uuid\":\"01a1a70d-f401-7e01-8eb8-ff5dc735f3e7\",\"source_type\":\"generated\",\"source_text\":\"固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\",\"style_snapshot\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"parameters\":{\"origin\":\"host_generated\"},\"revision\":0,\"created_at\":\"2026-11-04T14:54:31.953805Z\"},\"current_setting_image\":{\"uuid\":\"01a1a70d-f401-7e02-9ddf-46fece90ef7a\",\"source_uuid\":\"01a1a70d-f401-7e01-8eb8-ff5dc735f3e7\",\"origin\":\"generated\",\"prompt\":\"项目语言：简体中文。\\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\\n\\n## 用户要求与视觉参考\\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\\n\\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\\n\\n优先级从高到低：可独立裁切 \\u003e 主体完整与可识别 \\u003e 画风表现 \\u003e 素材数量。\\n\\n内容筛选：\\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\\n\\n机器裁切硬约束（优先于画风描述）：\\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\\n\\n构图要求：\\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\\n- 最终只输出设定板图片，不要输出说明文字。\\n\\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\\n\\n## Premise 文本\\n\\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\\n\\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.\",\"asset\":{\"uuid\":\"01a1a70d-f402-7055-a50a-dd7c806d067f\",\"kind\":\"image\",\"purpose\":\"premise_setting_image\",\"original_filename\":\"15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png\",\"source_type\":\"imported\",\"mime_type\":\"image/png\",\"byte_size\":1504,\"width\":300,\"height\":200,\"status\":\"ready\",\"metadata\":{},\"content_url\":\"/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a70d-f402-7055-a50a-dd7c806d067f/content\",\"created_at\":\"2026-11-04T14:54:31.953228Z\"},\"created_at\":\"2026-11-04T14:54:31.953805Z\"},\"revision\":2,\"created_at\":\"2026-11-02T01:20:09.899306Z\",\"updated_at\":\"2026-11-04T22:54:31.954092+08:00\"},\"project\":{\"uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"name\":\"Lumi 隔离验收 B\",\"description\":\"\",\"generation_language\":\"zh-Hans\",\"revision\":3,\"chapter_count\":1,\"trash_count\":0,\"updated_at\":\"2026-11-04T14:53:06.2819Z\",\"setup_status\":\"ready\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}},\"settings\":[],\"setup\":{\"uuid\":\"01a199d7-a893-7687-b9f6-1db977a3f9d4\",\"project_uuid\":\"01a199d7-a893-77c0-bcf0-3f8f34f00679\",\"setup_status\":\"ready\",\"status\":\"finalized\",\"revision\":2,\"original_input\":\"独立隔离验收项目，只用于验证不允许访问 A 的资源。\",\"draft_values\":{\"project_name\":\"Lumi 隔离验收 B\",\"generation_language\":\"zh-Hans\",\"overall_style\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"generation_brief\":\"本项目用于验收两项设定的原子裁切、完整页面合图和三页导出。固定素材，不调用真实模型，不代表真实创作或模型视觉验收。\",\"generation_scope\":\"project_only\",\"picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null}},\"field_sources\":{\"aspect_ratio\":\"user_confirmed\",\"format\":\"user_confirmed\",\"generation_brief\":\"user_confirmed\",\"generation_language\":\"user_confirmed\",\"generation_scope\":\"user_confirmed\",\"large_image_minimal_text\":\"user_confirmed\",\"overall_style\":\"user_confirmed\",\"project_name\":\"user_confirmed\"},\"missing_information\":[],\"final_picture_book\":{\"format\":\"classic_picture_book\",\"aspect_ratio\":{\"mode\":\"landscape\",\"width\":4,\"height\":3},\"large_image_minimal_text\":false,\"interaction_mode\":null,\"comic_layout\":null},\"reference_plan\":{\"items\":[]},\"created_at\":\"2026-11-02T01:20:09.899306Z\",\"updated_at\":\"2026-11-04T14:52:59.577276Z\",\"finalized_at\":\"2026-11-04T14:52:59.577276Z\"},\"story_profile\":{\"uuid\":\"01a1a70d-5866-7cc9-b33a-e9715b20f799\",\"version_no\":1,\"revision\":1,\"story_md\":\"# STORY\\n\\n\\u003c!-- Lumi Goal 02 将在这里维护故事正文。 --\\u003e\\n\",\"content_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"source_type\":\"project_created\",\"projection_state\":\"synced\",\"exported_revision\":1,\"exported_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"observed_file_hash\":\"887178395e3ddeabe8eed76f167d27de0ea9d9f58a0f5f87fb91fbff6cf44124\",\"created_at\":\"2026-11-04T14:53:52.102839Z\"},\"target\":{\"uuid\":\"01a1a70d-f401-7df6-90ab-966806b9027d\",\"revision\":0,\"source\":{\"uuid\":\"01a1a70d-f401-7e01-8eb8-ff5dc735f3e7\",\"source_type\":\"generated\",\"source_text\":\"固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\",\"style_snapshot\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"parameters\":{\"origin\":\"host_generated\"},\"revision\":0,\"created_at\":\"2026-11-04T14:54:31.953805Z\"},\"setting_image\":{\"uuid\":\"01a1a70d-f401-7e02-9ddf-46fece90ef7a\",\"source_uuid\":\"01a1a70d-f401-7e01-8eb8-ff5dc735f3e7\",\"origin\":\"generated\",\"prompt\":\"项目语言：简体中文。\\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\\n\\n## 用户要求与视觉参考\\n用户明确要求优先于参考图特征，参考图特征优先于代理自行选择的默认值。“细节你决定”不授权替换指定画风。分开处理角色身份、剧情选择与头身比例、轮廓、配色、质感、字体；不得由读者年龄、主题或“温暖可爱”等泛词推导大头短肢、毛绒、低饱和等审美要求。新增视觉要求必须有用户要求或实际看过的参考图作为依据。\\n用户指定画风参考中的独特对白／旁白字体也属于画风：延续笔画粗细、字形、字距、基线节奏与气泡表现，用本故事的准确文字和语言重新绘制。不要仅因易读而换成通用粗黑体或圆体，不猜字体名称，不复制参考原文。用户明确指定字体或可读性取舍时遵从用户。无字设定板仍不画字。\\n设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。\\n\\n你是漫画项目的资产设定板设计师。请根据 Premise 生成一张供机器自动裁切的设定板。\\n\\n优先级从高到低：可独立裁切 \\u003e 主体完整与可识别 \\u003e 画风表现 \\u003e 素材数量。\\n\\n内容筛选：\\n- 只选择对剧情推进、世界观识别或后续复用最重要的 1 到 6 个设定项。\\n- 每个设定项必须是一个独立视觉主体：单个角色、单个完整道具、单个标志，或一个边界清楚的地点缩景。\\n- 不要把 premise 中的所有名词都画出来；省略路人、一次性小物、泛泛背景、纯氛围装饰和重复元素。\\n\\n机器裁切硬约束（优先于画风描述）：\\n- 画布从边缘到边缘必须是均匀纯白 #FFFFFF；禁止米白、纸纹、渐变、边框、卡片、分隔线、色块、地台和跨主体阴影。\\n- 使用不可见的 3 列 × 2 行固定网格。每个主体独占一个格子；未使用的格子保持纯白。禁止绘制网格线或格子边框。\\n- 每个格子内，主体及其所有非白像素必须完整落在中央 76% 区域，四周各保留至少 12% 的纯白安全边距。\\n- 一个格子只能有一个主体。不同格子的主体、轮廓、武器、配件、阴影、粒子和光效都不得接触、重叠或跨格。\\n- 角色必须完整展示头发、四肢、脚部和不可分割的随身装备；道具必须完整装配；地点必须画成独立、边界闭合的缩景，不能变成覆盖整张画布的共享背景。\\n- 禁止分类合集、横向物件清单、零件散放、多人组合、连续叙事场景和拥挤海报构图。\\n- 禁止所有可见文字：标题、标签、编号、说明、图例、水印、署名、UI、拟声词以及任何类似字符的符号都不能出现；即使主体是标志或徽记，也不得包含可读文字。\\n\\n构图要求：\\n- 主体尽量使用正面或稳定的三分之四视角，轮廓清楚，尺寸均衡，彼此保持宽阔白色间隔。\\n- 保留指定画风中的造型、线条、材质与色彩，但不要让画风要求破坏纯白背景、固定网格和安全边距。\\n- 最终只输出设定板图片，不要输出说明文字。\\n\\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\\n\\n## Premise 文本\\n\\n固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\\n\\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.\",\"asset\":{\"uuid\":\"01a1a70d-f402-7055-a50a-dd7c806d067f\",\"kind\":\"image\",\"purpose\":\"premise_setting_image\",\"original_filename\":\"15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4.png\",\"source_type\":\"imported\",\"mime_type\":\"image/png\",\"byte_size\":1504,\"width\":300,\"height\":200,\"status\":\"ready\",\"metadata\":{},\"content_url\":\"/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a70d-f402-7055-a50a-dd7c806d067f/content\",\"created_at\":\"2026-11-04T14:54:31.953228Z\"},\"created_at\":\"2026-11-04T14:54:31.953805Z\"},\"latest_breakdown\":null,\"created_at\":\"2026-11-04T14:54:31.953805Z\"},\"task_inputs\":{\"image_info_json\":\"{\\\"height\\\":200,\\\"mime_type\\\":\\\"image/png\\\",\\\"width\\\":300}\",\"input_text\":\"固定素材验收：两个彼此独立的主体，红色矩形小旅人和蓝色矩形灯笼。白色背景，完整留边，左红右蓝。素材由测试夹具提供，本次不调用模型。\",\"style_name\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\",\"style_prompt\":\"固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\"}}\n\nWrite-back contract (JSON):\n{\"board_uuid\":\"01a1a70d-f401-7df6-90ab-966806b9027d\",\"existing_settings\":\"Add setting_uuid and its latest expected_revision for updates; omit both only for new settings. Read the actual board using read_image before analysis.\",\"expected_premise_revision\":2,\"expected_revision\":0,\"reference_asset_uuid\":\"01a1a70d-f402-7055-a50a-dd7c806d067f\",\"required_from_host\":[\"assets\",\"idempotency_key\"],\"tool\":\"apply_setting_breakdown\"}\nExecute the catalog task above using the complete input. Preserve its output format. The host will submit the result through the named tool using exactly this revision. On conflict reread and render again. For pages, create each page with the latest state revision from pages list. Do not call any provider.\n",
+            "prompt_group": "premise",
+            "prompt_key": "asset_breakdown",
+            "target_uuid": "01a1a70d-f401-7df6-90ab-966806b9027d",
+            "write_back": {
+              "board_uuid": "01a1a70d-f401-7df6-90ab-966806b9027d",
+              "existing_settings": "Add setting_uuid and its latest expected_revision for updates; omit both only for new settings. Read the actual board using read_image before analysis.",
+              "expected_premise_revision": 2,
+              "expected_revision": 0,
+              "reference_asset_uuid": "01a1a70d-f402-7055-a50a-dd7c806d067f",
+              "required_from_host": [
+                "assets",
+                "idempotency_key"
+              ],
+              "tool": "apply_setting_breakdown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_apply_fixed_split",
+      "args": {
+        "board_uuid": "01a1a70d-f401-7df6-90ab-966806b9027d",
+        "expected_revision": 0,
+        "expected_premise_revision": 2,
+        "idempotency_key": "codex-alignment-fixed-split-20261104",
+        "assets": [
+          {
+            "type": "character",
+            "title": "验收红色小旅人",
+            "summary": "固定测试素材：纯红矩形，不代表模型创作。",
+            "tags": [
+              "红色"
+            ],
+            "confidence": 1,
+            "crop_box": {
+              "x": 0.06,
+              "y": 0.12,
+              "width": 0.38,
+              "height": 0.76
+            }
+          },
+          {
+            "type": "prop",
+            "title": "验收蓝色灯笼",
+            "summary": "固定测试素材：纯蓝矩形，不代表模型创作。",
+            "tags": [
+              "蓝色"
+            ],
+            "confidence": 1,
+            "crop_box": {
+              "x": 0.56,
+              "y": 0.12,
+              "width": 0.38,
+              "height": 0.76
+            }
+          }
+        ]
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "board_uuid": "01a1a70d-f401-7df6-90ab-966806b9027d",
+            "items": [
+              {
+                "asset_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                "crop_box": {
+                  "height": 0.76,
+                  "width": 0.38,
+                  "x": 0.06,
+                  "y": 0.12
+                },
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e"
+              },
+              {
+                "asset_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                "crop_box": {
+                  "height": 0.76,
+                  "width": 0.38,
+                  "x": 0.56,
+                  "y": 0.12
+                },
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5"
+              }
+            ],
+            "premise_revision": 3,
+            "revision": 1,
+            "uuid": "01a1a70e-a71b-7497-b755-d966f2066284"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_settings",
+      "args": {
+        "action": "list"
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "cursor_pagination": {
+              "has_more": false,
+              "next_cursor": "2",
+              "per_page": 20,
+              "prev_cursor": "0"
+            },
+            "items": [
+              {
+                "asset_type": "prop",
+                "created_at": "2026-11-04T14:55:17.787299Z",
+                "crop": {
+                  "height": 152,
+                  "width": 114,
+                  "x": 168,
+                  "y": 24
+                },
+                "current_variant": {
+                  "asset": {
+                    "byte_size": 354,
+                    "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a70e-a710-7478-a53f-0d53b234a645/content",
+                    "created_at": "2026-11-04T14:55:17.786411Z",
+                    "display_name": "验收蓝色灯笼",
+                    "height": 152,
+                    "kind": "image",
+                    "metadata": {
+                      "crop_profile": "{\"height\":152,\"width\":114,\"x\":168,\"y\":24}",
+                      "origin": "host_generated"
+                    },
+                    "mime_type": "image/png",
+                    "original_filename": "breakdown-crop.png",
+                    "purpose": "premise_asset",
+                    "source_asset_uuid": "01a1a70d-f402-7055-a50a-dd7c806d067f",
+                    "source_type": "derived",
+                    "status": "ready",
+                    "uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                    "width": 114
+                  },
+                  "created_at": "2026-11-04T14:55:17.787941Z",
+                  "crop": {
+                    "height": 152,
+                    "width": 114,
+                    "x": 168,
+                    "y": 24
+                  },
+                  "source_setting_image_uuid": "01a1a70d-f401-7e02-9ddf-46fece90ef7a",
+                  "source_type": "host_generated",
+                  "uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                  "version_no": 1
+                },
+                "position": {
+                  "x": 0.56,
+                  "y": 0.12
+                },
+                "revision": 0,
+                "summary": "固定测试素材：纯蓝矩形，不代表模型创作。",
+                "tags": [
+                  "蓝色"
+                ],
+                "title": "验收蓝色灯笼",
+                "updated_at": "2026-11-04T14:55:17.787941Z",
+                "uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb"
+              },
+              {
+                "asset_type": "character",
+                "created_at": "2026-11-04T14:55:17.787299Z",
+                "crop": {
+                  "height": 152,
+                  "width": 114,
+                  "x": 18,
+                  "y": 24
+                },
+                "current_variant": {
+                  "asset": {
+                    "byte_size": 352,
+                    "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a70e-a6fe-777a-87c6-6896917e712b/content",
+                    "created_at": "2026-11-04T14:55:17.773564Z",
+                    "display_name": "验收红色小旅人",
+                    "height": 152,
+                    "kind": "image",
+                    "metadata": {
+                      "crop_profile": "{\"height\":152,\"width\":114,\"x\":18,\"y\":24}",
+                      "origin": "host_generated"
+                    },
+                    "mime_type": "image/png",
+                    "original_filename": "breakdown-crop.png",
+                    "purpose": "premise_asset",
+                    "source_asset_uuid": "01a1a70d-f402-7055-a50a-dd7c806d067f",
+                    "source_type": "derived",
+                    "status": "ready",
+                    "uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                    "width": 114
+                  },
+                  "created_at": "2026-11-04T14:55:17.78736Z",
+                  "crop": {
+                    "height": 152,
+                    "width": 114,
+                    "x": 18,
+                    "y": 24
+                  },
+                  "source_setting_image_uuid": "01a1a70d-f401-7e02-9ddf-46fece90ef7a",
+                  "source_type": "host_generated",
+                  "uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                  "version_no": 1
+                },
+                "position": {
+                  "x": 0.06,
+                  "y": 0.12
+                },
+                "revision": 0,
+                "summary": "固定测试素材：纯红矩形，不代表模型创作。",
+                "tags": [
+                  "红色"
+                ],
+                "title": "验收红色小旅人",
+                "updated_at": "2026-11-04T14:55:17.78736Z",
+                "uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+              }
+            ],
+            "premise": {
+              "default_style": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。",
+              "revision": 3,
+              "uuid": "01a199d7-a9a1-7b85-a017-989fd3022504"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_read_crop_prop",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "asset_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+            "mime_type": "image/jpeg",
+            "width": 114,
+            "height": 152,
+            "reference_delivery": {
+              "kind": "bounded_preview",
+              "deposited": true
+            },
+            "reference_media_url": "cindy-media://blobs/6f4c8bbbbaa213064f8887ab97a50696d1e61d1e571486692e9fa216af7dc1e4.jpg"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_read_crop_character",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "asset_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+            "mime_type": "image/jpeg",
+            "width": 114,
+            "height": 152,
+            "reference_delivery": {
+              "kind": "bounded_preview",
+              "deposited": true
+            },
+            "reference_media_url": "cindy-media://blobs/f9d298b7167b219c06ffc2dcfbf9d68c359d8e5b4b9203a624c0e8843a9f0620.jpg"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_page_target",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "expected_revision": 0,
+            "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+            "ratio_tolerance": 0.02,
+            "recommended_ratio": {
+              "height": 2,
+              "width": 3
+            },
+            "setting_readiness": {
+              "available_count": 2,
+              "items": [
+                {
+                  "asset_type": "prop",
+                  "asset_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                  "expected_revision": 0,
+                  "has_image": true,
+                  "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                  "title": "验收蓝色灯笼",
+                  "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5"
+                },
+                {
+                  "asset_type": "character",
+                  "asset_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                  "expected_revision": 0,
+                  "has_image": true,
+                  "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                  "title": "验收红色小旅人",
+                  "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e"
+                }
+              ],
+              "missing_count": 0,
+              "next_action": "review_setting_images",
+              "scope": "selected_settings",
+              "status": "review_required",
+              "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+              "style_prompt": "固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。"
+            },
+            "slot": "page_image",
+            "suggested_fit": "crop",
+            "target_ratio": {
+              "height": 3,
+              "width": 4
+            },
+            "target_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_prepare_full_collage",
+      "args": {
+        "page_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d",
+        "setting_uuids": [
+          "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+          "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+        ],
+        "setting_reviews": [
+          {
+            "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+            "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+            "expected_revision": 0,
+            "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+            "verdict": "passed",
+            "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+            "comparison": "目标为纯蓝矩形与白色留边；实际裁切为完整纯蓝矩形，四边有白边，未见红色邻项或纹理；固定素材核对通过。"
+          },
+          {
+            "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+            "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+            "expected_revision": 0,
+            "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+            "verdict": "passed",
+            "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+            "comparison": "目标为纯红矩形与白色留边；实际裁切为完整纯红矩形，四边有白边，未见蓝色邻项或纹理；固定素材核对通过。"
+          }
+        ]
+      },
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "generation_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-7280-775a-8eb0-707c9286485d\n\n## Storyboard\n固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+            "image_info": {
+              "composer_version": "v1",
+              "height": 420,
+              "mime_type": "image/png",
+              "width": 792
+            },
+            "image_write_back": {
+              "expected_revision": 0,
+              "slot": "page_image",
+              "target_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+            },
+            "preparation": {
+              "additional_direction": "",
+              "digest": "e2becb5d43f942e646720fea5b47ab5288890d0d5cf09ae652a1e9278fdf9f6b",
+              "expected_revision": 0,
+              "page_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d",
+              "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+              "setting_reviews": [
+                {
+                  "comparison": "目标为纯蓝矩形与白色留边；实际裁切为完整纯蓝矩形，四边有白边，未见红色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                  "verdict": "passed"
+                },
+                {
+                  "comparison": "目标为纯红矩形与白色留边；实际裁切为完整纯红矩形，四边有白边，未见蓝色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                  "verdict": "passed"
+                }
+              ],
+              "setting_uuids": [
+                "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+              ],
+              "signature": "5d5adb1cb4519b74c1e63b19b992b27e1b1df3ef4996e4514bdd46acf89ac72a"
+            },
+            "reference_image_path": "/private/var/folders/bh/q3rhh5290rxft20rp4691vz80000gn/T/lumi-page-premise-1003283119.png",
+            "reference_mode": "collage",
+            "sources": [
+              {
+                "asset_type": "prop",
+                "file_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                "label": "1. 验收蓝色灯笼",
+                "order": 1,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "sha256": "3009b3ca8ba135c750ddb31021c781115dbe2d506113fcebf6109c6b68839af6",
+                "title": "验收蓝色灯笼",
+                "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                "version_no": 1
+              },
+              {
+                "asset_type": "character",
+                "file_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                "label": "2. 验收红色小旅人",
+                "order": 2,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                "sha256": "2589e82ec4d087b97025c10c5f778118f33bbd18004ef2e556953bd8115776eb",
+                "title": "验收红色小旅人",
+                "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                "version_no": 1
+              }
+            ],
+            "target": {
+              "expected_revision": 0,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+            },
+            "reference_media_url": "cindy-media://blobs/5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d.png",
+            "reference_delivery": {
+              "kind": "full_collage",
+              "status": "ready",
+              "sha256": "5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d",
+              "byte_size": 12345,
+              "width": 792,
+              "height": 420,
+              "instructions": "先实际查看此完整合图；Cindy Core 按当前模型 Guide 将 reference_media_url 作为图片输入，并原样传 generation_prompt。原生引擎用其正式参考参数和 reference_image_path；未确认参考进入请求前不得生成。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "core_edit_prepare_only_no_paid_request",
+      "receipt": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"status\":\"prepared\",\"invocation_id\":\"d2d7e7d2-d3fd-4cd3-868d-581192ea39b4\",\"provider_id\":\"openai\",\"model_id\":\"openai/gpt-image-2\",\"model_name\":\"GPT Image Gen\",\"capability\":\"image.edit\",\"guide_revision\":\"3\",\"instructions\":\"必填 prompt 和 image。image 可传一条 Cindy 本地媒体引用或引用数组。尺寸与质量参数见 inputSchema；不要丢弃用户的明确要求。\",\"input_schema\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"prompt\",\"image\"],\"properties\":{\"prompt\":{\"type\":\"string\",\"minLength\":1},\"image\":{\"oneOf\":[{\"type\":\"string\",\"minLength\":1},{\"type\":\"array\",\"minItems\":1,\"items\":{\"type\":\"string\",\"minLength\":1}}]},\"aspect_ratio\":{\"type\":\"string\",\"description\":\"Optional width:height ratio. Prefer size for exact dimensions; do not combine conflicting size and ratio.\"},\"size\":{\"type\":\"string\",\"description\":\"auto or WIDTHxHEIGHT. size must have edges divisible by 16, each <= 3840, aspect ratio <= 3:1, and 655360–8294400 total pixels. Use a supported generation size, then resize separately if exact final dimensions are needed.\"},\"quality\":{\"type\":\"string\",\"enum\":[\"auto\",\"low\",\"medium\",\"high\"],\"description\":\"draft → low; standard → medium; best → highest supported quality. Omit when unspecified.\"}}},\"example_body\":{\"prompt\":\"描述希望如何修改图片\",\"image\":\"cindy-media://blobs/<hash>.png\"},\"official_docs\":\"https://platform.openai.com/docs/guides/images\",\"guidance\":\"按 instructions/input_schema 组装 body；不要添加 model、endpoint、headers 或凭证。\"}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "b_receive_fixed_page_1",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "asset": {
+              "byte_size": 1504,
+              "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a711-316d-7422-8215-42df1941c745/content",
+              "created_at": "2026-11-04T14:58:04.27547Z",
+              "height": 200,
+              "kind": "image",
+              "metadata": {
+                "description": "FIXED-MATERIAL HOST TEST: deterministic red/blue board used solely to test authorized import, not a generated or visually accepted story illustration.",
+                "fit_mode": "keep",
+                "input_height": 200,
+                "input_width": 300,
+                "origin": "host_generated",
+                "original_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-7280-775a-8eb0-707c9286485d\n\n## Storyboard\n固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+                "target_height": 3,
+                "target_width": 4
+              },
+              "mime_type": "image/png",
+              "original_filename": "source.png",
+              "purpose": "comic_section_image",
+              "source_type": "imported",
+              "status": "ready",
+              "uuid": "01a1a711-316d-7422-8215-42df1941c745",
+              "width": 300
+            },
+            "fit_mode": "keep",
+            "input_size": {
+              "height": 200,
+              "width": 300
+            },
+            "ratio_deviation": 0.125,
+            "ratio_matches": false,
+            "revision": 1,
+            "target": {
+              "expected_revision": 1,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+            },
+            "variant_uuid": "01a1a711-316d-72ce-b856-ace069472865",
+            "version_no": 1,
+            "warnings": [
+              "输入图片 300:200 与目标 4:3 的比例偏差为 +12.50%；已按 keep 导入。请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。"
+            ],
+            "source_sha256": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4",
+            "source_bytes": 1504,
+            "source_mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_prepare_page_2",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "generation_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33\n\n## Storyboard\n固定素材验收第 2 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他抱着蓝灯，一步一步走向家。",
+            "image_info": {
+              "composer_version": "v1",
+              "height": 420,
+              "mime_type": "image/png",
+              "width": 792
+            },
+            "image_write_back": {
+              "expected_revision": 0,
+              "slot": "page_image",
+              "target_uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33"
+            },
+            "preparation": {
+              "additional_direction": "",
+              "digest": "015b5067432696e6a1f3b82f1104cdc9b35b57d368595869301bae5ab463ea90",
+              "expected_revision": 0,
+              "page_uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33",
+              "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+              "setting_reviews": [
+                {
+                  "comparison": "目标为纯蓝矩形与白色留边；实际裁切为完整纯蓝矩形，四边有白边，未见红色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                  "verdict": "passed"
+                },
+                {
+                  "comparison": "目标为纯红矩形与白色留边；实际裁切为完整纯红矩形，四边有白边，未见蓝色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                  "verdict": "passed"
+                }
+              ],
+              "setting_uuids": [
+                "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+              ],
+              "signature": "adc46353e784370479cc420727edda7f515ed0981ab913448293973a5283ed8c"
+            },
+            "reference_image_path": "/private/var/folders/bh/q3rhh5290rxft20rp4691vz80000gn/T/lumi-page-premise-3605061318.png",
+            "reference_mode": "collage",
+            "sources": [
+              {
+                "asset_type": "prop",
+                "file_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                "label": "1. 验收蓝色灯笼",
+                "order": 1,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "sha256": "3009b3ca8ba135c750ddb31021c781115dbe2d506113fcebf6109c6b68839af6",
+                "title": "验收蓝色灯笼",
+                "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                "version_no": 1
+              },
+              {
+                "asset_type": "character",
+                "file_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                "label": "2. 验收红色小旅人",
+                "order": 2,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                "sha256": "2589e82ec4d087b97025c10c5f778118f33bbd18004ef2e556953bd8115776eb",
+                "title": "验收红色小旅人",
+                "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                "version_no": 1
+              }
+            ],
+            "target": {
+              "expected_revision": 0,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33"
+            },
+            "reference_media_url": "cindy-media://blobs/5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d.png",
+            "reference_delivery": {
+              "kind": "full_collage",
+              "status": "ready",
+              "sha256": "5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d",
+              "byte_size": 12345,
+              "width": 792,
+              "height": 420,
+              "instructions": "先实际查看此完整合图；Cindy Core 按当前模型 Guide 将 reference_media_url 作为图片输入，并原样传 generation_prompt。原生引擎用其正式参考参数和 reference_image_path；未确认参考进入请求前不得生成。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_receive_fixed_page_2",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "asset": {
+              "byte_size": 1504,
+              "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a711-62b7-72f5-941b-5e10b2e62864/content",
+              "created_at": "2026-11-04T14:58:16.896074Z",
+              "height": 200,
+              "kind": "image",
+              "metadata": {
+                "description": "FIXED-MATERIAL HOST TEST: deterministic red/blue board used solely to test authorized import, not a generated or visually accepted story illustration.",
+                "fit_mode": "keep",
+                "input_height": 200,
+                "input_width": 300,
+                "origin": "host_generated",
+                "original_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33\n\n## Storyboard\n固定素材验收第 2 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他抱着蓝灯，一步一步走向家。",
+                "target_height": 3,
+                "target_width": 4
+              },
+              "mime_type": "image/png",
+              "original_filename": "source.png",
+              "purpose": "comic_section_image",
+              "source_type": "imported",
+              "status": "ready",
+              "uuid": "01a1a711-62b7-72f5-941b-5e10b2e62864",
+              "width": 300
+            },
+            "fit_mode": "keep",
+            "input_size": {
+              "height": 200,
+              "width": 300
+            },
+            "ratio_deviation": 0.125,
+            "ratio_matches": false,
+            "revision": 1,
+            "target": {
+              "expected_revision": 1,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-8cfa-7ab6-b0d3-45d7fd854c33"
+            },
+            "variant_uuid": "01a1a711-62b7-721b-b61b-a6f0d935d4c3",
+            "version_no": 1,
+            "warnings": [
+              "输入图片 300:200 与目标 4:3 的比例偏差为 +12.50%；已按 keep 导入。请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。"
+            ],
+            "source_sha256": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4",
+            "source_bytes": 1504,
+            "source_mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_prepare_page_3",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "generation_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-a5a9-768b-a191-38c741c280fc\n\n## Storyboard\n固定素材验收第 3 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他放低灯笼，让朋友看清回家的路。",
+            "image_info": {
+              "composer_version": "v1",
+              "height": 420,
+              "mime_type": "image/png",
+              "width": 792
+            },
+            "image_write_back": {
+              "expected_revision": 0,
+              "slot": "page_image",
+              "target_uuid": "01a1a70d-a5a9-768b-a191-38c741c280fc"
+            },
+            "preparation": {
+              "additional_direction": "",
+              "digest": "d76fbae55fb3be4cb44d4f3c0495287c597312757ce8af63e73f814949dbb598",
+              "expected_revision": 0,
+              "page_uuid": "01a1a70d-a5a9-768b-a191-38c741c280fc",
+              "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+              "setting_reviews": [
+                {
+                  "comparison": "目标为纯蓝矩形与白色留边；实际裁切为完整纯蓝矩形，四边有白边，未见红色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                  "verdict": "passed"
+                },
+                {
+                  "comparison": "目标为纯红矩形与白色留边；实际裁切为完整纯红矩形，四边有白边，未见蓝色邻项或纹理；固定素材核对通过。",
+                  "expected_revision": 0,
+                  "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+                  "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                  "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+                  "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                  "verdict": "passed"
+                }
+              ],
+              "setting_uuids": [
+                "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+              ],
+              "signature": "d10bc45057393ab3f1d69ae5de2ab23308dcfb3cbcccd110229dd87aa171234b"
+            },
+            "reference_image_path": "/private/var/folders/bh/q3rhh5290rxft20rp4691vz80000gn/T/lumi-page-premise-3258974393.png",
+            "reference_mode": "collage",
+            "sources": [
+              {
+                "asset_type": "prop",
+                "file_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645",
+                "label": "1. 验收蓝色灯笼",
+                "order": 1,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+                "sha256": "3009b3ca8ba135c750ddb31021c781115dbe2d506113fcebf6109c6b68839af6",
+                "title": "验收蓝色灯笼",
+                "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+                "version_no": 1
+              },
+              {
+                "asset_type": "character",
+                "file_uuid": "01a1a70e-a6fe-777a-87c6-6896917e712b",
+                "label": "2. 验收红色小旅人",
+                "order": 2,
+                "revision": 0,
+                "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+                "sha256": "2589e82ec4d087b97025c10c5f778118f33bbd18004ef2e556953bd8115776eb",
+                "title": "验收红色小旅人",
+                "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+                "version_no": 1
+              }
+            ],
+            "target": {
+              "expected_revision": 0,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-a5a9-768b-a191-38c741c280fc"
+            },
+            "reference_media_url": "cindy-media://blobs/5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d.png",
+            "reference_delivery": {
+              "kind": "full_collage",
+              "status": "ready",
+              "sha256": "5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d",
+              "byte_size": 12345,
+              "width": 792,
+              "height": 420,
+              "instructions": "先实际查看此完整合图；Cindy Core 按当前模型 Guide 将 reference_media_url 作为图片输入，并原样传 generation_prompt。原生引擎用其正式参考参数和 reference_image_path；未确认参考进入请求前不得生成。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_receive_fixed_page_3",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "asset": {
+              "byte_size": 1504,
+              "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a711-8df8-744d-92ba-b265e6cb88b7/content",
+              "created_at": "2026-11-04T14:58:27.971326Z",
+              "height": 200,
+              "kind": "image",
+              "metadata": {
+                "description": "FIXED-MATERIAL HOST TEST: deterministic red/blue board used solely to test authorized import, not a generated or visually accepted story illustration.",
+                "fit_mode": "keep",
+                "input_height": 200,
+                "input_width": 300,
+                "origin": "host_generated",
+                "original_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-a5a9-768b-a191-38c741c280fc\n\n## Storyboard\n固定素材验收第 3 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：他放低灯笼，让朋友看清回家的路。",
+                "target_height": 3,
+                "target_width": 4
+              },
+              "mime_type": "image/png",
+              "original_filename": "source.png",
+              "purpose": "comic_section_image",
+              "source_type": "imported",
+              "status": "ready",
+              "uuid": "01a1a711-8df8-744d-92ba-b265e6cb88b7",
+              "width": 300
+            },
+            "fit_mode": "keep",
+            "input_size": {
+              "height": 200,
+              "width": 300
+            },
+            "ratio_deviation": 0.125,
+            "ratio_matches": false,
+            "revision": 1,
+            "target": {
+              "expected_revision": 1,
+              "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+              "ratio_tolerance": 0.02,
+              "recommended_ratio": {
+                "height": 2,
+                "width": 3
+              },
+              "slot": "page_image",
+              "suggested_fit": "crop",
+              "target_ratio": {
+                "height": 3,
+                "width": 4
+              },
+              "target_uuid": "01a1a70d-a5a9-768b-a191-38c741c280fc"
+            },
+            "variant_uuid": "01a1a711-8df8-737e-b6ae-5bc2b94e7dac",
+            "version_no": 1,
+            "warnings": [
+              "输入图片 300:200 与目标 4:3 的比例偏差为 +12.50%；已按 keep 导入。请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。"
+            ],
+            "source_sha256": "15b87bc9746a9b318f0e81bad0790be67d26a25d8b7829d28491ebcd428ec7a4",
+            "source_bytes": 1504,
+            "source_mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "label": "b_export_markdown",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "byte_size": 4000,
+            "format": "markdown",
+            "missing_image_count": 0,
+            "path": "lumi-exports/text-01a1a712-0029-74d2-a017-000d4c263b77.md",
+            "uuid": "01a1a712-0029-74d2-a017-000d4c263b77",
+            "file_generated": true,
+            "user_received": false,
+            "delivery": {
+              "status": "prepared",
+              "channel": "cindy_task_files",
+              "relative_path": "lumi-exports/text-01a1a712-0029-74d2-a017-000d4c263b77.md",
+              "byte_size": 4000,
+              "sha256": "4be5087e40cca013dcabdb4b0a93970071d666356b8eb2e96311f94f7dc52975",
+              "receipt": null,
+              "instructions": "在 Cindy 当前任务的文件列表打开此相对路径；手机通过原生任务文件浏览器读取。prepared 仅表示已准备，收到须以控制端读取回执或用户确认为准，不承诺本地链接可下载。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_export_zip",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "byte_size": 10113,
+            "format": "zip",
+            "missing_image_count": 0,
+            "path": "lumi-exports/text-01a1a712-122e-79cf-9ab8-842d575e24a5.zip",
+            "uuid": "01a1a712-122e-79cf-9ab8-842d575e24a5",
+            "file_generated": true,
+            "user_received": false,
+            "delivery": {
+              "status": "prepared",
+              "channel": "cindy_task_files",
+              "relative_path": "lumi-exports/text-01a1a712-122e-79cf-9ab8-842d575e24a5.zip",
+              "byte_size": 10113,
+              "sha256": "b39276ecc31b49a4f06223d8a14f38d3ebdc0f4c5f564d8fbf37002a71df13b0",
+              "receipt": null,
+              "instructions": "在 Cindy 当前任务的文件列表打开此相对路径；手机通过原生任务文件浏览器读取。prepared 仅表示已准备，收到须以控制端读取回执或用户确认为准，不承诺本地链接可下载。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "b_export_pdf",
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "byte_size": 4800,
+            "format": "pdf",
+            "missing_image_count": 0,
+            "path": "lumi-exports/text-01a1a712-1ecf-7dbb-81e6-fcea029dd7d2.pdf",
+            "uuid": "01a1a712-1ecf-7dbb-81e6-fcea029dd7d2",
+            "file_generated": true,
+            "user_received": false,
+            "delivery": {
+              "status": "prepared",
+              "channel": "cindy_task_files",
+              "relative_path": "lumi-exports/text-01a1a712-1ecf-7dbb-81e6-fcea029dd7d2.pdf",
+              "byte_size": 4800,
+              "sha256": "53bbcfb50b269bc0b088a8406ff7e5a2e33cfb675e6ce2ef7f72f035912611b0",
+              "receipt": null,
+              "instructions": "在 Cindy 当前任务的文件列表打开此相对路径；手机通过原生任务文件浏览器读取。prepared 仅表示已准备，收到须以控制端读取回执或用户确认为准，不承诺本地链接可下载。"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "a_isolation_project_overview",
+      "args": {},
+      "receipt": {
+        "ok": true,
+        "result": {
+          "success": true,
+          "data": {
+            "project": {
+              "uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+              "name": "借给月亮的一盏灯",
+              "revision": 3,
+              "setup_status": "ready",
+              "generation_language": "zh-Hans",
+              "chapter_count": 1,
+              "picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "setup": {
+              "uuid": "01a199d7-3239-7d6d-8ef6-d0c9272da253",
+              "project_uuid": "01a199d7-323a-7017-a5da-1d93303f487e",
+              "revision": 2,
+              "setup_status": "ready",
+              "status": "finalized",
+              "original_input": "小狐狸借一盏灯去找失去光的月亮，最后发现分享光就能照亮回家的路。三页温暖水彩绘本。",
+              "missing_information": [],
+              "field_sources": {
+                "aspect_ratio": "user_confirmed",
+                "format": "user_confirmed",
+                "generation_brief": "user_confirmed",
+                "generation_language": "user_confirmed",
+                "generation_scope": "user_confirmed",
+                "large_image_minimal_text": "user_confirmed",
+                "overall_style": "user_confirmed",
+                "project_name": "user_confirmed"
+              },
+              "draft_values": {
+                "project_name": "借给月亮的一盏灯",
+                "generation_language": "zh-Hans",
+                "overall_style": "柔和水彩与纸纹，靛蓝夜色和琥珀灯光；橙色小狐狸戴蓝围巾；横版儿童绘本，无图内文字。",
+                "generation_brief": "三页完整故事：狐狸带灯出门，发现月亮在水中，和朋友分享灯光回家。温暖，适合4—7岁。",
+                "generation_scope": "project_only",
+                "picture_book": {
+                  "format": "classic_picture_book",
+                  "large_image_minimal_text": false,
+                  "interaction_mode": null,
+                  "comic_layout": null,
+                  "aspect_ratio": {
+                    "mode": "landscape",
+                    "width": 4,
+                    "height": 3
+                  }
+                }
+              },
+              "final_picture_book": {
+                "format": "classic_picture_book",
+                "large_image_minimal_text": false,
+                "interaction_mode": null,
+                "comic_layout": null,
+                "aspect_ratio": {
+                  "mode": "landscape",
+                  "width": 4,
+                  "height": 3
+                }
+              }
+            },
+            "setting_count": 3,
+            "page_count": 3,
+            "limitations": {
+              "read_only": false,
+              "open_may_write": true,
+              "guidance": "plugin_manual",
+              "server_policy": "shared_retained"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "a_isolation_settings",
+      "args": {
+        "action": "get",
+        "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb"
+      },
+      "receipt": {
+        "ok": false,
+        "errorCode": "LUMI_PRODUCTION_RESOURCE_NOT_FOUND",
+        "message": "Lumi production_resource_not_found：设定资产不存在 资源不存在或不属于当前项目。\n调用修正规则与 schema：\n{\"tool\":{\"name\":\"settings\",\"description\":\"List/get/create/update/soft-delete text settings (character, scene, prop, reference); artwork is optional. Create uses premise.revision from list; edits use item.revision. select_image selects an existing variant_uuid using the target's current expected_revision; For a conversation candidate number, get with include_versions=true to read a paged identity-only image_versions manifest, match version_no, then select with the returned revision.\",\"input_schema\":{\"additionalProperties\":false,\"allOf\":[{\"if\":{\"properties\":{\"action\":{\"const\":\"create\"}}},\"then\":{\"required\":[\"asset_type\",\"title\",\"summary\",\"expected_revision\"]}},{\"if\":{\"properties\":{\"action\":{\"const\":\"delete\"}}},\"then\":{\"required\":[\"setting_uuid\",\"expected_revision\"]}},{\"if\":{\"properties\":{\"action\":{\"const\":\"get\"}}},\"then\":{\"required\":[\"setting_uuid\"]}},{\"if\":{\"properties\":{\"action\":{\"const\":\"update\"}}},\"then\":{\"required\":[\"setting_uuid\",\"expected_revision\"]}},{\"if\":{\"properties\":{\"action\":{\"enum\":[\"select_image\"],\"type\":\"string\"}}},\"then\":{\"required\":[\"setting_uuid\",\"variant_uuid\",\"expected_revision\"]}}],\"properties\":{\"action\":{\"enum\":[\"list\",\"get\",\"create\",\"update\",\"delete\",\"select_image\"],\"type\":\"string\"},\"after\":{\"description\":\"next_cursor from the previous response.\",\"pattern\":\"^[0-9]{1,10}$\",\"type\":\"string\"},\"asset_type\":{\"enum\":[\"character\",\"scene\",\"prop\",\"reference\"],\"type\":\"string\"},\"before\":{\"description\":\"Return a page before this cursor; mutually exclusive with after.\",\"pattern\":\"^[0-9]{1,10}$\",\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"include_versions\":{\"type\":\"boolean\"},\"limit\":{\"description\":\"List size, default 20; reduce if result_too_large.\",\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"setting_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"summary\":{\"description\":\"Full text description, up to 12000 characters.\",\"maxLength\":120000,\"type\":\"string\"},\"tags\":{\"items\":{\"description\":\"Search tag.\",\"maxLength\":120000,\"type\":\"string\"},\"maxItems\":50,\"type\":\"array\"},\"title\":{\"description\":\"Setting title.\",\"maxLength\":120000,\"type\":\"string\"},\"variant_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"action\"],\"type\":\"object\"}},\"rules\":[\"只使用本目录工具与 JSON 对象参数。UUID 必须来自当前项目读取，不能使用内部 id。\",\"版本冲突时保留已有内容，重读目标后再判断；取消、超时或 result_unknown 后先核对状态，禁止自动重写。\",\"列表使用 cursor_pagination；result_too_large 时减小 limit 或上下文范围，不截断正文。完整流程见当前插件 authoring/MANUAL.md。\",\"list/get 只读。create 使用 list 的 premise.revision；update/delete/select_image 使用目标 revision。select_image 是写入。setting_boards 仅 list/get；总览图由 receive_media(slot=setting_board) 导入。apply_setting_breakdown 是原子写入，使用批次与 premise 两级 revision；同键原参数重放返回原结果。\"],\"discovery\":{\"tool\":\"list_tools\",\"args\":{\"category\":\"settings\"}}}"
+      }
+    },
+    {
+      "label": "a_isolation_read_image",
+      "args": {
+        "asset_uuid": "01a1a70e-a710-7478-a53f-0d53b234a645"
+      },
+      "receipt": {
+        "ok": false,
+        "errorCode": "LUMI_ASSET_NOT_FOUND",
+        "message": "Lumi asset_not_found：Asset 不存在 该 Asset 不属于当前项目或已进入回收站。\n调用修正规则与 schema：\n{\"tool\":{\"name\":\"read_image\",\"description\":\"Read a project Asset UUID as a bounded MCP image for review or host generation reference. Use settings/pages get to obtain current_variant.asset.uuid or current_image.asset.uuid. For page generation use prepare_page_image and the host viewer on its returned collage path instead of reading individual settings. This tool remains for setting artwork and review.\",\"input_schema\":{\"additionalProperties\":false,\"properties\":{\"asset_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"max_edge\":{\"description\":\"Preview longest edge, default 1024; may shrink further to bound content size.\",\"maximum\":1024,\"minimum\":256,\"type\":\"integer\"}},\"required\":[\"asset_uuid\"],\"type\":\"object\"}},\"rules\":[\"只使用本目录工具与 JSON 对象参数。UUID 必须来自当前项目读取，不能使用内部 id。\",\"版本冲突时保留已有内容，重读目标后再判断；取消、超时或 result_unknown 后先核对状态，禁止自动重写。\",\"列表使用 cursor_pagination；result_too_large 时减小 limit 或上下文范围，不截断正文。完整流程见当前插件 authoring/MANUAL.md。\",\"设定先 image_target；页面先 prepare_page_image 获取完整提示词、同一完整合图与 preparation。原生引擎显式使用正式参考参数及 reference_image_path；Core 使用 status=ready 的 full_collage reference_media_url，先实际查看合图，再按本次 Guide 明确传图。status=failed 表示 Core 交接失败，未提交生图；不得用预览图/路径冒充，也不切付费 pipeline。none 模式不传参考。总览图生成后用 receive_media(slot=setting_board)，单项设定/页面用对应 slot；均在 ghost_call.attachments 交接恰好一张图，不在 args 中自报路径、指纹、字节或 session。call_tool 不能代替附件入口。\",\"单图最多 20 MiB；PNG/JPEG/WebP，完整解码最多 4000 万像素。默认 keep，可选 crop/pad 并保留原图历史。冲突或结果未知先重读目标，不自动重新生成或覆盖。\",\"read_image 返回最长边不超过 1024、JPEG 不超过 120 KiB 的受控参考图。Core 使用返回的 reference_media_url；引擎原生生图使用刚读到的对话参考图。寄存预览成功不代表编辑成功，也不能证明订阅额度来源。\"],\"discovery\":{\"tool\":\"list_tools\",\"args\":{\"category\":\"media\"}}}"
+      }
+    },
+    {
+      "label": "a_isolation_prepare_page_image",
+      "args": {
+        "page_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d",
+        "setting_uuids": []
+      },
+      "receipt": {
+        "ok": false,
+        "errorCode": "LUMI_PRODUCTION_RESOURCE_NOT_FOUND",
+        "message": "Lumi production_resource_not_found：页面不存在 资源不存在或不属于当前项目。\n调用修正规则与 schema：\n{\"tool\":{\"name\":\"prepare_page_image\",\"description\":\"Prepare host page artwork without a provider: explicitly select up to 12 active setting_uuids in label order ([] means no references). Every selected setting requires a passed setting_reviews entry bound to its current variant/revision and style_digest, with reference_basis and concrete comparison. Missing/failed/stale reviews are rejected; the server verifies the record, not visual similarity. Lumi reads current images and composes a fresh labeled PNG in system temporary storage, never a project Asset/cache. Returns reference_image_path (real absolute path, empty for none), ordered versioned sources, generation_prompt, image_write_back and signed preparation with digest. Use the host image viewer to read ONLY that returned path, then imagegen referenced_image_paths=[that same path] (omit references for none). Do not read source assets, rewrite references, append to the prompt, or invoke a provider pipeline. Immediately import the host output with the EXACT generation_prompt and unchanged preparation. Changed page/settings/prompts require preparing, viewing and generating again.\",\"input_schema\":{\"additionalProperties\":false,\"properties\":{\"additional_direction\":{\"maxLength\":12000,\"type\":\"string\"},\"page_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"setting_reviews\":{\"description\":\"Host visual assessments of the selected current images. Read image_target for style_digest and image versions. Compare originals and explicit user requirements; record concrete differences or agreement, not just 'checked'. No-reference selection uses [] or omits this field.\",\"items\":{\"additionalProperties\":false,\"properties\":{\"comparison\":{\"maxLength\":2000,\"minLength\":1,\"type\":\"string\"},\"expected_revision\":{\"description\":\"Exact revision from the last read or render_prompt; required for every mutation.\",\"minimum\":0,\"type\":\"integer\"},\"reference_basis\":{\"maxLength\":2000,\"minLength\":1,\"type\":\"string\"},\"setting_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"style_digest\":{\"pattern\":\"^[0-9a-f]{64}$\",\"type\":\"string\"},\"variant_uuid\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"verdict\":{\"enum\":[\"passed\",\"needs_revision\"],\"type\":\"string\"}},\"required\":[\"setting_uuid\",\"variant_uuid\",\"expected_revision\",\"style_digest\",\"verdict\",\"reference_basis\",\"comparison\"],\"type\":\"object\"},\"maxItems\":12,\"type\":\"array\"},\"setting_uuids\":{\"description\":\"Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.\",\"items\":{\"description\":\"Public UUIDv7 from a previous read.\",\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\",\"type\":\"string\"},\"maxItems\":12,\"type\":\"array\",\"uniqueItems\":true}},\"required\":[\"page_uuid\",\"setting_uuids\"],\"type\":\"object\"}},\"rules\":[\"只使用本目录工具与 JSON 对象参数。UUID 必须来自当前项目读取，不能使用内部 id。\",\"版本冲突时保留已有内容，重读目标后再判断；取消、超时或 result_unknown 后先核对状态，禁止自动重写。\",\"列表使用 cursor_pagination；result_too_large 时减小 limit 或上下文范围，不截断正文。完整流程见当前插件 authoring/MANUAL.md。\",\"设定先 image_target；页面先 prepare_page_image 获取完整提示词、同一完整合图与 preparation。原生引擎显式使用正式参考参数及 reference_image_path；Core 使用 status=ready 的 full_collage reference_media_url，先实际查看合图，再按本次 Guide 明确传图。status=failed 表示 Core 交接失败，未提交生图；不得用预览图/路径冒充，也不切付费 pipeline。none 模式不传参考。总览图生成后用 receive_media(slot=setting_board)，单项设定/页面用对应 slot；均在 ghost_call.attachments 交接恰好一张图，不在 args 中自报路径、指纹、字节或 session。call_tool 不能代替附件入口。\",\"单图最多 20 MiB；PNG/JPEG/WebP，完整解码最多 4000 万像素。默认 keep，可选 crop/pad 并保留原图历史。冲突或结果未知先重读目标，不自动重新生成或覆盖。\",\"read_image 返回最长边不超过 1024、JPEG 不超过 120 KiB 的受控参考图。Core 使用返回的 reference_media_url；引擎原生生图使用刚读到的对话参考图。寄存预览成功不代表编辑成功，也不能证明订阅额度来源。\"],\"discovery\":{\"tool\":\"list_tools\",\"args\":{\"category\":\"media\"}}}"
+      }
+    }
+  ]
+}

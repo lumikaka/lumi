@@ -59,7 +59,16 @@ test('real bundled CLI: isolation, sharing, cancellation, crashes and stale disc
       assert.equal(current.nonce, ownedNonce);
       const response = await fetch(current.endpoint + '/api/v1/cli-instance', { method: 'DELETE', headers: { 'If-Match': current.nonce } });
       assert.equal(response.status, 200);
-      await until(async () => !(await status()).running);
+      await until(async () => {
+        try { return !(await status()).running; }
+        catch (error) {
+          // During the acknowledged shutdown, discovery can still name the
+          // instance after its listener closes. Wait for cleanup, never treat
+          // this transient response as proof that shutdown has completed.
+          if (error.code === 'instance_unavailable') return false;
+          throw error;
+        }
+      });
     }
     await fs.rm(base, { recursive: true });
     assert.equal(process.cwd(), cwd);

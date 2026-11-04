@@ -24,6 +24,7 @@
 .pnpm-store/
 /web/node_modules/
 /web/dist/
+/cindy-plugins/lumi/workspace.html
 /web/.env.local
 /.vite/
 /web/.vite/

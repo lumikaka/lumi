@@ -30,8 +30,10 @@ with zipfile.ZipFile(package) as archive:
     assert hashlib.sha256(archive.read(binary)).hexdigest() == build['cli_sha256']
     for name in ('main.js', 'node/worker.cjs', 'node/worker-transport.cjs', 'node/runtime.cjs', 'node/protocol.cjs', 'node/errors.cjs',
                  'node/request-lifetime.cjs', 'node/project.cjs', 'node/catalog.cjs', 'node/business-specs.json', 'node/export.cjs',
-                 'node/config.cjs', 'node/runtime-config.json', 'node/media.cjs',
-                 'manual/runtime/MANUAL.md', 'manual/project/MANUAL.md', 'manual/authoring/MANUAL.md', 'assets/icon.png'):
+                 'node/config.cjs', 'node/runtime-config.json', 'node/media.cjs', 'node/reference.cjs',
+                 'node/authoring.cjs', 'node/media-contract.cjs', 'node/workspace.cjs', 'workspace.html',
+                 'manual/runtime/MANUAL.md', 'manual/project/MANUAL.md', 'manual/authoring/MANUAL.md',
+                 'manual/authoring/references/settings.md', 'assets/icon.png'):
         assert archive.read(name) == (author / name).read_bytes(), name
     # Verify all shipped files, including new capabilities, against this exact author tree.
     for entry in entries:
@@ -52,7 +54,7 @@ if not review.exists():
 assert hashlib.sha256(review.read_bytes()).hexdigest() == record['sha256']
 record['review_archive'] = str(review.relative_to(repo))
 step = sys.argv[1] if len(sys.argv) > 1 else 'step2'
-assert step.startswith('step') and step[4:].isdigit()
+assert step == 'codex-alignment' or (step.startswith('step') and step[4:].isdigit())
 target = repo / f'docs/features/cindy-plugins/acceptance/{step}-evidence/{"package-development" if channel == "development" else "package"}.json'
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(json.dumps(record, ensure_ascii=False, indent=2) + '\n')

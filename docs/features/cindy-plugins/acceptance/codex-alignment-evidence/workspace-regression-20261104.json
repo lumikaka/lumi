@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-04",
+  "kind": "workspace-increment-automated-and-browser-not-native-Cindy-Host",
+  "baseline": "b4480d9af23db3706a242d6e8e530ff55cfcc43f",
+  "build_source_head": "ed935e1469b3f514432c94792f3482da13b26b0d",
+  "results": {
+    "cindy": {
+      "command": "node cindy-plugins/scripts/verify.mjs codex-alignment",
+      "tests": 88,
+      "pass": 88,
+      "fail": 0,
+      "evidence": "automated.json"
+    },
+    "web": {
+      "cwd": "web",
+      "command": "node --test --test-reporter=spec",
+      "tests": 470,
+      "pass": 470,
+      "fail": 0,
+      "duration_ms": 6793.46475
+    },
+    "codex_package": {
+      "command": "node --test scripts/test-package-codex.mjs",
+      "tests": 2,
+      "pass": 2,
+      "fail": 0
+    },
+    "builds": [
+      "Cindy production and isolated development",
+      "Web Vite build",
+      "Codex MCP App build"
+    ],
+    "forge": {
+      "entries_per_package": 26,
+      "production_sha256": "5e0cd67019bb2c9c37d8ee42a24fd0ed81a578f4da908b25486b77c105f5932c",
+      "development_sha256": "a36434367074b3ef9496cbcb7a8b7bf11a2f6bf4357babd1a6414e3cda0b2d82",
+      "installed": false
+    },
+    "production_gate": {
+      "page_html": "blocked.html?session=forged-other-project",
+      "observed": "作品工作区暂不可连接",
+      "business_connection_created": false
+    },
+    "cleanup": {
+      "fixture_pids": [
+        18596,
+        48359
+      ],
+      "exited": true,
+      "known_failed_binding_fixture": "stopped after validating project roots and current nonce",
+      "shared_servers_stopped": false
+    }
+  },
+  "limitations": [
+    "No native Cindy page authorization established.",
+    "No model generation or actual recipient file read in this increment.",
+    "Core collage media handoff still pending."
+  ]
+}

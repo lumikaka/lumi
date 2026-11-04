@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-04T15:08:56.747Z",
+  "source": "explicit answer to pending Core request question in current alignment task",
+  "answer": "允许本次最多 1 次 Core 请求",
+  "model_id": "openai/gpt-image-2",
+  "provider_id": "openai",
+  "capability": "image.edit",
+  "size": "1024x768",
+  "quality": "low",
+  "max_paid_requests": 1,
+  "no_resubmission_on_unknown_cancel_or_timeout": true,
+  "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+  "page_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+}

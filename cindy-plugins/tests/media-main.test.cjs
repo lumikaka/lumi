@@ -25,8 +25,19 @@ function host({ bytes = png, contentLength = bytes.length, mime = 'image/png', r
       if (reply.type === 'cindy-request') return { ok: true, url: 'cindy-media://blobs/' + hash + '.jpg' };
     } },
   });
-  return { requests, replies, urls, invoke: (args = {}, tool = 'receive_media') => callback({ type: 'tool-call', tool, callId: 'host-call', args: { ...input, attachments: [hash], session_context: context, ...args } }) };
+  return { requests, replies, urls, invokeExact: args => callback({ type: 'tool-call', tool: 'receive_media', callId: 'host-call', args: { session_context: context, attachments: [hash], ...args } }), invoke: (args = {}, tool = 'receive_media') => callback({ type: 'tool-call', tool, callId: 'host-call', args: { ...input, attachments: [hash], session_context: context, ...args } }) };
 }
+
+test('authorized board and page review evidence cross the browser adapter without model paths or lost fields', async () => {
+  const board = { slot: 'setting_board', expected_revision: 2, source_text: 'Fox and lantern', style_snapshot: 'flat ochre', prompt: 'Complete board prompt', idempotency_key: 'board-1' };
+  const h = host(); await h.invokeExact(board);
+  assert.equal(h.replies.at(-1).ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.requests.find(r => r.method === 'media_begin').params.input)), board);
+  const reviews = [{ setting_uuid: input.target_uuid, variant_uuid: input.target_uuid, expected_revision: 2, style_digest: 'c'.repeat(64), verdict: 'passed', reference_basis: 'Saved style', comparison: 'Thin dark contours match.' }];
+  const page = host(); await page.invoke({ preparation: { ...input.preparation, setting_reviews: reviews } });
+  assert.equal(page.replies.at(-1).ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(page.requests.find(r => r.method === 'media_begin').params.input.preparation.setting_reviews)), reviews);
+});
 
 test('Host-authorized original is hashed, split below Node params limit and scoped to the actual call', async () => {
   const h = host(); await h.invoke();

@@ -1,0 +1,119 @@
+{
+  "date": "2026-11-04T15:09:04.965Z",
+  "state": "complete",
+  "invocation_id": "646e7de0-8fe6-44a4-b116-b68b06e72f7e",
+  "model_id": "openai/gpt-image-2",
+  "provider_id": "openai",
+  "guide_revision": "3",
+  "body": {
+    "prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-7280-775a-8eb0-707c9286485d\n\n## Storyboard\n固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+    "image": "cindy-media://blobs/5a2f7c8d47b4b3dd56c3d18880282e1386619bce8fac116f8278595f12ea283d.png",
+    "size": "1024x768",
+    "quality": "low"
+  },
+  "preparation": {
+    "additional_direction": "",
+    "digest": "8c076f53911d28ecc0020a924695b3dcfde08ed4df2e33298ff784bf02fad14b",
+    "expected_revision": 1,
+    "page_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d",
+    "project_uuid": "01a199d7-a893-77c0-bcf0-3f8f34f00679",
+    "setting_reviews": [
+      {
+        "comparison": "目标为纯蓝矩形与白色留边；实际裁切为完整纯蓝矩形，四边有白边，未见红色邻项或纹理；固定素材核对通过。",
+        "expected_revision": 0,
+        "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+        "setting_uuid": "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+        "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+        "variant_uuid": "01a1a70e-a71c-700f-8d1d-e46fe759fab5",
+        "verdict": "passed"
+      },
+      {
+        "comparison": "目标为纯红矩形与白色留边；实际裁切为完整纯红矩形，四边有白边，未见蓝色邻项或纹理；固定素材核对通过。",
+        "expected_revision": 0,
+        "reference_basis": "本次固定几何素材原图及 B 项目已保存画风；已实际查看 Host read_image 返回的两项裁切预览。不是模型生成画风验收。",
+        "setting_uuid": "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596",
+        "style_digest": "e9eda1d0af006369d1a939c58b7df1c9b6dc5558b3ac169ac9db7b44ba211f9c",
+        "variant_uuid": "01a1a70e-a71b-77eb-b2bd-72025197e16e",
+        "verdict": "passed"
+      }
+    ],
+    "setting_uuids": [
+      "01a1a70e-a71b-7df6-ac7f-a373ff9884eb",
+      "01a1a70e-a71b-74ed-8e4f-2c0d9f88c596"
+    ],
+    "signature": "d92b8256fa26b4d8cb91d781921beca0d665d3c3c356ca75c00d0c629bf16054"
+  },
+  "poll_count": 0,
+  "request_receipt": {
+    "xdt_image_urls": [
+      "cindy-media://blobs/98f17a91716628e87b3574a259ff59f7cc4f8dcdfa0a7cbab381d7b3b7d971c0.png"
+    ],
+    "hint": "请在最终回复中使用返回的 cindy-media:// 地址只嵌入展示一次；若未嵌入，客户端会用工具结果兜底展示。",
+    "ok": true,
+    "status": "complete",
+    "invocation_id": "646e7de0-8fe6-44a4-b116-b68b06e72f7e"
+  },
+  "import_receipt": {
+    "ok": true,
+    "result": {
+      "success": true,
+      "data": {
+        "asset": {
+          "byte_size": 1022629,
+          "content_url": "/media/projects/01a199d7-a893-77c0-bcf0-3f8f34f00679/assets/01a1a71c-0932-7b46-83c9-09c94786a359/content",
+          "created_at": "2026-11-04T15:09:54.954501Z",
+          "height": 1086,
+          "kind": "image",
+          "metadata": {
+            "description": "真实 Core image.edit 一次请求验收，完整两设定合图为参考；未重复提交。",
+            "fit_mode": "keep",
+            "input_height": 1086,
+            "input_width": 1448,
+            "origin": "host_generated",
+            "original_prompt": "项目语言：简体中文。\n所有新生成的可读故事内容、设定内容、标题、对白、旁白、音效、简介、标签、说明和 JSON 字符串值都使用简体中文。JSON key、API 字段名、枚举值、id、文件名、URL、代码式标识符，以及必须精确引用的既有项目/用户提供名称或标题，都必须保持 schema 或来源内容要求的原样。\n\n本项目生成完整绘本页面。每个 section 都是一张最终页面画布，宽高比为 4:3。所有可见文字直接绘入该图片。禁止生成书本样机、封面样机、摆拍页面或围绕页面的装饰相框。 使用一幅主场景并绘入 1–3 句简短叙事文字，让文字和插画共同完成叙事。禁止漫画分格。\n\n## 通用页面生成规则\n\n1. 当前输入是一张完整页面的 storyboard，生成一张可直接阅读和导出的最终页面图片。\n2. 严格保持 storyboard 中的剧情、人物身份、动作、表情、场景、道具和逐字文字，不擅自补充对白或旁白。\n3. 人物脸部、核心动作和关键道具不得被文字、特效或无关装饰遮挡。\n4. 相邻页面中的人物发型、脸型、体型、服装结构、主色、武器和场景空间关系必须一致。\n5. 有设定参考图时只参考其中主体身份与视觉特征，不得复制设定拼贴图的网格排版。\n6. 使用清晰线稿、稳定色块、适龄且可读的构图；避免照片写实、海报、角色立绘、设定集和多张独立缩略图拼贴。\n7. 任何需要绘入的文字都必须使用项目语言，字号清楚、对比充分、留白合理，并逐字保留 storyboard 内容。\n\n固定测试素材：纯白背景、红色矩形角色与蓝色矩形灯笼，平面几何图形，无纹理和渐变。\n\n## Section 设定拼贴图内容\n本次提供一张 Section 专属设定拼贴图，其中包含以下带标签的设定项；请依据拼贴图保持它们的身份与核心视觉特征：\n1. 验收蓝色灯笼\n2. 验收红色小旅人\n\n## 当前 Section\n01a1a70d-7280-775a-8eb0-707c9286485d\n\n## Storyboard\n固定素材验收第 1 页：纯白背景，红色矩形作为小旅人，蓝色矩形作为灯笼；保持两种几何形状、纯色和白色留边。页面完整旁白：小旅人在路边发现一盏蓝灯。",
+            "target_height": 3,
+            "target_width": 4
+          },
+          "mime_type": "image/png",
+          "original_filename": "source.png",
+          "purpose": "comic_section_image",
+          "source_type": "imported",
+          "status": "ready",
+          "uuid": "01a1a71c-0932-7b46-83c9-09c94786a359",
+          "width": 1448
+        },
+        "fit_mode": "keep",
+        "input_size": {
+          "height": 1086,
+          "width": 1448
+        },
+        "ratio_deviation": 0,
+        "ratio_matches": true,
+        "revision": 2,
+        "target": {
+          "expected_revision": 2,
+          "generation_hint": "请生成宽高比约 3:2 的图片；目标画布为 4:3。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 crop 处理。",
+          "ratio_tolerance": 0.02,
+          "recommended_ratio": {
+            "height": 2,
+            "width": 3
+          },
+          "slot": "page_image",
+          "suggested_fit": "crop",
+          "target_ratio": {
+            "height": 3,
+            "width": 4
+          },
+          "target_uuid": "01a1a70d-7280-775a-8eb0-707c9286485d"
+        },
+        "variant_uuid": "01a1a71c-0932-74a7-9f2e-924815323ff3",
+        "version_no": 2,
+        "warnings": [],
+        "source_sha256": "98f17a91716628e87b3574a259ff59f7cc4f8dcdfa0a7cbab381d7b3b7d971c0",
+        "source_bytes": 1022629,
+        "source_mime": "image/png"
+      }
+    }
+  },
+  "request_call_count": 1
+}

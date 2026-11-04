@@ -1,5 +1,7 @@
 # Lumi Cindy 插件作者源码
 
+2026-11-04 正在按 Codex 当前实现对齐，见 [基线与执行计划](../docs/features/cindy-plugins/codex-alignment.md) 和 [本次验收](../docs/features/cindy-plugins/acceptance/codex-alignment.md)。源码已补齐设定板授权导入/原子拆分、setting_reviews 与同源契约检查，以及可编辑工作区独立入口、构建和隔离测试；原生页面授权及合图到 Core 的传递仍待完成。`node cindy-plugins/scripts/sync-contracts.mjs --check` 比较实际 Go 契约，`node cindy-plugins/scripts/verify.mjs codex-alignment` 保存本次测试记录，历史记录不代表本次新增能力通过。
+
 `lumi/` 维护一份浏览器逻辑、零第三方依赖 Node worker、Manual 与构建时编译的 Go CLI。当前实现项目绑定、文本创作、授权图片导入和受控参考图，版本 0.4.0。2026-11-02 开发版已安装并同版本原位更新，早期构建真实诊断连续 6 次成功，归档构建更新后亦已核对新指纹；修复宿主子进程代理清理导致的并发名额泄漏，最新完整自动化 79 项通过。任务审阅页、真实媒体验收及其余安装矩阵仍待完成，没有发布。安装记录与待验项见 [Step 6 状态](../docs/features/cindy-plugins/acceptance/step6-install.md)。
 
 ## 构建与验证

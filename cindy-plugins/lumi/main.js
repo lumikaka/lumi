@@ -1,16 +1,59 @@
 /* Browser logic only. Host alone mints args.session_context and callId. */
 (() => {
   'use strict';
-  const mediaFields = ['target_uuid', 'slot', 'expected_revision', 'fit_mode', 'description', 'prompt', 'preparation'];
-  const argumentsByMethod = { list_tools: ['category'], call_tool: ['name', 'args'], receive_media: mediaFields };
   const schemas = {
     list_tools: { type: 'object', properties: { category: { type: 'string' } }, additionalProperties: false },
     call_tool: { type: 'object', properties: { name: { type: 'string' }, args: { type: 'object' } }, required: ['name'], additionalProperties: false },
   };
-  schemas.receive_media = {"additionalProperties":false,"allOf":[{"if":{"properties":{"slot":{"const":"page_image"}}},"then":{"required":["prompt","preparation"]}}],"properties":{"description":{"maxLength":12000,"type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"fit_mode":{"enum":["keep","crop","pad"],"type":"string"},"preparation":{"additionalProperties":false,"properties":{"additional_direction":{"maxLength":12000,"type":"string"},"digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"page_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"project_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"setting_uuids":{"description":"Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.","items":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"maxItems":12,"type":"array","uniqueItems":true},"signature":{"pattern":"^[0-9a-f]{64}$","type":"string"}},"required":["project_uuid","page_uuid","expected_revision","setting_uuids","additional_direction","digest","signature"],"type":"object"},"prompt":{"maxLength":12000,"type":"string"},"slot":{"enum":["page_image","setting_image"],"type":"string"},"target_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"}},"required":["target_uuid","slot","expected_revision"],"type":"object"};
+  // BEGIN GENERATED MEDIA CONTRACT
+  schemas.receive_media = {"type":"object","additionalProperties":false,"properties":{"description":{"maxLength":12000,"type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"fit_mode":{"enum":["keep","crop","pad"],"type":"string"},"preparation":{"additionalProperties":false,"properties":{"additional_direction":{"maxLength":12000,"type":"string"},"digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"page_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"project_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"setting_reviews":{"description":"Host visual assessments of the selected current images. Read image_target for style_digest and image versions. Compare originals and explicit user requirements; record concrete differences or agreement, not just 'checked'. No-reference selection uses [] or omits this field.","items":{"additionalProperties":false,"properties":{"comparison":{"maxLength":2000,"minLength":1,"type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"reference_basis":{"maxLength":2000,"minLength":1,"type":"string"},"setting_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"style_digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"variant_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"verdict":{"enum":["passed","needs_revision"],"type":"string"}},"required":["setting_uuid","variant_uuid","expected_revision","style_digest","verdict","reference_basis","comparison"],"type":"object"},"maxItems":12,"type":"array"},"setting_uuids":{"description":"Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.","items":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"maxItems":12,"type":"array","uniqueItems":true},"signature":{"pattern":"^[0-9a-f]{64}$","type":"string"}},"required":["project_uuid","page_uuid","expected_revision","setting_uuids","additional_direction","digest","signature"],"type":"object"},"prompt":{"maxLength":12000,"type":"string"},"slot":{"type":"string","enum":["page_image","setting_image","setting_board"]},"target_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"idempotency_key":{"description":"Stable key for this exact request. Replay original input after interruption; use a new key for a different operation.","maxLength":160,"minLength":1,"type":"string"},"source_text":{"maxLength":12000,"type":"string"},"style_snapshot":{"maxLength":12000,"type":"string"}},"required":["slot","expected_revision"],"allOf":[{"if":{"properties":{"slot":{"enum":["page_image","setting_image"]}}},"then":{"additionalProperties":false,"allOf":[{"if":{"properties":{"slot":{"const":"page_image"}}},"then":{"required":["prompt","preparation"]}}],"properties":{"description":{"maxLength":12000,"type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"fit_mode":{"enum":["keep","crop","pad"],"type":"string"},"preparation":{"additionalProperties":false,"properties":{"additional_direction":{"maxLength":12000,"type":"string"},"digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"page_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"project_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"setting_reviews":{"description":"Host visual assessments of the selected current images. Read image_target for style_digest and image versions. Compare originals and explicit user requirements; record concrete differences or agreement, not just 'checked'. No-reference selection uses [] or omits this field.","items":{"additionalProperties":false,"properties":{"comparison":{"maxLength":2000,"minLength":1,"type":"string"},"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"reference_basis":{"maxLength":2000,"minLength":1,"type":"string"},"setting_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"style_digest":{"pattern":"^[0-9a-f]{64}$","type":"string"},"variant_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"verdict":{"enum":["passed","needs_revision"],"type":"string"}},"required":["setting_uuid","variant_uuid","expected_revision","style_digest","verdict","reference_basis","comparison"],"type":"object"},"maxItems":12,"type":"array"},"setting_uuids":{"description":"Explicit current-project active settings in collage label order. [] means a real no-reference generation; omitted/null is invalid.","items":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"},"maxItems":12,"type":"array","uniqueItems":true},"signature":{"pattern":"^[0-9a-f]{64}$","type":"string"}},"required":["project_uuid","page_uuid","expected_revision","setting_uuids","additional_direction","digest","signature"],"type":"object"},"prompt":{"maxLength":12000,"type":"string"},"slot":{"enum":["page_image","setting_image"],"type":"string"},"target_uuid":{"description":"Public UUIDv7 from a previous read.","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$","type":"string"}},"required":["target_uuid","slot","expected_revision"],"type":"object"}},{"if":{"properties":{"slot":{"const":"setting_board"}}},"then":{"type":"object","additionalProperties":false,"properties":{"expected_revision":{"description":"Exact revision from the last read or render_prompt; required for every mutation.","minimum":0,"type":"integer"},"idempotency_key":{"description":"Stable key for this exact request. Replay original input after interruption; use a new key for a different operation.","maxLength":160,"minLength":1,"type":"string"},"prompt":{"maxLength":12000,"type":"string"},"source_text":{"maxLength":12000,"type":"string"},"style_snapshot":{"maxLength":12000,"type":"string"},"slot":{"const":"setting_board"}},"required":["source_text","prompt","expected_revision","idempotency_key"]}}]};
+  // END GENERATED MEDIA CONTRACT
+  const mediaFields = Object.keys(schemas.receive_media.properties);
+  const argumentsByMethod = { list_tools: ['category'], call_tool: ['name', 'args'], receive_media: mediaFields };
   const fail = (code, message, details = '') => ({ success: false, data: null, error: { code, message, details } });
   const mediaError = (code, message) => { throw { business: fail(code, message, '保留作品并重读目标；使用顶层 attachments 交接原图，不自动重新生成。') }; };
   let receiving = 0;
+  async function deliverReference(msg, context, result) {
+    const reference = result.transport_reference;
+    delete result.transport_reference; // Tokens/base64 never enter model JSON.
+    const node = async (method, extra = {}) => {
+      const response = await cindy.node.request({ method, params: { context, invocation: msg.callId, transfer: reference.transfer, ...extra },
+        callId: msg.callId, cancelWithCall: true, timeoutMs: 60000 });
+      if (!response?.ok || response.result?.success !== true) throw new Error('reference_transfer_failed');
+      return response.result.data;
+    };
+    try {
+      if (reference.mime_type !== 'image/png' || !Number.isSafeInteger(reference.bytes) || reference.bytes < 33
+        || reference.bytes > 20 * 1024 * 1024 || reference.chunk_bytes !== 48 * 1024
+        || !/^[a-f0-9]{64}$/.test(reference.sha256)) throw new Error('reference_metadata_invalid');
+      const bytes = new Uint8Array(reference.bytes), chunks = [], started = Date.now();
+      for (let offset = 0, index = 0; offset < bytes.length; offset += reference.chunk_bytes, index++) {
+        if (Date.now() - started > 90000) throw new Error('reference_timeout');
+        const chunk = await node('reference_chunk', { index });
+        if (chunk.index !== index || typeof chunk.base64 !== 'string' || chunk.base64.length > 65536) throw new Error('reference_chunk_invalid');
+        const binary = atob(chunk.base64);
+        if (btoa(binary) !== chunk.base64 || binary.length !== Math.min(reference.chunk_bytes, bytes.length - offset)) throw new Error('reference_chunk_invalid');
+        for (let i = 0; i < binary.length; i++) bytes[offset + i] = binary.charCodeAt(i);
+        chunks.push(chunk.base64);
+      }
+      const sha256 = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2, '0')).join('');
+      if (sha256 !== reference.sha256) throw new Error('reference_checksum_mismatch');
+      const deposited = await cindy.send({ type: 'cindy-request', kind: 'deposit_media', data: chunks.join(''), label: 'Lumi complete page reference collage', callId: msg.callId });
+      if (deposited?.ok !== true || deposited.url !== `cindy-media://blobs/${sha256}.png`
+        || (deposited.hash !== undefined && deposited.hash !== sha256)
+        || (deposited.bytes !== undefined && deposited.bytes !== bytes.length)) throw new Error('reference_deposit_failed');
+      result.data.reference_media_url = deposited.url;
+      result.data.reference_delivery = { kind: 'full_collage', status: 'ready', sha256, byte_size: bytes.length,
+        width: reference.width, height: reference.height,
+        instructions: '先实际查看此完整合图；Cindy Core 按当前模型 Guide 将 reference_media_url 作为图片输入，并原样传 generation_prompt。原生引擎用其正式参考参数和 reference_image_path；未确认参考进入请求前不得生成。' };
+    } catch (error) {
+      // Preparing a business receipt succeeded; Core delivery did not. Keep the
+      // native file and exact prompt available, and never claim Core readiness.
+      delete result.data.reference_media_url;
+      result.data.reference_delivery = { kind: 'full_collage', status: 'failed', code: /^reference_[a-z_]+$/.test(error?.message || '') ? error.message : 'reference_deposit_failed',
+        instructions: '完整合图未交接到 Cindy Core；未提交生图。不要用缩略图、UUID 或路径冒充 Core 参考。保留 preparation；核对当前任务权限后重新准备。原生引擎仅在正式参考参数可读取 reference_image_path 时继续。' };
+    } finally { await node('reference_release').catch(() => {}); }
+  }
   async function receiveMedia(msg, context, input) {
     if (context.workdir_is_read_only) mediaError('read_only_context', '只读任务不能接收图片。');
     if (!Array.isArray(msg.args.attachments) || msg.args.attachments.length !== 1) mediaError('media_attachment_required', '请在 ghost_call.attachments 交接恰好一张图片。');
@@ -115,9 +158,11 @@
         if (msg.tool === 'receive_media') {
           result = await receiveMedia(msg, trustedContext, input);
         } else {
+        const prepareReference = msg.tool === 'call_tool' && input.name === 'prepare_page_image';
         const response = await cindy.node.request({
-          method: msg.tool,
-          params: { context: trustedContext, ...(allowed.length ? { arguments: input } : {}) },
+          method: prepareReference ? 'reference_prepare' : msg.tool,
+          params: prepareReference ? { context: trustedContext, invocation: msg.callId, input: input.args ?? {} }
+            : { context: trustedContext, ...(allowed.length ? { arguments: input } : {}) },
           callId: msg.callId, cancelWithCall: true, timeoutMs: 60000,
         });
         if (!response?.ok) {
@@ -130,6 +175,7 @@
           result = fail('protocol_error', 'Node 返回了无效结果。', '重新执行运行诊断。');
         } else result = response.result;
         }
+        if (result?.success && result.transport_reference) await deliverReference(msg, trustedContext, result);
         if (result?.success && result.transport_image) {
           const preview = result.transport_image;
           delete result.transport_image;

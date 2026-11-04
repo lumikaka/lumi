@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-04T13:49:31.422Z",
+  "kind": "installed-host-compiled-contract-audit-not-ui-e2e",
+  "source": {
+    "sourceCommit": "0a7d5a419f5cd3e0fbebc9642dde8388376a68aa",
+    "builtAt": "2026-10-30T01:16:08.865+08:00"
+  },
+  "bootstrap": {
+    "entry": ".vite/build/bootstrap-electron-BJb-edRz.js",
+    "sha256": "1e9fae4d1dd5e54793551e5de8f37b7afdb3649e4b4b0cfd0f0b67362a123f9d"
+  },
+  "renderer": {
+    "entry": ".vite/renderer/main_window/assets/SidebarWindowLayout-BA0LEhNh.js",
+    "sha256": "8d14c20f0d15203755b00fd76cc769b225f715cc2445a6c4c052e0931b22e42a"
+  },
+  "protocol_handler_sha256": "302d9152d6c08290bb441c36506472e2b8c0a76c2ee42966581b2d9579e892a0",
+  "exact_public_routes": [
+    "/",
+    "/agent-models",
+    "/app-context",
+    "/connections",
+    "/gallery",
+    "/kv",
+    "/media-models",
+    "/model-picker",
+    "/oauth",
+    "/secrets",
+    "/wake"
+  ],
+  "task_view_query": {
+    "fields": [
+      "session"
+    ],
+    "excerpt_sha256": "c8137af97d49030e6e226a68e0a24184f146122ccf67cbdc0453f32a420dd654"
+  },
+  "app_context_handler": {
+    "provider": "ghostAppContextProvider",
+    "branch_sha256": "b64f05016428ee0472d049d93fd60860db3cacbf7ad1ca39ccc628e79c1d9792"
+  },
+  "documented_app_context_fields": [
+    "region",
+    "locale"
+  ],
+  "verified_page_identity": false,
+  "conclusion": "The inspected/documented route and BroadcastChannel contracts do not attest a taskView sender session. A session query is routing data, not project authorization.",
+  "limitations": [
+    "No application source ref matching sourceCommit is publicly available.",
+    "This audit does not enumerate undocumented capabilities or replace a real taskView test."
+  ]
+}

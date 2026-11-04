@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-04T14:50:17.593Z",
+  "kind": "native-installation-receipts",
+  "dev_pack": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"cindyPath\":\"/Users/qingyang/mine-work/lumi/build/cindy-dev/lumi-dev/lumi-dev-0.4.0.cindy\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"note\":\"已完成校验和打包；本工具不会安装或更新插件。\"}"
+      }
+    ]
+  },
+  "dev_install": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-dev\",\"name\":\"Lumi（开发版）\",\"version\":\"0.4.0\",\"enabled\":true,\"instanceId\":\"_root__lumi-dev\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  },
+  "dev_runtime_status": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"runtime\":\"ready\",\"protocol_version\":\"2025-03-26\",\"server_name\":\"lumi-text\",\"server_version\":\"1.0.0\",\"cli_commit\":\"ed935e1469b3f514432c94792f3482da13b26b0d\",\"channel\":\"development\",\"build_id\":\"98542cb0983a1cc1b2ca596a110c2f83e2ce5c71d6c882ff69ec90935c49516e\",\"cli_sha256\":\"4142d15db995b5fac7fb8535efd5b4fcd07edb6e8ce5edd6aed9bba31cc4812b\",\"environment\":\"development\",\"platform\":\"darwin\",\"arch\":\"arm64\",\"read_only\":false,\"server_running\":false,\"server_observation\":\"verified\",\"server_compatible\":null,\"server_creation_protocol_version\":null,\"server_policy\":\"shared_retained\"}}}"
+      }
+    ]
+  },
+  "probe_pack": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"cindyPath\":\"/Users/qingyang/mine-work/lumi/build/cindy-probe/lumi-host-acceptance-20261101/lumi-host-acceptance-20261101-0.0.1.cindy\",\"id\":\"lumi-host-acceptance-20261101\",\"name\":\"Lumi Host Acceptance\",\"version\":\"0.0.1\",\"note\":\"已完成校验和打包；本工具不会安装或更新插件。\"}"
+      }
+    ]
+  },
+  "probe_install": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"action\":\"updated\",\"id\":\"lumi-host-acceptance-20261101\",\"name\":\"Lumi Host Acceptance\",\"version\":\"0.0.1\",\"enabled\":true,\"instanceId\":\"_root__lumi-host-acceptance-20261101\",\"namespace\":null,\"note\":\"插件已完成校验、打包和原位更新；原有启用状态、配置与数据保持不变。\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-04T15:17:54.852Z",
+  "kind": "native-owned-proxy-release-shared-services-retained",
+  "events": [
+    {
+      "label": "release_a",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "release_b",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "final_release_b",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}}"
+          }
+        ]
+      }
+    },
+    {
+      "label": "final_release_development_diagnostic",
+      "raw": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"result\":{\"success\":true,\"data\":{\"released\":true,\"server_policy\":\"shared_retained\"}}}"
+          }
+        ]
+      }
+    }
+  ],
+  "projects_deleted": false,
+  "shared_servers_stopped": false,
+  "host_application_changed": false,
+  "additional_model_requests": false
+}
