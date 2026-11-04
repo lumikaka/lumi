@@ -6,7 +6,7 @@
 
 读取已保存故事和 `settings list/get`，整理本批 1–6 个重要角色、独立道具、边界清楚的地点缩景或参考主体。超过 6 个就分多张总览图；复杂场景、整幅环境图和单项细节精修采用单张流程。总览图各主体共享输出分辨率，细节不足的关键角色可在拆分后单独精修。
 
-优先处理本次章节／目标页面会用到的视觉主体；已有可用 `current_variant.asset` 的项直接复用。来源说明、版权备注和其他纯文字记录不纳入总览图。若页面已存在，可用 `image_target` 的 `setting_readiness` 查看候选和缺图情况，再传本页实际需要的 `setting_uuids` 检查，不能因其他章节资产缺图而重画整个项目。
+优先处理本次章节／目标页面会用到的视觉主体；已有可用 `current_variant.asset` 且符合本次参考要求的项直接复用。用户附带参考图时先按 [设定图的用户参考](setting-references.md) 区分用途、提取画风并检查已有设定；画风不符的项保留身份重绘，不能仅凭有图跳过。来源说明、版权备注和其他纯文字记录不纳入总览图。若页面已存在，可用 `image_target` 的 `setting_readiness` 查看候选和缺图情况，再传本页实际需要的 `setting_uuids` 检查，不能因其他章节资产缺图而重画整个项目。
 
 不需要先创建占位设定。已有同一主体的设定时记录其 UUID、revision 和描述，拆分时明确更新它；不要仅按同名猜测身份。不要因为同名冲突就删除已有设定。
 
@@ -15,10 +15,10 @@
 从 `prompt_catalog` 确认 `premise/setting_image`，调用 `render_prompt`：
 
 - `prompt_group=premise, prompt_key=setting_image, target=setting_board`。
-- `variables.input_text` 放本批主体的完整描述及视觉身份要求（最多 12000 字符），不把整本所有设定都塞进去。
+- `variables.input_text` 放本批主体的完整描述及视觉身份要求（最多 12000 字符）；有用户参考时补上提取的具体视觉要求和各图用途对应关系，不把整本所有设定都塞进去。
 - 按需用 `context_chapter_uuids/context_setting_uuids` 限定上下文。
 
-把返回的 **`generation_prompt`** 交给宿主 imagegen；`prompt` 中另附的工具写回信息不属于图像内容。模板负责白底、不可见 3×2 网格和留白，目标比例为 3:2。若要沿用已有主体或画风，按主 skill 的方式 `read_image` 实际读入相关参考后生成。
+把返回的 **`generation_prompt`** 交给宿主 imagegen；`prompt` 中另附的工具写回信息不属于图像内容。模板负责白底、不可见 3×2 网格和留白，目标比例为 3:2。若要沿用已有主体或画风，按主 skill 的方式 `read_image` 实际读入相关参考。用户附带本次相关视觉参考时，必须按 [显式传图规则](setting-references.md#3-显式传给宿主-imagegen) 使用 `referenced_image_paths` 或 `num_last_images_to_include` 携带原图；每批都检查，不能只传 `generation_prompt` 或以 `context_setting_uuids` 代替传图。
 
 这里无需 `image_target`，它服务于单项图片槽位；本批总览图的目标由 `render_prompt` 给出。
 
@@ -45,7 +45,7 @@
 
 ## 5. 审阅、修正和恢复
 
-提交后用 `review_settings` 展示，用 `settings get/read_image` 检查裁切是否完整、是否混入邻近主体。修正裁切时沿用原 board_uuid，重读批次、设定集合及目标设定 revision，使用新幂等键，并显式指定要更新的 setting_uuid；只重做需要修正的项。需要重新设计主体时走单项生图。
+提交后用 `review_settings` 展示，用 `settings get/read_image` 检查裁切是否完整、是否混入邻近主体；有用户视觉参考时，同时按提取的特征核对画风和身份，符合后再用于正文。修正裁切时沿用原 board_uuid，重读批次、设定集合及目标设定 revision，使用新幂等键，并显式指定要更新的 setting_uuid；只重做需要修正的项。需要重新设计主体或修正画风时，携带相关用户原图走单项生图。
 
 完成必要设定图后继续分页与画面描述。目标页面生图前，带所需 `setting_uuids` 再调用 `image_target`；确认缺图已补齐，调用 `prepare_page_image` 现拼本页合图；宿主查看返回的临时路径，再用 `referenced_image_paths` 仅传这一个路径。页面生图和导入使用同一份服务端完整提示词及准备摘要，见 [页面生图](page-images.md)。总览图已导入但未完成拆分，不等于各设定已有可复用图片。
 
