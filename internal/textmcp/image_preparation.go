@@ -14,6 +14,7 @@ type settingImageReadinessItem struct {
 	ExpectedRevision int64  `json:"expected_revision"`
 	HasImage         bool   `json:"has_image"`
 	AssetUUID        string `json:"asset_uuid,omitempty"`
+	VariantUUID      string `json:"variant_uuid,omitempty"`
 }
 
 type settingImageReadiness struct {
@@ -23,6 +24,8 @@ type settingImageReadiness struct {
 	AvailableCount int                         `json:"available_count"`
 	MissingCount   int                         `json:"missing_count"`
 	NextAction     string                      `json:"next_action"`
+	StylePrompt    string                      `json:"style_prompt"`
+	StyleDigest    string                      `json:"style_digest"`
 }
 
 type pageImageTarget struct {
@@ -45,6 +48,11 @@ func imageTarget(ctx context.Context, prod *production.Service, a arguments) (an
 		return nil, err
 	}
 	readiness := settingImageReadiness{Scope: "project_candidates", Status: "selection_required", NextAction: "select_page_settings", Items: []settingImageReadinessItem{}}
+	readiness.StylePrompt, err = prod.HostSettingReviewStyle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	readiness.StyleDigest = production.SettingReviewStyleDigest(readiness.StylePrompt)
 	if a.ImageSettings != nil {
 		byUUID := make(map[string]production.PremiseAsset, len(settings))
 		for _, setting := range settings {
@@ -59,7 +67,7 @@ func imageTarget(ctx context.Context, prod *production.Service, a arguments) (an
 			settings = append(settings, setting)
 			delete(byUUID, uuid)
 		}
-		readiness.Scope, readiness.Status, readiness.NextAction = "selected_settings", "ready", "prepare_page_image"
+		readiness.Scope, readiness.Status, readiness.NextAction = "selected_settings", "review_required", "review_setting_images"
 	}
 	for _, setting := range settings {
 		hasImage := setting.CurrentVariant != nil && setting.CurrentVariant.Asset.UUID != "" && setting.CurrentVariant.Asset.Kind == "image"
@@ -71,6 +79,7 @@ func imageTarget(ctx context.Context, prod *production.Service, a arguments) (an
 		item := settingImageReadinessItem{SettingUUID: setting.UUID, Title: setting.Title, AssetType: setting.AssetType, ExpectedRevision: setting.Revision, HasImage: hasImage}
 		if hasImage {
 			item.AssetUUID = setting.CurrentVariant.Asset.UUID
+			item.VariantUUID = setting.CurrentVariant.UUID
 			readiness.AvailableCount++
 		} else {
 			readiness.MissingCount++

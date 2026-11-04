@@ -32,7 +32,12 @@ func TestPageImageImportRechecksInputsAtCommit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			prepared, err := h.service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: page.UUID, SettingUUIDs: []string{setting.UUID}, AdditionalDirection: "Keep all dialogue"})
+			style, err := h.service.HostSettingReviewStyle(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			reviews := []HostSettingReview{{SettingUUID: setting.UUID, VariantUUID: first.VariantUUID, ExpectedRevision: first.Revision, StyleDigest: SettingReviewStyleDigest(style), Verdict: "passed", ReferenceBasis: "Fixture style", Comparison: "Fixture proportions and linework match"}}
+			prepared, err := h.service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: page.UUID, SettingUUIDs: []string{setting.UUID}, AdditionalDirection: "Keep all dialogue", SettingReviews: reviews})
 			if err != nil {
 				t.Fatal(err)
 			}

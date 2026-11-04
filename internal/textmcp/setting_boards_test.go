@@ -19,6 +19,9 @@ func TestHostSettingBoardsThroughMCPWithoutProviders(t *testing.T) {
 	if write["tool"] != "setting_boards" || write["action"] != "import" || !strings.Contains(generation, "A fox and its lantern") || strings.Contains(generation, "Write-back contract") {
 		t.Fatalf("render=%+v", rendered)
 	}
+	if strings.Contains(generation, "setting_reviews") || strings.Contains(generation, "prepare_page_image") || !strings.Contains(rendered["prompt"].(string), "setting_reviews") {
+		t.Fatal("host review workflow must stay in the authoring task, outside the image prompt")
+	}
 	var encoded bytes.Buffer
 	if err := png.Encode(&encoded, image.NewRGBA(image.Rect(0, 0, 300, 200))); err != nil {
 		t.Fatal(err)

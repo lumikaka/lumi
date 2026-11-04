@@ -39,11 +39,24 @@ func preparedFixtureImage(t *testing.T) string {
 
 func preparePageFixture(t *testing.T, s *Service, root, page string, selection []string, direction string) map[string]any {
 	t.Helper()
-	prepared := object(t, invoke(t, s, root, "prepare_page_image", map[string]any{"page_uuid": page, "setting_uuids": selection, "additional_direction": direction}))
+	prepared := object(t, invoke(t, s, root, "prepare_page_image", map[string]any{"page_uuid": page, "setting_uuids": selection, "setting_reviews": fixtureSettingReviews(t, s, root, page, selection), "additional_direction": direction}))
 	if path := prepared["reference_image_path"].(string); path != "" {
 		t.Cleanup(func() { _ = os.Remove(path) })
 	}
 	return prepared
+}
+
+// A host-review test double supplies assessments; these synthetic images do
+// not claim to test the quality of a real model's visual judgement.
+func fixtureSettingReviews(t *testing.T, s *Service, root, page string, selection []string) []any {
+	t.Helper()
+	readiness := object(t, invoke(t, s, root, "image_target", map[string]any{"target_uuid": page, "slot": "page_image", "setting_uuids": selection}))["setting_readiness"].(map[string]any)
+	reviews := []any{}
+	for _, raw := range readiness["items"].([]any) {
+		item := raw.(map[string]any)
+		reviews = append(reviews, map[string]any{"setting_uuid": item["setting_uuid"], "variant_uuid": item["variant_uuid"], "expected_revision": item["expected_revision"], "style_digest": readiness["style_digest"], "verdict": "passed", "reference_basis": "Fixture user style and image", "comparison": "Fixture identity, proportions, contour, palette and texture match the requested reference."})
+	}
+	return reviews
 }
 
 func preparedImportArgs(prepared map[string]any, path string) map[string]any {
@@ -61,7 +74,7 @@ func TestPreparePageFourSettingsHostPathFlow(t *testing.T) {
 		selection = append(selection, setting["uuid"].(string))
 	}
 	prepared := preparePageFixture(t, s, root, page, selection, "保留对白及完整主体，四周留白。")
-	wireResult, err := boundedResult(invoke(t, s, root, "prepare_page_image", map[string]any{"page_uuid": page, "setting_uuids": selection, "additional_direction": "保留对白及完整主体，四周留白。"}))
+	wireResult, err := boundedResult(invoke(t, s, root, "prepare_page_image", map[string]any{"page_uuid": page, "setting_uuids": selection, "setting_reviews": prepared["preparation"].(map[string]any)["setting_reviews"], "additional_direction": "保留对白及完整主体，四周留白。"}))
 	if err != nil || wireResult.IsError || len(wireResult.Content) != 1 {
 		t.Fatal(wireResult, err)
 	}

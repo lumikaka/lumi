@@ -185,10 +185,14 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	if err != nil {
 		return nil, httpapi.NewError(400, "prompt_inputs_missing", "提示词缺少任务输入", err.Error()+"；用 prompt_catalog 查看占位符，在 variables 中补齐。", nil)
 	}
+	// Put host-specific constraints in authoring tasks, including text settings
+	// and storyboards where conflicting visual requirements can originate.
+	visualGuidance := hostVisualAuthoringPrompt(book.Project.GenerationLanguage)
 	// Keep reusable catalog text separate from the agent task envelope. Image
 	// composition must not copy JSON-output rules or write-back instructions
 	// into the provider prompt.
 	renderedTemplate := prompt
+	prompt = visualGuidance + "\n\n" + prompt
 	language, err := st.EffectiveLanguageInstruction(ctx)
 	if err != nil {
 		return nil, err
@@ -231,7 +235,7 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	}
 	if a.Target == "setting_board" {
 		// Only the catalog's visual prompt goes to imagegen, not tool metadata.
-		generationPrompt := strings.TrimSpace(language + "\n\n" + prompt + "\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.")
+		generationPrompt := strings.TrimSpace(language + "\n\n" + hostVisualStylePrompt(book.Project.GenerationLanguage) + "\n\n" + renderedTemplate + "\n\nCanvas: landscape 3:2. Keep all subjects and safety margins inside the image.")
 		if len([]rune(generationPrompt)) > 12000 {
 			return nil, httpapi.NewError(400, "prompt_too_large", "总览图提示词过长", "缩小本批 source_text 或项目提示词；生图和导入需保存同一完整提示词（最多 12000 字符）。", nil)
 		}

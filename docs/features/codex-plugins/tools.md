@@ -224,13 +224,13 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`，页面额外返回 `setting_readiness`。ratio 为 `{width,height}`，不是输出像素要求。
 
-`setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid`。页面随后调用 `prepare_page_image`，由服务端读取源图并合图，agent 不逐张读取。
+`setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action,style_prompt,style_digest`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid,variant_uuid`。核对阶段用 `read_image` 实际看图，记录与用户要求／原参考的具体对照；页面生成阶段随后调用 `prepare_page_image`，由服务端读取源图并合图，agent 不逐张读取。
 
 | 选择 | scope / status | 下一步 |
 | --- | --- | --- |
 | 省略 `setting_uuids` | `project_candidates / selection_required` | 返回视觉候选，排除无图的 reference 文字备注；按当前页面选择设定。无候选时先提取视觉设定。 |
 | 已选设定有缺图项 | `selected_settings / missing_images` | 批量或逐项补齐所选缺图，不要求补齐其他章节资产。 |
-| 已选设定均有图片 | `selected_settings / ready` | 调用 `prepare_page_image` 现拼本页参考图。 |
+| 已选设定均有图片 | `selected_settings / review_required` | 核对当前设定图并提交 `setting_reviews`，通过后准备本页参考图。 |
 | 显式传 `[]` | `selected_settings / no_settings_selected` | 核对页面是否无需视觉设定，不将空选择当成就绪批准。 |
 
 该检查不持久化页面依赖或选图，不修改 revision，也不自动生成图片。首次创作默认先完成必要设定图；“正文只生成第一页”不取消设定图阶段。用户明确要求跳过或限制全部生图次数时按实际要求执行，不伪报就绪。
@@ -243,13 +243,15 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 ### prepare_page_image
 
-必填 `page_uuid,setting_uuids`；可选 `additional_direction`（最多 12000 字符）。明确选择本页所需的当前项目 active 设定，最多 12 项、不得重复，数组顺序就是标签顺序。缺少选择和 null 无效；明确 `[]` 返回真实无参考模式。缺图、跨项目、无效或不可读源图明确报错。
+必填 `page_uuid,setting_uuids`；非空选择还必须提供逐项通过的 `setting_reviews`；可选 `additional_direction`（最多 12000 字符）。明确选择本页所需的当前项目 active 设定，最多 12 项、不得重复，数组顺序就是标签顺序。缺少选择和 null 无效；明确 `[]` 返回真实无参考模式。缺图、跨项目、无效或不可读源图明确报错。
+
+`setting_reviews` 每项为 `{setting_uuid,variant_uuid,expected_revision,style_digest,verdict,reference_basis,comparison}`。身份、版本和画风摘要来自 `image_target`；`verdict=passed` 才可继续，`needs_revision` 阻止准备。依据和具体观察各为非空字符串，最多 2000 字符。缺失或未通过返回 `setting_image_review_required`，设定 revision／采用图片／有效画风变化返回 `setting_image_review_stale`；必须实际重新核对，不能只替换版本。无参考选择可省略。服务端校验记录与事实的对应关系，不声称自动判断视觉相似度。
 
 Go 使用与 Web 相同的 production 合图实现，维持原始比例、完整主体、中文编号名称及留白，每次现拼 PNG 到系统临时目录。返回真实绝对 `reference_image_path`、`reference_mode`、有序 `sources`（设定 UUID/revision、图片 variant_uuid/version_no/file_uuid、标签和内容 SHA-256）、`image_info`、`target`、完整 `generation_prompt`、`image_write_back` 与 `preparation`。none 模式路径为空、sources=[]、image_info=null。不注册项目 Asset、不建立合图缓存，不返回合图 Base64、data URI 或 MCP image content。
 
 提示词复用 Web 的有效角色基础规则、project_overall_style 及旧数据回退、语言指令、参考说明、已保存分镜、用户补充要求。agent 使用宿主读图能力查看返回路径，再用 imagegen `referenced_image_paths=[同一路径]`，仅这一张参考图；none 模式省略参考参数。保持完整提示词原样，不在返回后追加说明或重写参考描述。
 
-`preparation` 含项目/页面身份、revision、所选 UUID、补充要求、SHA-256 digest 与服务进程 HMAC 签名。摘要覆盖当前页面、设定版本及源字节、标签顺序、有效模板/画风/语言、项目规格、完整提示词与合图输入/合成器版本；临时路径不参与来源身份。凭据不缓存，后台重启需重新准备。
+`preparation` 含项目/页面身份、revision、所选 UUID、版本绑定的核对记录、补充要求、SHA-256 digest 与服务进程 HMAC 签名。摘要覆盖当前页面、设定版本及源字节、标签顺序、有效模板/画风/语言、项目规格、完整提示词与合图输入/合成器版本；临时路径不参与来源身份。凭据不缓存，后台重启需重新准备。
 
 ### import_image
 

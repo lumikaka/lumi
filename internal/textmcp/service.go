@@ -40,6 +40,7 @@ type arguments struct {
 	Crops                   []production.HostSettingCrop `json:"assets"`
 
 	AdditionalDirection string                                  `json:"additional_direction"`
+	SettingReviews      []production.HostSettingReview          `json:"setting_reviews"`
 	Preparation         *production.PageImagePreparationReceipt `json:"preparation"`
 
 	Action           string                    `json:"action"`
@@ -262,7 +263,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		case "image_target":
 			result, callErr = imageTarget(ctx, prod, a)
 		case "prepare_page_image":
-			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection})
+			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews})
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision), Preparation: a.Preparation})
 		case "read_image", "read_app_image":

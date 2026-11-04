@@ -28,7 +28,7 @@
 
 创作范围分别写清设定图、封面图和正文图。“正文只生成第一页”仍包含首次创作的必要设定图；不要把固定的 `project_only` 当作只写文字，也不要自行添加额度限制。用户明确的纯文字或跳过设定图要求优先。
 
-用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先实际读图并区分画风／身份／故事用途；画风参考提取具体视觉特征后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图；设定生图必须通过宿主图片参数携带相关原图。`context_setting_uuids` 只提供项目上下文，不会自动把图片传给 imagegen。
+用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先实际读图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图；设定生图必须通过宿主图片参数携带相关原图。`context_setting_uuids` 只提供项目上下文，不会自动把图片传给 imagegen。
 
 先核对合法组合，再提供选项。定稿后正式规格不可改；用户已指定的形式与比例冲突时，说明可行选择及影响，获得针对冲突的决定后再定稿。选择比例不等于同意改形式；已有自主授权范围内的缺失选择可直接决定，不新增重复确认。
 
@@ -144,7 +144,7 @@
 
 ## 批量设定图
 
-页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图，再调用 `prepare_page_image(page_uuid, setting_uuids, additional_direction?)` 返回现拼合图路径；宿主读该路径并通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
+页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)` 返回现拼合图路径；宿主读该路径并通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
 执行前读 [批量设定图流程](batch-settings.md)。这些工具只保存、裁切和绑定图片；生成及视觉定位由 Codex 完成。
 

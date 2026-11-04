@@ -58,14 +58,14 @@ func TestPageImageReadinessResumesBatchIntoExistingSettings(t *testing.T) {
 	raw, _ := json.Marshal(request)
 	target = object(t, s.CallReadOnly(t.Context(), root, "image_target", raw))
 	ready := target["setting_readiness"].(map[string]any)
-	if ready["scope"] != "selected_settings" || ready["status"] != "ready" || ready["available_count"] != float64(2) || ready["missing_count"] != float64(0) || ready["next_action"] != "prepare_page_image" {
+	if ready["scope"] != "selected_settings" || ready["status"] != "review_required" || ready["available_count"] != float64(2) || ready["missing_count"] != float64(0) || ready["next_action"] != "review_setting_images" || len(ready["style_digest"].(string)) != 64 {
 		t.Fatalf("ready=%v", ready)
 	}
 	for i, setting := range []map[string]any{owl, fox} {
 		item := ready["items"].([]any)[i].(map[string]any)
 		current := object(t, invoke(t, s, root, "settings", map[string]any{"action": "get", "setting_uuid": setting["uuid"]}))
 		asset := current["current_variant"].(map[string]any)["asset"].(map[string]any)
-		if item["setting_uuid"] != setting["uuid"] || item["asset_uuid"] != asset["uuid"] || item["expected_revision"] != current["revision"] || item["has_image"] != true {
+		if item["setting_uuid"] != setting["uuid"] || item["asset_uuid"] != asset["uuid"] || item["expected_revision"] != current["revision"] || item["variant_uuid"] != current["current_variant"].(map[string]any)["uuid"] || item["has_image"] != true {
 			t.Fatalf("item=%v current=%v", item, current)
 		}
 		if _, err := imageToolResult(invoke(t, s, root, "read_image", map[string]any{"asset_uuid": item["asset_uuid"]})); err != nil {

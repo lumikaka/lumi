@@ -32,16 +32,18 @@ type PreparePageImageInput struct {
 	PageUUID            string
 	SettingUUIDs        []string
 	AdditionalDirection string
+	SettingReviews      []HostSettingReview
 }
 
 type PageImagePreparationReceipt struct {
-	ProjectUUID         string   `json:"project_uuid"`
-	PageUUID            string   `json:"page_uuid"`
-	ExpectedRevision    int64    `json:"expected_revision"`
-	SettingUUIDs        []string `json:"setting_uuids"`
-	AdditionalDirection string   `json:"additional_direction"`
-	Digest              string   `json:"digest"`
-	Signature           string   `json:"signature"`
+	ProjectUUID         string              `json:"project_uuid"`
+	PageUUID            string              `json:"page_uuid"`
+	ExpectedRevision    int64               `json:"expected_revision"`
+	SettingUUIDs        []string            `json:"setting_uuids"`
+	AdditionalDirection string              `json:"additional_direction"`
+	SettingReviews      []HostSettingReview `json:"setting_reviews,omitempty"`
+	Digest              string              `json:"digest"`
+	Signature           string              `json:"signature"`
 }
 
 type PageImageSource struct {
@@ -136,6 +138,9 @@ func (service *Service) pageImageInputs(ctx context.Context, input PreparePageIm
 		v := setting.CurrentVariant
 		result.Sources = append(result.Sources, PageImageSource{Order: i + 1, Label: fmt.Sprintf("%d. %s", i+1, strings.TrimSpace(setting.Title)), SettingUUID: setting.UUID, Title: setting.Title, AssetType: setting.AssetType, Revision: setting.Revision, VariantUUID: v.UUID, VersionNo: v.VersionNo, FileUUID: v.Asset.UUID, SHA256: hashes[i]})
 	}
+	if err := validateHostSettingReviews(selected, rules.StyleSnapshot, input.SettingReviews); err != nil {
+		return result, nil, err
+	}
 	prompt, err := RenderSectionImagePrompt(rules, references)
 	if err != nil {
 		return result, nil, domainError(CodeValidation, "页面生图提示词无法组装", err.Error(), err)
@@ -165,7 +170,7 @@ func (service *Service) pageImageInputs(ctx context.Context, input PreparePageIm
 	digest := sha256.Sum256(encoded)
 	result.Target, result.GenerationPrompt = target, prompt
 	result.ImageWriteBack = PageImageWriteBack{page.UUID, "page_image", page.Revision}
-	result.Preparation = PageImagePreparationReceipt{ProjectUUID: service.store.ProjectUUID(), PageUUID: page.UUID, ExpectedRevision: page.Revision, SettingUUIDs: append([]string{}, input.SettingUUIDs...), AdditionalDirection: input.AdditionalDirection, Digest: hex.EncodeToString(digest[:])}
+	result.Preparation = PageImagePreparationReceipt{ProjectUUID: service.store.ProjectUUID(), PageUUID: page.UUID, ExpectedRevision: page.Revision, SettingUUIDs: append([]string{}, input.SettingUUIDs...), AdditionalDirection: input.AdditionalDirection, SettingReviews: append([]HostSettingReview(nil), input.SettingReviews...), Digest: hex.EncodeToString(digest[:])}
 	return result, sources, nil
 }
 
@@ -221,7 +226,7 @@ func (service *Service) validatePageImagePreparation(ctx context.Context, input 
 	if receipt == nil || receipt.ProjectUUID != service.store.ProjectUUID() || receipt.PageUUID != input.TargetUUID || receipt.ExpectedRevision != input.ExpectedRevision || !hmac.Equal([]byte(receipt.Signature), []byte(receipt.signature())) {
 		return preparationConflict()
 	}
-	current, _, err := service.pageImageInputs(ctx, PreparePageImageInput{PageUUID: receipt.PageUUID, SettingUUIDs: receipt.SettingUUIDs, AdditionalDirection: receipt.AdditionalDirection})
+	current, _, err := service.pageImageInputs(ctx, PreparePageImageInput{PageUUID: receipt.PageUUID, SettingUUIDs: receipt.SettingUUIDs, AdditionalDirection: receipt.AdditionalDirection, SettingReviews: receipt.SettingReviews})
 	if err != nil {
 		return preparationConflict()
 	}

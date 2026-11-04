@@ -82,8 +82,15 @@ def main():
                         'description_md': '小狐狸说：“天亮了！”',
                         'storyboard_md': '小狐狸背着银色邮包站在黄昏灯塔下，手持星空地图。完整保留对白：“天亮了！”',
                         'expected_revision': pages['state']['revision']})
+        readiness = mcp.tool('image_target', {'target_uuid': page['uuid'], 'slot': 'page_image',
+                             'setting_uuids': settings})['setting_readiness']
+        # Synthetic review double for this fixture only; it makes no art-quality claim.
+        reviews = [{'setting_uuid': item['setting_uuid'], 'variant_uuid': item['variant_uuid'],
+                    'expected_revision': item['expected_revision'], 'style_digest': readiness['style_digest'],
+                    'verdict': 'passed', 'reference_basis': '协议测试替身图，无实际画风参考',
+                    'comparison': '只验证测试替身的版本绑定；不代表真实美术核对通过'} for item in readiness['items']]
         result = mcp.rpc('tools/call', {'name': 'prepare_page_image', 'arguments': {
-                        'page_uuid': page['uuid'], 'setting_uuids': settings, 'additional_direction': '保留主体和对白，预留安全边距。'}})
+                        'page_uuid': page['uuid'], 'setting_uuids': settings, 'setting_reviews': reviews, 'additional_direction': '保留主体和对白，预留安全边距。'}})
         assert len(result['content']) == 1 and result['content'][0]['type'] == 'text'
         assert result['structuredContent']['success'], result
         prepared = result['structuredContent']['data']
