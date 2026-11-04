@@ -115,7 +115,11 @@ try {
     [void][IO.Directory]::CreateDirectory($testRoot)
     $script:installContext = @{ scratch = $testRoot }
     $currentShell = (Get-Process -Id $PID).Path
-    $nativeText = & $realNative $currentShell @('-NoProfile','-NonInteractive','-Command', '[Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); [Console]::Error.WriteLine("diagnostic"); [Console]::WriteLine([char]0x7ed8); exit 0')
+    # Windows PowerShell 5.1 strips embedded double quotes from native arguments.
+    # Encode the probe as UTF-16LE so both shells execute the same source text.
+    $nativeProbe = '[Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); [Console]::Error.WriteLine("diagnostic"); [Console]::WriteLine([char]0x7ed8); exit 0'
+    $encodedProbe = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($nativeProbe))
+    $nativeText = & $realNative $currentShell @('-NoProfile','-NonInteractive','-EncodedCommand', $encodedProbe)
     Assert ($nativeText.Trim() -eq [string][char]0x7ed8) 'Native UTF-8 stdout was corrupted or mixed with stderr'
     Expect-Failure { & $realNative $currentShell @('-NoProfile','-NonInteractive','-Command','exit 7') } 'Command failed \(7\)'
     Pass 'native subprocess preserves UTF-8, separates stderr and checks exit status'
