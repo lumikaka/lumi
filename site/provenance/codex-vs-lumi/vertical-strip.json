@@ -1,0 +1,193 @@
+{
+  "case": "vertical-strip",
+  "novel": "不存在的同学会",
+  "date": "2026-11-05",
+  "threads": {
+    "codex": "01a1ab12-8dfa-7232-a389-5d9ce73eb4b3",
+    "lumi": "01a1aace-f144-7143-b3dc-cfc0f2d920dc"
+  },
+  "shared_novel_sha256": "7d65cd9ae526a6289a159dfc87ce36fb2aba902c0f9c450206e714b2938e7c23",
+  "encoding": "cwebp -q 80 -m 6 -sharp_yuv; original dimensions",
+  "assets": [
+    {
+      "file": "codex-01.webp",
+      "source": "Native chapter-01/images/01.png",
+      "source_sha256": "486072b5c66432e82df95a17f0dec7a447bb16520d6647910c43d6e6ea7bbf7c",
+      "sha256": "e2b64562b1cc7172512a37b51d5608eeede181acefd059480f63d745d27f68f4"
+    },
+    {
+      "file": "codex-02.webp",
+      "source": "Native chapter-01/images/02.png",
+      "source_sha256": "567aa21525565b4502c263b30c4d188ca98095996201ae9d2dde4baa3dc440f2",
+      "sha256": "0299d451b296363e61b6cb9cfdd94a56db6a9b5af54b2ddcb07ea84c2d0c3752"
+    },
+    {
+      "file": "codex-03.webp",
+      "source": "Native chapter-01/images/03.png",
+      "source_sha256": "5fd669c65116c729b3f7072496f2220ff94e1587bf3c0f5e61df84dd8175c762",
+      "sha256": "251576a28255da999e7f078631f2540a449c3528b5b3b0870981a60cb394e1e4"
+    },
+    {
+      "file": "codex-04.webp",
+      "source": "Native chapter-01/images/04.png",
+      "source_sha256": "020a52659fa6c0390b938c4fd4932e5a888382fbfcafe593fe786842992ae2a8",
+      "sha256": "897956ed4eb9a7f36653c7eb86be6cdebec2234401533cd548697f1b0b42cb6b"
+    },
+    {
+      "file": "codex-05.webp",
+      "source": "Native chapter-01/images/05.png",
+      "source_sha256": "9d1d5977cbdca82d1991c0dd60e452aba62160a80bcac85b4bfd8bcc2296c154",
+      "sha256": "5a308a73ea006c0e3608e3f508ec75b3642bb50a158bab9899a02a0bda5d7074"
+    },
+    {
+      "file": "codex-06.webp",
+      "source": "Native chapter-01/images/06.png",
+      "source_sha256": "341ad5a264b0be7932ca4c041825bb4f1b52b8dbeeb86fc2319d5fcb4b549ba1",
+      "sha256": "75c84ac539068809e3ef73b1c367c4c9ea751eff90d8bd9b1571a06e4407a371"
+    },
+    {
+      "file": "codex-07.webp",
+      "source": "Native chapter-01/images/07.png",
+      "source_sha256": "0d6bf1d8c416a032f73b0df0578eb32227afe3c074ae50b5ef2ff4ab316c0ec9",
+      "sha256": "598c3c23ffa0b35f8352ca35b2121597490a81652c869be65e2a302cbd3b025f"
+    },
+    {
+      "file": "codex-08.webp",
+      "source": "Native chapter-01/images/08.png",
+      "source_sha256": "f4eaf561e2196ee36e2ee4d8e25c9feb204ea8402ee454e9341afa31b5d5713e",
+      "sha256": "773e13cb36fb3b0fa04a29246ea4feedb8b96dbc4cadc555bbf9d7c29f8c3e8b"
+    },
+    {
+      "file": "codex-09.webp",
+      "source": "Native chapter-01/images/09.png",
+      "source_sha256": "c746d4a6d9ac83954a245d24197f71b5454d5dd0fe8e11775eec975aadd187ab",
+      "sha256": "ae9728f8eeac2160a592345f655bb5e00118a747e816b258908961fe1f0ac596"
+    },
+    {
+      "file": "codex-10.webp",
+      "source": "Native chapter-01/images/10.png",
+      "source_sha256": "391211eb7ae0d2e3539547da7ac945e78110e145c0e3cdf555468d21ff215fb0",
+      "sha256": "b6bd9295098a524e07ad4b757954b8effe3ffa84a6154592823607fdebe386c0"
+    },
+    {
+      "file": "codex-11.webp",
+      "source": "Native chapter-01/images/11.png",
+      "source_sha256": "67e7bfa146c72a550a1a0b0fe1e4f2bea80d9b9c535f57b433c31df8834bca40",
+      "sha256": "39ce14a4cb60dd52a11f3d7a4125a4e4a41260870f51f66798cc82bf545af792"
+    },
+    {
+      "file": "codex-12.webp",
+      "source": "Native chapter-01/images/12.png",
+      "source_sha256": "efec882de736dc982ceb8d2a37dd11f0662fc57906dd3420b89336ba5799c04d",
+      "sha256": "5b502c1035102fc2c66cee19ef8094836a1215e99edec22bceffc8ac67af3476"
+    },
+    {
+      "file": "codex-13.webp",
+      "source": "Native chapter-01/images/13.png",
+      "source_sha256": "e1fd7b15d3d0ee826e212ffc9b754e76ddee14b4bd228d7f1934b4f06367ee55",
+      "sha256": "5de5b2d7c11932c4020739563b2b8633802552057b5c94c8583cf95d73a7aadb"
+    },
+    {
+      "file": "codex-14.webp",
+      "source": "Native chapter-01/images/14.png",
+      "source_sha256": "c52b9f6b98f93266a86e386483cbaf09a94ca46476f913ad364e3d415ef99bc2",
+      "sha256": "50528662ef80c65ed0c16b71871afec8df2c74f9556aa250728222c21e93f757"
+    },
+    {
+      "file": "codex-15.webp",
+      "source": "Native chapter-01/images/15.png",
+      "source_sha256": "e97160d5cb079d9f394fff90f2d7b8db50d3e324c3d196c12124b7a8cf815b40",
+      "sha256": "332d5d2ccf94784f42d38e4f11d16d83a8d911f163fa830b390efe960dfa9118"
+    },
+    {
+      "file": "codex-16.webp",
+      "source": "Native chapter-01/images/16.png",
+      "source_sha256": "df37f06d4b3359dc1cc8eee373f8a2d589a544591ba46b748dd0372833cd96ef",
+      "sha256": "20709e50182efe670e298a892fa8b0aa7113b8eda46415adf906958847aad2b4"
+    },
+    {
+      "file": "lumi-01.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-001.png",
+      "source_sha256": "b161a68b6ff3d96bd819c287e65f3902849e17f8935e2fc67d73e9c4da20d569",
+      "sha256": "6c8233cb13770758fd07923ef8b470ff02a240b951396fa419910239b91eb105"
+    },
+    {
+      "file": "lumi-02.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-002.png",
+      "source_sha256": "2f9fb4cb7833af5eb03067e0a0fbdcacbe0a667b17bac746a91ff13bac8d3523",
+      "sha256": "56a8d4d0a8ca69f2d7cc5b7f3a38284bcb12e6ebdf3071d0b8ba780023f24640"
+    },
+    {
+      "file": "lumi-03.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-003.png",
+      "source_sha256": "b5d82a914240df49943014b52937d7d04031384fe7a7351d8e62670687dfe177",
+      "sha256": "f08beddc547e30e121b86e764715e929fd58d96d71b143e4f0272e65742a402b"
+    },
+    {
+      "file": "lumi-04.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-004.png",
+      "source_sha256": "57598fc9619a2e8a0affc6efd7e815434c151d4e918f04e1b98bf1893cbd95cc",
+      "sha256": "212f716d89d360a9ae8848924eda85b2a351263eb09ecb0eaa8186aff8010b7b"
+    },
+    {
+      "file": "lumi-05.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-005.png",
+      "source_sha256": "291d2aa7609ea82d14348ae991e5f713bc9af6269515a793dbdc2f56f68a1b1d",
+      "sha256": "5f4e55b01aafdf42d2336611497df528733ae84845db8231c38dce68b0687c0f"
+    },
+    {
+      "file": "lumi-06.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-006.png",
+      "source_sha256": "9f2ff03141aba52a6ced2cf4681c4fee41e0bb571a40d0d096bd09cba7a4f6dd",
+      "sha256": "9b674ad149a12a08539b75baa67ee22933d20cdef9eb28a72618fd50e5114b66"
+    },
+    {
+      "file": "lumi-07.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-007.png",
+      "source_sha256": "f05f0c5a64528a55c77bb4908b0a8da8a38332e6ba7ddad7f9236770c3e00a37",
+      "sha256": "20bef318ece6bbeb7ee2766073e05cfe76581b943a8fec4e1296f590d8be53aa"
+    },
+    {
+      "file": "lumi-08.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-008.png",
+      "source_sha256": "c6e6de4993024508b924b9b376ba529a06c3cabbb1101185aef1c92bf5aef1f2",
+      "sha256": "c2be9bd7ccf2cb5f1c9bb10ab8ec6c3b1cd6e8d027092ec2ab14d47ceea73b00"
+    },
+    {
+      "file": "lumi-09.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-009.png",
+      "source_sha256": "471e183f994f37bf8cd38fb5d08725796c87eadacda9377931d9cd8464afa31c",
+      "sha256": "4d409d4d6b1f4294255e0c114dccd6efaacb3d122375fc72dbdaa336da179822"
+    },
+    {
+      "file": "lumi-10.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-010.png",
+      "source_sha256": "fb71defff1d3fcb2742c978405d7bc231e095fd61af84b5e0bd80aafeafa9595",
+      "sha256": "d1dd0359647118cdf698dc303359c87aa566b00517a807d5defced9577d85ac7"
+    },
+    {
+      "file": "lumi-11.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-011.png",
+      "source_sha256": "0b21d6f08833991a782d21d41559a5beee9666ae362086a2ec4146628a8c8b6a",
+      "sha256": "642dc595ae3c49e9bf3eca43709b2975d12a4abe9cbe3d8a7fb2c82fe8dfa72b"
+    },
+    {
+      "file": "lumi-12.webp",
+      "source": "Lumi chapter ZIP: images/vol01.ch01/pages/page-012.png",
+      "source_sha256": "951ce99e298de450d49fabf56c884f31a8bb3af887b0d06e33b0a5c00cb3151c",
+      "sha256": "d3ec3396488c433dff8021cbc5753c8fda9c8fad4b30558802142840d186cf97"
+    },
+    {
+      "file": "settings-characters.webp",
+      "source": "Lumi assets/premise/setting-images/asset-bin--01a1aadb-7a7a-7645-88f9-60d4a917041b.png",
+      "source_sha256": "d629927b3e70717f8e327936d20705a2467af0e2cbbe852175f1a95a8bc21db5",
+      "sha256": "e36cc29a99f9991f431b9642ec0cfb0af79b1a53fb0422229ad7c37f0c857275"
+    },
+    {
+      "file": "settings-places-props.webp",
+      "source": "Lumi assets/premise/setting-images/asset-bin--01a1aadd-1ccc-728d-a8f8-478143e3f92e.png",
+      "source_sha256": "db5bb2f61e42906077c55d6119a60106b283bcf79b121410912b4bc55d306bb7",
+      "sha256": "f82a9572cdba8802e5b3011a74cf94cd66a2e2c28ddf4a9981f0e7b7bcb419c6"
+    }
+  ]
+}

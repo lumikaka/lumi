@@ -3,6 +3,7 @@
 {{ $copy := .Params.copy }}
 {{ $install := .Site.GetPage "/docs/codex-installation" }}
 <main class="comparison section-shell" id="main-content">
+  {{ partial "comparison-formats.html" . }}
   <div class="comparison-intro">
     <header class="comparison-hero">
       <p class="eyebrow">{{ $copy.eyebrow }}</p>
@@ -120,10 +121,6 @@
     <a class="button button--dark button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $install.RelPermalink) }}">{{ $copy.cta_button }}</a>
   </section>
 
-  <dialog class="comparison-lightbox" data-comparison-lightbox aria-labelledby="comparison-lightbox-title">
-    <div class="comparison-lightbox__toolbar"><h2 id="comparison-lightbox-title" data-comparison-image-title></h2><div class="comparison-lightbox__actions"><button class="button button--light comparison-zoom" type="button" data-comparison-zoom aria-pressed="false" aria-controls="comparison-image-viewport">{{ $copy.actual_size }}</button><form method="dialog"><button class="button button--light" autofocus>{{ $copy.close }}</button></form></div></div>
-    <div class="comparison-lightbox__viewport" id="comparison-image-viewport" tabindex="0" role="region" aria-labelledby="comparison-lightbox-title"><img data-comparison-image alt=""></div>
-    <p>{{ $copy.lightbox_hint }} <a data-comparison-original target="_blank" rel="noopener">{{ $copy.open_image }}</a></p>
-  </dialog>
+  {{ partial "comparison-lightbox.html" . }}
 </main>
 {{ end }}

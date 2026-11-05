@@ -1,0 +1,21 @@
+scenes:
+  # Align chapter one by story event; the two adaptations paginate independently.
+  - {id: return, codex: [1, 2, 3], lumi: [1, 2]}
+  - {id: classmates, codex: [4, 5, 6], lumi: [3, 4]}
+  - {id: seats, codex: [7, 8], lumi: [5]}
+  - {id: flowers, codex: [9, 10, 11], lumi: [6, 7, 8]}
+  - {id: promise, codex: [12, 13], lumi: [9]}
+  - {id: letter, codex: [14, 15, 16], lumi: [10, 11, 12]}
+prompts:
+  codex: |-
+    以下小说，创建一个条漫(就是韩国的webtton)，分成五个章节，实现第一个章节的所有图片，第一个章节你自动分镜分页
+
+    <备注>
+    Webtoon（웹툰）是起源于韩国的一种网络漫画形式，也被称为“条漫”或“韩式网络漫画”。
+    它最大的特点是：专门为手机阅读设计，通过上下滑动屏幕来阅读漫画。
+    </备注>
+
+    XXX: 不能使用Lumi插件
+    XXX: 对白直接通过 imagegen 生成
+  lumi: |-
+    以下小说，使用 @Lumi 绘本创作（开发版） 创建一个条漫，分成五个章节，实现第一个章节的所有图片，第一个章节你自动分镜分页

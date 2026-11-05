@@ -34,6 +34,8 @@ required_files=(
   en/404.html
   en/search.json
   en/docs/index.html
+  codex-vs-lumi/vertical-strip/index.html
+  en/codex-vs-lumi/vertical-strip/index.html
   codex-vs-lumi/belly-slide/index.html
   en/codex-vs-lumi/belly-slide/index.html
   codex-vs-lumi/belly-slide/codex-book.pdf
@@ -91,6 +93,20 @@ assert_home_formats "${build_dir}/en/index.html" \
 
 for prefix in "" "en/"; do
   comparison_file="${build_dir}/${prefix}codex-vs-lumi/belly-slide/index.html"
+  strip_file="${build_dir}/${prefix}codex-vs-lumi/vertical-strip/index.html"
+  grep -Fq 'codex-vs-lumi/vertical-strip/' "${comparison_file}"
+  grep -Fq 'codex-vs-lumi/belly-slide/' "${strip_file}"
+  for side in codex lumi; do
+    count=16
+    if [[ "${side}" == lumi ]]; then count=12; fi
+    for ((n=1; n<=count; n++)); do
+      asset=$(printf '%s-%02d.webp' "${side}" "${n}")
+      if [[ ! -s "${build_dir}/codex-vs-lumi/vertical-strip/${asset}" ]] || ! grep -Fq "/${asset}" "${strip_file}"; then
+        echo "Missing vertical strip ${asset}: ${strip_file}" >&2
+        exit 1
+      fi
+    done
+  done
   for page in {1..8}; do
     if ! grep -Eq "id=\"?page-${page}(\"|[ >])" "${comparison_file}"; then
       echo "Missing comparison page ${page}: ${comparison_file}" >&2

@@ -4,6 +4,8 @@ description: "《肚子里的滑滑梯》：同一主题、同一篇画风参考
 translationKey: "comparison-belly-slide"
 date: "2026-11-04"
 type: "codex-vs-lumi"
+weight: 1
+format_label: "绘本"
 case_date: "2026-11-04"
 reference_url: "https://www.xiaohongshu.com/explore/6ab9fcc70000000018029a9d"
 copy:

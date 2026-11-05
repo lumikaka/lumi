@@ -7,12 +7,17 @@
   {{ $smallWidth = 240 }}{{ $mediumWidth = 540 }}
   {{ $sizes = cond (eq .Class "comparison-reference__image") "96px" "180px" }}
 {{ end }}
+{{ if eq .Class "strip-art" }}
+  {{ $smallWidth = 360 }}
+  {{ $sizes = "(max-width: 600px) calc((100vw - 38px) / 2), (max-width: 1068px) calc((100vw - 68px) / 2), 500px" }}
+{{ end }}
 {{ $small := $image.Resize (printf "%dx webp q78" $smallWidth) }}
-{{ $medium := $image.Resize (printf "%dx webp q80" $mediumWidth) }}
+{{ $medium := $image }}
+{{ if gt $image.Width $mediumWidth }}{{ $medium = $image.Resize (printf "%dx webp q80" $mediumWidth) }}{{ end }}
 {{ $url := partial "relative-url.html" (dict "Page" .Page "URL" $image.RelPermalink) }}
 <a class="comparison-image {{ .Class }}" href="{{ $url }}" data-comparison-image-link data-image-label="{{ .Label }}" aria-label="{{ .Label }} · {{ .Page.Params.copy.enlarge }}">
   <img src="{{ partial "relative-url.html" (dict "Page" .Page "URL" $medium.RelPermalink) }}"
-       srcset="{{ partial "relative-url.html" (dict "Page" .Page "URL" $small.RelPermalink) }} {{ $smallWidth }}w, {{ partial "relative-url.html" (dict "Page" .Page "URL" $medium.RelPermalink) }} {{ $mediumWidth }}w"
+       srcset="{{ partial "relative-url.html" (dict "Page" .Page "URL" $small.RelPermalink) }} {{ $smallWidth }}w, {{ partial "relative-url.html" (dict "Page" .Page "URL" $medium.RelPermalink) }} {{ $medium.Width }}w"
        sizes="{{ $sizes }}"
        width="{{ $image.Width }}" height="{{ $image.Height }}" alt="{{ .Alt }}"
        loading="{{ if .Eager }}eager{{ else }}lazy{{ end }}" decoding="async">

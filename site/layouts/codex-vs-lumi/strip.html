@@ -1,0 +1,99 @@
+{{ define "main" }}
+{{ $page := . }}
+{{ $copy := .Params.copy }}
+{{ $scenes := hugo.Data.comparisons.vertical_strip.scenes }}
+{{ $reader := resources.Get "js/strip-reader.js" | minify | fingerprint }}
+<script defer src="{{ partial "relative-url.html" (dict "Page" . "URL" $reader.RelPermalink) }}" integrity="{{ $reader.Data.Integrity }}"></script>
+<main class="comparison strip-case section-shell" id="main-content">
+  {{ partial "comparison-formats.html" . }}
+  <header class="strip-intro">
+    <p class="eyebrow">{{ $copy.eyebrow }} <span> / {{ $copy.edition }}</span></p>
+    <h1>{{ .Title }}</h1>
+    <p class="strip-intro__description">{{ .Description }}</p>
+    <div class="strip-intro__links">
+      <a href="#strip-settings">{{ $copy.settings_link }} <span aria-hidden="true">↓</span></a>
+      <a href="#brief">{{ $copy.prompt_link }} <span aria-hidden="true">↓</span></a>
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006.01.02" }}</time>
+    </div>
+  </header>
+
+  <nav class="strip-contents" aria-label="{{ $copy.contents }}">
+    {{ range $i, $scene := $scenes }}
+      <a href="#scene-{{ .id }}"><small>{{ printf "%02d" (add $i 1) }}</small> {{ (index $page.Params.scenes .id).title }}</a>
+    {{ end }}
+  </nav>
+
+  {{ range $i, $scene := $scenes }}
+    {{ $story := index $page.Params.scenes .id }}
+    <section class="strip-scene" id="scene-{{ .id }}" aria-labelledby="title-{{ .id }}">
+      <header class="strip-scene__heading">
+        <h2 id="title-{{ .id }}"><small>{{ printf "%02d" (add $i 1) }}</small>{{ $story.title }}</h2>
+        <p>{{ $story.note }}</p>
+      </header>
+      {{ if eq $i 0 }}
+        <div class="strip-tools">
+          <p class="strip-hint"><span data-strip-hint hidden>{{ $copy.paging_hint }} </span>{{ $copy.read_hint }}</p>
+          <label hidden data-strip-mode><input type="checkbox" data-strip-continuous> {{ $copy.continuous }}</label>
+        </div>
+      {{ end }}
+      <div class="strip-pair">
+        {{ range $side := slice "codex" "lumi" }}
+          {{ $label := index $copy (printf "%s_label" $side) }}
+          {{ $pageFormat := index $copy (printf "%s_page" $side) }}
+          {{ $numbers := index $scene $side }}
+          <div class="strip-track strip-track--{{ $side }}" data-strip-track>
+            <div class="strip-track__bar">
+              <div><h3>{{ $label }}</h3><p><span class="strip-chapter-name">{{ index $copy (printf "%s_chapter" $side) }} · </span>{{ printf (index $copy (printf "%s_count" $side)) (len (index $page.Params.art $side)) }}</p></div>
+              <div class="strip-track__numbers" role="group" aria-label="{{ $label }} · {{ $story.title }}" data-strip-controls hidden>
+                {{ range $j, $n := $numbers }}
+                  {{ if gt (len $numbers) 1 }}
+                    <button type="button" aria-label="{{ $label }} · {{ printf $pageFormat $n }}" aria-controls="{{ $side }}-{{ $n }}" aria-pressed="{{ eq $j 0 }}">{{ printf "%02d" $n }}</button>
+                  {{ else }}
+                    <span>{{ printf "%02d" $n }}</span>
+                  {{ end }}
+                {{ end }}
+              </div>
+            </div>
+            {{ range $j, $n := $numbers }}
+              {{ $pageLabel := printf "%s · %s" $label (printf $pageFormat $n) }}
+              <figure id="{{ $side }}-{{ $n }}">
+                {{ partial "comparison-image.html" (dict "Page" $page "File" (printf "%s-%02d.webp" $side $n) "Alt" (index (index $page.Params.art $side) (sub $n 1)) "Label" $pageLabel "Class" "strip-art" "Eager" (and (eq $i 0) (eq $j 0))) }}
+                <figcaption>{{ $pageLabel }}</figcaption>
+              </figure>
+            {{ end }}
+          </div>
+        {{ end }}
+      </div>
+    </section>
+  {{ end }}
+
+  <section class="strip-settings" id="strip-settings" aria-labelledby="settings-title">
+    <p class="eyebrow">{{ $copy.process_eyebrow }}</p>
+    <h2 id="settings-title">{{ $copy.process_title }}</h2>
+    <p>{{ $copy.process_text }} <a href="#scene-letter">{{ $copy.see_letter }} ↑</a></p>
+    <div class="comparison-pair__grid">
+      {{ range $i, $board := $copy.boards }}
+        <figure>
+          {{ partial "comparison-image.html" (dict "Page" $page "File" (index (slice "settings-characters.webp" "settings-places-props.webp") $i) "Alt" .alt "Label" .label "Class" "strip-board") }}
+          <figcaption>{{ .label }}</figcaption>
+        </figure>
+      {{ end }}
+    </div>
+  </section>
+  <details class="comparison-details comparison-prompt" id="brief">
+    <summary>{{ $copy.prompt_title }}<span>{{ $copy.prompt_summary }}</span></summary>
+    <div class="comparison-details__body">
+      <p>{{ $copy.prompt_intro }}</p>
+      <div class="comparison-prompt__grid">
+        {{ range $side := slice "codex" "lumi" }}<div><h3>{{ index $copy (printf "%s_label" $side) }}</h3><pre lang="zh-CN">{{ index hugo.Data.comparisons.vertical_strip.prompts $side }}</pre></div>{{ end }}
+      </div>
+    </div>
+  </details>
+  <p class="strip-scope">{{ $copy.scope }}</p>
+  <section class="comparison-cta">
+    <div><p class="eyebrow">Codex + Lumi</p><h2>{{ $copy.cta_title }}</h2><p>{{ $copy.cta_description }}</p></div>
+    {{ with .Site.GetPage "/docs/codex-installation" }}<a class="button button--dark button--large" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}">{{ $copy.cta_button }}</a>{{ end }}
+  </section>
+  {{ partial "comparison-lightbox.html" . }}
+</main>
+{{ end }}

@@ -26,6 +26,7 @@
       image.alt = link.querySelector('img').alt
       title.textContent = link.dataset.imageLabel
       original.href = link.href
+      dialog.classList.toggle('is-strip', link.classList.contains('strip-art'))
       dialog.showModal()
       setZoom(false)
     })

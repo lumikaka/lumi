@@ -4,6 +4,8 @@ description: "The Tummy Slide: the same theme and the same visual-reference post
 translationKey: "comparison-belly-slide"
 date: "2026-11-04"
 type: "codex-vs-lumi"
+weight: 1
+format_label: "Picture book"
 case_date: "2026-11-04"
 reference_url: "https://www.xiaohongshu.com/explore/6ab9fcc70000000018029a9d"
 copy:

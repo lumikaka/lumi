@@ -61,13 +61,16 @@ content/docs/installation.en.md
 
 ## 创作对比案例
 
-`/codex-vs-lumi/belly-slide/`（英文 `/en/codex-vs-lumi/belly-slide/`）展示《肚子里的滑滑梯》的真实创作结果。导航中的「创作对比」可直接访问。
+导航中的「创作对比」进入案例页。页首可在「绘本」和「条漫」间切换；英文版使用相同路径并带 `/en/` 前缀。
 
-案例使用 `content/codex-vs-lumi/<slug>/` 叶子 Bundle：中英文 `index.*.md` 保存文案、提示词和逐页说明，共享 `codex-01.webp` 至 `codex-08.webp`、`lumi-01.webp` 至 `lumi-08.webp`、两份原始 PDF、实际参考图与设定图。后续案例可复用 `layouts/codex-vs-lumi/single.html`，并为新案例提供同一组字段。父目录只组织内容，不生成空白索引页。
+- `/codex-vs-lumi/belly-slide/`：《肚子里的滑滑梯》，两本 8 页横版绘本逐页对读，附实际参考图、设定图和两份原始 PDF。原生版使用包含排版文字的成品页；两次提示词引用同一篇小红书笔记，但选图不同。
+- `/codex-vs-lumi/vertical-strip/`：《不存在的同学会》，按六个剧情节点并排展示原生 Codex 的 16 段和 Codex + Lumi 的 12 页。两栏独立翻页；关闭 JavaScript 时，每栏按原序连续展示所有图片。两次使用相同小说，具体工具与画面要求可在页内展开对照。
 
-案例图片从原始素材按原尺寸编码为 WebP（`cwebp -q 80 -m 6 -sharp_yuv`），Hugo 以质量 78 / 80 生成两档预览。`provenance/codex-vs-lumi/belly-slide.json` 记录来源会话、原始素材及站点文件的校验值。更新图片时从原始成品重新编码，并同步更新站点文件的 SHA-256。原生 Codex 一栏使用包含排版文字的完整成品页。两次使用同一篇小红书笔记，但实际选取了不同插画，页面已明确披露。
+每个案例是 `content/codex-vs-lumi/<slug>/` 下的双语叶子 Bundle。绘本使用 `layouts/codex-vs-lumi/single.html`，条漫使用 `strip.html`；条漫两种语言共用 `data/comparisons/vertical_strip.yaml` 中的剧情节点、图片顺序与原始请求。父目录只组织内容，不生成空白索引页。
 
-案例样式与放大交互仅在 `codex-vs-lumi` 页面加载。无 JavaScript 时仍能阅读全部图片、展开说明、跳转页码及打开原图和 PDF。后续调整应检查桌面双栏、手机逐页成对布局、键盘开关放大预览，以及根路径与子路径部署。
+案例图片从原始素材按原尺寸编码为 WebP（`cwebp -q 80 -m 6 -sharp_yuv`），Hugo 再按阅读宽度生成响应式预览。每个案例的来源会话、图片来源及 SHA-256 记录在 `provenance/codex-vs-lumi/<slug>.json`。更换图片时应从对应的最终成品重新编码并更新记录。
+
+调整后应检查两种语言、桌面与手机、键盘开关放大预览、两栏独立翻页，以及根路径和子路径部署。
 
 ## 界面截图
 

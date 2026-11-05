@@ -1,0 +1,6 @@
+<nav class="comparison-formats" aria-label="{{ i18n "nav_comparison" }}">
+  <span>{{ i18n "nav_comparison" }}</span>
+  {{ range .Parent.RegularPages.ByWeight }}
+    <a href="{{ partial "relative-url.html" (dict "Page" $ "URL" .RelPermalink) }}"{{ if eq .Path $.Path }} aria-current="page"{{ end }}>{{ .Params.format_label }}</a>
+  {{ end }}
+</nav>
