@@ -14,7 +14,7 @@ description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导�
 先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标目录新开 App 会话。
 
 - 返回 `project_not_initialized` 且用户要求创建时，用原始创意调用 `project_init`，得到 setup 草稿。不要先创建一个默认 ready 项目再覆盖用户规格。
-- `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 Step 2 的 AGENTS 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；已有项目缺少保护指引时也走这条路径。不要假定 GUI 继承 PATH，使用入口文档的绝对路径。
+- `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 Step 2 的 AGENTS 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；续做已有项目时也执行一次，用于升级旧版官方 AGENTS.md；返回 agents=updated 后重读该文件。自定义文件按返回的局部合并提示处理。不要假定 GUI 继承 PATH，使用入口文档的绝对路径。
 - 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
 - 已有项目读取概况、`project_setup get`、`book_outline`、相关章节和设定，保留现有进度。`project_locked` 时按错误详情释放桌面版或其他 CLI 占用，不删锁文件。
 - 检查 `lumi init` 返回的 guidance 和 warnings；配置冲突时保留现有设置，按返回的合并建议处理。提示用户在 App 信任项目并新开会话使配置生效；不能替用户设置 trust 或宣称写保护已生效。当前 MCP 会话可以继续创作，信任提示不替代用户的连续执行授权；用户/session 权限覆盖可能影响实际保护。
@@ -31,12 +31,14 @@ description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导�
 
 首次选择 setup 参数、组织规格选项或写入前，先读 [MCP 调用参考](references/mcp-usage.md) 的「Setup 与规格」；其余操作按需读「动作参数与版本」和「渲染与写回」。参数声明显示 `unknown`、缺失或不足以确定必填项时，先查对应段落，不用连续失败的写调用猜参数。参考中的示例值不能替代本项目刚读取的 UUID 和 revision。
 
+在 Codex 工具执行层原样传递下一步需要的完整结果。主线程已读过的原稿、工具声明，以及仅用于转交的长提示词、写回参数，均省去重复的文本回显。主线程执笔或审阅时读足原文、分镜和对白，逐页实际看图。成功与失败的回显示例见 [MCP 调用参考](references/mcp-usage.md) 的「工具结果回显」。
+
 1. **想法 → setup**：按参考中的合法组合和 `get → update → finalize` 顺序写入。已有明确规格直接沿用；形式与比例冲突时先说明可行选择及影响，不自行替换形式。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
 3. **设定**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。首次带页面生图的创作必须先补齐必要设定图。多个独立主体按 [批量设定图](references/batch-settings.md) 生成总览图、识图，再由 Lumi 裁切入库；每批 1–6 个，复杂场景或精修单独处理。已有文字设定按 UUID 和最新 revision 补图，批量拆分可直接创建新图文设定，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
-4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
-5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 调用 `prepare_page_image`（先提交通过的 `setting_reviews`），由宿主读图能力查看返回的临时合图路径，再将同一路径和完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
-6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
+4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。竖向条漫默认按 [MCP 调用参考](references/mcp-usage.md)传 `moment_count_plan="auto"` 和正文页数上限，由 Lumi 生成逐页镜头数。用户指定节奏时优先采用。写回前按计划核对各页瞬间数，并按剧情决定主画面、停顿和切镜位置，避免把瞬间机械等分为等高画格。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
+5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 调用 `prepare_page_image`（先提交通过的 `setting_reviews`），当前代理首次遇到该摘要与路径时查看参考合图，再将同一路径和完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；逐页实际看成图并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
+6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。单章交付必须传该章 `chapter_uuid`；整书导出省略。核对返回的 scope、page_count、missing_image_count。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 应当启动 subagent 的环节
 
@@ -44,15 +46,17 @@ description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导�
 
 父代理先查 `prompt_catalog`，按实际模板及必填占位符调用 `render_prompt`；把返回的完整 `prompt`、`project_uuid`、`target_uuid`、`expected_revision`、`write_back` 和用户约束交给 subagent。优先使用不继承父历史的任务输入，避免依赖未传递的对话。要求 subagent 按模板输出结构化草稿，**不要写项目、不要生图、不要启动 Lumi provider pipeline**。subagent 的共享文件系统不是隔离边界。
 
+长任务可将完整渲染结果和用户约束写入本次任务专用的共享临时文件，附上所需原稿的可读位置。写入成功后传绝对路径，子任务从文件读全文。子任务提交完整草稿供父代理审阅和写回；使用共享文件时，交接消息只列草稿位置和需要核对的问题。无法共享文件时直接传全文。分镜写回前，父代理逐页核对剧情、对白和前后页连续性；用户要求保留原文时逐字核对指定对白。
+
 父代理核对输出与用户要求、渲染时的目标和 revision，再按 `write_back` 和调用参考中的版本来源串行写回。每次创建都需最新父级版本，不能给整批复用旧 revision。版本冲突先重读事实并检查草稿是否仍适用，不只把 revision 换新强行覆盖。
 
 用户要求不使用 subagent、宿主没有委派工具或额度不足时，**走串行路径**：父代理自己执行同一个 `render_prompt` 任务并核对写回。告知采用串行方式，不因缺少 subagent 停止可完成的创作。缺占位符时根据工具错误和 `prompt_catalog` 补齐；不要猜模板名或覆盖工具自动填入的项目事实。
 
 ## 宿主生图与一致性
 
-**页面生图前必须读 [页面生图提示词](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 核对当前图片并记录依据与具体观察，然后调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)`。Lumi 使用与 Web 相同的有效规则和画风，动态现拼一张带编号、名称的 PNG，返回真实临时绝对路径、来源版本清单、完整 `generation_prompt`、`image_write_back` 和带摘要签名的 `preparation`。明确无需图片参考时传 `[]`，走真实无参考流程。
+**页面生图前必须读 [页面生图提示词](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 核对当前图片并记录依据与具体观察，然后调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)`。Lumi 使用与 Web 相同的有效规则和画风，动态现拼一张带编号、名称的 PNG，返回临时绝对路径、合图 SHA-256、来源版本清单、完整 `generation_prompt`、`image_write_back` 和带摘要签名的 `preparation`。明确无需图片参考时传 `[]`，走真实无参考流程。
 
-使用宿主读图能力实际查看返回的 `reference_image_path`，紧接着调用 App 原生 imagegen，`referenced_image_paths` **只传这一个相同路径**；none 模式不传参考参数。页面不再逐张 `read_image`，不使用 `num_last_images_to_include`，不改写参考说明，不编写拼图脚本，不直接读取项目数据库、`.lumi` 或资产目录。保留项目画布、对白和阅读结构，完整提示词不追加、不翻译、不摘要；本次补充要求通过 `additional_direction` 交给服务端。
+当前代理在本对话已经实际看过相同 `reference_image_sha256` 和 `reference_image_path` 时跳过预览；首次、摘要缺失或中断后不确定时实际读图。每页都调用 App 原生 imagegen，`referenced_image_paths` **只传这一个相同路径**；none 模式不传参考参数。页面不再逐张 `read_image`，不使用 `num_last_images_to_include`，不改写参考说明，不编写拼图脚本，不直接读取项目数据库、`.lumi` 或资产目录。保留项目画布、对白和阅读结构，完整提示词不追加、不翻译、不摘要；本次补充要求通过 `additional_direction` 交给服务端。
 
 页面导入原样带回同一 `generation_prompt` 和整个 `preparation`。服务端重算当前事实摘要，所选图片版本、页面或规则变化时拒绝导入且不创建图片版本；重新准备、读图和生图，不能仅替换 revision 或摘要。临时路径失效或 Lumi 服务重启时重新准备。
 
@@ -74,6 +78,6 @@ description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导�
 
 批量设定中断后先 `setting_boards list/get` 检查已保存总览图与 `latest_breakdown`；已保存图片无需重新生成。按批量参考中的幂等与版本规则恢复。
 
-恢复时从 `project_overview → project_setup get → book_outline` 开始，分页读取有需要的章节/设定/页面；以当前工具事实判断缺失环节。重新取 revision、重新渲染剩余任务和读取参考图，只补缺失或用户指定修改的内容。旧生图路径失效且未导入时再生成，不扫描宿主目录寻找替代文件。
+恢复时从 `project_overview → project_setup get → book_outline` 开始；已知目标章时传 `chapter_uuid`，读完游标。以 `review_status` 区分 missing_image（生图）、pending（看已有图）、needs_revision（只修该页）、passed（跳过）；只有即将处理的页才读完整分镜。要取列表版本用 `pages list(summary_only=true)`。旧页缺少核对记录时先看已有图，不因 pending 重生。交付分别说明范围内已生成、核对通过的页数与待修疑点。重新取 revision；正文直接 prepare_page_image，渲染剩余文本任务并读取所需参考图，只补缺失或用户指定修改的内容。旧生图路径失效且未导入时再生成，不扫描宿主目录寻找替代文件。
 
 作品工作区复用 Web 页面主体；仅隐藏全局顶栏、导航与聊天，保留章内 section 快速切换。`review_*` 仅返回身份、摘要和入口，完整正文、历史和图片由页面经宿主按需读取，不把大对象或 Base64 重复放进模型上下文。四层入口：`review_book()` 总览 → `review_chapters()` → `review_chapter(chapter_uuid)` → `review_page(chapter_uuid,page_uuid)`。章节审阅必须展示整章故事和全部页面结构，不得以第一页替代。内部导航在 App 完成；“在 Lumi 中打开”使用工具给出的真实端口与资源 URL。新调用不传 `mode`，不进入独立阅读器。旧 `review_book({chapter_uuid})`、旧 preview 参数和历史 reader 结果兼容到相同范围的正常页面，指定章节始终进入该章节。

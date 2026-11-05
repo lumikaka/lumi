@@ -2,6 +2,7 @@ package textmcp
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -82,5 +83,44 @@ func TestSettingReviewMustBeRepeatedAfterStyleOrImageChanges(t *testing.T) {
 	prepared := preparePageFixture(t, s, root, page, selection, "User requests a readable handwritten caption")
 	if !strings.Contains(prepared["generation_prompt"].(string), "narrow handwritten lettering with an uneven baseline") || !strings.Contains(prepared["generation_prompt"].(string), "User requests a readable handwritten caption") {
 		t.Fatal("saved lettering style and explicit user direction must reach the page image prompt")
+	}
+}
+
+func TestPreviousSettingEvidenceIsBoundToAdoptedImageAndStyle(t *testing.T) {
+	s, root, _, page := imagePromptPage(t)
+	path := preparedFixtureImage(t)
+	setting := createReadinessSetting(t, s, root, "character", "Fox")
+	first := object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
+	selection := []string{setting["uuid"].(string)}
+	prepared := preparePageFixture(t, s, root, page, selection, "")
+	object(t, invoke(t, s, root, "import_image", preparedImportArgs(prepared, path)))
+	args := map[string]any{"target_uuid": page, "slot": "page_image", "setting_uuids": selection, "review_source_page_uuid": page}
+	evidence := func() any {
+		readiness := object(t, invoke(t, s, root, "image_target", args))["setting_readiness"].(map[string]any)
+		return readiness["items"].([]any)[0].(map[string]any)["previous_review"]
+	}
+	previous, ok := evidence().(map[string]any)
+	if !ok || previous["variant_uuid"] != first["variant_uuid"] || previous["reference_basis"] == "" {
+		t.Fatal(previous)
+	}
+	next := object(t, invoke(t, s, root, "prepare_page_image", map[string]any{"page_uuid": page, "setting_uuids": selection, "setting_reviews": []any{previous}}))
+	t.Cleanup(func() { _ = os.Remove(next["reference_image_path"].(string)) })
+	object(t, invoke(t, s, root, "import_image", map[string]any{"path": path, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": first["revision"]}))
+	if got := evidence(); got != nil {
+		t.Fatal("reused old version", got)
+	}
+	prepared = preparePageFixture(t, s, root, page, selection, "")
+	object(t, invoke(t, s, root, "import_image", preparedImportArgs(prepared, path)))
+	if evidence() == nil {
+		t.Fatal("new evidence missing")
+	}
+	if err := s.Projects.WithStore(t.Context(), internalProjectUUID(t, s, root), func(store *project.Store) error {
+		_, err := story.NewService(store).CreatePromptVersion(t.Context(), story.CreatePromptInput{PromptGroup: "premise_style", PromptKey: "project_overall_style", Prompt: "Changed to pencil", ExpectedCurrentVersion: 1})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := evidence(); got != nil {
+		t.Fatal("reused evidence after style changed", got)
 	}
 }

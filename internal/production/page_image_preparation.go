@@ -8,8 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -19,7 +17,7 @@ import (
 )
 
 // A receipt is stateless and process-bound. Restarting Lumi requires preparing
-// again. This key signs facts, not paths; no collage or preparation is cached.
+// again. The signature binds page facts independently of the reusable reference PNG.
 var pagePreparationKey = sync.OnceValue(func() []byte {
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
@@ -66,14 +64,15 @@ type PageImageWriteBack struct {
 }
 
 type PreparedPageImage struct {
-	Target             HostImageTarget             `json:"target"`
-	ReferenceMode      string                      `json:"reference_mode"`
-	ReferenceImagePath string                      `json:"reference_image_path"`
-	Sources            []PageImageSource           `json:"sources"`
-	ImageInfo          *SectionPremiseImageInfo    `json:"image_info"`
-	GenerationPrompt   string                      `json:"generation_prompt"`
-	ImageWriteBack     PageImageWriteBack          `json:"image_write_back"`
-	Preparation        PageImagePreparationReceipt `json:"preparation"`
+	Target               HostImageTarget             `json:"target"`
+	ReferenceMode        string                      `json:"reference_mode"`
+	ReferenceImagePath   string                      `json:"reference_image_path"`
+	ReferenceImageSHA256 string                      `json:"reference_image_sha256,omitempty"`
+	Sources              []PageImageSource           `json:"sources"`
+	ImageInfo            *SectionPremiseImageInfo    `json:"image_info"`
+	GenerationPrompt     string                      `json:"generation_prompt"`
+	ImageWriteBack       PageImageWriteBack          `json:"image_write_back"`
+	Preparation          PageImagePreparationReceipt `json:"preparation"`
 }
 
 func (receipt PageImagePreparationReceipt) signature() string {
@@ -85,7 +84,7 @@ func (receipt PageImagePreparationReceipt) signature() string {
 }
 
 func preparationConflict() error {
-	return domainError(CodePageImagePreparationStale, "页面生图准备已失效", "页面、所选设定图片或提示词输入发生变化，或准备凭据无效。重新 prepare_page_image、读图并生图；不能仅替换 revision 或摘要导入。", nil)
+	return domainError(CodePageImagePreparationStale, "页面生图准备已失效", "页面、所选设定图片或提示词输入发生变化，或准备凭据无效。重新 prepare_page_image，按返回的合图核对后生图；不能仅替换 revision 或摘要导入。", nil)
 }
 
 // pageImageInputs uses a single SQLite view both while preparing and during the
@@ -106,7 +105,7 @@ func (service *Service) pageImageInputs(ctx context.Context, input PreparePageIm
 	if page.CurrentStoryboard == nil || strings.TrimSpace(page.CurrentStoryboard.ContentMD) == "" {
 		return result, nil, domainError(CodeValidation, "页面尚无分镜", "先保存完整 storyboard_md，再准备页面生图。", nil)
 	}
-	rules, err := service.SectionImageRules(ctx, page.PageRole)
+	rules, err := service.sectionImageRules(ctx, page.PageRole, true)
 	if err != nil {
 		return result, nil, err
 	}
@@ -174,7 +173,7 @@ func (service *Service) pageImageInputs(ctx context.Context, input PreparePageIm
 	return result, sources, nil
 }
 
-func (service *Service) PreparePageImage(ctx context.Context, input PreparePageImageInput) (PreparedPageImage, error) {
+func (service *Service) PreparePageImage(ctx context.Context, input PreparePageImageInput, references *PageReferenceFiles) (PreparedPageImage, error) {
 	var result PreparedPageImage
 	var sources []SectionPremiseSource
 	if err := service.store.RequireReady(); err != nil {
@@ -195,26 +194,11 @@ func (service *Service) PreparePageImage(ctx context.Context, input PreparePageI
 		if err != nil {
 			return result, domainError("section_premise_composition_failed", "无法生成设定参考合图", err.Error(), err)
 		}
-		file, err := os.CreateTemp("", "lumi-page-premise-*.png")
+		result.ReferenceImagePath, result.ReferenceImageSHA256, err = references.save(service.store.ProjectUUID(), composition.Bytes)
 		if err != nil {
 			return result, err
 		}
-		path := file.Name()
-		_, writeErr := file.Write(composition.Bytes)
-		closeErr := file.Close()
-		if writeErr != nil || closeErr != nil {
-			_ = os.Remove(path)
-			return result, fmt.Errorf("write temporary section premise: %v / %v", writeErr, closeErr)
-		}
-		path, err = filepath.EvalSymlinks(path)
-		if err == nil {
-			path, err = filepath.Abs(path)
-		}
-		if err != nil {
-			_ = os.Remove(file.Name())
-			return result, err
-		}
-		result.ReferenceImagePath, result.ReferenceMode = path, "collage"
+		result.ReferenceMode = "collage"
 		result.ImageInfo = &SectionPremiseImageInfo{Width: composition.Width, Height: composition.Height, MIMEType: "image/png", ComposerVersion: SectionPremiseComposerVersion}
 	}
 	result.Preparation.Signature = result.Preparation.signature()

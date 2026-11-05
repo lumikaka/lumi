@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -19,16 +20,7 @@ const agentsGuidance = `# Lumi 项目
 禁止直接读取或写入 project.sqlite（包括 -wal、-shm、-journal）、.lumi/、assets/。
 STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi 插件工具。
 
-首次创作带页面生图时，先生成并拆分必要设定图，复用已有资产；“只生成第一页”只限制正文图。
-只有用户明确要求纯文字、跳过设定图或限制全部生图次数时才调整，不自行添加额度限制。
-生图前调用 image_target 查询比例和构图建议；角色、场景参考先用 read_image 放入对话。
-页面 image_target 返回 setting_readiness；选择本页 setting_uuids 检查缺图，补齐后再读取参考。
-页面生图先按插件技能渲染项目当前的基础规则与参考图说明，再 render_prompt chapter/section_image，
-target=page；使用完整 generation_prompt 和 image_write_back，不自行从分镜另写生图提示词。
-comic_storyboard 和 image_target 不能替代生图模板；生图与 import_image.prompt 保存同一完整提示词。
-使用宿主自带生图能力，生成后立即把工具结果中实际提供的绝对路径传给 import_image。
-图片保留期限未知；不得假设 savedPath、猜测文件名或扫描固定目录。比例偏差默认允许导入，
-可按用户意愿选择 keep、居中 crop 或白色 pad；不要因比例偏差阻塞创作。
+打开项目、创作、核对、续做与导出，遵循当前安装的 Lumi 插件技能 create-picture-book 及其工具契约。
 
 这些要求是行为指引。项目级 .codex/config.toml 的 permission profile 只限制
 命令沙箱的写入，不限制读取；须先由用户信任项目，且可能被更高优先级配置覆盖。
@@ -64,6 +56,29 @@ type protectionInfo struct {
 
 const protectionCaveat = "写保护实际生效状态未知：请由用户在 Codex 中信任此项目并重新打开会话，核对当前权限与写保护效果；Lumi 不设置信任。旧 sandbox_mode / --sandbox 或更高优先级设置可能使 profile 失效。配置允许读取；禁止直接读取属于 AGENTS.md 行为指引。"
 
+// Match only complete templates shipped by previous CLI versions.
+func refreshAgentsGuidance(path string, result *guidanceResult) {
+	info, err := os.Lstat(path)
+	if err == nil && info.Mode().IsRegular() && info.Size() <= 128<<10 {
+		original, err := os.ReadFile(path)
+		if err == nil && string(original) == agentsGuidance {
+			return
+		}
+		switch fmt.Sprintf("%x", sha256.Sum256(original)) {
+		case "ed98bcddb3e476ee62272378858a3cf46283d8de6c864e300906150cd61190e2",
+			"91019880eb7578c2be7411888f45aec0f2b64b0c7eb63f7ab45dae9f1f5d63cf",
+			"51d24197eebf72939c20ed70bf64dd84e3cb37f85ab391c83dc04bed4b040053",
+			"1427d03df856b53368cb7585c2fe0e43cfcf4221453d7adefebfc9cb5992923c":
+			if err := replaceGuidanceConfig(path, original, []byte(agentsGuidance), info); err == nil {
+				result.Agents = "updated"
+				result.Messages = append(result.Messages, "已更新旧版官方 AGENTS.md，创作流程使用当前插件技能。")
+				return
+			}
+		}
+	}
+	result.Messages = append(result.Messages, "保留已有 AGENTS.md；请只将其中旧的逐张参考图或 render_prompt chapter/section_image 步骤替换为引用当前插件技能，并保留自定义规则。")
+}
+
 func ensureGuidance(root string) guidanceResult {
 	result := guidanceResult{Agents: "preserved", Config: "manual", Messages: []string{}}
 	path := filepath.Join(root, "AGENTS.md")
@@ -71,7 +86,7 @@ func ensureGuidance(root string) guidanceResult {
 		result.Agents = "created"
 		result.Messages = append(result.Messages, "已创建 AGENTS.md。")
 	} else if errors.Is(err, os.ErrExist) {
-		result.Messages = append(result.Messages, "AGENTS.md 已存在，保留原文；请确认其中包含 Lumi 插件读写指引。")
+		refreshAgentsGuidance(path, &result)
 	} else {
 		result.Agents = "manual"
 		result.Messages = append(result.Messages, "无法生成 AGENTS.md，请手工补齐 Lumi 插件读写指引："+err.Error())

@@ -108,6 +108,10 @@ func EffectiveImageStyle(ctx context.Context, store *project.Store, st *story.Se
 
 // SectionImageRules resolves the same effective templates for every caller.
 func (service *Service) SectionImageRules(ctx context.Context, pageRole string) (GenerationSnapshot, error) {
+	return service.sectionImageRules(ctx, pageRole, false)
+}
+
+func (service *Service) sectionImageRules(ctx context.Context, pageRole string, host bool) (GenerationSnapshot, error) {
 	var snapshot GenerationSnapshot
 	st := story.NewService(service.store)
 	p, err := st.GetProject(ctx)
@@ -137,6 +141,9 @@ func (service *Service) SectionImageRules(ctx context.Context, pageRole string) 
 	before, err := st.EffectivePrompt(ctx, promptcatalog.GroupChapter, key)
 	if err != nil {
 		return snapshot, err
+	}
+	if host && key == "before_image" {
+		before = promptcatalog.HostPageBaseRules(before)
 	}
 	snapshot.PromptTemplate = strings.ReplaceAll(snapshot.PromptTemplate, "{{before_image_prompt}}", before)
 	snapshot.ReferencePresentPrompt, err = st.EffectivePrompt(ctx, promptcatalog.GroupChapter, "section_reference_present")

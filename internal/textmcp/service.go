@@ -19,14 +19,20 @@ import (
 )
 
 type Service struct {
-	Projects      *project.Manager
-	Events        *realtime.Hub
-	Endpoint      string
-	AppConnection func(string) any
-	AppRequest    func(context.Context, string, AppResourceRequest) (any, error)
+	PageReferences production.PageReferenceFiles
+	Projects       *project.Manager
+	Events         *realtime.Hub
+	Endpoint       string
+	AppConnection  func(string) any
+	AppRequest     func(context.Context, string, AppResourceRequest) (any, error)
 }
 
 type arguments struct {
+	ExpectedReviewRevision  int64                        `json:"expected_review_revision"`
+	SummaryOnly             bool                         `json:"summary_only"`
+	Verdict                 string                       `json:"verdict"`
+	Observation             string                       `json:"observation"`
+	ReviewSourcePageUUID    string                       `json:"review_source_page_uuid"`
 	ReviewView              string                       `json:"view"`
 	Resource                string                       `json:"resource"`
 	Method                  string                       `json:"method"`
@@ -263,7 +269,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		case "image_target":
 			result, callErr = imageTarget(ctx, prod, a)
 		case "prepare_page_image":
-			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews})
+			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews}, &s.PageReferences)
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision), Preparation: a.Preparation})
 		case "read_image", "read_app_image":
@@ -278,8 +284,11 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		case "review_book", "review_chapters", "review_chapter", "review_page", "review_candidates", "review_settings":
 			result, callErr = s.review(ctx, store, st, prod, name, a)
 		case "export_book":
-			var book production.TextBook
-			book, callErr = readBook(ctx, store, st, prod)
+			book := production.TextBook{ChapterUUID: a.ChapterUUID}
+			// The PDF renderer reads its own authoritative, scoped image snapshot.
+			if a.Format != "pdf" {
+				book, callErr = readBook(ctx, store, st, prod, a.ChapterUUID)
+			}
 			if callErr == nil {
 				result, callErr = prod.ExportTextBook(ctx, book, a.Format, a.AllowMissing)
 			}
@@ -495,6 +504,29 @@ func settings(ctx context.Context, prod *production.Service, a arguments) (any, 
 }
 
 func pages(ctx context.Context, prod *production.Service, a arguments) (any, error) {
+	if a.SummaryOnly {
+		if a.Action != "list" && a.Action != "get" {
+			return nil, httpapi.NewError(400, "invalid_arguments", "summary_only 仅用于读取页面", "", nil)
+		}
+		pageUUID := ""
+		if a.Action == "get" {
+			pageUUID = a.PageUUID
+		}
+		rows, err := prod.AuthoringPageSummaries(ctx, a.ChapterUUID, pageUUID)
+		if err != nil {
+			return nil, err
+		}
+		if a.Action == "get" {
+			if len(rows) == 0 {
+				return nil, httpapi.NewError(404, "not_found", "找不到页面", "", nil)
+			}
+			return rows[0], nil
+		}
+		state, err := prod.GetComicState(ctx, a.ChapterUUID)
+		result := paginate(rows, a)
+		result["state"] = state
+		return result, err
+	}
 	switch a.Action {
 	case "list":
 		items, err := prod.ListSections(ctx, a.ChapterUUID)
@@ -526,6 +558,8 @@ func pages(ctx context.Context, prod *production.Service, a arguments) (any, err
 			production.ComicSection
 			ImageVersions map[string]any `json:"image_versions"`
 		}{item, listing}, nil
+	case "record_image_review":
+		return prod.RecordPageImageReview(ctx, a.ChapterUUID, production.PageImageReview{ReviewRevision: a.ExpectedReviewRevision, PageUUID: a.PageUUID, VariantUUID: a.VariantUUID, Revision: value(a.ExpectedRevision), Verdict: a.Verdict, Observation: a.Observation})
 	case "select_image":
 		return prod.SelectImageVariant(ctx, a.ChapterUUID, a.PageUUID, a.VariantUUID, value(a.ExpectedRevision))
 	case "create":
@@ -542,19 +576,23 @@ func pages(ctx context.Context, prod *production.Service, a arguments) (any, err
 }
 
 func outline(ctx context.Context, st *story.Service, prod *production.Service, a arguments) (any, error) {
+	if a.ChapterUUID != "" {
+		rows, err := prod.AuthoringPageSummaries(ctx, a.ChapterUUID, "")
+		return paginate(rows, a), err
+	}
 	chapters, err := st.ListChapters(ctx, "active")
 	if err != nil {
 		return nil, err
 	}
-	items := []map[string]any{}
+	items := []any{}
 	for _, ch := range chapters {
 		items = append(items, map[string]any{"kind": "chapter", "uuid": ch.UUID, "chapter_code": ch.ChapterCode, "title": ch.Title, "revision": ch.Revision, "has_text": ch.CurrentStory != nil})
-		pages, err := prod.ListSections(ctx, ch.UUID)
+		pages, err := prod.AuthoringPageSummaries(ctx, ch.UUID, "")
 		if err != nil {
 			return nil, err
 		}
 		for _, p := range pages {
-			items = append(items, map[string]any{"kind": "page", "uuid": p.UUID, "chapter_uuid": ch.UUID, "section_no": p.SectionNo, "page_role": p.PageRole, "title": p.Title, "revision": p.Revision, "has_text": p.DescriptionMD != "", "has_storyboard": p.HasStoryboard, "has_image": p.CurrentImage != nil})
+			items = append(items, p)
 		}
 	}
 	return paginate(items, a), nil

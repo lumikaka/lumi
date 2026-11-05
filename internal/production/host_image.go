@@ -90,7 +90,10 @@ func (service *Service) HostImageTarget(ctx context.Context, targetUUID, slot st
 		}
 	}
 	r, wanted := target.RecommendedRatio, target.TargetRatio
-	target.GenerationHint = fmt.Sprintf("请生成宽高比约 %d:%d 的图片；目标画布为 %d:%d。完整保留主体和画面文字，四周预留安全边距。宿主输出像素无需精确一致；导入可使用 %s 处理。", r.Width, r.Height, wanted.Width, wanted.Height, target.SuggestedFit)
+	target.GenerationHint = fmt.Sprintf("请按项目画布 %d:%d 生图，保留完整主体、画面文字和安全边距。", wanted.Width, wanted.Height)
+	if r != wanted {
+		target.GenerationHint += "仅当宿主明确限制输出比例时，才使用兼容比例并预留边缘。"
+	}
 	return target, nil
 }
 
@@ -194,7 +197,7 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 	}
 	if target.ExpectedRevision != input.ExpectedRevision {
 		if input.Slot == "page_image" {
-			return result, domainError(CodeConflict, "页面生图准备已失效", "页面已被修改；重新 prepare_page_image、读图并生图，不能只替换 revision 或摘要导入。", nil)
+			return result, domainError(CodeConflict, "页面生图准备已失效", "页面已被修改；重新 prepare_page_image，按返回的合图核对后生图，不能只替换 revision 或摘要导入。", nil)
 		}
 		return result, domainError(CodeConflict, "图片目标已被修改", "重新读取目标内容和 revision 后再决定是否导入。", nil)
 	}
@@ -218,9 +221,6 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		purpose = "comic_section_image"
 	}
 	metadata := map[string]any{"origin": "host_generated", "original_prompt": input.Prompt, "description": input.Description, "fit_mode": input.FitMode, "input_width": w, "input_height": h, "target_width": target.TargetRatio.Width, "target_height": target.TargetRatio.Height}
-	if input.Preparation != nil {
-		metadata["page_image_preparation"] = input.Preparation
-	}
 	commitInput := files.CommitInput{Purpose: purpose, OriginalFilename: filepath.Base(input.Path), SourceType: "imported", Metadata: metadata, Reader: bytes.NewReader(data)}
 	if input.FitMode != "keep" && !result.RatioMatches {
 		processed, err := fitHostImage(decoded, target.TargetRatio, input.FitMode)
@@ -256,7 +256,12 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		return err
 	}
 	if input.Slot == "page_image" {
-		page, err := service.importSectionImage(ctx, target.chapterUUID, input.TargetUUID, input.ExpectedRevision, commit)
+		// Store the verified receipt on the adopted variant, independent of editable file metadata.
+		snapshot, err := encodeJSON(map[string]any{"page_image_preparation": input.Preparation}, "{}")
+		if err != nil {
+			return result, err
+		}
+		page, err := service.importSectionImage(ctx, target.chapterUUID, input.TargetUUID, input.ExpectedRevision, snapshot, commit)
 		if err != nil {
 			return result, err
 		}

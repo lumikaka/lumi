@@ -78,8 +78,9 @@
 | `settings update` | `setting_uuid`、`expected_revision` | 至少一个 `asset_type`、`title`、`summary`、`tags` |
 | `settings delete` | `setting_uuid`、`expected_revision` | 软删除 |
 | `settings select_image` | `setting_uuid`、`variant_uuid`、`expected_revision` | 先重读，核对用户选择的候选 UUID |
-| `pages list` | `chapter_uuid` | 支持游标，返回 `state.revision` |
+| `pages list` | `chapter_uuid` | 支持游标，返回 `state.revision`；续做用 `summary_only:true` 只读版本、缺图和核对状态 |
 | `pages get` | `chapter_uuid`、`page_uuid` | 返回页面及其 revision |
+| `pages record_image_review` | `chapter_uuid, page_uuid, variant_uuid, expected_revision, verdict, observation` | 实际看图后记录 passed / needs_revision，返回独立的 review_revision；修订已有观察时传 expected_review_revision |
 | `pages create` | `chapter_uuid`、`title`、`description_md`、`storyboard_md`、`expected_revision` | 可选 `page_role`: `body` / `front_cover` / `back_cover` |
 | `pages update` | `chapter_uuid`、`page_uuid`、`expected_revision` | 至少一个 `title`、`description_md`、`storyboard_md`、`page_role` |
 | `pages delete` | `chapter_uuid`、`page_uuid`、`expected_revision` | 软删除 |
@@ -107,6 +108,30 @@
 {"name":"pages","arguments":{"action":"create","chapter_uuid":"01989abc-def0-7000-8000-000000000001","title":"发现星星","description_md":"小狐狸：我陪你回家。","storyboard_md":"雨夜森林，两格从上往下阅读。第一格发现草丛中的星星；第二格狐狸撑起叶子伞，气泡逐字写：我陪你回家。","page_role":"body","expected_revision":0}}
 ```
 
+## 工具结果回显
+
+普通 Lumi MCP 调用从 `structuredContent` 取一次 JSON 信封；宿主仅提供文本时才解析 `content` 中的 JSON。避免用 `text(result)` 同时展开两份。按名称取当前工具声明，按 `prompt_group` 查模板，只回显本次要用的键和占位符。写入成功时回显目标 UUID、revision、警告及下一步需要的字段。分页保留游标和父集合 revision。出错时回显目标和原错误的 `code/message/details`；宿主调用本身失败时保留其诊断。
+
+例如在 Codex 执行单元中，`renderArgs` 为本次实际参数，`taskKey` 为本次任务独有的键。工具名按当前连接的正式版或开发版选择。
+
+```js
+const result = await tools.mcp__lumi__render_prompt(renderArgs);
+if (result.isError) {
+  text({ target: renderArgs.target, error: result.structuredContent?.error ?? result.content[0]?.text });
+  exit();
+}
+const envelope = result.structuredContent ?? JSON.parse(result.content[0].text);
+if (!envelope.success) {
+  text({ target: renderArgs.target, error: envelope.error });
+  exit();
+}
+const task = envelope.data;
+store(taskKey, task);
+text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expected_revision: task.expected_revision });
+```
+
+同一轮中用 `load(taskKey)` 取回完整对象。委派时将该对象连同用户约束交给子任务；父代理自己执行时读取完整 `prompt`。写回使用已审阅的完整草稿。中断后从 Lumi 重读已保存的事实并核对版本，执行单元里的键只用于临时传值。
+
 ## 渲染与写回
 
 先查 `prompt_catalog` 中实际的 `prompt_group`、`prompt_key` 与占位符。`render_prompt` 基础必填为 `prompt_group`、`prompt_key`、`target`；`variables` 是字符串值对象。不要猜模板名或覆盖工具自动填入的项目事实。
@@ -131,6 +156,8 @@
 
 文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出；页面生图使用 `generation_prompt` 和 `image_write_back`，片段组合使用 `fragment_prompt`，不要把外层任务说明传给生图工具。渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
 
+竖向条漫正文使用 `target="pages"`、实际 `chapter_uuid`、`chapter/comic_storyboard`。例如最多 12 页时传 `variables={"max_section_count":"12","moment_count_plan":"auto"}`。页数上限可取 1–24。Lumi 以章节 UUID 为种子，每组三页打乱 1、2、3 个关键视觉瞬间，把逐页数组及单页上限 3 填入提示词。实际写几页就取前几项；同章重试或调大上限时，前面各页的计划一致。用户指定逐页节奏时可显式传入计划和上限。把完整提示词交给写分镜的代理，并保留这份逐页计划。构图按各页的动作、视线与对白安排。
+
 ```json
 {"name":"story_profile","arguments":{"action":"write","story_md":"# 回家的星星\n\n小狐狸帮助迷路的星星回家。","expected_revision":0}}
 ```
@@ -144,7 +171,7 @@
 
 ## 批量设定图
 
-页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)` 返回现拼合图路径；宿主读该路径并通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
+页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)` 返回合图路径和 SHA-256；当前代理首次见到该组合或缺少已看记录时读图，每页通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
 执行前读 [批量设定图流程](batch-settings.md)。这些工具只保存、裁切和绑定图片；生成及视觉定位由 Codex 完成。
 
@@ -185,3 +212,5 @@ App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在
 完整业务对象通过 App-only `read_app_resource` / `write_app_resource` 的 `_meta["lumi/app_response"]` 交给 UI；图片亦在 `_meta`，不复制到模型可见文本或 structuredContent。模型要读具体正文时使用原有 `chapters/pages/settings` 读取工具。App-only 可见性不保证宿主一定排除上下文，真实宿主验证状态见仓库验收文档。
 
 文件导入支持宿主附件单次 6 MiB；下载交给宿主打开同一 Lumi 资源。AI 生成、聊天引用和系统配置保留“在 Lumi 中打开”入口，不自动触发生成或切换付费渠道。宿主不可用不阻塞用户已授权的创作流程。
+
+章节交付的 `export_book` 传目标 `chapter_uuid`；省略即整书。三种格式均返回 scope、page_count、missing_image_count。

@@ -3,9 +3,11 @@ package production
 import (
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"lumi/internal/project"
+	"lumi/internal/story"
 )
 
 type imagePreparationEventHook struct{ call func(string) }
@@ -65,9 +67,26 @@ func TestPreparePageRejectsUnreadableSelectedImage(t *testing.T) {
 	if err := os.Remove(internalPath); err != nil {
 		t.Fatal(err)
 	}
-	_, err = h.service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: page.UUID, SettingUUIDs: []string{setting.UUID}})
+	_, err = h.service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: page.UUID, SettingUUIDs: []string{setting.UUID}}, new(PageReferenceFiles))
 	var preparationError *Error
 	if !errors.As(err, &preparationError) || preparationError.Code != "section_premise_source_unreadable" {
 		t.Fatalf("missing source was not reported explicitly: %v", err)
+	}
+}
+
+func TestHostStripUsesProjectCanvasAndStyle(t *testing.T) {
+	h := newProductionHarnessWithFormat(t, project.PictureBookVertical)
+	_, page := hostPage(t, h)
+	_, err := h.stories.CreatePromptVersion(t.Context(), story.CreatePromptInput{PromptGroup: "premise_style", PromptKey: "project_overall_style", Prompt: "Graphite pencil on textured paper", ExpectedCurrentVersion: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared := prepareHostPageFixture(t, h.service, page.UUID, "")
+	if prepared.Target.TargetRatio != (ImageRatio{1, 3}) || strings.Contains(prepared.Target.GenerationHint, "2:3") || !strings.Contains(prepared.Target.GenerationHint, "1:3") {
+		t.Fatal(prepared.Target)
+	}
+	prompt := prepared.GenerationPrompt
+	if !strings.Contains(prompt, "Graphite pencil on textured paper") || !strings.Contains(prompt, "1:3") || strings.Contains(prompt, "赛璐璐") || strings.Contains(prompt, "cel shading") {
+		t.Fatal(prompt)
 	}
 }

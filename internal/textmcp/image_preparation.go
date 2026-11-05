@@ -8,13 +8,14 @@ import (
 )
 
 type settingImageReadinessItem struct {
-	SettingUUID      string `json:"setting_uuid"`
-	Title            string `json:"title"`
-	AssetType        string `json:"asset_type"`
-	ExpectedRevision int64  `json:"expected_revision"`
-	HasImage         bool   `json:"has_image"`
-	AssetUUID        string `json:"asset_uuid,omitempty"`
-	VariantUUID      string `json:"variant_uuid,omitempty"`
+	PreviousReview   *production.HostSettingReview `json:"previous_review,omitempty"`
+	SettingUUID      string                        `json:"setting_uuid"`
+	Title            string                        `json:"title"`
+	AssetType        string                        `json:"asset_type"`
+	ExpectedRevision int64                         `json:"expected_revision"`
+	HasImage         bool                          `json:"has_image"`
+	AssetUUID        string                        `json:"asset_uuid,omitempty"`
+	VariantUUID      string                        `json:"variant_uuid,omitempty"`
 }
 
 type settingImageReadiness struct {
@@ -38,6 +39,17 @@ type pageImageTarget struct {
 func imageTarget(ctx context.Context, prod *production.Service, a arguments) (any, error) {
 	if a.ImageSettings != nil && a.Slot != "page_image" {
 		return nil, httpapi.NewError(400, "invalid_arguments", "设定检查只用于页面", "setting_uuids 仅适用于 slot=page_image。", nil)
+	}
+	var previous map[string]production.HostSettingReview
+	if a.ReviewSourcePageUUID != "" {
+		if a.Slot != "page_image" || a.ImageSettings == nil || len(*a.ImageSettings) > production.MaxSectionPremiseAssets {
+			return nil, httpapi.NewError(400, "invalid_arguments", "复用核对时须选择本页需要的设定", "按本次分镜选择最多 12 项。", nil)
+		}
+		var err error
+		previous, err = prod.PreviousPageSettingReviews(ctx, a.ReviewSourcePageUUID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	target, err := prod.HostImageTarget(ctx, a.TargetUUID, a.Slot)
 	if err != nil || a.Slot != "page_image" {
@@ -80,6 +92,9 @@ func imageTarget(ctx context.Context, prod *production.Service, a arguments) (an
 		if hasImage {
 			item.AssetUUID = setting.CurrentVariant.Asset.UUID
 			item.VariantUUID = setting.CurrentVariant.UUID
+			if review, ok := previous[setting.UUID]; ok && review.VariantUUID == item.VariantUUID && review.ExpectedRevision == item.ExpectedRevision && review.StyleDigest == readiness.StyleDigest {
+				item.PreviousReview = &review
+			}
 			readiness.AvailableCount++
 		} else {
 			readiness.MissingCount++

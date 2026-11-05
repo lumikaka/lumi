@@ -52,8 +52,8 @@ func TestMCPRejectsLegacyDaemonBeforeCreationWithoutStoppingIt(t *testing.T) {
 	var creations, deletes atomic.Int32
 	web := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == instanceRoute && r.Method == http.MethodGet {
-			// Version 1 supports older authoring, but not workspace REST/UI contracts.
-			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true, CreationProtocolVersion: creationProtocolVersion - 1}})
+			// v3 supports signed imports but accepts unreviewed setting images.
+			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true, CreationProtocolVersion: 3}})
 			return
 		}
 		if r.Method == http.MethodDelete {

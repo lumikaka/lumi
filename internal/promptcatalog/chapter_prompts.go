@@ -326,13 +326,14 @@ JSON format:
 ## Storyboard
 {{storyboard}}`
 
-const beforeImagePromptZH = `## 生成规则
+func stripImageRulesZH(art, moments, materials, lighting, finish string) string {
+	return `## 生成规则
 
 1. 基于当前输入的 section storyboard，生成竖向手机条漫长图。画面宽高比为 1:3。成图必须是可阅读的连续漫画页面，不是单张插画、封面、海报、设定集、角色立绘页或画册排版。
 
-2. 画面采用成熟 2D 动画截图式彩色条漫质感：赛璐璐上色，清晰线稿，角色轮廓明确，平涂色块干净，阴影克制，画面简洁清爽，适合手机端上下滚动阅读。
+2. ` + art + `
 
-3. 整体必须是竖向连续叙事结构。每个 section 已提炼 3-5 个关键视觉瞬间，用连续镜头串联剧情，使场景、人物动作、表情、光影和空间关系自然过渡。
+3. ` + moments + `
 
 4. 禁止生成设定集网格、角色三视图、角色排排站、海报拼贴、多个独立缩略图、横版漫画页、规则九宫格、装饰边框、相框式排版。
 
@@ -346,9 +347,9 @@ const beforeImagePromptZH = `## 生成规则
 
 9. 角色必须保持辨识度。脸部、发型、体型、服装层次、武器、道具和姿态要清楚，不要被特效、烟雾、背景或文字遮挡。
 
-10. 场景应有清晰可辨的材质差异，例如天空、云层、烟尘、火光、碎石、金属、布料、玻璃、建筑、能量粒子、战斗痕迹等。材质以简洁线条、明确色块和少量高光区分，不追求写实纹理；背景不能只是模糊色块或纯氛围纹理。
+10. ` + materials + `
 
-11. 光影保持明确但克制。能量光、火光、霓虹、夕阳、爆炸、星光或环境反光可形成少量边缘光、高光和阴影，但整体应偏动画扁平感，避免厚重暗部和电影级写实光影。
+11. ` + lighting + `
 
 12. 主要对白、音效和字幕必须字号偏大、对比清楚、留白充足，适合手机阅读。文字不得压在人物脸部、核心道具、重要动作或视觉中心上。
 
@@ -364,7 +365,7 @@ const beforeImagePromptZH = `## 生成规则
 
 18. 中文文字必须清晰端正，避免乱码、错字、变形、过度艺术字化或难以阅读的书法化处理。
 
-19. 画面风格应避免明亮低幼、Q版萌系、廉价平涂卡通、纯游戏立绘、欧美超级英雄海报、单幅概念艺术、电影海报或封面式构图。允许成熟赛璐璐动画式平涂色块。
+19. ` + finish + `
 
 20. 最终画面应像一张完整的手机竖向条漫 section：从上到下阅读流畅，剧情清楚，人物动作明确，文字可读，分镜自然，具有连续漫画叙事感。
 
@@ -399,14 +400,32 @@ const beforeImagePromptZH = `## 生成规则
 7. 允许根据剧情表现角色的战损、疲惫、受伤、沾血、灰尘、衣物破损、能量缠绕，但这些变化不得覆盖角色原本的发型、脸型、服装结构和核心符号。
 
 8. 能量特效不得遮挡角色脸部、发型、手部动作、神契纹样、武器和关键道具。`
+}
 
-const beforeImagePromptEN = `## Generation Rules
+var beforeImagePromptZH = stripImageRulesZH(
+	`画面采用成熟 2D 动画截图式彩色条漫质感：赛璐璐上色，清晰线稿，角色轮廓明确，平涂色块干净，阴影克制，画面简洁清爽，适合手机端上下滚动阅读。`,
+	`整体必须是竖向连续叙事结构。每个 section 已提炼 3-5 个关键视觉瞬间，用连续镜头串联剧情，使场景、人物动作、表情、光影和空间关系自然过渡。`,
+	`场景应有清晰可辨的材质差异，例如天空、云层、烟尘、火光、碎石、金属、布料、玻璃、建筑、能量粒子、战斗痕迹等。材质以简洁线条、明确色块和少量高光区分，不追求写实纹理；背景不能只是模糊色块或纯氛围纹理。`,
+	`光影保持明确但克制。能量光、火光、霓虹、夕阳、爆炸、星光或环境反光可形成少量边缘光、高光和阴影，但整体应偏动画扁平感，避免厚重暗部和电影级写实光影。`,
+	`画面风格应避免明亮低幼、Q版萌系、廉价平涂卡通、纯游戏立绘、欧美超级英雄海报、单幅概念艺术、电影海报或封面式构图。允许成熟赛璐璐动画式平涂色块。`,
+)
+
+var hostStripImagePromptZH = stripImageRulesZH(
+	`画面材质、线条和着色遵循下文的项目画风。`,
+	`按本页已保存分镜中的视觉瞬间及其顺序组织连续镜头。`,
+	`场景材质通过当前画风的笔触、纹理和色彩清楚区分。`,
+	`明暗与光源保持连贯，服务剧情和表情。`,
+	`艺术处理以项目画风和设定图为准。`,
+)
+
+func stripImageRulesEN(art, moments, materials, lighting, finish string) string {
+	return `## Generation Rules
 
 1. Based on the current section storyboard, generate a vertical mobile scrolling comic long image. The image aspect ratio is 1:3. The result must be a readable continuous comic page, not a single illustration, cover, poster, setting collection, character standee sheet, or artbook layout.
 
-2. The image should use a mature 2D animation screenshot-like color comic texture: cel shading, clear line art, distinct character silhouettes, clean flat color blocks, restrained shadows, and a clean refreshing image suitable for vertical scrolling on mobile.
+2. ` + art + `
 
-3. The whole image must be a vertical continuous narrative structure. Each section has extracted 3-5 key visual moments; connect the plot with continuous shots so scene, character action, expression, lighting, and spatial relationships transition naturally.
+3. ` + moments + `
 
 4. Do not generate setting-sheet grids, character turnaround views, lineups of characters, poster collages, multiple independent thumbnails, horizontal comic pages, regular nine-grid layouts, decorative borders, or framed layouts.
 
@@ -420,9 +439,9 @@ const beforeImagePromptEN = `## Generation Rules
 
 9. Characters must remain recognizable. Faces, hairstyles, body types, clothing layers, weapons, props, and poses must be clear and not blocked by effects, smoke, backgrounds, or text.
 
-10. Scenes should have clearly distinguishable materials, such as sky, clouds, dust, firelight, rubble, metal, fabric, glass, buildings, energy particles, and battle traces. Distinguish materials with simple lines, clear color blocks, and limited highlights rather than realistic texture; backgrounds must not be only blurry color blocks or pure atmospheric textures.
+10. ` + materials + `
 
-11. Lighting should stay clear but restrained. Energy light, firelight, neon, sunset, explosions, starlight, or environmental reflections may create limited rim light, highlights, and shadows, but the whole image should lean toward an animation flat-color feeling and avoid heavy dark areas or cinematic realistic lighting.
+11. ` + lighting + `
 
 12. Main dialogue, sound effects, and captions must use relatively large text, clear contrast, and sufficient whitespace for mobile reading. Text must not cover faces, core props, important actions, or visual centers.
 
@@ -438,7 +457,7 @@ const beforeImagePromptEN = `## Generation Rules
 
 18. English text must be clear and upright, avoiding gibberish, misspellings, deformation, over-stylized lettering, or hard-to-read decorative treatment.
 
-19. Avoid bright childish looks, chibi/cute style, cheap flat-color cartooning, pure game character art, American superhero poster style, single concept-art illustration, movie poster, or cover-style composition. Mature cel-shaded animation-like flat color blocks are allowed.
+19. ` + finish + `
 
 20. The final image should look like a complete vertical mobile scrolling comic section: smooth top-to-bottom reading, clear plot, distinct character actions, readable text, natural panels, and continuous comic storytelling.
 
@@ -473,6 +492,36 @@ const beforeImagePromptEN = `## Generation Rules
 7. You may show battle damage, fatigue, injury, bloodstains, dust, clothing tears, or energy entanglement according to the plot, but these changes must not cover the character's original hairstyle, face shape, clothing structure, and core symbols.
 
 8. Energy effects must not block character faces, hairstyles, hand actions, divine-contract patterns, weapons, or key props.`
+}
+
+var beforeImagePromptEN = stripImageRulesEN(
+	`The image should use a mature 2D animation screenshot-like color comic texture: cel shading, clear line art, distinct character silhouettes, clean flat color blocks, restrained shadows, and a clean refreshing image suitable for vertical scrolling on mobile.`,
+	`The whole image must be a vertical continuous narrative structure. Each section has extracted 3-5 key visual moments; connect the plot with continuous shots so scene, character action, expression, lighting, and spatial relationships transition naturally.`,
+	`Scenes should have clearly distinguishable materials, such as sky, clouds, dust, firelight, rubble, metal, fabric, glass, buildings, energy particles, and battle traces. Distinguish materials with simple lines, clear color blocks, and limited highlights rather than realistic texture; backgrounds must not be only blurry color blocks or pure atmospheric textures.`,
+	`Lighting should stay clear but restrained. Energy light, firelight, neon, sunset, explosions, starlight, or environmental reflections may create limited rim light, highlights, and shadows, but the whole image should lean toward an animation flat-color feeling and avoid heavy dark areas or cinematic realistic lighting.`,
+	`Avoid bright childish looks, chibi/cute style, cheap flat-color cartooning, pure game character art, American superhero poster style, single concept-art illustration, movie poster, or cover-style composition. Mature cel-shaded animation-like flat color blocks are allowed.`,
+)
+
+var hostStripImagePromptEN = stripImageRulesEN(
+	`Follow the project art style below for medium, linework and color.`,
+	`Use the visual moments and sequence specified in the saved storyboard.`,
+	`Distinguish materials using the textures, marks and colors of the project style.`,
+	`Keep lighting consistent with the scene and expressions.`,
+	`Follow the project art style and setting references.`,
+)
+
+// Adapt only the built-in strip fragment. Project-authored fragments and the
+// original Web defaults are used verbatim by their respective callers.
+func HostPageBaseRules(effective string) string {
+	switch effective {
+	case beforeImagePromptZH:
+		return hostStripImagePromptZH
+	case beforeImagePromptEN:
+		return hostStripImagePromptEN
+	default:
+		return effective
+	}
+}
 
 func chapterDefinitions(language string) []Definition {
 	english := language == LanguageEnglish

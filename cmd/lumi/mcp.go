@@ -26,9 +26,9 @@ import (
 
 const creationRoute = "/api/v1/creation-requests"
 
-// Version 3 requires shared page preparation and signed import validation in
-// the daemon. A rebuilt relay must never dispatch to an older running backend.
-const creationProtocolVersion = 3
+// Version 4 requires version-bound setting and page reviews, compact resume reads,
+// and scoped exports. A v3 daemon accepts signed imports without review evidence.
+const creationProtocolVersion = 4
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -39,7 +39,7 @@ type creationRequest struct {
 	ReadOnly            bool            `json:"read_only,omitempty"`
 }
 
-func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub) {
+func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub) func() {
 	service := &textmcp.Service{Projects: projects, Events: events, Endpoint: identity.Endpoint}
 	service.AppRequest = func(ctx context.Context, uuid string, input textmcp.AppResourceRequest) (any, error) {
 		// Run the same router, middleware and handlers as the Web UI. The
@@ -137,6 +137,7 @@ func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Ma
 		}
 		return c.JSON(http.StatusOK, service.Call(ctx, input.RootPath, input.Tool, input.Arguments))
 	})
+	return service.PageReferences.Close
 }
 
 func runMCP(opt options) error {
@@ -164,7 +165,7 @@ func runMCP(opt options) error {
 			return textmcp.Failure("instance_unavailable", "CLI 实例不可用", err.Error())
 		}
 		if status.CreationProtocolVersion < creationProtocolVersion {
-			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", "随包 CLI 与正在运行的共享服务协议不兼容；未派发创作请求。请先协调同一 environment/data-dir 的使用者，再明确停止旧服务并用新包重连；不要重放写入。")
+			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，插件要求 v%d（设定图核对、成图核对及按章导出）。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, creationProtocolVersion, opt.environment, opt.dataDir))
 		}
 		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly})
 	})

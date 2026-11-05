@@ -2,6 +2,7 @@ package textmcp
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -86,8 +87,8 @@ func TestPreparePageFourSettingsHostPathFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Remove(secondEnvelope.Data.ReferenceImagePath) })
-	if prepared["reference_image_path"] == secondEnvelope.Data.ReferenceImagePath || prepared["preparation"].(map[string]any)["digest"] != secondEnvelope.Data.Preparation.Digest {
-		t.Fatal("fresh paths must have the same fact digest")
+	if prepared["reference_image_path"] != secondEnvelope.Data.ReferenceImagePath || prepared["preparation"].(map[string]any)["digest"] != secondEnvelope.Data.Preparation.Digest {
+		t.Fatal("repeated preparation must preserve the reference path and page digest")
 	}
 	wire, _ := json.Marshal(wireResult)
 	for _, forbidden := range []string{"base64", "data:image", "image_data", `"type":"image"`, "project.sqlite", "/assets/", "/.lumi/"} {
@@ -103,6 +104,9 @@ func TestPreparePageFourSettingsHostPathFlow(t *testing.T) {
 	viewed, err := os.ReadFile(collagePath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if digest := fmt.Sprintf("%x", sha256.Sum256(viewed)); prepared["reference_image_sha256"] != digest || secondEnvelope.Data.ReferenceImageSHA256 != digest {
+		t.Fatal("reference digest must match the complete PNG")
 	}
 	decoded, err := png.Decode(bytes.NewReader(viewed))
 	if err != nil || decoded.Bounds().Dx() != 1176 || decoded.Bounds().Dy() != 816 {
@@ -145,6 +149,38 @@ func TestPreparePageFourSettingsHostPathFlow(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestPagesShareOnlyTheirReferencePNG(t *testing.T) {
+	s, root, chapter, firstPage := imagePromptPage(t)
+	input := preparedFixtureImage(t)
+	var selection []string
+	for _, title := range []string{"Fox", "Lantern"} {
+		setting := createReadinessSetting(t, s, root, "prop", title)
+		object(t, invoke(t, s, root, "import_image", map[string]any{"path": input, "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
+		selection = append(selection, setting["uuid"].(string))
+	}
+	state := object(t, invoke(t, s, root, "pages", map[string]any{"action": "list", "chapter_uuid": chapter}))["state"].(map[string]any)
+	secondPage := object(t, invoke(t, s, root, "pages", map[string]any{"action": "create", "chapter_uuid": chapter, "title": "Home", "description_md": "The fox is home.", "storyboard_md": "Put the lantern on the table.", "expected_revision": state["revision"]}))["uuid"].(string)
+	first := preparePageFixture(t, s, root, firstPage, selection, "")
+	second := preparePageFixture(t, s, root, secondPage, selection, "")
+	if first["reference_image_path"] != second["reference_image_path"] || first["reference_image_sha256"] != second["reference_image_sha256"] {
+		t.Fatal("the second page should reuse the same reference PNG")
+	}
+	if first["generation_prompt"] == second["generation_prompt"] {
+		t.Fatal("the second page must have its own prompt")
+	}
+	wrong := preparedImportArgs(second, input)
+	wrong["preparation"] = first["preparation"]
+	if got := code(invoke(t, s, root, "import_image", wrong)); got != "page_image_preparation_stale" {
+		t.Fatalf("other page receipt: %s", got)
+	}
+	reordered := preparePageFixture(t, s, root, secondPage, []string{selection[1], selection[0]}, "")
+	if reordered["reference_image_sha256"] == second["reference_image_sha256"] || reordered["reference_image_path"] == second["reference_image_path"] {
+		t.Fatal("changed reference labels must cause a new preview")
+	}
+	object(t, invoke(t, s, root, "import_image", preparedImportArgs(first, input)))
+	object(t, invoke(t, s, root, "import_image", preparedImportArgs(second, input)))
 }
 
 func TestPreparedPageRejectsChangedCurrentSettingImageWithoutWritingVersion(t *testing.T) {
@@ -198,7 +234,7 @@ func TestPreparePageSelectionLimitsAndNoReference(t *testing.T) {
 		}
 	}
 	noRef := preparePageFixture(t, s, root, page, []string{}, "Keep exact dialogue")
-	if noRef["reference_image_path"] != "" || noRef["reference_mode"] != "none" || noRef["image_info"] != nil || len(noRef["sources"].([]any)) != 0 {
+	if noRef["reference_image_sha256"] != nil || noRef["reference_image_path"] != "" || noRef["reference_mode"] != "none" || noRef["image_info"] != nil || len(noRef["sources"].([]any)) != 0 {
 		t.Fatal(noRef)
 	}
 	selection := []string{}
@@ -237,7 +273,7 @@ func TestPreparedPagePromptMatchesWebAssemblyVerbatim(t *testing.T) {
 				}
 			}
 			prod := production.NewService(store, nil)
-			prepared, err := prod.PreparePageImage(t.Context(), production.PreparePageImageInput{PageUUID: page, SettingUUIDs: []string{}, AdditionalDirection: "Keep exact dialogue and margins"})
+			prepared, err := prod.PreparePageImage(t.Context(), production.PreparePageImageInput{PageUUID: page, SettingUUIDs: []string{}, AdditionalDirection: "Keep exact dialogue and margins"}, &s.PageReferences)
 			if err != nil {
 				return err
 			}

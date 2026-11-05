@@ -999,13 +999,13 @@ func (service *Service) SelectStoryboard(ctx context.Context, chapterUUID, secti
 }
 
 func (service *Service) ImportSectionImage(ctx context.Context, chapterUUID, sectionUUID, uploadUUID string, expectedRevision int64) (ComicSection, error) {
-	return service.importSectionImage(ctx, chapterUUID, sectionUUID, expectedRevision, func(bind func(*gorm.DB, int64) error) error {
+	return service.importSectionImage(ctx, chapterUUID, sectionUUID, expectedRevision, "{}", func(bind func(*gorm.DB, int64) error) error {
 		_, err := service.files.FinalizeUploadWithBind(ctx, uploadUUID, "comic_section_image", bind)
 		return err
 	})
 }
 
-func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64, commit func(func(*gorm.DB, int64) error) error) (ComicSection, error) {
+func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64, inputSnapshot string, commit func(func(*gorm.DB, int64) error) error) (ComicSection, error) {
 	variantUUID, err := newUUIDv7()
 	if err != nil {
 		return ComicSection{}, err
@@ -1031,7 +1031,7 @@ func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sec
 			return err
 		}
 		now := service.now().UTC()
-		variant := imageVariantRecord{UUID: variantUUID, ComicSectionID: section.ID, FileID: fileID, ActorID: actor.ID, VersionNo: version, SourceType: "manual", InputSnapshot: "{}", CreatedAt: now}
+		variant := imageVariantRecord{UUID: variantUUID, ComicSectionID: section.ID, FileID: fileID, ActorID: actor.ID, VersionNo: version, SourceType: "manual", InputSnapshot: inputSnapshot, CreatedAt: now}
 		if err := tx.Create(&variant).Error; err != nil {
 			return err
 		}

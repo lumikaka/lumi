@@ -92,7 +92,8 @@ func runDaemon(opt options) error {
 	registerInitialization(application.Echo, value, projects)
 	registerSessionImports(application.Echo, value, projects, application.RealtimeHub())
 	registerCindySessionImports(application.Echo, value, projects, application.RealtimeHub())
-	registerTextAuthoring(application.Echo, value, projects, application.RealtimeHub())
+	closePageReferences := registerTextAuthoring(application.Echo, value, projects, application.RealtimeHub())
+	defer closePageReferences()
 	shutdown := make(chan struct{}, 1)
 	application.GET(instanceRoute, func(c echo.Context) error { return serveIdentity(c, value, projects) })
 	application.DELETE(instanceRoute, func(c echo.Context) error {

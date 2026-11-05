@@ -169,3 +169,33 @@ func TestGuidanceRejectsSymlinksAndConcurrentReplacement(t *testing.T) {
 		t.Fatal("lost concurrent edit")
 	}
 }
+
+func TestUpgradeOfficialAgentsGuidanceOnly(t *testing.T) {
+	old, err := os.ReadFile("testdata/agents-v3.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, custom := range []bool{false, true} {
+		root := t.TempDir()
+		path := filepath.Join(root, "AGENTS.md")
+		content := string(old)
+		if custom {
+			content += "我的自定义规则"
+		}
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+		result := ensureGuidance(root)
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if custom {
+			if result.Agents != "preserved" || string(got) != content || !strings.Contains(strings.Join(result.Messages, ""), "替换") {
+				t.Fatal(result)
+			}
+		} else if result.Agents != "updated" || string(got) != agentsGuidance || strings.Contains(string(got), "section_image") {
+			t.Fatal(result)
+		}
+	}
+}

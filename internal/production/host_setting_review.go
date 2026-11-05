@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 
 	"lumi/internal/story"
@@ -69,4 +70,36 @@ func validateHostSettingReviews(settings []PremiseAsset, style string, reviews [
 		}
 	}
 	return nil
+}
+
+// Imported pages already carry their validated setting assessments in their variant snapshot.
+// Return evidence only; the caller must confirm its basis still covers this request.
+func (s *Service) PreviousPageSettingReviews(ctx context.Context, pageUUID string) (map[string]HostSettingReview, error) {
+	var row struct {
+		PageUUID string
+		Evidence string
+	}
+	err := s.store.DB().WithContext(ctx).Raw(`SELECT s.uuid AS page_uuid,
+ COALESCE(json_extract(v.input_snapshot,'$.page_image_preparation.setting_reviews'),'[]') AS evidence
+ FROM comic_sections s JOIN chapter_comic_states cs ON cs.id=s.chapter_comic_state_id
+ JOIN chapters c ON c.id=cs.chapter_id JOIN projects p ON p.id=c.project_id
+ LEFT JOIN comic_image_variants v ON v.id=s.current_image_variant_id
+ WHERE p.uuid=? AND s.uuid=? AND c.deleted_at IS NULL AND s.deleted_at IS NULL`, s.store.ProjectUUID(), pageUUID).Scan(&row).Error
+	if err != nil {
+		return nil, err
+	}
+	if row.PageUUID == "" {
+		return nil, domainError(CodeValidation, "找不到核对来源页面", "请从当前项目的目录选择已导入图片的页面。", nil)
+	}
+	var reviews []HostSettingReview
+	if err := json.Unmarshal([]byte(row.Evidence), &reviews); err != nil {
+		return nil, err
+	}
+	bySetting := make(map[string]HostSettingReview, len(reviews))
+	for _, r := range reviews {
+		if r.Verdict == "passed" {
+			bySetting[r.SettingUUID] = r
+		}
+	}
+	return bySetting, nil
 }

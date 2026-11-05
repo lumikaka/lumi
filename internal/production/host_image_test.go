@@ -63,7 +63,7 @@ func hostPage(t *testing.T, h *productionHarness) (string, ComicSection) {
 
 func prepareHostPageFixture(t *testing.T, service *Service, pageUUID, direction string) PreparedPageImage {
 	t.Helper()
-	prepared, err := service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: pageUUID, SettingUUIDs: []string{}, AdditionalDirection: direction})
+	prepared, err := service.PreparePageImage(t.Context(), PreparePageImageInput{PageUUID: pageUUID, SettingUUIDs: []string{}, AdditionalDirection: direction}, new(PageReferenceFiles))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestImageBindingRechecksRevisionInsideAssetCommit(t *testing.T) {
 	}
 	// Simulate another writer after host preflight, before the final Asset
 	// transaction. The shared binding must roll back File + variant together.
-	_, err := h.service.importSectionImage(t.Context(), chapter, page.UUID, page.Revision, func(bind func(*gorm.DB, int64) error) error {
+	_, err := h.service.importSectionImage(t.Context(), chapter, page.UUID, page.Revision, "{}", func(bind func(*gorm.DB, int64) error) error {
 		if err := h.service.store.DB().Model(&comicSectionRecord{}).Where("uuid=?", page.UUID).Update("revision", gorm.Expr("revision+1")).Error; err != nil {
 			return err
 		}

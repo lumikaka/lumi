@@ -415,3 +415,20 @@ func TestSectionPremiseSelectionUsesJSONCandidatesAndMigratesPreviousDefault(t *
 		}
 	}
 }
+
+func TestHostStripBaseRulesRespectSavedStyleAndPreserveCustomRules(t *testing.T) {
+	for _, tc := range []struct{ lang, legacy, structural, style string }{
+		{LanguageChinese, "赛璐璐", "已有对白必须逐字保留", "项目画风"},
+		{LanguageEnglish, "cel shading", "Existing dialogue must be preserved verbatim", "project art style"},
+	} {
+		definition, _ := Lookup(GroupChapter, "before_image", tc.lang)
+		host := HostPageBaseRules(definition.DefaultValue)
+		if !strings.Contains(definition.DefaultValue, tc.legacy) || strings.Contains(host, tc.legacy) || !strings.Contains(host, tc.structural) || !strings.Contains(host, tc.style) {
+			t.Errorf("incorrect built-in style separation: %s", tc.lang)
+		}
+		custom := definition.DefaultValue + "\nMy own style."
+		if HostPageBaseRules(custom) != custom {
+			t.Fatal("project override was replaced")
+		}
+	}
+}

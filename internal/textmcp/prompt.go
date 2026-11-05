@@ -2,8 +2,11 @@ package textmcp
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
+	"strconv"
 	"strings"
 
 	"lumi/internal/httpapi"
@@ -13,10 +16,23 @@ import (
 	"lumi/internal/story"
 )
 
-func readBook(ctx context.Context, store *project.Store, st *story.Service, prod *production.Service) (book production.TextBook, err error) {
+func readBook(ctx context.Context, store *project.Store, st *story.Service, prod *production.Service, chapterUUID string) (book production.TextBook, err error) {
 	book.Project, err = st.GetProject(ctx)
 	if err != nil {
 		return
+	}
+	if chapterUUID != "" {
+		chapter, err := st.GetChapter(ctx, chapterUUID)
+		if err != nil {
+			return book, err
+		}
+		pages, err := prod.ListSections(ctx, chapterUUID)
+		if err != nil {
+			return book, err
+		}
+		book.ChapterUUID = chapterUUID
+		book.Chapters = []production.TextChapter{{Chapter: chapter, Pages: pages}}
+		return book, nil
 	}
 	book.Setup, err = store.ProjectSetup(ctx)
 	if err != nil {
@@ -55,6 +71,35 @@ func readBook(ctx context.Context, store *project.Store, st *story.Service, prod
 
 func jsonText(v any) string { b, _ := json.Marshal(v); return string(b) }
 
+// A chapter always draws from the same shuffled groups, so retries and larger
+// page limits preserve the plan for pages already drafted.
+func stripMomentPlan(chapterUUID string, pageCount int) []int {
+	random := rand.New(rand.NewChaCha8(sha256.Sum256([]byte(chapterUUID))))
+	plan := make([]int, 0, pageCount)
+	for len(plan) < pageCount {
+		moments := []int{1, 2, 3}
+		random.Shuffle(len(moments), func(i, j int) { moments[i], moments[j] = moments[j], moments[i] })
+		plan = append(plan, moments...)
+	}
+	return plan[:pageCount]
+}
+
+func applyAutoStripPlan(profile *project.PictureBookProfile, chapterUUID string, values map[string]string) error {
+	if profile == nil || profile.Format != project.PictureBookVertical {
+		return httpapi.NewError(400, "invalid_arguments", "自动镜头数计划仅适用于竖向条漫", "按当前绘本规格提供 moment_count_plan。", nil)
+	}
+	count, err := strconv.Atoi(values["max_section_count"])
+	if err != nil || count < 1 || count > production.MaxGeneratedComicSections {
+		return httpapi.NewError(400, "invalid_arguments", "自动分镜页数上限无效", fmt.Sprintf("max_section_count 必须是 1 到 %d 的整数。", production.MaxGeneratedComicSections), nil)
+	}
+	if max := values["max_moments_per_section"]; max != "" && max != "3" {
+		return httpapi.NewError(400, "invalid_arguments", "自动计划的每页镜头数为 1 到 3", "省略 max_moments_per_section，或按用户要求提供明确的逐页计划。", nil)
+	}
+	values["moment_count_plan"] = jsonText(stripMomentPlan(chapterUUID, count))
+	values["max_moments_per_section"] = "3"
+	return nil
+}
+
 func render(ctx context.Context, store *project.Store, st *story.Service, prod *production.Service, a arguments) (any, error) {
 	if (a.Target == "setting_board" && (a.PromptGroup != "premise" || a.PromptKey != "setting_image")) || (a.Target == "setting_breakdown" && (a.PromptGroup != "premise" || a.PromptKey != "asset_breakdown")) {
 		return nil, httpapi.NewError(400, "invalid_arguments", "批量设定模板不匹配", "setting_board 使用 premise/setting_image；setting_breakdown 使用 premise/asset_breakdown。", nil)
@@ -64,7 +109,7 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	if err != nil {
 		return nil, err
 	}
-	book, err := readBook(ctx, store, st, prod)
+	book, err := readBook(ctx, store, st, prod, "")
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +183,11 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 				return nil, err
 			}
 			targetUUID, rev, writeTool, target = state.UUID, state.Revision, "pages", state
+			if a.PromptGroup == promptcatalog.GroupChapter && a.PromptKey == "comic_storyboard" && values["moment_count_plan"] == "auto" {
+				if err := applyAutoStripPlan(book.Project.PictureBook, ch.UUID, values); err != nil {
+					return nil, err
+				}
+			}
 		}
 		if a.Target == "page" {
 			page, err := prod.GetSection(ctx, ch.UUID, a.PageUUID)

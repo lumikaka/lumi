@@ -17,6 +17,7 @@ import (
 
 // TextBook freezes every authored text field in a portable, public-UUID DTO.
 type TextBook struct {
+	ChapterUUID  string              `json:"chapter_uuid,omitempty"`
 	Project      story.ProjectDetail `json:"project"`
 	Setup        project.SetupState  `json:"setup"`
 	StoryProfile story.StoryProfile  `json:"story_profile"`
@@ -30,6 +31,9 @@ type TextChapter struct {
 	Pages   []ComicSection `json:"pages"`
 }
 type TextExport struct {
+	Scope             string `json:"scope"`
+	ChapterUUID       string `json:"chapter_uuid,omitempty"`
+	PageCount         int    `json:"page_count"`
 	UUID              string `json:"uuid"`
 	Format            string `json:"format"`
 	Path              string `json:"path"`
@@ -39,14 +43,18 @@ type TextExport struct {
 
 func (book TextBook) Markdown() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n## Setup\n\n", book.Project.Name)
-	setup, _ := json.MarshalIndent(book.Setup, "", "  ")
-	fmt.Fprintf(&b, "```json\n%s\n```\n\n## Story Profile\n\n%s\n\n## Visual style\n\n%s\n", setup, book.StoryProfile.StoryMD, book.Premise.DefaultStyle)
-	for _, source := range book.Sources {
-		fmt.Fprintf(&b, "\n## Premise source %s\n\n%s\n", source.UUID, source.SourceText)
-	}
-	for _, setting := range book.Settings {
-		fmt.Fprintf(&b, "\n## Setting: %s (%s)\n\n%s\n\nTags: %s\n", setting.Title, setting.AssetType, setting.Summary, strings.Join(setting.Tags, ", "))
+	if book.ChapterUUID == "" {
+		fmt.Fprintf(&b, "# %s\n\n## Setup\n\n", book.Project.Name)
+		setup, _ := json.MarshalIndent(book.Setup, "", "  ")
+		fmt.Fprintf(&b, "```json\n%s\n```\n\n## Story Profile\n\n%s\n\n## Visual style\n\n%s\n", setup, book.StoryProfile.StoryMD, book.Premise.DefaultStyle)
+		for _, source := range book.Sources {
+			fmt.Fprintf(&b, "\n## Premise source %s\n\n%s\n", source.UUID, source.SourceText)
+		}
+		for _, setting := range book.Settings {
+			fmt.Fprintf(&b, "\n## Setting: %s (%s)\n\n%s\n\nTags: %s\n", setting.Title, setting.AssetType, setting.Summary, strings.Join(setting.Tags, ", "))
+		}
+	} else {
+		fmt.Fprintf(&b, "# %s\n", book.Project.Name)
 	}
 	for _, chapter := range book.Chapters {
 		fmt.Fprintf(&b, "\n## %s · %s\n", chapter.Chapter.ChapterCode, chapter.Chapter.Title)
@@ -71,22 +79,11 @@ func (s *Service) ExportTextBook(ctx context.Context, book TextBook, format stri
 	if err != nil {
 		return TextExport{}, err
 	}
-	result := TextExport{UUID: uuid, Format: format}
-	pageCount := 0
-	for _, ch := range book.Chapters {
-		for _, page := range ch.Pages {
-			pageCount++
-			if page.CurrentImage == nil {
-				result.MissingImageCount++
-			}
-		}
+	result := TextExport{UUID: uuid, Format: format, Scope: "project", ChapterUUID: book.ChapterUUID}
+	if book.ChapterUUID != "" {
+		result.Scope = "chapter"
 	}
-	if pageCount == 0 {
-		return result, domainError(CodeExportEmpty, "没有可导出的页面", "先创建正文页面及画面描述。", nil)
-	}
-	if result.MissingImageCount > 0 && !allowMissing {
-		return result, domainError(CodeExportIncomplete, "绘本仍有缺图页面", "补齐图片或设置 allow_missing_images=true。", nil)
-	}
+
 	ext := format
 	if format == "markdown" {
 		ext = "md"
@@ -96,15 +93,30 @@ func (s *Service) ExportTextBook(ctx context.Context, book TextBook, format stri
 	}
 	relative := filepath.ToSlash(filepath.Join(".lumi", "exports", "text-"+uuid+"."+ext))
 	if format == "pdf" {
-		snapshot, _, err := s.BuildExportSnapshotForFormat(ctx, "project", "", allowMissing, ExportFormatPDF)
+		snapshot, _, err := s.BuildExportSnapshotForFormat(ctx, result.Scope, book.ChapterUUID, allowMissing, ExportFormatPDF)
 		if err != nil {
 			return result, err
 		}
+		result.PageCount, result.MissingImageCount = snapshot.SectionCount, snapshot.MissingSectionCount
 		result.ByteSize, _, _, err = s.renderExportToPath(ctx, relative, ExportFormatPDF, snapshot, nil)
 		if err == nil {
 			result.Path, err = s.store.ResolvePath(relative)
 		}
 		return result, err
+	}
+	for _, ch := range book.Chapters {
+		for _, page := range ch.Pages {
+			result.PageCount++
+			if page.CurrentImage == nil {
+				result.MissingImageCount++
+			}
+		}
+	}
+	if result.PageCount == 0 {
+		return result, domainError(CodeExportEmpty, "没有可导出的页面", "先创建正文页面及画面描述。", nil)
+	}
+	if result.MissingImageCount > 0 && !allowMissing {
+		return result, domainError(CodeExportIncomplete, "绘本仍有缺图页面", "补齐图片或设置 allow_missing_images=true。", nil)
 	}
 	err = s.store.WithFileCommit(func() error {
 		target, err := s.store.ResolvePath(relative)
@@ -174,7 +186,15 @@ func (s *Service) writeTextZIP(ctx context.Context, output io.Writer, book TextB
 	if err := write("book.md", []byte(book.Markdown())); err != nil {
 		return err
 	}
-	b, err := json.MarshalIndent(book, "", "  ")
+	var manifest any = book
+	if book.ChapterUUID != "" {
+		manifest = struct {
+			Project     story.ProjectDetail `json:"project"`
+			ChapterUUID string              `json:"chapter_uuid"`
+			Chapters    []TextChapter       `json:"chapters"`
+		}{book.Project, book.ChapterUUID, book.Chapters}
+	}
+	b, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return err
 	}

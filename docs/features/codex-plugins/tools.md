@@ -180,6 +180,8 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 ### book_outline
 
+按章传 `chapter_uuid` 时只返回该章页面。页面附 `variant_uuid`（有图时）和 `review_status`（missing_image / pending / needs_revision / passed）。`pages list(summary_only=true)` 同时返回集合 revision。`pages get(summary_only=true)` 返回完整核对观察。修订同一图版的既有核对意见时传 `expected_review_revision`（摘要中的 `review_revision`）。实际看图后用 `pages record_image_review(chapter_uuid,page_uuid,variant_uuid,expected_revision,verdict,observation)` 记录当前版本，换图或编辑页面后重新核对。
+
 参数：分页参数可选。整本 active 章节与页面按阅读顺序展平。章节项包含 `kind:"chapter",uuid,chapter_code,title,revision,has_text`；页面项包含 `kind:"page",uuid,chapter_uuid,section_no,page_role,title,revision,has_text,has_storyboard,has_image`。
 
 ### prompt_catalog
@@ -204,7 +206,7 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 返回 `{project_uuid,target_uuid,expected_revision,prompt_group,prompt_key,prompt,write_back}`。prompt 自带有效目录模板、语言和 JSON system 约束、完整任务输入、项目上下文、目标 UUID 与版本及写回契约，可单独交给执行者，无需父对话历史。输出格式要求来自原模板；工具只渲染，不调用模型。调用者将 JSON 中的文本字段映射到对应写入工具，不会自动执行章节计划或覆盖全部页面。
 
-自动填入真实 `story_md/chapters_json/project_context_json/premise_context_json/style_name/style_prompt`；章节目标另有 `chapter_code/chapter_context_json/input_text`，单页目标可填 `storyboard`。任务专属占位符（例如 chapter_count、chapter_plan_json、generated_summaries_json、moment_count_plan）放在 variables 中。缺少输入返回 `prompt_inputs_missing`，不会默默编造。项目事实字段不可通过 variables 覆盖。
+自动填入真实 `story_md/chapters_json/project_context_json/premise_context_json/style_name/style_prompt`；章节目标另有 `chapter_code/chapter_context_json/input_text`，单页目标可填 `storyboard`。任务专属占位符（例如 chapter_count、chapter_plan_json、generated_summaries_json、moment_count_plan）放在 variables 中。竖向条漫的 `pages + chapter/comic_storyboard` 支持 `moment_count_plan="auto"`，同时传 `max_section_count`（1–24 的整数字符串）；服务端按章生成稳定的逐页 1–3 镜头计划并填入单页上限 3。显式逐页计划按原值渲染。缺少输入返回 `prompt_inputs_missing`，不会默默编造。项目事实字段不可通过 variables 覆盖。
 
 上下文默认包含全部 active 章节和设定。较大项目可用两个 context UUID 数组选择任务必需的资源；空数组排除对应集合，目标对象仍单独保留。模板内的源文本或目标自身超限时，先拆分创作任务。
 
@@ -223,6 +225,8 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 可选：`setting_uuids`，仅用于 `page_image`，最多 100 个不重复的当前项目 active 设定 UUID，按参考图顺序传入。
 
 返回 `{target_uuid,slot,expected_revision,target_ratio,recommended_ratio,generation_hint,suggested_fit,ratio_tolerance}`，页面额外返回 `setting_readiness`。ratio 为 `{width,height}`，不是输出像素要求。
+
+选定设定后可传 `review_source_page_uuid` 取先前导入页面保存的逐项核对。版本、revision 和画风均匹配时返回 `items[].previous_review`，调用方确认参考依据仍相同后可直接复用。
 
 `setting_readiness` 为只读检查，包含 `scope,status,items,available_count,missing_count,next_action,style_prompt,style_digest`；每项返回 `setting_uuid,title,asset_type,expected_revision,has_image`，有当前图片时附 `asset_uuid,variant_uuid`。核对阶段用 `read_image` 实际看图，记录与用户要求／原参考的具体对照；页面生成阶段随后调用 `prepare_page_image`，由服务端读取源图并合图，agent 不逐张读取。
 
@@ -247,9 +251,9 @@ App-only、只读，`action` 为 `open/next/close`；每次都传 cwd 绑定的 
 
 `setting_reviews` 每项为 `{setting_uuid,variant_uuid,expected_revision,style_digest,verdict,reference_basis,comparison}`。身份、版本和画风摘要来自 `image_target`；`verdict=passed` 才可继续，`needs_revision` 阻止准备。依据和具体观察各为非空字符串，最多 2000 字符。缺失或未通过返回 `setting_image_review_required`，设定 revision／采用图片／有效画风变化返回 `setting_image_review_stale`；必须实际重新核对，不能只替换版本。无参考选择可省略。服务端校验记录与事实的对应关系，不声称自动判断视觉相似度。
 
-Go 使用与 Web 相同的 production 合图实现，维持原始比例、完整主体、中文编号名称及留白，每次现拼 PNG 到系统临时目录。返回真实绝对 `reference_image_path`、`reference_mode`、有序 `sources`（设定 UUID/revision、图片 variant_uuid/version_no/file_uuid、标签和内容 SHA-256）、`image_info`、`target`、完整 `generation_prompt`、`image_write_back` 与 `preparation`。none 模式路径为空、sources=[]、image_info=null。不注册项目 Asset、不建立合图缓存，不返回合图 Base64、data URI 或 MCP image content。
+宿主条漫正文默认按项目画风、已保存分镜和 1:3 画布生成；自定义基础规则原样使用。Go 使用与 Web 相同的 production 合图实现，维持原始比例、完整主体、中文编号名称及留白，每次合成 PNG，并按最终文件字节计算 `reference_image_sha256`。同一项目在当前 CLI 进程内复用内容一致的临时文件，丢失或损坏时写入新路径。返回真实绝对 `reference_image_path`、`reference_mode`、有序 `sources`（设定 UUID/revision、图片 variant_uuid/version_no/file_uuid、标签和内容 SHA-256）、`image_info`、`target`、完整 `generation_prompt`、`image_write_back` 与 `preparation`。none 模式路径为空、省略合图 SHA-256、sources=[]、image_info=null。不注册项目 Asset，不返回合图 Base64、data URI 或 MCP image content。
 
-提示词复用 Web 的有效角色基础规则、project_overall_style 及旧数据回退、语言指令、参考说明、已保存分镜、用户补充要求。agent 使用宿主读图能力查看返回路径，再用 imagegen `referenced_image_paths=[同一路径]`，仅这一张参考图；none 模式省略参考参数。保持完整提示词原样，不在返回后追加说明或重写参考描述。
+提示词复用 Web 的有效角色基础规则、project_overall_style 及旧数据回退、语言指令、参考说明、已保存分镜、用户补充要求。当前代理实际看过同一摘要与路径时可跳过预览；缺少摘要或无法确认时查看返回路径。每页用 imagegen `referenced_image_paths=[同一路径]`，仅这一张参考图；none 模式省略参考参数。保持完整提示词原样，不在返回后追加说明或重写参考描述。
 
 `preparation` 含项目/页面身份、revision、所选 UUID、版本绑定的核对记录、补充要求、SHA-256 digest 与服务进程 HMAC 签名。摘要覆盖当前页面、设定版本及源字节、标签顺序、有效模板/画风/语言、项目规格、完整提示词与合图输入/合成器版本；临时路径不参与来源身份。凭据不缓存，后台重启需重新准备。
 
@@ -269,7 +273,7 @@ path 必须是宿主生图结果实际给出的本地绝对路径；可以来自
 
 在容差内直接使用原图，即使请求 crop/pad 也不重复处理。补边后的画布也受 4000 万像素限制；超限时可缩小原图或选择 keep/crop。
 
-所有文件都由 Asset Store 提交。处理后的图片是新的派生 Asset，并以 `source_asset_uuid` 关联不可变原图。每次导入增加图片版本并切换 current；历史版本不被覆盖。Asset 与业务版本、current 指针在同一最终 SQLite 事务中提交，事务内再次检查 revision；页面导入还会在预检及最终事务中重新组装当前事实并校验准备摘要和完整提示词。页面、设定当前图、规则等变化返回 `page_image_preparation_stale`，不创建图片版本。签名禁止仅替换 revision/digest 绕过；需重新准备、读图和生图。
+所有文件都由 Asset Store 提交。处理后的图片是新的派生 Asset，并以 `source_asset_uuid` 关联不可变原图。每次导入增加图片版本并切换 current；历史版本不被覆盖。Asset 与业务版本、current 指针在同一最终 SQLite 事务中提交，事务内再次检查 revision；页面导入还会在预检及最终事务中重新组装当前事实并校验准备摘要和完整提示词。页面、设定当前图、规则等变化返回 `page_image_preparation_stale`，不创建图片版本。签名禁止仅替换 revision/digest 绕过；需重新准备，按本次合图判断是否需要预览，再生图。
 
 Asset 的公开 metadata 保存 `origin:"host_generated"`、`original_prompt`、`description`、`fit_mode`、输入宽高和目标比例，不保存原始绝对路径。兼容现有数据库枚举：File source_type 使用 imported/derived，业务版本沿用 manual/replacement；页面和设定的版本 DTO 根据 origin 将 `source_type` 显示为 `host_generated`。web UI 当前图和历史版本显示“宿主生图 / Host generated”。无需数据库迁移，桌面版和 CLI 共用项目格式。
 
@@ -287,13 +291,13 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 
 1. 选择本页设定，补齐所选缺图；批量总览图需完成拆分。
 2. `prepare_page_image` 返回临时合图路径、来源版本、完整提示词及签名摘要。
-3. 宿主读图能力查看该路径，imagegen 只用 `referenced_image_paths=[同一路径]` 和返回的完整 generation_prompt。none 模式不传参考图。
+3. 当前代理首次遇到该摘要与路径时看图。每次 imagegen 只用 `referenced_image_paths=[同一路径]` 和返回的完整 generation_prompt。none 模式不传参考图。
 4. 立即 `import_image`，传实际宿主输出路径、image_write_back、同一提示词与原 preparation。
-5. 冲突或准备失效时重新准备、读图和生图；不能仅换 revision/摘要。无 provider pipeline 或付费回退。
+5. 冲突或准备失效时使用新准备结果重新生图；不能仅换 revision/摘要。无 provider pipeline 或付费回退。
 
 ### export_book
 
-必填：`format`（`markdown/zip/pdf`）、`allow_missing_images`（布尔）。返回 `{uuid,format,path,byte_size,missing_image_count}`，path 为项目 `.lumi/exports/` 下的绝对路径；不接受任意导出路径。
+必填：`format`（`markdown/zip/pdf`）、`allow_missing_images`（布尔）。可选 `chapter_uuid` 限定章节正文、页面和缺图检查；整书省略。返回 `{uuid,format,scope,chapter_uuid?,path,byte_size,page_count,missing_image_count}`，path 为项目 `.lumi/exports/` 下的绝对路径；不接受任意导出路径。
 
 - Markdown：setup、Story Profile、设定源文、画风、全部 active 设定、章节正文、页面正文及画面描述。
 - ZIP：`book.md`、使用公开 UUID 的 `book.json` 和现有页面图片（`images/<chapter_code>/...`）。没有任何图片也可导出全部文本。
@@ -311,7 +315,7 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 | `project_initialization_conflict` | 受管路径已有冲突文件；先处理冲突，不会覆盖 |
 | `project_locked` | 其他 Lumi 实例占用；按 details 在桌面版关闭或用相应 CLI stop 释放 |
 | `instance_unavailable` / `cli_instance_changed` | CLI 无法启动/访问，或发现代次已变化；重读后重试 |
-| `cli_upgrade_required` | 运行中的 CLI 版本没有创作接口；同 environment/data-dir 执行 lumi stop 后重启 |
+| `cli_upgrade_required` | 旧后台缺少当前创作能力（v4），请协调其他使用者再在同 environment/data-dir 执行 lumi stop 后重启 |
 | `project_setup_incomplete` / `invalid_project_setup` | 设置未定稿或缺字段；先完成 setup |
 | `project_setup_revision_conflict` / `picture_book_profile_immutable` | setup 过期或正式规格已定稿 |
 | `project_revision_conflict` / `chapter_revision_conflict` / `story_profile_revision_conflict` / `production_conflict` | 项目、章节、Profile、设定或页面版本过期；重读并重新规划 |
