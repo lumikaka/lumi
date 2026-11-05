@@ -199,7 +199,7 @@ App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在
 
 - 作品简介、规格、进度：`review_book({})`。
 - 章节编号、标题、摘要、页数、图片完成数：`review_chapters({limit:20})`。
-- 整章故事和页面结构：`review_chapter({chapter_uuid})`，不以首张页面代替整章。
+- 章节工作台：`review_chapter({chapter_uuid})` 保持章节范围，默认选中第一页，支持章内切页。
 - 单页当前图片、完整正文、分镜和图片版本：`review_page({chapter_uuid,page_uuid})`。App 保留左侧本章 section 快速切换，并支持返回章节和章内上一页/下一页；章节视图也保留该侧栏。
 - 图片在正常章节和单页页面展示；点击大图、候选稿预览和版本选择继续使用现有页面能力。
 - 设定与候选仍用 `review_settings` / `review_candidates`。本地预览不会改变采用结果；界面显式采用会保存。对话编号选择重读后再 `select_image`。

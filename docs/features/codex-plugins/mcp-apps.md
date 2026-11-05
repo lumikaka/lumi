@@ -8,11 +8,11 @@
 | --- | --- |
 | `review_book()` | 作品总览 |
 | `review_chapters()` | 按业务顺序排列的章节列表 |
-| `review_chapter(chapter_uuid)` | 章节故事、完整页面网格和 section 栏 |
+| `review_chapter(chapter_uuid)` | 共享章节编辑器，默认选中第一页，保留本章页栏；空章节可新建页面 |
 | `review_page(chapter_uuid, page_uuid)` | 单页编辑、正文、分镜、版本和本章切换 |
 | `review_settings` / `review_candidates` | 设定和候选入口，区分本地预览与显式采用 |
 
-Web 与 MCP 导入同一 `SimpleProjectPages.jsx`、SectionRail、图片、表单和弹窗；MCP 没有复制另一套精简 JSX，也没有嵌入整个 Web 应用。Web 保留全局外壳，MCP 由 `web/mcp-app/main.jsx` 装配内存路由和宿主适配，保留章内 section 导航。
+Web 与 MCP 导入同一 `SimpleProjectPages.jsx` 中的编辑器、页栏、图片、表单和弹窗；MCP 没有复制另一套精简 JSX，也没有嵌入整个 Web 应用。Web 保留全局外壳，MCP 由 `web/mcp-app/main.jsx` 装配内存路由和宿主适配，保留章内 section 导航。
 
 `pnpm --dir web build:app` 生成单个 `internal/textmcp/appdist/review.html`，由 Go embed 内嵌。URI 为 `ui://lumi/review/<内容哈希>.html`，目标和视图由工具结果及内部导航状态决定。只有显式“在 Lumi 中打开”等 Web 入口交由宿主打开链接，地址来自当前服务实例。
 

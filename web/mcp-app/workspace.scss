@@ -13,9 +13,10 @@ a { color: $color-link; text-decoration: none; }
 .mcp-workspace__toolbar button { color: $color-text; border: 1px solid $color-border; border-radius: 6px; background: $color-surface; padding: 5px 8px; }
 .mcp-workspace__toolbar button:hover { background: $color-accent-muted; }
 .mcp-workspace__body { min-height: 0; flex: 1; overflow: auto; }
-.mcp-workspace__body--page { overflow: hidden; }
+@media (width > 760px) {
+  .mcp-workspace__body:has(> .simple-page-view) { overflow: hidden; }
+}
 .mcp-fallback { padding: 24px; } .mcp-fallback pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (max-width: 760px) { .mcp-workspace__body--page { overflow: auto; } }
 
 .workspace-candidate-text { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; }
 .simple-project-body .simple-candidate-grid button[aria-pressed='true'] { border-color: #2f6b55; background: #e2eee7; }
