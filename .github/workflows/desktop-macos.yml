@@ -1,4 +1,4 @@
-name: Desktop macOS
+name: macOS desktop and CLI
 
 on:
   workflow_call:
@@ -16,6 +16,12 @@ on:
       APPLE_CERTIFICATE_BASE64:
         required: false
       APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_NOTARY_APPLE_ID:
+        required: false
+      APPLE_NOTARY_PASSWORD:
+        required: false
+      APPLE_NOTARY_TEAM_ID:
         required: false
       TAURI_SIGNING_PRIVATE_KEY:
         required: false
@@ -37,7 +43,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and release macOS Apple Silicon DMG
+    name: Build macOS desktop and CLI on one runner
     runs-on: macos-15
     env:
       APPLE_SIGNING_IDENTITY: "${{ vars.APPLE_SIGNING_IDENTITY || '-' }}"
@@ -144,6 +150,10 @@ jobs:
           set -euo pipefail
 
           if [ -z "$APPLE_CERTIFICATE_BASE64" ]; then
+            if [ "$APPLE_SIGNING_IDENTITY" != "-" ]; then
+              echo "Signing identity configured without certificate." >&2
+              exit 1
+            fi
             echo "No Apple certificate configured; using ad-hoc signing."
             exit 0
           fi
@@ -172,6 +182,7 @@ jobs:
             -k "$keychain_password" \
             "$keychain_path"
           security list-keychains -d user -s "$keychain_path"
+          rm "$certificate_path"
 
       - name: Install pinned Tauri CLI
         shell: bash
@@ -311,7 +322,62 @@ jobs:
           cp "$updater_bundle" Lumi-macos-aarch64.app.tar.gz
           cp "${updater_bundle}.sig" Lumi-macos-aarch64.app.tar.gz.sig
 
-      - name: Upload workflow artifact
+      # Keep CLI steps in this job so both macOS builds share one runner allocation.
+      - name: Build and test Codex macOS CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/install-codex.sh
+          node --test scripts/test-package-codex.mjs scripts/test-dev-codex.mjs
+          make codex-macos-binaries
+          go test ./cmd/lumi ./internal/textmcp
+
+      - name: Sign both Codex CLI architectures
+        shell: bash
+        run: |
+          set -euo pipefail
+          for binary in build/codex/lumi-darwin-arm64 build/codex/lumi-darwin-amd64; do
+            if [ "$APPLE_SIGNING_IDENTITY" = '-' ]; then
+              codesign --force --sign - --timestamp=none "$binary"
+            else
+              codesign --force --sign "$APPLE_SIGNING_IDENTITY" --options runtime --timestamp "$binary"
+            fi
+            codesign --verify --strict --verbose=2 "$binary"
+          done
+
+      - name: Optional Apple notarization of Codex CLI
+        shell: bash
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.APPLE_NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NOTARY_APPLE_ID$NOTARY_PASSWORD$NOTARY_TEAM_ID" ]; then
+            echo 'Notarization not configured; do not describe this release as notarized.'
+            exit 0
+          fi
+          [ "$APPLE_SIGNING_IDENTITY" != '-' ]
+          [ -n "$NOTARY_APPLE_ID" ] && [ -n "$NOTARY_PASSWORD" ] && [ -n "$NOTARY_TEAM_ID" ]
+          mkdir "$RUNNER_TEMP/lumi-codex-notary"
+          cp build/codex/lumi-darwin-arm64 build/codex/lumi-darwin-amd64 "$RUNNER_TEMP/lumi-codex-notary/"
+          ditto -c -k "$RUNNER_TEMP/lumi-codex-notary" "$RUNNER_TEMP/lumi-codex-notary.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/lumi-codex-notary.zip" \
+            --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" \
+            --wait --output-format json > "$RUNNER_TEMP/notary-result.json"
+          jq -e '.status == "Accepted"' "$RUNNER_TEMP/notary-result.json"
+
+      - name: Hash signed Codex CLI binaries and check native startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build/codex
+          for binary in lumi-darwin-arm64 lumi-darwin-amd64; do
+            shasum -a 256 "$binary" > "$binary.sha256"
+          done
+          ./lumi-darwin-arm64 --help
+
+      - name: Upload macOS desktop artifact
         uses: actions/upload-artifact@v7
         with:
           name: Lumi-macos-aarch64
@@ -321,3 +387,21 @@ jobs:
             Lumi-macos-aarch64.app.tar.gz
             Lumi-macos-aarch64.app.tar.gz.sig
           if-no-files-found: error
+          overwrite: true
+
+      - name: Upload Codex macOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Lumi-codex-macos
+          path: build/codex/lumi-darwin-*
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Remove Apple signing keychain
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/lumi-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/lumi-signing.keychain-db"
+          fi
+          rm -f "$RUNNER_TEMP/lumi-signing.p12"

@@ -22,7 +22,7 @@ install-codex.ps1                 install-codex.ps1.sha256
 lumi-codex-version.txt
 ```
 
-沿用 `make tag-patch/minor/major → git push origin vX.Y.Z`，不由安装脚本创建或发布 Tag。[发布协调 workflow](../../../.github/workflows/desktop-release.yml) 增加 [Codex macOS assets job](../../../.github/workflows/codex-macos.yml)，通用插件资产由 `codex-package.yml` 单独生成，macOS job 只上传二进制；`codex-windows.yml` 消费同一份通用包并上传 Windows CLI。所有桌面和 Codex job 都成功后才发布完整 Release。Tag 版本写入包内 manifest 和版本文件，仓库模板不注入用户路径。
+沿用 `make tag-patch/minor/major → git push origin vX.Y.Z`，不由安装脚本创建或发布 Tag。[发布协调 workflow](../../../.github/workflows/desktop-release.yml) 通过 [macOS desktop and CLI job](../../../.github/workflows/desktop-macos.yml) 在同一台 Apple Silicon Runner 上先构建、验证桌面包，再构建、签名和验证两种架构的 CLI，复用依赖安装与签名证书，只申请一次 macOS Runner。桌面与 CLI 产物分别上传为 `Lumi-macos-aarch64`、`Lumi-codex-macos`；通用插件资产由 `codex-package.yml` 单独生成，`codex-windows.yml` 消费同一份通用包并上传 Windows CLI。所有桌面和 Codex job 都成功后才发布完整 Release。Tag 版本写入包内 manifest 和版本文件，仓库模板不注入用户路径。
 
 CI 顺序：构建 Go/web → Go 定向测试 → 两架构 codesign 与 verify → 可选 notarization → **重新计算签名后 SHA256** → 上传 artifact → 协调 Release 发布。没有证书时仅 ad-hoc 签名，不宣称 Apple 公证。
 

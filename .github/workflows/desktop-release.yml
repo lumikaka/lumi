@@ -105,7 +105,7 @@ jobs:
           echo "checkout_ref=${checkout_commit}" >> "$GITHUB_OUTPUT"
 
   macos:
-    name: macOS Apple Silicon
+    name: macOS desktop and CLI
     needs: prepare
     uses: ./.github/workflows/desktop-macos.yml
     with:
@@ -141,19 +141,10 @@ jobs:
       checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
       package_artifact: Lumi-codex-common
 
-  codex:
-    name: Codex macOS CLI
-    needs: prepare
-    uses: ./.github/workflows/codex-macos.yml
-    with:
-      release_tag: ${{ needs.prepare.outputs.tag }}
-      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
-    secrets: inherit
-
   publish:
     name: Publish complete desktop release
     if: ${{ needs.prepare.outputs.publish == 'true' }}
-    needs: [prepare, macos, windows, codex, codex-package, codex-windows]
+    needs: [prepare, macos, windows, codex-package, codex-windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout release source
@@ -273,7 +264,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          notes="Desktop and Codex App builds for ${RELEASE_TAG}. The macOS desktop build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen. Codex CLI assets include SHA256 checksums; native Windows x64 Codex installation is a preview pending real App acceptance; see the Codex macOS assets job for signing/notarization status and docs/features/codex-plugins/install.md for installation."
+          notes="Desktop and Codex App builds for ${RELEASE_TAG}. The macOS desktop build is not notarized; the Windows build is unsigned and may trigger Microsoft Defender SmartScreen. Codex CLI assets include SHA256 checksums; native Windows x64 Codex installation is a preview pending real App acceptance; see the macOS desktop and CLI job for signing/notarization status and docs/features/codex-plugins/install.md for installation."
           release_state="missing"
           if release_json="$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease 2>/dev/null)"; then
             if [ "$(jq -r '.isDraft' <<<"$release_json")" = "true" ]; then
