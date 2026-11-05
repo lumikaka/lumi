@@ -1,0 +1,20 @@
+{{ $image := .Page.Resources.GetMatch .File }}
+{{ if not $image }}{{ errorf "Missing comparison image %q on %s" .File .Page.Path }}{{ end }}
+{{ $smallWidth := 640 }}
+{{ $mediumWidth := 1200 }}
+{{ $sizes := "(max-width: 767px) calc(100vw - 40px), (max-width: 1228px) calc((100vw - 72px) / 2), 578px" }}
+{{ if in (slice "comparison-reference__image" "comparison-actual-references__image") .Class }}
+  {{ $smallWidth = 240 }}{{ $mediumWidth = 540 }}
+  {{ $sizes = cond (eq .Class "comparison-reference__image") "96px" "180px" }}
+{{ end }}
+{{ $small := $image.Resize (printf "%dx webp q78" $smallWidth) }}
+{{ $medium := $image.Resize (printf "%dx webp q80" $mediumWidth) }}
+{{ $url := partial "relative-url.html" (dict "Page" .Page "URL" $image.RelPermalink) }}
+<a class="comparison-image {{ .Class }}" href="{{ $url }}" data-comparison-image-link data-image-label="{{ .Label }}" aria-label="{{ .Label }} · {{ .Page.Params.copy.enlarge }}">
+  <img src="{{ partial "relative-url.html" (dict "Page" .Page "URL" $medium.RelPermalink) }}"
+       srcset="{{ partial "relative-url.html" (dict "Page" .Page "URL" $small.RelPermalink) }} {{ $smallWidth }}w, {{ partial "relative-url.html" (dict "Page" .Page "URL" $medium.RelPermalink) }} {{ $mediumWidth }}w"
+       sizes="{{ $sizes }}"
+       width="{{ $image.Width }}" height="{{ $image.Height }}" alt="{{ .Alt }}"
+       loading="{{ if .Eager }}eager{{ else }}lazy{{ end }}" decoding="async">
+  <span class="comparison-image__hint" aria-hidden="true">{{ .Page.Params.copy.enlarge }}</span>
+</a>

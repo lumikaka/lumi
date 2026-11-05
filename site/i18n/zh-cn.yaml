@@ -172,3 +172,5 @@
   translation: Lumi 全书视图，按阅读顺序展示已有画面与待生成页面
 - id: demo_local_alt
   translation: Lumi 本地项目目录与版本恢复界面演示
+- id: nav_comparison
+  translation: 创作对比

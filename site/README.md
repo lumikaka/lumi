@@ -59,6 +59,16 @@ content/docs/installation.en.md
 
 教程面向 Lumi 使用者，只描述产品可见行为。API、数据库、任务队列和迁移等开发资料继续保留在仓库根目录的 `docs/`。
 
+## 创作对比案例
+
+`/codex-vs-lumi/belly-slide/`（英文 `/en/codex-vs-lumi/belly-slide/`）展示《肚子里的滑滑梯》的真实创作结果。导航中的「创作对比」可直接访问。
+
+案例使用 `content/codex-vs-lumi/<slug>/` 叶子 Bundle：中英文 `index.*.md` 保存文案、提示词和逐页说明，共享 `codex-01.webp` 至 `codex-08.webp`、`lumi-01.webp` 至 `lumi-08.webp`、两份原始 PDF、实际参考图与设定图。后续案例可复用 `layouts/codex-vs-lumi/single.html`，并为新案例提供同一组字段。父目录只组织内容，不生成空白索引页。
+
+案例图片从原始素材按原尺寸编码为 WebP（`cwebp -q 80 -m 6 -sharp_yuv`），Hugo 以质量 78 / 80 生成两档预览。`provenance/codex-vs-lumi/belly-slide.json` 记录来源会话、原始素材及站点文件的校验值。更新图片时从原始成品重新编码，并同步更新站点文件的 SHA-256。原生 Codex 一栏使用包含排版文字的完整成品页。两次使用同一篇小红书笔记，但实际选取了不同插画，页面已明确披露。
+
+案例样式与放大交互仅在 `codex-vs-lumi` 页面加载。无 JavaScript 时仍能阅读全部图片、展开说明、跳转页码及打开原图和 PDF。后续调整应检查桌面双栏、手机逐页成对布局、键盘开关放大预览，以及根路径与子路径部署。
+
 ## 界面截图
 
 `assets/images/screenshots/` 保存真实应用截图，首页与教程通过 `product-demo` 共用这些资源。更新 UI 后，中英文各五张图片应一起重新截取；保留文件名即可更新所有引用，Hugo 会自动生成 800px、1200px 的响应式图片。
@@ -73,7 +83,7 @@ content/docs/installation.en.md
 | `comic` | `chapters/{chapter_uuid}/sections/{section_uuid}`，正文第 1 页 |
 | `preview` | `chapters/{chapter_uuid}/preview`，全书视图 |
 
-截图规格为 1440 × 900 CSS 像素、设备像素比 2，输出 2880 × 1800 WebP，质量 88。使用浅色界面，展开左侧导航栏、收起项目聊天区，滚动至页面顶部，等待字体和图片加载完成后截取视口，不包含浏览器工具栏。
+截图规格为 1440 × 900 CSS 像素、设备像素比 2，输出 2880 × 1800 WebP，质量 78。使用浅色界面，展开左侧导航栏、收起项目聊天区，滚动至页面顶部，等待字体和图片加载完成后截取视口，不包含浏览器工具栏。
 
 简体中文界面保存为 `*.zh-cn.webp`，英文界面保存为 `*.en.webp`。仅切换界面语言，项目名称、故事正文和图片文字保留原文。示例的最后两页尚未生成图片，全书视图保留其真实占位状态；不要为了截图触发生成、恢复版本或修改项目内容。
 

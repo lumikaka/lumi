@@ -172,3 +172,5 @@
   translation: Lumi book view showing existing artwork and pages awaiting generation in reading order
 - id: demo_local_alt
   translation: Lumi local project folder and restorable version interface
+- id: nav_comparison
+  translation: Compare books

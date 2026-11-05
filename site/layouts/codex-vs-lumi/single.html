@@ -1,0 +1,129 @@
+{{ define "main" }}
+{{ $page := . }}
+{{ $copy := .Params.copy }}
+{{ $install := .Site.GetPage "/docs/codex-installation" }}
+<main class="comparison section-shell" id="main-content">
+  <div class="comparison-intro">
+    <header class="comparison-hero">
+      <p class="eyebrow">{{ $copy.eyebrow }}</p>
+      <h1>{{ .Title }}</h1>
+      <p class="comparison-hero__description">{{ .Description }}</p>
+      <div class="comparison-hero__meta">
+        {{ range $copy.facts }}<span>{{ . }}</span>{{ end }}
+        <a href="#book-comparison">{{ $copy.jump }}</a>
+      </div>
+    </header>
+
+    <section class="comparison-reference" aria-labelledby="reference-title">
+      {{ partial "comparison-image.html" (dict "Page" . "File" "reference-lumi.webp" "Alt" $copy.reference_alt "Label" $copy.reference_title "Class" "comparison-reference__image" "Eager" true) }}
+      <div>
+        <h2 id="reference-title">{{ $copy.reference_title }}</h2>
+        <p>{{ $copy.reference_description }}</p>
+        <ul class="comparison-traits">{{ range $copy.traits }}<li>{{ . }}</li>{{ end }}</ul>
+        <p class="comparison-reference__source"><a href="{{ .Params.reference_url }}" target="_blank" rel="noopener noreferrer">{{ $copy.source_link }}</a><span> · </span><a href="#case-notes">{{ $copy.reference_note }}</a></p>
+      </div>
+    </section>
+  </div>
+
+  <details class="comparison-details comparison-prompt">
+    <summary>{{ $copy.prompt_title }}<span>{{ $copy.prompt_summary }}</span></summary>
+    <div class="comparison-details__body">
+      <p>{{ $copy.prompt_intro }}</p>
+      <div class="comparison-prompt__grid" id="prompts">
+        {{ range .Params.prompts }}
+          <div><h3>{{ .label }}</h3><pre lang="zh-CN">{{ .text }}</pre></div>
+        {{ end }}
+      </div>
+    </div>
+  </details>
+
+  <section class="comparison-book" id="book-comparison" aria-labelledby="comparison-title">
+    <div class="comparison-section-heading">
+      <div><h2 id="comparison-title">{{ $copy.book_title }}</h2><p class="comparison-book__hint">{{ $copy.book_hint }}</p></div>
+      <nav class="comparison-page-nav" aria-label="{{ $copy.page_navigation }}">
+        {{ range $index, $item := .Params.pages }}
+          <a href="#page-{{ add $index 1 }}" aria-label="{{ printf $copy.page_label (add $index 1) }} · {{ $item.title }}">{{ printf "%02d" (add $index 1) }}</a>
+        {{ end }}
+      </nav>
+    </div>
+    <div class="comparison-columns" aria-hidden="true">
+      <div><strong>{{ $copy.native_label }}</strong><span>{{ $copy.native_subtitle }}</span></div>
+      <div><strong>{{ $copy.lumi_label }}</strong><span>{{ $copy.lumi_subtitle }}</span></div>
+    </div>
+    {{ range $index, $item := .Params.pages }}
+      {{ $number := add $index 1 }}
+      <article class="comparison-pair" id="page-{{ $number }}" aria-labelledby="page-title-{{ $number }}">
+        <h3 id="page-title-{{ $number }}"><span>{{ printf "%02d" $number }}</span>{{ .title }}</h3>
+        <div class="comparison-pair__grid">
+          {{ range $side := slice "codex" "lumi" }}
+            {{ $label := cond (eq $side "codex") $copy.native_label $copy.lumi_label }}
+            {{ $caption := index $item $side }}
+            {{ $imageLabel := printf "%s · %s" $label (printf $copy.page_label $number) }}
+            <figure class="comparison-page">
+              <p class="comparison-page__label">{{ $label }}</p>
+              {{ partial "comparison-image.html" (dict "Page" $page "File" (printf "%s-%02d.webp" $side $number) "Alt" $caption.alt "Label" $imageLabel "Class" "comparison-page__image" "Eager" (eq $number 1)) }}
+              <figcaption><span>{{ $copy.page_text }}</span><p lang="zh-CN">{{ $caption.text }}</p></figcaption>
+            </figure>
+          {{ end }}
+        </div>
+        {{ with .note }}<p class="comparison-observation"><strong>{{ $copy.look_for }}</strong>{{ . }}</p>{{ end }}
+      </article>
+    {{ end }}
+  </section>
+
+  <section class="comparison-process" aria-labelledby="process-title">
+    <div class="comparison-section-heading"><div><p class="eyebrow">{{ $copy.process_eyebrow }}</p><h2 id="process-title">{{ $copy.process_title }}</h2></div></div>
+    <div class="comparison-process__grid">
+      <figure>
+        {{ partial "comparison-image.html" (dict "Page" . "File" "lumi-settings.webp" "Alt" $copy.settings_alt "Label" $copy.settings_caption "Class" "comparison-process__image") }}
+        <figcaption>{{ $copy.settings_caption }}</figcaption>
+      </figure>
+      <ol class="comparison-steps">
+        {{ range $index, $step := $copy.steps }}
+          <li><span>{{ printf "%02d" (add $index 1) }}</span><div><h3>{{ .title }}</h3><p>{{ .body }}</p></div></li>
+        {{ end }}
+      </ol>
+    </div>
+  </section>
+
+  <details class="comparison-details" id="case-notes">
+    <summary>{{ $copy.notes_title }}<span>{{ .Params.case_date }}</span></summary>
+    <div class="comparison-details__body">
+      <ul class="comparison-notes">{{ range $copy.notes }}<li>{{ . }}</li>{{ end }}</ul>
+      <div class="comparison-actual-references">
+        {{ range $side := slice "codex" "lumi" }}
+          {{ $label := cond (eq $side "codex") $copy.native_label $copy.lumi_label }}
+          {{ $alt := cond (eq $side "codex") $copy.native_reference_alt $copy.reference_alt }}
+          <figure>
+            {{ partial "comparison-image.html" (dict "Page" $page "File" (printf "reference-%s.webp" $side) "Alt" $alt "Label" (printf "%s · %s" $label $copy.actual_reference) "Class" "comparison-actual-references__image") }}
+            <figcaption>{{ $label }} · {{ $copy.actual_reference }}</figcaption>
+          </figure>
+        {{ end }}
+      </div>
+      <p class="comparison-attribution">{{ $copy.attribution }} <a href="{{ .Params.reference_url }}" target="_blank" rel="noopener noreferrer">{{ $copy.source_link }}</a></p>
+    </div>
+  </details>
+
+  <section class="comparison-downloads" aria-labelledby="downloads-title">
+    <div><h2 id="downloads-title">{{ $copy.download_title }}</h2><p>{{ $copy.download_description }}</p></div>
+    <div class="button-row">
+      {{ range $side := slice "codex" "lumi" }}
+        {{ $pdf := $page.Resources.GetMatch (printf "%s-book.pdf" $side) }}
+        {{ $label := cond (eq $side "codex") $copy.native_label $copy.lumi_label }}
+        <a class="button button--light" href="{{ partial "relative-url.html" (dict "Page" $page "URL" $pdf.RelPermalink) }}" target="_blank" rel="noopener">{{ $label }} · PDF</a>
+      {{ end }}
+    </div>
+  </section>
+
+  <section class="comparison-cta" aria-labelledby="cta-title">
+    <div><p class="eyebrow">Codex + Lumi</p><h2 id="cta-title">{{ $copy.cta_title }}</h2><p>{{ $copy.cta_description }}</p></div>
+    <a class="button button--dark button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $install.RelPermalink) }}">{{ $copy.cta_button }}</a>
+  </section>
+
+  <dialog class="comparison-lightbox" data-comparison-lightbox aria-labelledby="comparison-lightbox-title">
+    <div class="comparison-lightbox__toolbar"><h2 id="comparison-lightbox-title" data-comparison-image-title></h2><div class="comparison-lightbox__actions"><button class="button button--light comparison-zoom" type="button" data-comparison-zoom aria-pressed="false" aria-controls="comparison-image-viewport">{{ $copy.actual_size }}</button><form method="dialog"><button class="button button--light" autofocus>{{ $copy.close }}</button></form></div></div>
+    <div class="comparison-lightbox__viewport" id="comparison-image-viewport" tabindex="0" role="region" aria-labelledby="comparison-lightbox-title"><img data-comparison-image alt=""></div>
+    <p>{{ $copy.lightbox_hint }} <a data-comparison-original target="_blank" rel="noopener">{{ $copy.open_image }}</a></p>
+  </dialog>
+</main>
+{{ end }}

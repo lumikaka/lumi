@@ -34,6 +34,10 @@ required_files=(
   en/404.html
   en/search.json
   en/docs/index.html
+  codex-vs-lumi/belly-slide/index.html
+  en/codex-vs-lumi/belly-slide/index.html
+  codex-vs-lumi/belly-slide/codex-book.pdf
+  codex-vs-lumi/belly-slide/lumi-book.pdf
 )
 
 for slug in "${docs_slugs[@]}"; do
@@ -84,6 +88,22 @@ assert_home_formats "${build_dir}/index.html" \
   "经典图文" "无字绘本" "互动绘本" "漫画故事" "条漫"
 assert_home_formats "${build_dir}/en/index.html" \
   "Classic picture book" "Wordless picture book" "Interactive picture book" "Comic story" "Vertical strip"
+
+for prefix in "" "en/"; do
+  comparison_file="${build_dir}/${prefix}codex-vs-lumi/belly-slide/index.html"
+  for page in {1..8}; do
+    if ! grep -Eq "id=\"?page-${page}(\"|[ >])" "${comparison_file}"; then
+      echo "Missing comparison page ${page}: ${comparison_file}" >&2
+      exit 1
+    fi
+  done
+  for asset in codex-book.pdf lumi-book.pdf reference-codex.webp reference-lumi.webp lumi-settings.webp; do
+    if ! grep -Fq "${asset}" "${comparison_file}"; then
+      echo "Missing comparison asset link ${asset}: ${comparison_file}" >&2
+      exit 1
+    fi
+  done
+done
 
 if grep -R -E --include='*.html' '(href|src)=("|'"'"')?/(css|fonts|images|js)/' "${build_dir}" >/dev/null; then
   echo "Found a root-absolute runtime asset URL in generated HTML." >&2

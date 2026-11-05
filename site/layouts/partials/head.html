@@ -34,3 +34,9 @@
 {{ $script := resources.Get "js/site.js" | minify | fingerprint }}
 {{ $searchURL := "search.json" | relLangURL }}
 <script defer src="{{ partial "relative-url.html" (dict "Page" $page "URL" $script.RelPermalink) }}" integrity="{{ $script.Data.Integrity }}" data-search-url="{{ partial "relative-url.html" (dict "Page" $page "URL" $searchURL) }}"></script>
+{{ if eq .Type "codex-vs-lumi" }}
+  {{ $comparisonStyles := resources.Get "scss/comparison.scss" | toCSS (dict "targetPath" "css/comparison.css" "outputStyle" "compressed") | fingerprint }}
+  <link rel="stylesheet" href="{{ partial "relative-url.html" (dict "Page" $page "URL" $comparisonStyles.RelPermalink) }}" integrity="{{ $comparisonStyles.Data.Integrity }}">
+  {{ $comparisonScript := resources.Get "js/comparison.js" | minify | fingerprint }}
+  <script defer src="{{ partial "relative-url.html" (dict "Page" $page "URL" $comparisonScript.RelPermalink) }}" integrity="{{ $comparisonScript.Data.Integrity }}"></script>
+{{ end }}

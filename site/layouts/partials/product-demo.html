@@ -9,8 +9,8 @@
 {{ $screenshot := resources.Get (printf "images/screenshots/%s.%s.webp" $screenshotKind $page.Site.Language.Lang) }}
 
 {{ if $screenshot }}
-  {{ $screenshot800 := $screenshot.Resize "800x webp q82" }}
-  {{ $screenshot1200 := $screenshot.Resize "1200x webp q84" }}
+  {{ $screenshot800 := $screenshot.Resize "800x webp q80" }}
+  {{ $screenshot1200 := $screenshot.Resize "1200x webp q82" }}
   <figure class="product-demo product-demo--{{ $kind }} product-demo--screenshot">
     <div class="product-demo__chrome" aria-hidden="true">
       <span></span><span></span><span></span>

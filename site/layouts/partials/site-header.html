@@ -7,6 +7,9 @@
     <nav class="site-nav" id="site-navigation" aria-label="{{ i18n "primary_navigation" }}" data-site-nav>
       <a href="{{ partial "relative-url.html" (dict "Page" . "URL" (printf "%s#features" .Site.Home.RelPermalink)) }}">{{ i18n "nav_features" }}</a>
       <a href="{{ partial "relative-url.html" (dict "Page" . "URL" (printf "%s#process" .Site.Home.RelPermalink)) }}">{{ i18n "nav_process" }}</a>
+      {{ with .Site.GetPage "/codex-vs-lumi/belly-slide" }}
+        <a{{ if eq $.Section "codex-vs-lumi" }} aria-current="page"{{ end }} href="{{ partial "relative-url.html" (dict "Page" $ "URL" .RelPermalink) }}">{{ i18n "nav_comparison" }}</a>
+      {{ end }}
       {{ $docsURL := "docs/" | relLangURL }}
       <a{{ if eq .Section "docs" }} aria-current="page"{{ end }} href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ i18n "nav_docs" }}</a>
       <a href="{{ .Site.Params.repositoryURL }}">GitHub</a>
