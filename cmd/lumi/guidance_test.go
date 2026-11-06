@@ -25,7 +25,7 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"Lumi 插件工具", "禁止直接读取或写入", "STORY.md 是只读", "不限制读取", "人工确认"} {
+	for _, required := range []string{"Lumi 插件工具", "禁止直接读取或写入", "STORY.md 是只读", "不限制读取", "人工确认", "user-data/ 供用户和 Agent 直接读写"} {
 		if !strings.Contains(string(agents), required) {
 			t.Fatalf("missing guidance %q", required)
 		}
@@ -61,6 +61,42 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 		if rules[name] != "read" {
 			t.Fatalf("rule %s=%v", name, rules[name])
 		}
+	}
+}
+
+func TestUserDataPlaceholderPreservesExistingFiles(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "user-data", ".gitkeep")
+	if err := ensureUserDataPlaceholder(root); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil || len(content) != 0 {
+		t.Fatalf("expected empty placeholder, got %q, err=%v", content, err)
+	}
+	if err := os.WriteFile(path, []byte("user content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureUserDataPlaceholder(root); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := os.ReadFile(path); err != nil || string(content) != "user content" {
+		t.Fatalf("existing placeholder changed: %q, err=%v", content, err)
+	}
+}
+
+func TestUserDataPlaceholderRejectsDirectorySymlink(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "user-data")); err != nil {
+		t.Skip(err)
+	}
+	result := ensureGuidance(root)
+	if result.Agents != "created" || !strings.Contains(strings.Join(result.Messages, "\n"), "无法创建 user-data/.gitkeep") {
+		t.Fatalf("guidance=%+v", result)
+	}
+	entries, err := os.ReadDir(outside)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("external directory entries=%v err=%v", entries, err)
 	}
 }
 

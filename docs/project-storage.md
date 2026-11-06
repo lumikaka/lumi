@@ -9,6 +9,12 @@ Lumi 使用两个互不关联的 SQLite 范围：
 
 数据库内部主键与外键使用 `INTEGER PRIMARY KEY AUTOINCREMENT` 和 Go `int64`。API、URL、React 状态与实时消息只使用 UUIDv7。
 
+## 项目级用户数据
+
+`{project_root}/user-data/` 供用户和 Agent 保存随作品携带的文件。Codex 插件初始化时通过 `lumi init` 创建 `user-data/.gitkeep`，方便 Git 跟踪空目录；其他入口可按需创建目录。内部结构由使用者决定，例如用户可将参考稿放在 `user-data/参考资料/`，Agent 可将工作笔记放在 `user-data/agent/`。移动或备份整个项目时一并保留该目录。
+
+目录内容由用户和 Agent 管理。需要将其中的文件用作正式素材时，通过 Lumi 的导入流程登记到 Asset Store。
+
 ## 创建
 
 `ProjectManager.Create` 先规范化并解析父目录，再依次用 `os.Mkdir` 原子占用基础目录名、`-2`、`-3`，最多尝试到 `-1000`。普通文件、目录和其他已存在节点都只表示候选已占用；创建流程不做存在性预检，也不会修改、接管或删除既有候选。并发调用依靠文件系统原子创建获得不同路径，失败造成的编号空缺可以保留。

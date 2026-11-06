@@ -16,9 +16,10 @@ import (
 const agentsGuidance = `# Lumi 项目
 
 这是一个 Lumi 项目，与 Lumi 桌面版共用项目格式。
-在 Codex 中，所有项目内容的读取与修改必须通过 Lumi 插件工具完成。
+在 Codex 中，故事、页面和正式素材等作品数据通过 Lumi 插件工具读写。
 禁止直接读取或写入 project.sqlite（包括 -wal、-shm、-journal）、.lumi/、assets/。
 STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi 插件工具。
+user-data/ 供用户和 Agent 直接读写随作品保存的文件。Agent 可按需将工作笔记放在 user-data/agent/。要将文件用作正式素材，通过 Lumi 插件工具导入。
 
 打开项目、创作、核对、续做与导出，遵循当前安装的 Lumi 插件技能 create-picture-book 及其工具契约。
 
@@ -68,7 +69,8 @@ func refreshAgentsGuidance(path string, result *guidanceResult) {
 		case "ed98bcddb3e476ee62272378858a3cf46283d8de6c864e300906150cd61190e2",
 			"91019880eb7578c2be7411888f45aec0f2b64b0c7eb63f7ab45dae9f1f5d63cf",
 			"51d24197eebf72939c20ed70bf64dd84e3cb37f85ab391c83dc04bed4b040053",
-			"1427d03df856b53368cb7585c2fe0e43cfcf4221453d7adefebfc9cb5992923c":
+			"1427d03df856b53368cb7585c2fe0e43cfcf4221453d7adefebfc9cb5992923c",
+			"0a8a2aaa96bf55ceb4ac267ca0e7647ee47e2fb2699945929612357baec4d5bb":
 			if err := replaceGuidanceConfig(path, original, []byte(agentsGuidance), info); err == nil {
 				result.Agents = "updated"
 				result.Messages = append(result.Messages, "已更新旧版官方 AGENTS.md，创作流程使用当前插件技能。")
@@ -76,11 +78,14 @@ func refreshAgentsGuidance(path string, result *guidanceResult) {
 			}
 		}
 	}
-	result.Messages = append(result.Messages, "保留已有 AGENTS.md；请只将其中旧的逐张参考图或 render_prompt chapter/section_image 步骤替换为引用当前插件技能，并保留自定义规则。")
+	result.Messages = append(result.Messages, "保留已有 AGENTS.md；可补充 user-data/ 供用户和 Agent 直接读写工作文件的约定。如有旧的逐张参考图或 render_prompt chapter/section_image 步骤，请替换为引用当前插件技能，并保留自定义规则。")
 }
 
 func ensureGuidance(root string) guidanceResult {
 	result := guidanceResult{Agents: "preserved", Config: "manual", Messages: []string{}}
+	if err := ensureUserDataPlaceholder(root); err != nil {
+		result.Messages = append(result.Messages, "无法创建 user-data/.gitkeep，请检查项目目录："+err.Error())
+	}
 	path := filepath.Join(root, "AGENTS.md")
 	if err := writeGuidanceExclusive(path, []byte(agentsGuidance), 0o644); err == nil {
 		result.Agents = "created"
@@ -138,6 +143,40 @@ func ensureGuidance(root string) guidanceResult {
 	result.Config = "merged"
 	result.Messages = append(result.Messages, "已合并 Lumi profile，保留 .codex/config.toml 的已有内容和注释。")
 	return result
+}
+
+func ensureUserDataPlaceholder(root string) error {
+	projectDir, err := os.OpenRoot(root)
+	if err != nil {
+		return err
+	}
+	defer projectDir.Close()
+	if err := projectDir.Mkdir("user-data", 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	info, err := projectDir.Lstat("user-data")
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("user-data 必须是项目内的真实目录")
+	}
+	path := filepath.Join("user-data", ".gitkeep")
+	file, err := projectDir.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		info, err := projectDir.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("user-data/.gitkeep 必须是普通文件")
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }
 
 // Parse for semantics, but preserve user bytes instead of round-tripping TOML.

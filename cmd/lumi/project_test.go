@@ -94,6 +94,9 @@ func TestInitCLIStartsInstanceOpensProjectAndSharesDesktopFormat(t *testing.T) {
 	if result.Created == nil || !*result.Created || !result.Open || result.Name != "CLI 项目" || !result.WriteProtection.Configured || result.WriteProtection.Effective != "unknown" {
 		t.Fatalf("init=%+v", result)
 	}
+	if marker, err := os.ReadFile(filepath.Join(root, "user-data", ".gitkeep")); err != nil || len(marker) != 0 {
+		t.Fatalf("init placeholder=%q err=%v", marker, err)
+	}
 	status := cliRun(t, opt, "status", 0)
 	if len(status.OpenProjects) != 1 || status.OpenProjects[0].UUID != result.UUID {
 		t.Fatalf("status=%+v", status)
@@ -183,7 +186,12 @@ func TestDesktopProjectInitAddsOnlyOptionalGuidance(t *testing.T) {
 		}
 	}
 	for name := range after {
-		if _, exists := before[name]; !exists && name != "AGENTS.md" && name != ".codex" && name != filepath.Join(".codex", "config.toml") {
+		if _, exists := before[name]; exists {
+			continue
+		}
+		switch name {
+		case "AGENTS.md", ".codex", filepath.Join(".codex", "config.toml"), "user-data", filepath.Join("user-data", ".gitkeep"):
+		default:
 			t.Fatalf("unexpected added file %s", name)
 		}
 	}
