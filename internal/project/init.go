@@ -171,7 +171,7 @@ func (manager *Manager) initAt(ctx context.Context, rawRoot string, input Create
 	if !valid {
 		return result, projectError(CodeInvalidProject, "项目生成语言无效", "language 只支持 zh-Hans 或 en。", nil)
 	}
-	profile, err := NormalizePictureBookInput(nil)
+	profile, err := NormalizePictureBookInput(input.PictureBook)
 	if err != nil {
 		return result, err
 	}

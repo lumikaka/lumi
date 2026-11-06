@@ -285,3 +285,16 @@ func TestInspectDirectoryReadsUncheckpointedWAL(t *testing.T) {
 		t.Fatal("inspection changed crashed project")
 	}
 }
+
+func TestInitAtHonorsExplicitPictureBookSpecification(t *testing.T) {
+	manager, _ := testManager(t)
+	initialized, err := manager.InitAt(t.Context(), t.TempDir(), CreateInput{Name: "VACS strip", GenerationLanguage: "zh-Hans", PictureBook: &PictureBookInput{Format: PictureBookVertical}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := openStoreForTest(t, manager, initialized.UUID)
+	profile := store.OptionalPictureBookProfile()
+	if profile == nil || profile.Format != PictureBookVertical || profile.AspectRatio.Width != 1 || profile.AspectRatio.Height != 3 {
+		t.Fatalf("profile=%+v", profile)
+	}
+}

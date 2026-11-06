@@ -1714,6 +1714,12 @@ func (service *Service) imageVariantDTO(ctx context.Context, row imageVariantRec
 			return ImageVariant{}, err
 		}
 	}
+	if row.ImageGenerationID == nil && row.InputSnapshot != "" {
+		sectionPremise, err = service.importedImagePremise(ctx, row.InputSnapshot)
+		if err != nil {
+			return ImageVariant{}, err
+		}
+	}
 	return ImageVariant{UUID: row.UUID, VersionNo: row.VersionNo, SourceType: hostImageSourceType(asset, row.SourceType), GenerationUUID: generationUUID, InputSnapshot: json.RawMessage(row.InputSnapshot), Generation: generationSummary, Asset: asset, SectionPremise: sectionPremise, CreatedAt: row.CreatedAt}, nil
 }
 func (service *Service) sectionDTO(ctx context.Context, row comicSectionRecord, chapterUUID string) (ComicSection, error) {

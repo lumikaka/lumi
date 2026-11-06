@@ -634,13 +634,21 @@ func (service *Service) ImportPremiseAsset(ctx context.Context, input CreateAsse
 		if err != nil {
 			return err
 		}
+		var sourceSettingID *int64
+		if input.SourceSettingImageUUID != "" {
+			var setting settingImageRecord
+			if err := tx.Where("project_id = ? AND uuid = ?", p.ID, input.SourceSettingImageUUID).First(&setting).Error; err != nil {
+				return notFound(err, "原始设定图不存在")
+			}
+			sourceSettingID = &setting.ID
+		}
 		now := service.now().UTC()
 		record := premiseAssetRecord{UUID: assetUUID, ProjectID: p.ID, ActorID: actor.ID, AssetType: assetType, Title: title, Summary: strings.TrimSpace(input.Summary), PositionJSON: position, CropJSON: crop, CreatedAt: now, UpdatedAt: now}
 		if err := tx.Create(&record).Error; err != nil {
 			return conflictErr(err)
 		}
 		domainID = record.ID
-		variant := assetVariantRecord{UUID: variantUUID, PremiseAssetID: record.ID, FileID: fileID, VersionNo: 1, SourceType: "manual", CropJSON: crop, CreatedAt: now}
+		variant := assetVariantRecord{UUID: variantUUID, PremiseAssetID: record.ID, FileID: fileID, VersionNo: 1, SourceType: "manual", SourceSettingImageID: sourceSettingID, CropJSON: crop, CreatedAt: now}
 		if err := tx.Create(&variant).Error; err != nil {
 			return err
 		}
