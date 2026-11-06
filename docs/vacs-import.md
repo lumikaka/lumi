@@ -12,6 +12,21 @@ convert-vacs-to-lumi "我的绘本.vacs.zip" --output "./我的绘本"
 
 运行只需要本地 CLI 和下载包。用户不需要连接 VACS、启动额外服务、配置模型或重新下载素材。VACS 线上构建和导出不依赖本工具；工具源码、构建及版本兼容由 Lumi 仓库负责。
 
+## 本机安装
+
+在 Lumi 仓库中，使用 `go.mod` 所要求的 Go 工具链安装：
+
+```sh
+make install-convert-vacs-to-lumi
+convert-vacs-to-lumi --version
+```
+
+默认安装到 `~/.local/bin`，请确保该目录在 `PATH` 中。更新源码后重新运行同一命令即可更新工具。可通过 `GOBIN` 指定其他绝对路径：
+
+```sh
+make install-convert-vacs-to-lumi GOBIN="/自定义路径/bin"
+```
+
 ## 构建或分发
 
 在 Lumi 仓库中，使用 `go.mod` 所要求的 Go 工具链构建本机程序：

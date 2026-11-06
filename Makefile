@@ -1,4 +1,4 @@
-.PHONY: deps dev-api dev-web test test-go test-web build build-linux desktop-build desktop-app desktop-check tag tag-patch tag-minor tag-major migrate-new migrate-up migrate-down migrate-version
+.PHONY: deps dev-api dev-web test test-go test-web build install-convert-vacs-to-lumi build-linux desktop-build desktop-app desktop-check tag tag-patch tag-minor tag-major migrate-new migrate-up migrate-down migrate-version
 
 TAG_BUMP ?= patch
 TAG_INITIAL_VERSION ?= 0.1.0
@@ -10,6 +10,7 @@ CODEX_DEV_OUT ?= build/codex-dev
 CODEX_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 PYTHON ?= python3
 CINDY_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
+GOBIN ?= $(HOME)/.local/bin
 
 deps:
 	go mod download
@@ -37,6 +38,10 @@ build:
 	go build -trimpath -tags embed_frontend -ldflags="-s -w" -o build/lumi ./cmd/lumi
 	go build -trimpath -ldflags="-s -w" -o build/lumi_ctl ./cmd/lumi_ctl
 	node scripts/package-codex.mjs "$(CODEX_VERSION)" "$(CODEX_OUT)"
+
+install-convert-vacs-to-lumi:
+	mkdir -p "$(GOBIN)"
+	GOBIN="$(GOBIN)" go install -trimpath ./cmd/convert-vacs-to-lumi
 
 # CLI/plugin release assets; Go + web only, no Cargo or Tauri invocation.
 .PHONY: codex-build codex-package codex-release codex-smoke codex-dev codex-dev-build codex-dev-refresh codex-dev-stop
