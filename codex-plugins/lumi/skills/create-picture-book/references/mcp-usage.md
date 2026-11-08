@@ -92,7 +92,10 @@
 | 创建设定 | `settings list` 的 `data.premise.revision` |
 | 创建页面 | 对应章节 `pages list` 的 `data.state.revision` |
 | 写 Story Profile | `story_profile get` 的 `data.revision`，或对应 render_prompt 的 `expected_revision` |
-| 编辑／删除／选择单个资源 | 对应 get 返回的 `data.revision`，或适用于该目标的 render_prompt revision |
+| 更新／删除已有页 | 审稿时按 UUID 从 `pages list` 的 `data.items[].revision` 或 `pages get` 的 `data.revision` 取值；同一页再次修改时用上次更新返回的 revision |
+| 其他单资源编辑／删除／选择 | 对应 get 返回的 `data.revision`，或适用于该目标的 render_prompt revision |
+
+整章改稿时按游标读齐目标页，以页 UUID 对应各自的 revision，逐页提交。若已读到所需正文和分镜，可直接使用这次列表结果；若只读了摘要，按需获取待审页全文。遇到版本冲突，用 `pages get` 重读该页；涉及页序或跨页合并时也核对相关页，再决定剩余改动。
 
 创建返回的新对象 revision **不是父集合 revision**。下一次创建前重新读取父集合；不能给整批复用同一个旧 revision，也不能把页面 revision 用于创建下一页。冲突后核对内容是否仍适用，不能只换版本号强行覆盖。
 
