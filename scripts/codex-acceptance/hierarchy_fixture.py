@@ -102,7 +102,7 @@ def main():
         resource=mcp.rpc('resources/read',{'uri':uri})
         (root/'review.html').write_text(resource['contents'][0]['text'])
         manifest.update(binary=str(binary),resource_uri=uri)
-        allowed={t['name'] for t in tools if t['name'].startswith('review_')} | {'read_app_image','watch_app_changes','read_app_resource','write_app_resource','read_app_review'}
+        allowed={t['name'] for t in tools if t['name'].startswith('review_')} | {'read_app_image', 'read_app_image_detail','watch_app_changes','read_app_resource','write_app_resource','read_app_review'}
     else:
         root = Path(tempfile.mkdtemp(prefix='lumi-review-hierarchy-', dir='/tmp')).resolve()
         project = root / 'project'
@@ -170,7 +170,7 @@ def main():
                     'adopted_variant_uuid': adopted, 'requests': requests, 'chapters': [c['uuid'] for c in chapters],
                     'pages': [p['uuid'] for p in pages], 'resource_uri': uri}
         (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
-        allowed = {t['name'] for t in tools if t['name'].startswith('review_')} | {'read_app_image', 'watch_app_changes', 'read_app_resource', 'write_app_resource', 'read_app_review'}
+        allowed = {t['name'] for t in tools if t['name'].startswith('review_')} | {'read_app_image', 'read_app_image_detail', 'watch_app_changes', 'read_app_resource', 'write_app_resource', 'read_app_review'}
     # Reused fixtures can predate the retired-mode compatibility cases.
     requests.setdefault('legacy_book', {'name': 'review_book', 'arguments': {'mode': 'preview'}})
     requests.setdefault('legacy_chapter', {'name': 'review_book', 'arguments': {'mode': 'preview', 'chapter_uuid': chapters[0]['uuid']}})

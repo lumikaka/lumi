@@ -16,6 +16,7 @@ import './workspace.scss'
 
 const bridge = new AppBridge()
 const previews = new PreviewCache((...args)=>bridge.call(...args))
+const detailPreviews = new PreviewCache((...args)=>bridge.call(...args), { detail: true, concurrency: 1 })
 const client = new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,staleTime:Infinity,gcTime:300000}}})
 function OpenLumi({url}) {
   return <HostLink bridge={bridge} url={url}/>
@@ -31,7 +32,7 @@ function Workspace({launch}) {
   const runtime = useMemo(() => ({
     DownloadLink: props => <HostDownloadLink {...props} bridge={bridge} origin={origin} project={launch.project_uuid} />,
     api,
-    Image: createAppImage(previews, launch.project_uuid),
+    Image: createAppImage(previews, launch.project_uuid, detailPreviews),
     capabilities: { fileUpload: true, download: true, generation: false, chat: false },
   }), [api, launch.project_uuid, origin])
   const base = `/projects/${launch.project_uuid}`

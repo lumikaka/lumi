@@ -14,6 +14,18 @@ import (
 
 const MaxBytes = 256 << 10
 
+// ResultLimit is the JSON byte budget on the CLI-to-MCP transport.
+func ResultLimit(tool string) int {
+	switch tool {
+	case "read_app_image_detail":
+		return 2 << 20
+	case "read_app_resource", "write_app_resource", "read_app_review":
+		return MaxAppBytes
+	default:
+		return MaxBytes
+	}
+}
+
 const settingReferenceInstructions = "When the user attaches reference images, inspect the originals and distinguish style, subject identity and story references according to the user's intent. Explicit user instructions override reference traits, and reference traits override agent defaults. Do not infer conflicting proportions, plush texture or pastel colors from age/theme. Preserve distinctive dialogue lettering from style references using the new story text; save stroke/shape/spacing/baseline/bubble traits in overall_style and storyboards, unless the user requests otherwise. Extract concrete visual traits from requested style references and save them in overall_style before finalizing a new project's setup; do not infer style from a story-only screenshot. For every setting board, single setting image or redraw, explicitly pass the relevant original visual references to host imagegen, not just their text descriptions or context_setting_uuids. If all references have local paths, view them and use referenced_image_paths with those exact absolute paths. Otherwise use num_last_images_to_include with the smallest recent-image count containing every intended reference, at most 5; never provide both parameters. Describe each image's role in the generation input. If originals are unavailable or outside that range, ask the user to reattach them before dependent generation; never silently fall back to text only. Reuse existing setting images only when they match the requested style and identity; redraw incompatible ones while preserving identity and updating the same setting UUID. Compare actual generated settings against originals and user requirements before using them in pages; record concrete observations, repair failures, and submit passed setting_reviews bound to current variant_uuid, expected_revision and style_digest. Import success is not approval. Check the first page against the original, including lettering, before generating remaining pages; this is agent review, not a new user approval step. This user-reference flow applies to setting generation; pages continue to use the prepared setting collage below. "
 
 type Forward func(context.Context, string, json.RawMessage) httpapi.Envelope
@@ -40,7 +52,7 @@ func Protocol(forward Forward) *mcp.Server {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"resourceUri": ReviewURI}}
 			tool.Annotations = appReadAnnotations()
 		}
-		if spec.Name == "read_app_image" || spec.Name == "watch_app_changes" || spec.Name == "read_app_resource" || spec.Name == "write_app_resource" || spec.Name == "read_app_review" {
+		if spec.Name == "read_app_image" || spec.Name == "read_app_image_detail" || spec.Name == "watch_app_changes" || spec.Name == "read_app_resource" || spec.Name == "write_app_resource" || spec.Name == "read_app_review" {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"visibility": []string{"app"}}}
 			tool.Annotations = appReadAnnotations()
 			if spec.Name == "write_app_resource" {
@@ -92,8 +104,8 @@ func Protocol(forward Forward) *mcp.Server {
 			if strings.HasPrefix(spec.Name, "review_") {
 				return reviewLaunchToolResult(result)
 			}
-			if spec.Name == "read_app_image" {
-				return appImageToolResult(result)
+			if spec.Name == "read_app_image" || spec.Name == "read_app_image_detail" {
+				return appImageToolResult(result, spec.Name)
 			}
 			if spec.Name == "read_image" && result.Success {
 				return imageToolResult(result)

@@ -49,21 +49,21 @@ func TestAppResourceAssociationCSPAndReadOnlyVisibility(t *testing.T) {
 		if tool.Name == "read_app_connection" {
 			t.Fatal("internal connection descriptor exposed")
 		}
-		if tool.Name == "read_app_image" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "write_app_resource" || tool.Name == "read_app_review" {
+		if tool.Name == "read_app_image" || tool.Name == "read_app_image_detail" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "write_app_resource" || tool.Name == "read_app_review" {
 			appOnly++
 			b, _ := json.Marshal(tool.Meta)
 			if !strings.Contains(string(b), `"visibility":["app"]`) {
 				t.Fatal(string(b))
 			}
 		}
-		if strings.HasPrefix(tool.Name, "review_") || tool.Name == "read_app_image" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "read_app_review" {
+		if strings.HasPrefix(tool.Name, "review_") || tool.Name == "read_app_image" || tool.Name == "read_app_image_detail" || tool.Name == "watch_app_changes" || tool.Name == "read_app_resource" || tool.Name == "read_app_review" {
 			hints := tool.Annotations
 			if hints == nil || !hints.ReadOnlyHint || hints.DestructiveHint == nil || *hints.DestructiveHint || hints.OpenWorldHint == nil || *hints.OpenWorldHint {
 				t.Fatalf("hints=%+v", hints)
 			}
 		}
 	}
-	if reviews != 6 || appOnly != 5 {
+	if reviews != 6 || appOnly != 6 {
 		t.Fatalf("reviews=%d app=%d", reviews, appOnly)
 	}
 	resources, err := client.ListResources(t.Context(), nil)
@@ -117,7 +117,7 @@ func TestReviewTextFallbackAndConversationCandidateSubmission(t *testing.T) {
 		t.Fatalf("variants=%+v", variants)
 	}
 	missing := invoke(t, s, root, "read_app_image", map[string]any{"asset_uuid": "01989abc-def0-7000-8000-000000000099"})
-	failed, _ := appImageToolResult(missing)
+	failed, _ := appImageToolResult(missing, "read_app_image")
 	if !failed.IsError {
 		t.Fatal("expected image fallback")
 	}
@@ -163,12 +163,12 @@ func TestAppImageEnvelopeBoundsIsolationAndFailures(t *testing.T) {
 		}
 	}
 	missing := invoke(t, s, root, "read_app_image", map[string]any{"asset_uuid": "01989abc-def0-7000-8000-000000000099"})
-	failure, err := appImageToolResult(missing)
+	failure, err := appImageToolResult(missing, "read_app_image")
 	if err != nil || !failure.IsError {
 		t.Fatal(failure, err)
 	}
 	for _, invalid := range []imageResult{{}, {ImageData: make([]byte, maxPreviewBytes+1)}} {
-		r, _ := appImageToolResult(httpapi.Envelope{Success: true, Data: invalid})
+		r, _ := appImageToolResult(httpapi.Envelope{Success: true, Data: invalid}, "read_app_image")
 		if !r.IsError {
 			t.Fatal("invalid internal image accepted")
 		}

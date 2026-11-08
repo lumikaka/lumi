@@ -43,7 +43,7 @@ func TestImageReferenceContentIsBoundedAndNotDuplicatedInJSON(t *testing.T) {
 	asset := imported["asset"].(map[string]any)
 	internal := invoke(t, s, root, "read_image", map[string]any{"asset_uuid": asset["uuid"]})
 	appInternal := invoke(t, s, root, "read_app_image", map[string]any{"asset_uuid": asset["uuid"]})
-	app, err := appImageToolResult(appInternal)
+	app, err := appImageToolResult(appInternal, "read_app_image")
 	if err != nil || app.IsError || len(app.Content) != 1 {
 		t.Fatal(app, err)
 	}
@@ -66,6 +66,35 @@ func TestImageReferenceContentIsBoundedAndNotDuplicatedInJSON(t *testing.T) {
 	if strings.Contains(app.Content[0].(*mcp.TextContent).Text, "data_uri") || strings.Contains(string(wireApp), "image_data") {
 		t.Fatal("duplicated image")
 	}
+	t.Run("detail retains more pixels and only the UI receives the JPEG", func(t *testing.T) {
+		const tool = "read_app_image_detail"
+		response := invoke(t, s, root, tool, map[string]any{"asset_uuid": asset["uuid"], "max_edge": 2048})
+		detail, err := appImageToolResult(response, tool)
+		if err != nil || detail.IsError || len(detail.Content) != 1 {
+			t.Fatalf("detail image read failed: %v", err)
+		}
+		raw, _ := json.Marshal(detail.Meta[AppResponseMeta])
+		var envelope struct {
+			Data struct {
+				URI string `json:"data_uri"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			t.Fatal(err)
+		}
+		data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(envelope.Data.URI, "data:image/jpeg;base64,"))
+		if err != nil || len(data) <= MaxBytes || len(data) > maxDetailBytes {
+			t.Fatalf("detail size=%d err=%v", len(data), err)
+		}
+		config, format, err := image.DecodeConfig(bytes.NewReader(data))
+		if err != nil || format != "jpeg" || config.Width <= appEnvelope.Data.Width || config.Width > source.Bounds().Dx() {
+			t.Fatalf("detail=%v preview width=%d err=%v", config, appEnvelope.Data.Width, err)
+		}
+		summary, _ := json.Marshal(detail.StructuredContent)
+		if len(summary) > 512 || detail.Content[0].(*mcp.TextContent).Text != string(summary) {
+			t.Fatal("large or duplicated model-visible payload")
+		}
+	})
 	other, otherRoot, _ := harness(t)
 	if got := code(invoke(t, other, otherRoot, "read_app_image", map[string]any{"asset_uuid": asset["uuid"]})); got != files.CodeAssetNotFound {
 		t.Fatalf("cross-project=%s", got)
@@ -122,6 +151,9 @@ func TestImageSchemasRequireUUIDsRevisionsAndPaths(t *testing.T) {
 		{"image_target", `{"target_uuid":"1","slot":"page_image"}`},
 		{"image_target", `{"target_uuid":"01989abc-def0-7000-8000-000000000001","slot":"other"}`},
 		{"read_image", `{"asset_uuid":"01989abc-def0-7000-8000-000000000001","max_edge":10000}`},
+		{"read_image", `{"asset_uuid":"01989abc-def0-7000-8000-000000000001","max_edge":2048}`},
+		{"read_app_image", `{"asset_uuid":"01989abc-def0-7000-8000-000000000001","max_edge":2048}`},
+		{"read_app_image_detail", `{"asset_uuid":"01989abc-def0-7000-8000-000000000001","max_edge":2049}`},
 		{"read_image", `{"path":"/some.png"}`},
 	} {
 		if err := validate(tc.name, json.RawMessage(tc.raw)); err == nil {

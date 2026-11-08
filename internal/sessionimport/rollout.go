@@ -219,7 +219,7 @@ var knownLumiTools = map[string]bool{
 	"story_profile": true, "chapters": true, "settings": true, "pages": true,
 	"book_outline": true, "prompt_catalog": true, "render_prompt": true,
 	"image_target": true, "import_image": true, "read_image": true, "export_book": true,
-	"read_app_image": true, "read_app_connection": true, "watch_app_changes": true,
+	"read_app_image": true, "read_app_image_detail": true, "read_app_connection": true, "watch_app_changes": true,
 	"review_book": true, "review_chapters": true, "review_chapter": true, "review_page": true, "review_settings": true, "review_candidates": true,
 }
 

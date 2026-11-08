@@ -20,6 +20,22 @@ import (
 
 const maxPreviewBytes = 120 << 10
 
+// Detail images have a separate UI-only budget. Leave room for base64 and
+// JSON framing in both the internal relay and the final tool response.
+const maxDetailBytes = 1 << 20
+
+type previewProfile struct {
+	maxBytes int
+	quality  int
+}
+
+func profileForImage(tool string) previewProfile {
+	if tool == "read_app_image_detail" {
+		return previewProfile{maxBytes: maxDetailBytes, quality: 90}
+	}
+	return previewProfile{maxBytes: maxPreviewBytes, quality: 85}
+}
+
 // ImageData is only an internal CLI transport field. Protocol moves it into
 // MCP image content, never the JSON text or structured content shown to Codex.
 type imageResult struct {
@@ -30,7 +46,7 @@ type imageResult struct {
 	ImageData []byte `json:"image_data,omitempty"`
 }
 
-func readImage(ctx context.Context, service *files.Service, uuid string, maxEdge int) (imageResult, error) {
+func readImage(ctx context.Context, service *files.Service, uuid string, maxEdge int, profile previewProfile) (imageResult, error) {
 	var result imageResult
 	content, err := service.OpenContent(ctx, uuid)
 	if err != nil {
@@ -68,10 +84,10 @@ func readImage(ctx context.Context, service *files.Service, uuid string, maxEdge
 		draw.Draw(preview, preview.Bounds(), &image.Uniform{C: color.White}, image.Point{}, draw.Src)
 		xdraw.CatmullRom.Scale(preview, preview.Bounds(), source, source.Bounds(), draw.Over, nil)
 		var encoded bytes.Buffer
-		if err := jpeg.Encode(&encoded, preview, &jpeg.Options{Quality: 85}); err != nil {
+		if err := jpeg.Encode(&encoded, preview, &jpeg.Options{Quality: profile.quality}); err != nil {
 			return result, err
 		}
-		if encoded.Len() <= maxPreviewBytes {
+		if encoded.Len() <= profile.maxBytes {
 			return imageResult{AssetUUID: uuid, MIMEType: "image/jpeg", Width: w, Height: h, ImageData: encoded.Bytes()}, nil
 		}
 		maxEdge = maxEdge * 3 / 4
@@ -97,7 +113,7 @@ func imageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
 }
 
 // The UI gets the image in _meta. Model-visible fields contain only metadata.
-func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) {
+func appImageToolResult(envelope httpapi.Envelope, tool string) (*mcp.CallToolResult, error) {
 	if !envelope.Success {
 		return boundedResult(envelope)
 	}
@@ -106,7 +122,7 @@ func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) 
 		return nil, err
 	}
 	var p imageResult
-	if json.Unmarshal(b, &p) != nil || len(p.ImageData) == 0 || len(p.ImageData) > maxPreviewBytes {
+	if json.Unmarshal(b, &p) != nil || len(p.ImageData) == 0 || len(p.ImageData) > profileForImage(tool).maxBytes {
 		return boundedResult(Failure("asset_content_invalid", "图片预览无效", "重新读取图片。"))
 	}
 	uri := "data:" + p.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(p.ImageData)
@@ -122,8 +138,8 @@ func appImageToolResult(envelope httpapi.Envelope) (*mcp.CallToolResult, error) 
 	if err != nil {
 		return nil, err
 	}
-	if len(wire) > MaxBytes-1024 {
-		return boundedResult(Failure("result_too_large", "图片结果超过 256 KiB", "使用更小的 max_edge。"))
+	if len(wire) > ResultLimit(tool)-1024 {
+		return boundedResult(Failure("result_too_large", "图片结果超过传输上限", "使用更小的 max_edge。"))
 	}
 	return result, nil
 }

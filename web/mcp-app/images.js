@@ -1,8 +1,19 @@
 import { imageData } from './contracts.js'
 
+// The dialog fills its available width, including for portrait artwork.
+// Quantize the physical longest edge so nearby panel sizes share a cache entry.
+export function detailEdge(cssWidth, pixelRatio, asset) {
+  if (!(asset.width > 0 && asset.height > 0)) return 2048
+  const pixels = cssWidth * pixelRatio * Math.max(1, asset.height / asset.width)
+  if (pixels <= 1024) return 1024
+  if (pixels <= 1536) return 1536
+  return 2048
+}
+
 export class PreviewCache {
-  constructor(call, { concurrency = 3, capacity = 32, maxBytes = 6 * 1024 * 1024 } = {}) {
+  constructor(call, { concurrency = 3, capacity = 32, maxBytes = 6 * 1024 * 1024, detail = false } = {}) {
     this.call = call; this.concurrency = concurrency; this.capacity = capacity; this.maxBytes = maxBytes
+    this.detail = detail
     this.cache = new Map(); this.pending = new Map(); this.queue = []; this.active = 0; this.bytes = 0
   }
   evict(project, asset, edge) {
@@ -39,9 +50,10 @@ export class PreviewCache {
   pump() {
     while (this.active < this.concurrency && this.queue.length) {
       const job = this.queue.shift(); this.active++
-      Promise.resolve().then(() => this.call('read_app_image', { asset_uuid: job.asset, max_edge: job.edge }, {meta:{'lumi/expected_project_uuid':job.project}}))
+      const tool = this.detail ? 'read_app_image_detail' : 'read_app_image'
+      Promise.resolve().then(() => this.call(tool, { asset_uuid: job.asset, max_edge: job.edge }, {meta:{'lumi/expected_project_uuid':job.project}}))
         .then((result) => {
-          const data = imageData(result, job.asset, job.edge)
+          const data = imageData(result, job.asset, job.edge, this.detail)
           this.cache.set(job.key, data); this.bytes += data.data_uri.length * 2
           while (this.cache.size > this.capacity || this.bytes > this.maxBytes) {
             const key = this.cache.keys().next().value

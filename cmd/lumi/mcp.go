@@ -28,7 +28,10 @@ const creationRoute = "/api/v1/creation-requests"
 
 // Version 4 requires version-bound setting and page reviews, compact resume reads,
 // and scoped exports. A v3 daemon accepts signed imports without review evidence.
-const creationProtocolVersion = 4
+const reviewedCreationVersion = 4
+
+// Version 5 adds the app-only high-resolution image read.
+const creationProtocolVersion = 5
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -164,8 +167,12 @@ func runMCP(opt options) error {
 		if err != nil {
 			return textmcp.Failure("instance_unavailable", "CLI 实例不可用", err.Error())
 		}
-		if status.CreationProtocolVersion < creationProtocolVersion {
-			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，插件要求 v%d（设定图核对、成图核对及按章导出）。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, creationProtocolVersion, opt.environment, opt.dataDir))
+		requiredVersion := reviewedCreationVersion
+		if tool == "read_app_image_detail" {
+			requiredVersion = creationProtocolVersion
+		}
+		if status.CreationProtocolVersion < requiredVersion {
+			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，此操作要求 v%d。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, requiredVersion, opt.environment, opt.dataDir))
 		}
 		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly})
 	})
@@ -194,10 +201,7 @@ func forwardCreation(ctx context.Context, identity instance, input creationReque
 	if resp.StatusCode == http.StatusNotFound {
 		return textmcp.Failure("cli_upgrade_required", "CLI 实例尚不支持文本创作", "使用相同 environment / data-dir 执行 lumi stop 后重试。")
 	}
-	resultLimit := textmcp.MaxBytes
-	if input.Tool == "read_app_resource" || input.Tool == "write_app_resource" || input.Tool == "read_app_review" {
-		resultLimit = textmcp.MaxAppBytes
-	}
+	resultLimit := textmcp.ResultLimit(input.Tool)
 	b, err = io.ReadAll(io.LimitReader(resp.Body, int64(resultLimit+1)))
 	if err != nil || len(b) > resultLimit {
 		return textmcp.Failure("result_too_large", "CLI 结果超限或读取失败", "请缩小范围或分页读取。")

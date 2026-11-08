@@ -272,8 +272,8 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews}, &s.PageReferences)
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision), Preparation: a.Preparation})
-		case "read_image", "read_app_image":
-			result, callErr = readImage(ctx, prod.Files(), a.AssetUUID, a.MaxEdge)
+		case "read_image", "read_app_image", "read_app_image_detail":
+			result, callErr = readImage(ctx, prod.Files(), a.AssetUUID, a.MaxEdge, profileForImage(name))
 		case "read_app_connection":
 			if s.AppConnection == nil {
 				return httpapi.NewError(503, "app_connection_unavailable", "实时连接不可用", "在 Lumi 中打开以查看最新状态。", nil)
@@ -305,11 +305,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if err != nil {
 		return publicError(err)
 	}
-	resultLimit := MaxBytes
-	if name == "read_app_resource" || name == "write_app_resource" || name == "read_app_review" {
-		resultLimit = MaxAppBytes
-	}
-	if len(b) > resultLimit-1024 {
+	if len(b) > ResultLimit(name)-1024 {
 		return Failure("result_too_large", "工具结果超过 256 KiB", "减小 limit、按单个 UUID 读取，或用 context_chapter_uuids / context_setting_uuids 缩小提示词上下文；大文本可用 export_book 导出。")
 	}
 	return httpapi.Envelope{Success: true, Data: result}

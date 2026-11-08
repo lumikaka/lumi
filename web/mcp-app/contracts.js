@@ -99,12 +99,13 @@ export function reviewContext(result) {
 export function safeOpenURL(value, project) {
   try { const u = new URL(value); return u.protocol === 'http:' && u.hostname === '127.0.0.1' && /^\d+$/.test(u.port) && !u.username && !u.password && u.pathname.startsWith(`/projects/${project}/`) } catch { return false }
 }
-export function imageData(result, asset, edge) {
+export function imageData(result, asset, edge, detail = false) {
   const payload = result?._meta?.['lumi/app_response']
+  const maxBytes = detail ? 1024 * 1024 : 120 * 1024
   const d = payload ? success({structuredContent:payload,isError:result.isError}) : success(result)
-  if (d.asset_uuid !== asset || d.mime_type !== 'image/jpeg' || !Number.isInteger(d.width) || !Number.isInteger(d.height) ||
+  if ((detail && !payload) || d.asset_uuid !== asset || d.mime_type !== 'image/jpeg' || !Number.isInteger(d.width) || !Number.isInteger(d.height) ||
       Math.min(d.width, d.height) < 1 || Math.max(d.width, d.height) > edge || typeof d.data_uri !== 'string' ||
-      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(d.data_uri) || d.data_uri.length > 23 + 163840) throw Object.assign(new Error('图片预览格式无效'), { kind: 'resource_error' })
+      d.data_uri.length > 23 + 4 * Math.ceil(maxBytes / 3) || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(d.data_uri)) throw Object.assign(new Error('图片预览格式无效'), { kind: 'resource_error' })
   return d
 }
 export function failureKind(error) {
