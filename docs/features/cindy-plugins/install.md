@@ -14,7 +14,7 @@
 
 在作者仓库执行 make cindy-build 或 make cindy-dev，后者生成 build/cindy-dev/lumi-dev/。通过 Cindy Forge pack 打包，再运行 verify-package.py 对应步骤和 channel。脚本逐项校验作者内容、CLI 指纹和执行位、身份、environment 与大小，并把确切审阅 ZIP 固定到 build/cindy-reviewed/<id>/<sha256>.cindy，避免后续 install 重打覆盖审阅原件。
 
-`make cindy-dev-install` 目前在开发构建之后**报阻塞并返回非零，不会执行安装**。2026-11-08 核查的 Cindy 0.1.128 随包终端启动器只打开路径，未取得公开可等待并核验的终端安装入口；Forge 安装仍是宿主工具调用。依赖、失败处理、源码核查限制和所缺宿主能力见[开发说明](development.md#终端构建并安装当前被宿主入口阻塞)。不要把构建成功、包已生成或打开安装页当成安装成功。
+`make cindy-dev-install` 会先完成开发构建，将 `build/cindy-dev/lumi-dev/` 打包为根部包含 `ghost.json` 的 `.cindy` ZIP，再通过 macOS `open -a Cindy` 提交本地文件导入。需要时在 Cindy 内确认、选择已有 `lumi-dev` 实例。可用 `CINDY_APP` 指定应用名称或 `.app` 路径；无需 Cindy 源码。构建、打包、打开应用失败会返回非零；退出码 0 只表示已提交导入，后续取消或拒绝由 Cindy 展示。按当前选择不等待安装回执或核验安装后的指纹，不自动切换后台。详情见[开发说明](development.md#从终端构建并提交开发版安装)。
 
 普通用户使用 Cindy 的本地 .cindy 导入流程；没有市场链接。Agent 只有在收到明确安装委托时才调用 ghost_forge_install，首次安装或新增权限沿用 Host 原生确认。首次安装被拒时保持未安装，更新被拒时保留旧包继续可用；必须有新的用户安装指令才再尝试被拒包；不换插件身份、来源或 namespace 绕过拒绝。
 

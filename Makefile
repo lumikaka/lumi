@@ -10,6 +10,7 @@ CODEX_DEV_OUT ?= build/codex-dev
 CODEX_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 PYTHON ?= python3
 CINDY_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
+CINDY_APP ?= Cindy
 GOBIN ?= $(HOME)/.local/bin
 
 deps:
@@ -90,7 +91,7 @@ codex-windows-build:
 codex-smoke:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/test-install-codex.py --assets "$(CODEX_OUT)"
 
-# Author directories only; Forge pack/install require a supported host entry point.
+# Build author directories; development installation uses Cindy's local .cindy import.
 .PHONY: cindy-build cindy-dev cindy-dev-install cindy-dev-stop
 cindy-build:
 	node cindy-plugins/scripts/build.mjs
@@ -98,18 +99,10 @@ cindy-build:
 cindy-dev:
 	node cindy-plugins/scripts/build.mjs --channel development --data-dir "$(CINDY_DEV_DATA_DIR)"
 
-# Cindy's terminal launcher only opens paths; it cannot return an install receipt.
-# Keep this target failing explicitly until Cindy exposes a public terminal installer.
-# Never substitute a shell command named ghost_forge_install or write installed files.
+# Submit the new package to Cindy; installation confirmation stays in Cindy.
 cindy-dev-install:
 	@$(MAKE) cindy-dev || { printf '%s\n' '错误：Cindy 开发版构建失败，未执行安装。请修复上方构建错误后重试。' >&2; exit 1; }
-	@printf '%s\n' \
-		'错误：Cindy 开发版已构建，但自动安装被阻塞：尚无已核实的官方终端安装及回执入口。' \
-		'待安装作者目录：build/cindy-dev/lumi-dev/' \
-		'ghost_forge_install 是 Cindy 宿主工具，不能作为 shell 命令执行；cindy/open 打开路径也不能证明安装完成。' \
-		'请在 Cindy 中使用官方 Forge 流程，并核对同一 lumi-dev 实例及本次 build_id、CLI SHA256；详见 docs/features/cindy-plugins/development.md。' \
-		'本命令未执行安装，未切换运行中的共享后台。需要 Cindy 侧补充公开终端入口后才能完成自动安装。' >&2
-	@exit 1
+	node cindy-plugins/scripts/install-dev.mjs --app "$(CINDY_APP)"
 
 # Reads the generated configuration so it always stops the same development instance.
 # Run only after coordinating every client sharing that data directory.

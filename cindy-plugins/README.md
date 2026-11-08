@@ -17,7 +17,7 @@ go test ./internal/production ./internal/files ./internal/textmcp ./internal/pro
 
 正式内容生成于 `cindy-plugins/lumi/`，身份/command 为 lumi，随包 `bin/lumi`、production 与默认 `~/.lumi`。开发内容生成于 `build/cindy-dev/lumi-dev/`，身份/command 为 lumi-dev，随包 `bin/lumi_dev`、development 与默认 `~/.lumi_dev`。源码、Manual 与业务语义共用，身份和受控 runtime-config.json 在构建时生成。build-info.json 包含 CLI SHA256、源 commit/dirty 和全部随包内容的 build_id；同版本下也可区分内容。
 
-新增终端入口 `make cindy-dev-install`，但**自动安装当前被阻塞，命令会返回非零**：先执行原有开发构建，失败时输出中文错误；成功后明确报告尚无已核实的 Cindy 官方终端安装及回执入口。`make cindy-dev` 仍只构建。`ghost_forge_install` 是 Agent 宿主工具，不能当 shell 命令；`cindy` 启动器只打开路径，不能证明安装完成。依赖、核查依据、Cindy 侧所缺能力及官方 Forge 替代流程见[开发说明](../docs/features/cindy-plugins/development.md#终端构建并安装当前被宿主入口阻塞)。不覆盖 Host 安装目录，也不自动停止共享后台。
+运行 `make cindy-dev-install` 会先构建开发版，再生成标准 ZIP 格式的 `.cindy` 包，通过 macOS `open -a Cindy` 交给 Cindy 导入；需要时在 Cindy 内确认并选择已有 `lumi-dev` 实例。`CINDY_APP` 可指定应用名称或 `.app` 路径。构建、打包或提交失败会输出中文错误并返回非零；退出码 0 和“已提交安装”仅表示已交给 Cindy，不表示安装完成。按本次流程不等待回执、不核验安装后的指纹，不自动停止共享后台。`make cindy-dev` 仍只构建，无需 Cindy 源码或额外安装 CLI。依赖与失败处理见[开发说明](../docs/features/cindy-plugins/development.md#从终端构建并提交开发版安装)。
 
 自定义开发 data-dir 使用构建参数，例如 `make cindy-dev CINDY_DEV_DATA_DIR=/private/tmp/lumi-cindy-acceptance-data`。业务工具和页面不能更改它。只有协调同一 development/data-dir 的全部使用者后，才手动 `make cindy-dev-stop`；脚本读取刚生成的同一配置，不会停止正式环境。Codex 开发版默认也用 `~/.lumi_dev`，可能共享服务。
 
