@@ -1,8 +1,10 @@
 # 本地创作 MCP 工具
 
-运行 `lumi mcp [--environment production|development] [--data-dir PATH] [--timeout 90s]`。stdin/stdout 只传 MCP JSON-RPC，诊断写 stderr。`--timeout` 是每次工具调用的实例启动及执行总时限，不限制整个 MCP 会话寿命。
+运行 `lumi mcp [--host claude|codex|cindy] [--environment production|development] [--data-dir PATH] [--timeout 90s]`。stdin/stdout 只传 MCP JSON-RPC，诊断写 stderr。`--timeout` 是每次工具调用的实例启动及执行总时限，不限制整个 MCP 会话寿命。
 
 进程启动时固定并规范化 cwd。工具没有项目路径参数，也不读取 MCP roots 或宿主 workspace 环境变量。首次调用自动通过 `cli-{environment}.json` 发现并验证 CLI 实例，必要时启动 `serve`。所有业务由 CLI 实例执行，通过项目 Manager 持锁访问 SQLite；多个 stdio 连接共享该实例。不会连接桌面实例，不需要凭证、grant 或 OAuth，转发请求没有 Origin。HTTP 的 `If-Match` 只标记实例代次，用于防止向已替换的实例发请求。
+
+`--host` 标识宿主并随每次调用转发给 CLI 实例；未知值启动时报错，未传时工具清单与行为和改动前一致。`codex`、`cindy` 与未传时的清单相同。`claude` 去掉 MCP Apps 专用工具（`read_app_*`、`write_app_resource`、`watch_app_changes`）与 `review_*`，增加 [`web_url`](#web_url) 与 [`generate_page_image`](#generate_page_imageclaude-宿主)。
 
 cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后可在同一进程继续。已有桌面项目必须先在桌面版关闭；`project_locked` 的 details 包含释放方法。会话退出不会停止共享 CLI 实例，空闲回收沿用 Step 1。
 
@@ -294,6 +296,18 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 3. 当前代理首次遇到该摘要与路径时看图。每次 imagegen 只用 `referenced_image_paths=[同一路径]` 和返回的完整 generation_prompt。none 模式不传参考图。
 4. 立即 `import_image`，传实际宿主输出路径、image_write_back、同一提示词与原 preparation。
 5. 冲突或准备失效时使用新准备结果重新生图；不能仅换 revision/摘要。无 provider pipeline 或付费回退。
+
+### generate_page_image（Claude 宿主）
+
+仅 `--host claude` 列出；其他宿主或未传 `--host` 调用时被拒绝。Codex 仍只用宿主 imagegen，没有 provider 回退。需要创作协议 v6：旧 CLI 后台返回 `cli_upgrade_required`，其他工具不受影响。
+
+必填 `page_uuid,setting_uuids,idempotency_key,expected_revision`；`setting_reviews`、`additional_direction` 与 `prepare_page_image` 相同，可选 `model`（所配置服务商的图片模型，默认项目图片模型）。服务端先执行与 `prepare_page_image` 相同的校验（设定核对缺失、过期或 `needs_revision` 被拒，页面 revision 冲突被拒），再创建现有页面生图任务：提示词固定为同一份 `generation_prompt`，参考为同一张合图，不运行 LLM 参考选择，因此与 Web/`prepare_page_image` 的合图和提示词一致。服务商未配置返回 `image_provider_unavailable`（未计费，details 给出 `web_url view=providers` 与重试说明）。
+
+调用内等待任务完成。仍在运行时返回 `{task,page_uuid,done:false,next_action}`，用完全相同的参数和 `idempotency_key` 再次调用继续等待；同一 key 重放返回同一任务，不重复建任务或计费。成功返回 `{task,done:true,page_uuid,chapter_uuid,revision,image,is_current_image,read_image:{asset_uuid}}`，结果挂载为页面当前图片；随后 `read_image` 看图并 `pages record_image_review`。返回字段只含公开 UUID。任务失败返回 `page_image_generation_failed`。任务进度通过实时 hub 观察，不轮询。
+
+### web_url
+
+只读。可选 `page_uuid`、`chapter_uuid`、`setting_uuid` 或 `view`（`book/chapters/settings/exports/providers`），默认作品总览。返回 `{project_uuid,url,scope,chapter_uuid?,page_uuid?,setting_uuid?,note}`；地址由当前运行的 CLI 后台实际 endpoint 与公开 UUID 组成，对应 Web 路由 `/projects/:project_uuid/`、`chapters`、`chapters/:chapter_uuid`、`chapters/:chapter_uuid/sections/:page_uuid`、`premise`、`premise/assets/:setting_uuid`、`exports` 与全局 `/settings/providers`。页面与章节不匹配时报错。端口可能随重启变化，每次交付前重新获取，不写入文件。CLI 需以 `-tags embed_frontend` 构建才能打开页面。
 
 ### export_book
 

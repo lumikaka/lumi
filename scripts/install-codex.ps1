@@ -261,7 +261,7 @@ function Assert-Plugin([string]$Plugin, [string]$ExpectedCommand, [string]$Expec
     if ($manifest.name -ne 'lumi' -or $manifest.version -ne $ExpectedVersion) { throw 'Plugin identity/version differs from release.' }
     $mcp = Read-JsonFile (Join-Path $Plugin '.mcp.json')
     $server = $mcp.mcpServers.lumi
-    if ($server.command -cne $ExpectedCommand -or @($server.args).Count -ne 1 -or $server.args[0] -ne 'mcp' -or $null -ne $server.PSObject.Properties['cwd']) { throw 'Invalid MCP command, arguments or cwd.' }
+    if ($server.command -cne $ExpectedCommand -or $server.args[0] -ne 'mcp' -or -not (@($server.args).Count -eq 1 -or (@($server.args).Count -eq 3 -and $server.args[1] -eq '--host' -and $server.args[2] -eq 'codex')) -or $null -ne $server.PSObject.Properties['cwd']) { throw 'Invalid MCP command, arguments or cwd.' }
     $skill = Join-Path $Plugin 'skills/create-picture-book/SKILL.md'
     $text = [IO.File]::ReadAllText($skill)
     foreach ($match in [regex]::Matches($text, '\]\((references/[^)#]+)(?:#[^)]*)?\)')) {

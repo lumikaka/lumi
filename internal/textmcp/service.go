@@ -25,6 +25,9 @@ type Service struct {
 	Endpoint       string
 	AppConnection  func(string) any
 	AppRequest     func(context.Context, string, AppResourceRequest) (any, error)
+	// PageImages backs the Claude-only generate_page_image tool. Nil means
+	// the instance cannot run server-side page generation.
+	PageImages PageImageTasks
 }
 
 type arguments struct {
@@ -46,6 +49,7 @@ type arguments struct {
 	Crops                   []production.HostSettingCrop `json:"assets"`
 
 	AdditionalDirection string                                  `json:"additional_direction"`
+	Model               string                                  `json:"model"`
 	SettingReviews      []production.HostSettingReview          `json:"setting_reviews"`
 	Preparation         *production.PageImagePreparationReceipt `json:"preparation"`
 
@@ -127,6 +131,9 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if a.After != "" && a.Before != "" {
 		return Failure("invalid_arguments", "游标冲突", "before 和 after 不能同时提供。")
 	}
+	if name == "generate_page_image" && HostFromContext(ctx) != HostClaude {
+		return Failure("host_not_supported", "当前宿主不支持服务端页面生图", "generate_page_image 仅在 lumi mcp --host claude 下可用；其他宿主继续使用 prepare_page_image + 宿主生图 + import_image。")
+	}
 	if project.IsReadOnly(ctx) && !readOnlyOperation(name, a.Action) {
 		return Failure("read_only_context", "只读任务不能执行此操作", "只允许查看当前已打开项目；初始化、定稿、图片选择和导出均需写权限。")
 	}
@@ -192,6 +199,16 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		withStore = func(ctx context.Context, uuid string, callback func(*project.Store) error) error {
 			return s.Projects.WithStore(ctx, uuid, func(store *project.Store) error { return store.ReadOnly(ctx, callback) })
 		}
+	}
+	identityGuard := func(store *project.Store) error {
+		canonical, err := filepath.EvalSymlinks(root)
+		if err != nil || store.Root() != canonical || (expectedUUID != "" && store.ProjectUUID() != expectedUUID) {
+			return httpapi.NewError(409, "project_identity_mismatch", "项目目录与绑定身份不一致", "释放当前任务连接后重新读取项目。", nil)
+		}
+		return store.RequireDirectoryIdentity()
+	}
+	if name == "generate_page_image" {
+		return s.generatePageImage(ctx, withStore, identityGuard, opened.UUID, a)
 	}
 	err = withStore(ctx, opened.UUID, func(store *project.Store) error {
 		// UUID alone is insufficient: a copied project can have the same UUID.
@@ -268,6 +285,8 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 
 		case "image_target":
 			result, callErr = imageTarget(ctx, prod, a)
+		case "web_url":
+			result, callErr = s.webURL(ctx, store, st, prod, a)
 		case "prepare_page_image":
 			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews}, &s.PageReferences)
 		case "import_image":
@@ -312,7 +331,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 }
 
 func isMutation(name, action string) bool {
-	return name == "write_app_resource" || name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
+	return name == "write_app_resource" || name == "generate_page_image" || name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
 }
 
 func mutationSummary(result any) any {

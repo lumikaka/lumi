@@ -284,7 +284,7 @@ class Runtime {
         record = { key, active: 0, sessions: new Map(), identity: null };
         record.peer = this.connectionFactory({
           executable: this.executable,
-          args: ['mcp', '--environment', this.environment, '--data-dir', dataDir, '--timeout', '25s', ...(context.workdir_is_read_only ? ['--read-only'] : [])],
+          args: ['mcp', '--host', 'cindy', '--environment', this.environment, '--data-dir', dataDir, '--timeout', '25s', ...(context.workdir_is_read_only ? ['--read-only'] : [])],
           cwd: directory.root, env: this.env,
           onClose: () => { if (this.connections.get(key) === record) this.connections.delete(key); },
         });

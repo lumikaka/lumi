@@ -176,7 +176,7 @@ func TestDesktopProjectInitAddsOnlyOptionalGuidance(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := runProjectCLI(t, opt, created.RootPath, "init", "--name", "ignored")
-	if result.UUID != created.UUID || *result.Created || result.Guidance.Agents != "created" || result.Guidance.Config != "created" {
+	if result.UUID != created.UUID || *result.Created || result.Guidance.Agents != "created" || result.Guidance.Config != "created" || result.Guidance.Claude != "created" {
 		t.Fatalf("result=%+v", result)
 	}
 	after := projectFiles(t, created.RootPath)
@@ -190,7 +190,7 @@ func TestDesktopProjectInitAddsOnlyOptionalGuidance(t *testing.T) {
 			continue
 		}
 		switch name {
-		case "AGENTS.md", ".codex", filepath.Join(".codex", "config.toml"), "user-data", filepath.Join("user-data", ".gitkeep"):
+		case "AGENTS.md", "CLAUDE.md", ".codex", filepath.Join(".codex", "config.toml"), "user-data", filepath.Join("user-data", ".gitkeep"):
 		default:
 			t.Fatalf("unexpected added file %s", name)
 		}

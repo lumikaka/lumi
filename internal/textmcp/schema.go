@@ -46,7 +46,20 @@ func actionSchema(p map[string]any, requirements map[string][]string) map[string
 	return s
 }
 
+// Specs is the host-neutral business contract (also the Cindy snapshot).
+// Host-limited tools live in ClaudeSpecs so other hosts are unchanged.
 func Specs() []Spec {
+	base, _ := buildSpecs()
+	return base
+}
+
+// ClaudeSpecs are registered only by `lumi mcp --host claude`.
+func ClaudeSpecs() []Spec {
+	_, claude := buildSpecs()
+	return claude
+}
+
+func buildSpecs() ([]Spec, []Spec) {
 	uuid := map[string]any{"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "description": "Public UUIDv7 from a previous read."}
 	rev := revision("Exact revision from the last read or render_prompt; required for every mutation.")
 	boolSchema := map[string]any{"type": "boolean"}
@@ -133,6 +146,10 @@ func Specs() []Spec {
 		candidateSchema["allOf"] = append(conditions, map[string]any{"if": map[string]any{"properties": map[string]any{"kind": enum(kind)}}, "then": map[string]any{"required": fields}})
 	}
 	watchSchema := actionSchema(map[string]any{"action": enum("open", "next", "close"), "project_uuid": uuid, "subscription_uuid": uuid, "cursor": map[string]any{"type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$"}}, map[string][]string{"open": {"project_uuid"}, "next": {"project_uuid", "subscription_uuid", "cursor"}, "close": {"project_uuid", "subscription_uuid"}})
+	claude := []Spec{
+		{"generate_page_image", "Claude host only: generate page artwork with Lumi's configured image provider and default image model, then attach it as the page's current image. Inputs match prepare_page_image: call image_target first, explicitly select up to 12 setting_uuids in label order ([] = no references), and pass a passed setting_reviews entry for every selected setting bound to its current variant/revision and style_digest. expected_revision is the page revision from image_target. The server runs the same validation and prompt assembly as prepare_page_image and the existing Lumi page image task; it never relaxes reviews or revision checks. Waits for the task within the call; if still running, returns task status and you call again with the same idempotency_key and inputs to keep waiting (never a new key, which would generate and bill again). On success read_image the returned asset_uuid, inspect it against the storyboard and record pages record_image_review. Missing provider returns image_provider_unavailable: give the user web_url view=providers.", obj(map[string]any{"page_uuid": uuid, "setting_uuids": selectedSettings, "setting_reviews": settingReviews, "additional_direction": shortText(12000), "model": map[string]any{"type": "string", "minLength": 1, "maxLength": 512, "description": "Optional image model of the configured provider; default is the project image model."}, "idempotency_key": key, "expected_revision": rev}, "page_uuid", "setting_uuids", "idempotency_key", "expected_revision")},
+		{"web_url", "Return a browser link to the real Lumi Web page served by the running CLI instance for this project, for viewing, manual editing, version selection or provider setup. Scope by page_uuid (page), chapter_uuid (chapter), setting_uuid (setting) or view (book overview, chapters, settings, exports, providers); default is the book overview. The port can change after a restart: call again before every hand-off and never store the URL in files. Read-only.", obj(map[string]any{"chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid, "view": enum("book", "chapters", "settings", "exports", "providers")})},
+	}
 	return append(specs,
 		Spec{"read_app_review", "App-only legacy review details/candidates. Payload is UI-only _meta; use read_app_resource for normal workspace pages.", obj(paged(map[string]any{"view": enum("book", "chapters", "chapter", "page", "settings", "candidates"), "chapter_uuid": uuid, "page_uuid": uuid, "setting_uuid": uuid, "kind": enum("page", "setting", "text"), "candidates": map[string]any{"type": "array", "minItems": 2, "maxItems": 12, "items": obj(map[string]any{"title": str("Candidate title"), "text": str("Candidate prose")}, "title", "text")}}), "view")},
 		Spec{"read_app_resource", "App-only on-demand read of an allowlisted resource in the bound project. Business data is delivered in _meta, not model-visible content. No project/path/URL switching.", obj(map[string]any{"resource": str("Allowlisted project-relative resource, or project for the work itself."), "query": map[string]any{"type": "object", "additionalProperties": str("Validated REST query value.")}}, "resource")},
@@ -147,12 +164,12 @@ func Specs() []Spec {
 		Spec{"review_page", "Open the shared page workspace. The UI loads complete text, scene and versions on demand and supports user-submitted edits. Local version preview never adopts a version automatically.", obj(map[string]any{"chapter_uuid": uuid, "page_uuid": uuid}, "chapter_uuid", "page_uuid")},
 		Spec{"review_settings", "Launch shared setting cards/detail. Returns compact identity and summary; the UI loads complete text, images and versions on demand. Optionally focus one setting.", obj(paged(map[string]any{"setting_uuid": uuid}))},
 		Spec{"review_candidates", "Open shared page/setting candidate versions or supplied text candidates. Preview never writes; explicit UI adoption uses the existing revision flow. For conversation number choices, reread the target and use the indicated authoring selection with expected_revision.", candidateSchema},
-	)
+	), claude
 }
 
 var schemas = sync.OnceValue(func() map[string]*jsonschema.Resolved {
 	result := map[string]*jsonschema.Resolved{}
-	for _, spec := range Specs() {
+	for _, spec := range append(Specs(), ClaudeSpecs()...) {
 		b, _ := json.Marshal(spec.Schema)
 		var s jsonschema.Schema
 		if err := json.Unmarshal(b, &s); err != nil {

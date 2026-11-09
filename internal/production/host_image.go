@@ -41,6 +41,9 @@ type HostImageTarget struct {
 	chapterUUID      string
 }
 
+// ChapterUUID is the owning chapter of a page_image target; empty otherwise.
+func (target HostImageTarget) ChapterUUID() string { return target.chapterUUID }
+
 func (service *Service) HostImageTarget(ctx context.Context, targetUUID, slot string) (HostImageTarget, error) {
 	target := HostImageTarget{TargetUUID: targetUUID, Slot: slot, TargetRatio: ImageRatio{1, 1}, SuggestedFit: "pad", RatioTolerance: HostImageRatioTolerance}
 	switch slot {

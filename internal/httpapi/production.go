@@ -33,6 +33,10 @@ func (handler *ProductionHandler) withService(c echo.Context, operation func(*pr
 	return nil
 }
 
+// ProductionAPIError maps production, task, provider and file errors to the
+// same public API error the REST handlers return.
+func ProductionAPIError(err error) error { return productionAPIError(err) }
+
 func productionAPIError(err error) error {
 	var projectErr *project.Error
 	if errors.As(err, &projectErr) {

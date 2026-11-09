@@ -169,7 +169,7 @@ def main():
         check('fresh install and refresh tolerate an unrelated missing marketplace; final JSON verifies installed/enabled')
         mcp_path = install / 'current/marketplace/plugins/lumi/.mcp.json'
         mcp = json.loads(mcp_path.read_text())
-        assert mcp['mcpServers']['lumi'] == {'command': str(binary), 'args': ['mcp']}
+        assert mcp['mcpServers']['lumi'] == {'command': str(binary), 'args': ['mcp', '--host', 'codex']}
         check('generated stdio command is absolute and has no cwd')
         check_skill_references(mcp_path.parent)
         check('installed skill relative references resolve to the packaged content')

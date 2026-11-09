@@ -307,7 +307,9 @@ case "$installed_path" in /*) ;; *) die 'Codex returned a non-absolute plugin ca
 cached_mcp="$installed_path/.mcp.json"
 [ "$(json_get "$installed_path/.codex-plugin/plugin.json" version)" = "$version" ] || die 'Cached plugin version does not match.'
 [ "$(json_get "$cached_mcp" mcpServers.lumi.command)" = "$binary" ] && [ -x "$binary" ] || die 'Cached MCP command does not point to the installed CLI.'
-[ "$(json_get "$cached_mcp" mcpServers.lumi.args)" = 1 ] && [ "$(json_get "$cached_mcp" mcpServers.lumi.args.0)" = mcp ] || die 'Unexpected cached MCP arguments.'
+# Current plugins pass --host codex; a bare "mcp" is still accepted for older packages.
+mcp_args="$(json_get "$cached_mcp" mcpServers.lumi.args)"
+[ "$(json_get "$cached_mcp" mcpServers.lumi.args.0)" = mcp ] && { [ "$mcp_args" = 1 ] || { [ "$mcp_args" = 3 ] && [ "$(json_get "$cached_mcp" mcpServers.lumi.args.1)" = --host ] && [ "$(json_get "$cached_mcp" mcpServers.lumi.args.2)" = codex ]; }; } || die 'Unexpected cached MCP arguments.'
 if /usr/bin/plutil -extract mcpServers.lumi.cwd json -o /dev/null "$cached_mcp" >/dev/null 2>&1; then die 'Cached MCP must not override the chat directory.'; fi
 [ -f "$installed_path/skills/create-picture-book/SKILL.md" ] || die 'Installed creation skill is missing.'
 printf '%s\n' '{"success":true,"data":{"installed":true,"enabled":true}}' > "$scratch/result.json"

@@ -21,3 +21,29 @@ func ExpectedProjectUUID(ctx context.Context) string {
 	uuid, _ := ctx.Value(expectedProjectKey{}).(string)
 	return uuid
 }
+
+// Host identifies the MCP host that launched `lumi mcp --host`. It is a
+// transport hint used only for tool gating and diagnostics: it is never
+// persisted, never authorizes access and never appears in realtime payloads.
+const (
+	HostClaude = "claude"
+	HostCodex  = "codex"
+	HostCindy  = "cindy"
+)
+
+// ValidHost accepts the supported --host values; "" means an unknown host
+// and keeps the historical behavior.
+func ValidHost(host string) bool {
+	return host == "" || host == HostClaude || host == HostCodex || host == HostCindy
+}
+
+type hostKey struct{}
+
+func WithHost(ctx context.Context, host string) context.Context {
+	return context.WithValue(ctx, hostKey{}, host)
+}
+
+func HostFromContext(ctx context.Context) string {
+	host, _ := ctx.Value(hostKey{}).(string)
+	return host
+}

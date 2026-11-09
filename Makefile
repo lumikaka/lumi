@@ -8,6 +8,8 @@ CODEX_OUT ?= build/codex
 CODEX_WINDOWS_OUT ?= build/codex-windows
 CODEX_DEV_OUT ?= build/codex-dev
 CODEX_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
+CLAUDE_DEV_OUT ?= build/claude-dev
+CLAUDE_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 PYTHON ?= python3
 CINDY_DEV_DATA_DIR ?= $(HOME)/.lumi_dev
 CINDY_APP ?= Cindy
@@ -60,6 +62,26 @@ codex-dev-refresh:
 
 codex-dev-stop:
 	"$(CODEX_DEV_OUT)/lumi_dev" stop --environment development --data-dir "$(CODEX_DEV_DATA_DIR)"
+
+# Claude Code development plugin; shares the ~/.lumi_dev daemon with Codex/Cindy dev.
+.PHONY: claude-dev claude-dev-build claude-dev-refresh claude-dev-stop claude-dev-uninstall
+claude-dev: claude-dev-build
+	+$(MAKE) claude-dev-refresh
+
+claude-dev-build:
+	@if command -v pnpm >/dev/null 2>&1; then pnpm --dir web run build; else corepack pnpm --dir web run build; fi
+	mkdir -p "$(CLAUDE_DEV_OUT)"
+	go build -trimpath -tags embed_frontend -ldflags="-X main.defaultEnvironment=development" -o "$(CLAUDE_DEV_OUT)/lumi_dev" ./cmd/lumi
+	node scripts/dev-claude.mjs --out "$(CLAUDE_DEV_OUT)" --data-dir "$(CLAUDE_DEV_DATA_DIR)"
+
+claude-dev-refresh:
+	node scripts/dev-claude.mjs --out "$(CLAUDE_DEV_OUT)" --data-dir "$(CLAUDE_DEV_DATA_DIR)" --install
+
+claude-dev-stop:
+	"$(CLAUDE_DEV_OUT)/lumi_dev" stop --environment development --data-dir "$(CLAUDE_DEV_DATA_DIR)"
+
+claude-dev-uninstall:
+	node scripts/dev-claude.mjs --out "$(CLAUDE_DEV_OUT)" --data-dir "$(CLAUDE_DEV_DATA_DIR)" --uninstall
 
 codex-build:
 	pnpm --dir web run build

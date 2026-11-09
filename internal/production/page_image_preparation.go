@@ -219,3 +219,45 @@ func (service *Service) validatePageImagePreparation(ctx context.Context, input 
 	}
 	return nil
 }
+
+// ValidatePageImageInputs runs the same read-view validation and prompt
+// assembly as PreparePageImage (reviews, revision, cross-project checks) but
+// composes no collage and writes no file. A server-side generation uses it to
+// bind the task to exactly the prompt prepare_page_image would return.
+func (service *Service) ValidatePageImageInputs(ctx context.Context, input PreparePageImageInput) (PreparedPageImage, error) {
+	var result PreparedPageImage
+	if err := service.store.RequireReady(); err != nil {
+		return result, err
+	}
+	err := service.store.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return service.store.WithReadView(tx, func(view *project.Store) error {
+			var err error
+			result, _, err = NewService(view, nil).pageImageInputs(ctx, input)
+			return err
+		})
+	})
+	return result, err
+}
+
+// TaskSectionImage is the public identity of the page image a production task
+// attached. Only public UUIDs are returned.
+type TaskSectionImage struct {
+	VariantUUID string `json:"variant_uuid"`
+	VersionNo   int    `json:"version_no"`
+	AssetUUID   string `json:"asset_uuid"`
+}
+
+// SectionImageByTask finds the variant committed by taskUUID for pageUUID.
+func (service *Service) SectionImageByTask(ctx context.Context, pageUUID, taskUUID string) (TaskSectionImage, bool, error) {
+	var row TaskSectionImage
+	err := service.store.DB().WithContext(ctx).Raw(`SELECT v.uuid AS variant_uuid, v.version_no AS version_no, f.uuid AS asset_uuid
+ FROM comic_image_variants v
+ JOIN comic_image_generations g ON g.id=v.image_generation_id
+ JOIN comic_sections s ON s.id=v.comic_section_id
+ JOIN files f ON f.id=v.file_id
+ WHERE g.task_uuid=? AND s.uuid=? ORDER BY v.version_no DESC LIMIT 1`, taskUUID, pageUUID).Scan(&row).Error
+	if err != nil {
+		return row, false, err
+	}
+	return row, row.VariantUUID != "", nil
+}

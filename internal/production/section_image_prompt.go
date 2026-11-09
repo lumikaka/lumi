@@ -161,3 +161,10 @@ func (service *Service) sectionImageRules(ctx context.Context, pageRole string, 
 	snapshot.LanguageInstruction, err = st.EffectiveLanguageInstruction(ctx)
 	return snapshot, err
 }
+
+// HostSectionImageRules resolves the host-page rules used by prepare_page_image.
+// A server-side task created on behalf of a host must use these exact rules so
+// both paths render the same prompt bytes for the same page facts.
+func (service *Service) HostSectionImageRules(ctx context.Context, pageRole string) (GenerationSnapshot, error) {
+	return service.sectionImageRules(ctx, pageRole, true)
+}

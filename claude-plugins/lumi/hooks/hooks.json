@@ -1,0 +1,18 @@
+{
+  "description": "Lumi 项目写保护：在 Lumi 项目内拦截直接访问 project.sqlite、.lumi/ 与 assets/ 的 Bash 命令；非 Lumi 目录不受影响。",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard-lumi-project.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

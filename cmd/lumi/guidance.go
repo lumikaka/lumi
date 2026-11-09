@@ -44,6 +44,7 @@ extends = ":workspace"
 
 type guidanceResult struct {
 	Agents   string   `json:"agents"`
+	Claude   string   `json:"claude,omitempty"`
 	Config   string   `json:"config"`
 	Messages []string `json:"messages"`
 }
@@ -96,6 +97,7 @@ func ensureGuidance(root string) guidanceResult {
 		result.Agents = "manual"
 		result.Messages = append(result.Messages, "无法生成 AGENTS.md，请手工补齐 Lumi 插件读写指引："+err.Error())
 	}
+	ensureClaudeGuidance(root, &result)
 	configDir := filepath.Join(root, ".codex")
 	if err := os.Mkdir(configDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 		result.Messages = append(result.Messages, "无法创建 .codex，请手工添加 Lumi profile："+err.Error())
@@ -341,4 +343,39 @@ func replaceGuidanceConfig(path string, original, merged []byte, info os.FileInf
 // checkout when the installed binary cannot safely merge user configuration.
 func manualProtectionConfig() string {
 	return strings.TrimSpace(protectionSelection + protectionProfile)
+}
+
+// claudeGuidance only imports the shared project guidance so AGENTS.md stays
+// the single source for every host.
+const claudeGuidance = "@AGENTS.md\n"
+
+// ensureClaudeGuidance creates CLAUDE.md for every host so Claude Code reads
+// the same AGENTS.md guidance. An existing
+// file is never rewritten; it only gets a merge suggestion when the import
+// is missing.
+func ensureClaudeGuidance(root string, result *guidanceResult) {
+	path := filepath.Join(root, "CLAUDE.md")
+	err := writeGuidanceExclusive(path, []byte(claudeGuidance), 0o644)
+	switch {
+	case err == nil:
+		result.Claude = "created"
+		result.Messages = append(result.Messages, "已创建仅引用 @AGENTS.md 的 CLAUDE.md。")
+		return
+	case !errors.Is(err, os.ErrExist):
+		result.Claude = "manual"
+		result.Messages = append(result.Messages, "无法生成 CLAUDE.md，请手工创建并只写入一行 @AGENTS.md："+err.Error())
+		return
+	}
+	content, err := os.ReadFile(path)
+	if err == nil {
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.TrimSpace(line) == "@AGENTS.md" {
+				result.Claude = "preserved"
+				result.Messages = append(result.Messages, "保留已有 CLAUDE.md，已包含 @AGENTS.md。")
+				return
+			}
+		}
+	}
+	result.Claude = "manual"
+	result.Messages = append(result.Messages, "保留已有 CLAUDE.md 未修改；请在其中单独加入一行 @AGENTS.md，以便 Claude Code 读取 Lumi 项目指引，并保留你的自定义内容。")
 }

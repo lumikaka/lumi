@@ -663,8 +663,12 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 	if section.CurrentStoryboard == nil || strings.TrimSpace(section.CurrentStoryboard.ContentMD) == "" {
 		return preparedComicImageGeneration{}, missingComicStoryboardError(projectUUID, chapterUUID, sectionUUID)
 	}
+	host := input.HostPagePrompt != ""
 	resolved, model, modelSource, err := manager.resolveProductionProvider(ctx, runtime.store, modelsettings.ProjectImage, input.ProviderUUID, input.Model, true, input.EnableThinking, input.PromptExtend)
 	if err != nil {
+		if host {
+			return preparedComicImageGeneration{}, hostImageProviderError(err)
+		}
 		return preparedComicImageGeneration{}, err
 	}
 	pictureBook, err := runtime.store.RequirePictureBookProfile()
@@ -676,7 +680,12 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 		return preparedComicImageGeneration{}, taskError(picturebook.CodeAspectRatioUnsupported, "图片模型不支持项目比例", picturebook.SizeErrorDetails(err, "请切换到支持该精确比例的图片模型后重试；系统不会自动裁剪或改用近似比例。"), err)
 	}
 	storyService := story.NewService(runtime.store)
-	rules, err := service.SectionImageRules(ctx, section.PageRole)
+	var rules production.GenerationSnapshot
+	if host {
+		rules, err = service.HostSectionImageRules(ctx, section.PageRole)
+	} else {
+		rules, err = service.SectionImageRules(ctx, section.PageRole)
+	}
 	if err != nil {
 		return preparedComicImageGeneration{}, err
 	}
@@ -703,30 +712,37 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 		}
 		premiseReferences = append(premiseReferences, premiseAssetReference(asset))
 	}
-	allAssets, err := service.ListPremiseAssets(ctx, "", "active")
-	if err != nil {
-		return preparedComicImageGeneration{}, err
-	}
-	candidates := make([]production.PremiseAssetReference, 0, len(allAssets))
-	for _, asset := range allAssets {
-		if asset.CurrentVariant == nil {
-			continue
+	// A host page task carries the explicit, already reviewed selection
+	// (possibly []), so no candidates are offered to LLM reference selection.
+	candidates := []production.PremiseAssetReference{}
+	selectionPrompt := ""
+	var selectionProvider provider.Resolved
+	var selectionModel, selectionModelSource string
+	if !host {
+		allAssets, err := service.ListPremiseAssets(ctx, "", "active")
+		if err != nil {
+			return preparedComicImageGeneration{}, err
 		}
-		candidates = append(candidates, premiseAssetReference(asset))
-		if len(candidates) == 200 {
-			break
+		for _, asset := range allAssets {
+			if asset.CurrentVariant == nil {
+				continue
+			}
+			candidates = append(candidates, premiseAssetReference(asset))
+			if len(candidates) == 200 {
+				break
+			}
 		}
-	}
-	selectionPrompt, err := promptcatalog.Render(selectionTemplate, map[string]string{
-		"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateJSON(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
-	})
-	if err != nil {
-		return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)
-	}
-	selectionPrompt = promptcatalog.WithInstruction(selectionPrompt, languageInstruction)
-	selectionProvider, selectionModel, selectionModelSource, err := manager.resolveProjectModel(ctx, runtime.store, modelsettings.SectionPremiseSelection, modelsettings.KindText, input.SelectionProviderUUID, input.SelectionModel)
-	if err != nil {
-		return preparedComicImageGeneration{}, err
+		selectionPrompt, err = promptcatalog.Render(selectionTemplate, map[string]string{
+			"max_files": fmt.Sprintf("%d", maxSectionPremiseAssets), "section_id": section.UUID, "titles": premiseCandidateJSON(candidates), "storyboard": section.CurrentStoryboard.ContentMD,
+		})
+		if err != nil {
+			return preparedComicImageGeneration{}, taskError(CodeInvalidTask, "Section 设定项选择提示词无法渲染", "请检查项目提示词是否保留全部规范占位符。", err)
+		}
+		selectionPrompt = promptcatalog.WithInstruction(selectionPrompt, languageInstruction)
+		selectionProvider, selectionModel, selectionModelSource, err = manager.resolveProjectModel(ctx, runtime.store, modelsettings.SectionPremiseSelection, modelsettings.KindText, input.SelectionProviderUUID, input.SelectionModel)
+		if err != nil {
+			return preparedComicImageGeneration{}, err
+		}
 	}
 	prompt, err := boundedProductionPrompt(input.Prompt, section.CurrentStoryboard.ContentMD)
 	if err != nil {
@@ -737,7 +753,39 @@ func (manager *Manager) prepareComicImageGeneration(ctx context.Context, runtime
 		Prompt: prompt, PromptTemplate: imageTemplate, LanguageInstruction: languageInstruction, ReferencePresentPrompt: referencePresentPrompt, ReferenceAbsentPrompt: referenceAbsentPrompt, AdditionalDirectionPrompt: additionalDirectionPrompt, SelectionPrompt: selectionPrompt, SelectionProviderUUID: selectionProvider.UUID, SelectionBaseURL: selectionProvider.BaseURL, SelectionModel: selectionModel, SelectionModelSource: selectionModelSource,
 		StyleSnapshot: styleSnapshot, StoryboardUUID: section.CurrentStoryboard.UUID, StoryboardMD: section.CurrentStoryboard.ContentMD, PageRole: section.PageRole,
 		PremiseAssets: premiseReferences, PremiseCandidates: candidates, ProviderUUID: resolved.UUID, ProviderType: resolved.ProviderType, ProviderBaseURL: resolved.BaseURL, Model: model, ModelSource: modelSource, ImageAPIMode: resolved.ImageAPIMode, EnableThinking: resolved.EnableThinking, PromptExtend: resolved.PromptExtend, PictureBook: &pictureBook, OutputSize: outputSize.String(), Parameters: parameters}
+	if host {
+		// The worker renders this same snapshot; bind it to the prepared bytes.
+		rendered, err := production.RenderSectionImagePrompt(snapshot, premiseReferences)
+		if err != nil || rendered != input.HostPagePrompt {
+			return preparedComicImageGeneration{}, &production.Error{Code: production.CodePageImagePreparationStale, Message: "页面生图输入已变化", Details: "页面、所选设定或提示词在核对后发生变化。重新 image_target 读取最新 revision，核对设定后再调用 generate_page_image。", Cause: err}
+		}
+	}
 	return preparedComicImageGeneration{Section: section, Snapshot: snapshot}, nil
+}
+
+// hostImageProviderError turns a missing or unusable image model into an
+// actionable error for a host conversation; nothing has been created.
+func hostImageProviderError(err error) error {
+	details := "在 Lumi Web 的服务商设置中配置并启用图片模型（可调用 web_url view=providers 获取链接），然后用同一 idempotency_key 重试。未创建任务、未计费。"
+	if err != nil {
+		details += " 原因：" + err.Error()
+	}
+	return taskError("image_provider_unavailable", "Lumi 尚未配置可用的图片服务商", details, err)
+}
+
+// FindProductionTask returns the task created with key for kind, if any. It is
+// the read-only replay lookup for callers that must not re-validate inputs
+// (for example after a completed task already changed the page revision).
+func (manager *Manager) FindProductionTask(ctx context.Context, projectUUID, kind, key string) (ProductionTask, bool, error) {
+	runtime, err := manager.runtimeFor(projectUUID)
+	if err != nil {
+		return ProductionTask{}, false, err
+	}
+	record, found, err := scanProduction(runtime.sqlDB.QueryRowContext(ctx, productionSelect+` WHERE project_id=? AND kind=? AND idempotency_key=? LIMIT 1`, runtime.projectID, kind, strings.TrimSpace(key)))
+	if err != nil || !found {
+		return ProductionTask{}, false, err
+	}
+	return record.DTO(), true, nil
 }
 
 func missingComicStoryboardError(projectUUID, chapterUUID, sectionUUID string) error {

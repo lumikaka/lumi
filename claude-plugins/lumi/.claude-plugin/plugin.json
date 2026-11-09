@@ -1,0 +1,9 @@
+{
+  "name": "lumi",
+  "displayName": "Lumi 绘本创作",
+  "version": "0.1.0",
+  "description": "在 Claude Code 中从想法创作并导出绘本。写作由 Claude 完成，页面插图由你在 Lumi 中配置的图片服务商生成并按服务商计费；项目数据保存在本地，通过 Lumi Web 链接查看和编辑。",
+  "author": { "name": "Lumi" },
+  "keywords": ["picture-book", "illustration", "mcp", "local-first"],
+  "icon": "./assets/icon.png"
+}

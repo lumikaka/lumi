@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"lumi/internal/textmcp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,7 @@ serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
 init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
+        Also writes a CLAUDE.md that only imports @AGENTS.md (never overwritten).
 open    Open cwd project in the CLI instance's complete web UI (--json prints URL).
 project info  Inspect cwd project identity and Codex write-protection status.
 session import --rollout PATH  Manually save user/assistant text and Lumi tool names as read-only history.
@@ -29,6 +31,7 @@ cindy-session import --file PATH --source-session ID
         Manually save selected Cindy public user/assistant text in the cwd project as read-only history.
         No automatic collection or Host history access is enabled.
 mcp     Run a cwd-bound stdio MCP server; auto-start the CLI instance.
+        [--host claude|codex|cindy] selects host-specific tools; omitted keeps the historical list.
 `
 
 // The local lumi_dev build selects development through -ldflags -X. Release
@@ -46,6 +49,7 @@ type options struct {
 	cindyExport string
 	cindySource string
 	readOnly    bool
+	host        string
 }
 
 func main() { os.Exit(command(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -82,6 +86,9 @@ func command(args []string, out, stderr io.Writer) int {
 	if name == "mcp" || name == "status" {
 		flags.BoolVar(&opt.readOnly, "read-only", false, "only inspect a live CLI and read already-open projects without repairs")
 	}
+	if name == "mcp" || name == "init" {
+		flags.StringVar(&opt.host, "host", "", "MCP host: claude, codex or cindy")
+	}
 	if name == "init" {
 		flags.StringVar(&opt.projectName, "name", "", "project name (defaults to directory name)")
 		flags.StringVar(&opt.language, "language", "zh-Hans", "project generation language")
@@ -111,6 +118,9 @@ func command(args []string, out, stderr io.Writer) int {
 	}
 	if flags.NArg() != 0 || (name != "serve" && name != "status" && name != "stop" && name != "__serve" && name != "init" && name != "open" && name != "project info" && name != "session import" && name != "cindy-session import" && name != "mcp") || (opt.environment != "production" && opt.environment != "development") || opt.timeout <= 0 {
 		return printError(opt, out, stderr, "invalid_arguments", errors.New("invalid command, environment, arguments or timeout"), 2)
+	}
+	if !textmcp.ValidHost(opt.host) || (opt.host == "" && hostFlagGiven(args[1:])) {
+		return printError(opt, out, stderr, "invalid_arguments", fmt.Errorf("invalid --host %q: use claude, codex or cindy", opt.host), 2)
 	}
 	var err error
 	if strings.TrimSpace(opt.dataDir) == "" {
@@ -195,4 +205,17 @@ func printError(opt options, out, stderr io.Writer, code string, err error, exit
 		fmt.Fprintln(stderr, "lumi:", err)
 	}
 	return exitCode
+}
+
+// hostFlagGiven rejects an explicit empty --host; omitting it is allowed.
+func hostFlagGiven(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == "--host" || arg == "-host" || strings.HasPrefix(arg, "--host=") || strings.HasPrefix(arg, "-host=") {
+			return true
+		}
+	}
+	return false
 }

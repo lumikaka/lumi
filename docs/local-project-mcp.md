@@ -6,6 +6,10 @@ Lumi 作为本机 MCP Server，允许外部 AI 客户端读取、编辑用户授
 
 Codex 绘本创作使用 [Lumi 插件](../codex-plugins/README.md)：正式版 `lumi` 和从源码构建的 `lumi-dev`。两者通过独立 CLI 的 stdio MCP 绑定当前会话项目，使用 Codex 自身的写作和生图能力，不需要 OAuth。旧 `lumi-prod-plugin` / `lumi-dev-plugin` 已移除。本文其余内容描述仍然可用的通用项目 HTTP OAuth 与 Token 桥接服务，客户端可按下面步骤直接配置连接。
 
+## Claude Code 插件方式
+
+Claude Code 使用 [Lumi Claude Code 插件](../claude-plugins/README.md)（`lumi` 与开发版 `lumi-dev`），同样通过 stdio `lumi mcp --host claude` 绑定当前会话项目，复用 Codex 插件的工具实现与共享创作 skill。差异：Claude Code 不支持 MCP Apps，工具清单去掉 App 专用工具与 `review_*`，改用 `web_url` 返回 Lumi Web 链接；页面插图通过仅 Claude 宿主可用的 `generate_page_image` 由用户配置的图片服务商生成。`--host` 取值 `claude`、`codex`、`cindy`，未知值在启动时拒绝；未传时工具清单与行为保持原样。工具细节见 [本地创作 MCP 工具](features/codex-plugins/tools.md)。
+
 ## HTTP OAuth 连接（推荐）
 
 1. 启动 Lumi，在左侧栏底部「设置 → MCP 设置」进入 `/settings/mcp`，复制页面显示的 MCP 地址。入口不要求先进入项目或配置服务商。

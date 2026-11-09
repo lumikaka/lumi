@@ -40,6 +40,7 @@ type Application struct {
 	mcpService      *mcpserver.Service
 	mcpConfig       config.Config
 	realtimeHub     *realtime.Hub
+	tasks           *jobqueue.Manager
 	projects        *project.Manager
 	providers       *provider.Service
 	agentService    *agent.Service
@@ -392,7 +393,7 @@ func New(cfg config.Config, appStore *appstore.Store, projects *project.Manager)
 		lifecycle.run(lifecycleContext, projectIdleCheckInterval)
 	}()
 	return &Application{mcpService: mcpService, mcpConfig: cfg,
-		Echo: e, realtimeHub: realtimeHub, projects: projects, providers: providerService, agentService: agentService, modelTests: modelTests,
+		Echo: e, realtimeHub: realtimeHub, tasks: taskManager, projects: projects, providers: providerService, agentService: agentService, modelTests: modelTests,
 		lifecycleCancel: lifecycleCancel, lifecycleDone: lifecycleDone,
 	}, nil
 }
@@ -542,6 +543,11 @@ func trustedWriteOrigin(frontendURL string) echo.MiddlewareFunc {
 
 func (application *Application) RealtimeHub() *realtime.Hub {
 	return application.realtimeHub
+}
+
+// Tasks exposes the shared production task manager to in-process CLI tools.
+func (application *Application) Tasks() *jobqueue.Manager {
+	return application.tasks
 }
 
 func (application *Application) Close() error {

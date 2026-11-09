@@ -20,6 +20,8 @@ type Hub struct {
 	topics     map[string]map[*Client]topicMembership
 	authorizer TopicAuthorizer
 	closed     bool
+	observers  map[string]map[uint64]func(event string, payload any)
+	nextID     uint64
 }
 
 func NewHub(authorizer TopicAuthorizer) *Hub {
@@ -113,7 +115,14 @@ func (hub *Hub) Broadcast(topic, event string, payload any) {
 	for client, member := range hub.topics[topic] {
 		members = append(members, membership{client: client, joinRef: member.joinRef})
 	}
+	observers := make([]func(string, any), 0, len(hub.observers[topic]))
+	for _, observer := range hub.observers[topic] {
+		observers = append(observers, observer)
+	}
 	hub.mu.RUnlock()
+	for _, observer := range observers {
+		observer(event, payload)
+	}
 
 	for _, member := range members {
 		joinRef := member.joinRef
@@ -127,6 +136,35 @@ func (hub *Hub) Broadcast(topic, event string, payload any) {
 				}
 			})
 		}
+	}
+}
+
+// Observe registers an in-process listener for change hints on topic. It
+// receives the same events as WebSocket members and must not block; callers
+// treat events only as a signal to reread durable state. The returned
+// function removes the listener.
+func (hub *Hub) Observe(topic string, observer func(event string, payload any)) func() {
+	if hub == nil || observer == nil {
+		return func() {}
+	}
+	hub.mu.Lock()
+	if hub.observers == nil {
+		hub.observers = map[string]map[uint64]func(string, any){}
+	}
+	if hub.observers[topic] == nil {
+		hub.observers[topic] = map[uint64]func(string, any){}
+	}
+	hub.nextID++
+	id := hub.nextID
+	hub.observers[topic][id] = observer
+	hub.mu.Unlock()
+	return func() {
+		hub.mu.Lock()
+		delete(hub.observers[topic], id)
+		if len(hub.observers[topic]) == 0 {
+			delete(hub.observers, topic)
+		}
+		hub.mu.Unlock()
 	}
 }
 

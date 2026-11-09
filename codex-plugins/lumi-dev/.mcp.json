@@ -2,7 +2,7 @@
   "mcpServers": {
     "lumi-dev": {
       "command": "__LUMI_ABSOLUTE_BINARY__",
-      "args": ["mcp", "--environment", "development", "--data-dir", "__LUMI_DEV_DATA_DIR__"]
+      "args": ["mcp", "--host", "codex", "--environment", "development", "--data-dir", "__LUMI_DEV_DATA_DIR__"]
     }
   }
 }

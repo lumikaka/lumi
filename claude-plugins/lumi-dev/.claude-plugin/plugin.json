@@ -1,0 +1,9 @@
+{
+  "name": "lumi-dev",
+  "displayName": "Lumi 绘本创作（开发版）",
+  "version": "0.1.0-dev",
+  "description": "使用当前 Lumi 源码在 Claude Code 中开发和验证绘本创作流程。连接本地构建的 lumi_dev 与独立开发数据目录；请使用独立测试绘本目录。",
+  "author": { "name": "Lumi" },
+  "keywords": ["picture-book", "development"],
+  "icon": "./assets/icon.png"
+}

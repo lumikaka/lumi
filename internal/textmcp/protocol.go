@@ -34,13 +34,30 @@ type Forward func(context.Context, string, json.RawMessage) httpapi.Envelope
 // inspection in its own context; other agents and resumed sessions cannot infer it.
 const pageReferenceViewing = "For a collage, view reference_image_path unless this agent in this chat has already viewed the same reference_image_sha256 and path together. If the digest or viewing record is missing or uncertain, view again."
 
-func Protocol(forward Forward) *mcp.Server {
+// claudeInstructions replace host imagegen and MCP Apps with the Claude
+// host tools. Other hosts keep the historical instructions byte for byte.
+const claudeInstructions = "Author the bound cwd project. Start with project_overview; if project_not_initialized call project_init. Complete project_setup before writing. render_prompt returns catalog prompts for YOU to execute as text; submit results with the returned target UUID and expected_revision and reread on conflict. This host has no native image generation and no MCP Apps. View user reference images, setting images and generated pages with the Read tool or read_image. For page artwork call image_target, explicitly select up to 12 setting_uuids, compare every selected current setting image against the user's requirements and originals, then call generate_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?, idempotency_key, expected_revision): Lumi's configured provider generates and attaches the page with the same rules as prepare_page_image. If it returns a running task, call it again with the same idempotency_key and inputs; never switch keys, which bills a new generation. Then read_image the returned asset_uuid, inspect it against the saved storyboard and user text, and record pages record_image_review. Setting artwork and setting boards have no server generation tool here: do not pretend to generate them; ask the user to generate or upload them in the Lumi Web page and reread. For viewing, manual editing, version selection and provider setup, call web_url for the matching scope right before each hand-off and give the link; never store it. After the user edits in the Web page, reread objects and revisions before writing. Never read project.sqlite, .lumi or assets directly. Lists are paginated."
+
+// Protocol keeps the historical tool list for unknown hosts.
+func Protocol(forward Forward) *mcp.Server { return ProtocolFor("", forward) }
+
+// ProtocolFor decides the published tools locally from --host. claude drops
+// MCP Apps tools, review_* and the App resource and adds ClaudeSpecs; every
+// other host publishes exactly the historical list and App declarations.
+func ProtocolFor(host string, forward Forward) *mcp.Server {
+	claude := host == HostClaude
 	watches := newAppWatches(forward)
-	s := mcp.NewServer(&mcp.Implementation{Name: "lumi-text", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: "Author the bound cwd project. Start with project_overview; if project_not_initialized call project_init. Complete project_setup before writing. No provider configuration or generation tools are needed: render_prompt returns catalog prompts for YOU to execute. Submit results with the returned target UUID and expected_revision; reread on conflict. " + settingReferenceInstructions + "For initial creation with page artwork, prepare required setting images first, reusing compatible current assets; a first-page limit applies only to page images, not setting boards. Do not invent quota limits or text-only settings unless the user explicitly requests them. For batch settings render_prompt target=setting_board, generate the returned generation_prompt, immediately setting_boards import, then read_image and render_prompt target=setting_breakdown before apply_setting_breakdown. For single setting artwork call image_target before host generation; read_image supplies setting references for that flow. For page artwork inspect image_target.setting_readiness, explicitly select up to 12 setting_uuids and prepare missing images first. Then call prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?) for a labeled collage path and reference_image_sha256, ordered source versions, complete generation_prompt, image_write_back and signed preparation with digest. " + pageReferenceViewing + " Set referenced_image_paths to that single path. Do not read individual setting assets, use recent-image references, rewrite reference descriptions or append to generation_prompt. With explicit [] the mode is none: omit all image references and use the returned no-reference prompt. Never read project.sqlite, .lumi or assets directly or write a collage script. No provider pipeline or paid fallback. Page import must preserve the exact generation_prompt and entire preparation object; changed page/settings/prompts or altered receipt require a fresh preparation and generation, never replacing revision/digest. A service restart invalidates receipts. render_prompt remains for text, setting boards and template inspection. Immediately import_image using the actual file path from the host result (possibly output hint text) and the same full prompt sent to generation; never assume savedPath, guess names or scan directories. Inspect every adopted page against the saved storyboard and user text (names, exact dialogue and speakers, anatomy and prop continuity); record the verdict using pages record_image_review with the adopted variant and revision. On resume read book_outline with chapter_uuid, follow cursors, review pending images and regenerate only missing or defective pages. Export a single chapter with chapter_uuid. Report generated and visually passed counts separately. Host image retention is unknown. Ratio mismatch is advisory; keep is the default, crop/pad are optional. Lists are paginated. Never edit project.sqlite directly."})
-	for _, spec := range Specs() {
+	instructions := "Author the bound cwd project. Start with project_overview; if project_not_initialized call project_init. Complete project_setup before writing. No provider configuration or generation tools are needed: render_prompt returns catalog prompts for YOU to execute. Submit results with the returned target UUID and expected_revision; reread on conflict. " + settingReferenceInstructions + "For initial creation with page artwork, prepare required setting images first, reusing compatible current assets; a first-page limit applies only to page images, not setting boards. Do not invent quota limits or text-only settings unless the user explicitly requests them. For batch settings render_prompt target=setting_board, generate the returned generation_prompt, immediately setting_boards import, then read_image and render_prompt target=setting_breakdown before apply_setting_breakdown. For single setting artwork call image_target before host generation; read_image supplies setting references for that flow. For page artwork inspect image_target.setting_readiness, explicitly select up to 12 setting_uuids and prepare missing images first. Then call prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?) for a labeled collage path and reference_image_sha256, ordered source versions, complete generation_prompt, image_write_back and signed preparation with digest. " + pageReferenceViewing + " Set referenced_image_paths to that single path. Do not read individual setting assets, use recent-image references, rewrite reference descriptions or append to generation_prompt. With explicit [] the mode is none: omit all image references and use the returned no-reference prompt. Never read project.sqlite, .lumi or assets directly or write a collage script. No provider pipeline or paid fallback. Page import must preserve the exact generation_prompt and entire preparation object; changed page/settings/prompts or altered receipt require a fresh preparation and generation, never replacing revision/digest. A service restart invalidates receipts. render_prompt remains for text, setting boards and template inspection. Immediately import_image using the actual file path from the host result (possibly output hint text) and the same full prompt sent to generation; never assume savedPath, guess names or scan directories. Inspect every adopted page against the saved storyboard and user text (names, exact dialogue and speakers, anatomy and prop continuity); record the verdict using pages record_image_review with the adopted variant and revision. On resume read book_outline with chapter_uuid, follow cursors, review pending images and regenerate only missing or defective pages. Export a single chapter with chapter_uuid. Report generated and visually passed counts separately. Host image retention is unknown. Ratio mismatch is advisory; keep is the default, crop/pad are optional. Lists are paginated. Never edit project.sqlite directly."
+	specs := Specs()
+	if claude {
+		instructions = claudeInstructions
+		specs = append(specs, ClaudeSpecs()...)
+	}
+	s := mcp.NewServer(&mcp.Implementation{Name: "lumi-text", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: instructions})
+	for _, spec := range specs {
 		// The connection descriptor is internal to the cwd-bound relay. Views
 		// never receive loopback endpoints or scoped WS tickets.
-		if spec.Name == "read_app_connection" {
+		if spec.Name == "read_app_connection" || (claude && appOnlyTool(spec.Name)) {
 			continue
 		}
 		published, err := modelVisibleSpec(spec)
@@ -113,8 +130,19 @@ func Protocol(forward Forward) *mcp.Server {
 			return boundedResult(result)
 		})
 	}
-	registerReviewResource(s)
+	if !claude {
+		registerReviewResource(s)
+	}
 	return s
+}
+
+// appOnlyTool reports the tools that only serve MCP Apps workspaces.
+func appOnlyTool(name string) bool {
+	switch name {
+	case "read_app_review", "read_app_resource", "write_app_resource", "read_app_image", "read_app_image_detail", "watch_app_changes", "read_app_connection":
+		return true
+	}
+	return strings.HasPrefix(name, "review_")
 }
 
 func boundedResult(result httpapi.Envelope, extra ...mcp.Content) (*mcp.CallToolResult, error) {

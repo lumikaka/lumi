@@ -313,6 +313,11 @@ type CreateProductionGenerationInput struct {
 	AssetSummary          string                               `json:"asset_summary,omitempty"`
 	AssetTags             []string                             `json:"asset_tags,omitempty"`
 	IdempotencyKey        string                               `json:"idempotency_key"`
+	// HostPagePrompt is set only by the CLI host page tool. It switches a comic
+	// image task to the prepare_page_image rules (host page base rules,
+	// explicit references, no LLM reference selection) and must equal the
+	// prompt the task snapshot renders, or the task is not created.
+	HostPagePrompt string `json:"-"`
 }
 
 type CreateComicImageGenerationBatchInput struct {
