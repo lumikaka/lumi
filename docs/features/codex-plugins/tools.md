@@ -309,11 +309,11 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 
 只读。可选 `page_uuid`、`chapter_uuid`、`setting_uuid` 或 `view`（`book/chapters/settings/exports/providers`），默认作品总览。返回 `{project_uuid,url,scope,chapter_uuid?,page_uuid?,setting_uuid?,note}`；地址由当前运行的 CLI 后台实际 endpoint 与公开 UUID 组成，对应 Web 路由 `/projects/:project_uuid/`、`chapters`、`chapters/:chapter_uuid`、`chapters/:chapter_uuid/sections/:page_uuid`、`premise`、`premise/assets/:setting_uuid`、`exports` 与全局 `/settings/providers`。页面与章节不匹配时报错。端口可能随重启变化，每次交付前重新获取，不写入文件。CLI 需以 `-tags embed_frontend` 构建才能打开页面。
 
-### export_website（Codex / Claude Code v7，Cindy v8）
+### export_website（Codex / Claude Code / Cindy，创作协议 v9）
 
 用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `export_website({})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
 
-默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。收到 `done=true` 后告诉用户网站已生成在 `output_directory` 返回的本地目录。Codex 和 Claude Code 同时提供可打开的 `preview_url`。新的独立请求可使用新键。定向重放会检查原任务是否仍为当前发布版本。
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。收到 `done=true` 后告诉用户网站已生成在 `output_directory` 返回的本地目录。Codex 和 Claude Code 同时提供可打开的 `preview_url`。在同一条成功回复中，将返回的完整 `publish_prompt` 原样放在独立的文本代码块中，方便用户复制到 Codex、修改后再发送。提示词仅供复制，执行发布需要用户另行提出。新的独立请求可使用新键。定向重放会检查原任务是否仍为当前发布版本。
 
 ### export_book
 

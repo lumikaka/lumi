@@ -13,9 +13,9 @@ export default function WebsitePublishPrompt({ projectUuid, available, hasUpdate
   const projects = useQuery({ queryKey: projectQueryKeys.recent(), queryFn: listRecentProjects })
   const root = projects.data?.items?.find((project) => project.uuid === projectUuid)?.root_path
   const source = root
-    ? t('website.publish_prompt_source_path', { path: JSON.stringify(`${root.replace(/[\\/]+$/, '')}/website`) })
+    ? t('website.publish_prompt_source_path').replace('{path}', () => JSON.stringify(`${root.replace(/[\\/]+$/, '')}/website`))
     : t('website.publish_prompt_source_upload')
-  const prompt = t('website.publish_prompt_body', { source, token: '{site_url}' })
+  const prompt = t('website.publish_prompt_body').replace('{source}', () => source)
   const copied = copy?.text === prompt && copy.status === 'copied'
   const copying = copy?.text === prompt && copy.status === 'copying'
   const failed = copy?.text === prompt && copy.status === 'failed'

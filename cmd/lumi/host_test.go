@@ -73,20 +73,14 @@ func TestMCPHostForwardsOnlyCompatibleRequests(t *testing.T) {
 	client := mcpHostClient(t, opt, root, "claude")
 	callText(t, client, "generate_page_image", map[string]any{"page_uuid": "01989abc-def0-7000-8000-000000000001", "setting_uuids": []string{}, "idempotency_key": "k", "expected_revision": 1}, "cli_upgrade_required")
 	callText(t, client, "project_overview", map[string]any{}, "project_not_initialized")
-	// A v7 daemon would create a ZIP for Cindy. Only the other two hosts
-	// can use its existing local directory and preview response.
-	version.Store(7)
+	// A v8 daemon can generate a website but cannot return its publishing prompt.
+	version.Store(8)
 	for _, host := range []string{"codex", "claude", "cindy"} {
-		want := "project_not_initialized"
-		if host == "cindy" {
-			want = "cli_upgrade_required"
-		}
-		callText(t, mcpHostClient(t, opt, root, host), "export_website", map[string]any{}, want)
+		callText(t, mcpHostClient(t, opt, root, host), "export_website", map[string]any{}, "cli_upgrade_required")
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(forwarded) != 3 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "claude" ||
-		forwarded[1].Host != "codex" || forwarded[2].Host != "claude" {
+	if len(forwarded) != 1 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "claude" {
 		t.Fatalf("forwarded=%+v", forwarded)
 	}
 }

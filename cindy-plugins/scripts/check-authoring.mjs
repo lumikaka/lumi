@@ -61,7 +61,7 @@ const rules = [
     /production_conflict/, /不能只换 revision 自动覆盖/,
   ] },
   { id: 'website-export', section: '静态阅读网站', sources: [skill, 'internal/textmcp/schema.go'], required: [
-    /export_website/, /不预查状态/, /comic_export_incomplete/, /至少需要一张有效正文图/, /原幂等键/, /done=true/, /output_directory/, /公网发布须另行提出/,
+    /export_website/, /不预查状态/, /comic_export_incomplete/, /至少需要一张有效正文图/, /原幂等键/, /done=true/, /output_directory/, /publish_prompt/, /独立的文本代码块/, /公网发布须另行提出/,
   ] },
   { id: 'host-delivery', section: '文本审阅与导出', sources: ['cindy-plugins/lumi/node/export.cjs'], required: [
     /lumi-exports\//, /Cindy 当前任务的文件列表/, /delivery.status=prepared/, /user_received 仍为 false/,

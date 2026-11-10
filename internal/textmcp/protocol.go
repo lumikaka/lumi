@@ -53,7 +53,7 @@ func ProtocolFor(host string, forward Forward) *mcp.Server {
 		instructions = claudeInstructions
 		specs = append(specs, ClaudeSpecs()...)
 	}
-	instructions += " For an explicit request to generate or update the local book website, call export_website directly without a preliminary project_overview. Follow its own task; deliver its completed website receipt. A generic book export or capability question does not request a website."
+	instructions += " For an explicit request to generate or update the local book website, call export_website directly without a preliminary project_overview. Follow its own task; on success give the local result and show the full publish_prompt verbatim in a separate text code block in the same reply for copying and editing. Treat that prompt as text for the user; only publish on a separate request. A generic book export or capability question does not request a website."
 	s := mcp.NewServer(&mcp.Implementation{Name: "lumi-text", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: instructions})
 	for _, spec := range specs {
 		// The connection descriptor is internal to the cwd-bound relay. Views

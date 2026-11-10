@@ -38,12 +38,12 @@ const appImageDetailVersion = 5
 // Only generate_page_image requires it; every other tool keeps v4/v5.
 const hostPageImageVersion = 6
 
-// Version 7 adds resumable local website export for all plugin hosts.
-const websiteExportVersion = 7
-
 // Version 8 returns the local directory to Cindy instead of an archive receipt.
 const cindyWebsiteDirectoryVersion = 8
-const creationProtocolVersion = cindyWebsiteDirectoryVersion
+
+// Version 9 includes the desktop publishing prompt in successful website exports.
+const websitePublishPromptVersion = 9
+const creationProtocolVersion = websitePublishPromptVersion
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -205,9 +205,8 @@ func runMCP(opt options) error {
 		}
 		input := creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly, Host: opt.host}
 		if tool == "export_website" {
-			requiredVersion = websiteExportVersion
+			requiredVersion = websitePublishPromptVersion
 			if opt.host == textmcp.HostCindy {
-				requiredVersion = cindyWebsiteDirectoryVersion
 				input.ClientProtocolVersion = creationProtocolVersion
 			}
 		}

@@ -1,13 +1,13 @@
 {
   "version": 1,
   "sources": {
-    "plugin-skills/create-picture-book/SKILL.md": "ef0cbdd290262e378b2f6f796be9adad2979955f95a8bafc199ee94f788b70d5",
-    "plugin-skills/create-picture-book/references/mcp-usage.md": "21d6f9b3aff2c936751476c50ffa72a732a912c251ceb23df5cff0d057206eeb",
+    "plugin-skills/create-picture-book/SKILL.md": "74bbc40ff2fbc4efbf645891668d3b02fc3f9f4446ccf85b8828e1cc0e36dadd",
+    "plugin-skills/create-picture-book/references/mcp-usage.md": "c7fec0dde208918579f87105156144b17c28b6dc303383c3803ef60f6ed9cb94",
     "plugin-skills/create-picture-book/references/page-images.md": "45d4cbac54d6d948175fedb2c2625753a65d766e1436c8e342366be1b03b174b",
     "plugin-skills/create-picture-book/references/setting-references.md": "7f9cfa0416509438648b38152c441dd7af7ef2f51dd8b2e94266c2663934ffef",
     "scripts/build-skills.mjs": "a08b6e01fd4be44738a25f74a9c320dd5e7210e06707090b70d61abcc37523b3",
     "internal/textmcp/prompt.go": "8c72124b25949ef5d0b390081dde1d1e405644104e0af0b143e6cb148efb116c",
-    "internal/textmcp/schema.go": "dbd167487449487c9e07d1903458d9ad18509dbcb1e33b94c86a35f8f1cad849",
+    "internal/textmcp/schema.go": "8956ed5e88b0fc08663bb292a76be95dcd4305fc7f6b9cde23eaf75e04e604f8",
     "internal/production/host_page_review.go": "425d82895292ec1f4e681f3c1a23f077d91aea23a76b91cfd5ab6c208ba76051",
     "internal/production/text_export.go": "554925fb73c4e45f28a6bacd91531a07cb4d5b9d42b80ced8f4dc487e8446d76",
     "cindy-plugins/lumi/node/export.cjs": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594"

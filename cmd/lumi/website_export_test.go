@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,11 @@ func TestPluginWebsiteStdioDelivery(t *testing.T) {
 			}
 			call := func(name string, args map[string]any) map[string]any { return callText(t, client, name, args, "") }
 			empty := map[string]any{}
-			init := call("project_init", map[string]any{"idea": "A star", "name": "网站验收"})
+			language, promptStart := "zh-Hans", "请使用 Sites 插件"
+			if host == "claude" {
+				language, promptStart = "en", "Use the Sites plugin"
+			}
+			init := call("project_init", map[string]any{"idea": "A star", "name": "网站验收", "generation_language": language})
 			projectUUID := field(init, "project")["uuid"].(string)
 			setup := call("project_setup", map[string]any{"action": "update", "expected_revision": field(init, "setup")["revision"], "project_name": "Star reader", "overall_style": "Watercolor", "picture_book": map[string]any{"format": "classic_picture_book", "aspect_ratio": map[string]any{"mode": "landscape"}}})
 			call("project_setup", map[string]any{"action": "finalize", "expected_revision": setup["revision"]})
@@ -67,6 +72,11 @@ func TestPluginWebsiteStdioDelivery(t *testing.T) {
 			if result["done"] != true || result["output_directory"] != filepath.Join(root, "website") || result["preview_url"] != status.Endpoint+"/media/projects/"+projectUUID+"/website/index.html" {
 				t.Fatal(result)
 			}
+			prompt, _ := result["publish_prompt"].(string)
+			if !strings.HasPrefix(prompt, promptStart) || !strings.Contains(prompt, strconv.Quote(filepath.Join(root, "website"))) ||
+				!strings.Contains(prompt, "{site_url}") || !strings.Contains(prompt, "rss.xml") || strings.Contains(prompt, "{source}") {
+				t.Fatalf("unexpected publishing prompt: %q", prompt)
+			}
 			resp, err := http.Get(result["preview_url"].(string))
 			if err != nil {
 				t.Fatal(err)
@@ -86,15 +96,15 @@ func TestPluginWebsiteStdioDelivery(t *testing.T) {
 			}
 			page("Missing")
 			replay := call("export_website", map[string]any{"idempotency_key": result["idempotency_key"]})
-			if result["task_uuid"] != replay["task_uuid"] {
-				t.Fatal("replay generated again", replay)
+			if result["task_uuid"] != replay["task_uuid"] || replay["publish_prompt"] != prompt {
+				t.Fatal("replay returned a different receipt", replay)
 			}
 			missing := callText(t, client, "export_website", empty, "comic_export_incomplete")
 			if !strings.Contains(missing["details"].(string), "1 页") {
 				t.Fatal(missing)
 			}
 			updated := call("export_website", map[string]any{"allow_missing_images": true})
-			if updated["done"] != true || updated["generation_uuid"] == result["generation_uuid"] {
+			if updated["done"] != true || updated["generation_uuid"] == result["generation_uuid"] || updated["publish_prompt"] != prompt {
 				t.Fatal(updated)
 			}
 			expectHint(t, ws, "website:changed")

@@ -45,7 +45,7 @@ Node 校验 schema 后按 action 判定权限，业务派发之前拒绝只读�
 | receive_media | 无 | 页面、单项设定、设定板授权图片导入，绑定当前可写任务 |
 | setting_boards | list、get | import 仅允许附件内部适配器派发 |
 | apply_setting_breakdown | 无 | 原子裁切与设定版本入库 |
-| export_website | 无 | 收到 `done=true` 后告诉用户网站已生成在 `output_directory`，可在该目录打开 `index.html`。 |
+| export_website | 无 | 收到 `done=true` 后告诉用户网站已生成在 `output_directory`，可在该目录打开 `index.html`。同一条回复以独立文本代码块给出完整的 `publish_prompt`，供用户复制和修改。 |
 | export_book | 无 | 所有格式均落盘 |
 | runtime_status、runtime_release | 诊断、当前任务连接释放 | 无作品写入 |
 

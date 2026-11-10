@@ -442,11 +442,12 @@ class Runtime {
         const website = result.data;
         if (!UUID.test(website?.task_uuid)) throw new RuntimeError('protocol_error', '网站任务回执无效。');
         if (website.done === false && ['queued','running'].includes(website.status)) return result;
-        if (website.done !== true || !UUID.test(website.generation_uuid) || website.output_directory !== path.join(directory.root, 'website')) {
+        if (website.done !== true || !UUID.test(website.generation_uuid) || website.output_directory !== path.join(directory.root, 'website') ||
+          typeof website.publish_prompt !== 'string' || !website.publish_prompt.trim()) {
           throw new RuntimeError('protocol_error', '网站生成回执与当前项目目录不匹配。');
         }
         return success({ done: true, task_uuid: website.task_uuid, generation_uuid: website.generation_uuid,
-          idempotency_key: website.idempotency_key, output_directory: website.output_directory });
+          idempotency_key: website.idempotency_key, output_directory: website.output_directory, publish_prompt: website.publish_prompt });
       }
       if (method === 'export_book') {
         // Validate the original receipt before reporting any generated file.

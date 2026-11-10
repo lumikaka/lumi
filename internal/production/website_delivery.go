@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"lumi/web/websiteprompt"
 )
 
 type WebsiteDelivery struct {
@@ -15,6 +17,7 @@ type WebsiteDelivery struct {
 	Done            bool   `json:"done"`
 	OutputDirectory string `json:"output_directory,omitempty"`
 	PreviewURL      string `json:"preview_url,omitempty"`
+	PublishPrompt   string `json:"publish_prompt,omitempty"`
 }
 
 // ObserveWebsiteResult releases only this invocation's anonymous pending slot.
@@ -62,11 +65,12 @@ func (s *Service) WebsiteDelivery(ctx context.Context, taskUUID, endpoint string
 		if err != nil {
 			return err
 		}
-		var manifestJSON string
-		err = db.QueryRowContext(ctx, `SELECT g.uuid,g.manifest_json FROM website_generations g
+		var manifestJSON, language string
+		err = db.QueryRowContext(ctx, `SELECT g.uuid,g.manifest_json,p.generation_language FROM website_generations g
+            JOIN projects p ON p.id=g.project_id
             JOIN project_websites w ON w.generation_id=g.id AND w.project_id=g.project_id
             JOIN production_task_runs t ON t.id=g.task_id
-            WHERE g.project_id=(SELECT id FROM projects WHERE uuid=?) AND t.uuid=? AND t.status='completed' AND g.completed_at IS NOT NULL`, s.store.ProjectUUID(), taskUUID).Scan(&result.GenerationUUID, &manifestJSON)
+            WHERE p.uuid=? AND t.uuid=? AND t.status='completed' AND g.completed_at IS NOT NULL`, s.store.ProjectUUID(), taskUUID).Scan(&result.GenerationUUID, &manifestJSON, &language)
 		if errors.Is(err, sql.ErrNoRows) {
 			return domainError(CodeExportChanged, "本次任务不是当前成功发布的网站", "未交付其他版本。需要当前内容时重新生成。", nil)
 		}
@@ -89,6 +93,7 @@ func (s *Service) WebsiteDelivery(ctx context.Context, taskUUID, endpoint string
 		}
 		result.OutputDirectory = root
 		result.PreviewURL = strings.TrimRight(endpoint, "/") + "/media/projects/" + s.store.ProjectUUID() + "/website/index.html"
+		result.PublishPrompt = websiteprompt.Render(language, root)
 		return nil
 	})
 	result.Done = err == nil

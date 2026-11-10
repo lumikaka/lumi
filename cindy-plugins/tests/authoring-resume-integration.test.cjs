@@ -24,7 +24,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
 // not model image quality. The real CLI and project live only in this temp tree.
 test('Cindy reuses auto strip plans, versioned reviews, resume summaries and scoped exports', { timeout: 120000 }, async t => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'lumi-cindy-resume-'));
-  const root = path.join(base, 'book'), home = path.join(base, 'home'), dataDir = path.join(base, 'data');
+  const root = path.join(base, 'book $& {token}'), home = path.join(base, 'home'), dataDir = path.join(base, 'data');
   const executable = path.join(base, 'lumi');
   const env = { HOME: home, PATH: '/usr/bin:/bin', TMPDIR: os.tmpdir() };
   let runtime, nonce;
@@ -97,11 +97,15 @@ test('Cindy reuses auto strip plans, versioned reviews, resume summaries and sco
   const missingWebsite = await call('export_website');
   assert.equal(missingWebsite.error.code, 'comic_export_incomplete');
   assert.match(missingWebsite.error.details, /1 页/);
+  const { projects } = await import('../../web/src/i18n/messages/projects.js');
+  const desktop = projects['zh-Hans'];
   const checkWebsite = async (args, missing) => {
     const result = ok(await call('export_website',args));
     assert.equal(result.done, true);
     const directory = path.join(await fs.realpath(root), 'website');
     assert.equal(result.output_directory, directory);
+    const source = desktop['website.publish_prompt_source_path'].replace('{path}', () => JSON.stringify(directory));
+    assert.equal(result.publish_prompt, desktop['website.publish_prompt_body'].replace('{source}', () => source));
     for (const field of ['archive', 'path', 'delivery', 'preview_url']) assert.ok(!(field in result), field);
     for (const exportsDir of [path.join(root, '.lumi', 'exports'), path.join(root, 'lumi-exports')]) {
       const files = await fs.readdir(exportsDir).catch(error => { if (error.code === 'ENOENT') return []; throw error; });

@@ -69,6 +69,8 @@ RSS 阅读器不会解析变量。替换前的文件是待部署模板；替换�
 
 三个宿主均在项目根目录的 `website/` 生成网站。Cindy 在本次任务成功后告知用户实际的本地目录，用户可以打开其中的 `index.html` 阅读。Codex 和 Claude Code 同时提供当前 CLI 的本地预览 URL。
 
+三个插件的成功回执均包含 `publish_prompt`。它复用桌面端「用 Codex 发布网站」的模板，按项目的生成语言填入本次输出目录。首次导出、更新或续接成功后，对话在同一条回复中以独立文本代码块展示完整提示词，用户可复制到 Codex、修改后再发送。
+
 插件回归入口：
 
 - `go test ./cmd/lumi ./internal/jobqueue -run TestPluginWebsite`：两种 stdio 宿主、队列在途与已完成重放、缺图/零正文图、只读拒绝，以及旧站仍在时取消更新。
