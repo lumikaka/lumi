@@ -92,6 +92,20 @@ func TestMCPRejectsLegacyDaemonBeforeCreationWithoutStoppingIt(t *testing.T) {
 	}
 }
 
+func TestLegacyCindyWebsiteClientRequiresUpgradeBeforeGeneration(t *testing.T) {
+	opt := cliOptions(t)
+	status, err := ensureInstance(t.Context(), opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := forwardCreation(t.Context(), status.instance, creationRequest{
+		RootPath: t.TempDir(), Host: textmcp.HostCindy, Tool: "export_website", Arguments: json.RawMessage(`{}`),
+	})
+	if result.Error == nil || result.Error.Code != "cli_upgrade_required" {
+		t.Fatalf("legacy archive request reached generation: %+v", result)
+	}
+}
+
 func TestBoundSetupGetUpdateFinalizeAgainstCapableDaemon(t *testing.T) {
 	opt := cliOptions(t)
 	client := mcpClient(t, opt, t.TempDir())

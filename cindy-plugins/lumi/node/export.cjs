@@ -6,14 +6,13 @@ const { RuntimeError, aborted } = require('./errors.cjs');
 const { UUID } = require('./project.cjs');
 
 const DIRECTORY = 'lumi-exports';
-function exportIdentity(root, value, kind = 'text') {
+function exportIdentity(root, value) {
   const ext = { markdown: 'md', zip: 'zip', pdf: 'pdf' }[value?.format];
-  const filename = `${kind}-${value?.uuid}.${ext}`;
-  if ((kind === 'website' && (value?.format !== 'zip' || !/^[a-f0-9]{64}$/.test(value.sha256))) || !UUID.test(value?.uuid) || typeof ext !== 'string' || !Number.isSafeInteger(value.byte_size) || value.byte_size < 0
-    || value.path !== path.join(root, '.lumi', 'exports', filename)) {
+  if (!UUID.test(value?.uuid) || typeof ext !== 'string' || !Number.isSafeInteger(value.byte_size) || value.byte_size < 0
+    || value.path !== path.join(root, '.lumi', 'exports', `text-${value.uuid}.${ext}`)) {
     throw new RuntimeError('protocol_error', '导出回执不符合当前项目的固定文件位置。', '重新读取当前项目；不接受任意来源文件。');
   }
-  return { ext, source: value.path, relative: path.posix.join(DIRECTORY, filename) };
+  return { ext, source: value.path, relative: path.posix.join(DIRECTORY, `text-${value.uuid}.${ext}`) };
 }
 async function directoryIdentity(dir) {
   const stat = await fs.lstat(dir);
@@ -26,8 +25,8 @@ const same = (a, b) => a.dev === b.dev && a.ino === b.ino;
 // file tree. Neither paths nor filenames are accepted as Agent arguments.
 // Native Cindy file browsing transports these bytes; this is preparation,
 // never a claim that a phone or user has acknowledged receipt.
-async function prepareExport(root, value, signal, kind = 'text') {
-  const { source, relative } = exportIdentity(root, value, kind);
+async function prepareExport(root, value, signal) {
+  const { source, relative } = exportIdentity(root, value);
   aborted(signal);
   await directoryIdentity(root);
   await directoryIdentity(path.join(root, '.lumi'));
@@ -67,31 +66,15 @@ async function prepareExport(root, value, signal, kind = 'text') {
     aborted(signal);
     if (!same(await directoryIdentity(destDir), dir)) throw new Error('Export directory replaced');
     // link is an atomic, no-overwrite publication of the fully written file.
-    const digest = hash.digest('hex');
-    if (kind === 'website' && digest !== value.sha256) throw new Error('Archive changed before delivery');
-    let publishedIdentity = ownedPart;
-    try { await fs.link(part, target); }
-    catch (error) {
-      // A replay of a completed website may already be visible. Never
-      // overwrite a user file or accept a receipt on filename alone.
-      if (kind !== 'website' || error.code !== 'EEXIST') throw error;
-      const existing = await fs.open(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-      try {
-        publishedIdentity = await existing.stat();
-        if (!publishedIdentity.isFile() || publishedIdentity.size !== bytes) throw error;
-        const existingHash = crypto.createHash('sha256');
-        for await (const chunk of existing.createReadStream({autoClose: false, signal})) existingHash.update(chunk);
-        if (existingHash.digest('hex') !== digest) throw error;
-      } finally { await existing.close(); }
-    }
+    await fs.link(part, target);
     if (!same(await directoryIdentity(destDir), dir)) throw new Error('Export directory replaced');
     const published = await fs.lstat(target);
-    if (!same(published, publishedIdentity) || published.size !== bytes) throw new Error('Published export changed');
+    if (!same(published, ownedPart) || published.size !== bytes) throw new Error('Published export changed');
     const directory = await fs.open(destDir, 'r');
     try { await directory.sync(); } finally { await directory.close(); }
     return { ...value, path: relative, file_generated: true, user_received: false,
       delivery: { status: 'prepared', channel: 'cindy_task_files', relative_path: relative,
-        byte_size: bytes, sha256: digest, receipt: null,
+        byte_size: bytes, sha256: hash.digest('hex'), receipt: null,
         instructions: '在 Cindy 当前任务的文件列表打开此相对路径；手机通过原生任务文件浏览器读取。prepared 仅表示已准备，收到须以控制端读取回执或用户确认为准，不承诺本地链接可下载。' } };
   } finally {
     await output?.close();

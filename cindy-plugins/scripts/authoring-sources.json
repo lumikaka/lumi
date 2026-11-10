@@ -10,6 +10,6 @@
     "internal/textmcp/schema.go": "dbd167487449487c9e07d1903458d9ad18509dbcb1e33b94c86a35f8f1cad849",
     "internal/production/host_page_review.go": "425d82895292ec1f4e681f3c1a23f077d91aea23a76b91cfd5ab6c208ba76051",
     "internal/production/text_export.go": "554925fb73c4e45f28a6bacd91531a07cb4d5b9d42b80ced8f4dc487e8446d76",
-    "cindy-plugins/lumi/node/export.cjs": "27375bf497e1bb796138f231eb8c3d77c7221136833ace2e95f1313a8db3d6f2"
+    "cindy-plugins/lumi/node/export.cjs": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594"
   }
 }

@@ -100,12 +100,16 @@ test('Cindy reuses auto strip plans, versioned reviews, resume summaries and sco
   const checkWebsite = async (args, missing) => {
     const result = ok(await call('export_website',args));
     assert.equal(result.done, true);
-    assert.equal(result.delivery.status, 'prepared');
-    assert.equal(result.user_received, false);
-    assert.equal(result.path, `lumi-exports/website-${result.generation_uuid}.zip`);
-    assert.equal(sha(await fs.readFile(path.join(root,result.path))),result.delivery.sha256);
-    const unpacked = spawnSync('python3', [path.join(__dirname,'fixtures/check-website-zip.py'),path.join(root,result.path),String(missing),result.generation_uuid],{encoding:'utf8'});
-    assert.equal(unpacked.status,0,unpacked.stderr);
+    const directory = path.join(await fs.realpath(root), 'website');
+    assert.equal(result.output_directory, directory);
+    for (const field of ['archive', 'path', 'delivery', 'preview_url']) assert.ok(!(field in result), field);
+    for (const exportsDir of [path.join(root, '.lumi', 'exports'), path.join(root, 'lumi-exports')]) {
+      const files = await fs.readdir(exportsDir).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+      assert.ok(!files.some(name => name.startsWith('website-')), 'website export created an archive');
+    }
+    const checked = spawnSync('python3', [path.join(__dirname, 'fixtures/check-website.py'),
+      directory, String(missing), result.generation_uuid], { encoding: 'utf8' });
+    assert.equal(checked.status, 0, checked.stderr);
     return result;
   };
   const website = await checkWebsite({allow_missing_images:true},1);

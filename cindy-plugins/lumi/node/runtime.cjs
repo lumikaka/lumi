@@ -442,18 +442,11 @@ class Runtime {
         const website = result.data;
         if (!UUID.test(website?.task_uuid)) throw new RuntimeError('protocol_error', '网站任务回执无效。');
         if (website.done === false && ['queued','running'].includes(website.status)) return result;
-        if (website.done !== true || !UUID.test(website.generation_uuid) || website.archive?.uuid !== website.generation_uuid)
-          throw new RuntimeError('protocol_error', '网站生成回执与交付文件不匹配。');
-        mutationSent = false; // Generation has committed; only task-file delivery remains.
-        try {
-          const file = await prepareExport(directory.root, website.archive, callSignal, 'website');
-          await verifyDirectory();
-          return success({ ...file, done: true, idempotency_key: website.idempotency_key, task_uuid: website.task_uuid, generation_uuid: website.generation_uuid });
-        } catch (error) {
-          aborted(callSignal);
-          throw new RuntimeError('export_delivery_failed', '本次网站已生成，但 ZIP 未准备到任务文件列表。',
-            '检查任务目录权限；保持缺图参数并用 idempotency_key=' + website.idempotency_key + ' 恢复本次交付。任务 ' + website.task_uuid);
+        if (website.done !== true || !UUID.test(website.generation_uuid) || website.output_directory !== path.join(directory.root, 'website')) {
+          throw new RuntimeError('protocol_error', '网站生成回执与当前项目目录不匹配。');
         }
+        return success({ done: true, task_uuid: website.task_uuid, generation_uuid: website.generation_uuid,
+          idempotency_key: website.idempotency_key, output_directory: website.output_directory });
       }
       if (method === 'export_book') {
         // Validate the original receipt before reporting any generated file.

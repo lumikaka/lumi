@@ -15,7 +15,7 @@ manifest 注册目录与分发两个顶层工具：`list_tools({category?})` 和
 | prompts | prompt_catalog、render_prompt | 可用，包含 setting_board / setting_breakdown 任务；由当前 Agent 看图并执行 |
 | media | image_target、prepare_page_image、read_image、receive_media | 源码支持 setting_reviews 与三种附件槽位；合图到 Core 的交接仍待实现与验收 |
 | review | 无 | not_implemented，文字审阅使用业务 list/get |
-| export | export_book、export_website | 通过原生任务文件通道准备文件 |
+| export | export_book、export_website | 绘本文件通过任务文件通道交付，网站生成后报告本地目录 |
 
 允许列表固定在 `node/catalog.cjs`。新 MCP 工具不会因出现在 schema 快照或 tools/list 中而自动开放。禁止直接 import_image、setting_boards 的 import action、read_app_connection、watch_app_changes、read_app_image 和其余未列工具；不接收任意 MCP method、CLI、HTTP、路径、SQL 或项目绑定。
 
@@ -45,7 +45,7 @@ Node 校验 schema 后按 action 判定权限，业务派发之前拒绝只读�
 | receive_media | 无 | 页面、单项设定、设定板授权图片导入，绑定当前可写任务 |
 | setting_boards | list、get | import 仅允许附件内部适配器派发 |
 | apply_setting_breakdown | 无 | 原子裁切与设定版本入库 |
-| export_website | 无 | 成功后交付 `lumi-exports/website-<generation_uuid>.zip`；只含该版清单内按摘要核对的文件。 |
+| export_website | 无 | 收到 `done=true` 后告诉用户网站已生成在 `output_directory`，可在该目录打开 `index.html`。 |
 | export_book | 无 | 所有格式均落盘 |
 | runtime_status、runtime_release | 诊断、当前任务连接释放 | 无作品写入 |
 

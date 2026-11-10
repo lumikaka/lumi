@@ -39,16 +39,21 @@ const appImageDetailVersion = 5
 const hostPageImageVersion = 6
 
 // Version 7 adds resumable local website export for all plugin hosts.
-const creationProtocolVersion = 7
+const websiteExportVersion = 7
+
+// Version 8 returns the local directory to Cindy instead of an archive receipt.
+const cindyWebsiteDirectoryVersion = 8
+const creationProtocolVersion = cindyWebsiteDirectoryVersion
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
-	RootPath            string          `json:"root_path"`
-	Tool                string          `json:"tool"`
-	Arguments           json.RawMessage `json:"arguments"`
-	ExpectedProjectUUID string          `json:"expected_project_uuid,omitempty"`
-	ReadOnly            bool            `json:"read_only,omitempty"`
-	Host                string          `json:"host,omitempty"`
+	RootPath              string          `json:"root_path"`
+	Tool                  string          `json:"tool"`
+	Arguments             json.RawMessage `json:"arguments"`
+	ExpectedProjectUUID   string          `json:"expected_project_uuid,omitempty"`
+	ReadOnly              bool            `json:"read_only,omitempty"`
+	Host                  string          `json:"host,omitempty"`
+	ClientProtocolVersion int             `json:"client_protocol_version,omitempty"`
 }
 
 func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub, tasks *jobqueue.Manager) func() {
@@ -149,6 +154,9 @@ func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Ma
 		if !textmcp.ValidHost(input.Host) {
 			return httpapi.NewError(400, "invalid_arguments", "创作请求宿主无效", "host 只能是 claude、codex 或 cindy。", nil)
 		}
+		if input.Host == textmcp.HostCindy && input.Tool == "export_website" && input.ClientProtocolVersion < cindyWebsiteDirectoryVersion {
+			return httpapi.NewError(409, "cli_upgrade_required", "Cindy 插件需要升级才能读取网站目录", "更新 Cindy 的 Lumi 插件后重新生成网站。", nil)
+		}
 		ctx := textmcp.WithHost(textmcp.WithExpectedProjectUUID(c.Request().Context(), input.ExpectedProjectUUID), input.Host)
 		if input.ReadOnly {
 			return c.JSON(http.StatusOK, service.CallReadOnly(ctx, input.RootPath, input.Tool, input.Arguments))
@@ -195,13 +203,18 @@ func runMCP(opt options) error {
 		if tool == "generate_page_image" {
 			requiredVersion = hostPageImageVersion
 		}
+		input := creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly, Host: opt.host}
 		if tool == "export_website" {
-			requiredVersion = creationProtocolVersion
+			requiredVersion = websiteExportVersion
+			if opt.host == textmcp.HostCindy {
+				requiredVersion = cindyWebsiteDirectoryVersion
+				input.ClientProtocolVersion = creationProtocolVersion
+			}
 		}
 		if status.CreationProtocolVersion < requiredVersion {
 			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，此操作要求 v%d。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, requiredVersion, opt.environment, opt.dataDir))
 		}
-		result := forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly, Host: opt.host})
+		result := forwardCreation(callCtx, status.instance, input)
 		if tool == "export_website" && result.Error != nil && result.Error.Code == "instance_unavailable" {
 			result.Error.Details = "未收到网站任务回执。保持原参数再次调用 export_website 续接；不要更换幂等键或交付旧网站。"
 		}

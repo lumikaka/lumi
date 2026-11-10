@@ -50,7 +50,7 @@ func (s *Service) exportWebsite(ctx context.Context, store *project.Store, prod 
 		}
 		err = httpapi.NewError(409, code, "本次网站生成未完成", fmt.Sprintf("任务 %s：%s。%s", taskUUID, current.Status, current.ErrorMessage), nil)
 	} else {
-		delivery, deliveryErr := prod.WebsiteDelivery(ctx, taskUUID, s.Endpoint, host == HostCindy)
+		delivery, deliveryErr := prod.WebsiteDelivery(ctx, taskUUID, s.Endpoint)
 		delivery.IdempotencyKey = key
 		result, err = delivery, deliveryErr
 	}

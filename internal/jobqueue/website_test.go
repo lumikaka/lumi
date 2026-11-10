@@ -202,20 +202,14 @@ func TestPluginWebsiteResumesOwnUndeliveredTask(t *testing.T) {
 	if _, err = h.queue.CancelProductionTask(t.Context(), h.project.UUID, later.UUID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.WebsiteDelivery(t.Context(), later.UUID, "http://localhost", true); err == nil {
+	if _, err = s.WebsiteDelivery(t.Context(), later.UUID, "http://localhost"); err == nil {
 		t.Fatal("cancelled update delivered previous live site")
 	}
-	// Tampering with a file while retaining its byte count must not reach the ZIP.
-	output := filepath.Join(r.store.Root(), "website", "index.html")
-	b, err := os.ReadFile(output)
-	if err != nil {
+	// A successful task still needs a usable local directory.
+	if err = os.Remove(filepath.Join(r.store.Root(), "website", "index.html")); err != nil {
 		t.Fatal(err)
 	}
-	b[0] ^= 1
-	if err = os.WriteFile(output, b, 0644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = s.WebsiteDelivery(t.Context(), first.UUID, "", true); err == nil {
-		t.Fatal("archive accepted modified managed bytes")
+	if _, err = s.WebsiteDelivery(t.Context(), first.UUID, "http://localhost"); err == nil {
+		t.Fatal("reported a local website with a missing index")
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,17 +41,17 @@ func mcpHostClient(t *testing.T, opt options, root, host string, flags ...string
 	return client
 }
 
-// A v5 daemon serves every existing tool; only generate_page_image needs v6.
-// The host is forwarded so the daemon can gate host-limited tools.
-func TestClaudeHostForwardsHostAndRequiresV6OnlyForPageGeneration(t *testing.T) {
+func TestMCPHostForwardsOnlyCompatibleRequests(t *testing.T) {
 	opt := options{environment: "production", dataDir: t.TempDir(), timeout: 5 * time.Second}
 	root := t.TempDir()
 	var identity instance
 	var mu sync.Mutex
+	var version atomic.Int32
+	version.Store(5)
 	forwarded := []creationRequest{}
 	web := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == instanceRoute && r.Method == http.MethodGet {
-			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true, CreationProtocolVersion: 5}})
+			_ = json.NewEncoder(w).Encode(httpapi.Envelope{Success: true, Data: instanceStatus{instance: identity, Running: true, CreationProtocolVersion: int(version.Load())}})
 			return
 		}
 		if r.URL.Path == creationRoute {
@@ -72,9 +73,20 @@ func TestClaudeHostForwardsHostAndRequiresV6OnlyForPageGeneration(t *testing.T) 
 	client := mcpHostClient(t, opt, root, "claude")
 	callText(t, client, "generate_page_image", map[string]any{"page_uuid": "01989abc-def0-7000-8000-000000000001", "setting_uuids": []string{}, "idempotency_key": "k", "expected_revision": 1}, "cli_upgrade_required")
 	callText(t, client, "project_overview", map[string]any{}, "project_not_initialized")
+	// A v7 daemon would create a ZIP for Cindy. Only the other two hosts
+	// can use its existing local directory and preview response.
+	version.Store(7)
+	for _, host := range []string{"codex", "claude", "cindy"} {
+		want := "project_not_initialized"
+		if host == "cindy" {
+			want = "cli_upgrade_required"
+		}
+		callText(t, mcpHostClient(t, opt, root, host), "export_website", map[string]any{}, want)
+	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(forwarded) != 1 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "claude" {
+	if len(forwarded) != 3 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "claude" ||
+		forwarded[1].Host != "codex" || forwarded[2].Host != "claude" {
 		t.Fatalf("forwarded=%+v", forwarded)
 	}
 }
