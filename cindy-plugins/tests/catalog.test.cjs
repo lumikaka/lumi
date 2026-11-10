@@ -51,7 +51,7 @@ test('every action is classified explicitly; finalize, selection and export are 
     project_init: { idea: 'x' }, project_setup: { expected_revision: 0 }, story_profile: { story_md: 'x', expected_revision: 0 },
     chapters: { chapter_uuid: uuid, chapter_code: 'v01.ch01', title: 'x', content: 'x', expected_revision: 0 },
     settings: { setting_uuid: uuid, asset_type: 'character', title: 'x', summary: 'x', variant_uuid: uuid, expected_revision: 0 },
-    pages: { chapter_uuid: uuid, page_uuid: uuid, title: 'x', description_md: 'x', storyboard_md: 'x', variant_uuid: uuid, expected_revision: 0 },
+    pages: { chapter_uuid: uuid, page_uuid: uuid, title: 'x', description_md: 'x', storyboard_md: 'x', variant_uuid: uuid, expected_revision: 0, verdict: 'passed', observation: 'Fixture visual inspection.' },
     render_prompt: { prompt_group: 'story', prompt_key: 'story_profile', target: 'story_profile' }, export_book: { format: 'markdown', allow_missing_images: true },
     image_target: { target_uuid: uuid, slot: 'page_image' }, read_image: { asset_uuid: uuid },
     prepare_page_image: { page_uuid: uuid, setting_uuids: [] },

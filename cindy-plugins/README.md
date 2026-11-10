@@ -23,6 +23,38 @@ go test ./internal/production ./internal/files ./internal/textmcp ./internal/pro
 
 自动化使用临时 HOME、作品和 data-dir；需允许本机 loopback bind/connect。测试关闭前核对实例 nonce，只清理自己的目录和服务。没有 Cargo/Rust、运行时安装依赖或公开发布。
 
+## 创作流程对照与防漏
+
+Cindy 的完整创作流程维护在 [authoring Manual](lumi/manual/authoring/MANUAL.md)。竖向条漫沿用共享服务的自动镜头计划；逐页看图后记录当前版本，再按 missing_image / pending / needs_revision / passed 续做。交互式审阅界面仍未开放，图片核对记录使用已有 `pages record_image_review`，无需增加工具。
+
+本轮保留现有维护方式：`plugin-skills/` 与 `scripts/build-skills.mjs` 继续只生成 Codex、Claude Skill；Cindy Manual 独立处理宿主差异，不把它加入原生成链路。最小防漏门禁是只读的 [check-authoring.mjs](scripts/check-authoring.mjs)，已接入 Cindy 的生产/开发构建入口，也由 Cindy 测试执行。它不会改写任何源文件或稳定插件的产物。
+
+| 检查规则 | 权威来源（仓库根目录相对路径） |
+| --- | --- |
+| user-intent、strip-plan | `plugin-skills/create-picture-book/SKILL.md`、`plugin-skills/create-picture-book/references/mcp-usage.md`；自动计划实现为 `internal/textmcp/prompt.go`，页数上限直接对照 `internal/production/comic.go` 的常量 |
+| page-review、resume | 上述共享 Skill、`internal/textmcp/schema.go`、`internal/production/host_page_review.go` |
+| export | 共享 Skill、`internal/textmcp/schema.go`、`internal/production/text_export.go` |
+| host-media、recovery | 共享 Skill 及 `plugin-skills/create-picture-book/references/page-images.md`、`setting-references.md`；Cindy 的授权附件、Core URL、任务绑定及恢复实现以本插件适配层为准 |
+| setting-reference | `plugin-skills/create-picture-book/references/setting-references.md`；同时检查 Cindy Manual 引用的 `authoring/references/settings.md`，防止用户原图、核对前置条件及中断恢复规则丢失 |
+| host-delivery | Cindy Manual 与 `lumi/node/export.cjs` 的任务文件交付契约；prepared 不代表用户收到 |
+
+`scripts/authoring-sources.json` 固定本次逐项审阅的共享来源 SHA256（也包含原 Skill 生成脚本）。规则缺失、镜头密度过期、核对能力或发现入口丢失、混入其他宿主接口会失败；上游来源内容变化也会要求重新对照，即使 Go 工具 schema 没变。`sync-contracts.mjs --check` 继续直接读取实际 Go Specs，负责工具契约漂移；两类检查互补，不替代彼此。
+
+维护流程：先根据报错的 rule ID 和源路径阅读差异，判断 Cindy 能否沿用；安全共享的规则仍复用现有工具，宿主差异只改 Cindy Manual/适配层。更新 Manual 后同步调整针对性断言及遗漏测试，再用 `shasum -a 256 <源文件>` 核对并手动更新已审阅来源摘要。不要仅为消除报错批量刷新摘要；措辞检查不能代替对语义的审阅。新增跨宿主流程规则时，将来源和断言加入 checker，并增加删除/过期变体测试。需要公共业务改动的项单列后续，不通过修改共享默认值实现对齐。
+
+与本次改动相称的检查（不安装、不发布、不触发真实模型）：
+
+```sh
+node cindy-plugins/scripts/check-authoring.mjs
+node cindy-plugins/scripts/sync-contracts.mjs --check
+node --test --test-reporter=spec cindy-plugins/tests/authoring-workflow.test.cjs cindy-plugins/tests/catalog.test.cjs cindy-plugins/tests/authoring-resume-integration.test.cjs
+node scripts/build-skills.mjs --check
+```
+
+新增集成测试在临时目录构建当前 Go CLI，以 Cindy 的任务绑定和媒体传输适配执行：自动/用户指定镜头计划、四类续做状态、版本绑定与失效、章节范围 Markdown/ZIP/PDF 和零插图文字交付。图像与观察为合成夹具，只证明传输和状态语义，不声称模型视觉质量已验收。没有修改共享 Go/Web，无需稳定插件三端全量端到端或重新人工验收。
+
+2026-11-10 独立验收补充了引用手册缺失、计划保留与看图后版本校准的反例，以及公共生成产物过期的临时副本检查；导出直接核对正文、当前分镜和章节范围，条漫 PDF 沿用两图拼版。结果与边界见[本轮独立验收](../docs/features/cindy-plugins/acceptance/authoring-workflow-20261110.md)。
+
 ## Forge 包与安装
 
 先用 Host `ghost_forge_pack({dir:<作者目录绝对路径>})` 打包，再核对确切产物：

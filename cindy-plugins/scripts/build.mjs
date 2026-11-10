@@ -17,6 +17,8 @@ while (args.length) {
 if (!['production', 'development'].includes(channel) || (dataDir !== null
   && (channel !== 'development' || !path.isAbsolute(dataDir) || dataDir.startsWith('//') || dataDir.includes('\0')))) throw new Error('Invalid channel or development data-dir');
 const source = path.join(repo, 'cindy-plugins/lumi');
+const authoring = spawnSync(process.execPath, [path.join(repo, 'cindy-plugins/scripts/check-authoring.mjs')], { cwd: repo, encoding: 'utf8' });
+if (authoring.status !== 0) throw new Error(authoring.stdout + authoring.stderr || authoring.error?.message || 'Cindy authoring check failed');
 const synced = spawnSync(process.execPath, [path.join(repo, 'cindy-plugins/scripts/sync-contracts.mjs')], { cwd: repo, encoding: 'utf8' });
 if (synced.status !== 0) throw new Error(synced.stderr || synced.error?.message || 'Contract generation failed');
 const workspace = spawnSync(process.execPath, [path.join(repo, 'web/cindy-app/build.mjs')], { cwd: repo, encoding: 'utf8' });

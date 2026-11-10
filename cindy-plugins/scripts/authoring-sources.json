@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "sources": {
+    "plugin-skills/create-picture-book/SKILL.md": "c4f32ba7366ab7e7277452eebb620791cc28d0572c50913fb9306902268e4e7c",
+    "plugin-skills/create-picture-book/references/mcp-usage.md": "a47c05973d96eea6a33498d84340a16e536bc7ff8aca4b01fb651dbf5b611410",
+    "plugin-skills/create-picture-book/references/page-images.md": "45d4cbac54d6d948175fedb2c2625753a65d766e1436c8e342366be1b03b174b",
+    "plugin-skills/create-picture-book/references/setting-references.md": "7f9cfa0416509438648b38152c441dd7af7ef2f51dd8b2e94266c2663934ffef",
+    "scripts/build-skills.mjs": "a08b6e01fd4be44738a25f74a9c320dd5e7210e06707090b70d61abcc37523b3",
+    "internal/textmcp/prompt.go": "8c72124b25949ef5d0b390081dde1d1e405644104e0af0b143e6cb148efb116c",
+    "internal/textmcp/schema.go": "01df0886282d9d92c6518559c996f370a0c8c05090dad147c59c955c660ef6b0",
+    "internal/production/host_page_review.go": "425d82895292ec1f4e681f3c1a23f077d91aea23a76b91cfd5ab6c208ba76051",
+    "internal/production/text_export.go": "554925fb73c4e45f28a6bacd91531a07cb4d5b9d42b80ced8f4dc487e8446d76",
+    "cindy-plugins/lumi/node/export.cjs": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594"
+  }
+}
