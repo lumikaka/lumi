@@ -36,7 +36,10 @@ const appImageDetailVersion = 5
 
 // Version 6 adds the Claude-host page generation task and forwards --host.
 // Only generate_page_image requires it; every other tool keeps v4/v5.
-const creationProtocolVersion = 6
+const hostPageImageVersion = 6
+
+// Version 7 adds resumable local website export for all plugin hosts.
+const creationProtocolVersion = 7
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -49,7 +52,7 @@ type creationRequest struct {
 }
 
 func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Manager, events *realtime.Hub, tasks *jobqueue.Manager) func() {
-	service := &textmcp.Service{Projects: projects, Events: events, Endpoint: identity.Endpoint}
+	service := &textmcp.Service{Projects: projects, Events: events, Endpoint: identity.Endpoint, WebsiteTasks: tasks}
 	if tasks != nil {
 		service.PageImages = pageImageTasks{tasks}
 	}
@@ -190,12 +193,19 @@ func runMCP(opt options) error {
 			requiredVersion = appImageDetailVersion
 		}
 		if tool == "generate_page_image" {
+			requiredVersion = hostPageImageVersion
+		}
+		if tool == "export_website" {
 			requiredVersion = creationProtocolVersion
 		}
 		if status.CreationProtocolVersion < requiredVersion {
 			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，此操作要求 v%d。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, requiredVersion, opt.environment, opt.dataDir))
 		}
-		return forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly, Host: opt.host})
+		result := forwardCreation(callCtx, status.instance, creationRequest{RootPath: root, Tool: tool, Arguments: args, ExpectedProjectUUID: textmcp.ExpectedProjectUUID(ctx), ReadOnly: opt.readOnly, Host: opt.host})
+		if tool == "export_website" && result.Error != nil && result.Error.Code == "instance_unavailable" {
+			result.Error.Details = "未收到网站任务回执。保持原参数再次调用 export_website 续接；不要更换幂等键或交付旧网站。"
+		}
+		return result
 	})
 	return protocol.Run(context.Background(), &mcp.StdioTransport{})
 }

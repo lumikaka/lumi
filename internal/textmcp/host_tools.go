@@ -21,8 +21,8 @@ type PageImageRequest struct {
 	HostPagePrompt, IdempotencyKey     string
 }
 
-// PageImageTask is the public task state; no internal id or snapshot.
-type PageImageTask struct {
+// HostTask is the public task state shared by host waiters; no internal ID or snapshot.
+type HostTask struct {
 	UUID         string `json:"task_uuid"`
 	ResourceUUID string `json:"-"`
 	Status       string `json:"status"`
@@ -31,6 +31,8 @@ type PageImageTask struct {
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
 }
+
+type PageImageTask = HostTask
 
 // PageImageTasks is implemented in the CLI instance by the shared production
 // task manager. textmcp itself never calls a provider.
@@ -100,7 +102,7 @@ func (s *Service) generatePageImage(ctx context.Context, withStore func(context.
 	if err != nil {
 		return publicError(err)
 	}
-	task, err = s.waitPageImage(ctx, projectUUID, task)
+	task, err = s.waitProductionTask(ctx, projectUUID, task, PageImageWait, s.PageImages.PageImage)
 	if err != nil {
 		return publicError(err)
 	}
@@ -153,18 +155,19 @@ func (s *Service) generatePageImage(ctx context.Context, withStore func(context.
 	return httpapi.Envelope{Success: true, Data: data}
 }
 
-// waitPageImage blocks on task change hints from the in-process realtime hub
+// waitProductionTask blocks on task change hints from the in-process realtime hub
 // and rereads SQLite on each hint; there is no timed polling.
-func (s *Service) waitPageImage(ctx context.Context, projectUUID string, task PageImageTask) (PageImageTask, error) {
+func (s *Service) waitProductionTask(ctx context.Context, projectUUID string, task HostTask, wait time.Duration, read func(context.Context, string, string) (HostTask, error)) (HostTask, error) {
 	if terminalTaskStatus(task.Status) {
 		return task, nil
 	}
+	uuid := task.UUID
 	signal := make(chan struct{}, 1)
 	stop := s.Events.Observe("project:"+projectUUID, func(event string, payload any) {
 		if !strings.HasPrefix(event, "production_task:") {
 			return
 		}
-		if fields, ok := payload.(map[string]any); ok && fields["task_uuid"] != task.UUID {
+		if fields, ok := payload.(map[string]any); ok && fields["task_uuid"] != uuid {
 			return
 		}
 		select {
@@ -173,11 +176,11 @@ func (s *Service) waitPageImage(ctx context.Context, projectUUID string, task Pa
 		}
 	})
 	defer stop()
-	timer := time.NewTimer(PageImageWait)
+	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	for {
 		// Reread after subscribing so a transition before Observe is not missed.
-		current, err := s.PageImages.PageImage(ctx, projectUUID, task.UUID)
+		current, err := read(ctx, projectUUID, uuid)
 		if err != nil {
 			return task, err
 		}

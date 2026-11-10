@@ -164,3 +164,58 @@ func TestWebsiteConcurrentCreationCancellationAndFrozenRetry(t *testing.T) {
 		t.Fatalf("updates=%+v %v", status, err)
 	}
 }
+
+func TestPluginWebsiteResumesOwnUndeliveredTask(t *testing.T) {
+	h, r := stoppedExecutionHarness(t)
+	s := queueWebsiteFixture(t, h)
+	submit := func(host, key string) (ProductionTask, error) {
+		return h.queue.CreatePluginWebsiteGeneration(t.Context(), h.project.UUID, host, false, key)
+	}
+	// The CLI relay can disconnect before learning even the task UUID.
+	first, err := submit("codex", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = submit("claude", "")
+	var conflict *Error
+	if !errors.As(err, &conflict) || conflict.Code != CodeTaskConflict {
+		t.Fatalf("adopted another host's active task: %v", err)
+	}
+	if err = r.store.DB().Exec("UPDATE production_task_runs SET status='running' WHERE uuid=?", first.UUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err = s.RenderWebsite(t.Context(), first.UUID, nil); err != nil {
+		t.Fatal(err)
+	}
+	chapter := h.createChapter(t, "vol01.ch02")
+	if _, err = s.CreateSection(t.Context(), chapter.UUID, production.CreateSectionInput{Title: "Missing after disconnect", StoryboardMD: "missing"}); err != nil {
+		t.Fatal(err)
+	}
+	resumed, err := submit("codex", "")
+	if err != nil || resumed.UUID != first.UUID || resumed.Status != StatusCompleted {
+		t.Fatalf("anonymous replay: %+v %v", resumed, err)
+	}
+	later, err := h.queue.CreatePluginWebsiteGeneration(t.Context(), h.project.UUID, "codex", true, "later")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = h.queue.CancelProductionTask(t.Context(), h.project.UUID, later.UUID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.WebsiteDelivery(t.Context(), later.UUID, "http://localhost", true); err == nil {
+		t.Fatal("cancelled update delivered previous live site")
+	}
+	// Tampering with a file while retaining its byte count must not reach the ZIP.
+	output := filepath.Join(r.store.Root(), "website", "index.html")
+	b, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b[0] ^= 1
+	if err = os.WriteFile(output, b, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.WebsiteDelivery(t.Context(), first.UUID, "", true); err == nil {
+		t.Fatal("archive accepted modified managed bytes")
+	}
+}

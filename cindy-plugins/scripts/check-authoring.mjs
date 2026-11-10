@@ -60,6 +60,9 @@ const rules = [
     /attachments 必须在 ghost_call 顶层/, /call_tool 无法代替附件入口/,
     /production_conflict/, /不能只换 revision 自动覆盖/,
   ] },
+  { id: 'website-export', section: '静态阅读网站', sources: [skill, 'internal/textmcp/schema.go'], required: [
+    /export_website/, /不预查状态/, /comic_export_incomplete/, /至少需要一张有效正文图/, /原幂等键/, /delivery.status=prepared/, /公网发布须另行提出/,
+  ] },
   { id: 'host-delivery', section: '文本审阅与导出', sources: ['cindy-plugins/lumi/node/export.cjs'], required: [
     /lumi-exports\//, /Cindy 当前任务的文件列表/, /delivery.status=prepared/, /user_received 仍为 false/,
     /实际读取回执或用户确认/, /export_delivery_failed/, /不为修复交付自动重新导出/,

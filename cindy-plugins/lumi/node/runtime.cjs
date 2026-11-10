@@ -35,6 +35,10 @@ function contextFor(params) {
 }
 
 // Used only with fixed command arrays from this module, never tool arguments.
+function websiteOutcomeUnknown() {
+  return new RuntimeError('result_unknown', '网站任务结果尚未确认。', '用完全相同的 export_website 参数续接本次任务；不要换键或交付旧站。');
+}
+
 function runCLI(executable, args, { cwd, env, signal, timeoutMs = 5000 }) {
   aborted(signal);
   return new Promise((resolve, reject) => {
@@ -411,6 +415,7 @@ class Runtime {
         mutationSent = false;
         if (result.error.code === 'project_identity_mismatch') this.forget(session);
         if (mutation && ['instance_unavailable', 'result_too_large'].includes(result.error.code)) {
+          if (method === 'export_website') throw websiteOutcomeUnknown();
           throw new RuntimeError('result_unknown', '写入结果尚未确认。', '先重读目标与作品内容，再决定是否重试；禁止自动重放。');
         }
         return { ...(['project_init', 'project_overview', 'project_setup'].includes(method) ? publicFailure(result) : result), correction: catalog.repair(importingMedia ? 'receive_media' : method) };
@@ -432,6 +437,23 @@ class Runtime {
       session.projectFile = record.projectFile = afterFile;
       if (method === 'project_setup') {
         return success({ ...setupState(result.data, expectedUUID), limitations: { read_only: context.workdir_is_read_only, open_may_write: !context.workdir_is_read_only } });
+      }
+      if (method === 'export_website') {
+        const website = result.data;
+        if (!UUID.test(website?.task_uuid)) throw new RuntimeError('protocol_error', '网站任务回执无效。');
+        if (website.done === false && ['queued','running'].includes(website.status)) return result;
+        if (website.done !== true || !UUID.test(website.generation_uuid) || website.archive?.uuid !== website.generation_uuid)
+          throw new RuntimeError('protocol_error', '网站生成回执与交付文件不匹配。');
+        mutationSent = false; // Generation has committed; only task-file delivery remains.
+        try {
+          const file = await prepareExport(directory.root, website.archive, callSignal, 'website');
+          await verifyDirectory();
+          return success({ ...file, done: true, idempotency_key: website.idempotency_key, task_uuid: website.task_uuid, generation_uuid: website.generation_uuid });
+        } catch (error) {
+          aborted(callSignal);
+          throw new RuntimeError('export_delivery_failed', '本次网站已生成，但 ZIP 未准备到任务文件列表。',
+            '检查任务目录权限；保持缺图参数并用 idempotency_key=' + website.idempotency_key + ' 恢复本次交付。任务 ' + website.task_uuid);
+        }
       }
       if (method === 'export_book') {
         // Validate the original receipt before reporting any generated file.
@@ -458,6 +480,7 @@ class Runtime {
       data.limitations = { ...data.limitations, read_only: context.workdir_is_read_only, open_may_write: !context.workdir_is_read_only };
       return success(data);
     } catch (error) {
+      if (mutationSent && method === 'export_website') throw websiteOutcomeUnknown();
       if (mutationSent) throw new RuntimeError('result_unknown', '项目操作结果尚未确认。', '先调用 project_overview 重读状态，再决定是否重试；不会自动重放写操作。');
       throw error;
     } finally {

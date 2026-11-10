@@ -6,7 +6,7 @@
 
 ## Setup 与规格
 
-先 `project_overview`；未初始化且用户要求创建时，`project_init` 必填 `idea`，可选 `name`、`generation_language`（`zh-Hans` / `en`）。它创建 setup 草稿，已有项目不会重置。
+除网站导出直接调用 `export_website` 外，先 `project_overview`；未初始化且用户要求创建时，`project_init` 必填 `idea`，可选 `name`、`generation_language`（`zh-Hans` / `en`）。它创建 setup 草稿，已有项目不会重置。
 
 ```json
 {"name":"project_init","arguments":{"idea":"小狐狸把迷路的星星送回天空","name":"回家的星星","generation_language":"zh-Hans"}}
@@ -183,3 +183,9 @@
 `generate_page_image` 返回 `{task, done, page_uuid, chapter_uuid, revision, image:{variant_uuid,version_no,asset_uuid}, is_current_image, read_image, next_action}`；`done:false` 时只含 task、page_uuid 和 next_action，用相同参数和 key 重放。所有字段只含公开 UUID。
 
 章节交付的 `export_book` 传目标 `chapter_uuid`；省略即整书。三种格式均返回 scope、page_count、missing_image_count。
+
+## 整本阅读网站
+
+用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `export_website({})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
+
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。只有 `done=true` 才交付返回的绝对 `output_directory` 和可打开的 `preview_url`，不以旧站仍能访问判断成功。

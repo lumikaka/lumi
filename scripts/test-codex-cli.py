@@ -29,11 +29,11 @@ def png():
 
 
 class MCP:
-    def __init__(self, binary, root, data, env):
+    def __init__(self, binary, root, data, env, host="codex"):
         self.serial = 0
         self.messages = queue.Queue()
         self.log = (root.parent / 'mcp.stderr').open('w', encoding='utf-8')
-        self.proc = subprocess.Popen([str(binary), 'mcp', '--data-dir', str(data)], cwd=root, env=env,
+        self.proc = subprocess.Popen([str(binary), 'mcp', '--host', host, '--data-dir', str(data)], cwd=root, env=env,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
                                      encoding='utf-8', bufsize=1)
         def reader():
@@ -115,7 +115,7 @@ def main():
                 assert '<html' in response.read().decode().lower(), 'embedded Web UI missing'
             client = MCP(binary, project, data, env)
             tools = {t['name'] for t in client.call('tools/list', {})['tools']}
-            assert {'project_init', 'project_setup', 'import_image', 'review_book', 'export_book'} <= tools
+            assert {'project_init', 'project_setup', 'import_image', 'review_book', 'export_book', 'export_website'} <= tools
             init = client.tool('project_init', {'idea': 'A fox helps a star return home', 'name': 'CLI smoke'})
             setup = client.tool('project_setup', {'action': 'update', 'expected_revision': init['setup']['revision'],
                                 'project_name': 'CLI smoke', 'generation_language': 'en', 'overall_style': 'Watercolor',
@@ -145,12 +145,26 @@ def main():
                 else:
                     with zipfile.ZipFile(path) as archive:
                         assert archive.testzip() is None and archive.namelist()
+            # Inspect the shipped host-specific MCP registrations and open the
+            # URLs returned by this binary's loopback server.
+            for host in ('codex', 'claude'):
+                if host == 'claude':
+                    client.close()
+                    client = MCP(binary, project, data, env, host)
+                assert 'export_website' in {t['name'] for t in client.call('tools/list', {})['tools']}
+                website = client.tool('export_website')
+                while not website['done']:
+                    website = client.tool('export_website', {'idempotency_key': website['idempotency_key']})
+                assert Path(website['output_directory']) == project / 'website'
+                assert website['preview_url'] == first['endpoint'] + '/media/projects/' + overview['project']['uuid'] + '/website/index.html'
+                with opener.open(website['preview_url'], timeout=10) as preview:
+                    assert preview.read() == (project / 'website' / 'index.html').read_bytes()
             client.close()
             client = None
             assert command('stop')['running'] is False
             assert command('status', 3)['running'] is False
             assert command('serve')['running'] is True, 'restart after releasing locks failed'
-            print('PASS: packaged CLI singleton, embedded Web, stdio MCP, Unicode project, image import, PDF/ZIP, stop/restart')
+            print('PASS: packaged CLI singleton, embedded Web, stdio MCP, Unicode project, image import, PDF/ZIP, Codex + Claude websites, stop/restart')
         except Exception:
             for log in (root / 'mcp.stderr', data / 'cli-production.log'):
                 if log.exists():

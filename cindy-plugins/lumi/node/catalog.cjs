@@ -6,7 +6,7 @@ const { receiveMediaSchema } = require('./media-contract.cjs');
 const categories = {
   project: ['project_init', 'project_overview', 'project_setup', 'runtime_status', 'runtime_release'],
   story: ['story_profile', 'chapters', 'book_outline'], settings: ['settings', 'setting_boards', 'apply_setting_breakdown'], pages: ['pages'],
-  prompts: ['prompt_catalog', 'render_prompt'], media: ['image_target', 'prepare_page_image', 'read_image', 'receive_media'], review: [], export: ['export_book'],
+  prompts: ['prompt_catalog', 'render_prompt'], media: ['image_target', 'prepare_page_image', 'read_image', 'receive_media'], review: [], export: ['export_book', 'export_website'],
 };
 const rules = {
   project: ['使用 Host 当前任务绑定；不接收路径或项目标识。project_init 会写入；project_setup 仅 get 只读，update/finalize 需最新 revision。只读业务读取要求项目已由可写任务打开。'],
@@ -18,7 +18,7 @@ const rules = {
     '单图最多 20 MiB；PNG/JPEG/WebP，完整解码最多 4000 万像素。默认 keep，可选 crop/pad 并保留原图历史。冲突或结果未知先重读目标，不自动重新生成或覆盖。',
     'read_image 返回最长边不超过 1024、JPEG 不超过 120 KiB 的受控参考图。Core 使用返回的 reference_media_url；引擎原生生图使用刚读到的对话参考图。寄存预览成功不代表编辑成功，也不能证明订阅额度来源。'],
   review: ['尚未实现 Cindy 审阅界面；以 book_outline、chapters/settings/pages 的 list/get 逐页读取完整文本进行审阅。'],
-  export: ['export_book 会落盘，是写操作。成功后将固定导出文件准备到当前任务 lumi-exports/，path 为相对路径，delivery.status=prepared、file_generated=true、user_received=false。在 Cindy 任务文件列表打开；只有实际读取回执或用户确认才能报告收到，本地绝对路径不代表手机可下载。', 'export_delivery_failed 表示原文件已生成但可见副本准备失败；按 correction.generated_export 重读核对，不自动再次导出。'],
+  export: ['明确要求生成或更新网站时直接 export_website，默认不跳过缺图；只问能力、普通绘本导出及 PDF/ZIP/Markdown 不触发。网站只在本地生成；本次成功清单的 ZIP 通过当前任务文件列表交付。等待或断线时通过本工具的幂等重放核对原任务，不需要额外状态工具；有回执时使用其中的 idempotency_key。', 'export_book 会落盘，是写操作。成功后将固定导出文件准备到当前任务 lumi-exports/，path 为相对路径，delivery.status=prepared、file_generated=true、user_received=false。在 Cindy 任务文件列表打开；只有实际读取回执或用户确认才能报告收到，本地绝对路径不代表手机可下载。', 'export_delivery_failed 表示原文件已生成但可见副本准备失败；按 correction.generated_export 重读核对，不自动再次导出。'],
 };
 const common = ['只使用本目录工具与 JSON 对象参数。UUID 必须来自当前项目读取，不能使用内部 id。',
   '版本冲突时保留已有内容，重读目标后再判断；取消、超时或 result_unknown 后先核对状态，禁止自动重写。',

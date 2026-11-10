@@ -53,6 +53,7 @@ func ProtocolFor(host string, forward Forward) *mcp.Server {
 		instructions = claudeInstructions
 		specs = append(specs, ClaudeSpecs()...)
 	}
+	instructions += " For an explicit request to generate or update the local book website, call export_website directly without a preliminary project_overview. Follow its own task; deliver its completed website receipt. A generic book export or capability question does not request a website."
 	s := mcp.NewServer(&mcp.Implementation{Name: "lumi-text", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: instructions})
 	for _, spec := range specs {
 		// The connection descriptor is internal to the cwd-bound relay. Views
@@ -65,6 +66,10 @@ func ProtocolFor(host string, forward Forward) *mcp.Server {
 			panic(fmt.Errorf("publish MCP tool %s: %w", spec.Name, err))
 		}
 		tool := &mcp.Tool{Name: spec.Name, Description: published.Description, InputSchema: published.Schema}
+		if spec.Name == "export_website" {
+			local := false
+			tool.Annotations = &mcp.ToolAnnotations{ReadOnlyHint: false, IdempotentHint: true, OpenWorldHint: &local}
+		}
 		if strings.HasPrefix(spec.Name, "review_") {
 			tool.Meta = mcp.Meta{"ui": map[string]any{"resourceUri": ReviewURI}}
 			tool.Annotations = appReadAnnotations()

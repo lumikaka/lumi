@@ -124,6 +124,8 @@
   cindy.onHostMessage(async msg => {
     if (msg.type !== 'tool-call') return; // No page/focus/event may reopen a binding.
     let result, images;
+    const website = msg.tool === 'call_tool' && msg.args?.name === 'export_website';
+    const resumeWebsite = '保持缺图参数与原幂等键，再次调用 export_website 续接本次任务；尚不能交付。';
     try {
       const args = msg.args;
       const context = args?.session_context;
@@ -166,7 +168,7 @@
           callId: msg.callId, cancelWithCall: true, timeoutMs: 60000,
         });
         if (!response?.ok) {
-          result = fail('host_node_failed', '宿主未完成 Node 调用。', '检查插件权限或重新执行诊断；写操作结果未知时先重读，不自动重试。');
+          result = fail('host_node_failed', '宿主未完成 Node 调用。', website ? resumeWebsite : '检查插件权限或重新执行诊断；写操作结果未知时先重读，不自动重试。');
         } else if (typeof response.result?.success !== 'boolean' || !Object.hasOwn(response.result, 'data')
           || (!response.result.success && (response.result.data !== null
             || typeof response.result.error?.code !== 'string'
@@ -189,7 +191,7 @@
         }
       }
     } catch (error) {
-      result = error?.business || fail('host_node_failed', '宿主运行时连接失败。', '检查插件状态后重新执行诊断；不要自动重放写操作。');
+      result = error?.business || fail('host_node_failed', '宿主运行时连接失败。', website ? resumeWebsite : '检查插件状态后重新执行诊断；不要自动重放写操作。');
     }
     // A Lumi business failure must also be a failed Host tool receipt.
     if (result?.success === true) {

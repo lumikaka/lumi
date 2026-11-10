@@ -63,6 +63,20 @@ RSS 阅读器不会解析变量。替换前的文件是待部署模板；替换�
 
 项目重新打开、worker 启动前，以及重试前都会恢复：数据库未提交则恢复旧目录；已提交则清理备份。日志写入中断、替换中断和回滚清理中断都可重入。旧目录中的非受管文件会保留；受管但不再引用的文件随成功切换被清理。原始资产和外部目录不受影响。已有但不属于 Lumi 的 `website/`、符号链接或自定义文件冲突会拒绝接管，提示先移动自定义内容。
 
+## 插件交付
+
+三个宿主通过同一 `export_website(allow_missing_images?, idempotency_key?)` 生成整本作品。未给键的在途请求按项目、宿主及缺图授权保留；显式键可在断线后精确重放本次调用。若无参调用的末次成功回执遗失，只有最近一次任务属于同一宿主和缺图授权、仍是当前成功版本、快照相同且清单文件逐项校验通过，才复用原任务。CLI 在项目实时频道订阅任务提示，订阅后及收到提示时按任务 UUID 重读 SQLite。等待超时只返回任务进度。成功交付还要核对 `project_websites` 指向本次任务的 generation；其他活动任务不会被插件冒领。
+
+Codex 和 Claude Code 返回绝对目录和当前 CLI 的本地预览 URL。Cindy 在目录切换锁内按该版 manifest 的相对路径、大小及 SHA-256 写入 ZIP，复用任务文件通道，不公开本机绝对路径。用户文件保留在原目录；不会打入 ZIP。RSS 仍按前述部署占位符约定处理。
+
+插件回归入口：
+
+- `go test ./cmd/lumi ./internal/jobqueue -run TestPluginWebsite`：两种 stdio 宿主、队列在途与已完成重放、缺图/零正文图、只读拒绝，以及旧站仍在时取消更新。
+- `make cindy-dev` 后运行 `node --test cindy-plugins/tests/*.test.cjs`。网站集成用例解压任务文件，校验首页、阅读器脚本、JPEG、RSS 章节与图片引用，并确认额外的私人文件留在项目中。
+- `python3 scripts/test-codex-cli.py --binary <带前端的发行版 CLI>`：经过实际 stdio 声明生成网站，打开返回的预览地址，并回归原 PDF/ZIP 交付。
+
+这些用例不调用模型。安装包在真实对话中的意图选择、宿主权限提示、链接点击和 Cindy 手机端接收回执需在对应客户端验收。
+
 ## REST 与实时更新
 
 所有 API 使用统一 JSON 信封、`snake_case` 和公开 UUIDv7：

@@ -89,7 +89,29 @@ test('Cindy reuses auto strip plans, versioned reviews, resume summaries and sco
     }
     ok(await runtime.execute('media_commit', { ...params, transfer }));
   };
+  const websiteCatalog = ok(await runtime.execute('list_tools', { arguments: {category:'export'} }));
+  assert.ok(websiteCatalog.tools.some(tool => tool.name === 'export_website'));
+  assert.equal((await call('export_website', {allow_missing_images:true})).error.code, 'comic_export_empty');
+  await assert.rejects(runtime.execute('call_tool', {context:{...context, session_id:'reader',workdir_is_read_only:true}, arguments:{name:'export_website',args:{}}}), err => err.code === 'read_only_context');
   for (const page of pages.slice(1)) await attach(page);
+  const missingWebsite = await call('export_website');
+  assert.equal(missingWebsite.error.code, 'comic_export_incomplete');
+  assert.match(missingWebsite.error.details, /1 页/);
+  const checkWebsite = async (args, missing) => {
+    const result = ok(await call('export_website',args));
+    assert.equal(result.done, true);
+    assert.equal(result.delivery.status, 'prepared');
+    assert.equal(result.user_received, false);
+    assert.equal(result.path, `lumi-exports/website-${result.generation_uuid}.zip`);
+    assert.equal(sha(await fs.readFile(path.join(root,result.path))),result.delivery.sha256);
+    const unpacked = spawnSync('python3', [path.join(__dirname,'fixtures/check-website-zip.py'),path.join(root,result.path),String(missing),result.generation_uuid],{encoding:'utf8'});
+    assert.equal(unpacked.status,0,unpacked.stderr);
+    return result;
+  };
+  const website = await checkWebsite({allow_missing_images:true},1);
+  await fs.writeFile(path.join(root,'website','private-notes.txt'),'never send');
+  const replay = await checkWebsite({allow_missing_images:true,idempotency_key:website.idempotency_key},1);
+  assert.equal(replay.task_uuid,website.task_uuid);
   const summary = page => call('pages', { action: 'get', chapter_uuid: chapter.uuid, page_uuid: page.uuid, summary_only: true }).then(ok);
   const review = async (page, verdict, observation, extra = {}) => {
     const current = await summary(page);
@@ -181,5 +203,10 @@ test('Cindy reuses auto strip plans, versioned reviews, resume summaries and sco
   assert.equal(finished.page_count, 4);
   assert.equal(finished.missing_image_count, 0);
   assert.equal((await call('export_book', { format: 'zip', allow_missing_images: false })).success, false, 'chapter completion does not imply whole-book completion');
+  const otherPage = ok(await call('pages',{action:'list',chapter_uuid:other.uuid})).items[0];
+  await attach(otherPage);
+  const updatedWebsite = await checkWebsite({},0);
+  assert.notEqual(updatedWebsite.generation_uuid,website.generation_uuid);
+  assert.equal(await fs.readFile(path.join(root,'website','private-notes.txt'),'utf8'),'never send');
   console.log('CINDY WORKFLOW FIXTURE PASS: shared auto plan, explicit rhythm, 4 resume states, versioned reviews, scoped Markdown/ZIP/PDF and zero-image text; no model calls');
 });

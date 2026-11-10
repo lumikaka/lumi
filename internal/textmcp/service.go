@@ -12,6 +12,7 @@ import (
 
 	"lumi/internal/files"
 	"lumi/internal/httpapi"
+	"lumi/internal/jobqueue"
 	"lumi/internal/production"
 	"lumi/internal/project"
 	"lumi/internal/realtime"
@@ -27,7 +28,8 @@ type Service struct {
 	AppRequest     func(context.Context, string, AppResourceRequest) (any, error)
 	// PageImages backs the Claude-only generate_page_image tool. Nil means
 	// the instance cannot run server-side page generation.
-	PageImages PageImageTasks
+	PageImages   PageImageTasks
+	WebsiteTasks *jobqueue.Manager
 }
 
 type arguments struct {
@@ -302,6 +304,8 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 			return httpapi.NewError(400, "app_watch_transport_required", "实时提示需要 MCP 会话", "请通过 MCP Apps 的 watch_app_changes 调用。", nil)
 		case "review_book", "review_chapters", "review_chapter", "review_page", "review_candidates", "review_settings":
 			result, callErr = s.review(ctx, store, st, prod, name, a)
+		case "export_website":
+			result, callErr = s.exportWebsite(ctx, store, prod, a)
 		case "export_book":
 			book := production.TextBook{ChapterUUID: a.ChapterUUID}
 			// The PDF renderer reads its own authoritative, scoped image snapshot.
@@ -331,7 +335,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 }
 
 func isMutation(name, action string) bool {
-	return name == "write_app_resource" || name == "generate_page_image" || name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
+	return name == "export_website" || name == "write_app_resource" || name == "generate_page_image" || name == "project_init" || name == "import_image" || name == "apply_setting_breakdown" || (name == "setting_boards" && action == "import") || ((name == "project_setup" || name == "story_profile" || name == "chapters" || name == "settings" || name == "pages") && action != "get" && action != "list")
 }
 
 func mutationSummary(result any) any {

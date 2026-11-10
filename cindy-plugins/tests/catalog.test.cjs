@@ -22,6 +22,7 @@ test('two-stage catalog discloses schemas and rules; unavailable categories have
 });
 test('unknown tools and invalid arguments carry schema and usable correction rules', () => {
   for (const [name, args] of [
+    ['export_website', {action:'status'}], ['export_website', {chapter_uuid:uuid}], ['export_website', {path:'/tmp/website'}],
     ['pages', { action: 'execute' }], ['pages', { action: 'create', chapter_uuid: uuid }],
     ['pages', { action: 'list', chapter_uuid: uuid, limit: 101 }],
     ['pages', { action: 'get', chapter_uuid: uuid, page_uuid: '1' }],
@@ -62,7 +63,7 @@ test('every action is classified explicitly; finalize, selection and export are 
   for (const name of allowed) {
     for (const action of specs[name].input_schema.properties.action?.enum || [undefined]) {
       const args = { ...input[name], ...(action ? { action } : {}) };
-      const write = ['project_init', 'export_book', 'receive_media', 'apply_setting_breakdown'].includes(name) || (action !== undefined && !['get', 'list'].includes(action));
+      const write = ['project_init', 'export_book', 'export_website', 'receive_media', 'apply_setting_breakdown'].includes(name) || (action !== undefined && !['get', 'list'].includes(action));
       assert.equal(isWrite(name, args), write, `${name}/${action}`);
     }
   }

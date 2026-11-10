@@ -1,9 +1,9 @@
 ---
 name: create-picture-book
 <!-- host:codex -->
-description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及宿主生图。用于新建绘本或续做当前 Lumi 项目。
+description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及宿主生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
 <!-- host:claude -->
-description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本或续做当前 Lumi 项目。
+description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
 <!-- /host -->
 ---
 
@@ -15,14 +15,20 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 写作、推理和看图使用 Claude Code 自身的能力；Lumi 负责项目事实、版本、图片挂载、审阅和导出，并通过 `generate_page_image` 调用用户在 Lumi 中配置的图片服务商生成页面图（由该服务商计费）。Claude Code 没有原生生图工具，本插件不使用 MCP Apps 或嵌入式工作区；需要查看或在网页中编辑时，用 `web_url` 给出 Lumi Web 链接。服务商未配置时给出 `web_url(view=providers)` 链接，由用户自行配置，不索取或保存 API key。
 <!-- /host -->
 
+## 导出阅读网站
+
+用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `export_website({})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
+
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。只有 `done=true` 才交付返回的绝对 `output_directory` 和可打开的 `preview_url`，不以旧站仍能访问判断成功。
+
 ## 打开或创建项目
 
 执行 CLI 命令前先读 [CLI 入口](references/cli.md)，使用其中的可执行文件和环境参数。下文的 `lumi` 表示该入口；正式版和开发版各有自己的入口，不能混用。
 
 <!-- host:codex -->
-先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标目录新开 App 会话。
+除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标目录新开 App 会话。
 <!-- host:claude -->
-先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Claude Code 会话。
+除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Claude Code 会话。
 <!-- /host -->
 
 - 返回 `project_not_initialized` 且用户要求创建时，用原始创意调用 `project_init`，得到 setup 草稿。不要先创建一个默认 ready 项目再覆盖用户规格。

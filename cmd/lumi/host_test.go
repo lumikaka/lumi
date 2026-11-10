@@ -27,9 +27,10 @@ func TestMCPHostFlagRejectsUnknownValuesAtStartup(t *testing.T) {
 	}
 }
 
-func mcpHostClient(t *testing.T, opt options, root, host string) *mcp.ClientSession {
+func mcpHostClient(t *testing.T, opt options, root, host string, flags ...string) *mcp.ClientSession {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "mcp", "--host", host, "--data-dir", opt.dataDir, "--environment", opt.environment, "--timeout", "20s")
+	cmd.Args = append(cmd.Args, flags...)
 	cmd.Dir = root
 	client, err := mcp.NewClient(&mcp.Implementation{Name: "host-e2e", Version: "1"}, nil).Connect(t.Context(), &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {

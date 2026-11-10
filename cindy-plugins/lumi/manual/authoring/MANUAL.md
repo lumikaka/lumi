@@ -6,7 +6,7 @@
 
 使用当前发现的精确插件身份和 namespace；正式 id 是 lumi，开发 id 是 lumi-dev，不能把开发调用发给正式版。下文示例中的 `<当前插件 id>` 替换为该身份。先调用 `ghost_call({ghost_id:"<当前插件 id>",tool:"list_tools",args:{}})` 查看类别，再按任务展开。类别结果包含实时 schema 与 RULES，业务读取与写回通过 `call_tool({name:"工具名",args:{业务参数}})`；图片交接使用独立的顶层 receive_media。
 
-使用 Cindy 为当前任务选择的本地作品根目录。先 project_overview；只有返回 project_not_initialized，且用户已委托在此创建作品时，才以用户原始创意调用 project_init。有效项目重复 init 不重置内容。目录与锁问题见 `ghost_manual({ghost_id:"<当前插件 id>",path:"project/MANUAL.md"})`。
+使用 Cindy 为当前任务选择的本地作品根目录。网站导出直接调用 export_website；其他创作先 project_overview；只有返回 project_not_initialized，且用户已委托在此创建作品时，才以用户原始创意调用 project_init。有效项目重复 init 不重置内容。目录与锁问题见 `ghost_manual({ghost_id:"<当前插件 id>",path:"project/MANUAL.md"})`。
 
 ## Setup 与故事
 
@@ -80,10 +80,16 @@ export_book 按用户交付范围执行：单章必须传该章 `chapter_uuid`�
 
 export_delivery_failed 的 correction.generated_export 表示原文件已生成、可见副本准备失败；保留原文件，核对文件列表及目录权限，不为修复交付自动重新导出。恢复前先确认已有生成结果。
 
+## 静态阅读网站
+
+用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `call_tool({name:"export_website",args:{}})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
+
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时或 `done=false` 用原参数（包括原幂等键）继续同一任务。只有成功生成且 `delivery.status=prepared` 才交付任务文件列表中的相对 ZIP 路径；不发本机链接，不声称用户已收到。ZIP 只含本次成功清单，解压后保留目录结构。
+
 ## 冲突、中断与额度恢复
 
 - revision 冲突：保留本地草稿，get/list 重读目标与父集合。已有内容优先；比较差异再决定合并、另写或放弃，不得只换新 revision 重发旧文本。同项目第二任务遵循相同规则。
-- 取消、超时、CLI/worker 崩溃、result_unknown：写入可能已提交。先重读目标、父列表和当前版本内容，确定结果；结果未知时不自动重写。恢复后重新获取可信任务绑定，不沿用缓存写权限。
+- 取消、超时、CLI/worker 崩溃、result_unknown：写入可能已提交。先重读目标、父列表和当前版本内容，确定结果；结果未知时不自动重写。网站任务用原参数续接；已有回执时使用回执中的 idempotency_key。恢复后重新获取可信任务绑定，不沿用缓存写权限。
 - Cindy Agent 额度耗尽：暂停当前创作，保留已保存 UUID、阶段和未保存草稿。额度恢复后从事实状态接续，重新 render_prompt 获取当前版本；不配置 Lumi 服务商作为替代。
 - result_too_large：减小 limit，沿 cursor_pagination 逐页读取；render_prompt 用 context_chapter_uuids/context_setting_uuids 缩小上下文，空数组表示不带该类上下文。不能截掉作品正文并说已完整读取。单项仍超限时先导出完整作品，使用任务文件列表交付。arguments_too_large 在派发前拒绝，按返回 schema 调整单次作品拆分；不要静默裁掉正文。
 - prompt_inputs_missing / invalid_arguments：确认工具明确在输入校验阶段返回、没有执行写入或 Core request 时，按返回 schema/占位符补齐后继续。这种补参不等于重放未知写入或付费提交。权限拒绝、取消、超时、result_unknown 和 SUBMISSION_OUTCOME_UNKNOWN 仍停止，不能用“补参”绕过。
