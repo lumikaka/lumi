@@ -41,7 +41,7 @@ test('development plugin shares authoring resources and keeps its CLI isolated a
   }
   const skill = readFileSync(join(f.plugin, 'skills/create-picture-book/SKILL.md'), 'utf8');
   for (const [, link] of skill.matchAll(/\]\((references\/[^)]+)\)/g)) {
-    assert.ok(readFileSync(join(f.plugin, 'skills/create-picture-book', link)).length);
+    assert.ok(readFileSync(join(f.plugin, 'skills/create-picture-book', link.split('#')[0])).length);
   }
   // Execute the generated shell example with a recording stub: paths containing
   // spaces and quotes must reach the CLI unchanged, including the data dir.

@@ -77,7 +77,11 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 <!-- host:claude -->
 3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。Claude Code 不能直接生成设定图：按 [设定图来源与降级](references/batch-settings.md) 导入用户提供的真实图片文件，或用 `web_url(setting_uuid)` / `web_url(view=settings)` 请用户在 Lumi 中生成后再重读；不得假装批量总览图或单项生图可用。已有文字设定按 UUID 和最新 revision 补图，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 <!-- /host -->
+<!-- host:codex -->
+4. **分页与画面描述**：输入为小说原文，且缺少可用分镜或用户要求重做时，由**章节主聊天**按 [小说分镜委派](references/serial-production.md#小说分镜委派) 为本章启动一个 `spawn_agent(fork_turns="none")` 分镜 subagent；它只写逐页草稿，章节主聊天逐页核对、串行写回后再划场。已有可用分镜且只需配图时直接复用，不启动分镜代理；中断先复用草稿、进度和原代理。其他分页仍按实际 `render_prompt` 模板及 [MCP 调用参考](references/mcp-usage.md) 处理。竖向条漫默认 `moment_count_plan="auto"` 和正文页数上限，用户指定节奏优先；按剧情安排主画面、停顿和切镜，核对逐页瞬间数，不机械等分等高画格。正文、画面描述、`page_role` 分别映射，不把输出 JSON 整体当正文。
+<!-- host:claude -->
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。竖向条漫默认按 [MCP 调用参考](references/mcp-usage.md)传 `moment_count_plan="auto"` 和正文页数上限，由 Lumi 生成逐页镜头数。用户指定节奏时优先采用。写回前按计划核对各页瞬间数，并按剧情决定主画面、停顿和切镜位置，避免把瞬间机械等分为等高画格。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
+<!-- /host -->
 <!-- host:codex -->
 5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 调用 `prepare_page_image`（先提交通过的 `setting_reviews`），当前代理首次遇到该摘要与路径时查看参考合图，再将同一路径和完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；逐页实际看成图并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。单章交付必须传该章 `chapter_uuid`；整书导出省略。核对返回的 scope、page_count、missing_image_count。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
@@ -91,7 +95,7 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 **制作或续做章节前先读 [串行制作与恢复](references/serial-production.md)**。单章由当前聊天负责；涉及两章及以上时，当前聊天只管总进度，按章顺序交接最终设定版本与连续性。章节主聊天先读已保存分镜，划分连续页段并汇总人物、服装、道具和场景；每章一个设定 subagent，每场一个独立场景 subagent，上一场通过后才启动下一场。场内逐页完成准备参考、生图、挂载、看实际采用图、保存核对，本页通过后再做下一页。设定错误交回本章设定 subagent，复核受影响的已完成页后恢复原场景。
 
 <!-- host:codex -->
-多章使用 `list_projects → create_thread`，在**同一 Lumi 项目目录**为每章建独立 thread；不为章节建 worktree，不同时启动后续章。先查交接记录与已有 thread，扩章和恢复时复用。章节主聊天用不继承父历史的 `spawn_agent(fork_turns="none")` 委派设定与场景；只有当前场景可写分配页。
+多章使用 `list_projects → create_thread`，在**同一 Lumi 项目目录**为每章建独立 thread；不为章节建 worktree，不同时启动后续章。先查交接记录与已有 thread，扩章和恢复时复用。总聊天只读章节摘要、阻塞、交接和 Lumi 摘要，不读小说原文全文、整章分镜草稿，不为章节渲染含原文的提示词。章节主聊天用不继承父历史的 `spawn_agent(fork_turns="none")` 委派小说分镜、设定与场景；只有当前场景可写分配页。
 <!-- host:claude -->
 多章先检查本会话实际可调用的独立聊天机制：有则为每章建立或复用独立聊天，按章串行；没有则明确由当前聊天逐章串行。`Agent`／`Task` 子任务不是独立章节聊天，不能把它说成已建聊；可用时仍分别用于每章的设定和每场的场景 subagent。
 <!-- /host -->
@@ -99,6 +103,9 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 | 角色 | 可写范围 | 返回内容 |
 | --- | --- | --- |
 | 文本草稿 subagent | 仅任务专用草稿文件；不写 Lumi、不生图 | 完整结构化草稿或其绝对路径、待核对问题 |
+<!-- host:codex -->
+| 小说分镜 subagent | 仅本章 `storyboard/` 草稿；只读本章原文、用户要求、必要前章交接与任务格式；不写 Lumi、不生图、不派子任务 | 草稿绝对路径、页数、待裁决问题；不返回整章分镜 |
+<!-- /host -->
 | 章节设定 subagent | 本章所需设定的文字、图片及核对证据；不写页面 | 采用的设定 UUID／版本、变化、适用页段、受影响页 |
 | 场景 subagent | 分配页的图片挂载及 `pages record_image_review`、本场交接文件；不改设定、原文或分镜 | 页码／UUID、采用版本、审阅状态、跨场细节或具体阻塞 |
 | 章节主聊天 | 审核并串行写入文本、划场和协调；从 Lumi 核实图片与审阅事实 | 章节摘要、最终设定版本、跨章连续性、未完成项 |
@@ -109,6 +116,10 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 文本草稿由父代理逐页核对剧情、对白和连续性，保留原文时逐字核对，再按 `write_back` 串行写回。修改已有页用审稿时取得的页面 revision；每次创建前读最新父集合版本，冲突时重读并核对草稿是否仍适用。制作角色同样遵守版本规则，但在表内授权范围直接通过 Lumi 保存结果，无需等父代理转写图片。
 
+<!-- host:codex -->
+上述小说分镜任务的父代理始终是章节主聊天；采用持久逐页草稿与进度，不能以通用文本任务允许返回完整草稿为由把它送回总聊天。已有小说原文无需再派 Story Profile／章节改写代理。小说分镜的触发、复用和恢复优先按串行参考执行，不因“完整新书”重复委派分页。
+
+<!-- /host -->
 用户禁止 subagent、委派工具不可用或额度不足时，告知由章节主聊天串行承担相同职责；保留设定、场景和逐页审阅门槛，不因降级停止可完成的工作。若仅子任务缺少生图／读图权限，按串行参考中的宿主代执行流程处理，不伪报完成、不自行改用其他服务。缺占位符时查工具错误和 `prompt_catalog`，不猜模板名。
 
 <!-- host:codex -->
