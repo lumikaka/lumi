@@ -36,3 +36,15 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/page_image_fixture.py
 ```
 
 完成阶段明确模拟宿主 imagegen，只记录 `referenced_image_paths=[同一路径]` 与原提示词，再经真实 MCP 导入相同 preparation。此夹具不调用图片模型、不消耗生图额度，不能证明真实宿主 imagegen 已接受图片。manifest 保留输入、摘要及导入回执。结束后用 manifest 中的 binary 和 data_dir 执行 `stop --data-dir`，只停止该隔离后台；不停止其他开发实例。
+
+## 两章串行制作夹具
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/serial_production_fixture.py --binary "$PWD/build/codex-dev/lumi_dev"
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/serial_production_fixture.py --verify /实际返回的/manifest.json
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/codex-acceptance/serial_production_fixture.py --snapshot /实际返回的/manifest.json
+```
+
+创建第 10、11 章共四页，场次为第 10 章页 1–2、页 3，第 11 章页 1。初始状态依次为 passed、pending、missing_image、missing_image；前两页及设定使用明确的图标替身，审阅记录也是协议测试替身，不代表真实画面通过。`--verify` 通过新 MCP 连接重读，断言初始采用版本与状态不变，不调用生成或导入。真实宿主开始制作后改用 `--snapshot` 读取当前版本和审阅摘要，不再要求保持初始状态。
+
+真实宿主测试须将返回的 project 目录添加到 Codex App；不能把 Lumi 源码目录代替测试作品。可使用 `log_stdio.py` 绑定 manifest 指定的隔离后台，保存实际工具轨迹。真实生图、设定返修、场景代理和章节 thread 要单独执行、记录，不能用此夹具或 Go 协议测试宣称已完成。Claude Code 的宿主验收使用其实际聊天能力与服务商路径，不套用 Codex 宿主生图。

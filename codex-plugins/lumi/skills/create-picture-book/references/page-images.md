@@ -4,6 +4,8 @@
 
 ## 1. 明确本页设定
 
+按 [串行制作](serial-production.md) 由当前场景 subagent 按页顺序执行；读取本章设定 subagent 已核对的采用版本与适用页段。设定错误暂停本场并交回章节主聊天，不能由场景代理直接修改设定。
+
 用 `pages get` 读取实际 `page_uuid/page_role`、完整分镜和对白；没有分镜时先保存。用 `image_target(target_uuid=page_uuid, slot=page_image)` 查看项目候选和画布比例，按本页分镜选择实际需要的设定。
 
 - `selection_required`：候选清单尚不是本页依赖。明确选择 `setting_uuids`。
@@ -74,7 +76,7 @@ text({ page_uuid: saved.target.target_uuid, revision, variant_uuid, input_size, 
 
 ## 5. 逐页核对与恢复
 
-导入后实际看本次成图，对照已保存分镜、用户原文与设定，逐个核对姓名、气泡文字及说话人，再看人物肢体、道具位置和前后页连续性。有边缘裁切时核对实际采用的处理版；需要时放大看字。看不清的字或无法确认的细节应记录为疑点。
+导入后实际看本次成图，对照已保存分镜、用户原文与设定，逐字核对旁白、对白、姓名、标点及说话人／气泡指向，再看人物肢体、服装、道具位置和前后页连续性。有边缘裁切时核对实际采用的处理版；需要时放大看字。看不清的字或无法确认的细节应记录为疑点。
 
 调用 `pages(action="record_image_review", chapter_uuid, page_uuid, variant_uuid, expected_revision, verdict, observation)`。版本和 revision 取自导入结果或当前摘要。verdict 选 `passed` 或 `needs_revision`，observation 写明具体位置、文字或画面观察。只修问题页，修正版要重新核对；版本冲突先重读。核对记录属于当前图片及页面 revision。修订同一版本的观察时，从摘要取 review_revision，作为 expected_review_revision 提交。
 

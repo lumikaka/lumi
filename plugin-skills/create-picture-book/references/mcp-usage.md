@@ -161,7 +161,11 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 | `story_profile` | 无 | `story_profile write`；profile revision |
 | `chapter` | `chapter_uuid` | `chapters write`；章节 revision |
 | `pages` | `chapter_uuid` | `pages create`；页面集合 revision |
+<!-- host:codex -->
 | `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `prepare_page_image` 的 `generation_prompt/image_write_back/preparation` 导入，见 [页面生图提示词](page-images.md)；单页 revision |
+<!-- host:claude -->
+| `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `generate_page_image` 自动挂载，不传回 prompt 或 preparation，不再 import_image；单页 revision |
+<!-- /host -->
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
 <!-- host:codex -->
@@ -175,7 +179,7 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 {"name":"render_prompt","arguments":{"prompt_group":"story","prompt_key":"story_profile","target":"story_profile","variables":{"chapter_count":"1"}}}
 ```
 
-文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出；页面生图使用 `generation_prompt` 和 `image_write_back`，片段组合使用 `fragment_prompt`，不要把外层任务说明传给生图工具。渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
+文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出；页面生图按 [页面生图](page-images.md) 的宿主流程，片段组合使用 `fragment_prompt`，不要把外层任务说明传给生图工具。渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
 
 竖向条漫正文使用 `target="pages"`、实际 `chapter_uuid`、`chapter/comic_storyboard`。例如最多 12 页时传 `variables={"max_section_count":"12","moment_count_plan":"auto"}`。页数上限可取 1–24。Lumi 以章节 UUID 为种子，每组三页打乱 1、2、3 个关键视觉瞬间，把逐页数组及单页上限 3 填入提示词。实际写几页就取前几项；同章重试或调大上限时，前面各页的计划一致。用户指定逐页节奏时可显式传入计划和上限。把完整提示词交给写分镜的代理，并保留这份逐页计划。构图按各页的动作、视线与对白安排。
 
@@ -266,4 +270,4 @@ App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在
 
 用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `export_website({})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
 
-默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。只有 `done=true` 才交付返回的绝对 `output_directory` 和可打开的 `preview_url`，不以旧站仍能访问判断成功。在同一条成功回复中，将返回的完整 `publish_prompt` 原样放在独立的文本代码块中，方便用户复制到 Codex、修改后再发送。提示词仅供复制，执行发布需要用户另行提出。
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。只有 `done=true` 才交付返回的绝对 `output_directory` 和可打开的 `preview_url`，不以旧站仍能访问判断成功。在同一条成功回复中，将返回的完整 `publish_prompt` 原样放在独立的文本代码块中，方便用户复制到宿主对话、修改后再发送。提示词仅供复制，执行发布需要用户另行提出。

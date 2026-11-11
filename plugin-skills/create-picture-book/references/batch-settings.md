@@ -78,7 +78,7 @@ Claude Code 没有原生生图工具，Lumi 也没有为批量设定总览图或
 
 ## 2. 选择降级方式
 
-1. **用户提供图片**：用户给出真实本地图片文件时，Read 看图确认后用 `image_target(target_uuid, slot=setting_image)` 取 revision，`import_image` 导入。一张图含多个主体时，可用 `setting_boards import` 保存原图，再实际看图并 `apply_setting_breakdown` 裁切入库（每批 1–6 项，`crop_box` 为归一化坐标，不能重叠，`confidence` 至少 0.92；参数与幂等规则见 [MCP 调用参考](mcp-usage.md#批量设定图)）。
+1. **用户提供图片**：用户给出真实本地图片文件时，先按 [设定图来源](setting-references.md) 看图确认；仅缺本地读图工具时沿用其中已授权导入后 `read_image` 核对的分支，未看不得用于正文。用 `image_target(target_uuid, slot=setting_image)` 取 revision，`import_image` 导入。一张图含多个主体时，可用 `setting_boards import` 保存原图，再实际看图并 `apply_setting_breakdown` 裁切入库（每批 1–6 项，`crop_box` 为归一化坐标，不能重叠，`confidence` 至少 0.92；参数与幂等规则见 [MCP 调用参考](mcp-usage.md#批量设定图)）。
 2. **在 Lumi 中生成**：给出 `web_url(view=settings)` 或对应 `web_url(setting_uuid)`，说明本批主体与参考要求，请用户在 Lumi 桌面端或网页的设定页面用已配置的服务商生成（可在其中生成批量总览图）。用户回到对话后 `settings list/get` 重读，实际 `read_image` 查看后再继续。
 3. **仅文字设定**：只有用户明确接受时才跳过设定图；正文传 `setting_uuids=[]` 并保留理由。
 
