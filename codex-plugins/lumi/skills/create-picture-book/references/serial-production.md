@@ -23,9 +23,11 @@
 
 ## 2. 按章分聊天
 
-单章任务由当前聊天负责。多章时当前聊天成为总聊天，只协调范围、章节顺序、阻塞和章节摘要；第 10、11 章必须有两个章节执行单元。后章直到前章在用户范围内通过、所需用户审阅完成、交接保存并核实后才启动。未制作的范围不宣称完成。
+单章任务由当前聊天负责。两章及以上默认按章独立聊天，用户无需另行选择这一制作方式或点名 `create_thread`。多章时当前聊天成为总聊天，只协调范围、章节顺序、阻塞和章节摘要；每章有自己的章节执行单元。后章直到前章在用户范围内通过、所需用户审阅完成、交接保存并核实后才启动。未制作的范围不宣称完成。
 
-1. 发现当前可用的 `list_projects`、`list_threads`、`read_thread`、`create_thread`、`wait_threads` 和 `send_message_to_thread`。用户要求按章建聊和续做时，在该授权范围内创建／继续章节，不将它扩展为向其他聊天发消息的权限。
+默认策略不替代宿主要求的用户授权。用户已在本次请求或本会话中明确要求创建所需章节聊天，或明确选择本次多章任务按章独立聊天时，在该范围内执行，不重复确认。若当前缺少宿主要求的显式建聊授权，先按下列步骤核实项目目录、章节范围和已有聊天，再一次性说明需要新建的章节聊天并请求授权；不得仅凭普通多章生成请求或加载本技能推定授权。授权覆盖本次范围内的逐章创建，不每章重问；用户拒绝建聊时，按其选择由当前聊天兼任章节主聊天、逐章串行完成并保留交接。
+
+1. 发现当前可用的 `list_projects`、`list_threads`、`read_thread`、`create_thread`、`wait_threads` 和 `send_message_to_thread`。在已核实的授权范围内创建／继续章节，不将它扩展为向其他聊天发消息的权限。
 2. 先读取 index，按 project_uuid + chapter_uuid 查已登记的 thread，再用 `list_threads`／必要时 `read_thread` 核对同一项目路径与章节范围。创建调用回执丢失时先查历史，找到已有章聊天就登记复用；不能只看标题重建或误复用同名书。
 3. `list_projects` 找到 **project_overview 对应的准确目录**，传返回的 projectId 给 `create_thread(target={type:"project", projectId, environment:{type:"local"}})`。不选源码仓库代替作品目录，不建 worktree，不手填其他项目 ID。项目未列出时说明需要将该作品目录添加到 App；本机 CLI 经 `codex app --help` 确认支持后，可给用户 `codex app "真实作品绝对路径"` 在桌面 App 打开该目录。信任提示由用户处理，不替用户设置信任。之后重新 `list_projects` 核实，保留进度，不在错误目录创建。
 4. 每次只创建／唤起当前章。创建是异步启动，不预先创建会自动执行的后章。立即保存 threadId、hostId、project_uuid、chapter_uuid 和目录；若只有 clientThreadId，待其获得真实 threadId 后再等待或发送消息，不能把它当 threadId。
