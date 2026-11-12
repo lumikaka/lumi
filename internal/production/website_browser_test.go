@@ -15,6 +15,7 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
 	"lumi/internal/project"
+	"lumi/internal/story"
 )
 
 // Opt-in fixtures for checking the actual exported reader in a browser. The
@@ -27,8 +28,13 @@ func TestWebsiteBrowserFixtures(t *testing.T) {
 	for _, format := range []string{project.PictureBookClassic, project.PictureBookVertical} {
 		h := newProductionHarnessWithFormat(t, format)
 		c := websiteChapter(t, h)
+		second, err := h.stories.CreateChapter(t.Context(), story.CreateChapterInput{ChapterCode: "vol01.ch02", Title: "夜航来信 · Night Mail"})
+		if err != nil {
+			t.Fatal(err)
+		}
 		h.service.store.DB().Exec(`UPDATE projects SET name='月光邮局 · The Moonlight Post'`)
-		for i := 1; i <= 3; i++ {
+		for index, chapterUUID := range []string{c.UUID, c.UUID, c.UUID, second.UUID} {
+			i := index + 1
 			height := 900
 			if format == project.PictureBookVertical {
 				height = 3600
@@ -52,7 +58,7 @@ func TestWebsiteBrowserFixtures(t *testing.T) {
 			if err := png.Encode(&encoded, canvas); err != nil {
 				t.Fatal(err)
 			}
-			websiteSection(t, h, c.UUID, encoded.Bytes())
+			websiteSection(t, h, chapterUUID, encoded.Bytes())
 		}
 		runWebsite(t, h.service)
 		if err := os.CopyFS(filepath.Join(destination, format), os.DirFS(filepath.Join(h.service.store.Root(), "website"))); err != nil {

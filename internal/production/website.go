@@ -13,7 +13,7 @@ import (
 
 const WebsiteProcessor = "width1600-jpeg92-white-catmullrom-v1"
 const WebsiteWidth = 1600
-const websiteTemplateVersion = 2
+const websiteTemplateVersion = 3
 
 // WebsiteSnapshot is private queue input. Only the explicit presentation DTO in
 // website_render.go is written to the publishable directory.

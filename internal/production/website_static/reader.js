@@ -18,6 +18,47 @@
   const chapterURL = (chapter, page = 1) => `#chapter=${encodeURIComponent(chapter.uuid)}&page=${page}`
   const heading = (chapter) => [chapter.code, chapter.title].filter(Boolean).join(' · ')
   const pageLabel = (page, index) => page.role === 'front_cover' ? '封面 / Cover' : page.role === 'back_cover' ? '封底 / Back cover' : `第 ${page.number || index + 1} 页 / Page ${page.number || index + 1}`
+  let chaptersDescending = true
+  function chapterDirectory() {
+    const section = node('section')
+    const header = node('div', undefined, 'chapters-heading')
+    const sortButton = node('button', undefined, 'chapter-sort')
+    sortButton.type = 'button'
+    sortButton.disabled = book.chapters.length < 2
+    sortButton.setAttribute('aria-label', '按编号倒序排列 / Sort by number, highest first')
+    header.append(node('h2', vertical ? '全部话数 / Episodes' : '章节目录 / Contents'), sortButton)
+
+    const grid = node('div', undefined, 'chapters')
+    const byNumber = new Intl.Collator('en', { numeric: true })
+    const chapters = [...book.chapters].sort((a, b) => byNumber.compare(a.code, b.code))
+    const cards = chapters.map((chapter) => {
+      const card = link('', chapterURL(chapter), 'chapter-card')
+      if (chapter.pages[0]) {
+        const cover = node('img')
+        cover.src = `./${chapter.pages[0].src}`
+        cover.alt = ''
+        cover.loading = 'lazy'
+        card.append(cover)
+      } else card.append(node('div', '尚无图片 / No images', 'empty-cover'))
+      const detail = node('div', undefined, 'chapter-detail')
+      detail.append(node('h3', heading(chapter)), node('p', `${chapter.pages.length} ${imageLabel} / ${vertical ? 'images' : 'pages'}`, 'muted'))
+      card.append(detail)
+      return card
+    })
+    function applyOrder() {
+      sortButton.textContent = chaptersDescending ? '↓' : '↑'
+      sortButton.title = chaptersDescending ? '切换为正序 / Sort ascending' : '切换为倒序 / Sort descending'
+      sortButton.setAttribute('aria-pressed', String(chaptersDescending))
+      grid.replaceChildren(...(chaptersDescending ? [...cards].reverse() : cards))
+    }
+    sortButton.addEventListener('click', () => {
+      chaptersDescending = !chaptersDescending
+      applyOrder()
+    })
+    applyOrder()
+    section.append(header, grid)
+    return section
+  }
   function picture(page, index, eager = false) {
     const figure = node('figure', undefined, 'page')
     const a = link('', `./${page.src}`)
@@ -46,19 +87,7 @@
       if (book.missing_count) intro.append(node('p', `此版本仅包含已有图片，另有 ${book.missing_count} ${imageLabel}尚未收录。 / ${book.missing_count} unavailable images were omitted.`, 'notice'))
       const first = book.chapters.find((c) => c.pages.length)
       if (first) intro.append(link(vertical ? '开始看漫画 / Read the comic' : '开始阅读 / Start reading', chapterURL(first), 'primary'))
-      app.append(intro, node('h2', vertical ? '全部话数 / Episodes' : '章节目录 / Contents'))
-      const grid = node('div', undefined, 'chapters')
-      book.chapters.forEach((c) => {
-        const card = link('', chapterURL(c), 'chapter-card')
-        if (c.pages[0]) {
-          const cover = node('img'); cover.src = `./${c.pages[0].src}`; cover.alt = ''; cover.loading = 'lazy'
-          card.append(cover)
-        } else card.append(node('div', '尚无图片 / No images', 'empty-cover'))
-        const detail = node('div', undefined, 'chapter-detail')
-        detail.append(node('h3', heading(c)), node('p', `${c.pages.length} ${imageLabel} / ${vertical ? 'images' : 'pages'}`, 'muted'))
-        card.append(detail); grid.append(card)
-      })
-      app.append(grid)
+      app.append(intro, chapterDirectory())
     } else {
       app.className = vertical ? 'reader reader--vertical' : 'reader'
       if (vertical) app.append(node('p', '条漫阅读 / Webcomic', 'eyebrow'))
