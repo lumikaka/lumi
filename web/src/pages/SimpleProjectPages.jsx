@@ -692,7 +692,7 @@ export function SimplePagesPage({ project, projectUuid }) {
 }
 
 export function SimplePageView({ project, projectUuid, initialCandidatesOpen = false }) {
-  const { api: { createAssetUpload, cancelProductionTask, createComicSection, createStoryboard, deleteComicSection, generateSectionImage, importSectionImage, listComicSections, listImageVariants, listProductionTasks, listStoryboards, reorderComicSections, selectImageVariant, selectStoryboard, setComicSectionPremiseAssets, updateComicSection, getChapter, getComicSection } } = useWorkspaceRuntime()
+  const { leaveMessageRef, api: { createAssetUpload, cancelProductionTask, createComicSection, createStoryboard, deleteComicSection, generateSectionImage, importSectionImage, listComicSections, listImageVariants, listProductionTasks, listStoryboards, reorderComicSections, selectImageVariant, selectStoryboard, setComicSectionPremiseAssets, updateComicSection, getChapter, getComicSection } } = useWorkspaceRuntime()
   const { formatDateTime, t } = useI18n()
   const { chapterUuid, sectionUuid: routeSectionUuid } = useParams()
   const location = useLocation()
@@ -743,6 +743,12 @@ export function SimplePageView({ project, projectUuid, initialCandidatesOpen = f
   const invalidEmptyText = Boolean(section?.current_storyboard?.content_md) && !text.trim()
   const createRoles = project?.picture_book?.format === 'vertical_strip' ? ['body'] : COMIC_PAGE_ROLES
   const storyboardFields = storyboardQuickEditSections(text)
+
+  useEffect(() => {
+    if (!leaveMessageRef) return
+    leaveMessageRef.current = dirty || refsDirty ? t('simple.page.leave_unsaved') : null
+    return () => { leaveMessageRef.current = null }
+  }, [leaveMessageRef, dirty, refsDirty, t])
 
   useEffect(() => {
     if (!section) return

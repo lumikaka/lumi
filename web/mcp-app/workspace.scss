@@ -8,10 +8,132 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; } button:disabled { cursor: default; }
 a { color: $color-link; text-decoration: none; }
 .mcp-workspace { height: min(100dvh, 1000px); min-height: 620px; display: flex; flex-direction: column; }
-.mcp-workspace__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid $color-border; background: $color-surface; font-size: 12px; }
-.mcp-workspace__toolbar nav { display: flex; gap: 14px; margin-right: auto; }
-.mcp-workspace__toolbar button { color: $color-text; border: 1px solid $color-border; border-radius: 6px; background: $color-surface; padding: 5px 8px; }
-.mcp-workspace__toolbar button:hover { background: $color-accent-muted; }
+.mcp-address-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  flex: none;
+  background: $color-surface;
+  border-bottom: 1px solid $color-border-subtle;
+
+  &__back, .mcp-more > summary {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border: 0;
+    border-radius: $radius-sm;
+    color: $color-text;
+    background: transparent;
+    &:not(:disabled):hover { background: $color-accent-muted; }
+    &:disabled { color: $color-border-strong; }
+  }
+  &__field {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    background: $color-surface-muted;
+    color: $color-text;
+    font: 12px/1.5 ui-monospace, monospace;
+
+    input {
+      width: 100%;
+      min-width: 0;
+      height: 30px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: inherit;
+      background: transparent;
+      font: inherit;
+      color: transparent;
+      &:focus { color: $color-text; }
+      &:focus + span { visibility: hidden; }
+    }
+    > span {
+      position: absolute;
+      inset: 0 10px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: none;
+    }
+  }
+  &__segment { overflow: hidden; text-overflow: ellipsis; }
+  :focus-visible { outline: 2px solid $color-accent; outline-offset: 1px; }
+}
+.mcp-more {
+  position: relative;
+  flex: none;
+  > summary {
+    position: relative;
+    cursor: pointer;
+    list-style: none;
+    &::-webkit-details-marker { display: none; }
+  }
+  &[open] > summary { background: $color-surface-muted; }
+  &[open] > summary:hover { background: $color-accent-muted; }
+  &__alert {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0 3px;
+    border-radius: 6px;
+    background: $color-warning;
+    color: white;
+    font: bold 10px/12px $font-family-base;
+  }
+  &__panel {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    z-index: 25;
+    width: min(218px, calc(100vw - 20px));
+    max-height: calc(100dvh - 52px);
+    overflow: auto;
+    padding: 5px;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    background: $color-surface;
+    box-shadow: $shadow-floating;
+    color: $color-text;
+    font-size: 13px;
+
+    nav, .mcp-host-link, .mcp-host-link__actions { display: grid; }
+    .mcp-host-link, .mcp-more__sync { margin-top: 4px; padding-top: 4px; border-top: 1px solid $color-border-subtle; }
+    .mcp-host-link { gap: 0; }
+    .mcp-host-link__feedback:not(:empty), .mcp-more__sync > span {
+      display: block;
+      padding: 6px 9px;
+      color: $color-muted;
+      font-size: 12px;
+    }
+    .mcp-host-link__url { margin-block: 2px 5px; }
+    a, .mcp-more__reconnect, .mcp-more__copy {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      width: 100%;
+      min-height: 34px;
+      padding: 6px 9px;
+      border: 0;
+      border-radius: $radius-sm;
+      background: transparent;
+      color: $color-text;
+      font-size: 13px;
+      text-align: left;
+      &:hover { background: $color-surface-muted; }
+    }
+    a[aria-current="page"] { color: $color-accent-strong; font-weight: $font-weight-semibold; }
+    a[aria-current="page"]:hover { background: $color-accent-muted; }
+  }
+}
 .mcp-workspace__body { min-height: 0; flex: 1; overflow: auto; }
 @media (width > 760px) {
   .mcp-workspace__body:has(> .simple-page-view) { overflow: hidden; }

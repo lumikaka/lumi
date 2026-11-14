@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { createPath, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import AddressBar from './AddressBar.jsx'
+import WorkspaceActions from './WorkspaceActions.jsx'
 import { ModelContextAction } from './model-context.js'
 import { AppBridge } from './bridge.js'
 import { HostLink, HostDownloadLink } from './HostLink.jsx'
@@ -32,7 +34,10 @@ function Workspace({launch}) {
   const projectQuery = useQuery({queryKey:['story-project',launch.project_uuid],queryFn:()=>api.getStoryProject(launch.project_uuid)})
   const project = projectQuery.data
   const origin = workspaceOrigin(project,launch)
+  const leaveMessage = useRef(null)
+  const confirmLeave = () => !leaveMessage.current || window.confirm(leaveMessage.current)
   const runtime = useMemo(() => ({
+    leaveMessageRef: leaveMessage,
     DownloadLink: props => <HostDownloadLink {...props} bridge={bridge} origin={origin} project={launch.project_uuid} />,
     api,
     referenceToAgent: reference => modelContext.select({ ...reference, project_uuid: launch.project_uuid }),
@@ -48,9 +53,19 @@ function Workspace({launch}) {
   />
   const url = location.pathname.endsWith('/candidates') ? origin + new URL(launch.open_url).pathname : origin + location.pathname + location.search
   useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
-  useEffect(()=>{navigate(launch.path,{replace:true});void client.invalidateQueries({predicate:query=>query.queryKey?.[1]===launch.project_uuid,refetchType:'active'})},[launch.path,launch.sequence])
+  useEffect(() => {
+    const candidates = launch.ui_arguments?.candidates || launch.request?.arguments?.candidates
+    navigate(launch.path, {
+      replace: createPath(location) === launch.path,
+      state: launch.path === base + '/candidates' ? { candidates } : null,
+    })
+    void client.invalidateQueries({ predicate: query => query.queryKey?.[1] === launch.project_uuid, refetchType: 'active' })
+  }, [launch.sequence])
   return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
-    <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
+    <AddressBar base={base} confirmLeave={confirmLeave}>
+      <WorkspaceActions base={base} status={status} bridge={bridge} url={url}
+        onReconnect={() => setConnection(n => n + 1)} confirmLeave={confirmLeave} />
+    </AddressBar>
     {referenceState.message ? <p className="mcp-workspace__notice" role="status" aria-live="polite" aria-busy={referenceState.pending}>{referenceState.message}</p> : null}
     {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
     {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
@@ -63,7 +78,7 @@ function Workspace({launch}) {
         <Route path={`${base}/premise`} element={<SimpleSettingsPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/premise/assets/:assetUuid`} element={<SimpleSettingDetailPage projectUuid={launch.project_uuid}/>}/>
         <Route path={`${base}/story`} element={<SimpleStoryPage project={project} projectUuid={launch.project_uuid}/>}/>
-        <Route path={`${base}/candidates`} element={<TextCandidates key={launch.sequence} candidates={launch.ui_arguments?.candidates || launch.request.arguments.candidates}/>}/>
+        <Route path={`${base}/candidates`} element={<TextCandidates key={location.key} candidates={location.state?.candidates}/>}/>
         <Route path="*" element={<div className="simple-project-page"><p>此页面需要 Lumi 的完整运行环境。</p><OpenLumi url={url}/></div>}/>
       </Routes>}
     </section>
