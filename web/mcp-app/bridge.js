@@ -1,3 +1,4 @@
+import { modelContextParams } from './model-context.js'
 import { failureKind } from './contracts.js'
 export class AppBridge {
   constructor(surface = window, timeout = 30000) {
@@ -60,6 +61,13 @@ export class AppBridge {
     const result = await this.request('ui/initialize', { appInfo: { name: 'Lumi review', version: '1.0.2' }, appCapabilities: {}, protocolVersion: '2026-01-26' })
     this.initialization = result
     this.notify('ui/notifications/initialized'); return result
+  }
+  async updateModelContext(context) {
+    const params = modelContextParams(this.initialization, context)
+    const result = await this.request('ui/update-model-context', params, { timeoutMs: 10000 })
+    if (!result || typeof result !== 'object' || Array.isArray(result) || (result.isError !== undefined && typeof result.isError !== 'boolean')) throw Object.assign(new Error('上下文更新响应无效'), { kind: 'protocol_error' })
+    if (result.isError === true) throw Object.assign(new Error('宿主报告上下文更新失败'), { kind: 'host_failed' })
+    return result
   }
   onNotification(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn) }
   dispose() {

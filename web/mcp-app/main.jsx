@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { ModelContextAction } from './model-context.js'
 import { AppBridge } from './bridge.js'
 import { HostLink, HostDownloadLink } from './HostLink.jsx'
 import { AppRealtime } from './realtime.js'
@@ -15,6 +16,7 @@ import { SimpleHomePage, SimpleBooksPage, SimplePageView, SimpleSettingsPage, Si
 import './workspace.scss'
 
 const bridge = new AppBridge()
+const modelContext = new ModelContextAction(bridge)
 const previews = new PreviewCache((...args)=>bridge.call(...args))
 const detailPreviews = new PreviewCache((...args)=>bridge.call(...args), { detail: true, concurrency: 1 })
 const client = new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false,staleTime:Infinity,gcTime:300000}}})
@@ -23,6 +25,7 @@ function OpenLumi({url}) {
 }
 function Workspace({launch}) {
   const location = useLocation(), navigate = useNavigate()
+  const referenceState = useSyncExternalStore(modelContext.subscribe, modelContext.getSnapshot)
   const [status,setStatus] = useState('正在连接实时提示…')
   const [connection,setConnection] = useState(0)
   const api = useMemo(()=>createAppAPI(bridge,launch.project_uuid,{canWrite:launch.permissions?.can_write !== false}),[launch.project_uuid,launch.permissions?.can_write])
@@ -32,6 +35,7 @@ function Workspace({launch}) {
   const runtime = useMemo(() => ({
     DownloadLink: props => <HostDownloadLink {...props} bridge={bridge} origin={origin} project={launch.project_uuid} />,
     api,
+    referenceToAgent: reference => modelContext.select({ ...reference, project_uuid: launch.project_uuid }),
     Image: createAppImage(previews, launch.project_uuid, detailPreviews),
     capabilities: { fileUpload: true, download: true, generation: false, chat: false },
   }), [api, launch.project_uuid, origin])
@@ -47,6 +51,7 @@ function Workspace({launch}) {
   useEffect(()=>{navigate(launch.path,{replace:true});void client.invalidateQueries({predicate:query=>query.queryKey?.[1]===launch.project_uuid,refetchType:'active'})},[launch.path,launch.sequence])
   return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
     <header className="mcp-workspace__toolbar"><nav aria-label="作品工作区"><Link to={`${base}/`}>作品</Link><Link to={`${base}/chapters`}>章节</Link><Link to={`${base}/premise`}>设定</Link></nav><span role="status">{status}</span><button onClick={()=>setConnection(n=>n+1)}>重新连接</button><OpenLumi url={url}/></header>
+    {referenceState.message ? <p className="mcp-workspace__notice" role="status" aria-live="polite" aria-busy={referenceState.pending}>{referenceState.message}</p> : null}
     {new URLSearchParams(location.search).has('chat_reference_uuid') ? <p className="mcp-workspace__notice" role="status">聊天引用已准备好，请在 Lumi 中继续。<OpenLumi url={url}/></p> : null}
     {launch.permissions?.can_write === false ? <p className="mcp-workspace__notice" role="status">当前连接只有读取权限，提交操作不会写入。</p> : null}
     <section className="simple-project-body mcp-workspace__body">

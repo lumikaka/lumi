@@ -2,6 +2,8 @@ import { defineMessages } from './defineMessages.js'
 
 export const simpleDashboard = defineMessages({
   'workspace.text_candidates.title': ['文本候选', 'Text candidates'],
+  'workspace.text_candidates.context_body': ['点选候选可预览并同步到当前对话，等待宿主回执后继续；不会自动采用或写入作品。', 'Select a candidate to preview and share it with this conversation. Wait for the host acknowledgement before continuing. This does not apply or save it.'],
+  'workspace.text_candidates.context_selection': ['当前预览候选 {number}，尚未采用或保存；上下文同步结果见顶部提示。', 'Previewing candidate {number}, without applying or saving it. See the context update status above.'],
   'workspace.text_candidates.body': ['候选切换仅用于本地预览，不会自动写入作品。', 'Switching candidates only previews locally and never writes to the work.'],
   'workspace.text_candidates.unavailable': ['宿主未转交候选文本，请查看对话中的候选内容。', 'The host did not deliver candidate text. Please use the candidates in the conversation.'],
   'workspace.text_candidates.selection': ['已选择候选 {number}（尚未保存），请在对话中回复编号以应用文本。', 'Candidate {number} selected locally (unsaved). Reply with its number to apply the text.'],

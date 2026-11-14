@@ -1,3 +1,4 @@
+import ReferenceLink from '../workspace/ReferenceLink.jsx'
 import { useWorkspaceRuntime } from '../workspace/runtime.jsx'
 import ImageTaskProgress from '../components/ImageTaskProgress.jsx'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -439,7 +440,7 @@ export function SimpleSettingDetailPage({ projectUuid }) {
   const chatSearch = withChatReference(location.search, 'premise_asset', asset.uuid, asset.title)
   return (
     <div className="simple-project-page simple-setting-detail">
-      <SimplePageHeading title={asset.title} eyebrow={assetTypeLabel(t, asset.asset_type)} backLabel={t('simple.setting.back')} backTo={projectRoute(projectUuid, 'premise', location.search)} actions={<><Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>{asset.deleted_at ? <button className="simple-button" type="button" disabled={restore.isPending} onClick={() => restore.mutate()}>{t('common.action.restore')}</button> : <button className="simple-button" type="button" onClick={() => setEditing(true)}><Pencil size={15} aria-hidden="true" />{t('common.action.edit')}</button>}</>} />
+      <SimplePageHeading title={asset.title} eyebrow={assetTypeLabel(t, asset.asset_type)} backLabel={t('simple.setting.back')} backTo={projectRoute(projectUuid, 'premise', location.search)} actions={<><ReferenceLink reference={{ project_uuid: projectUuid, resource_type: 'premise_asset', uuid: asset.uuid, title: asset.title }} className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</ReferenceLink>{asset.deleted_at ? <button className="simple-button" type="button" disabled={restore.isPending} onClick={() => restore.mutate()}>{t('common.action.restore')}</button> : <button className="simple-button" type="button" onClick={() => setEditing(true)}><Pencil size={15} aria-hidden="true" />{t('common.action.edit')}</button>}</>} />
       <SimpleFeedback feedback={feedback} onDismiss={() => setFeedback(null)} />
       <SimpleError error={variantsQuery.error || tasksQuery.error} onRetry={() => { variantsQuery.refetch(); tasksQuery.refetch() }} />
       <div className="simple-setting-detail__layout">
@@ -563,7 +564,7 @@ export function SimpleBooksPage({ projectUuid }) {
         return <article className={menuOpen ? 'is-menu-open' : undefined} key={chapter.uuid}>
           <Link className="simple-book-list__main" to={projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`, location.search)}><SimpleImage asset={cover} alt={chapter.title || t('projects.unnamed_picture_book')} fallbackIcon={<BookOpenText size={27} aria-hidden="true" />} /><span><small data-machine-value>{chapter.chapter_code}</small><strong data-user-content>{chapter.title || t('projects.unnamed_picture_book')}</strong><em>{t('simple.books.page_count', { count: sections.length })}</em><b>{t('simple.books.open_pages')}<ChevronRight size={14} aria-hidden="true" /></b></span></Link>
           <footer>{showTrash ? <button type="button" disabled={restore.isPending} onClick={() => restore.mutate(chapter)}>{t('common.action.restore')}</button> : <>
-            <Link to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`).pathname, search: chatSearch }}><Bot size={14} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
+            <ReferenceLink reference={{ project_uuid: projectUuid, resource_type: 'chapter', uuid: chapter.uuid, title: [chapter.chapter_code, chapter.title].filter(Boolean).join(' · ') }} to={{ pathname: projectRoute(projectUuid, `chapters/${encodeURIComponent(chapter.uuid)}`).pathname, search: chatSearch }}><Bot size={14} aria-hidden="true" />{t('simple.setting.ask_agent')}</ReferenceLink>
             <button type="button" onClick={() => { setEditing(chapter); setTitle(chapter.title || '') }}><Pencil size={14} aria-hidden="true" />{t('common.action.edit')}</button>
             <div className="simple-book-list__more" ref={menuOpen ? bookMenuRef : undefined}>
               <button
@@ -1115,6 +1116,7 @@ export function SimplePageView({ project, projectUuid, initialCandidatesOpen = f
   const label = comicPageLabel(t, sections, section)
   const bookTitle = chapterQuery.data?.title || t('projects.unnamed_picture_book')
   const chatSearch = withChatReference(location.search, 'comic_section', section.uuid, section.title || label)
+  const pageReference = { project_uuid: projectUuid, resource_type: 'comic_section', uuid: section.uuid, title: section.title || label, page_label: label, chapter_uuid: chapterUuid, chapter_title: bookTitle, chapter_code: chapterQuery.data?.chapter_code }
   const confirmBreadcrumbNavigation = (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     if ((dirty || refsDirty) && !window.confirm(t('simple.page.leave_unsaved'))) event.preventDefault()
@@ -1137,7 +1139,7 @@ export function SimplePageView({ project, projectUuid, initialCandidatesOpen = f
   return (
     <div className="simple-project-page simple-page-view">
       <SimpleBookToolbar key={chapterUuid} projectUuid={projectUuid} chapterUuid={chapterUuid} chapterTitle={bookTitle} onNavigate={confirmBreadcrumbNavigation}>
-        <Link className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</Link>
+        <ReferenceLink reference={pageReference} className="simple-button simple-button--secondary" to={{ pathname: location.pathname, search: chatSearch }}><Bot size={15} aria-hidden="true" />{t('simple.setting.ask_agent')}</ReferenceLink>
         <button className="simple-button" type="button" disabled={(!dirty && !refsDirty) || save.isPending || invalidEmptyText} onClick={() => save.mutate()}><Save size={15} aria-hidden="true" />{t(save.isPending ? 'common.status.saving' : 'common.action.save')}</button>
       </SimpleBookToolbar>
       <SimpleFeedback feedback={feedback} floating autoDismiss onDismiss={() => setFeedback(null)} />
@@ -1267,14 +1269,15 @@ export function SimplePageView({ project, projectUuid, initialCandidatesOpen = f
             <header className="simple-page-content-card__header">
               <h2>{t('simple.page.content')}</h2>
               <div className="simple-page-content-card__actions">
-                <Link
+                <ReferenceLink
+                  reference={{ ...pageReference, resource_type: 'storyboard_content', title: title || label, text, visual_direction: direction, unsaved: dirty }}
                   className="simple-page-content-card__reference"
                   to={{ pathname: location.pathname, search: chatSearch }}
                   aria-label={t('simple.page.reference_content')}
                   title={t('simple.page.reference_content')}
                 >
                   @
-                </Link>
+                </ReferenceLink>
                 <button type="button" className="simple-page-content-card__edit" aria-label={t('simple.page.edit_script')} title={t('simple.page.edit_script')} onClick={() => setScriptEditorOpen(true)}>
                   <Pencil size={14} aria-hidden="true" />
                 </button>

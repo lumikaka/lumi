@@ -34,3 +34,14 @@ test('normal Web chapter thumbnails keep page links and native images with a hos
     await vite.close()
   }
 })
+
+test('reference adapter leaves default Web anchor markup identical to Router Link', async () => {
+  const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true, watch: null, hmr: false, ws: false } })
+  try {
+    const { default: ReferenceLink } = await vite.ssrLoadModule('/src/workspace/ReferenceLink.jsx')
+    const { Link } = await import('react-router-dom')
+    const props = { className: 'simple-button simple-button--secondary', to: { pathname: '/projects/project/chapters/chapter', search: '?chat_new=1&chat_reference_uuid=page' }, children: '引用到 Agent' }
+    const render = node => renderToStaticMarkup(h(MemoryRouter, null, node))
+    assert.equal(render(h(ReferenceLink, { ...props, reference: { uuid: 'page', text: 'draft' } })), render(h(Link, props)))
+  } finally { await vite.close() }
+})

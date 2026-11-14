@@ -1,0 +1,106 @@
+{
+  "date": "2026-11-13",
+  "timezone": "Asia/Shanghai",
+  "scope": [
+    "顶部共用引用：页面、章节、设定",
+    "页面内容卡 @",
+    "文本候选点选"
+  ],
+  "protocol": {
+    "method": "ui/update-model-context",
+    "capabilities": "Only declared updateModelContext.text and/or structuredContent; no experimental fallback",
+    "reference": "https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx",
+    "host_capability_baseline": "open-link-20261103.json"
+  },
+  "implementation": {
+    "web_default": "ReferenceLink renders the original Router Link, classes and destinations; only the App runtime intercepts clicks. Default TextCandidates messages and preview behavior are retained. No shared CSS changes.",
+    "ordering": "One writer per App serializes requests and coalesces queued clicks. Only the latest selection acknowledgement reports success. Timeout drops queued updates and reports uncertainty.",
+    "acknowledgement": "A valid empty result is treated as host acceptance, not proof that the next model turn consumed context. JSON-RPC errors, isError, malformed results, missing capabilities and timeouts report failure/uncertainty.",
+    "writes": "No ui/message, navigation, candidate application or write_app_resource is initiated by these controls."
+  },
+  "checks": {
+    "frontend_tests": {
+      "command": "pnpm --dir web test",
+      "passed": 478,
+      "failed": 0
+    },
+    "build": "pnpm --dir web build; final pnpm --dir web build:app after formatting",
+    "go": "go test ./internal/textmcp passed (21.884s)",
+    "diff": "git diff --check passed"
+  },
+  "browser_simulated_host": {
+    "fixture": "node web/mcp-app/model-context-fixture.mjs; http://127.0.0.1:5189/fixture-host",
+    "facts": "Synthetic REST data and simulated host replies; actual compiled internal/textmcp/appdist/review.html loaded in an iframe.",
+    "page_top": {
+      "stays_in_place": true,
+      "resource_type": "comic_section",
+      "uuid": "01989abc-def0-7000-8000-000000000003",
+      "chapter_uuid": "01989abc-def0-7000-8000-000000000002",
+      "chapter_title": "星光启程",
+      "chapter_code": "vol01.ch01"
+    },
+    "chapter": {
+      "stays_in_place": true,
+      "resource_type": "chapter",
+      "title": "vol01.ch01 · 星光启程"
+    },
+    "setting": {
+      "stays_in_place": true,
+      "resource_type": "premise_asset",
+      "title": "小狐狸"
+    },
+    "page_at": {
+      "stays_in_place": true,
+      "text": "尚未保存的分镜草稿",
+      "unsaved": true,
+      "draft_preserved": true,
+      "write_calls": 0
+    },
+    "candidates": {
+      "rapid_clicks": [
+        1,
+        2,
+        3
+      ],
+      "accepted_in_order": [
+        1,
+        3
+      ],
+      "final_number": 3,
+      "full_title_and_text": true,
+      "final_rebuilt_bundle_number": 2,
+      "candidate_count": 3,
+      "preview_retained": true,
+      "host_denial_shows_failure": true,
+      "no_auto_message_or_write": true
+    },
+    "missing_capability": {
+      "request_count": 0,
+      "feedback": "宿主未声明上下文更新能力。尚未确认最新选择已同步，请勿依赖之前的引用。"
+    },
+    "unit_only_failure_cases": [
+      "timeout drops queued updates",
+      "transport errors",
+      "malformed acknowledgement",
+      "structured-only and text-only hosts"
+    ]
+  },
+  "browser_web_default": {
+    "fixture": "http://127.0.0.1:5189/web-fixture (default WorkspaceRuntime, synthetic REST)",
+    "page": "Observed page layout screenshot and DOM; original anchor classes and reference query retained; @ click follows Web routing, saved text remains; save initially disabled; no App notice.",
+    "chapter": "Original anchor includes chapter target and chat_new/reference query; click follows Web route. Fixture omits destination chapter-list route, so destination screen was not asserted.",
+    "setting": "Original reference anchor retained; edit opens existing dialog populated with 小狐狸.",
+    "candidates": "Selecting candidate 2 retains preview and original unsaved/reply-with-number status; no App notice.",
+    "automated_markup": "Default ReferenceLink output equals original Router Link markup exactly."
+  },
+  "real_codex_host": {
+    "new_bundle_loaded": false,
+    "real_click_acknowledgement": false,
+    "next_user_turn_consumption": false,
+    "attempt": "cua.getState timed out after 30 seconds; no real host surface obtained. Existing 2026-11-03 capability record was used only as capability evidence, not a new execution result."
+  },
+  "embedded_resource": {
+    "path": "internal/textmcp/appdist/review.html",
+    "sha256": "16c2bb467d5a76df17102d0ea77a9d31e48ace4fe8cd2eff13c3769f8b3bfc9b"
+  }
+}
