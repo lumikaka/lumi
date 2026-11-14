@@ -1,36 +1,36 @@
-import { Fragment, useContext } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { createPath, UNSAFE_NavigationContext, useLocation, useNavigate } from 'react-router-dom'
+import { Fragment, useContext, useLayoutEffect, useState } from 'react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { createPath, UNSAFE_NavigationContext, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { uuidV7 } from './contracts.js'
 
-function parentPage(pathname, base) {
-  const [area, detail] = pathname.slice(base.length + 1).split('/')
-  if (!area) return null
-  if (area === 'chapters' && detail) return { path: base + '/chapters', label: '返回章节列表' }
-  if (area === 'premise' && detail) return { path: base + '/premise', label: '返回设定列表' }
-  return { path: base + '/', label: '返回作品' }
-}
-
-export default function AddressBar({ base, confirmLeave, children }) {
+export default function AddressBar({ confirmLeave, children }) {
   const location = useLocation()
   const navigate = useNavigate()
-  // MemoryRouter owns the history of this workspace, including push, replace and pop.
+  const action = useNavigationType()
   const { navigator } = useContext(UNSAFE_NavigationContext)
-  const hasPrevious = navigator.index > 0
-  const parent = parentPage(location.pathname, base)
-  const label = hasPrevious ? '返回上一页' : parent?.label
+  const index = navigator.index
+  const [lastIndex, setLastIndex] = useState(index)
+  // A push discards the forward branch. Moving or replacing an entry preserves it.
+  useLayoutEffect(() => {
+    if (action === 'PUSH') setLastIndex(index)
+  }, [action, index, location.key])
+  const hasPrevious = index > 0
+  const hasNext = index < lastIndex && action !== 'PUSH'
+  const backLabel = location.state?.backLabel || '返回上一页'
   const address = 'ui://lumi' + createPath(location)
   const segments = ('ui://lumi' + location.pathname).split('/')
-  function goBack() {
-    if (!confirmLeave()) return
-    if (hasPrevious) navigate(-1)
-    else if (parent) navigate(parent.path, { replace: true })
+  function go(delta) {
+    if (confirmLeave()) navigate(delta)
   }
 
   return <header className="mcp-address-bar" aria-label="插件内导航">
-    <button className="mcp-address-bar__back" type="button" aria-label={label || '返回'} title={label || '没有上一页'} disabled={!label}
-      onClick={goBack}>
+    <button className="mcp-address-bar__arrow" type="button" aria-label={hasPrevious ? backLabel : '返回'} title={hasPrevious ? backLabel : '没有上一页'} disabled={!hasPrevious}
+      onClick={() => go(-1)}>
       <ArrowLeft size={16} aria-hidden="true" />
+    </button>
+    <button className="mcp-address-bar__arrow" type="button" aria-label="前进" title={hasNext ? '前进' : '没有可前进的页面'} disabled={!hasNext}
+      onClick={() => go(1)}>
+      <ArrowRight size={16} aria-hidden="true" />
     </button>
     <div className="mcp-address-bar__field" title={address}>
       <input aria-label="当前插件内地址" readOnly value={address} onFocus={event => event.currentTarget.select()} />

@@ -1,3 +1,4 @@
+import { parsePath } from 'react-router-dom'
 import { createWorkspaceAPI } from '../src/workspace/services.js'
 import { ApiError } from '../src/api/client.js'
 import { uuidV7, safeOpenURL, envelope as resultEnvelope } from './contracts.js'
@@ -79,4 +80,22 @@ export function workspaceLaunch(result) {
 // launch port or accept a URL belonging to another project.
 export function workspaceOrigin(project, launch) {
  return safeOpenURL(project?.open_url,launch.project_uuid) ? new URL(project.open_url).origin : launch.origin
+}
+
+// Include parent destinations for direct launches so back and forward can
+// traverse the same history, including the original view's query and state.
+export function workspaceHistoryEntries(launch) {
+  const base = `/projects/${launch.project_uuid}`
+  const home = base + '/'
+  if (launch.path === home) return [home]
+  const entries = [home]
+  const target = parsePath(launch.path)
+  const [area, detail] = target.pathname.slice(home.length).split('/')
+  let backLabel = '返回作品'
+  if (detail && (area === 'chapters' || area === 'premise')) {
+    entries.push({ pathname: home + area, state: { backLabel } })
+    backLabel = area === 'chapters' ? '返回章节列表' : '返回设定列表'
+  }
+  entries.push({ ...target, state: { backLabel } })
+  return entries
 }

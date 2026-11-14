@@ -10,7 +10,7 @@ import { HostLink, HostDownloadLink } from './HostLink.jsx'
 import { AppRealtime } from './realtime.js'
 import { bindReviewSync } from './sync.js'
 import { PreviewCache } from './images.js'
-import { createAppAPI, workspaceLaunch, workspaceOrigin } from './workspace.js'
+import { createAppAPI, workspaceHistoryEntries, workspaceLaunch, workspaceOrigin } from './workspace.js'
 import { createAppImage } from './WorkspaceImage.jsx'
 import TextCandidates from '../src/workspace/TextCandidates.jsx'
 import { WorkspaceRuntime } from '../src/workspace/runtime.jsx'
@@ -55,14 +55,16 @@ function Workspace({launch}) {
   useEffect(()=>bindReviewSync({socket:new AppRealtime(bridge,launch.project_uuid),project:launch.project_uuid,queryClient:client,onStatus:setStatus,workspace:true}),[launch.project_uuid,connection])
   useEffect(() => {
     const candidates = launch.ui_arguments?.candidates || launch.request?.arguments?.candidates
+    const samePage = createPath(location) === launch.path
+    const state = samePage ? location.state : null
     navigate(launch.path, {
-      replace: createPath(location) === launch.path,
-      state: launch.path === base + '/candidates' ? { candidates } : null,
+      replace: samePage,
+      state: launch.path === base + '/candidates' ? { ...state, candidates } : state,
     })
     void client.invalidateQueries({ predicate: query => query.queryKey?.[1] === launch.project_uuid, refetchType: 'active' })
   }, [launch.sequence])
   return <WorkspaceRuntime.Provider value={runtime}><div className="mcp-workspace">
-    <AddressBar base={base} confirmLeave={confirmLeave}>
+    <AddressBar confirmLeave={confirmLeave}>
       <WorkspaceActions base={base} status={status} bridge={bridge} url={url}
         onReconnect={() => setConnection(n => n + 1)} confirmLeave={confirmLeave} />
     </AddressBar>
@@ -97,7 +99,7 @@ function App() {
     const observer=new ResizeObserver(()=>bridge.notify('ui/notifications/size-changed',{height:Math.min(1000,document.documentElement.scrollHeight)}));observer.observe(document.body)
     return()=>{off();observer.disconnect()}
   },[])
-  return launch?<MemoryRouter key={launch.project_uuid} initialEntries={[launch.path]}><Workspace launch={launch}/></MemoryRouter>:<main className="mcp-fallback"><h1>Lumi 作品工作区</h1>{error&&<p role="alert">{error}</p>}<pre>{fallback}</pre></main>
+  return launch?<MemoryRouter key={launch.project_uuid} initialEntries={workspaceHistoryEntries(launch)}><Workspace launch={launch}/></MemoryRouter>:<main className="mcp-fallback"><h1>Lumi 作品工作区</h1>{error&&<p role="alert">{error}</p>}<pre>{fallback}</pre></main>
 }
 const root = createRoot(document.getElementById('root'))
 root.render(<QueryClientProvider client={client}><App/></QueryClientProvider>)

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
+import { workspaceHistoryEntries } from './workspace.js'
 
 test('the address and back target reflect the current plugin route and its own memory history', async () => {
   const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true, watch: null, hmr: false, ws: false } })
@@ -19,10 +20,13 @@ test('the address and back target reflect the current plugin route and its own m
       [[base + '/candidates'], '返回作品'],
       [[base + '/premise', deep], '返回上一页'],
     ]) {
-      const html = renderToStaticMarkup(h(MemoryRouter, { initialEntries: entries }, h(AddressBar, { base, confirmLeave: () => true })))
-      assert.ok(html.includes(`aria-label="${label}"`))
+      const initialEntries = entries.length === 1 ? workspaceHistoryEntries({ project_uuid: base.slice('/projects/'.length), path: entries[0] }) : entries
+      const html = renderToStaticMarkup(h(MemoryRouter, { initialEntries }, h(AddressBar, { confirmLeave: () => true })))
+      const buttons = html.match(/<button\b[^>]+>/g)
+      assert.ok(buttons[0].includes(`aria-label="${label}"`))
       assert.ok(html.includes(`value="ui://lumi${entries.at(-1)}"`))
-      assert.equal(html.includes('disabled=""'), label === '返回')
+      assert.equal(buttons[0].includes('disabled=""'), label === '返回')
+      assert.match(buttons[1], /aria-label="前进"[^>]*disabled=""/)
     }
   } finally {
     await vite.close()
