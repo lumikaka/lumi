@@ -26,15 +26,15 @@ func ExpectedProjectUUID(ctx context.Context) string {
 // transport hint used only for tool gating and diagnostics: it is never
 // persisted, never authorizes access and never appears in realtime payloads.
 const (
-	HostClaude = "claude"
-	HostCodex  = "codex"
-	HostCindy  = "cindy"
+	HostGeneric = "generic"
+	HostCodex   = "codex"
+	HostCindy   = "cindy"
 )
 
 // ValidHost accepts the supported --host values; "" means an unknown host
 // and keeps the historical behavior.
 func ValidHost(host string) bool {
-	return host == "" || host == HostClaude || host == HostCodex || host == HostCindy
+	return host == "" || host == HostGeneric || host == HostCodex || host == HostCindy
 }
 
 type hostKey struct{}

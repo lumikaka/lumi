@@ -1,5 +1,5 @@
 // Host skill assembly: Codex output stays byte-identical to the committed
-// release skill; the Claude Code skill never mentions Codex-only tools.
+// release skill; the generic Agent skill never mentions Codex-only tools.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,17 +7,17 @@ import test from 'node:test';
 import { assemble, build, diff, outputs } from './build-skills.mjs';
 
 test('host blocks keep shared lines and drop marker lines', () => {
-  const text = 'a\n<!-- host:codex -->\ncodex\n<!-- host:claude -->\nclaude\n<!-- /host -->\nb\n';
+  const text = 'a\n<!-- host:codex -->\ncodex\n<!-- host:generic -->\ngeneric\n<!-- /host -->\nb\n';
   assert.equal(assemble(text, 'codex'), 'a\ncodex\nb\n');
-  assert.equal(assemble(text, 'claude'), 'a\nclaude\nb\n');
+  assert.equal(assemble(text, 'generic'), 'a\ngeneric\nb\n');
   assert.throws(() => assemble('<!-- host:codex -->\nx', 'codex'), /unterminated/);
   assert.throws(() => assemble('<!-- /host -->', 'codex'), /without an open block/);
   assert.throws(() => assemble('x', 'cindy'), /Unknown host/);
 });
 
-test('committed Codex and Claude skills match the shared source byte for byte', () => {
+test('committed Codex and Generic skills match the shared source byte for byte', () => {
   assert.deepEqual(diff('codex'), []);
-  assert.deepEqual(diff('claude'), []);
+  assert.deepEqual(diff('generic'), []);
   for (const [rel, bytes] of Object.entries(build('codex'))) {
     assert.ok(readFileSync(join(outputs.codex, rel)).equals(bytes), rel);
   }
@@ -28,15 +28,16 @@ const codexOnly = [
   'review_book', 'review_chapters', 'review_chapter', 'review_page', 'review_settings', 'review_candidates',
   'read_app_review', 'read_app_resource', 'write_app_resource', 'read_app_image', 'read_app_image_detail',
   'watch_app_changes', 'read_app_connection', 'Codex',
+  'spawn_agent', 'followup_task', 'wait_threads', 'create_thread',
 ];
 
-test('Claude skill has no Codex-only tool names and documents the Claude flow', () => {
-  const files = build('claude');
+test('Generic skill has no Codex-only tool names and documents the Generic flow', () => {
+  const files = build('generic');
   const all = Object.values(files).map(bytes => bytes.toString('utf8')).join('\n');
-  for (const name of codexOnly) assert.ok(!all.includes(name), `Claude skill mentions ${name}`);
+  for (const name of codexOnly) assert.ok(!all.includes(name), `Generic skill mentions ${name}`);
   assert.doesNotMatch(all, /<!-- (host:|\/host)/);
   const skill = files['create-picture-book/SKILL.md'].toString('utf8');
-  for (const want of ['web_url', 'generate_page_image', 'read_image', 'record_image_review', 'lumi init --json', 'Read']) {
+  for (const want of ['web_url', 'generate_page_image', 'read_image', 'record_image_review', 'lumi init --json']) {
     assert.ok(skill.includes(want), `SKILL.md lacks ${want}`);
   }
   const pageImages = files['create-picture-book/references/page-images.md'].toString('utf8');

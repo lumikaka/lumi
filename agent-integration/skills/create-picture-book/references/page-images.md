@@ -1,6 +1,6 @@
 # 页面生图：服务端合图与生成
 
-正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Claude Code 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
+正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Agent 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
 
 ## 1. 明确本页设定
 
@@ -10,7 +10,7 @@
 
 - `selection_required`：候选清单尚不是本页依赖。明确选择 `setting_uuids`。
 - `missing_images`：先按 [批量设定图](batch-settings.md) 或单项流程补齐。仅有文字、已导入但尚未拆分的总览图都不算设定图就绪。
-- `review_required`：图片已齐全，先按 [设定图核对](setting-references.md#4-核对后再用于正文) 对照用户要求／原参考，记录具体观察。核对阶段用 `read_image` 查看设定；需要看本页参考合图时，用 `prepare_page_image` 返回的路径 Read。
+- `review_required`：图片已齐全，先按 [设定图核对](setting-references.md#4-核对后再用于正文) 对照用户要求／原参考，记录具体观察。核对阶段用 `read_image` 查看设定；需要看本页参考合图时，用 `prepare_page_image` 返回的路径用宿主看图能力查看。
 - `no_settings_selected`：核对是否确实无需视觉参考。明确无参考图时传 `[]`，执行真实无参考流程。
 
 正文只生成第一页不取消必要设定图。用户明确要求跳过设定图或限制全部生图次数时，遵循其要求，选择 `[]` 并保留其理由；不能把缺图选择静默丢弃或伪报为 ready。
@@ -45,7 +45,7 @@
 
 ## 3. 生成并等待
 
-1. 需要确认参考时先 `prepare_page_image`，用 Read 查看 `reference_image_path`；同一 `reference_image_sha256` 已看过时跳过。合图和提示词在服务端重新组装，不复制、改写或追加 `generation_prompt`。
+1. 需要确认参考时先 `prepare_page_image`，用宿主看图能力查看 `reference_image_path`；同一 `reference_image_sha256` 已看过时跳过。合图和提示词在服务端重新组装，不复制、改写或追加 `generation_prompt`。
 2. 调用 `generate_page_image`。服务端在页面租约内重新校验选择、核对记录与 revision，再创建页面生图任务；调用会等待一段时间。
 3. 返回 `done:true` 时，`image` 含 `variant_uuid/version_no/asset_uuid`，`revision` 是挂载后的页面 revision，`is_current_image` 表示该图是否为当前图片。
 4. 返回 `done:false` 时任务仍在进行：用**完全相同的参数和 idempotency_key** 再次调用继续等待。同一 key 不会重复建任务或重复计费；换新 key 会重新生成。
@@ -63,7 +63,7 @@
 - `setting_image_review_required`／`setting_image_review_stale`：补齐真实核对，或按当前设定与画风重新核对。
 - `idempotency_key_conflict`：该 key 已用于其他页面，换新 key。
 - 任务明确终态失败或取消：按 `error_code` 与 details 处理（服务商额度、限流或配置）；先读当前页面确认结果，修正原因后确需新生成才用新 key。会话／网络中断不等于任务失败：先查当前图片，再用原参数和 key 取回原任务，不重复计费。
-- `host_not_supported`：当前连接不是 Claude Code 插件；`cli_upgrade_required`：先停止旧后台并用同版本 CLI 重启后新开会话。
+- `host_not_supported`：当前连接不是 --host generic；`cli_upgrade_required`：先协调共享后台使用者，再用同环境、数据目录的新版 CLI 停止旧后台并重连。
 
 ## 5. 逐页核对与恢复
 

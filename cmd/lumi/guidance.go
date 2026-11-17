@@ -16,14 +16,14 @@ import (
 const agentsGuidance = `# Lumi 项目
 
 这是一个 Lumi 项目，与 Lumi 桌面版共用项目格式。
-在 Codex 中，故事、页面和正式素材等作品数据通过 Lumi 插件工具读写。
+故事、页面和正式素材等作品数据通过 Lumi MCP 工具读写。
 禁止直接读取或写入 project.sqlite（包括 -wal、-shm、-journal）、.lumi/、assets/。
-STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi 插件工具。
-user-data/ 供用户和 Agent 直接读写随作品保存的文件。Agent 可按需将工作笔记放在 user-data/agent/。要将文件用作正式素材，通过 Lumi 插件工具导入。
+STORY.md 是只读投影，可读取但不得直接修改；正文修改使用 Lumi MCP 工具。
+user-data/ 供用户和 Agent 直接读写随作品保存的文件。Agent 可按需将工作笔记放在 user-data/agent/。要将文件用作正式素材，通过 Lumi MCP 工具导入。
 
-打开项目、创作、核对、续做与导出，遵循当前安装的 Lumi 插件技能 create-picture-book 及其工具契约。
+打开项目、创作、核对、续做与导出，遵循当前加载的 Lumi 创作技能 create-picture-book 及其工具契约。
 
-这些要求是行为指引。项目级 .codex/config.toml 的 permission profile 只限制
+这些要求适用于所有 Agent。使用 Codex 时，项目级 .codex/config.toml 的 permission profile 只限制
 命令沙箱的写入，不限制读取；须先由用户信任项目，且可能被更高优先级配置覆盖。
 不要替用户设置信任。Codex App 中的实际保护仍需用户人工确认。
 `
@@ -67,7 +67,8 @@ func refreshAgentsGuidance(path string, result *guidanceResult) {
 			return
 		}
 		switch fmt.Sprintf("%x", sha256.Sum256(original)) {
-		case "ed98bcddb3e476ee62272378858a3cf46283d8de6c864e300906150cd61190e2",
+		case "55d6b33973f7970882ceae99f8b7e90ab9b607860023daa877a8602336d05d43",
+			"ed98bcddb3e476ee62272378858a3cf46283d8de6c864e300906150cd61190e2",
 			"91019880eb7578c2be7411888f45aec0f2b64b0c7eb63f7ab45dae9f1f5d63cf",
 			"51d24197eebf72939c20ed70bf64dd84e3cb37f85ab391c83dc04bed4b040053",
 			"1427d03df856b53368cb7585c2fe0e43cfcf4221453d7adefebfc9cb5992923c",
@@ -97,7 +98,7 @@ func ensureGuidance(root string) guidanceResult {
 		result.Agents = "manual"
 		result.Messages = append(result.Messages, "无法生成 AGENTS.md，请手工补齐 Lumi 插件读写指引："+err.Error())
 	}
-	ensureClaudeGuidance(root, &result)
+	inspectLegacyClaudeGuidance(root, &result)
 	configDir := filepath.Join(root, ".codex")
 	if err := os.Mkdir(configDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 		result.Messages = append(result.Messages, "无法创建 .codex，请手工添加 Lumi profile："+err.Error())
@@ -345,37 +346,13 @@ func manualProtectionConfig() string {
 	return strings.TrimSpace(protectionSelection + protectionProfile)
 }
 
-// claudeGuidance only imports the shared project guidance so AGENTS.md stays
-// the single source for every host.
-const claudeGuidance = "@AGENTS.md\n"
-
-// ensureClaudeGuidance creates CLAUDE.md for every host so Claude Code reads
-// the same AGENTS.md guidance. An existing
-// file is never rewritten; it only gets a merge suggestion when the import
-// is missing.
-func ensureClaudeGuidance(root string, result *guidanceResult) {
-	path := filepath.Join(root, "CLAUDE.md")
-	err := writeGuidanceExclusive(path, []byte(claudeGuidance), 0o644)
-	switch {
-	case err == nil:
-		result.Claude = "created"
-		result.Messages = append(result.Messages, "已创建仅引用 @AGENTS.md 的 CLAUDE.md。")
-		return
-	case !errors.Is(err, os.ErrExist):
-		result.Claude = "manual"
-		result.Messages = append(result.Messages, "无法生成 CLAUDE.md，请手工创建并只写入一行 @AGENTS.md："+err.Error())
-		return
-	}
-	content, err := os.ReadFile(path)
+// Existing host instructions belong to the user. Initialization only reports
+// their presence; it neither creates CLAUDE.md nor rewrites its contents.
+func inspectLegacyClaudeGuidance(root string, result *guidanceResult) {
+	_, err := os.Lstat(filepath.Join(root, "CLAUDE.md"))
 	if err == nil {
-		for _, line := range strings.Split(string(content), "\n") {
-			if strings.TrimSpace(line) == "@AGENTS.md" {
-				result.Claude = "preserved"
-				result.Messages = append(result.Messages, "保留已有 CLAUDE.md，已包含 @AGENTS.md。")
-				return
-			}
-		}
+		result.Claude = "preserved"
+	} else if !errors.Is(err, os.ErrNotExist) {
+		result.Messages = append(result.Messages, "无法检查已有 CLAUDE.md；请检查文件权限。")
 	}
-	result.Claude = "manual"
-	result.Messages = append(result.Messages, "保留已有 CLAUDE.md 未修改；请在其中单独加入一行 @AGENTS.md，以便 Claude Code 读取 Lumi 项目指引，并保留你的自定义内容。")
 }

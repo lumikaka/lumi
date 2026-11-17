@@ -28,7 +28,7 @@
 
 创作范围分别写清设定图、封面图和正文图。“正文只生成第一页”仍包含首次创作的必要设定图；不要把固定的 `project_only` 当作只写文字，也不要自行添加额度限制。用户明确的纯文字或跳过设定图要求优先。
 
-用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先用 Read 实际看图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图。`context_setting_uuids` 只提供项目上下文，不会把图片交给生图服务。
+用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先用宿主看图能力实际看图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图。`context_setting_uuids` 只提供项目上下文，不会把图片交给生图服务。
 
 先核对合法组合，再提供选项。定稿后正式规格不可改；用户已指定的形式与比例冲突时，说明可行选择及影响，获得针对冲突的决定后再定稿。选择比例不等于同意改形式；已有自主授权范围内的缺失选择可直接决定，不新增重复确认。
 
@@ -132,7 +132,7 @@
 | `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `generate_page_image` 自动挂载，不传回 prompt 或 preparation，不再 import_image；单页 revision |
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
-| `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；返回的 `generation_prompt` 可交给用户在其他工具中生成总览图（Claude Code 不能直接生成） |
+| `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；返回的 `generation_prompt` 可交给用户在其他工具中生成总览图（Agent 不能直接生成） |
 | `setting_breakdown` | `board_uuid`；只配合 `premise/asset_breakdown` | `apply_setting_breakdown`；批次 revision 与 `expected_premise_revision` |
 
 ```json
@@ -152,9 +152,9 @@
 
 ## 批量设定图
 
-页面生图用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先补齐设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。需要预览参考合图时先用相同参数调用 `prepare_page_image` 并 Read 返回路径。详见 [页面生图](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
+页面生图用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先补齐设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。需要预览参考合图时先用相同参数调用 `prepare_page_image` 并用宿主看图能力查看返回路径。详见 [页面生图](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
-执行前读 [设定图来源与降级](batch-settings.md)。这些工具只保存、裁切和绑定已有图片；Claude Code 不能生成总览图，用户在其他工具或 Lumi 中生成后才可导入。
+执行前读 [设定图来源与降级](batch-settings.md)。这些工具只保存、裁切和绑定已有图片；Agent 不能生成总览图，用户在其他工具或 Lumi 中生成后才可导入。
 
 | 工具 | 参数与版本来源 |
 | --- | --- |

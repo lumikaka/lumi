@@ -16,7 +16,7 @@ import (
 
 // Real host-specific tools/list -> tools/call -> shared CLI -> River -> preview.
 func TestPluginWebsiteStdioDelivery(t *testing.T) {
-	for _, host := range []string{"codex", "claude"} {
+	for _, host := range []string{"codex", "generic"} {
 		t.Run(host, func(t *testing.T) {
 			opt := cliOptions(t)
 			root, err := filepath.EvalSymlinks(t.TempDir())
@@ -40,7 +40,7 @@ func TestPluginWebsiteStdioDelivery(t *testing.T) {
 			call := func(name string, args map[string]any) map[string]any { return callText(t, client, name, args, "") }
 			empty := map[string]any{}
 			language, promptStart := "zh-Hans", "请使用 Sites 插件"
-			if host == "claude" {
+			if host == "generic" {
 				language, promptStart = "en", "Use the Sites plugin"
 			}
 			init := call("project_init", map[string]any{"idea": "A star", "name": "网站验收", "generation_language": language})

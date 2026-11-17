@@ -27,7 +27,7 @@ go test ./internal/production ./internal/files ./internal/textmcp ./internal/pro
 
 Cindy 的完整创作流程维护在 [authoring Manual](lumi/manual/authoring/MANUAL.md)。竖向条漫沿用共享服务的自动镜头计划；逐页看图后记录当前版本，再按 missing_image / pending / needs_revision / passed 续做。交互式审阅界面仍未开放，图片核对记录使用已有 `pages record_image_review`，无需增加工具。
 
-本轮保留现有维护方式：`plugin-skills/` 与 `scripts/build-skills.mjs` 继续只生成 Codex、Claude Skill；Cindy Manual 独立处理宿主差异，不把它加入原生成链路。最小防漏门禁是只读的 [check-authoring.mjs](scripts/check-authoring.mjs)，已接入 Cindy 的生产/开发构建入口，也由 Cindy 测试执行。它不会改写任何源文件或稳定插件的产物。
+本轮保留现有维护方式：`plugin-skills/` 与 `scripts/build-skills.mjs` 继续只生成 Codex 和通用 Agent Skill；Cindy Manual 独立处理宿主差异，不把它加入原生成链路。最小防漏门禁是只读的 [check-authoring.mjs](scripts/check-authoring.mjs)，已接入 Cindy 的生产/开发构建入口，也由 Cindy 测试执行。它不会改写任何源文件或稳定插件的产物。
 
 | 检查规则 | 权威来源（仓库根目录相对路径） |
 | --- | --- |

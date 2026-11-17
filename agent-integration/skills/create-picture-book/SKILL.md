@@ -1,11 +1,11 @@
 ---
 name: create-picture-book
-description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
+description: 在 Agent 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
 ---
 
 # Lumi 绘本创作
 
-写作、推理和看图使用 Claude Code 自身的能力；Lumi 负责项目事实、版本、图片挂载、审阅和导出，并通过 `generate_page_image` 调用用户在 Lumi 中配置的图片服务商生成页面图（由该服务商计费）。Claude Code 没有原生生图工具，本插件不使用 MCP Apps 或嵌入式工作区；需要查看或在网页中编辑时，用 `web_url` 给出 Lumi Web 链接。服务商未配置时给出 `web_url(view=providers)` 链接，由用户自行配置，不索取或保存 API key。
+写作、推理和看图使用 Agent 自身的能力；Lumi 负责项目事实、版本、图片挂载、审阅和导出，并通过 `generate_page_image` 调用用户在 Lumi 中配置的图片服务商生成页面图（由该服务商计费）。通用模式不要求宿主原生生图，通用接入包不使用 MCP Apps 或嵌入式工作区；需要查看或在网页中编辑时，用 `web_url` 给出 Lumi Web 链接。服务商未配置时给出 `web_url(view=providers)` 链接，由用户自行配置，不索取或保存 API key。
 
 ## 导出阅读网站
 
@@ -17,13 +17,13 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 执行 CLI 命令前先读 [CLI 入口](references/cli.md)，使用其中的可执行文件和环境参数。下文的 `lumi` 表示该入口；正式版和开发版各有自己的入口，不能混用。
 
-除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Claude Code 会话。
+除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Agent 会话。
 
 - 返回 `project_not_initialized` 且用户要求创建时，用原始创意调用 `project_init`，得到 setup 草稿。不要先创建一个默认 ready 项目再覆盖用户规格。
-- `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep`、AGENTS.md、仅含 `@AGENTS.md` 的 CLAUDE.md 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；续做已有项目时也执行一次 `lumi init --json`，用于升级旧版官方 AGENTS.md；返回 agents=updated 后重读该文件。CLAUDE.md 已存在且不含 `@AGENTS.md` 时返回 claude=manual，按提示由用户局部合并，不覆盖原文件。使用入口文档的绝对路径。
+- `project_init` 成功后，在同一目录通过 CLI 运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep` 和通用 AGENTS.md；已有项目不重置 setup、内容或规格。再用 `lumi project info --json` 核对。续做时也可运行 `lumi init --json` 升级旧版官方 AGENTS.md，返回 agents=updated 后重读。已有 CLAUDE.md 和用户宿主配置均保留；不创建 CLAUDE.md 或安装 hook。使用接入文档的 CLI 绝对路径与相同 environment/data-dir。
 - 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
 - 已有项目读取概况、`project_setup get`、`book_outline`、相关章节和设定，保留现有进度。`project_locked` 时按错误详情释放桌面版或其他 CLI 占用，不删锁文件。
-检查 `lumi init` 返回的 guidance、claude 和 warnings；配置冲突时保留现有设置，按返回的合并建议处理。插件的 PreToolUse hook 只在 Lumi 项目目录内拦截 Bash 直接访问受保护路径；`.claude/settings.json` 的 deny 规则由用户按插件 README 自行添加，不能替用户修改权限或宣称写保护已完整生效。新的 CLAUDE.md 在新会话中加载；当前会话可以继续创作。
+检查 `lumi init` 返回的 guidance 和 warnings，保留用户配置。AGENTS.md 是行为指引，不宣称宿主沙箱或写保护已生效；按当前宿主的项目指引加载方式读取它，必要时显式读取。
 
 宿主没有命令执行工具时，不捏造 CLI 执行结果；若 `project_overview` 已确认本目录项目可用，记录指引升级／CLI 配置核验未执行，继续已获授权的 MCP 创作。项目仍未初始化时使用 `project_init → project_setup`；缺少的宿主配置由用户在有能力的环境补齐，不声称保护或配置已经生效。
 
@@ -33,7 +33,7 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 遵循用户已经给出的语言、年龄、页数、风格、审阅和交付要求。没指定的可逆细节做合理假设并说明；绘本格式与比例定稿后不可变，若用户未指定也未授权自行决定，在 setup 定稿前确认。
 
-**用户要求优先于参考图特征，参考图特征优先于代理默认值**；不能由年龄或“细节自定”推导冲突的造型、配色与字体。**用户附带参考图或图片链接时，先读 [设定图的用户参考](references/setting-references.md)**：按用户指定用途用 Read 实际看图；画风参考先提取具体视觉特征，包括独特对白／旁白字体，新项目在 setup 定稿前保存到 `overall_style`，分页时保留到分镜。设定图的来源与降级方案见该参考；不能只凭文字描述宣称设定图就绪。已有设定图也要检查是否符合目标画风；设定图实际核对通过后，提交绑定当前版本与画风的 `setting_reviews`，正文沿用设定合图流程；首张正文须再核对画风与字体后才继续余页。没有用户参考图时按已保存的用户要求与画风核对。
+**用户要求优先于参考图特征，参考图特征优先于代理默认值**；不能由年龄或“细节自定”推导冲突的造型、配色与字体。**用户附带参考图或图片链接时，先读 [设定图的用户参考](references/setting-references.md)**：按用户指定用途用宿主看图能力实际看图；画风参考先提取具体视觉特征，包括独特对白／旁白字体，新项目在 setup 定稿前保存到 `overall_style`，分页时保留到分镜。设定图的来源与降级方案见该参考；不能只凭文字描述宣称设定图就绪。已有设定图也要检查是否符合目标画风；设定图实际核对通过后，提交绑定当前版本与画风的 `setting_reviews`，正文沿用设定合图流程；首张正文须再核对画风与字体后才继续余页。没有用户参考图时按已保存的用户要求与画风核对。
 
 分别规划**设定图、封面图、正文图**的范围。“条漫图片只生成到第一页”只限制正文图；首次创作默认先完成本次所需的角色、场景和关键道具设定图，再生成第一页。设定图不占正文页数或正文图数量，无需另加确认。只有用户明确要求纯文字、跳过设定图、直接使用文字参考，或限制了全部生图次数时，才按该要求调整；不得自行假设额度不足，或把正文限制扩写成“所有设定只做文字”。`generation_brief` 区分用户要求与代理的执行选择，不把自行省略设定图写成用户约束；恢复任务时也按原始用户要求校核 brief，代理自行写入的限制不视为用户要求。
 
@@ -43,16 +43,18 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 1. **想法 → setup**：按参考中的合法组合和 `get → update → finalize` 顺序写入。已有明确规格直接沿用；形式与比例冲突时先说明可行选择及影响，不自行替换形式。当前目录没有专门的 setup 模板，不猜造模板名，也不触发 Lumi 内部生成 pipeline。
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
-3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。Claude Code 不能直接生成设定图：按 [设定图来源与降级](references/batch-settings.md) 导入用户提供的真实图片文件，或用 `web_url(setting_uuid)` / `web_url(view=settings)` 请用户在 Lumi 中生成后再重读；不得假装批量总览图或单项生图可用。已有文字设定按 UUID 和最新 revision 补图，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
+3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。通用 MCP 不提供设定图生成工具：按 [设定图来源与降级](references/batch-settings.md) 导入用户提供的真实图片文件，或用 `web_url(setting_uuid)` / `web_url(view=settings)` 请用户在 Lumi 中生成后再重读；不得假装批量总览图或单项生图可用。已有文字设定按 UUID 和最新 revision 补图，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。竖向条漫默认按 [MCP 调用参考](references/mcp-usage.md)传 `moment_count_plan="auto"` 和正文页数上限，由 Lumi 生成逐页镜头数。用户指定节奏时优先采用。写回前按计划核对各页瞬间数，并按剧情决定主画面、停顿和切镜位置，避免把瞬间机械等分为等高画格。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
-5. **生图与挂载**：页面先按 [页面生图](references/page-images.md) 用 `image_target` 选择并核对设定，再调用 `generate_page_image`（提交通过的 `setting_reviews`、页面最新 revision 和本次唯一的 `idempotency_key`）。需要先看参考合图时调用 `prepare_page_image`，用 Read 查看返回的 `reference_image_path`。生成完成后用返回的 `read_image.asset_uuid` 调 `read_image` 实际看成图，并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页。按用户要求完成整本，不只生成示范页。
+5. **生图与挂载**：页面先按 [页面生图](references/page-images.md) 用 `image_target` 选择并核对设定，再调用 `generate_page_image`（提交通过的 `setting_reviews`、页面最新 revision 和本次唯一的 `idempotency_key`）。需要先看参考合图时调用 `prepare_page_image`，用宿主看图能力查看返回的 `reference_image_path`。生成完成后用返回的 `read_image.asset_uuid` 调 `read_image` 实际看成图，并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页。按用户要求完成整本，不只生成示范页。
 6. **导出与交付**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。单章交付必须传该章 `chapter_uuid`；整书导出省略。核对返回的 scope、page_count、missing_image_count。完成后只调用一次与交付范围对应的 `web_url`：整本省略范围参数（作品总览），指定章节传 `chapter_uuid`，仅生成或交付一页（包括仅第一页）传 `page_uuid`；把返回的 url 原样给用户。导出完成沿用同一交付范围，不追加整本链接。用户要求中途查看或在网页中编辑时同样给出对应范围的 `web_url`，设定传 `setting_uuid`。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 
 ### 按章、按场制作与委派边界
 
 **制作或续做章节前先读 [串行制作与恢复](references/serial-production.md)**。单章由当前聊天负责；涉及两章及以上时，当前聊天只管总进度，按章顺序交接最终设定版本与连续性。章节主聊天先读已保存分镜，划分连续页段并汇总人物、服装、道具和场景；每章一个设定 subagent，每场一个独立场景 subagent，上一场通过后才启动下一场。场内逐页完成准备参考、生图、挂载、看实际采用图、保存核对，本页通过后再做下一页。设定错误交回本章设定 subagent，复核受影响的已完成页后恢复原场景。
 
-多章先检查本会话实际可调用的独立聊天机制：有则为每章建立或复用独立聊天，按章串行；没有则明确由当前聊天逐章串行。`Agent`／`Task` 子任务不是独立章节聊天，不能把它说成已建聊；可用时仍分别用于每章的设定和每场的场景 subagent。
+宿主无子任务工具时，由当前聊天承担下述各角色，按相同写入与核对边界串行完成；独立聊天与 subagent 都不是通用流程的前提。
+
+多章先检查本会话实际可调用的独立聊天机制：有则为每章建立或复用独立聊天，按章串行；没有则明确由当前聊天逐章串行。宿主子任务不是独立章节聊天，不能把它说成已建聊；可用时仍分别用于每章的设定和每场的场景 subagent。
 
 | 角色 | 可写范围 | 返回内容 |
 | --- | --- | --- |
@@ -71,7 +73,7 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 ## 服务端页面生图与一致性
 
-**页面生图前必须读 [页面生图](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 用 Read 或 `read_image` 实际看当前设定图并记录依据与具体观察，然后调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。Lumi 使用与 Web 及 `prepare_page_image` 相同的合图、有效规则、画风和完整提示词，由用户配置的图片服务商生成，并把结果挂载为页面当前图片。明确无需图片参考时传 `[]`，走真实无参考流程。
+**页面生图前必须读 [页面生图](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 用宿主看图能力或 `read_image` 实际看当前设定图并记录依据与具体观察，然后调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。Lumi 使用与 Web 及 `prepare_page_image` 相同的合图、有效规则、画风和完整提示词，由用户配置的图片服务商生成，并把结果挂载为页面当前图片。明确无需图片参考时传 `[]`，走真实无参考流程。
 
 `expected_revision` 取自本次 `image_target` 或 `pages get`。每次新的生图使用新的 `idempotency_key`；同一请求超时、返回 `done:false` 或会话中断后，用**完全相同的参数和 key** 重放以继续等待或取回结果，不换新 key（会重复生成并计费）。revision 冲突说明页面在 Lumi Web 中被修改：重读页面与最新 revision，必要时重新核对后再生图，不覆盖用户的网页修改。
 

@@ -11,7 +11,7 @@ import (
 	"lumi/internal/project"
 )
 
-// Host mode (Claude generate_page_image) reuses the comic image task but pins
+// Host mode (generic generate_page_image) reuses the comic image task but pins
 // the prepare_page_image prompt and explicit references: no LLM reference
 // selection runs even when the project has candidate settings.
 func TestHostPageImageTaskUsesPreparedPromptWithoutSelection(t *testing.T) {

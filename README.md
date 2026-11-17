@@ -437,3 +437,5 @@ updater 密钥通过 `cargo tauri signer generate` 离线生成，公钥保存�
 ## 本地项目 MCP
 
 通用外部 AI 客户端可从 Lumi 的「设置 → MCP 设置」复制 HTTP OAuth 地址，在授权页选择项目和只读或编辑权限。此方式需要 Lumi 运行，并支持持久化危险操作确认；上方 Codex 绘本插件通过自己的 CLI 和 stdio MCP 工作。详见 [连接和使用说明](docs/local-project-mcp.md)。
+
+通用 Agent 创作接入（OpenCode、pi、Claude Code）：[配置、共享 Skill 与旧插件迁移](agent-integration/README.md)。Codex 与 Cindy 继续使用各自插件。

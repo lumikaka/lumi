@@ -34,8 +34,8 @@ const reviewedCreationVersion = 4
 // Version 5 adds the app-only high-resolution image read.
 const appImageDetailVersion = 5
 
-// Version 6 adds the Claude-host page generation task and forwards --host.
-// Only generate_page_image requires it; every other tool keeps v4/v5.
+// Version 6 introduced the server-side page generation task and --host forwarding.
+// Generic mode additionally requires v10 to recognize its host value.
 const hostPageImageVersion = 6
 
 // Version 8 returns the local directory to Cindy instead of an archive receipt.
@@ -43,7 +43,10 @@ const cindyWebsiteDirectoryVersion = 8
 
 // Version 9 includes the desktop publishing prompt in successful website exports.
 const websitePublishPromptVersion = 9
-const creationProtocolVersion = websitePublishPromptVersion
+
+// Version 10 accepts the generic host; older daemons reject that transport hint.
+const genericHostVersion = 10
+const creationProtocolVersion = genericHostVersion
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -152,7 +155,7 @@ func registerTextAuthoring(e *echo.Echo, identity instance, projects *project.Ma
 			return httpapi.NewError(400, "invalid_arguments", "创作请求无效", "只能提交一个 JSON 对象。", err)
 		}
 		if !textmcp.ValidHost(input.Host) {
-			return httpapi.NewError(400, "invalid_arguments", "创作请求宿主无效", "host 只能是 claude、codex 或 cindy。", nil)
+			return httpapi.NewError(400, "invalid_arguments", "创作请求宿主无效", "host 只能是 generic、codex 或 cindy；旧 Claude 插件请改用 --host generic。", nil)
 		}
 		if input.Host == textmcp.HostCindy && input.Tool == "export_website" && input.ClientProtocolVersion < cindyWebsiteDirectoryVersion {
 			return httpapi.NewError(409, "cli_upgrade_required", "Cindy 插件需要升级才能读取网站目录", "更新 Cindy 的 Lumi 插件后重新生成网站。", nil)
@@ -209,6 +212,9 @@ func runMCP(opt options) error {
 			if opt.host == textmcp.HostCindy {
 				input.ClientProtocolVersion = creationProtocolVersion
 			}
+		}
+		if opt.host == textmcp.HostGeneric {
+			requiredVersion = genericHostVersion
 		}
 		if status.CreationProtocolVersion < requiredVersion {
 			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，此操作要求 v%d。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, requiredVersion, opt.environment, opt.dataDir))

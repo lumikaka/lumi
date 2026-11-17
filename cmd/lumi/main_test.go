@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zalando/go-keyring"
 	"lumi/internal/appstore"
 	"lumi/internal/config"
 	"lumi/internal/processlock"
@@ -27,6 +28,11 @@ import (
 // Re-execute the test binary as a real CLI/desktop process, without depending
 // on a prebuilt binary or a frontend build in a clean checkout.
 func TestMain(m *testing.M) {
+	// Cross-process fixtures share a synthetic key without using the OS keychain.
+	if key := os.Getenv("LUMI_TEST_MASTER_KEY"); key != "" {
+		keyring.MockInit()
+		_ = keyring.Set("lumi.site-settings", "master-key-v1", key)
+	}
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "serve", "status", "stop", "__serve", "init", "open", "project", "session", "cindy-session", "mcp":

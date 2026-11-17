@@ -147,8 +147,8 @@ def main():
                         assert archive.testzip() is None and archive.namelist()
             # Inspect the shipped host-specific MCP registrations and open the
             # URLs returned by this binary's loopback server.
-            for host in ('codex', 'claude'):
-                if host == 'claude':
+            for host in ('codex', 'generic'):
+                if host == 'generic':
                     client.close()
                     client = MCP(binary, project, data, env, host)
                 assert 'export_website' in {t['name'] for t in client.call('tools/list', {})['tools']}
@@ -164,7 +164,7 @@ def main():
             assert command('stop')['running'] is False
             assert command('status', 3)['running'] is False
             assert command('serve')['running'] is True, 'restart after releasing locks failed'
-            print('PASS: packaged CLI singleton, embedded Web, stdio MCP, Unicode project, image import, PDF/ZIP, Codex + Claude websites, stop/restart')
+            print('PASS: packaged CLI singleton, embedded Web, stdio MCP, Unicode project, image import, PDF/ZIP, Codex + generic websites, stop/restart')
         except Exception:
             for log in (root / 'mcp.stderr', data / 'cli-production.log'):
                 if log.exists():

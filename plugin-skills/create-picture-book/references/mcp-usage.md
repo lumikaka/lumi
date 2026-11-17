@@ -26,7 +26,7 @@
 
 <!-- host:codex -->
 定稿需要名称、生成语言、画风、创作要求和有效绘本规格完整；已有值直接沿用。`generation_scope` **不是该 MCP 工具的输入字段**，不要传入。服务端在 update 中固定 `project_only`，只表示不启动 Lumi 内部自动生成，不限制 Codex 继续完成故事、设定、分页和宿主生图。
-<!-- host:claude -->
+<!-- host:generic -->
 定稿需要名称、生成语言、画风、创作要求和有效绘本规格完整；已有值直接沿用。`generation_scope` **不是该 MCP 工具的输入字段**，不要传入。服务端在 update 中固定 `project_only`，只表示不启动 Lumi 内部自动生成，不限制继续完成故事、设定、分页和 `generate_page_image` 页面生图。
 <!-- /host -->
 
@@ -34,8 +34,8 @@
 
 <!-- host:codex -->
 用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先实际读图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图；设定生图必须通过宿主图片参数携带相关原图。`context_setting_uuids` 只提供项目上下文，不会自动把图片传给 imagegen。
-<!-- host:claude -->
-用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先用 Read 实际看图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图。`context_setting_uuids` 只提供项目上下文，不会把图片交给生图服务。
+<!-- host:generic -->
+用户附带参考图时，按 [设定图的用户参考](setting-references.md) 先用宿主看图能力实际看图并区分画风／身份／故事用途；用户要求优先；画风参考提取具体视觉特征（含独特对白字体）后写入 `overall_style`，参考用途写入 `generation_brief`，再定稿。正文依赖核对后的设定图。`context_setting_uuids` 只提供项目上下文，不会把图片交给生图服务。
 <!-- /host -->
 
 先核对合法组合，再提供选项。定稿后正式规格不可改；用户已指定的形式与比例冲突时，说明可行选择及影响，获得针对冲突的决定后再定稿。选择比例不等于同意改形式；已有自主授权范围内的缺失选择可直接决定，不新增重复确认。
@@ -143,7 +143,7 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 ```
 
 同一轮中用 `load(taskKey)` 取回完整对象。委派时将该对象连同用户约束交给子任务；父代理自己执行时读取完整 `prompt`。写回使用已审阅的完整草稿。中断后从 Lumi 重读已保存的事实并核对版本，执行单元里的键只用于临时传值。
-<!-- host:claude -->
+<!-- host:generic -->
 普通 Lumi MCP 调用从 `structuredContent` 取一次 JSON 信封；宿主仅提供文本时才解析 `content` 中的 JSON，不重复展开两份。按名称取当前工具声明，按 `prompt_group` 查模板，只回显本次要用的键和占位符。写入成功时回显目标 UUID、revision、警告及下一步需要的字段。分页保留游标和父集合 revision。出错时回显目标和原错误的 `code/message/details`；宿主调用本身失败时保留其诊断。
 
 先检查 `isError` 与信封 `success`；成功时只记下本次要用的 `prompt_key`、`target_uuid`、`expected_revision` 和 `write_back`，完整 `prompt` 留给执笔的代理读取。委派时将完整结果连同用户约束交给子任务；父代理自己执行时读取完整 `prompt`。写回使用已审阅的完整草稿。中断后从 Lumi 重读已保存的事实并核对版本。
@@ -163,15 +163,15 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 | `pages` | `chapter_uuid` | `pages create`；页面集合 revision |
 <!-- host:codex -->
 | `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `prepare_page_image` 的 `generation_prompt/image_write_back/preparation` 导入，见 [页面生图提示词](page-images.md)；单页 revision |
-<!-- host:claude -->
+<!-- host:generic -->
 | `page` | `chapter_uuid`、`page_uuid` | 文本用 `pages update`；页面生图用 `generate_page_image` 自动挂载，不传回 prompt 或 preparation，不再 import_image；单页 revision |
 <!-- /host -->
 | `premise` | 无 | `settings create`；设定集合 revision |
 | `setting` | `setting_uuid` | `settings update`；单项设定 revision |
 <!-- host:codex -->
 | `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；额外返回供宿主生图使用的 `generation_prompt` |
-<!-- host:claude -->
-| `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；返回的 `generation_prompt` 可交给用户在其他工具中生成总览图（Claude Code 不能直接生成） |
+<!-- host:generic -->
+| `setting_board` | 无；只配合 `premise/setting_image` | `setting_boards import`；设定集合 revision；返回的 `generation_prompt` 可交给用户在其他工具中生成总览图（Agent 不能直接生成） |
 <!-- /host -->
 | `setting_breakdown` | `board_uuid`；只配合 `premise/asset_breakdown` | `apply_setting_breakdown`；批次 revision 与 `expected_premise_revision` |
 
@@ -193,7 +193,7 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 ```json
 {"name":"review_candidates","arguments":{"kind":"text","candidates":[{"title":"温暖结局","text":"星星点亮了狐狸回家的路。"},{"title":"幽默结局","text":"星星约狐狸下次带一把更大的伞。"}]}}
 ```
-<!-- host:claude -->
+<!-- host:generic -->
 对话编号选择用 `pages/settings {action:"get",include_versions:true,...目标 UUID}` 重读。返回的 `image_versions` 是分页的 `{items,total,snapshot,cursor_pagination}`，每项仅含 uuid、version_no、asset_uuid、is_current。按用户编号匹配 version_no，再用目标最新 revision 和 variant UUID 调用上表的 `select_image`；需要后续页时使用 after/limit。需要让用户比较候选时，用 `read_image` 自己看图并在对话中描述，或给出页面／设定的 `web_url` 让用户在网页中查看。
 <!-- /host -->
 
@@ -204,10 +204,10 @@ text({ taskKey, template: task.prompt_key, target_uuid: task.target_uuid, expect
 页面准备用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先生成设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `prepare_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?)` 返回合图路径和 SHA-256；当前代理首次见到该组合或缺少已看记录时读图，每页通过 `referenced_image_paths` 仅引用同一路径；页面 `import_image` 原样带回 `generation_prompt` 和含 digest/signature 的 `preparation`。详见 [页面生图提示词](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
 执行前读 [批量设定图流程](batch-settings.md)。这些工具只保存、裁切和绑定图片；生成及视觉定位由 Codex 完成。
-<!-- host:claude -->
-页面生图用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先补齐设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。需要预览参考合图时先用相同参数调用 `prepare_page_image` 并 Read 返回路径。详见 [页面生图](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
+<!-- host:generic -->
+页面生图用 `image_target(target_uuid, slot=page_image, setting_uuids?)` 返回 `setting_readiness`；省略选择查看候选，传 UUID 数组检查本页依赖。缺图先补齐设定图；`review_required` 表示有图待核对，按实际原图和用户要求核对通过后，携带当前版本与画风对应的 `setting_reviews` 调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。需要预览参考合图时先用相同参数调用 `prepare_page_image` 并用宿主看图能力查看返回路径。详见 [页面生图](page-images.md)。`setting_uuids` 不用于 `slot=setting_image`，也不会持久化页面关联。
 
-执行前读 [设定图来源与降级](batch-settings.md)。这些工具只保存、裁切和绑定已有图片；Claude Code 不能生成总览图，用户在其他工具或 Lumi 中生成后才可导入。
+执行前读 [设定图来源与降级](batch-settings.md)。这些工具只保存、裁切和绑定已有图片；Agent 不能生成总览图，用户在其他工具或 Lumi 中生成后才可导入。
 <!-- /host -->
 
 | 工具 | 参数与版本来源 |
@@ -248,7 +248,7 @@ App 通过只读 `read_app_image` 加载 384/1024 最长边预览；缩略图在
 完整业务对象通过 App-only `read_app_resource` / `write_app_resource` 的 `_meta["lumi/app_response"]` 交给 UI；图片亦在 `_meta`，不复制到模型可见文本或 structuredContent。模型要读具体正文时使用原有 `chapters/pages/settings` 读取工具。App-only 可见性不保证宿主一定排除上下文，真实宿主验证状态见仓库验收文档。
 
 文件导入支持宿主附件单次 6 MiB；下载交给宿主打开同一 Lumi 资源。AI 生成、聊天引用和系统配置保留“在 Lumi 中打开”入口，不自动触发生成或切换付费渠道。宿主不可用不阻塞用户已授权的创作流程。
-<!-- host:claude -->
+<!-- host:generic -->
 ## 交付与 Web 链接
 
 完成用户要求的创作、保存和所需导出后，只调用一次与交付范围对应的 `web_url`：整本 `web_url({})`，指定章节 `web_url({chapter_uuid})`，仅生成或交付一页（包括仅第一页）`web_url({page_uuid})`。导出不改变交付范围，不在章节或单页之后追加整本链接。不等待用户打开链接，不新增确认节点。

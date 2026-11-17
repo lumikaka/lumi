@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-17",
+  "manual_title_saved": "Home at last · Web reviewed",
+  "mcp_reread_matches_web_edit": true,
+  "review_scope": "page",
+  "page_uuid": "01a1e72d-4b56-7714-85a2-bcb93bc0d2eb",
+  "website_export": "completed through Web; preview reader and current title observed",
+  "screenshots": [
+    "web-exports.jpg",
+    "web-reader.jpg"
+  ],
+  "image_generation_ui": "unconfigured-provider error observed; successful provider pipeline verified separately in Go integration"
+}

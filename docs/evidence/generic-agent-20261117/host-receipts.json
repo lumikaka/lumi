@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-17",
+  "platform": "macOS arm64",
+  "binary_sha256": "1fbae6ae90529b8da1c41c18a8d64d21ed669930a504ac557c29bda0750ec4e1",
+  "host_mode": "generic",
+  "project_binding": "process startup cwd; isolated temporary book",
+  "skill_source": "agent-integration/skills/create-picture-book",
+  "runs": [
+    {
+      "host": "opencode",
+      "version": "2.2.0",
+      "model": "local deterministic fixture",
+      "exit_code": 0,
+      "skill_loaded": true,
+      "skill_sha256": "945e5f03dc509a05215708efc8bd2b5556360297a8c35c686974efe6cb4a280a",
+      "tool_calls": [
+        "skill",
+        "execute"
+      ],
+      "observed_project": {
+        "uuid": "01a1e72d-499b-746c-a074-827e28d8fac5",
+        "name": "Generic host acceptance",
+        "setup_status": "ready",
+        "revision": 3
+      }
+    },
+    {
+      "host": "pi",
+      "version": "1.5.2",
+      "model": "local deterministic fixture",
+      "exit_code": 0,
+      "skill_loaded": true,
+      "skill_sha256": "945e5f03dc509a05215708efc8bd2b5556360297a8c35c686974efe6cb4a280a",
+      "tool_calls": [
+        "read",
+        "mcp__lumi__project_overview"
+      ],
+      "observed_project": {
+        "uuid": "01a1e72d-499b-746c-a074-827e28d8fac5",
+        "name": "Generic host acceptance",
+        "setup_status": "ready",
+        "revision": 3
+      }
+    },
+    {
+      "host": "claude",
+      "version": "2.1.322",
+      "model": "local deterministic fixture",
+      "exit_code": 0,
+      "skill_loaded": true,
+      "skill_sha256": "945e5f03dc509a05215708efc8bd2b5556360297a8c35c686974efe6cb4a280a",
+      "tool_calls": [
+        "Skill",
+        "ToolSearch",
+        "mcp__lumi__project_overview"
+      ],
+      "observed_project": {
+        "uuid": "01a1e72d-499b-746c-a074-827e28d8fac5",
+        "name": "Generic host acceptance",
+        "setup_status": "ready",
+        "revision": 3
+      }
+    }
+  ]
+}

@@ -2,10 +2,10 @@
 # 页面生图：服务端现拼参考图
 
 正文、封面、封底统一使用 `prepare_page_image`。Lumi 复用 Web 的合图和完整提示词组装，Codex 负责读临时合图、交给宿主 imagegen，再立即导入。不启动 Lumi provider pipeline，不自动切换付费 API。
-<!-- host:claude -->
+<!-- host:generic -->
 # 页面生图：服务端合图与生成
 
-正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Claude Code 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
+正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Agent 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
 <!-- /host -->
 
 ## 1. 明确本页设定
@@ -18,8 +18,8 @@
 - `missing_images`：先按 [批量设定图](batch-settings.md) 或单项流程补齐。仅有文字、已导入但尚未拆分的总览图都不算设定图就绪。
 <!-- host:codex -->
 - `review_required`：图片已齐全，先按 [设定图核对](setting-references.md#4-核对后再用于正文) 对照用户要求／原参考，记录具体观察。核对阶段可用 `read_image` 查看设定；页面生成阶段只读返回的合图。
-<!-- host:claude -->
-- `review_required`：图片已齐全，先按 [设定图核对](setting-references.md#4-核对后再用于正文) 对照用户要求／原参考，记录具体观察。核对阶段用 `read_image` 查看设定；需要看本页参考合图时，用 `prepare_page_image` 返回的路径 Read。
+<!-- host:generic -->
+- `review_required`：图片已齐全，先按 [设定图核对](setting-references.md#4-核对后再用于正文) 对照用户要求／原参考，记录具体观察。核对阶段用 `read_image` 查看设定；需要看本页参考合图时，用 `prepare_page_image` 返回的路径用宿主看图能力查看。
 <!-- /host -->
 - `no_settings_selected`：核对是否确实无需视觉参考。明确无参考图时传 `[]`，执行真实无参考流程。
 
@@ -31,12 +31,12 @@
 
 <!-- host:codex -->
 `prepare_page_image` 必填 `page_uuid, setting_uuids`；非空选择还必须提供逐项通过的 `setting_reviews`，可选 `additional_direction`（用户本次补充要求）。`setting_uuids` 最多 12 项、不得重复，顺序就是合图编号。Lumi 读取当前采用的图片版本，每次用当前设定合成 PNG。同一项目和服务进程内，最终 PNG 字节相同就复用已校验的临时文件；文件丢失或损坏时返回新路径。缺图、核对未通过／过期、失效或跨项目引用会明确失败。
-<!-- host:claude -->
+<!-- host:generic -->
 `generate_page_image` 与 `prepare_page_image` 使用相同的选择与核对输入：必填 `page_uuid, setting_uuids`；非空选择还必须提供逐项通过的 `setting_reviews`，可选 `additional_direction`（用户本次补充要求）。`generate_page_image` 另需页面当前 `expected_revision` 和本次唯一的 `idempotency_key`，可选 `model`（服务商中的图片模型，省略时用 Lumi 默认）。`setting_uuids` 最多 12 项、不得重复，顺序就是合图编号。Lumi 读取当前采用的图片版本，每次用当前设定合成 PNG。缺图、核对未通过／过期、失效或跨项目引用会明确失败。
 <!-- /host -->
 
 `setting_reviews` 每项为 `{setting_uuid, variant_uuid, expected_revision, style_digest, verdict, reference_basis, comparison}`。身份和摘要来自本次 `image_target.setting_readiness`；`verdict` 为 `passed` 或 `needs_revision`，后者阻止准备。`reference_basis/comparison` 各最多 2000 字符且非空，记录用户要求和具体视觉对照。只提交本页所选设定的核对。重绘、切换图片版本、修改设定或全局画风后须重新看图核对；不能仅替换字段。无参考模式 `[]` 可省略核对数组。
-<!-- host:claude -->
+<!-- host:generic -->
 
 需要预览时，`prepare_page_image` 返回下表字段；`generate_page_image` 在服务端使用同一组装结果，不需要传回这些字段。
 <!-- /host -->
@@ -51,7 +51,7 @@
 <!-- host:codex -->
 | `generation_prompt` | 原样提交宿主的完整提示词，最多 12000 字符 |
 | `target` | 项目比例、宿主建议比例、留白及导入建议 |
-<!-- host:claude -->
+<!-- host:generic -->
 | `generation_prompt` | 服务端组装的完整提示词，最多 12000 字符；`generate_page_image` 原样使用，无需传回 |
 | `target` | 项目比例、建议比例、留白及裁切建议 |
 <!-- /host -->
@@ -97,10 +97,10 @@ text({ page_uuid: saved.target.target_uuid, revision, variant_uuid, input_size, 
 ```
 
 出现 `setting_image_review_required` 时补齐真实核对或先纠正设定；出现 `setting_image_review_stale` 时按当前设定与画风重新核对。出现 `page_image_preparation_stale` 或 revision 冲突时，重新准备，按本次合图判断是否需要预览，然后重新生图。不能只替换 revision、digest 或 signature 强行导入。缺少 `prepare_page_image` 或返回字段时先更新实际 CLI／开发后台并新开宿主会话，不回退到逐张设定图或付费 pipeline。
-<!-- host:claude -->
+<!-- host:generic -->
 ## 3. 生成并等待
 
-1. 需要确认参考时先 `prepare_page_image`，用 Read 查看 `reference_image_path`；同一 `reference_image_sha256` 已看过时跳过。合图和提示词在服务端重新组装，不复制、改写或追加 `generation_prompt`。
+1. 需要确认参考时先 `prepare_page_image`，用宿主看图能力查看 `reference_image_path`；同一 `reference_image_sha256` 已看过时跳过。合图和提示词在服务端重新组装，不复制、改写或追加 `generation_prompt`。
 2. 调用 `generate_page_image`。服务端在页面租约内重新校验选择、核对记录与 revision，再创建页面生图任务；调用会等待一段时间。
 3. 返回 `done:true` 时，`image` 含 `variant_uuid/version_no/asset_uuid`，`revision` 是挂载后的页面 revision，`is_current_image` 表示该图是否为当前图片。
 4. 返回 `done:false` 时任务仍在进行：用**完全相同的参数和 idempotency_key** 再次调用继续等待。同一 key 不会重复建任务或重复计费；换新 key 会重新生成。
@@ -118,14 +118,14 @@ text({ page_uuid: saved.target.target_uuid, revision, variant_uuid, input_size, 
 - `setting_image_review_required`／`setting_image_review_stale`：补齐真实核对，或按当前设定与画风重新核对。
 - `idempotency_key_conflict`：该 key 已用于其他页面，换新 key。
 - 任务明确终态失败或取消：按 `error_code` 与 details 处理（服务商额度、限流或配置）；先读当前页面确认结果，修正原因后确需新生成才用新 key。会话／网络中断不等于任务失败：先查当前图片，再用原参数和 key 取回原任务，不重复计费。
-- `host_not_supported`：当前连接不是 Claude Code 插件；`cli_upgrade_required`：先停止旧后台并用同版本 CLI 重启后新开会话。
+- `host_not_supported`：当前连接不是 --host generic；`cli_upgrade_required`：先协调共享后台使用者，再用同环境、数据目录的新版 CLI 停止旧后台并重连。
 <!-- /host -->
 
 ## 5. 逐页核对与恢复
 
 <!-- host:codex -->
 导入后实际看本次成图，对照已保存分镜、用户原文与设定，逐字核对旁白、对白、姓名、标点及说话人／气泡指向，再看人物肢体、服装、道具位置和前后页连续性。有边缘裁切时核对实际采用的处理版；需要时放大看字。看不清的字或无法确认的细节应记录为疑点。
-<!-- host:claude -->
+<!-- host:generic -->
 生成完成后用返回的 `read_image.asset_uuid` 调 `read_image` 实际看本次成图，对照已保存分镜、用户原文与设定，逐字核对旁白、对白、姓名、标点及说话人／气泡指向，再看人物肢体、服装、道具位置和前后页连续性。需要时放大看字。看不清的字或无法确认的细节应记录为疑点。
 <!-- /host -->
 

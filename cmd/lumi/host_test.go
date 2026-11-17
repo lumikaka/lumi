@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,7 +19,7 @@ import (
 )
 
 func TestMCPHostFlagRejectsUnknownValuesAtStartup(t *testing.T) {
-	for _, args := range [][]string{{"mcp", "--host", "vscode"}, {"mcp", "--host="}, {"mcp", "--host", "Claude"}, {"init", "--host", "other"}} {
+	for _, args := range [][]string{{"mcp", "--host", "claude"}, {"mcp", "--host", "vscode"}, {"mcp", "--host="}, {"mcp", "--host", "Claude"}, {"init", "--host", "other"}} {
 		var stdout, stderr bytes.Buffer
 		if exit := command(args, &stdout, &stderr); exit != 2 || !strings.Contains(stdout.String()+stderr.String(), "--host") {
 			t.Fatalf("%v exit=%d out=%s err=%s", args, exit, stdout.String(), stderr.String())
@@ -70,41 +69,19 @@ func TestMCPHostForwardsOnlyCompatibleRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(cleanup)
-	client := mcpHostClient(t, opt, root, "claude")
+	client := mcpHostClient(t, opt, root, "generic")
 	callText(t, client, "generate_page_image", map[string]any{"page_uuid": "01989abc-def0-7000-8000-000000000001", "setting_uuids": []string{}, "idempotency_key": "k", "expected_revision": 1}, "cli_upgrade_required")
+	callText(t, client, "project_overview", map[string]any{}, "cli_upgrade_required")
+	version.Store(genericHostVersion)
 	callText(t, client, "project_overview", map[string]any{}, "project_not_initialized")
 	// A v8 daemon can generate a website but cannot return its publishing prompt.
 	version.Store(8)
-	for _, host := range []string{"codex", "claude", "cindy"} {
+	for _, host := range []string{"codex", "generic", "cindy"} {
 		callText(t, mcpHostClient(t, opt, root, host), "export_website", map[string]any{}, "cli_upgrade_required")
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(forwarded) != 1 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "claude" {
+	if len(forwarded) != 1 || forwarded[0].Tool != "project_overview" || forwarded[0].Host != "generic" {
 		t.Fatalf("forwarded=%+v", forwarded)
-	}
-}
-
-func TestClaudeGuidanceCreatesImportOnlyAndNeverOverwrites(t *testing.T) {
-	root := t.TempDir()
-	result := ensureGuidance(root)
-	content, err := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
-	if err != nil || string(content) != "@AGENTS.md\n" || result.Claude != "created" {
-		t.Fatalf("claude=%q result=%+v err=%v", content, result, err)
-	}
-	again := guidanceResult{}
-	ensureClaudeGuidance(root, &again)
-	if again.Claude != "preserved" {
-		t.Fatalf("again=%+v", again)
-	}
-	custom := []byte("# 我的规则\n保持简洁。\n")
-	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), custom, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	manual := guidanceResult{}
-	ensureClaudeGuidance(root, &manual)
-	after, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
-	if manual.Claude != "manual" || !bytes.Equal(after, custom) || !strings.Contains(strings.Join(manual.Messages, ""), "@AGENTS.md") {
-		t.Fatalf("manual=%+v after=%q", manual, after)
 	}
 }

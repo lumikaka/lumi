@@ -25,7 +25,7 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"Lumi 插件工具", "禁止直接读取或写入", "STORY.md 是只读", "不限制读取", "人工确认", "user-data/ 供用户和 Agent 直接读写"} {
+	for _, required := range []string{"Lumi MCP 工具", "禁止直接读取或写入", "STORY.md 是只读", "不限制读取", "人工确认", "user-data/ 供用户和 Agent 直接读写"} {
 		if !strings.Contains(string(agents), required) {
 			t.Fatalf("missing guidance %q", required)
 		}
@@ -60,6 +60,41 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 	for _, name := range []string{"project.sqlite", "project.sqlite-wal", "project.sqlite-shm", "project.sqlite-journal", ".lumi", "assets"} {
 		if rules[name] != "read" {
 			t.Fatalf("rule %s=%v", name, rules[name])
+		}
+	}
+}
+
+func TestGenericGuidancePreservesLegacyHostFiles(t *testing.T) {
+	root := t.TempDir()
+	if result := ensureGuidance(root); result.Claude != "" {
+		t.Fatalf("unexpected legacy guidance: %+v", result)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Fatalf("created host-specific guidance: %v", err)
+	}
+	files := map[string]string{
+		"CLAUDE.md":             "# User instructions\n@AGENTS.md\nKeep my rules.\n",
+		".claude/settings.json": `{"permissions":{"deny":["Read(assets/**)"]}}`,
+		".mcp.json":             `{"mcpServers":{"mine":{"command":"custom"}}}`,
+		".pi/settings.json":     `{"theme":"dark"}`,
+		"opencode.json":         `{"model":"my-model"}`,
+	}
+	for name, content := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if result := ensureGuidance(root); result.Claude != "preserved" {
+		t.Fatalf("legacy file not preserved: %+v", result)
+	}
+	for name, content := range files {
+		got, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil || string(got) != content {
+			t.Fatalf("changed %s: %q, %v", name, got, err)
 		}
 	}
 }

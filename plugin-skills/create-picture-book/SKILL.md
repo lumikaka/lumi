@@ -2,8 +2,8 @@
 name: create-picture-book
 <!-- host:codex -->
 description: 在 Codex App 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及宿主生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
-<!-- host:claude -->
-description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
+<!-- host:generic -->
+description: 在 Agent 中用 Lumi 从想法创作、修改、审阅和导出本地绘本，包括故事、设定、分页及服务端页面生图。用于新建绘本、续做当前 Lumi 项目或生成、更新本地阅读网站。
 <!-- /host -->
 ---
 
@@ -11,8 +11,8 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 写作、推理和图片生成使用 Codex 的能力与额度；Lumi 负责项目事实、版本、图片挂载、审阅和导出。无需 API key，不配置 Lumi 模型服务商。本插件面向 macOS Codex App，并提供 Windows 原生 x64 安装预览；Windows 实机验收尚未完成，使用前按当前会话核实 MCP Apps、宿主读图和生图工具能力。不支持 WSL2、Windows ARM64、TUI 或 IDE 扩展。
-<!-- host:claude -->
-写作、推理和看图使用 Claude Code 自身的能力；Lumi 负责项目事实、版本、图片挂载、审阅和导出，并通过 `generate_page_image` 调用用户在 Lumi 中配置的图片服务商生成页面图（由该服务商计费）。Claude Code 没有原生生图工具，本插件不使用 MCP Apps 或嵌入式工作区；需要查看或在网页中编辑时，用 `web_url` 给出 Lumi Web 链接。服务商未配置时给出 `web_url(view=providers)` 链接，由用户自行配置，不索取或保存 API key。
+<!-- host:generic -->
+写作、推理和看图使用 Agent 自身的能力；Lumi 负责项目事实、版本、图片挂载、审阅和导出，并通过 `generate_page_image` 调用用户在 Lumi 中配置的图片服务商生成页面图（由该服务商计费）。通用模式不要求宿主原生生图，通用接入包不使用 MCP Apps 或嵌入式工作区；需要查看或在网页中编辑时，用 `web_url` 给出 Lumi Web 链接。服务商未配置时给出 `web_url(view=providers)` 链接，由用户自行配置，不索取或保存 API key。
 <!-- /host -->
 
 ## 导出阅读网站
@@ -27,23 +27,23 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标目录新开 App 会话。
-<!-- host:claude -->
-除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Claude Code 会话。
+<!-- host:generic -->
+除上述网站导出外，先调用 `project_overview` 确认当前会话目录。stdio MCP 在启动时绑定 cwd，没有切换项目路径的参数；不能靠 shell `cd` 改变已有连接。目录不对时让用户在目标绘本目录新开 Agent 会话。
 <!-- /host -->
 
 - 返回 `project_not_initialized` 且用户要求创建时，用原始创意调用 `project_init`，得到 setup 草稿。不要先创建一个默认 ready 项目再覆盖用户规格。
 <!-- host:codex -->
 - `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep`、AGENTS.md 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；续做已有项目时也执行一次，用于升级旧版官方 AGENTS.md；返回 agents=updated 后重读该文件。自定义文件按返回的局部合并提示处理。不要假定 GUI 继承 PATH，使用入口文档的绝对路径。
 - 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
-<!-- host:claude -->
-- `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep`、AGENTS.md、仅含 `@AGENTS.md` 的 CLAUDE.md 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；续做已有项目时也执行一次 `lumi init --json`，用于升级旧版官方 AGENTS.md；返回 agents=updated 后重读该文件。CLAUDE.md 已存在且不含 `@AGENTS.md` 时返回 claude=manual，按提示由用户局部合并，不覆盖原文件。使用入口文档的绝对路径。
+<!-- host:generic -->
+- `project_init` 成功后，在同一目录通过 CLI 运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep` 和通用 AGENTS.md；已有项目不重置 setup、内容或规格。再用 `lumi project info --json` 核对。续做时也可运行 `lumi init --json` 升级旧版官方 AGENTS.md，返回 agents=updated 后重读。已有 CLAUDE.md 和用户宿主配置均保留；不创建 CLAUDE.md 或安装 hook。使用接入文档的 CLI 绝对路径与相同 environment/data-dir。
 - 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
 <!-- /host -->
 - 已有项目读取概况、`project_setup get`、`book_outline`、相关章节和设定，保留现有进度。`project_locked` 时按错误详情释放桌面版或其他 CLI 占用，不删锁文件。
 <!-- host:codex -->
 - 检查 `lumi init` 返回的 guidance 和 warnings；配置冲突时保留现有设置，按返回的合并建议处理。提示用户在 App 信任项目并新开会话使配置生效；不能替用户设置 trust 或宣称写保护已生效。当前 MCP 会话可以继续创作，信任提示不替代用户的连续执行授权；用户/session 权限覆盖可能影响实际保护。
-<!-- host:claude -->
-检查 `lumi init` 返回的 guidance、claude 和 warnings；配置冲突时保留现有设置，按返回的合并建议处理。插件的 PreToolUse hook 只在 Lumi 项目目录内拦截 Bash 直接访问受保护路径；`.claude/settings.json` 的 deny 规则由用户按插件 README 自行添加，不能替用户修改权限或宣称写保护已完整生效。新的 CLAUDE.md 在新会话中加载；当前会话可以继续创作。
+<!-- host:generic -->
+检查 `lumi init` 返回的 guidance 和 warnings，保留用户配置。AGENTS.md 是行为指引，不宣称宿主沙箱或写保护已生效；按当前宿主的项目指引加载方式读取它，必要时显式读取。
 <!-- /host -->
 
 宿主没有命令执行工具时，不捏造 CLI 执行结果；若 `project_overview` 已确认本目录项目可用，记录指引升级／CLI 配置核验未执行，继续已获授权的 MCP 创作。项目仍未初始化时使用 `project_init → project_setup`；缺少的宿主配置由用户在有能力的环境补齐，不声称保护或配置已经生效。
@@ -56,8 +56,8 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 **用户要求优先于参考图特征，参考图特征优先于代理默认值**；不能由年龄或“细节自定”推导冲突的造型、配色与字体。**用户附带参考图或图片链接时，先读 [设定图的用户参考](references/setting-references.md)**：按用户指定用途实际看图；画风参考先提取具体视觉特征，包括独特对白／旁白字体，新项目在 setup 定稿前保存到 `overall_style`，分页时保留到分镜。批量和单项设定图生成都要显式携带本次相关的视觉参考原图，不能只传文字描述。已有设定图也要检查是否符合目标画风，必要时保留身份重新绘制；设定图实际核对通过后，提交绑定当前版本与画风的 `setting_reviews`，正文沿用设定合图流程；首张正文须再核对画风与字体后才继续余页。没有用户参考图时按已保存的用户要求与画风核对。
-<!-- host:claude -->
-**用户要求优先于参考图特征，参考图特征优先于代理默认值**；不能由年龄或“细节自定”推导冲突的造型、配色与字体。**用户附带参考图或图片链接时，先读 [设定图的用户参考](references/setting-references.md)**：按用户指定用途用 Read 实际看图；画风参考先提取具体视觉特征，包括独特对白／旁白字体，新项目在 setup 定稿前保存到 `overall_style`，分页时保留到分镜。设定图的来源与降级方案见该参考；不能只凭文字描述宣称设定图就绪。已有设定图也要检查是否符合目标画风；设定图实际核对通过后，提交绑定当前版本与画风的 `setting_reviews`，正文沿用设定合图流程；首张正文须再核对画风与字体后才继续余页。没有用户参考图时按已保存的用户要求与画风核对。
+<!-- host:generic -->
+**用户要求优先于参考图特征，参考图特征优先于代理默认值**；不能由年龄或“细节自定”推导冲突的造型、配色与字体。**用户附带参考图或图片链接时，先读 [设定图的用户参考](references/setting-references.md)**：按用户指定用途用宿主看图能力实际看图；画风参考先提取具体视觉特征，包括独特对白／旁白字体，新项目在 setup 定稿前保存到 `overall_style`，分页时保留到分镜。设定图的来源与降级方案见该参考；不能只凭文字描述宣称设定图就绪。已有设定图也要检查是否符合目标画风；设定图实际核对通过后，提交绑定当前版本与画风的 `setting_reviews`，正文沿用设定合图流程；首张正文须再核对画风与字体后才继续余页。没有用户参考图时按已保存的用户要求与画风核对。
 <!-- /host -->
 
 分别规划**设定图、封面图、正文图**的范围。“条漫图片只生成到第一页”只限制正文图；首次创作默认先完成本次所需的角色、场景和关键道具设定图，再生成第一页。设定图不占正文页数或正文图数量，无需另加确认。只有用户明确要求纯文字、跳过设定图、直接使用文字参考，或限制了全部生图次数时，才按该要求调整；不得自行假设额度不足，或把正文限制扩写成“所有设定只做文字”。`generation_brief` 区分用户要求与代理的执行选择，不把自行省略设定图写成用户约束；恢复任务时也按原始用户要求校核 brief，代理自行写入的限制不视为用户要求。
@@ -66,7 +66,7 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 在 Codex 工具执行层原样传递下一步需要的完整结果。主线程已读过的原稿、工具声明，以及仅用于转交的长提示词、写回参数，均省去重复的文本回显。主线程执笔或审阅时读足原文、分镜和对白，逐页实际看图。成功与失败的回显示例见 [MCP 调用参考](references/mcp-usage.md) 的「工具结果回显」。
-<!-- host:claude -->
+<!-- host:generic -->
 只回显下一步需要的字段。主线程已读过的原稿、工具声明，以及仅用于转交的长提示词、写回参数，均省去重复的文本回显。主线程执笔或审阅时读足原文、分镜和对白，逐页实际看图。成功与失败的回显示例见 [MCP 调用参考](references/mcp-usage.md) 的「工具结果回显」。
 <!-- /host -->
 
@@ -74,30 +74,40 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 2. **故事**：用 `render_prompt`（常用 `story/story_profile`）生成 Story Profile 与章节计划；`story_profile write` 保存 profile，`chapters create/write` 保存每章故事。渲染提示词不等于已写入，章节计划也不会自动执行。
 <!-- host:codex -->
 3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。首次带页面生图的创作必须先补齐必要设定图。多个独立主体按 [批量设定图](references/batch-settings.md) 生成总览图、识图，再由 Lumi 裁切入库；每批 1–6 个，复杂场景或精修单独处理。已有文字设定按 UUID 和最新 revision 补图，批量拆分可直接创建新图文设定，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
-<!-- host:claude -->
-3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。Claude Code 不能直接生成设定图：按 [设定图来源与降级](references/batch-settings.md) 导入用户提供的真实图片文件，或用 `web_url(setting_uuid)` / `web_url(view=settings)` 请用户在 Lumi 中生成后再重读；不得假装批量总览图或单项生图可用。已有文字设定按 UUID 和最新 revision 补图，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
+<!-- host:generic -->
+3. **设定规划**：从已保存故事提取本次章节／首图需要的角色、场景和关键道具；实际设定制作与核对由本章设定 subagent 在分镜保存、划场后统一完成。先 `settings list/get` 复用符合本次参考要求的已有图片，只有文字不算视觉准备完成。通用 MCP 不提供设定图生成工具：按 [设定图来源与降级](references/batch-settings.md) 导入用户提供的真实图片文件，或用 `web_url(setting_uuid)` / `web_url(view=settings)` 请用户在 Lumi 中生成后再重读；不得假装批量总览图或单项生图可用。已有文字设定按 UUID 和最新 revision 补图，不重复创建同名项。来源说明、版权备注等纯文字记录无需画图；用户明确的纯文字或跳过设定图要求按前述范围执行。
 <!-- /host -->
 <!-- host:codex -->
 4. **分页与画面描述**：输入为小说原文，且缺少可用分镜或用户要求重做时，由**章节主聊天**按 [小说分镜委派](references/serial-production.md#小说分镜委派) 为本章启动一个 `spawn_agent(fork_turns="none")` 分镜 subagent；它只写逐页草稿，章节主聊天逐页核对、串行写回后再划场。已有可用分镜且只需配图时直接复用，不启动分镜代理；中断先复用草稿、进度和原代理。其他分页仍按实际 `render_prompt` 模板及 [MCP 调用参考](references/mcp-usage.md) 处理。竖向条漫默认 `moment_count_plan="auto"` 和正文页数上限，用户指定节奏优先；按剧情安排主画面、停顿和切镜，核对逐页瞬间数，不机械等分等高画格。正文、画面描述、`page_role` 分别映射，不把输出 JSON 整体当正文。
-<!-- host:claude -->
+<!-- host:generic -->
 4. **分页与画面描述**：按章节使用 `render_prompt`（常用 `chapter/comic_storyboard`，封面用目录中的对应模板）规划阅读节奏、正文和完整画面。竖向条漫默认按 [MCP 调用参考](references/mcp-usage.md)传 `moment_count_plan="auto"` 和正文页数上限，由 Lumi 生成逐页镜头数。用户指定节奏时优先采用。写回前按计划核对各页瞬间数，并按剧情决定主画面、停顿和切镜位置，避免把瞬间机械等分为等高画格。按调用参考映射正文、画面描述和 `page_role`，不要把整个输出 JSON 当作正文保存。
 <!-- /host -->
 <!-- host:codex -->
 5. **生图与挂载**：页面先按 [页面生图提示词](references/page-images.md) 调用 `prepare_page_image`（先提交通过的 `setting_reviews`），当前代理首次遇到该摘要与路径时查看参考合图，再将同一路径和完整 `generation_prompt` 交给宿主生图；单项设定按下节生成。每张图生成后立即导入；逐页实际看成图并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页；批量设定总览图用 `setting_boards import`，随后识图并 `apply_setting_breakdown`。按用户要求完成整本，不只生成示范页。
 6. **导出与展示**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。单章交付必须传该章 `chapter_uuid`；整书导出省略。核对返回的 scope、page_count、missing_image_count。完成后只调用一次与交付范围对应的正常页面入口：整本用 `review_book()`（作品总览），指定章节用 `review_chapter(chapter_uuid)`，仅生成或交付一页（包括仅第一页）用 `review_page(chapter_uuid,page_uuid)`；查看章节集合用 `review_chapters()`。导出完成沿用同一交付范围，不追加阅读预览或再次打开整本。用户明确要求的中途审阅仍可使用这些入口或 `review_settings`，完成后继续执行。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
-<!-- host:claude -->
-5. **生图与挂载**：页面先按 [页面生图](references/page-images.md) 用 `image_target` 选择并核对设定，再调用 `generate_page_image`（提交通过的 `setting_reviews`、页面最新 revision 和本次唯一的 `idempotency_key`）。需要先看参考合图时调用 `prepare_page_image`，用 Read 查看返回的 `reference_image_path`。生成完成后用返回的 `read_image.asset_uuid` 调 `read_image` 实际看成图，并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页。按用户要求完成整本，不只生成示范页。
+<!-- host:generic -->
+5. **生图与挂载**：页面先按 [页面生图](references/page-images.md) 用 `image_target` 选择并核对设定，再调用 `generate_page_image`（提交通过的 `setting_reviews`、页面最新 revision 和本次唯一的 `idempotency_key`）。需要先看参考合图时调用 `prepare_page_image`，用宿主看图能力查看返回的 `reference_image_path`。生成完成后用返回的 `read_image.asset_uuid` 调 `read_image` 实际看成图，并用 `pages record_image_review` 记录当前版本的核对结果，再推进下一页。按用户要求完成整本，不只生成示范页。
 6. **导出与交付**：按用户要求完成创作、生图挂载和保存，再按需 `export_book`。单章交付必须传该章 `chapter_uuid`；整书导出省略。核对返回的 scope、page_count、missing_image_count。完成后只调用一次与交付范围对应的 `web_url`：整本省略范围参数（作品总览），指定章节传 `chapter_uuid`，仅生成或交付一页（包括仅第一页）传 `page_uuid`；把返回的 url 原样给用户。导出完成沿用同一交付范围，不追加整本链接。用户要求中途查看或在网页中编辑时同样给出对应范围的 `web_url`，设定传 `setting_uuid`。PDF 基于页面图片，文字要出现在图片中才会进入 PDF；同时用 Markdown 或 ZIP 交付全部可编辑文字。完整绘本交付用 `allow_missing_images=false`。缺页 PDF 仅当用户接受预览时设 true 并明确遗漏，PDF 至少需要一张正文图；中断时可用 true 导出 Markdown/ZIP 保存全部文字与已有图片。
 <!-- /host -->
 
 ### 按章、按场制作与委派边界
 
+<!-- host:codex -->
+**制作或续做章节前先读 [制作调度与恢复](references/serial-production.md)**。单章由当前聊天负责；涉及两章及以上时，当前聊天只管总进度，仍按章串行交接最终设定版本与连续性。每章一个设定 subagent，每场一个独立场景 subagent。场景默认串行，上一场通过并经主聊天从 Lumi 核实后才启动下一场；仅当用户明确选择“独立场景最多两场并行”时，按参考中的依赖判断启用章内例外，不扩展为并行章节。分镜和设定通过后先记录每场起始状态、依赖、依据及唯一页写入者；起始状态都确定且无未决图像连续性依赖的两场才可并行，依赖不明按串行。有站位、伤势、持物或动作承接的后场，须等依赖场通过，由主聊天核实当前采用版本、审阅状态并保存连续性交接后才启动。
+<!-- host:generic -->
 **制作或续做章节前先读 [串行制作与恢复](references/serial-production.md)**。单章由当前聊天负责；涉及两章及以上时，当前聊天只管总进度，按章顺序交接最终设定版本与连续性。章节主聊天先读已保存分镜，划分连续页段并汇总人物、服装、道具和场景；每章一个设定 subagent，每场一个独立场景 subagent，上一场通过后才启动下一场。场内逐页完成准备参考、生图、挂载、看实际采用图、保存核对，本页通过后再做下一页。设定错误交回本章设定 subagent，复核受影响的已完成页后恢复原场景。
+<!-- /host -->
 
 <!-- host:codex -->
-多章使用 `list_projects → create_thread`，在**同一 Lumi 项目目录**为每章建独立 thread；不为章节建 worktree，不同时启动后续章。先查交接记录与已有 thread，扩章和恢复时复用。总聊天只读章节摘要、阻塞、交接和 Lumi 摘要，不读小说原文全文、整章分镜草稿，不为章节渲染含原文的提示词。章节主聊天用不继承父历史的 `spawn_agent(fork_turns="none")` 委派小说分镜、设定与场景；只有当前场景可写分配页。
-<!-- host:claude -->
-多章先检查本会话实际可调用的独立聊天机制：有则为每章建立或复用独立聊天，按章串行；没有则明确由当前聊天逐章串行。`Agent`／`Task` 子任务不是独立章节聊天，不能把它说成已建聊；可用时仍分别用于每章的设定和每场的场景 subagent。
+场内始终逐页完成准备参考、生图、立即挂载、看实际采用图、保存核对，本页通过后再做下一页，不派并行画页代理。用户审阅节点和首张正文核对门槛仍有效。共享设定返修先暂停全部受影响场景，核查进行中请求及恢复导入，再交原设定代理修正；实际复核受影响已完成页、解决版本冲突和过期准备后恢复。中断先读 Lumi 当前采用版本、revision、审阅与未决请求，按唯一写入者恢复。
+
+多章默认按章独立聊天，使用 `list_projects → create_thread`，在**同一 Lumi 项目目录**为每章建独立 thread；不为章节建 worktree，不同时启动后续章。按调度参考核实宿主要求的建聊授权；已有授权直接执行，无需用户点名工具或逐章确认，缺少授权时核实范围后只请求一次。默认策略与加载本技能本身不构成用户授权。先查交接记录与已有 thread，扩章和恢复时复用。总聊天只读章节摘要、阻塞、交接和 Lumi 摘要，不读小说原文全文、整章分镜草稿，不为章节渲染含原文的提示词。章节主聊天用不继承父历史的 `spawn_agent(fork_turns="none")` 委派小说分镜、设定与场景；每个活动场景仅可写本场分配页，不改其他场、共享设定、原文或分镜。
+
+等待章节时使用 [章节等待示例](references/serial-production.md#章节等待示例)：外层 `functions.exec` 第一行显式写 `// @exec: {"yield_time_ms": 55000}`，内层 `wait_threads` 使用 `timeoutMs: 45000`。提前完成即返回；超时后原样沿用返回 cursor 作为 `afterCursor` 继续等待，按真实完成／needs_attention 状态处理，不用默认外层时限制造额外 `functions.wait`。
+<!-- host:generic -->
+宿主无子任务工具时，由当前聊天承担下述各角色，按相同写入与核对边界串行完成；独立聊天与 subagent 都不是通用流程的前提。
+
+多章先检查本会话实际可调用的独立聊天机制：有则为每章建立或复用独立聊天，按章串行；没有则明确由当前聊天逐章串行。宿主子任务不是独立章节聊天，不能把它说成已建聊；可用时仍分别用于每章的设定和每场的场景 subagent。
 <!-- /host -->
 
 | 角色 | 可写范围 | 返回内容 |
@@ -136,10 +146,10 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 **页面和单项设定图生成完成后立即 `import_image`**：`path` 必须取宿主本次返回的真实绝对路径（也可能在 output hint 文本里），传目标 UUID、slot、revision、原始 prompt；页面还必须带回本轮完整 `preparation`。不能假定有 `savedPath` 字段，不能猜目录或扫描生成文件。宿主没提供可访问路径时说明缺失，不能伪造导入成功。
 
 默认先用 `fit_mode=keep` 保留原图；已约定居中裁切/补边时用 `crop/pad`。查看导入返回的 `ratio_matches`、`ratio_deviation`、`warnings`：偏差不阻塞导入；页面适合在主体安全时 crop，设定或边缘文字宜 pad，必要时下一张调整构图。不要仅因像素不精确反复重生。处理后的图有独立版本，原图保留。
-<!-- host:claude -->
+<!-- host:generic -->
 ## 服务端页面生图与一致性
 
-**页面生图前必须读 [页面生图](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 用 Read 或 `read_image` 实际看当前设定图并记录依据与具体观察，然后调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。Lumi 使用与 Web 及 `prepare_page_image` 相同的合图、有效规则、画风和完整提示词，由用户配置的图片服务商生成，并把结果挂载为页面当前图片。明确无需图片参考时传 `[]`，走真实无参考流程。
+**页面生图前必须读 [页面生图](references/page-images.md)**。先选择本页需要的 `setting_uuids`，缺图先补齐；按 [设定图核对](references/setting-references.md) 用宿主看图能力或 `read_image` 实际看当前设定图并记录依据与具体观察，然后调用 `generate_page_image(page_uuid, setting_uuids, setting_reviews, expected_revision, idempotency_key, additional_direction?, model?)`。Lumi 使用与 Web 及 `prepare_page_image` 相同的合图、有效规则、画风和完整提示词，由用户配置的图片服务商生成，并把结果挂载为页面当前图片。明确无需图片参考时传 `[]`，走真实无参考流程。
 
 `expected_revision` 取自本次 `image_target` 或 `pages get`。每次新的生图使用新的 `idempotency_key`；同一请求超时、返回 `done:false` 或会话中断后，用**完全相同的参数和 key** 重放以继续等待或取回结果，不换新 key（会重复生成并计费）。revision 冲突说明页面在 Lumi Web 中被修改：重读页面与最新 revision，必要时重新核对后再生图，不覆盖用户的网页修改。
 
@@ -154,13 +164,13 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。完成用户要求的创作、保存和导出后打开对应范围的正常业务页面；不增加确认节点，不等待用户打开、翻页或操作 MCP Apps。用户要求一次生成时连续做完。
-<!-- host:claude -->
+<!-- host:generic -->
 用户提示词优先：明确要求直接做完/自行决定时连续推进；要求逐步确认时遵守其节点。**未指定时默认两个停顿点**：setup 定稿前汇总读者、格式、比例、页数与画风；完成故事、设定及一张代表性页面后展示审阅，再继续整本生图。完成用户要求的创作、保存和导出后给出对应范围的 `web_url`；不增加确认节点，不等待用户打开链接。用户要求一次生成时连续做完。
 <!-- /host -->
 
 <!-- host:codex -->
 只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。MCP Apps 关闭、不可用或加载失败均不阻塞创作与导出；仍交付文本摘要、准确导出路径和工具返回的真实 Lumi Web 业务页面入口/命令，不把界面加载失败当作内容丢失。正常页面保留图片展示、点击大图和本地版本预览，不能以界面点击作为保存、审批或 `import_image` 的前置条件。`review_candidates` 的预览不写入；用户可在共享工作区显式“使用此稿”直接采用。若用户在对话回复编号，先用 `pages/settings get include_versions:true` 读取版本身份，按 version_no 核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。普通编辑、保存、排序和版本操作由页面经宿主完成，无需额外模型回合。
-<!-- host:claude -->
+<!-- host:generic -->
 只在关键信息缺失、不可变规格、意图冲突、项目目录/占用阻塞或无法合理代决的内容选择时提问。已有授权不要重复索取；宿主批准按实际请求处理。Lumi Web 无法打开不阻塞创作与导出；仍交付文本摘要、准确导出路径和 `web_url` 返回的链接，不把网页加载失败当作内容丢失。用户表示已在网页中修改，或回到对话继续时，先重读相关章节、页面或设定及最新 revision 再写入；revision 冲突时重读，不覆盖用户在网页中的修改。若用户在对话回复候选编号，先用 `pages/settings get include_versions:true` 读取版本身份，按 version_no 核对候选 UUID，再用 `pages/settings select_image` 和最新 revision 持久化。
 <!-- /host -->
 
@@ -168,7 +178,7 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 每段文本写完、每张图生成后及时提交。调用中断可能已经提交，先 get 核实，避免重复创建和重复导入。额度不足时停止反复重试，报告已经完成的章节/页 UUID、缺图与下一步；还能调用工具时导出 Markdown/ZIP，缺图用 true 并标注。不要自动切换到付费 API，也不要求 API key。
-<!-- host:claude -->
+<!-- host:generic -->
 每段文本写完、每张图生成后及时提交。调用中断可能已经提交，先 get 核实，避免重复创建；页面生图中断时用原 `idempotency_key` 和原参数重放。服务商额度不足或限流时停止反复重试，报告已经完成的章节/页 UUID、缺图与下一步；还能调用工具时导出 Markdown/ZIP，缺图用 true 并标注。不要自行切换服务商或模型，也不向用户索取 API key。
 <!-- /host -->
 
@@ -176,12 +186,12 @@ description: 在 Claude Code 中用 Lumi 从想法创作、修改、审阅和导
 
 <!-- host:codex -->
 恢复时先按 [串行制作与恢复](references/serial-production.md) 复用章节聊天与场景记录，再从 `project_overview → project_setup get → book_outline` 开始；已知目标章时传 `chapter_uuid`，读完游标。以 `review_status` 区分 missing_image（生图）、pending（看已有图）、needs_revision（只修该页）、passed（跳过）；只有即将处理的页才读完整分镜。要取列表版本用 `pages list(summary_only=true)`。旧页缺少核对记录时先看已有图，不因 pending 重生。交付分别说明范围内已生成、核对通过的页数与待修疑点。重新取 revision；正文直接 prepare_page_image，渲染剩余文本任务并读取所需参考图，只补缺失或用户指定修改的内容。旧生图路径失效且未导入时再生成，不扫描宿主目录寻找替代文件。
-<!-- host:claude -->
+<!-- host:generic -->
 恢复时先按 [串行制作与恢复](references/serial-production.md) 复用章节聊天与场景记录，再从 `project_overview → project_setup get → book_outline` 开始；已知目标章时传 `chapter_uuid`，读完游标。以 `review_status` 区分 missing_image（生图）、pending（看已有图）、needs_revision（只修该页）、passed（跳过）；只有即将处理的页才读完整分镜。要取列表版本用 `pages list(summary_only=true)`。旧页缺少核对记录时先看已有图，不因 pending 重生。交付分别说明范围内已生成、核对通过的页数与待修疑点。重新取 revision；正文用 `generate_page_image`，渲染剩余文本任务并读取所需参考图，只补缺失或用户指定修改的内容。
 <!-- /host -->
 
 <!-- host:codex -->
 作品工作区复用 Web 页面主体；仅隐藏全局顶栏、导航与聊天，保留章内 section 快速切换。`review_*` 仅返回身份、摘要和入口，完整正文、历史和图片由页面经宿主按需读取，不把大对象或 Base64 重复放进模型上下文。四层入口：`review_book()` 总览 → `review_chapters()` → `review_chapter(chapter_uuid)` → `review_page(chapter_uuid,page_uuid)`。章节入口保留章节 URL，复用 Web 逐页编辑器，默认选中第一页，可在章内切页；空章节显示页面管理。内部导航在 App 完成；“在 Lumi 中打开”使用工具给出的真实端口与资源 URL。新调用不传 `mode`，不进入独立阅读器。旧 `review_book({chapter_uuid})`、旧 preview 参数和历史 reader 结果兼容到相同范围的正常页面，指定章节始终进入该章节。
-<!-- host:claude -->
+<!-- host:generic -->
 Lumi Web 是查看与编辑入口：`web_url` 只返回现有页面的地址，范围依次为作品总览（省略参数）、章节集合（`view=chapters`）、章节（`chapter_uuid`）、页面（`page_uuid`，可带 `chapter_uuid` 校验）、设定（`setting_uuid` 或 `view=settings`）、导出（`view=exports`）和服务商（`view=providers`）。地址来自当前运行的 CLI 后台，重启后端口可能变化；每次交付前重新调用，不写入文件，不手拼地址。
 <!-- /host -->

@@ -75,14 +75,14 @@ test('gate checks the linked Cindy setting/reference workflow, including missing
 test('unchanged shared generator rejects stale host artifacts in a temporary copy without rewriting them', t => {
   const fixture = mkdtempSync(path.join(os.tmpdir(), 'cindy-skill-drift-'));
   t.after(() => rmSync(fixture, { recursive: true, force: true }));
-  for (const name of ['scripts/build-skills.mjs', 'plugin-skills', 'codex-plugins/lumi/skills', 'claude-plugins/lumi/skills']) {
+  for (const name of ['scripts/build-skills.mjs', 'plugin-skills', 'codex-plugins/lumi/skills', 'agent-integration/skills']) {
     mkdirSync(path.dirname(path.join(fixture, name)), { recursive: true });
     cpSync(path.join(repo, name), path.join(fixture, name), { recursive: true });
   }
   const check = () => spawnSync(process.execPath, ['scripts/build-skills.mjs', '--check'], { cwd: fixture, encoding: 'utf8' });
   assert.equal(check().status, 0);
-  for (const host of ['codex', 'claude']) {
-    const artifact = path.join(fixture, `${host}-plugins/lumi/skills/create-picture-book/SKILL.md`);
+  for (const host of ['codex', 'generic']) {
+    const artifact = path.join(fixture, host === 'codex' ? 'codex-plugins/lumi/skills/create-picture-book/SKILL.md' : 'agent-integration/skills/create-picture-book/SKILL.md');
     const original = readFileSync(artifact, 'utf8');
     const stale = original.replace('record_image_review', 'obsolete_review');
     assert.notEqual(stale, original);

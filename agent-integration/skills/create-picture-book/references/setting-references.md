@@ -29,13 +29,13 @@
 
 批量模板的纯白留边、网格和无字要求只用于裁切，不授权改变主体的比例、轮廓、配色和材质。无字设定板不画字体样张；字体在首张正文实际核对。
 
-## 3. 设定图来源（Claude Code 不能直接生图）
+## 3. 设定图来源（通用 MCP 不提供设定图生图）
 
 读取图片、在 prompt 中写文件名、把设定 UUID 放入 `context_setting_uuids`，都不等于设定已有图片。可用来源：
 
 | 来源 | 做法 |
 | --- | --- |
-| 用户提供的真实本地图片文件 | 先用 Read 看图确认内容与用途，再 `image_target(target_uuid, slot=setting_image)` 取 revision，用 `import_image` 传该绝对路径。若仅缺本地读图工具、用户已授权导入此真实文件，可先保留历史导入，再以当前 asset_uuid 调 `read_image` 实看；未看图前不记 passed、不用于正文。缺少两种读图能力时报告阻塞。不要用截图或缩略图替代原附件，不猜资产路径。 |
+| 用户提供的真实本地图片文件 | 先用宿主看图能力看图确认内容与用途，再 `image_target(target_uuid, slot=setting_image)` 取 revision，用 `import_image` 传该绝对路径。若仅缺本地读图工具、用户已授权导入此真实文件，可先保留历史导入，再以当前 asset_uuid 调 `read_image` 实看；未看图前不记 passed、不用于正文。缺少两种读图能力时报告阻塞。不要用截图或缩略图替代原附件，不猜资产路径。 |
 | 在 Lumi 中生成 | 给出 `web_url(setting_uuid)` 或 `web_url(view=settings)`，说明本次参考要求，请用户在 Lumi 的设定页面用已配置的服务商生成；用户回到对话后 `settings get` 重读并实际看图。 |
 | 用户明确接受仅文字设定 | 按用户要求跳过设定图，正文传 `setting_uuids=[]` 并说明理由。 |
 

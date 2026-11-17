@@ -3,11 +3,11 @@
 //
 // Source files may contain line-level host blocks:
 //   <!-- host:codex -->   lines kept only for Codex
-//   <!-- host:claude -->  lines kept only for Claude Code (may follow a codex block)
+//   <!-- host:generic -->  lines kept only for generic Agent (may follow a codex block)
 //   <!-- /host -->        end of the block
 // Marker lines themselves are removed. Files without markers are shared verbatim.
 //
-//   node scripts/build-skills.mjs          write codex-plugins/ and claude-plugins/ skills
+//   node scripts/build-skills.mjs          write codex-plugins/ and agent-integration/ skills
 //   node scripts/build-skills.mjs --check  fail when a committed skill differs from the source
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -17,9 +17,9 @@ export const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const source = join(repo, 'plugin-skills');
 export const outputs = {
   codex: join(repo, 'codex-plugins/lumi/skills'),
-  claude: join(repo, 'claude-plugins/lumi/skills'),
+  generic: join(repo, 'agent-integration/skills'),
 };
-const marker = /^<!-- (host:(codex|claude)|\/host) -->$/;
+const marker = /^<!-- (host:(codex|generic)|\/host) -->$/;
 
 export function assemble(text, host, name = 'input') {
   if (!(host in outputs)) throw new Error(`Unknown host: ${host}`);
@@ -43,7 +43,7 @@ export function assemble(text, host, name = 'input') {
 }
 
 function files(dir) {
-  return readdirSync(dir).sort().flatMap(entry => {
+  return readdirSync(dir).filter(entry => entry !== '.DS_Store').sort().flatMap(entry => {
     const path = join(dir, entry);
     return statSync(path).isDirectory() ? files(path) : [path];
   });

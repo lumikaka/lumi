@@ -59,13 +59,13 @@ func (f *fakePageImages) createdCount() int {
 	return len(f.created)
 }
 
-func claudeCall(t *testing.T, s *Service, root, name string, args map[string]any) httpapi.Envelope {
+func genericCall(t *testing.T, s *Service, root, name string, args map[string]any) httpapi.Envelope {
 	t.Helper()
 	b, err := json.Marshal(args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return s.Call(WithHost(t.Context(), HostClaude), root, name, b)
+	return s.Call(WithHost(t.Context(), HostGeneric), root, name, b)
 }
 
 func listedTools(t *testing.T, host string) ([]string, bool) {
@@ -111,29 +111,29 @@ func TestToolListsPerHost(t *testing.T) {
 	}
 	for _, name := range historical {
 		if name == "generate_page_image" || name == "web_url" {
-			t.Fatalf("non-claude hosts must not list %s", name)
+			t.Fatalf("non-generic hosts must not list %s", name)
 		}
 	}
-	claude, claudeApp := listedTools(t, HostClaude)
-	if claudeApp {
-		t.Fatal("claude host must not declare the MCP Apps resource")
+	generic, genericApp := listedTools(t, HostGeneric)
+	if genericApp {
+		t.Fatal("generic host must not declare the MCP Apps resource")
 	}
 	has := map[string]bool{}
-	for _, name := range claude {
+	for _, name := range generic {
 		has[name] = true
 		if strings.HasPrefix(name, "review_") || strings.HasPrefix(name, "read_app_") || name == "write_app_resource" || name == "watch_app_changes" {
-			t.Fatalf("claude host lists app-only tool %s", name)
+			t.Fatalf("generic host lists app-only tool %s", name)
 		}
 	}
 	for _, want := range []string{"generate_page_image", "web_url", "prepare_page_image", "image_target", "read_image", "import_image", "pages"} {
 		if !has[want] {
-			t.Fatalf("claude host missing %s: %v", want, claude)
+			t.Fatalf("generic host missing %s: %v", want, generic)
 		}
 	}
 	// The Cindy contract snapshot stays host-neutral.
 	for _, spec := range Specs() {
 		if spec.Name == "generate_page_image" || spec.Name == "web_url" {
-			t.Fatalf("Specs() must not include Claude-only %s", spec.Name)
+			t.Fatalf("Specs() must not include Generic-only %s", spec.Name)
 		}
 	}
 }
@@ -152,7 +152,7 @@ func TestGeneratePageImageHostGatingAndValidation(t *testing.T) {
 			t.Fatalf("host %q: %+v", host, result.Error)
 		}
 	}
-	if result := claudeCall(t, s, root, "generate_page_image", map[string]any{"page_uuid": page, "setting_uuids": []string{}}); code(result) != "invalid_arguments" {
+	if result := genericCall(t, s, root, "generate_page_image", map[string]any{"page_uuid": page, "setting_uuids": []string{}}); code(result) != "invalid_arguments" {
 		t.Fatalf("missing key/revision accepted: %+v", result.Error)
 	}
 	stale := map[string]any{}
@@ -160,7 +160,7 @@ func TestGeneratePageImageHostGatingAndValidation(t *testing.T) {
 		stale[k] = v
 	}
 	stale["expected_revision"], stale["idempotency_key"] = revision.(float64)+1, "gate-stale"
-	if result := claudeCall(t, s, root, "generate_page_image", stale); code(result) != "production_conflict" && code(result) != "conflict" {
+	if result := genericCall(t, s, root, "generate_page_image", stale); code(result) != "production_conflict" && code(result) != "conflict" {
 		t.Fatalf("stale revision accepted: %+v", result.Error)
 	}
 	// Selected settings without reviews are rejected by the same validation
@@ -168,13 +168,13 @@ func TestGeneratePageImageHostGatingAndValidation(t *testing.T) {
 	setting := createReadinessSetting(t, s, root, "character", "月光小狐狸")
 	object(t, invoke(t, s, root, "import_image", map[string]any{"path": preparedFixtureImage(t), "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
 	unreviewed := map[string]any{"page_uuid": page, "setting_uuids": []string{setting["uuid"].(string)}, "setting_reviews": []any{}, "idempotency_key": "gate-unreviewed", "expected_revision": revision}
-	if result := claudeCall(t, s, root, "generate_page_image", unreviewed); result.Success {
+	if result := genericCall(t, s, root, "generate_page_image", unreviewed); result.Success {
 		t.Fatal("unreviewed setting accepted")
 	}
 	reviews := fixtureSettingReviews(t, s, root, page, []string{setting["uuid"].(string)})
 	reviews[0].(map[string]any)["verdict"] = "needs_revision"
 	unreviewed["setting_reviews"], unreviewed["idempotency_key"] = reviews, "gate-needs-revision"
-	if result := claudeCall(t, s, root, "generate_page_image", unreviewed); result.Success {
+	if result := genericCall(t, s, root, "generate_page_image", unreviewed); result.Success {
 		t.Fatal("needs_revision setting accepted")
 	}
 	if fake.createdCount() != 0 {
@@ -182,7 +182,7 @@ func TestGeneratePageImageHostGatingAndValidation(t *testing.T) {
 	}
 
 	s.PageImages = nil
-	if result := claudeCall(t, s, root, "generate_page_image", args); code(result) != "page_image_generation_unavailable" {
+	if result := genericCall(t, s, root, "generate_page_image", args); code(result) != "page_image_generation_unavailable" {
 		t.Fatalf("nil task manager: %+v", result.Error)
 	}
 	_ = chapter
@@ -197,7 +197,7 @@ func TestGeneratePageImageRunningReplayAndFailure(t *testing.T) {
 	s.PageImages = fake
 	target := object(t, invoke(t, s, root, "image_target", map[string]any{"target_uuid": page, "slot": "page_image", "setting_uuids": []string{}}))
 	args := map[string]any{"page_uuid": page, "setting_uuids": []string{}, "setting_reviews": []any{}, "additional_direction": "四周留白", "idempotency_key": "run-1", "expected_revision": target["expected_revision"]}
-	running := object(t, claudeCall(t, s, root, "generate_page_image", args))
+	running := object(t, genericCall(t, s, root, "generate_page_image", args))
 	if running["done"] != false || running["task"].(map[string]any)["status"] != "running" || !strings.Contains(running["next_action"].(string), "idempotency_key") {
 		t.Fatalf("running=%+v", running)
 	}
@@ -208,7 +208,7 @@ func TestGeneratePageImageRunningReplayAndFailure(t *testing.T) {
 	// Same key replays the existing task without a second create, even if the
 	// caller sends a revision that a completed task would have advanced.
 	args["expected_revision"] = target["expected_revision"].(float64) + 5
-	object(t, claudeCall(t, s, root, "generate_page_image", args))
+	object(t, genericCall(t, s, root, "generate_page_image", args))
 	if fake.createdCount() != 1 {
 		t.Fatalf("replay created %d tasks", fake.createdCount())
 	}
@@ -218,13 +218,13 @@ func TestGeneratePageImageRunningReplayAndFailure(t *testing.T) {
 	task.ResourceUUID = "01989abc-def0-7000-8000-0000000000bb"
 	fake.tasks[pageImageKeyPrefix+"run-1"] = task
 	fake.mu.Unlock()
-	if result := claudeCall(t, s, root, "generate_page_image", args); code(result) != "idempotency_key_conflict" {
+	if result := genericCall(t, s, root, "generate_page_image", args); code(result) != "idempotency_key_conflict" {
 		t.Fatalf("cross-page replay: %+v", result.Error)
 	}
 
 	fake.status = "failed"
 	args["expected_revision"], args["idempotency_key"] = target["expected_revision"], "run-2"
-	failed := claudeCall(t, s, root, "generate_page_image", args)
+	failed := genericCall(t, s, root, "generate_page_image", args)
 	if failed.Success || code(failed) != "provider_rate_limited" || !strings.Contains(failed.Error.Details, "01989abc-def0-7000-8000-0000000000aa") {
 		t.Fatalf("failed=%+v", failed.Error)
 	}
@@ -258,7 +258,7 @@ func TestWebURLScopesUseExistingWebRoutes(t *testing.T) {
 		{map[string]any{"page_uuid": page, "chapter_uuid": chapter}, base + "/chapters/" + chapter + "/sections/" + page, "page"},
 		{map[string]any{"setting_uuid": setting["uuid"]}, base + "/premise/assets/" + setting["uuid"].(string), "setting"},
 	} {
-		got := object(t, claudeCall(t, s, root, "web_url", tc.args))
+		got := object(t, genericCall(t, s, root, "web_url", tc.args))
 		if got["url"] != tc.url || got["scope"] != tc.scope {
 			t.Fatalf("%v: got %v %v", tc.args, got["url"], got["scope"])
 		}
@@ -269,7 +269,7 @@ func TestWebURLScopesUseExistingWebRoutes(t *testing.T) {
 		{"page_uuid": page, "chapter_uuid": "01989abc-def0-7000-8000-000000000001"},
 		{"view": "dashboard"},
 	} {
-		if result := claudeCall(t, s, root, "web_url", args); result.Success {
+		if result := genericCall(t, s, root, "web_url", args); result.Success {
 			t.Fatalf("accepted conflicting scope %v", args)
 		}
 	}

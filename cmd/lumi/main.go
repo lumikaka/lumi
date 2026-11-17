@@ -22,7 +22,6 @@ serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
 init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
-        Also writes a CLAUDE.md that only imports @AGENTS.md (never overwritten).
 open    Open cwd project in the CLI instance's complete web UI (--json prints URL).
 project info  Inspect cwd project identity and Codex write-protection status.
 session import --rollout PATH  Manually save user/assistant text and Lumi tool names as read-only history.
@@ -31,7 +30,7 @@ cindy-session import --file PATH --source-session ID
         Manually save selected Cindy public user/assistant text in the cwd project as read-only history.
         No automatic collection or Host history access is enabled.
 mcp     Run a cwd-bound stdio MCP server; auto-start the CLI instance.
-        [--host claude|codex|cindy] selects host-specific tools; omitted keeps the historical list.
+        [--host generic|codex|cindy] selects host-specific tools; omitted keeps the historical list.
 `
 
 // The local lumi_dev build selects development through -ldflags -X. Release
@@ -87,7 +86,7 @@ func command(args []string, out, stderr io.Writer) int {
 		flags.BoolVar(&opt.readOnly, "read-only", false, "only inspect a live CLI and read already-open projects without repairs")
 	}
 	if name == "mcp" || name == "init" {
-		flags.StringVar(&opt.host, "host", "", "MCP host: claude, codex or cindy")
+		flags.StringVar(&opt.host, "host", "", "MCP host: generic, codex or cindy")
 	}
 	if name == "init" {
 		flags.StringVar(&opt.projectName, "name", "", "project name (defaults to directory name)")
@@ -120,7 +119,7 @@ func command(args []string, out, stderr io.Writer) int {
 		return printError(opt, out, stderr, "invalid_arguments", errors.New("invalid command, environment, arguments or timeout"), 2)
 	}
 	if !textmcp.ValidHost(opt.host) || (opt.host == "" && hostFlagGiven(args[1:])) {
-		return printError(opt, out, stderr, "invalid_arguments", fmt.Errorf("invalid --host %q: use claude, codex or cindy", opt.host), 2)
+		return printError(opt, out, stderr, "invalid_arguments", fmt.Errorf("invalid --host %q: use generic, codex or cindy", opt.host), 2)
 	}
 	var err error
 	if strings.TrimSpace(opt.dataDir) == "" {

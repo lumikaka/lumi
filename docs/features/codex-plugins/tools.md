@@ -1,10 +1,10 @@
 # 本地创作 MCP 工具
 
-运行 `lumi mcp [--host claude|codex|cindy] [--environment production|development] [--data-dir PATH] [--timeout 90s]`。stdin/stdout 只传 MCP JSON-RPC，诊断写 stderr。`--timeout` 是每次工具调用的实例启动及执行总时限，不限制整个 MCP 会话寿命。
+运行 `lumi mcp [--host generic|codex|cindy] [--environment production|development] [--data-dir PATH] [--timeout 90s]`。stdin/stdout 只传 MCP JSON-RPC，诊断写 stderr。`--timeout` 是每次工具调用的实例启动及执行总时限，不限制整个 MCP 会话寿命。
 
 进程启动时固定并规范化 cwd。工具没有项目路径参数，也不读取 MCP roots 或宿主 workspace 环境变量。首次调用自动通过 `cli-{environment}.json` 发现并验证 CLI 实例，必要时启动 `serve`。所有业务由 CLI 实例执行，通过项目 Manager 持锁访问 SQLite；多个 stdio 连接共享该实例。不会连接桌面实例，不需要凭证、grant 或 OAuth，转发请求没有 Origin。HTTP 的 `If-Match` 只标记实例代次，用于防止向已替换的实例发请求。
 
-`--host` 标识宿主并随每次调用转发给 CLI 实例；未知值启动时报错，未传时工具清单与行为和改动前一致。`codex`、`cindy` 与未传时的清单相同。`claude` 去掉 MCP Apps 专用工具（`read_app_*`、`write_app_resource`、`watch_app_changes`）与 `review_*`，增加 [`web_url`](#web_url) 与 [`generate_page_image`](#generate_page_imageclaude-宿主)。
+`--host` 标识宿主并随每次调用转发给 CLI 实例；未知值启动时报错，未传时工具清单与行为和改动前一致。`codex`、`cindy` 与未传时的清单相同。`generic` 去掉 MCP Apps 专用工具（`read_app_*`、`write_app_resource`、`watch_app_changes`）与 `review_*`，增加 [`web_url`](#web_url) 与 [`generate_page_image`](#generate_page_image通用模式)。
 
 cwd 不是项目时返回 `project_not_initialized`，调用 `project_init` 后可在同一进程继续。已有桌面项目必须先在桌面版关闭；`project_locked` 的 details 包含释放方法。会话退出不会停止共享 CLI 实例，空闲回收沿用 Step 1。
 
@@ -297,9 +297,9 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 4. 立即 `import_image`，传实际宿主输出路径、image_write_back、同一提示词与原 preparation。
 5. 冲突或准备失效时使用新准备结果重新生图；不能仅换 revision/摘要。无 provider pipeline 或付费回退。
 
-### generate_page_image（Claude 宿主）
+### generate_page_image（通用模式）
 
-仅 `--host claude` 列出；其他宿主或未传 `--host` 调用时被拒绝。Codex 仍只用宿主 imagegen，没有 provider 回退。需要创作协议 v6：旧 CLI 后台返回 `cli_upgrade_required`，其他工具不受影响。
+仅 `--host generic` 列出；其他宿主或未传 `--host` 调用时被拒绝。Codex 仍只用宿主 imagegen，没有 provider 回退。通用模式需要创作协议 v10：旧 CLI 后台对通用请求返回 `cli_upgrade_required`；Codex/Cindy 与未传 host 的原协议门槛保持不变。
 
 必填 `page_uuid,setting_uuids,idempotency_key,expected_revision`；`setting_reviews`、`additional_direction` 与 `prepare_page_image` 相同，可选 `model`（所配置服务商的图片模型，默认项目图片模型）。服务端先执行与 `prepare_page_image` 相同的校验（设定核对缺失、过期或 `needs_revision` 被拒，页面 revision 冲突被拒），再创建现有页面生图任务：提示词固定为同一份 `generation_prompt`，参考为同一张合图，不运行 LLM 参考选择，因此与 Web/`prepare_page_image` 的合图和提示词一致。服务商未配置返回 `image_provider_unavailable`（未计费，details 给出 `web_url view=providers` 与重试说明）。
 
@@ -309,11 +309,11 @@ PDF 沿用现有确定性版式：按图片实际比例等比缩放、在槽位�
 
 只读。可选 `page_uuid`、`chapter_uuid`、`setting_uuid` 或 `view`（`book/chapters/settings/exports/providers`），默认作品总览。返回 `{project_uuid,url,scope,chapter_uuid?,page_uuid?,setting_uuid?,note}`；地址由当前运行的 CLI 后台实际 endpoint 与公开 UUID 组成，对应 Web 路由 `/projects/:project_uuid/`、`chapters`、`chapters/:chapter_uuid`、`chapters/:chapter_uuid/sections/:page_uuid`、`premise`、`premise/assets/:setting_uuid`、`exports` 与全局 `/settings/providers`。页面与章节不匹配时报错。端口可能随重启变化，每次交付前重新获取，不写入文件。CLI 需以 `-tags embed_frontend` 构建才能打开页面。
 
-### export_website（Codex / Claude Code / Cindy，创作协议 v9）
+### export_website（Codex / 通用 Agent / Cindy，网站创作协议 v9、通用宿主 v10）
 
 用户说“生成网站”“导出成网站”“更新网站”，或上下文已明确是网站导出时，直接调用 `export_website({})`，不预查状态、不区分首次和更新、不重复确认。只说“导出绘本”、指定 PDF / ZIP / Markdown，或询问“能不能生成网站”，都不触发。它生成整本作品的本地静态网站；公网发布须另行提出。
 
-默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。收到 `done=true` 后告诉用户网站已生成在 `output_directory` 返回的本地目录。Codex 和 Claude Code 同时提供可打开的 `preview_url`。在同一条成功回复中，将返回的完整 `publish_prompt` 原样放在独立的文本代码块中，方便用户复制到 Codex、修改后再发送。提示词仅供复制，执行发布需要用户另行提出。新的独立请求可使用新键。定向重放会检查原任务是否仍为当前发布版本。
+默认不允许缺图。用户已明确接受“只导出已有图片”时直接传 `allow_missing_images=true`；否则仅在收到 `comic_export_incomplete` 后报告实际缺图数量，询问是否继续。收到 `comic_export_empty` 就说明至少需要一张有效正文图，不建议跳过。超时、断线或 `done=false` 时用原参数继续同一任务；如果传了 `idempotency_key`，重试须保持原键。收到 `done=true` 后告诉用户网站已生成在 `output_directory` 返回的本地目录。Codex 和通用 Agent 同时提供可打开的 `preview_url`。在同一条成功回复中，将返回的完整 `publish_prompt` 原样放在独立的文本代码块中，方便用户复制到 Codex、修改后再发送。提示词仅供复制，执行发布需要用户另行提出。新的独立请求可使用新键。定向重放会检查原任务是否仍为当前发布版本。
 
 ### export_book
 

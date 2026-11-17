@@ -26,7 +26,7 @@ type Service struct {
 	Endpoint       string
 	AppConnection  func(string) any
 	AppRequest     func(context.Context, string, AppResourceRequest) (any, error)
-	// PageImages backs the Claude-only generate_page_image tool. Nil means
+	// PageImages backs the Generic-only generate_page_image tool. Nil means
 	// the instance cannot run server-side page generation.
 	PageImages   PageImageTasks
 	WebsiteTasks *jobqueue.Manager
@@ -133,8 +133,8 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 	if a.After != "" && a.Before != "" {
 		return Failure("invalid_arguments", "游标冲突", "before 和 after 不能同时提供。")
 	}
-	if name == "generate_page_image" && HostFromContext(ctx) != HostClaude {
-		return Failure("host_not_supported", "当前宿主不支持服务端页面生图", "generate_page_image 仅在 lumi mcp --host claude 下可用；其他宿主继续使用 prepare_page_image + 宿主生图 + import_image。")
+	if name == "generate_page_image" && HostFromContext(ctx) != HostGeneric {
+		return Failure("host_not_supported", "当前宿主不支持服务端页面生图", "generate_page_image 仅在 lumi mcp --host generic 下可用；其他宿主继续使用 prepare_page_image + 宿主生图 + import_image。")
 	}
 	if project.IsReadOnly(ctx) && !readOnlyOperation(name, a.Action) {
 		return Failure("read_only_context", "只读任务不能执行此操作", "只允许查看当前已打开项目；初始化、定稿、图片选择和导出均需写权限。")
