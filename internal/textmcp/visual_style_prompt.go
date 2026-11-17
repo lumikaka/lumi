@@ -17,10 +17,14 @@ For setting boards, white cropping margins and grids constrain layout only; pres
 设定板的纯白裁切留边和网格只约束版式，不授权改造主体比例、线条、配色及表面质感。`
 }
 
-func hostVisualAuthoringPrompt(language string) string {
-	workflow := `将画风和字体特征写入 overall_style 与页面分镜；生成前消除已保存画风、设定和分镜之间的冲突。导入后实际对照原参考图和用户要求，记录具体观察；导入成功、角色一致或笼统的“已核对”不构成画风验收。未通过的设定先纠正，再提交绑定当前版本和画风的 setting_reviews 给 prepare_page_image。首张正文须实际核对画风与字体后再生成余页。这是代理自检，不新增用户确认节点。`
+func hostVisualAuthoringPrompt(language, host string) string {
+	pageTool := "prepare_page_image"
+	if host == HostGeneric {
+		pageTool = "generate_page_image"
+	}
+	workflow := `将画风和字体特征写入 overall_style 与页面分镜；生成前消除已保存画风、设定和分镜之间的冲突。导入后实际对照原参考图和用户要求，记录具体观察；导入成功、角色一致或笼统的“已核对”不构成画风验收。未通过的设定先纠正，再提交绑定当前版本和画风的 setting_reviews 给 ` + pageTool + `。首张正文须实际核对画风与字体后再生成余页。这是代理自检，不新增用户确认节点。`
 	if promptcatalog.NormalizeLanguage(language) == promptcatalog.LanguageEnglish {
-		workflow = `Record art and lettering traits in overall_style and page storyboards; resolve contradictions in saved style, settings and storyboards before generation. After import, compare actual setting images with original references and user requirements, recording concrete observations. Import success, consistent characters and a generic "checked" statement are not visual approval. Correct failed settings before page generation; submit version- and style-bound setting_reviews to prepare_page_image. Check the first page's art and lettering before generating more pages. This is agent review, not an additional user approval step.`
+		workflow = `Record art and lettering traits in overall_style and page storyboards; resolve contradictions in saved style, settings and storyboards before generation. After import, compare actual setting images with original references and user requirements, recording concrete observations. Import success, consistent characters and a generic "checked" statement are not visual approval. Correct failed settings before page generation; submit version- and style-bound setting_reviews to ` + pageTool + `. Check the first page's art and lettering before generating more pages. This is agent review, not an additional user approval step.`
 	}
 	return hostVisualStylePrompt(language) + "\n\n" + workflow
 }

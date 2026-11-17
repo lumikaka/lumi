@@ -139,7 +139,7 @@
 {"name":"render_prompt","arguments":{"prompt_group":"story","prompt_key":"story_profile","target":"story_profile","variables":{"chapter_count":"1"}}}
 ```
 
-文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出；页面生图按 [页面生图](page-images.md) 的宿主流程，片段组合使用 `fragment_prompt`，不要把外层任务说明传给生图工具。渲染不等于写入。`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐；用户已明确的内容和执行授权继续沿用。
+文本任务按返回的完整 `prompt` 执行，用 `write_back` 映射输出。页面生图用 [`generate_page_image`](page-images.md)，Lumi 会组装提示词并挂载成图。渲染模板时，`context_chapter_uuids` / `context_setting_uuids` 可缩小上下文，`[]` 表示省略该集合，目标自身仍包含。缺模板变量时根据目录及错误补齐，沿用用户已明确的内容和执行授权。
 
 竖向条漫正文使用 `target="pages"`、实际 `chapter_uuid`、`chapter/comic_storyboard`。例如最多 12 页时传 `variables={"max_section_count":"12","moment_count_plan":"auto"}`。页数上限可取 1–24。Lumi 以章节 UUID 为种子，每组三页打乱 1、2、3 个关键视觉瞬间，把逐页数组及单页上限 3 填入提示词。实际写几页就取前几项；同章重试或调大上限时，前面各页的计划一致。用户指定逐页节奏时可显式传入计划和上限。把完整提示词交给写分镜的代理，并保留这份逐页计划。构图按各页的动作、视线与对白安排。
 

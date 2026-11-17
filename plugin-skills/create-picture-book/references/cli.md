@@ -9,7 +9,7 @@
 <!-- host:codex -->
 子命令如 `init --json`、`project info --json`、`open --json`。macOS 使用 `"/绝对路径/lumi" init --json`；Windows PowerShell 使用 `& 'C:\实际版本目录\lumi.exe' init --json`。环境默认为 `production`，未指定 `LUMI_DATA_DIR` 或 `--data-dir` 时，macOS 应用数据位于 `~/.lumi`，Windows 位于系统 LocalAppData 下的 `dev.lumi.Lumi`。在当前绘本文件夹执行，不通过更改 MCP 的 cwd 切换项目。
 <!-- host:generic -->
-子命令如 `init --json`、`project info --json`、`open --json`，写作 `"/绝对路径/lumi" init --json`。环境默认为 `production`，未指定 `LUMI_DATA_DIR` 或 `--data-dir` 时，macOS 应用数据位于 `~/.lumi`。在当前绘本文件夹执行，不通过更改 MCP 的 cwd 切换项目。
+在当前绘本文件夹执行 `"/绝对路径/lumi" init --host generic --json` 补齐共享指引，或用 `"/绝对路径/lumi" project info --host generic --json` 读取项目身份。打开项目网页用 `"/绝对路径/lumi" open --json`。环境默认为 `production`，未指定 `LUMI_DATA_DIR` 或 `--data-dir` 时，macOS 应用数据位于 `~/.lumi`。
 <!-- /host -->
 
 <!-- host:codex -->

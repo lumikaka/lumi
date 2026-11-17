@@ -36,7 +36,7 @@ const pageReferenceViewing = "For a collage, view reference_image_path unless th
 
 // genericInstructions replace host imagegen and MCP Apps with the Generic
 // host tools. Other hosts keep the historical instructions byte for byte.
-const genericInstructions = "Author the bound cwd project. Start with project_overview; if project_not_initialized call project_init. Complete project_setup before writing. render_prompt returns catalog prompts for YOU to execute as text; submit results with the returned target UUID and expected_revision and reread on conflict. This mode requires no native image generation, MCP Apps or host hooks. View local user reference images with the host image viewer; view project setting images and generated pages with read_image. For page artwork call image_target, explicitly select up to 12 setting_uuids, compare every selected current setting image against the user's requirements and originals, then call generate_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?, idempotency_key, expected_revision): Lumi's configured provider generates and attaches the page with the same rules as prepare_page_image. If it returns a running task, call it again with the same idempotency_key and inputs; never switch keys, which bills a new generation. Then read_image the returned asset_uuid, inspect it against the saved storyboard and user text, and record pages record_image_review. Setting artwork and setting boards have no server generation tool here: do not pretend to generate them; ask the user to generate or upload them in the Lumi Web page and reread. For viewing, manual editing, version selection and provider setup, call web_url for the matching scope right before each hand-off and give the link; never store it. After the user edits in the Web page, reread objects and revisions before writing. Never read project.sqlite, .lumi or assets directly. Lists are paginated."
+const genericInstructions = "Author the bound cwd project. Start with project_overview; if project_not_initialized call project_init. Complete project_setup before writing. render_prompt returns catalog prompts for YOU to execute as text; submit results with the returned target UUID and expected_revision and reread on conflict. This mode requires no native image generation, MCP Apps or host hooks. View local user reference images with the host image viewer; view project setting images and generated pages with read_image. For page artwork call image_target, explicitly select up to 12 setting_uuids, compare every selected current setting image against the user's requirements and originals, then call generate_page_image(page_uuid, setting_uuids, setting_reviews, additional_direction?, idempotency_key, expected_revision): Lumi's configured provider generates and attaches the page with the same rules as prepare_page_image. If it returns a running task, call it again with the same idempotency_key and inputs; never switch keys, which bills a new generation. Then read_image the returned asset_uuid, inspect it against the saved storyboard and user text, and record pages record_image_review. For setting artwork or boards, import an existing local image with import_image or setting_boards import. If artwork is missing, give the user a web_url to generate or upload it in Lumi, then reread. For viewing, manual editing, version selection and provider setup, call web_url for the matching scope right before each hand-off and give the link; never store it. After the user edits in the Web page, reread objects and revisions before writing. Never read project.sqlite, .lumi or assets directly. Lists are paginated."
 
 // Protocol keeps the historical tool list for unknown hosts.
 func Protocol(forward Forward) *mcp.Server { return ProtocolFor("", forward) }
@@ -61,12 +61,12 @@ func ProtocolFor(host string, forward Forward) *mcp.Server {
 		if spec.Name == "read_app_connection" || (generic && appOnlyTool(spec.Name)) {
 			continue
 		}
+		if generic {
+			spec = genericAuthoringSpec(spec)
+		}
 		published, err := modelVisibleSpec(spec)
 		if err != nil {
 			panic(fmt.Errorf("publish MCP tool %s: %w", spec.Name, err))
-		}
-		if generic {
-			published.Description = strings.ReplaceAll(published.Description, "for Codex to execute", "for the agent to execute")
 		}
 		tool := &mcp.Tool{Name: spec.Name, Description: published.Description, InputSchema: published.Schema}
 		if spec.Name == "export_website" {

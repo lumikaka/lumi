@@ -37,9 +37,10 @@ test('Generic skill has no Codex-only tool names and documents the Generic flow'
   for (const name of codexOnly) assert.ok(!all.includes(name), `Generic skill mentions ${name}`);
   assert.doesNotMatch(all, /<!-- (host:|\/host)/);
   const skill = files['create-picture-book/SKILL.md'].toString('utf8');
-  for (const want of ['web_url', 'generate_page_image', 'read_image', 'record_image_review', 'lumi init --json']) {
+  for (const want of ['web_url', 'generate_page_image', 'read_image', 'record_image_review', 'lumi init --host generic --json']) {
     assert.ok(skill.includes(want), `SKILL.md lacks ${want}`);
   }
+  assert.doesNotMatch(all, /\blumi"? init\b(?! --host generic\b)/);
   const pageImages = files['create-picture-book/references/page-images.md'].toString('utf8');
   for (const want of ['image_target', 'setting_reviews', 'generate_page_image', 'idempotency_key', 'image_provider_unavailable', 'view=providers']) {
     assert.ok(pageImages.includes(want), `page-images.md lacks ${want}`);

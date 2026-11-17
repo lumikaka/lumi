@@ -21,9 +21,11 @@ const usage = `Usage: lumi <serve|status|stop|init|open|project info|session imp
 serve   Ensure a detached CLI server is running and print its address.
 status  Print the CLI instance and its open projects (exit 3 if stopped).
 stop    Gracefully stop the CLI instance and release its projects.
-init    Initialize cwd in place [--name NAME] [--language zh-Hans|en].
+init    Initialize cwd in place [--name NAME] [--language zh-Hans|en] [--host generic|codex|cindy].
+        Write shared guidance. The default and --host codex also configure Codex write protection.
 open    Open cwd project in the CLI instance's complete web UI (--json prints URL).
-project info  Inspect cwd project identity and Codex write-protection status.
+project info  Inspect cwd project identity [--host generic|codex|cindy].
+              The default and --host codex also report Codex write-protection status.
 session import --rollout PATH  Manually save user/assistant text and Lumi tool names as read-only history.
                               Tool arguments, outputs and images are omitted. Automatic hooks are unavailable.
 cindy-session import --file PATH --source-session ID
@@ -85,8 +87,8 @@ func command(args []string, out, stderr io.Writer) int {
 	if name == "mcp" || name == "status" {
 		flags.BoolVar(&opt.readOnly, "read-only", false, "only inspect a live CLI and read already-open projects without repairs")
 	}
-	if name == "mcp" || name == "init" {
-		flags.StringVar(&opt.host, "host", "", "MCP host: generic, codex or cindy")
+	if name == "mcp" || name == "init" || name == "project info" {
+		flags.StringVar(&opt.host, "host", "", "Agent host: generic, codex or cindy")
 	}
 	if name == "init" {
 		flags.StringVar(&opt.projectName, "name", "", "project name (defaults to directory name)")

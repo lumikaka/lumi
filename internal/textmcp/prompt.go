@@ -237,7 +237,7 @@ func render(ctx context.Context, store *project.Store, st *story.Service, prod *
 	}
 	// Put host-specific constraints in authoring tasks, including text settings
 	// and storyboards where conflicting visual requirements can originate.
-	visualGuidance := hostVisualAuthoringPrompt(book.Project.GenerationLanguage)
+	visualGuidance := hostVisualAuthoringPrompt(book.Project.GenerationLanguage, HostFromContext(ctx))
 	// Keep reusable catalog text separate from the agent task envelope. Image
 	// composition must not copy JSON-output rules or write-back instructions
 	// into the provider prompt.

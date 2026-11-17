@@ -24,7 +24,7 @@ node scripts/build-skills.mjs --check
 
 加载 Skill 后调用 `project_overview`。新目录返回 `project_not_initialized` 是预期结果，接下来按[共同创作流程](#共同创作流程)创建草稿。已有作品会返回项目名称和 UUID，可据此核对绑定。
 
-CLI 补齐项目指引时，只升级完全匹配旧官方模板的 `AGENTS.md`。已有 `CLAUDE.md`、自定义 `AGENTS.md` 和用户配置保留，不生成 `CLAUDE.md` 或安装 hook。CLI 原有 Codex permission profile 补齐逻辑保留；这不代表其他宿主的沙箱已生效。Claude Code 等宿主未自动读取 `AGENTS.md` 时，显式读取该文件；已有 `@AGENTS.md` 引用继续有效。
+多个插件可以使用同一绘本目录。通用插件用 `lumi init --host generic` 补齐共享指引，只有与旧官方模板完全匹配的 `AGENTS.md` 才会升级。Codex 插件在自己的初始化步骤中管理该项目的 `.codex/config.toml`。宿主未自动加载 `AGENTS.md` 时，可显式读取。
 
 下列文件是**合并片段**，不要覆盖已有配置。Skill 链接目标始终是同一个目录；也可复制该目录连同 `references/`。已有同名 Skill 时先核对来源，避免覆盖。Windows 可复制目录替代符号链接。
 
@@ -109,7 +109,7 @@ claude
 
 ## 共同创作流程
 
-1. **新建作品**时，在 `project_overview` 返回 `project_not_initialized` 后，调用 `project_init`，用 `idea` 传入用户的原始创意。草稿创建成功后，再在同一目录用同一 CLI 和环境运行 `lumi init --json`，补齐 `AGENTS.md` 和 `user-data/.gitkeep`。在空目录提前运行该命令会直接定稿默认规格。
+1. **新建作品**时，在 `project_overview` 返回 `project_not_initialized` 后，调用 `project_init`，用 `idea` 传入用户的原始创意。草稿创建成功后，再在同一目录用同一 CLI 和环境运行 `lumi init --host generic --json`，补齐 `AGENTS.md` 和 `user-data/.gitkeep`。在空目录提前运行该命令会直接定稿默认规格。
 2. **选择规格或续做**时，调用 `project_setup get`。若 `setup_status=draft`，按用户要求用 `project_setup update` 填写画风、绘本形式及该形式支持的参数，再用返回的新 revision 调用 `project_setup finalize`。已有作品若为 `ready`，直接沿用已定稿的规格和当前进度。
 
 规格定稿后的创作流程为 `render_prompt → story_profile/chapters/settings/pages 写回 → image_target → generate_page_image → read_image → pages record_image_review → web_url → export_book/export_website`。工具参数与审阅证据见 Skill 引用的参考文档。

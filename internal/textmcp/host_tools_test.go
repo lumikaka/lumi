@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -68,7 +67,7 @@ func genericCall(t *testing.T, s *Service, root, name string, args map[string]an
 	return s.Call(WithHost(t.Context(), HostGeneric), root, name, b)
 }
 
-func listedTools(t *testing.T, host string) ([]string, bool) {
+func listedTools(t *testing.T, host string) (map[string]*mcp.Tool, bool) {
 	t.Helper()
 	server := ProtocolFor(host, func(context.Context, string, json.RawMessage) httpapi.Envelope {
 		return httpapi.Envelope{Success: true}
@@ -88,14 +87,13 @@ func listedTools(t *testing.T, host string) ([]string, bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	names := []string{}
+	tools := map[string]*mcp.Tool{}
 	for _, tool := range listed.Tools {
-		names = append(names, tool.Name)
+		tools[tool.Name] = tool
 	}
-	sort.Strings(names)
 	resources, err := client.ListResources(t.Context(), nil)
 	hasAppResource := err == nil && len(resources.Resources) > 0
-	return names, hasAppResource
+	return tools, hasAppResource
 }
 
 func TestToolListsPerHost(t *testing.T) {
@@ -104,12 +102,12 @@ func TestToolListsPerHost(t *testing.T) {
 		t.Fatal("unknown host must keep the MCP Apps resource")
 	}
 	for _, host := range []string{HostCodex, HostCindy} {
-		names, app := listedTools(t, host)
-		if !reflect.DeepEqual(names, historical) || !app {
-			t.Fatalf("%s tool list changed: %v", host, names)
+		tools, app := listedTools(t, host)
+		if !reflect.DeepEqual(tools, historical) || !app {
+			t.Fatalf("%s tool declarations differ from the default host", host)
 		}
 	}
-	for _, name := range historical {
+	for name := range historical {
 		if name == "generate_page_image" || name == "web_url" {
 			t.Fatalf("non-generic hosts must not list %s", name)
 		}
@@ -118,16 +116,29 @@ func TestToolListsPerHost(t *testing.T) {
 	if genericApp {
 		t.Fatal("generic host must not declare the MCP Apps resource")
 	}
-	has := map[string]bool{}
-	for _, name := range generic {
-		has[name] = true
+	for name := range generic {
 		if strings.HasPrefix(name, "review_") || strings.HasPrefix(name, "read_app_") || name == "write_app_resource" || name == "watch_app_changes" {
 			t.Fatalf("generic host lists app-only tool %s", name)
 		}
 	}
 	for _, want := range []string{"generate_page_image", "web_url", "prepare_page_image", "image_target", "read_image", "import_image", "pages"} {
-		if !has[want] {
+		if generic[want] == nil {
 			t.Fatalf("generic host missing %s: %v", want, generic)
+		}
+	}
+	for _, name := range []string{"render_prompt", "image_target", "prepare_page_image", "read_image", "import_image"} {
+		if !strings.Contains(generic[name].Description, "generate_page_image") {
+			t.Errorf("generic %s should direct page generation to Lumi", name)
+		}
+	}
+	if strings.Contains(generic["prepare_page_image"].Description, "referenced_image_paths") || !strings.Contains(historical["prepare_page_image"].Description, "referenced_image_paths") {
+		t.Error("only native hosts should receive imagegen instructions")
+	}
+	for _, name := range []string{"import_image", "setting_boards"} {
+		props := jsonSchema(t, generic[name].InputSchema)["properties"].(map[string]any)
+		path := props["path"].(map[string]any)["description"].(string)
+		if strings.Contains(path, "host") || !strings.Contains(path, "local") {
+			t.Errorf("generic %s path must accept an existing local file: %s", name, path)
 		}
 	}
 	// The Cindy contract snapshot stays host-neutral.
@@ -166,8 +177,11 @@ func TestGeneratePageImageHostGatingAndValidation(t *testing.T) {
 	// Selected settings without reviews are rejected by the same validation
 	// as prepare_page_image, before any task.
 	setting := createReadinessSetting(t, s, root, "character", "月光小狐狸")
-	object(t, invoke(t, s, root, "import_image", map[string]any{"path": preparedFixtureImage(t), "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
 	unreviewed := map[string]any{"page_uuid": page, "setting_uuids": []string{setting["uuid"].(string)}, "setting_reviews": []any{}, "idempotency_key": "gate-unreviewed", "expected_revision": revision}
+	if result := genericCall(t, s, root, "generate_page_image", unreviewed); code(result) != "setting_image_missing" || !strings.Contains(result.Error.Details, "generate_page_image") || !strings.Contains(result.Error.Details, "import_image") {
+		t.Fatalf("missing setting recovery: %+v", result.Error)
+	}
+	object(t, invoke(t, s, root, "import_image", map[string]any{"path": preparedFixtureImage(t), "target_uuid": setting["uuid"], "slot": "setting_image", "expected_revision": setting["revision"]}))
 	if result := genericCall(t, s, root, "generate_page_image", unreviewed); result.Success {
 		t.Fatal("unreviewed setting accepted")
 	}

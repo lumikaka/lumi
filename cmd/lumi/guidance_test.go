@@ -12,7 +12,7 @@ import (
 
 func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 	root := t.TempDir()
-	first := ensureGuidance(root)
+	first := ensureGuidance(root, true)
 	if first.Agents != "created" || first.Config != "created" {
 		t.Fatalf("first=%+v", first)
 	}
@@ -34,7 +34,7 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	info, _ := os.Stat(configPath)
-	second := ensureGuidance(root)
+	second := ensureGuidance(root, true)
 	if second.Agents != "preserved" || second.Config != "preserved" {
 		t.Fatalf("second=%+v", second)
 	}
@@ -66,7 +66,7 @@ func TestGuidanceCreatesAndPreservesFiles(t *testing.T) {
 
 func TestGenericGuidancePreservesLegacyHostFiles(t *testing.T) {
 	root := t.TempDir()
-	if result := ensureGuidance(root); result.Claude != "" {
+	if result := ensureGuidance(root, false); result.Claude != "" {
 		t.Fatalf("unexpected legacy guidance: %+v", result)
 	}
 	if _, err := os.Lstat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
@@ -88,7 +88,7 @@ func TestGenericGuidancePreservesLegacyHostFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if result := ensureGuidance(root); result.Claude != "preserved" {
+	if result := ensureGuidance(root, false); result.Claude != "preserved" {
 		t.Fatalf("legacy file not preserved: %+v", result)
 	}
 	for name, content := range files {
@@ -125,7 +125,7 @@ func TestUserDataPlaceholderRejectsDirectorySymlink(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "user-data")); err != nil {
 		t.Skip(err)
 	}
-	result := ensureGuidance(root)
+	result := ensureGuidance(root, true)
 	if result.Agents != "created" || !strings.Contains(strings.Join(result.Messages, "\n"), "无法创建 user-data/.gitkeep") {
 		t.Fatalf("guidance=%+v", result)
 	}
@@ -163,7 +163,7 @@ func TestGuidanceConfigMergeAndRefusal(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, _ := os.Stat(path)
-			result := ensureGuidance(root)
+			result := ensureGuidance(root, true)
 			if result.Config != test.want {
 				t.Fatalf("result=%+v", result)
 			}
@@ -186,7 +186,7 @@ func TestGuidanceConfigMergeAndRefusal(t *testing.T) {
 				if !inspectProtection(root).Configured {
 					t.Fatal("merged config not selected")
 				}
-				if again := ensureGuidance(root); again.Config != "preserved" {
+				if again := ensureGuidance(root, true); again.Config != "preserved" {
 					t.Fatalf("again=%+v", again)
 				}
 			}
@@ -216,7 +216,7 @@ func TestGuidanceRejectsSymlinksAndConcurrentReplacement(t *testing.T) {
 		if err := os.Symlink(target, link); err != nil {
 			t.Skip(err)
 		}
-		if result := ensureGuidance(root); result.Config != "manual" {
+		if result := ensureGuidance(root, true); result.Config != "manual" {
 			t.Fatalf("symlink result=%+v", result)
 		}
 		content, _ := os.ReadFile(external)
@@ -256,7 +256,7 @@ func TestUpgradeOfficialAgentsGuidanceOnly(t *testing.T) {
 		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 			t.Fatal(err)
 		}
-		result := ensureGuidance(root)
+		result := ensureGuidance(root, true)
 		got, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)

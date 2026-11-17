@@ -278,3 +278,63 @@ func TestInitCLIWithExistingCodexConfiguration(t *testing.T) {
 		}
 	}
 }
+
+func TestGenericAndCodexInitShareProject(t *testing.T) {
+	opt := cliOptions(t)
+	root := t.TempDir()
+	generic := runProjectCLI(t, opt, root, "init", "--host", "generic")
+	if generic.Guidance.Config != "skipped" || generic.Guidance.Agents != "created" || generic.WriteProtection != nil {
+		t.Fatalf("generic init: %+v", generic.Guidance)
+	}
+	codexDir := filepath.Join(root, ".codex")
+	if _, err := os.Lstat(codexDir); !os.IsNotExist(err) {
+		t.Fatalf("generic init touched .codex: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "user-data", ".gitkeep")); err != nil {
+		t.Fatal(err)
+	}
+
+	// A project can already have a user's Codex config without a permission selection.
+	if err := os.Mkdir(codexDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(codexDir, "config.toml")
+	const userConfig = "model = 'user-model'\n"
+	if err := os.WriteFile(path, []byte(userConfig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resumed := runProjectCLI(t, opt, root, "init", "--host", "generic")
+	if resumed.UUID != generic.UUID || *resumed.Created || resumed.Guidance.Config != "skipped" {
+		t.Fatalf("generic resume: %+v", resumed)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != userConfig {
+		t.Fatalf("generic resume changed Codex config: %q (%v)", got, err)
+	}
+	codex := runProjectCLI(t, opt, root, "init", "--host", "codex")
+	if codex.UUID != generic.UUID || *codex.Created || codex.Guidance.Config != "merged" || !codex.WriteProtection.Configured {
+		t.Fatalf("Codex takeover: %+v", codex)
+	}
+	before := projectFiles(t, codexDir)
+	runProjectCLI(t, opt, root, "init", "--host", "generic")
+	info := runProjectCLI(t, opt, root, "project", "info", "--host", "generic")
+	if info.UUID != codex.UUID || info.WriteProtection != nil {
+		t.Fatalf("generic project info: %+v", info)
+	}
+	if !reflect.DeepEqual(before, projectFiles(t, codexDir)) {
+		t.Fatal("generic init changed the active Codex configuration")
+	}
+
+	genericClient := mcpHostClient(t, opt, root, "generic")
+	codexClient := mcpHostClient(t, opt, root, "codex")
+	get := map[string]any{"action": "get"}
+	initial := callText(t, genericClient, "story_profile", get, "")
+	callText(t, genericClient, "story_profile", map[string]any{"action": "write", "expected_revision": initial["revision"], "story_md": "第一章"}, "")
+	current := callText(t, codexClient, "story_profile", get, "")
+	if current["story_md"] != "第一章" {
+		t.Fatalf("Codex read %+v", current)
+	}
+	callText(t, codexClient, "story_profile", map[string]any{"action": "write", "expected_revision": current["revision"], "story_md": "第一章和第二章"}, "")
+	if got := callText(t, genericClient, "story_profile", get, ""); got["story_md"] != "第一章和第二章" {
+		t.Fatalf("generic client read %+v", got)
+	}
+}

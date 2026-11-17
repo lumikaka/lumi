@@ -36,14 +36,14 @@ description: 在 Agent 中用 Lumi 从想法创作、修改、审阅和导出本
 - `project_init` 成功后，在同一目录通过 CLI 入口运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep`、AGENTS.md 和保护配置；对已经存在的项目不会重置 setup 草稿、内容或规格。然后 `lumi project info --json` 核对配置结果；续做已有项目时也执行一次，用于升级旧版官方 AGENTS.md；返回 agents=updated 后重读该文件。自定义文件按返回的局部合并提示处理。不要假定 GUI 继承 PATH，使用入口文档的绝对路径。
 - 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
 <!-- host:generic -->
-- `project_init` 成功后，在同一目录通过 CLI 运行 `lumi init --json`，幂等补齐 `user-data/.gitkeep` 和通用 AGENTS.md；已有项目不重置 setup、内容或规格。再用 `lumi project info --json` 核对。续做时也可运行 `lumi init --json` 升级旧版官方 AGENTS.md，返回 agents=updated 后重读。已有 CLAUDE.md 和用户宿主配置均保留；不创建 CLAUDE.md 或安装 hook。使用接入文档的 CLI 绝对路径与相同 environment/data-dir。
-- 没有插件工具而用户明确只要求 CLI 初始化时，先 `lumi project info --json` 确认目录；仅在未初始化且用户希望在此建立项目时运行 `lumi init --name 名称 --language zh-Hans --json`。CLI 在全新目录创建 ready 项目，先解释它采用的默认规格；需要自选绘本规格时等待插件可用，使用 `project_init → lumi init（补指引）→ project_setup`。
+- `project_init` 成功后，在同一目录运行 `lumi init --host generic --json` 补齐 `user-data/.gitkeep` 和通用 `AGENTS.md`，再用 `lumi project info --host generic --json` 核对项目身份。续做时沿用相同命令升级旧版官方指引，返回 `agents=updated` 后重读。使用接入配置中的 CLI 绝对路径和相同的 environment/data-dir。
+- 用户明确只要求 CLI 初始化时，先用 `lumi project info --host generic --json` 确认目录。仅在未初始化且用户希望在此按默认规格建书时，运行 `lumi init --host generic --name 名称 --language zh-Hans --json`。该命令在全新目录创建 ready 项目。需要自选规格时，用 MCP 的 `project_init` 创建草稿，补齐项目指引后再用 `project_setup` 定稿。
 <!-- /host -->
 - 已有项目读取概况、`project_setup get`、`book_outline`、相关章节和设定，保留现有进度。`project_locked` 时按错误详情释放桌面版或其他 CLI 占用，不删锁文件。
 <!-- host:codex -->
 - 检查 `lumi init` 返回的 guidance 和 warnings；配置冲突时保留现有设置，按返回的合并建议处理。提示用户在 App 信任项目并新开会话使配置生效；不能替用户设置 trust 或宣称写保护已生效。当前 MCP 会话可以继续创作，信任提示不替代用户的连续执行授权；用户/session 权限覆盖可能影响实际保护。
 <!-- host:generic -->
-检查 `lumi init` 返回的 guidance 和 warnings，保留用户配置。AGENTS.md 是行为指引，不宣称宿主沙箱或写保护已生效；按当前宿主的项目指引加载方式读取它，必要时显式读取。
+检查 `lumi init --host generic` 返回的 guidance。按当前宿主的项目指引加载方式读取 `AGENTS.md`，必要时显式读取。
 <!-- /host -->
 
 宿主没有命令执行工具时，不捏造 CLI 执行结果；若 `project_overview` 已确认本目录项目可用，记录指引升级／CLI 配置核验未执行，继续已获授权的 MCP 创作。项目仍未初始化时使用 `project_init → project_setup`；缺少的宿主配置由用户在有能力的环境补齐，不声称保护或配置已经生效。
@@ -130,7 +130,11 @@ description: 在 Agent 中用 Lumi 从想法创作、修改、审阅和导出本
 上述小说分镜任务的父代理始终是章节主聊天；采用持久逐页草稿与进度，不能以通用文本任务允许返回完整草稿为由把它送回总聊天。已有小说原文无需再派 Story Profile／章节改写代理。小说分镜的触发、复用和恢复优先按串行参考执行，不因“完整新书”重复委派分页。
 
 <!-- /host -->
+<!-- host:codex -->
 用户禁止 subagent、委派工具不可用或额度不足时，告知由章节主聊天串行承担相同职责；保留设定、场景和逐页审阅门槛，不因降级停止可完成的工作。若仅子任务缺少生图／读图权限，按串行参考中的宿主代执行流程处理，不伪报完成、不自行改用其他服务。缺占位符时查工具错误和 `prompt_catalog`，不猜模板名。
+<!-- host:generic -->
+用户禁止 subagent、委派工具不可用或额度不足时，由章节主聊天串行承担相同职责，保留设定、场景和逐页审阅步骤。若子任务无法调用 `generate_page_image` 或 `read_image`，按串行参考交回主聊天执行。缺占位符时查工具错误和 `prompt_catalog`。
+<!-- /host -->
 
 <!-- host:codex -->
 ## 宿主生图与一致性

@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"lumi/internal/httpapi"
 	"lumi/internal/project"
+	"lumi/internal/textmcp"
 )
 
 const initializationRoute = "/api/v1/project-initializations"
@@ -53,7 +54,7 @@ type commandProjectInfo struct {
 	project.DirectoryInfo
 	Created         *bool           `json:"created,omitempty"`
 	Guidance        *guidanceResult `json:"guidance,omitempty"`
-	WriteProtection protectionInfo  `json:"write_protection"`
+	WriteProtection *protectionInfo `json:"write_protection,omitempty"`
 }
 
 type projectRequestError struct{ Code, Message, Details string }
@@ -103,6 +104,7 @@ func initializeThroughInstance(ctx context.Context, value instance, input initia
 }
 
 func projectCommand(ctx context.Context, name string, opt options, out, stderr io.Writer) int {
+	includeCodexProtection := opt.host == "" || opt.host == textmcp.HostCodex
 	root, err := os.Getwd()
 	var result commandProjectInfo
 	if err == nil && name == "init" {
@@ -120,7 +122,7 @@ func projectCommand(ctx context.Context, name string, opt options, out, stderr i
 			}
 		}
 		if err == nil {
-			guidance := ensureGuidance(result.RootPath)
+			guidance := ensureGuidance(result.RootPath, includeCodexProtection)
 			if guidance.Config == "manual" {
 				guidance.Messages = append(guidance.Messages, "请检查权限选择后手工合并以下配置（default_permissions 必须位于顶层）：\n"+manualProtectionConfig())
 			}
@@ -148,16 +150,21 @@ func projectCommand(ctx context.Context, name string, opt options, out, stderr i
 		}
 		return printError(opt, out, stderr, code, err, 1)
 	}
-	result.WriteProtection = inspectProtection(result.RootPath)
+	if includeCodexProtection {
+		result.WriteProtection = inspectProtection(result.RootPath)
+	}
 	if opt.json {
 		if err := json.NewEncoder(out).Encode(map[string]any{"success": true, "data": result}); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
 	} else {
-		fmt.Fprintf(out, "UUID: %s\nName: %s\nPath: %s\nOpen: %t\nCodex write protection: %s (configured: %t)\n%s\n", result.UUID, result.Name, result.RootPath, result.Open, result.WriteProtection.Effective, result.WriteProtection.Configured, result.WriteProtection.Reason)
-		for _, warning := range result.WriteProtection.Warnings {
-			fmt.Fprintln(out, warning)
+		fmt.Fprintf(out, "UUID: %s\nName: %s\nPath: %s\nOpen: %t\n", result.UUID, result.Name, result.RootPath, result.Open)
+		if protection := result.WriteProtection; protection != nil {
+			fmt.Fprintf(out, "Codex write protection: %s (configured: %t)\n%s\n", protection.Effective, protection.Configured, protection.Reason)
+			for _, warning := range protection.Warnings {
+				fmt.Fprintln(out, warning)
+			}
 		}
 		if result.Guidance != nil {
 			for _, message := range result.Guidance.Messages {

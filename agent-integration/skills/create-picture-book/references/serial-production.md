@@ -48,10 +48,10 @@
 
 1. **准备参考**：读本页原文、分镜、采用设定和适用页段，检查与上一页的连续性；核实 setting_reviews 仍绑定当前图／revision／画风。参考缺失或设定有误交回设定代理。
 2. **生成并挂载**：调用前在本场记录中保存 `generate_page_image` 的**全部原参数和 idempotency_key**。服务端自动挂载，无需页面 import_image；done:false／超时／断连时先查页面，再用相同原参数与 key 等待／取回，不能刷新 revision 或换 key 重放旧请求。
-3. **看实际采用图**：通过 `pages get` 确认当前 variant_uuid 和实际处理版，`read_image` 实际查看；被 crop／pad 后尤其要看处理版。子任务只看过宿主原图不能代替此步。若生成返回 is_current_image=false，先读当前采用版本，不能审阅旧结果冒充当前图。
+3. **看实际采用图**：通过 `pages get` 确认当前 variant_uuid 和处理版本，再用 `read_image` 查看。若生成返回 is_current_image=false，审阅页面当前采用的版本。
 4. **逐页核对并保存**：逐字核对旁白、对白、姓名、标点及说话人／气泡指向，核对人物肢体、身份、服装、道具状态和位置、画风与前后页连续性。读不清的字不记 passed。用 `pages record_image_review` 绑定当前 variant_uuid 与 revision 保存具体观察；修订同一记录带 expected_review_revision。本页通过且未到用户暂停节点，再推进下一页。
 
-若子任务缺少宿主生图、读图或导入能力，先报告实际缺失工具及本页请求给章节主聊天。主聊天在相同权限与范围内**代执行这一页所缺步骤**，将真实返回值／路径交回原场景代理；能看实际图的执行者负责记录自己的观察，未看图者不得代写 passed。不能让整场移到另一代理并行重跑，也不能因委派静默切换服务。宿主也无该能力时保存阻塞与待审状态，等待所需能力／用户输入。
+若子任务无法调用 `generate_page_image` 或 `read_image`，将本页请求、原参数和 idempotency_key 交回章节主聊天，由主聊天接续同一请求。实际看过当前页面的执行者负责记录审阅结果。Lumi 返回 `image_provider_unavailable` 时，用 `web_url(view=providers)` 请用户配置图片服务商。
 
 场景代理仅向章节主聊天回报页码／UUID、采用 variant_uuid／version_no、review_status、必要的具体问题和跨场细节（时空、服装、道具归属、动作衔接）。完整生图提示词、图片和原文保留在工具及任务记录，不灌回总聊天。章节主聊天用 `pages list(summary_only=true)`／`book_outline(chapter_uuid)` 读完游标核实，并按需 `pages get`；不能只信代理说“通过”。
 

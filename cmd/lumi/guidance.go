@@ -83,8 +83,8 @@ func refreshAgentsGuidance(path string, result *guidanceResult) {
 	result.Messages = append(result.Messages, "保留已有 AGENTS.md；可补充 user-data/ 供用户和 Agent 直接读写工作文件的约定。如有旧的逐张参考图或 render_prompt chapter/section_image 步骤，请替换为引用当前插件技能，并保留自定义规则。")
 }
 
-func ensureGuidance(root string) guidanceResult {
-	result := guidanceResult{Agents: "preserved", Config: "manual", Messages: []string{}}
+func ensureGuidance(root string, includeCodexProtection bool) guidanceResult {
+	result := guidanceResult{Agents: "preserved", Config: "skipped", Messages: []string{}}
 	if err := ensureUserDataPlaceholder(root); err != nil {
 		result.Messages = append(result.Messages, "无法创建 user-data/.gitkeep，请检查项目目录："+err.Error())
 	}
@@ -99,6 +99,10 @@ func ensureGuidance(root string) guidanceResult {
 		result.Messages = append(result.Messages, "无法生成 AGENTS.md，请手工补齐 Lumi 插件读写指引："+err.Error())
 	}
 	inspectLegacyClaudeGuidance(root, &result)
+	if !includeCodexProtection {
+		return result
+	}
+	result.Config = "manual"
 	configDir := filepath.Join(root, ".codex")
 	if err := os.Mkdir(configDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 		result.Messages = append(result.Messages, "无法创建 .codex，请手工添加 Lumi profile："+err.Error())
@@ -270,8 +274,8 @@ func legacySandboxWarnings(config map[string]any) []string {
 	return warnings
 }
 
-func inspectProtection(root string) protectionInfo {
-	result := protectionInfo{Effective: "unknown", Reason: protectionCaveat, Warnings: []string{}}
+func inspectProtection(root string) *protectionInfo {
+	result := &protectionInfo{Effective: "unknown", Reason: protectionCaveat, Warnings: []string{}}
 	path := filepath.Join(root, ".codex", "config.toml")
 	if info, err := os.Lstat(filepath.Dir(path)); err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		result.Warnings = append(result.Warnings, "缺少项目内的 .codex/config.toml。")

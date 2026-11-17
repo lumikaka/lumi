@@ -46,6 +46,13 @@ func TestPageImagePromptComposesEffectiveFragmentsWithoutTaskMetadataOrWrites(t 
 	request["variables"] = map[string]string{"before_image_prompt": fragments["before_image"], "reference_usage_text": fragments["section_reference_absent"], "section_id": "FORGED ID", "storyboard": "FORGED SCENE", "style_prompt": "FORGED STYLE"}
 	rendered := object(t, invoke(t, s, root, "render_prompt", request))
 	generation := rendered["generation_prompt"].(string)
+	generic := object(t, genericCall(t, s, root, "render_prompt", request))
+	if !strings.Contains(rendered["prompt"].(string), "prepare_page_image") || !strings.Contains(generic["prompt"].(string), "generate_page_image") || strings.Contains(generic["prompt"].(string), "prepare_page_image") {
+		t.Fatal("rendered task directs reviews to the wrong host tool")
+	}
+	if generic["generation_prompt"] != generation {
+		t.Fatal("host instructions leaked into the image provider prompt")
+	}
 	for _, required := range []string{"CUSTOM BASE RULES", "CUSTOM NO REFERENCES", page, "ACTUAL SAVED SCENE", "Project language: English"} {
 		if !strings.Contains(generation, required) {
 			t.Fatalf("generation prompt missing %q", required)

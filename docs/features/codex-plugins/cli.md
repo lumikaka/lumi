@@ -67,6 +67,8 @@ lumi project info
 
 `AGENTS.md` 和 `.codex/config.toml` **不属于 Lumi 项目格式**，桌面版无需这些文件。桌面创建的项目可以直接运行 `lumi init` 补齐它们。
 
+多个插件共用同一作品时，Codex 继续使用 `lumi init`（或显式加 `--host codex`）管理项目写保护。通用插件使用 `lumi init --host generic` 补齐共享指引，此时 `guidance.config` 为 `skipped`。读取作品身份使用 `lumi project info --host generic`。这两条通用命令都省略 Codex 专用的 `write_protection` 状态。
+
 在新项目和已有项目中，`lumi init` 都会补齐 `user-data/.gitkeep`。用户和 Agent 可直接读写该目录中的工作文件，需要作为正式素材的文件通过插件导入。已有占位文件和用户资料会保留。
 
 生成的 `AGENTS.md` 说明上述用途，并要求 Codex 通过 Lumi 插件工具读写作品数据，禁止直接读写数据库及其附属文件、`.lumi/` 和 `assets/`，允许只读查看 `STORY.md`。完整匹配旧版官方模板时自动升级指引；自定义 `AGENTS.md` 原样保留并提示手工补充。`guidance.agents` 在升级时返回 `updated`。**禁止直接读取是行为要求；下列沙箱配置仍允许读取，只限制命令写入。**

@@ -100,7 +100,11 @@ func (s *Service) generatePageImage(ctx context.Context, withStore func(context.
 		return err
 	})
 	if err != nil {
-		return publicError(err)
+		result := publicError(err)
+		if result.Error.Code == "setting_image_missing" {
+			result.Error.Details = "用 image_target 查看本页缺图的设定。用 import_image 导入已有设定图，或通过 web_url 请用户在 Lumi 中生成。重读并核对设定图后，再调用 generate_page_image。"
+		}
+		return result
 	}
 	task, err = s.waitProductionTask(ctx, projectUUID, task, PageImageWait, s.PageImages.PageImage)
 	if err != nil {
