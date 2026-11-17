@@ -81,6 +81,157 @@
                 "minimum": 0,
                 "type": "integer"
               },
+              "local_edit": {
+                "additionalProperties": false,
+                "properties": {
+                  "base_asset_uuid": {
+                    "description": "Public UUIDv7 from a previous read.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                    "type": "string"
+                  },
+                  "base_sha256": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "base_variant_uuid": {
+                    "description": "Public UUIDv7 from a previous read.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                    "type": "string"
+                  },
+                  "base_version_no": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "compositor_version": {
+                    "description": "Signed compositor version; preserve unchanged.",
+                    "maxLength": 120000,
+                    "type": "string"
+                  },
+                  "crop_pixels": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "height": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "width": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "x": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "y": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "feather_pixels": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "original_size": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "height": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "width": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "selection": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "height": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "width": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "x": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "y": {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "selection_pixels": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "height": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "width": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "x": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "y": {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "base_variant_uuid",
+                  "base_version_no",
+                  "base_asset_uuid",
+                  "base_sha256",
+                  "original_size",
+                  "selection",
+                  "selection_pixels",
+                  "crop_pixels",
+                  "feather_pixels",
+                  "compositor_version"
+                ],
+                "type": "object"
+              },
               "page_uuid": {
                 "description": "Public UUIDv7 from a previous read.",
                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
@@ -274,6 +425,157 @@
                       "description": "Exact revision from the last read or render_prompt; required for every mutation.",
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "local_edit": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "base_asset_uuid": {
+                          "description": "Public UUIDv7 from a previous read.",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                          "type": "string"
+                        },
+                        "base_sha256": {
+                          "pattern": "^[0-9a-f]{64}$",
+                          "type": "string"
+                        },
+                        "base_variant_uuid": {
+                          "description": "Public UUIDv7 from a previous read.",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                          "type": "string"
+                        },
+                        "base_version_no": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "compositor_version": {
+                          "description": "Signed compositor version; preserve unchanged.",
+                          "maxLength": 120000,
+                          "type": "string"
+                        },
+                        "crop_pixels": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "height": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "width": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "x": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "y": {
+                              "minimum": 0,
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "y",
+                            "width",
+                            "height"
+                          ],
+                          "type": "object"
+                        },
+                        "feather_pixels": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "original_size": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "height": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "width": {
+                              "minimum": 0,
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "width",
+                            "height"
+                          ],
+                          "type": "object"
+                        },
+                        "selection": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "height": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "width": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "x": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "y": {
+                              "maximum": 1,
+                              "minimum": 0,
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "y",
+                            "width",
+                            "height"
+                          ],
+                          "type": "object"
+                        },
+                        "selection_pixels": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "height": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "width": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "x": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "y": {
+                              "minimum": 0,
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "y",
+                            "width",
+                            "height"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "base_variant_uuid",
+                        "base_version_no",
+                        "base_asset_uuid",
+                        "base_sha256",
+                        "original_size",
+                        "selection",
+                        "selection_pixels",
+                        "crop_pixels",
+                        "feather_pixels",
+                        "compositor_version"
+                      ],
+                      "type": "object"
                     },
                     "page_uuid": {
                       "description": "Public UUIDv7 from a previous read.",

@@ -28,12 +28,15 @@ var pagePreparationKey = sync.OnceValue(func() []byte {
 
 type PreparePageImageInput struct {
 	PageUUID            string
+	BaseVariantUUID     string
+	Selection           *NormalizedImageRect
 	SettingUUIDs        []string
 	AdditionalDirection string
 	SettingReviews      []HostSettingReview
 }
 
 type PageImagePreparationReceipt struct {
+	LocalEdit           *PageImageLocalEdit `json:"local_edit,omitempty"`
 	ProjectUUID         string              `json:"project_uuid"`
 	PageUUID            string              `json:"page_uuid"`
 	ExpectedRevision    int64               `json:"expected_revision"`
@@ -90,6 +93,10 @@ func preparationConflict() error {
 // pageImageInputs uses a single SQLite view both while preparing and during the
 // final import transaction. It does not write files or call any provider.
 func (service *Service) pageImageInputs(ctx context.Context, input PreparePageImageInput) (PreparedPageImage, []SectionPremiseSource, error) {
+	if input.BaseVariantUUID != "" || input.Selection != nil {
+		result, err := service.localPageImageInputs(ctx, input)
+		return result, nil, err
+	}
 	result := PreparedPageImage{ReferenceMode: "none", Sources: []PageImageSource{}}
 	if input.SettingUUIDs == nil || len(input.SettingUUIDs) > MaxSectionPremiseAssets || len([]rune(input.AdditionalDirection)) > 12000 {
 		return result, nil, domainError(CodeValidation, "页面参考选择无效", "明确提供 setting_uuids（无参考图时为 []），最多 12 项；additional_direction 最多 12000 字符。", nil)
@@ -189,7 +196,11 @@ func (service *Service) PreparePageImage(ctx context.Context, input PreparePageI
 	if err != nil {
 		return result, err
 	}
-	if len(sources) > 0 {
+	if result.Preparation.LocalEdit != nil {
+		if err := service.prepareLocalEditCrop(ctx, &result, references); err != nil {
+			return result, err
+		}
+	} else if len(sources) > 0 {
 		composition, err := ComposeSectionPremise(sources)
 		if err != nil {
 			return result, domainError("section_premise_composition_failed", "无法生成设定参考合图", err.Error(), err)
@@ -210,7 +221,12 @@ func (service *Service) validatePageImagePreparation(ctx context.Context, input 
 	if receipt == nil || receipt.ProjectUUID != service.store.ProjectUUID() || receipt.PageUUID != input.TargetUUID || receipt.ExpectedRevision != input.ExpectedRevision || !hmac.Equal([]byte(receipt.Signature), []byte(receipt.signature())) {
 		return preparationConflict()
 	}
-	current, _, err := service.pageImageInputs(ctx, PreparePageImageInput{PageUUID: receipt.PageUUID, SettingUUIDs: receipt.SettingUUIDs, AdditionalDirection: receipt.AdditionalDirection, SettingReviews: receipt.SettingReviews})
+	prepareInput := PreparePageImageInput{PageUUID: receipt.PageUUID, SettingUUIDs: receipt.SettingUUIDs, AdditionalDirection: receipt.AdditionalDirection, SettingReviews: receipt.SettingReviews}
+	if receipt.LocalEdit != nil {
+		prepareInput.BaseVariantUUID = receipt.LocalEdit.BaseVariantUUID
+		prepareInput.Selection = &receipt.LocalEdit.Selection
+	}
+	current, _, err := service.pageImageInputs(ctx, prepareInput)
 	if err != nil {
 		return preparationConflict()
 	}

@@ -8,6 +8,18 @@
 正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Agent 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
 <!-- /host -->
 
+<!-- host:codex -->
+## 已有页面的矩形局部修改
+
+用户指定历史版时，先 `pages get(include_versions=true)`，按 `image_versions.items[].version_no` 找到该版 `uuid`；不是当前采用版也可作为基准。实际查看该版的 `asset_uuid`，以整页左上角为原点，给出宽高归一化到 0～1 的 `selection={x,y,width,height}`。预览必须显示完整页面；不把局部放大图坐标当成整页坐标。
+
+调用 `prepare_page_image(page_uuid, base_variant_uuid, selection, additional_direction)`；局部模式省略 `setting_uuids` 或传 `[]`，不携带设定核对。它从基准版本原尺寸裁出选区及四周上下文，不生成整页设定合图。`reference_mode=local_edit`，`preparation.local_edit` 记录基准版本与 Asset UUID、原图 SHA-256、原尺寸、归一化选区、像素选区、裁图位置、选区内部羽化宽度及合成器版本。
+
+实际查看 `reference_image_path` 后，把唯一这个路径及原样 `generation_prompt` 交给宿主 ImageGen。输出须保持完整上下文裁图的宽高比、主体位置及比例；允许整体分辨率不同，不允许裁边、加边或重新构图。局部模式以裁图比例为准，不使用整页 target_ratio 重新构图。
+
+立即 `import_image`，传真实输出路径、原样提示词及完整签名 `preparation`，`fit_mode=keep`。Lumi 将输出对齐到上下文裁图，只在选区内贴回基准原图，羽化也限制在选区内，以无损 PNG 新增候选版，返回 `adopted=false`。当前采用版保持原样；实际看候选并给用户展示同位置同倍率对比，明确用户采用后才 `pages select_image`。单页审阅记录仍仅针对采用版，不把导入候选当作通过或采用。整页流程保持下述规则。
+<!-- /host -->
+
 ## 1. 明确本页设定
 
 按 [串行制作](serial-production.md) 由当前场景 subagent 按页顺序执行；读取本章设定 subagent 已核对的采用版本与适用页段。设定错误暂停本场并交回章节主聊天，不能由场景代理直接修改设定。

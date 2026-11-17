@@ -2,6 +2,7 @@
 
 正文、封面、封底统一使用 `generate_page_image`。Lumi 复用 Web 与 `prepare_page_image` 的合图和完整提示词组装，由用户在 Lumi 中配置的图片服务商生成，并在完成后把图片挂载为页面当前版本。Agent 负责选择与核对设定、发起生成、用 `read_image` 看成图并记录核对；不编写生图脚本，不向用户索取 API key。
 
+
 ## 1. 明确本页设定
 
 按 [串行制作](serial-production.md) 由当前场景 subagent 按页顺序执行；读取本章设定 subagent 已核对的采用版本与适用页段。设定错误暂停本场并交回章节主聊天，不能由场景代理直接修改设定。

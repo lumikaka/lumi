@@ -107,16 +107,18 @@ type ImportHostImageInput struct {
 }
 
 type HostImageImport struct {
-	Target         HostImageTarget `json:"target"`
-	Revision       int64           `json:"revision"`
-	VariantUUID    string          `json:"variant_uuid"`
-	VersionNo      int             `json:"version_no"`
-	Asset          files.Asset     `json:"asset"`
-	InputSize      ImageRatio      `json:"input_size"`
-	FitMode        string          `json:"fit_mode"`
-	RatioDeviation float64         `json:"ratio_deviation"`
-	RatioMatches   bool            `json:"ratio_matches"`
-	Warnings       []string        `json:"warnings"`
+	Adopted        bool                `json:"adopted"`
+	LocalEdit      *PageImageLocalEdit `json:"local_edit,omitempty"`
+	Target         HostImageTarget     `json:"target"`
+	Revision       int64               `json:"revision"`
+	VariantUUID    string              `json:"variant_uuid"`
+	VersionNo      int                 `json:"version_no"`
+	Asset          files.Asset         `json:"asset"`
+	InputSize      ImageRatio          `json:"input_size"`
+	FitMode        string              `json:"fit_mode"`
+	RatioDeviation float64             `json:"ratio_deviation"`
+	RatioMatches   bool                `json:"ratio_matches"`
+	Warnings       []string            `json:"warnings"`
 }
 
 func hostImageError(code, message, details string) error {
@@ -213,9 +215,34 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 	if err != nil {
 		return result, err
 	}
+	localEdit := input.Slot == "page_image" && input.Preparation.LocalEdit != nil
+	if localEdit {
+		if input.FitMode != "keep" {
+			return result, domainError(CodeValidation, "局部改图不支持整页裁切", "fit_mode 必须为 keep。", nil)
+		}
+		edit := input.Preparation.LocalEdit
+		baseData, base, err := service.localEditBase(ctx, edit.BaseAssetUUID)
+		if err != nil {
+			return result, err
+		}
+		if hashJSON(baseData) != edit.BaseSHA256 {
+			return result, preparationConflict()
+		}
+		// Uniform resize only. Different host pixel counts are normal; changed framing isn't.
+		aspect := float64(decoded.Bounds().Dx()*edit.CropPixels.Height) / float64(decoded.Bounds().Dy()*edit.CropPixels.Width)
+		if math.Abs(aspect-1) > HostImageRatioTolerance {
+			return result, domainError(CodeValidation, "局部补丁比例不符", "输出必须保留完整上下文裁图的宽高比；禁止裁边、补边或重新构图。", nil)
+		}
+		decoded = compositeLocalEdit(base, decoded, *edit)
+		var encoded bytes.Buffer
+		if err := png.Encode(&encoded, decoded); err != nil {
+			return result, err
+		}
+		data = encoded.Bytes()
+	}
 	w, h := decoded.Bounds().Dx(), decoded.Bounds().Dy()
 	deviation := float64(w*target.TargetRatio.Height)/float64(h*target.TargetRatio.Width) - 1
-	result = HostImageImport{Target: target, InputSize: ImageRatio{w, h}, FitMode: input.FitMode, RatioDeviation: deviation, RatioMatches: math.Abs(deviation) <= HostImageRatioTolerance, Warnings: []string{}}
+	result = HostImageImport{Adopted: !localEdit, Target: target, InputSize: ImageRatio{w, h}, FitMode: input.FitMode, RatioDeviation: deviation, RatioMatches: math.Abs(deviation) <= HostImageRatioTolerance, Warnings: []string{}}
 	if !result.RatioMatches {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("输入图片 %d:%d 与目标 %d:%d 的比例偏差为 %+.2f%%；已按 %s 导入。%s", w, h, target.TargetRatio.Width, target.TargetRatio.Height, deviation*100, input.FitMode, target.GenerationHint))
 	}
@@ -224,7 +251,16 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		purpose = "comic_section_image"
 	}
 	metadata := map[string]any{"origin": "host_generated", "original_prompt": input.Prompt, "description": input.Description, "fit_mode": input.FitMode, "input_width": w, "input_height": h, "target_width": target.TargetRatio.Width, "target_height": target.TargetRatio.Height}
+	if localEdit {
+		result.LocalEdit = input.Preparation.LocalEdit
+		metadata["local_edit"] = result.LocalEdit
+	}
 	commitInput := files.CommitInput{Purpose: purpose, OriginalFilename: filepath.Base(input.Path), SourceType: "imported", Metadata: metadata, Reader: bytes.NewReader(data)}
+	if localEdit {
+		commitInput.OriginalFilename = "local-edit.png"
+		commitInput.SourceType = "derived"
+		commitInput.SourceAssetUUID = input.Preparation.LocalEdit.BaseAssetUUID
+	}
 	if input.FitMode != "keep" && !result.RatioMatches {
 		processed, err := fitHostImage(decoded, target.TargetRatio, input.FitMode)
 		if err != nil {
@@ -264,11 +300,11 @@ func (service *Service) ImportHostImage(ctx context.Context, input ImportHostIma
 		if err != nil {
 			return result, err
 		}
-		page, err := service.importSectionImage(ctx, target.chapterUUID, input.TargetUUID, input.ExpectedRevision, snapshot, commit)
+		page, importedVariant, err := service.importSectionImageVersion(ctx, target.chapterUUID, input.TargetUUID, input.ExpectedRevision, snapshot, !localEdit, commit)
 		if err != nil {
 			return result, err
 		}
-		v := page.CurrentImage
+		v := &importedVariant
 		result.Revision, result.VariantUUID, result.VersionNo, result.Asset = page.Revision, v.UUID, v.VersionNo, v.Asset
 	} else {
 		setting, err := service.importPremiseAssetVariant(ctx, input.TargetUUID, nil, input.ExpectedRevision, commit)

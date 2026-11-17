@@ -50,6 +50,8 @@ type arguments struct {
 	ExpectedPremiseRevision int64                        `json:"expected_premise_revision"`
 	Crops                   []production.HostSettingCrop `json:"assets"`
 
+	BaseVariantUUID     string                                  `json:"base_variant_uuid"`
+	Selection           *production.NormalizedImageRect         `json:"selection"`
 	AdditionalDirection string                                  `json:"additional_direction"`
 	Model               string                                  `json:"model"`
 	SettingReviews      []production.HostSettingReview          `json:"setting_reviews"`
@@ -290,7 +292,7 @@ func (s *Service) Call(ctx context.Context, root, name string, raw json.RawMessa
 		case "web_url":
 			result, callErr = s.webURL(ctx, store, st, prod, a)
 		case "prepare_page_image":
-			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews}, &s.PageReferences)
+			result, callErr = prod.PreparePageImage(ctx, production.PreparePageImageInput{PageUUID: a.PageUUID, BaseVariantUUID: a.BaseVariantUUID, Selection: a.Selection, SettingUUIDs: value(a.ImageSettings), AdditionalDirection: a.AdditionalDirection, SettingReviews: a.SettingReviews}, &s.PageReferences)
 		case "import_image":
 			result, callErr = prod.ImportHostImage(ctx, production.ImportHostImageInput{Path: a.Path, TargetUUID: a.TargetUUID, Slot: a.Slot, FitMode: a.FitMode, Description: a.ImageDescription, Prompt: a.ImagePrompt, ExpectedRevision: value(a.ExpectedRevision), Preparation: a.Preparation})
 		case "read_image", "read_app_image", "read_app_image_detail":

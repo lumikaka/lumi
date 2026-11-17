@@ -1006,9 +1006,14 @@ func (service *Service) ImportSectionImage(ctx context.Context, chapterUUID, sec
 }
 
 func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64, inputSnapshot string, commit func(func(*gorm.DB, int64) error) error) (ComicSection, error) {
+	page, _, err := service.importSectionImageVersion(ctx, chapterUUID, sectionUUID, expectedRevision, inputSnapshot, true, commit)
+	return page, err
+}
+
+func (service *Service) importSectionImageVersion(ctx context.Context, chapterUUID, sectionUUID string, expectedRevision int64, inputSnapshot string, adopt bool, commit func(func(*gorm.DB, int64) error) error) (ComicSection, ImageVariant, error) {
 	variantUUID, err := newUUIDv7()
 	if err != nil {
-		return ComicSection{}, err
+		return ComicSection{}, ImageVariant{}, err
 	}
 	err = commit(func(tx *gorm.DB, fileID int64) error {
 		state, _, err := service.ensureComicState(ctx, tx, chapterUUID)
@@ -1035,7 +1040,11 @@ func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sec
 		if err := tx.Create(&variant).Error; err != nil {
 			return err
 		}
-		result := tx.Model(&section).Where("revision = ?", expectedRevision).Updates(map[string]any{"current_image_variant_id": variant.ID, "revision": gorm.Expr("revision + 1"), "updated_at": now})
+		updates := map[string]any{"revision": gorm.Expr("revision + 1"), "updated_at": now}
+		if adopt {
+			updates["current_image_variant_id"] = variant.ID
+		}
+		result := tx.Model(&section).Where("revision = ?", expectedRevision).Updates(updates)
 		if result.Error != nil || result.RowsAffected != 1 {
 			return domainError(CodeConflict, "Section 已被修改", "刷新后重试。", result.Error)
 		}
@@ -1048,13 +1057,21 @@ func (service *Service) importSectionImage(ctx context.Context, chapterUUID, sec
 		return service.createChapterSnapshotTx(ctx, tx, state.ID, actor.ID, "image_imported")
 	})
 	if err != nil {
-		return ComicSection{}, err
+		return ComicSection{}, ImageVariant{}, err
 	}
 	dto, err := service.GetSection(ctx, chapterUUID, sectionUUID)
 	if err == nil {
 		service.emit("comic:section_changed", map[string]any{"chapter_uuid": chapterUUID, "section_uuid": sectionUUID})
 	}
-	return dto, err
+	if err != nil {
+		return dto, ImageVariant{}, err
+	}
+	var variant imageVariantRecord
+	if err := service.store.DB().WithContext(ctx).Where("uuid = ?", variantUUID).First(&variant).Error; err != nil {
+		return dto, ImageVariant{}, err
+	}
+	v, err := service.imageVariantDTO(ctx, variant)
+	return dto, v, err
 }
 
 func (service *Service) CommitGeneratedSectionImage(ctx context.Context, chapterUUID, sectionUUID, generationUUID string, snapshot json.RawMessage, reader filesReader) (ComicSection, error) {

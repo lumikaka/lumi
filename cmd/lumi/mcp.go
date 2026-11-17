@@ -46,7 +46,10 @@ const websitePublishPromptVersion = 9
 
 // Version 10 accepts the generic host; older daemons reject that transport hint.
 const genericHostVersion = 10
-const creationProtocolVersion = genericHostVersion
+
+// Version 11 understands signed local-edit receipts and candidate-only imports.
+const localImageEditVersion = 11
+const creationProtocolVersion = localImageEditVersion
 
 // root_path is an instance transport field, never part of any MCP schema.
 type creationRequest struct {
@@ -215,6 +218,19 @@ func runMCP(opt options) error {
 		}
 		if opt.host == textmcp.HostGeneric {
 			requiredVersion = genericHostVersion
+		}
+		var local struct {
+			BaseVariantUUID string          `json:"base_variant_uuid"`
+			Selection       json.RawMessage `json:"selection"`
+			Preparation     struct {
+				LocalEdit json.RawMessage `json:"local_edit"`
+			} `json:"preparation"`
+		}
+		if tool == "prepare_page_image" || tool == "import_image" {
+			_ = json.Unmarshal(args, &local)
+			if local.BaseVariantUUID != "" || len(local.Selection) > 0 || len(local.Preparation.LocalEdit) > 0 {
+				requiredVersion = localImageEditVersion
+			}
 		}
 		if status.CreationProtocolVersion < requiredVersion {
 			return textmcp.Failure("cli_upgrade_required", "共享 CLI 服务需要升级", fmt.Sprintf("当前共享服务创作协议 v%d，此操作要求 v%d。先协调同环境使用者，使用随包 CLI 执行 stop --environment %s --data-dir %q，再重连并重读进度。", status.CreationProtocolVersion, requiredVersion, opt.environment, opt.dataDir))
