@@ -6,7 +6,7 @@ const { envelope } = require('../lumi/node/errors.cjs');
 const uuid = '01989abc-def0-7000-8000-000000000001';
 
 test('two-stage catalog discloses schemas and rules; unavailable categories have no tools', () => {
-  assert.deepEqual(discover({}).categories.map(c => c.name), ['project', 'story', 'settings', 'pages', 'prompts', 'media', 'review', 'export']);
+  assert.deepEqual(discover({}).categories.map(c => c.name), ['project', 'story', 'settings', 'pages', 'prompts', 'media', 'review', 'production', 'export']);
   for (const category of Object.keys(categories)) {
     const d = discover({ category });
     assert.ok(d.rules.length);
@@ -14,9 +14,10 @@ test('two-stage catalog discloses schemas and rules; unavailable categories have
   }
   assert.equal(discover({ category: 'media' }).status, 'available');
   assert.deepEqual(discover({ category: 'media' }).tools.map(t => t.name), ['image_target', 'prepare_page_image', 'read_image', 'receive_media']);
-  assert.deepEqual(discover({ category: 'review' }).tools, []);
+  assert.deepEqual(discover({ category: 'review' }).tools.map(t => t.name), ['review_book', 'review_chapters', 'review_chapter', 'review_page', 'review_settings', 'review_candidates']);
+  assert.match(discover({ category: 'review' }).rules.join('\n'), /不经 call_tool/);
   assert.deepEqual(discover({ category: 'settings' }).tools.map(t => t.name), ['settings', 'setting_boards', 'apply_setting_breakdown']);
-  for (const name of ['read_app_connection', 'watch_app_changes', 'read_app_image', 'import_image', 'review_book', 'exec', 'tools/call', 'reference_prepare', 'reference_chunk', 'reference_release']) assert.equal(allowed.has(name), false);
+  for (const name of ['read_app_connection', 'watch_app_changes', 'read_app_image', 'read_app_image_detail', 'write_app_resource', 'workspace_call', 'import_image', 'exec', 'tools/call', 'reference_prepare', 'reference_chunk', 'reference_release']) assert.equal(allowed.has(name), false);
   assert.equal(specs.prepare_page_image.description.includes('referenced_image_paths'), false);
   assert.ok(specs.prepare_page_image.description.includes('reference_media_url'));
 });
@@ -58,15 +59,26 @@ test('every action is classified explicitly; finalize, selection and export are 
     prepare_page_image: { page_uuid: uuid, setting_uuids: [] },
     receive_media: { target_uuid: uuid, slot: 'setting_image', expected_revision: 0 },
     setting_boards: { board_uuid: uuid },
+    review_book: {}, review_chapters: {}, review_chapter: { chapter_uuid: uuid }, review_page: { chapter_uuid: uuid, page_uuid: uuid }, review_settings: {}, review_candidates: { kind: 'page', chapter_uuid: uuid, page_uuid: uuid },
     apply_setting_breakdown: { board_uuid: uuid, expected_revision: 0, expected_premise_revision: 0, idempotency_key: 'split', assets: [{ type: 'character', title: 'Fox', summary: 'Fox', tags: ['fox'], confidence: 1, crop_box: { x: 0, y: 0, width: 1, height: 1 } }] },
   };
   for (const name of allowed) {
+    if (name.startsWith('production_')) continue; // Separate action-aware assertions below.
     for (const action of specs[name].input_schema.properties.action?.enum || [undefined]) {
       const args = { ...input[name], ...(action ? { action } : {}) };
       const write = ['project_init', 'export_book', 'export_website', 'receive_media', 'apply_setting_breakdown'].includes(name) || (action !== undefined && !['get', 'list'].includes(action));
       assert.equal(isWrite(name, args), write, `${name}/${action}`);
     }
   }
+});
+
+test('production tools disclose native boundaries and classify record/task actions', () => {
+  assert.deepEqual(discover({ category: 'production' }).tools.map(t => t.name), ['production_records', 'production_tasks']);
+  for (const action of ['read', 'schedule', 'write']) assert.equal(isWrite('production_records', { action, expected_project_uuid: uuid, record: 'index.json', data: {}, expected_revision: 0, request_key: 'r1' }), action === 'write');
+  for (const action of ['capabilities', 'create', 'get', 'send', 'get_run', 'read_messages', 'request_status', 'resume_request', 'retry_create']) {
+    assert.equal(isWrite('production_tasks', { action, expected_project_uuid: uuid, chapter_uuid: uuid, role: 'chapter', request_key: 'r1', new_request_key: 'r2', title: 'Chapter', text: 'Draft', expected_revision: 1 }), ['create', 'send', 'resume_request', 'retry_create'].includes(action));
+  }
+  for (const record of ['../../project.sqlite', 'tasks.json', 'chapters/other/chapter.json']) assert.throws(() => validate('production_records', { action: 'read', expected_project_uuid: uuid, record }), { code: 'invalid_arguments' });
 });
 
 test('page visual review evidence passes unchanged while attachment slots reject mixed or forged imports', () => {

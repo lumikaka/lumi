@@ -6,7 +6,7 @@ import { themeCSS } from './theme.js'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 export async function buildCindy({ entry = 'main.jsx', target = '../../cindy-plugins/lumi/workspace.html' } = {}) {
-  const result = await build({ configFile: false, root, plugins: [react()], define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { write: false, minify: true, cssCodeSplit: false, lib: { entry: `${root}${entry}`, name: 'LumiCindyWorkspace', formats: ['iife'] }, rolldownOptions: { output: { codeSplitting: false } } } })
+  const result = await build({ configFile: false, root, plugins: [react()], define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { write: false, minify: true, cssCodeSplit: false, lib: { entry: `${root}${entry}`, name: 'LumiCindyWorkspace', formats: ['iife'] }, rolldownOptions: { external: ['@modelcontextprotocol/ext-apps'], output: { codeSplitting: false } } } })
   const outputs = result.output ?? result[0].output
   const js = outputs.filter(v => v.type === 'chunk').map(v => v.code).join('\n').replace(/<\/script/gi, '<\\/script')
   const css = themeCSS(outputs.filter(v => v.type === 'asset' && v.fileName.endsWith('.css')).map(v => v.source).join('\n'))

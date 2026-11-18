@@ -24,11 +24,39 @@
 2. 逐章 render_prompt target=chapter。story/story_chapter 的任务输入按 prompt_catalog 补齐，包含章节计划和已生成摘要等；正文用 chapters write 保存。content 是完整章正文，不能只提交摘要。get 核对当前不可变正文版本。
 3. render_prompt target=pages、chapter_uuid 使用当前章。chapter/comic_storyboard 按绘本规格返回页面结构。竖向条漫默认传 `variables={"max_section_count":"2","moment_count_plan":"auto"}`（这里的 2 仅示例，替换为本次正文页数上限，合法范围 1–24），省略 max_moments_per_section。已有共享服务按章节 UUID 生成每页 1～3 镜的稳定计划，并填入完整 prompt；保留该逐页数组，实际写几页就使用前几项。用户明确指定其他节奏时优先采用，显式传入 moment_count_plan 和对应 max_moments_per_section，不能再用 auto 覆盖。其他格式按 prompt_catalog placeholders 提供任务输入，不套用条漫自动计划。保持模板要求的输出格式，再映射到 pages 工具字段。
 4. 每页 create 前 pages list 取得最新 state.revision。description_md 保存完整叙述、对白和字幕；storyboard_md 保存完整构图、动作、表情、光线与画面文字。逐页保存并 get 核对。编辑已有页使用 page.revision，不能把章 revision 当作页 revision。
-5. 保存前逐页核对镜头数与计划一致，同时核对完整剧情、对白和跨页连续性。分镜密度在规划和核对阶段调整，通过动作组织、停顿和切镜安排实现，不通过截断对白、删除剧情凑数，也不机械等分为等高画格。此默认只用于新规划，不自动改写用户已有作品；已有页仅在用户要求的修改范围内处理。展开 media 获取图片目标、参考图和授权交接规则。review 类别的交互界面尚未实现，但 pages 已支持 record_image_review；按下节实际看图后记录，不调用 MCP App-only 工具。
+5. 保存前逐页核对镜头数与计划一致，同时核对完整剧情、对白和跨页连续性。分镜密度在规划和核对阶段调整，通过动作组织、停顿和切镜安排实现，不通过截断对白、删除剧情凑数，也不机械等分为等高画格。此默认只用于新规划，不自动改写用户已有作品；已有页仅在用户要求的修改范围内处理。展开 media 获取图片目标、参考图和授权交接规则。pages 已支持 record_image_review；按下节实际看图后记录。review 类别提供工作区开页工具；MCP App-only 资源工具仅由页面调用。
 
-包内已有可编辑作品工作区的独立代码与隔离测试，但当前原生页面授权通道尚未核验，生产 taskView 未开放。不要把包内 HTML、测试截图、浏览器测试 key 或页面 session 当作当前任务的授权入口，也不要声称已经打开作品/章节/单页。按交付范围提供真实章节/页面 UUID、文本摘要和导出文件，原生工作区恢复后才使用经核验的同范围入口。
+## 可编辑工作区与对话引用
+
+直接调用顶层 `review_book`（作品）、`review_chapters`（章节列表）、`review_chapter(chapter_uuid)`、`review_page(chapter_uuid,page_uuid)`、`review_settings(setting_uuid?)` 或 `review_candidates`。这些工具绑定 Cindy 标准 MCP Apps 结果页；使用 `ghost_call.tool` 指定同名工具，参数直接放 args，不能经 call_tool 包装。作品、章节、单页完成创作或导出后按本次范围打开对应工作区；不等待用户点击才继续已授权制作。
+
+工作区复用 Lumi 的作品、章节、单页、设定及候选组件和 REST 业务接口；地址栏可选择复制，前进后退及详情返回使用卡片内导航。更多操作可切换作品/章节/设定、复制 Lumi Web 链接并重新连接。生成、授权图片交接与导出仍在当前对话通过对应工具完成。
+
+点选页面、章节、设定、内容卡 @ 引用或文本候选，仅通过标准 `app.updateModelContext()` 更新当前对话的公开 UUID 和必要摘要；点击本身不发送消息、不保存修改、不采用版本。用户随后在同一对话继续，例如“刚才选的是哪一页”；根据收到的对象身份通过业务工具重读事实再行动。输入框标签样式由 Cindy 决定。文本候选的全文在页面专用 _meta 中交付，不把全部候选重复放入开页摘要。
+
+保存修改、删除恢复、排序及候选采用均由用户明确操作触发，并使用当前 revision。页面每次调用由 Host 注入当前任务的本机目录和只读权限；卡片中的 expected_project_uuid 仅作身份核对，不能选择任务或目录。旧卡片遇到任务项目切换会拒绝请求，回到当前任务重新开页；只读任务只能浏览。WebSocket 变更提示触发 Query 失效和 REST 重读，并在首次 join、重新 join、窗口聚焦时校准；没有定时 HTTP 业务查询。卡片重开仍读取当前事实，不自动重放保存。
+
+普通业务工具仍用于读取完整正文和审阅证据。不能把工作区开页摘要、包内 HTML、测试截图或页面自报 session 当成完整审阅/可信任务来源；最终是否在真实 Cindy 打开和保存成功以本轮验收记录为准。
+
+## 按章制作与持久恢复
+
+多章制作、小说分镜、按场配图与中断续做必须先读 [按章制作、章内划场与中断恢复](references/serial-production.md)。用户以 create_thread 表达新建独立 Cindy 会话时，使用宿主 send_to_session 新建模式，不传 target_session_id；保留指定模型、项目、执行目录与父任务职责，核实新会话回执并提供链接，不改用 spawn_agent。该映射不提供父子等待或自动完成回报，派发前另行核实；普通任务、原生 thread、subagent 和 Orca 不静默互换。
+
+production_tasks 只描述本插件普通任务适配，不代表当前 Agent 全局能力；状态快照不能当等待接口，禁止父任务 sleep/查询/汇报循环。已核实回报渠道时保存待办并结束当前轮；无渠道时明确能力限制，不承诺自动续接。交接与逐页草稿通过 production_records 保存在 user-data/lumi-production/；仅使用 production_tasks 时要求当前任务串行写回 Lumi、子任务在 Host 分配目录中产草稿，不把这项限制套用于 send_to_session。章节始终串行，场景默认串行，用户明确选择后最多两个无依赖场景；有依赖的后场等待前场当前版本核实。先保存请求再派发，未知结果查原回执和 Lumi 当前事实，不重复建章、生图或导入。只读或宿主任务能力不可用时按参考中的等效流程执行，明确记录差异；父任务只创建和等待时不接手制作。
 
 ## 图片、参考图与比例
+
+### 历史版本的矩形局部改图
+
+先 `pages get(include_versions=true)`，在 `image_versions.items` 按用户指定的 version_no 取得本页 base_variant_uuid；可以选择未采用的历史版本。实际查看该版 asset_uuid 的完整页面，以整页左上角为原点给出归一化 `selection={x,y,width,height}`（0～1）。局部放大图坐标不能当作整页坐标。
+
+调用 `prepare_page_image(page_uuid, base_variant_uuid, selection, additional_direction)`，setting_uuids 省略或 []，不传 setting_reviews。返回 `reference_mode=local_edit`，唯一参考是原尺寸上下文裁图，preparation.local_edit 包含基准版、原图摘要、原尺寸、选区、裁图位置和合成器版本。不得手改这些字段或签名。
+
+Core 必须取得 `reference_delivery.kind=local_edit_crop`、status=ready 与 reference_media_url；原生通道仅在正式参数支持本机文件时引用同一 reference_image_path。先实际看裁图，再按本次模型 Guide 将唯一裁图作为图片输入，原样传 generation_prompt。输出保持完整上下文裁图的宽高比、主体位置及比例，不裁边、加边或重新构图；不使用整页 target_ratio 覆盖裁图比例。status=failed 时不提交 Core 请求。
+
+生成后立即通过顶层 `receive_media` 和授权 attachments 导入，带同一完整 prompt、原签名 preparation、expected_revision 和 `fit_mode=keep`。Lumi 仅在矩形选区内合成，羽化也只在选区内，选区外像素保持一致，以无损 PNG 新增候选并返回 `adopted=false`，当前采用版保持原样。实际看候选、展示同位置同倍率对比，用户明确采用后才 `pages select_image`；导入候选不代表采用或核对通过。
+
+局部改图旧 revision、取消或中断后，先重读本页当前采用版、image_versions 和已有写入回执；已导入就查看已有候选，不重复导入。生图提交结果未知（含 SUBMISSION_OUTCOME_UNKNOWN）先查宿主回执，不重复提交生图。原图或签名过期时重新准备；不能只换 revision、摘要或 preparation 重放旧输出。
 
 ### 先组装页面图片提示词
 

@@ -146,6 +146,20 @@ test('Cindy board attachment → atomic two-setting crops → reviewed reference
   const app = async (name, args) => ok(await gateway.call(name, args));
   const resource = `chapters/${chapter.uuid}/comic-sections/${pages[0].uuid}`;
   const current = await app('read_app_resource', { resource });
+  const launch = ok(await runtime.execute('review_page', { context: context(), arguments: { chapter_uuid: chapter.uuid, page_uuid: pages[0].uuid } }));
+  assert.equal(launch.project_uuid, project.project.uuid);
+  assert.equal(launch.permissions.can_write, true);
+  assert.equal(launch.view, 'page');
+  const pageCall = (name, args, ctx = context(), expected = project.project.uuid) => runtime.execute('workspace_call', { context: ctx, name, arguments: args, expected_project_uuid: expected });
+  assert.equal(ok(await pageCall('read_app_resource', { resource })).title, current.title);
+  await assert.rejects(pageCall('write_app_resource', { resource, method: 'PATCH', body: { title: 'Read-only denied', expected_revision: current.revision } }, { ...context(), workdir_is_read_only: true }), { code: 'read_only_context' });
+  await assert.rejects(pageCall('read_app_resource', { resource }, context(), '01989abc-def0-7000-8000-000000000001'), { code: 'app_project_mismatch' });
+  await assert.rejects(call('review_page', { chapter_uuid: chapter.uuid, page_uuid: pages[0].uuid }), { code: 'workspace_launch_required' });
+  const candidateTexts = [{ title: 'First candidate', text: 'Complete option one.' }, { title: 'Second candidate', text: 'Complete option two.' }];
+  const candidateLaunch = await runtime.execute('review_candidates', { context: context(), arguments: { kind: 'text', candidates: candidateTexts } });
+  assert.deepEqual(candidateLaunch.transport_launch_arguments.candidates, candidateTexts);
+  assert.equal(candidateLaunch.data.candidate_count, 2);
+  assert.equal(JSON.stringify(candidateLaunch.data).includes(candidateTexts[0].text), false);
   const saved = await app('write_app_resource', { resource, method: 'PATCH', body: { title: 'Workspace saved title', expected_revision: current.revision } });
   assert.equal(saved.title, 'Workspace saved title');
   assert.equal((await gateway.call('write_app_resource', { resource, method: 'PATCH', body: { title: 'Stale overwrite', expected_revision: current.revision } })).success, false);
@@ -170,7 +184,19 @@ test('Cindy board attachment → atomic two-setting crops → reviewed reference
   const deleted = (await app('read_app_resource', { resource: `chapters/${chapter.uuid}/comic-sections`, query: { state: 'trashed' } })).items.find(item => item.uuid === pages[0].uuid);
   await app('write_app_resource', { resource: `${resource}/restorations`, method: 'POST', body: { expected_revision: deleted.revision } });
   const subscription = await app('watch_app_changes', { action: 'open' });
+  const peer = [...runtime.connections.values()].find(record => record.sessions.has(context().session_id)).peer;
+  const originalOverview = peer.overview, originalRequest = peer.request;
+  let overviewCalls = 0, started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  peer.overview = function (...args) { overviewCalls++; return originalOverview.apply(this, args); };
+  peer.request = function (method, args, ...rest) {
+    if (method === 'tools/call' && args.name === 'watch_app_changes' && args.arguments.action === 'next') started();
+    return originalRequest.call(this, method, args, ...rest);
+  };
   const next = gateway.call('watch_app_changes', { action: 'next', subscription_uuid: subscription.subscription_uuid, cursor: subscription.cursor });
+  await waiting;
+  assert.equal(overviewCalls, 0, 'a WS wait/heartbeat must not issue a project fact read');
+  peer.overview = originalOverview; peer.request = originalRequest;
   const latest = await app('read_app_resource', { resource });
   await app('write_app_resource', { resource, method: 'PATCH', body: { title: 'WS updated title', expected_revision: latest.revision } });
   const hint = ok(await next);
@@ -179,6 +205,7 @@ test('Cindy board attachment → atomic two-setting crops → reviewed reference
   assert.equal((await app('read_app_resource', { resource })).title, 'WS updated title', 'hint triggers REST fact reread');
   await app('watch_app_changes', { action: 'close', subscription_uuid: subscription.subscription_uuid });
   ok(await call('project_init', { idea: 'Isolated second project.' }, context('other-task', other)));
+  await assert.rejects(pageCall('read_app_resource', { resource: 'project' }, context('other-task', other)), { code: 'app_project_mismatch' });
   for (const [name, args] of [
     ['setting_boards', { action: 'get', board_uuid: board.uuid }],
     ['read_image', { asset_uuid: source.setting_image.asset.uuid }],

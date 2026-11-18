@@ -1,0 +1,267 @@
+{
+  "production_records": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "read",
+          "write",
+          "schedule"
+        ],
+        "type": "string"
+      },
+      "expected_project_uuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "record": {
+        "type": "string",
+        "pattern": "^(index[.]json|chapters/[0-9a-f-]{36}/(chapter|settings|storyboard-commit|scene-[1-9][0-9]{0,4}|storyboard/(manifest|page-[1-9][0-9]{0,4}))[.]json)$"
+      },
+      "expected_revision": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "request_key": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9_.:-]+$"
+      },
+      "data": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "action",
+      "expected_project_uuid",
+      "record"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "write"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "data",
+            "expected_revision",
+            "request_key"
+          ]
+        }
+      }
+    ]
+  },
+  "production_tasks": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "capabilities",
+          "create",
+          "get",
+          "send",
+          "get_run",
+          "read_messages",
+          "request_status",
+          "resume_request",
+          "retry_create"
+        ]
+      },
+      "expected_project_uuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "chapter_uuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "chapter",
+          "storyboard",
+          "settings",
+          "scene"
+        ]
+      },
+      "scene": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 99999
+      },
+      "request_key": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9_.:-]+$"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 32768
+      },
+      "expected_revision": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "after": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
+      "new_request_key": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9_.:-]+$",
+        "description": "Only for explicit retry_create after the user restores Host permission: a distinct stable key. Unknown, cancelled, conflicting or successful requests cannot be replaced."
+      }
+    },
+    "required": [
+      "action",
+      "expected_project_uuid"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "create"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "chapter_uuid",
+            "role",
+            "request_key",
+            "title"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "get"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "chapter_uuid",
+            "role"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "send"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "chapter_uuid",
+            "role",
+            "request_key",
+            "expected_revision",
+            "text"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "read_messages"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "chapter_uuid",
+            "role"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "get_run"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "request_key"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "request_status"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "request_key"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "resume_request"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "request_key"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "retry_create"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "request_key",
+            "new_request_key"
+          ]
+        }
+      }
+    ]
+  }
+}

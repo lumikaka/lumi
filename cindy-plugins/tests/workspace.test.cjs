@@ -22,7 +22,7 @@ test('startup identity lock contention has a bounded read retry without business
   await runtime.close(); await unavailable.close();
 });
 
-test('production has no page authority; self-reported session/query/broadcast cannot authorize an RPC', async () => {
+test('legacy generic pages have no authority; only Host-routed MCP Apps calls may enter the explicit adapter', async () => {
   let called = false;
   const runtime = { workspace() { called = true; } };
   const gateway = new WorkspaceGateway({ runtime, sender: { session: 'forged', project_uuid: uuid, can_write: true } });
@@ -33,6 +33,10 @@ test('production has no page authority; self-reported session/query/broadcast ca
     await assert.rejects(real.execute(method, { context: {}, arguments: {} }), { code: 'method_not_found' });
     await real.close();
   }
+  const real = new Runtime();
+  await assert.rejects(real.execute('workspace_call', { context: {}, name: 'read_app_resource', arguments: { resource: 'project' }, expected_project_uuid: uuid }), { code: 'context_missing' });
+  await assert.rejects(real.execute('call_tool', { context: {}, arguments: { name: 'workspace_call', args: {} } }), { code: 'unknown_tool' });
+  await real.close();
 });
 test('Host-observed sender identity, permission change and page revocation are checked for every result', async () => {
   const controller = new AbortController(), sender = {}, impostor = {};

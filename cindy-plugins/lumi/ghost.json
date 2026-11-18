@@ -1,17 +1,17 @@
 {
   "schemaVersion": 3,
-  "minCindyVersion": "0.1.121",
+  "minCindyVersion": "0.1.130",
   "id": "lumi",
   "name": "Lumi",
-  "description": "在 Cindy 当前 Lumi 项目中完成故事、设定、章节和页面创作，导入授权图片并导出作品；无需 Lumi 模型服务商。审阅界面尚未实现。",
+  "description": "在 Cindy 当前 Lumi 项目中完成绘本创作、设定核对、图片导入和历史矩形局部改图；对话工具结果中提供可编辑工作区与点选引用，并支持作品和本地阅读网站导出。",
   "whenToUse": "初始化或打开 Lumi 项目、创作或修改故事与设定、逐章逐页保存正文与画面描述、审阅文本并导出作品，或按要求生成、更新当前绘本的本地静态阅读网站。",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "entry": "main.js",
   "icon": "assets/icon.png",
   "tools": [
     {
       "name": "list_tools",
-      "description": "不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。图片使用独立 receive_media 附件入口；review 尚未实现。",
+      "description": "不传 category 返回类别概览；指定类别返回工具说明、JSON Schema 与必要 RULES。工作区用顶层 review_* 开页；图片使用独立 receive_media 附件入口。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -43,7 +43,7 @@
     },
     {
       "name": "receive_media",
-      "description": "接收 ghost_call.attachments 中恰好一张授权图片，导入页面、单项设定或设定总览图。页面须带完整 prompt/preparation；设定板须带 source_text、revision 和幂等键。不接受自报路径、指纹或内联字节。",
+      "description": "接收 ghost_call.attachments 中恰好一张授权图片，导入页面、单项设定或设定总览图。页面须带原样 prompt/签名 preparation；历史矩形 local_edit 使用 fit_mode=keep，仅新增 adopted=false 候选，用户明确采用后才 select_image。设定板须带 source_text、revision 和幂等键。不接受自报路径、指纹或内联字节。",
       "parameters": {
         "type": "object",
         "additionalProperties": false,
@@ -744,6 +744,763 @@
           }
         ]
       }
+    },
+    {
+      "name": "review_book",
+      "description": "在当前 Cindy 对话打开可编辑的 Lumi 作品总览。开页只读；页面复用作品、章节、设定和候选编辑，保存和采用由用户明确提交。点选仅更新当前对话上下文，不发送消息。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "review_chapters",
+      "description": "在当前 Cindy 对话打开 Lumi 章节列表，按业务顺序浏览并进入章节、单页编辑；只绑定当前任务项目。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "review_chapter",
+      "description": "打开指定章节的可编辑工作区，支持逐页阅读、正文与分镜编辑、历史预览和显式采用。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chapter_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "review_page",
+      "description": "直接打开指定页，包含可复制地址栏、前进后退和返回章节列表的路径。预览和点选引用均不保存、不采用。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_uuid",
+          "page_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "review_settings",
+      "description": "打开设定列表或指定设定详情，使用现有编辑和图片版本采用流程。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "next_cursor from the previous response.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "before": {
+            "description": "Return a page before this cursor; mutually exclusive with after.",
+            "pattern": "^[0-9]{1,10}$",
+            "type": "string"
+          },
+          "limit": {
+            "description": "List size, default 20; reduce if result_too_large.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "name": "review_candidates",
+      "description": "打开本页/设定历史候选或 2～12 个文本候选。点击仅更新当前对话上下文，采用和保存另行提交；不等待用户操作阻塞创作。",
+      "parameters": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "page"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "page_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "setting"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "setting_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "text"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "candidates"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "description": "Complete candidate text",
+                  "maxLength": 120000,
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Candidate title",
+                  "maxLength": 120000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "text"
+              ],
+              "type": "object"
+            },
+            "maxItems": 12,
+            "minItems": 2,
+            "type": "array"
+          },
+          "chapter_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "page",
+              "setting",
+              "text"
+            ],
+            "type": "string"
+          },
+          "page_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "setting_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_app_resource",
+      "description": "仅供工作区页面读取固定业务资源，完整正文只返回页面；使用宿主当前任务上下文。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "additionalProperties": {
+              "description": "Validated REST query value.",
+              "maxLength": 120000,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "resource": {
+            "description": "Allowlisted project-relative resource, or project for the work itself.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "expected_project_uuid": {
+            "description": "Identity constraint from this card launch; never selects a project or task.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource",
+          "expected_project_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "write_app_resource",
+      "description": "仅供工作区页面在用户明确提交后调用已有 REST 保存、排序、删除恢复或版本采用；遵循只读权限及 revision，不在挂载或预览时写入。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "additionalProperties": {
+              "description": "Validated REST query value.",
+              "maxLength": 120000,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "resource": {
+            "description": "Allowlisted project-relative resource.",
+            "maxLength": 120000,
+            "type": "string"
+          },
+          "expected_project_uuid": {
+            "description": "Identity constraint from this card launch; never selects a project or task.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource",
+          "method",
+          "expected_project_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_app_image",
+      "description": "仅供工作区页面按公开 Asset UUID 读取有界预览，不接受文件路径。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "max_edge": {
+            "maximum": 1024,
+            "minimum": 256,
+            "type": "integer"
+          },
+          "expected_project_uuid": {
+            "description": "Identity constraint from this card launch; never selects a project or task.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_uuid",
+          "expected_project_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_app_image_detail",
+      "description": "仅供工作区页面读取已打开图片对话框的放大图，图片字节仅返回页面。",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "max_edge": {
+            "maximum": 2048,
+            "minimum": 256,
+            "type": "integer"
+          },
+          "expected_project_uuid": {
+            "description": "Identity constraint from this card launch; never selects a project or task.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_uuid",
+          "max_edge",
+          "expected_project_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "watch_app_changes",
+      "description": "仅供工作区页面接收真实 WebSocket 变更提示。open 首次 join，next 等待事件，close 释放；提示触发 Query 失效并经 REST 重读，禁止定时查询业务状态。",
+      "parameters": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "close"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "project_uuid",
+                "subscription_uuid"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "next"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "project_uuid",
+                "subscription_uuid",
+                "cursor"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "open"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "project_uuid"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "open",
+              "next",
+              "close"
+            ],
+            "type": "string"
+          },
+          "cursor": {
+            "pattern": "^(0|[1-9][0-9]{0,19})$",
+            "type": "string"
+          },
+          "project_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "subscription_uuid": {
+            "description": "Public UUIDv7 from a previous read.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "expected_project_uuid": {
+            "description": "Identity constraint from this card launch; never selects a project or task.",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "expected_project_uuid"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "production_records",
+      "description": "按当前 Lumi 项目读写 user-data/lumi-production/ 的章节交接、逐页草稿与回执；CAS 和幂等键防止覆盖，事实仍以 Lumi 为准。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "read",
+              "write",
+              "schedule"
+            ],
+            "type": "string"
+          },
+          "expected_project_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "record": {
+            "type": "string",
+            "pattern": "^(index[.]json|chapters/[0-9a-f-]{36}/(chapter|settings|storyboard-commit|scene-[1-9][0-9]{0,4}|storyboard/(manifest|page-[1-9][0-9]{0,4}))[.]json)$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "request_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_.:-]+$"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "action",
+          "expected_project_uuid",
+          "record"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "write"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "data",
+                "expected_revision",
+                "request_key"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "production_tasks",
+      "description": "使用 Cindy 普通任务委派草稿，保留可恢复回执。用户以 create_thread 表达新建独立 Cindy 会话时，使用宿主 send_to_session 新建模式，不传 target_session_id；保留指定模型、项目和执行目录，不改用 spawn_agent。创建回执与完成回报另行核实。仅本适配器要求子任务在宿主目录产草稿、当前任务串行写回 Lumi；不实现原生等待或完成通知，不可循环查询状态。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "capabilities",
+              "create",
+              "get",
+              "send",
+              "get_run",
+              "read_messages",
+              "request_status",
+              "resume_request",
+              "retry_create"
+            ]
+          },
+          "expected_project_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chapter_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "chapter",
+              "storyboard",
+              "settings",
+              "scene"
+            ]
+          },
+          "scene": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99999
+          },
+          "request_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_.:-]+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32768
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "new_request_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "description": "Only for explicit retry_create after the user restores Host permission: a distinct stable key. Unknown, cancelled, conflicting or successful requests cannot be replaced."
+          }
+        },
+        "required": [
+          "action",
+          "expected_project_uuid"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "role",
+                "request_key",
+                "title"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "get"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "role"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "send"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "role",
+                "request_key",
+                "expected_revision",
+                "text"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "read_messages"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "chapter_uuid",
+                "role"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "get_run"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "request_key"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "request_status"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "request_key"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "resume_request"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "request_key"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "retry_create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "request_key",
+                "new_request_key"
+              ]
+            }
+          }
+        ]
+      }
     }
   ],
   "node": {
@@ -759,7 +1516,7 @@
   "command": "lumi",
   "launch": "on-demand",
   "sessionContext": true,
-  "releaseNotes": "补齐设定板授权附件导入、原子拆分与稳定幂等恢复；从 Go 契约同步 setting_reviews、preparation 和附件 schema，并增加实际契约漂移检查。作品工作区生产桥仍待可信宿主身份验收。",
+  "releaseNotes": "明确 create_thread 表达新建独立 Cindy 会话时使用宿主 send_to_session，不替换为引擎子 Agent；保留指定模型、项目、目录与父任务职责，单独核实创建和完成回报。修正父任务等待流程：区分普通任务与原生协作能力，明确禁止模型循环查询状态；返回已受理、运行中、阻塞和待核实终态的下一步指引。保留原请求恢复与游标，增加回报去重、过期进度及能力缺口的处理规则。未新增权限或宿主自动唤醒服务。",
   "manual": {
     "items": [
       {
@@ -786,5 +1543,91 @@
     "media": [
       "deposit"
     ]
+  },
+  "mcpApps": {
+    "ui": {
+      "resources": [
+        {
+          "uri": "ui://lumi/workspace/v1",
+          "file": "workspace.html",
+          "prefersBorder": true,
+          "csp": {
+            "connectDomains": [],
+            "resourceDomains": []
+          }
+        }
+      ],
+      "tools": {
+        "review_book": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "review_chapters": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "review_chapter": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "review_page": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "review_settings": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "review_candidates": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "model"
+          ]
+        },
+        "read_app_resource": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "app"
+          ]
+        },
+        "write_app_resource": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "app"
+          ]
+        },
+        "read_app_image": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "app"
+          ]
+        },
+        "read_app_image_detail": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "app"
+          ]
+        },
+        "watch_app_changes": {
+          "resourceUri": "ui://lumi/workspace/v1",
+          "visibility": [
+            "app"
+          ]
+        }
+      }
+    }
+  },
+  "agent": {
+    "tasks": true
   }
 }

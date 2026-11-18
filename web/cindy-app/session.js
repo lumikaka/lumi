@@ -4,7 +4,7 @@ import { createWorkspaceAPI } from '../src/workspace/services.js'
 import { PreviewCache } from '../mcp-app/images.js'
 import { ApiError } from '../src/api/client.js'
 
-const allowed = new Set(['read_app_resource', 'write_app_resource', 'read_app_image', 'watch_app_changes'])
+const allowed = new Set(['read_app_resource', 'write_app_resource', 'read_app_image', 'read_app_image_detail', 'watch_app_changes'])
 const unavailable = message => new ApiError({ code: 'workspace_capability_unavailable', message, details: '请在当前 Cindy 任务对话中继续；导出文件通过任务文件列表交付。' }, 501)
 
 // transport is supplied by a verified Host connector (or an explicit isolated
@@ -14,6 +14,7 @@ export function createCindySession(result, transport) {
   const launch = workspaceLaunch(result)
   const controller = new AbortController()
   const bridge = {
+    get initialization() { return transport.initialization },
     async call(name, args, options = {}) {
       if (!allowed.has(name)) throw unavailable('此操作不属于作品工作区')
       const project = options.meta?.['lumi/expected_project_uuid'] || args?.project_uuid || launch.project_uuid
@@ -23,8 +24,17 @@ export function createCindySession(result, transport) {
       return name === 'watch_app_changes' ? { structuredContent: response, isError: !response.success } : { _meta: { 'lumi/app_response': response }, isError: !response.success }
     },
     request(method, params, options) {
+      if (method === 'ui/open-link' && transport.request) return transport.request(method, params, options)
       if (method !== 'tools/call') throw unavailable('此宿主请求不可用')
       return bridge.call(params.name, params.arguments, options)
+    },
+    async updateModelContext(context) {
+      if (controller.signal.aborted) throw unavailable('页面已关闭，请重新打开后点选')
+      if (!transport.updateModelContext) throw Object.assign(new Error('宿主未声明上下文更新能力'), { kind: 'unsupported' })
+      const result = await transport.updateModelContext(context, { signal: controller.signal })
+      if (controller.signal.aborted) throw unavailable('页面已关闭，无法确认引用')
+      if (!result || typeof result !== 'object' || Array.isArray(result) || result.isError === true) throw Object.assign(new Error('宿主未接受上下文更新'), { kind: 'host_failed' })
+      return result
     },
   }
   const request = createAppRequest(bridge, launch.project_uuid, { canWrite: launch.permissions?.can_write === true })
@@ -36,14 +46,16 @@ export function createCindySession(result, transport) {
   })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false, staleTime: Infinity, gcTime: 300000 }, mutations: { retry: false } } })
   const previews = new PreviewCache((...args) => bridge.call(...args))
+  const detailPreviews = new PreviewCache((...args) => bridge.call(...args), { detail: true, concurrency: 1 })
   let closing
-  return { key: crypto.randomUUID(), launch, bridge, api, client, previews,
+  return { key: crypto.randomUUID(), launch, bridge, api, client, previews, detailPreviews,
     close() {
       if (!closing) {
         controller.abort()
         closing = (async () => {
           await client.cancelQueries(); client.clear()
           previews.cache.clear(); previews.bytes = 0
+          detailPreviews.cache.clear(); detailPreviews.bytes = 0
           await transport.close?.()
         })()
       }

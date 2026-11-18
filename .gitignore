@@ -37,6 +37,7 @@ __pycache__/
 # Generated acceptance artifacts; keep summaries and selected screenshots only
 /docs/features/codex-plugins/acceptance/evidence/
 /docs/features/codex-plugins/acceptance/results/
+/docs/features/cindy-plugins/acceptance/alignment-*/
 
 # Hugo site
 /site/.hugo_build.lock

@@ -13,6 +13,9 @@ const { MediaTransfers, prepareRecovery } = require('./media.cjs');
 const { ReferenceTransfers } = require('./reference.cjs');
 const { adaptAuthoringResult } = require('./authoring.cjs');
 const { workspaceResult, methods: workspaceMethods } = require('./workspace.cjs');
+const { launchTools } = require('./workspace-contract.cjs');
+const { ProductionStore } = require('./production.cjs');
+const { schedule } = require('./production-schedule.cjs');
 
 const METHODS = new Set([...catalog.allowed, 'list_tools', 'call_tool']);
 const MEDIA_METHODS = new Set(['media_begin', 'media_chunk', 'media_commit', 'media_abort']);
@@ -196,8 +199,8 @@ class Runtime {
     }
   }
 
-  // Not dispatched by worker-transport/main.js. Only a verified sender adapter
-  // may use this internal interface; production currently has no such adapter.
+  // Called only by the MCP Apps adapter with fresh Host-injected context.
+  // A card's project UUID constrains the binding; it never selects a project.
   workspace(method, args, context, project, signal) {
     if (!workspaceMethods.has(method) || !UUID.test(project)) throw new RuntimeError('workspace_method_forbidden', '工作区目标或操作无效。');
     if (method === 'write_app_resource' && /^(?:asset-uploads|comic-exports)(?:\/|$)|generations|generation-batches|reconstructions|\/retries$/.test(args?.resource || '')) throw new RuntimeError('workspace_capability_unavailable', '此 Cindy 页面尚未接入文件、生成或导出操作。', '请通过当前任务对话及授权附件继续，未提交此操作。');
@@ -207,6 +210,11 @@ class Runtime {
   }
 
   async execute(method, params, signal, token, pageProject) {
+    if (method === 'production_call') return this.production(params, signal);
+    if (method === 'workspace_call') {
+      if (!params || Object.keys(params).some(key => !['context', 'name', 'arguments', 'expected_project_uuid'].includes(key))) throw new RuntimeError('invalid_arguments', '页面调用参数无效。');
+      return this.workspace(params.name, params.arguments, params.context, params.expected_project_uuid, signal);
+    }
     if (MEDIA_METHODS.has(method) || REFERENCE_METHODS.has(method)) {
       const pending = REFERENCE_METHODS.has(method) ? this.executeReference(method, params, signal) : this.executeMedia(method, params, signal);
       this.mediaPending.add(pending);
@@ -218,6 +226,8 @@ class Runtime {
     if (method === 'list_tools') return success(catalog.discover(params?.arguments ?? {}));
     if (method === 'call_tool') {
       const wrapper = catalog.validateCall(params?.arguments);
+      if (['production_records', 'production_tasks'].includes(wrapper.name)) throw new RuntimeError('production_entry_required', '制作协调必须调用同名顶层工具。', `使用 ghost_call.tool=${wrapper.name}，不经 call_tool 包装。`);
+      if (launchTools.includes(wrapper.name)) throw new RuntimeError('workspace_launch_required', '开页必须调用同名顶层工具。', `使用 ghost_call.tool=${wrapper.name}，业务参数直接放 args，不能经 call_tool 包装。`);
       method = wrapper.name;
       params = { ...params, arguments: wrapper.args ?? {} };
     }
@@ -370,7 +380,8 @@ class Runtime {
       };
       // Setup has no project identity in its arguments. First bind from a
       // trusted cwd read, then send that UUID as an additional CLI constraint.
-      if (!['project_init', 'project_overview'].includes(method)) {
+      const continuingWatch = workspace && method === 'watch_app_changes' && input.action !== 'open' && expectedUUID;
+      if (!['project_init', 'project_overview'].includes(method) && !continuingWatch) {
         const current = await record.peer.overview(callSignal, expectedUUID);
         if (!current.success) {
           if (current.error.code === 'project_identity_mismatch') this.forget(session);
@@ -468,6 +479,9 @@ class Runtime {
           throw failed;
         }
       }
+      if (launchTools.includes(method) && method === 'review_candidates' && input.kind === 'text') {
+        return { ...result, transport_launch_arguments: input };
+      }
       if (!['project_init', 'project_overview'].includes(method)) return adaptAuthoringResult(method, input, result);
       bind(result);
       const data = publicProject(result.data);
@@ -490,6 +504,56 @@ class Runtime {
       session.pending.delete(done);
       finish();
     }
+  }
+
+  async production(params, signal) {
+    if (!params || Object.keys(params).some(k => !['context', 'name', 'arguments', 'capabilities', 'invocation', 'receipt', 'preflight'].includes(k))
+      || !['production_records', 'production_tasks'].includes(params.name)) throw new RuntimeError('invalid_arguments', '制作协调调用无效。');
+    const context = contextFor({ context: params.context });
+    const input = catalog.validate(params.name, params.arguments || {});
+    if (Buffer.byteLength(JSON.stringify(input)) > MAX_PARAMS) throw new RuntimeError('arguments_too_large', '单次制作记录参数超过 240 KiB，按章和逐页拆分。');
+    const writing = params.receipt || (params.name === 'production_records' ? input.action === 'write' : ['create', 'send', 'resume_request', 'retry_create'].includes(input.action));
+    if (writing && context.workdir_is_read_only) throw new RuntimeError('read_only_context', '只读任务不能保存记录或派发任务。');
+    aborted(signal);
+    const overview = await this.execute('project_overview', { context, arguments: {} }, signal);
+    if (!overview.success) return overview;
+    if (overview.data.project.uuid !== input.expected_project_uuid) throw new RuntimeError('project_identity_mismatch', '制作记录与当前任务项目不符。');
+    if (params.name === 'production_tasks' && input.chapter_uuid) {
+      const chapter = await this.execute('book_outline', { context, arguments: { chapter_uuid: input.chapter_uuid, limit: 1 } }, signal);
+      if (!chapter.success) return chapter;
+    }
+    const directory = await this.directory(context.workdir, !!writing);
+    const store = new ProductionStore(directory.root, input.expected_project_uuid, context.workdir_is_read_only);
+    if (params.preflight === true) return success({ ready: true });
+    if (params.name === 'production_records') {
+      if (input.action === 'schedule') {
+        const chapterUUID = input.record.match(/^chapters\/([0-9a-f-]{36})\/chapter\.json$/)?.[1];
+        if (!chapterUUID) throw new RuntimeError('invalid_arguments', '调度必须指定该章 chapter.json。');
+        const index = (await store.read('index.json')).data;
+        if (!Array.isArray(index?.chapters) || !index.chapters.includes(chapterUUID) || new Set(index.chapters).size !== index.chapters.length) throw new RuntimeError('production_index_missing', '先保存唯一且有序的章节 UUID 清单。');
+        let decision;
+        for (const uuid of index.chapters.slice(0, index.chapters.indexOf(chapterUUID) + 1)) {
+          if (!UUID.test(uuid)) throw new RuntimeError('invalid_arguments', '章节清单必须使用公开 UUIDv7。');
+          const chapter = (await store.read(`chapters/${uuid}/chapter.json`)).data;
+          if (!chapter) throw new RuntimeError('production_chapter_missing', '尚未保存章节交接记录。');
+          const pages = [];
+          let after;
+          do {
+            const result = await this.execute('pages', { context, arguments: { action: 'list', chapter_uuid: uuid, summary_only: true, limit: 100, ...(after ? { after } : {}) } }, signal);
+            if (!result.success) return result;
+            pages.push(...result.data.items);
+            after = result.data.cursor_pagination?.has_more ? result.data.cursor_pagination.next_cursor : null;
+          } while (after);
+          decision = schedule(chapter, pages);
+          if (uuid !== chapterUUID && !decision.complete) return success({ eligible: [], blocked: ['previous_chapter_unverified'], chapter_uuid: uuid });
+        }
+        return success({ chapter_uuid: chapterUUID, ...decision, facts: 'fresh_Lumi_reads' });
+      }
+      return success(input.action === 'read' ? await store.read(input.record) : await store.write(input, signal));
+    }
+    if (params.receipt) return success(await store.receipt(params.receipt, signal));
+    if (input.action === 'capabilities') return success({ host_capabilities: params.capabilities || {}, workflow: 'host_drafts_coordinator_commits', wait: 'not_supported_by_adapter' });
+    return success(await store.task(input, params.capabilities, params.invocation, signal));
   }
 
   async executeReference(method, params, signal) {

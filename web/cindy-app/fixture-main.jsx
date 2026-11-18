@@ -11,6 +11,7 @@ function Fixture() {
     try {
       const launch = await (await fetch(`/launch/${slot}/${view}`)).json()
       const next = createCindySession(launch.result, {
+        initialization: { hostCapabilities: { updateModelContext: { text: {}, structuredContent: {} }, openLinks: {} } },
         async call(name, args, { signal, project }) {
           const response = await fetch(`/call/${launch.key}`, { method: 'POST', body: JSON.stringify({ name, args, project }), signal })
           const body = await response.json()
@@ -18,6 +19,9 @@ function Fixture() {
           return body
         },
         async close() { await fetch(`/close/${launch.key}`, { method: 'POST', keepalive: true }) },
+        async updateModelContext(context) {
+          return (await fetch(`/context/${launch.key}`, { method: 'POST', body: JSON.stringify(context) })).json()
+        },
       })
       setSession(next); setError('')
     } catch (e) { setError(e.message) }

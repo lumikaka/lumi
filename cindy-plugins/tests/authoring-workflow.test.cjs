@@ -43,6 +43,11 @@ test('gate detects omitted workflow rules, wrong density and foreign host instru
     ['export', 'allow_missing_images=false', 'allow_missing_images=true'],
     ['export', '零插图时完成完整文本交付', '必须有图片'],
     ['host-media', 'attachments 必须在 ghost_call 顶层', 'attachments 塞入 args'],
+    ['local-edit', 'reference_delivery.kind=local_edit_crop', 'reference_delivery.kind=full_collage'],
+    ['local-edit', '选区外像素保持一致', '重绘整页'],
+    ['local-edit', 'adopted=false', 'adopted=true'],
+    ['local-edit', '用户明确采用后才 `pages select_image`', '自动采用候选'],
+    ['local-edit', '不重复提交生图', '重新提交生图'],
     ['host-delivery', 'user_received 仍为 false', 'user_received 为 true'],
     ['recovery', '结果未知时不自动重写', '结果未知时重新提交'],
     ['host', 'generation_prompt 原样传入', 'generation_prompt 原样传入；使用 referenced_image_paths'],
@@ -70,6 +75,46 @@ test('gate checks the linked Cindy setting/reference workflow, including missing
     if (name === settingsPath) throw Object.assign(new Error('missing fixture'), { code: 'ENOENT' });
     return read(name);
   } }).some(error => error.startsWith('setting-reference:')));
+});
+
+test('gate rejects missing durable production and host recovery guarantees', async () => {
+  const { checkAuthoring } = await checker;
+  const name = 'cindy-plugins/lumi/manual/authoring/references/serial-production.md';
+  const original = read(name);
+  for (const rule of ['storyboard-commit.json', '分镜任务数为 0', 'user_choice', 'paused 也保留名额', 'resume_request', 'reconciling 不等于完成', '子任务只产草稿，当前 Lumi 任务唯一串行写回', '只有 status=done', '不能借旧版 passed 交接后场或下一章', 'retry_create', '已成功请求均不能通过此入口替换', 'page_scope=', '不能仅靠省略场景缩小范围', '范围修复不取消已有活动写者或未决请求']) {
+    assert.ok(original.includes(rule));
+    const errors = checkAuthoring({ read: file => file === name ? original.replaceAll(rule, 'omitted') : read(file) });
+    assert.ok(errors.some(error => error.startsWith('serial-production:')), errors.join('\n'));
+  }
+});
+
+test('wait policy gate rejects global capability claims and removal of parent idle/report rules', async () => {
+  const { checkAuthoring } = await checker;
+  const name = 'cindy-plugins/lumi/manual/authoring/references/serial-production.md';
+  const original = read(name);
+  for (const rule of ['仅描述 production_tasks 适配器', '原生 thread、subagent、Orca Worker、普通 session 不能互相冒充',
+    '使用宿主 send_to_session 新建模式', '新建时不传 target_session_id', '不改用 spawn_agent',
+    'send_to_session 新建会话不自带父子等待或自动完成回报', '父任务只创建和等待时不接手制作',
+    '禁止 sleep → 查状态 → 汇报 → 再 sleep', '结束当前轮不等于取消子任务或宣布任务完成',
+    '未经确认的自动唤醒不能承诺', '已处理事件键', '迟到进度不覆盖终态']) {
+    assert.ok(original.includes(rule));
+    assert.ok(checkAuthoring({ read: file => file === name ? original.replaceAll(rule, 'omitted') : read(file) })
+      .some(error => error.startsWith('serial-production:')));
+  }
+  assert.ok(!original.includes('Cindy 没有事件订阅或 wait_threads'));
+  const discovery = catalog.discover({ category: 'production' }).rules.join('\n');
+  assert.match(discovery, /get_run\/read_messages 不是 wait/);
+  assert.match(discovery, /get_task_digest\/get_session_runtime 轮询/);
+  // The deep manual alone did not prevent the original tool-selection mistake.
+  // Losing the route from any earlier discovery surface must fail the gate.
+  for (const surface of [manualPath, 'cindy-plugins/lumi/ghost.json']) {
+    assert.ok(checkAuthoring({ read: file => file === surface ? read(file).replaceAll('send_to_session 新建模式', 'spawn_agent') : read(file) })
+      .some(error => error.startsWith('session-routing:')), surface);
+  }
+  assert.ok(checkAuthoring({ catalog: { ...catalog, discover: input => {
+    const result = catalog.discover(input);
+    return input.category === 'production' ? { ...result, rules: result.rules.map(rule => rule.replaceAll('send_to_session 新建模式', 'spawn_agent')) } : result;
+  } } }).some(error => error.startsWith('session-routing:')));
 });
 
 test('unchanged shared generator rejects stale host artifacts in a temporary copy without rewriting them', t => {
@@ -125,10 +170,11 @@ test('Cindy build rejects an omitted rule before generating contracts, UI or bin
   const fixture = mkdtempSync(path.join(os.tmpdir(), 'cindy-authoring-gate-'));
   t.after(() => rmSync(fixture, { recursive: true, force: true }));
   const sources = Object.keys(JSON.parse(read('cindy-plugins/scripts/authoring-sources.json')).sources);
-  for (const name of new Set([...sources, manualPath, settingsPath, 'internal/production/comic.go',
+  for (const name of new Set([...sources, manualPath, settingsPath, 'cindy-plugins/lumi/manual/authoring/references/serial-production.md', 'internal/production/comic.go',
     'cindy-plugins/scripts/authoring-sources.json', 'cindy-plugins/scripts/check-authoring.mjs', 'cindy-plugins/scripts/build.mjs',
-    'cindy-plugins/lumi/node/catalog.cjs', 'cindy-plugins/lumi/node/errors.cjs',
+    'cindy-plugins/lumi/node/catalog.cjs', 'cindy-plugins/lumi/node/production-contract.json', 'cindy-plugins/lumi/node/errors.cjs',
     'cindy-plugins/lumi/node/media-contract.cjs', 'cindy-plugins/lumi/node/business-specs.json',
+    'cindy-plugins/lumi/node/workspace-contract.cjs', 'cindy-plugins/lumi/ghost.json',
   ])) {
     const target = path.join(fixture, name);
     mkdirSync(path.dirname(target), { recursive: true });

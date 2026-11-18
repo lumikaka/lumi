@@ -64,7 +64,7 @@ python3 cindy-plugins/scripts/verify-package.py step4
 python3 cindy-plugins/scripts/verify-package.py step4 development
 ```
 
-第二个命令要求先对 `build/cindy-dev/lumi-dev/` 执行 Forge pack。脚本核对每个包内文件与作者源码、身份、environment、CLI 执行位和 SHA256、build_id 及大小上限；输出保存到该步骤的 evidence，并按 SHA256 固定审阅 ZIP 到 build/cindy-reviewed/，避免 install 重打覆盖原件。Go 二进制、build-info、生成开发目录与 `.cindy` 都是本地生成物。
+第二个命令要求先对 `build/cindy-dev/lumi-dev/` 执行 Forge pack。脚本核对每个包内文件与作者源码、身份、environment、CLI 执行位和 SHA256、build_id 及大小上限；输出保存到 `build/cindy-acceptance/<步骤>-evidence/`（日期标签原样作为子目录名），并按 SHA256 固定审阅 ZIP 到 build/cindy-reviewed/，避免 install 重打覆盖原件。验收原始日志和回执不提交，仓库文档只保留结论与复核步骤。Go 二进制、build-info、生成开发目录与 `.cindy` 都是本地生成物。
 
 构建和 pack 不安装。执行包含安装的授权任务时，再用 `ghost_forge_install` 从同一未改动作者目录安装，核对真实 instanceId/namespace/source 和安装时重打的包。开发版同版本刷新、正式/开发同时安装与只读诊断已有真实回执；独立作品主线及 Go 后台切换仍待验，不能靠 build_id 或打包结果推断。不得从 Host 已安装目录制作、改写安装副本、自动停止共享服务或上传市场。
 

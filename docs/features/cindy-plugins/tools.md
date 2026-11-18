@@ -4,7 +4,11 @@
 
 ## 顶层目录与允许列表
 
-manifest 注册目录与分发两个顶层工具：`list_tools({category?})` 和 `call_tool({name,args?})`。前者不传 category 返回类别名称、数量和状态；指定类别返回工具名称、说明、完整 input_schema（含条件必填）和必要 RULES。后者只执行明确允许列表中的名称，args 为 JSON 对象，省略相当于 `{}`。第三个顶层工具 receive_media 只接收 Host 顶层 attachments，不能经 call_tool 代替。
+2026-11-17：manifest 注册 `list_tools({category?})`、`call_tool({name,args?})`、独立 receive_media、6 个 review_* 开页工具、5 个 app-only 页面工具，以及 production_records / production_tasks，共 16 项。前两项提供目录和显式业务分派；receive_media 使用顶层授权附件；开页必须直接调用同名顶层工具，不能通过 call_tool 包装；页面工具不向模型开放。完整可复核状态见 [当前验收](acceptance/codex-alignment.md)。
+
+制作协调通过同名顶层工具，不经 call_tool。`production_records` 支持 read/write/schedule，限定当前项目 user-data/lumi-production/ 的固定交接文件，写入使用 CAS 和幂等键；schedule 重读实际页状态、采用版和 revision 后检查跨章串行、场景依赖与并行名额。`production_tasks` 使用 Cindy 的自有普通任务 API，先查询实际 capabilities；create/send 请求先持久保存，再调用 Host，原键 request_status/resume_request 用于核对不确定结果。记录和任务都核对当前 expected_project_uuid，只读任务拒绝写入与派发。
+
+宿主差异：子任务目录由 Cindy 分配，不能任意指定为当前 Lumi 项目；子任务产草稿，当前任务串行写回。没有 wait_threads，使用 get_run 与带 after 游标的 read_messages 有界读取。agent.tasks 是新增独立能力，需宿主实际批准；当前开发实例更新已取消，新任务能力尚未真机验证。完整流程见包内 authoring/references/serial-production.md，自动化与剩余限制见验收记录。
 
 | 类别 | 当前工具 | 状态 |
 | --- | --- | --- |
@@ -13,11 +17,11 @@ manifest 注册目录与分发两个顶层工具：`list_tools({category?})` 和
 | settings | settings、setting_boards、apply_setting_breakdown | list/get 查询批次；授权附件导入；原子拆分 |
 | pages | pages | 可用 |
 | prompts | prompt_catalog、render_prompt | 可用，包含 setting_board / setting_breakdown 任务；由当前 Agent 看图并执行 |
-| media | image_target、prepare_page_image、read_image、receive_media | 源码支持 setting_reviews 与三种附件槽位；合图到 Core 的交接仍待实现与验收 |
-| review | 无 | not_implemented，文字审阅使用业务 list/get |
+| media | image_target、prepare_page_image、read_image、receive_media | 整页合图、无参考与历史版 local_edit 裁图交接；三种附件槽位及原签名 preparation |
+| review | review_book、review_chapters、review_chapter、review_page、review_settings、review_candidates | 顶层 MCP Apps 开页；正文审阅证据仍由业务 list/get 与 record_image_review 提供 |
 | export | export_book、export_website | 绘本文件通过任务文件通道交付，网站生成后报告本地目录 |
 
-允许列表固定在 `node/catalog.cjs`。新 MCP 工具不会因出现在 schema 快照或 tools/list 中而自动开放。禁止直接 import_image、setting_boards 的 import action、read_app_connection、watch_app_changes、read_app_image 和其余未列工具；不接收任意 MCP method、CLI、HTTP、路径、SQL 或项目绑定。
+业务允许列表固定在 `node/catalog.cjs`，页面允许列表固定在 workspace-contract.cjs，并通过 manifest 绑定资源与可见性。新 MCP 工具不会自动开放。普通模型分派禁止直接 import_image、setting_boards 的 import action、read_app_connection 和工作区资源工具；不接收任意 MCP method、CLI、HTTP、路径、SQL 或项目绑定。
 
 ## 有意差异
 
@@ -26,7 +30,7 @@ manifest 注册目录与分发两个顶层工具：`list_tools({category?})` 和
 - render_prompt target 提供 Go 同源任务，包括 setting_board、setting_breakdown 和 board_uuid；page/setting 提示词可结合 image_target 用于生成与 receive_media 导入。传入的目标和上下文 UUID 先通过当前项目的业务 get 核对，不沿用共享渲染器对未知上下文 UUID 静默过滤的行为。其余参数、变量与业务输出不另造协议。
 - 片段类型模板返回 `fragment_prompt`，不含外层 Agent 任务封装。页面 `chapter/section_image` 的 `section_id` 从真实公共页面 UUID 派生，新增 `generation_prompt`（最多12000字符）和 `image_write_back:{target_uuid,slot,expected_revision}`；原 `prompt` / `write_back` 仍保留兼容性。先用有效基础片段和实际参考状态片段补齐变量，组装成功后才准备媒体调用，详见 [图片契约](media.md)。这些返回字段已通过Go/真实CLI自动化；新开发包已安装，并在正常作品任务第1页完成三次渲染、真实生成、导入与重读，见 [成功证据](acceptance/step6-evidence/normal-task-first-image-success-20261102.json)。
 - 业务目录新增 `premise/text_settings` 文字设定任务，中英文默认模板由 promptcatalog 管理，支持项目覆盖；不把图片生成或拆图模板用于无图文本设定。
-- 不启用 MCP App 审阅界面。book_outline 和业务 list/get 支持当前 Agent 串行文字审阅。
+- MCP Apps 工作区通过当前 Host 工具调用的任务上下文连接；页面数据只在根 _meta 返回。book_outline 和业务 list/get 继续供当前 Agent 读取完整正文并审阅。
 - export_book 原业务返回的 uuid、format、byte_size、mime_type 等保留，path 改为当前项目可见副本的相对路径 `lumi-exports/text-<uuid>.<ext>`。仅从绑定项目标准 `.lumi/exports/` 中复制成功回执对应的完整文件；拒绝链接、目录替换、大小变化及覆盖，流式复制后原子发布。不新增任意路径读取或命令能力。新增 file_generated、user_received 和 delivery 字段，见下文。
 
 ## 读写授权

@@ -46,7 +46,7 @@ test('fixed text through discovery → provider-free setup → story/settings/th
     }
     await fs.rm(base, { recursive: true, force: true });
   });
-  assert.equal(ok(await runtime.execute('list_tools', { arguments: {} })).categories.length, 8);
+  assert.equal(ok(await runtime.execute('list_tools', { arguments: {} })).categories.length, 9);
   assert.ok(ok(await runtime.execute('list_tools', { arguments: { category: 'pages' } })).tools[0].input_schema.allOf);
   let p = ok(await call('project_init', { idea: '狐狸送一颗迷路的星星回家', name: '回家的星星', generation_language: 'zh-Hans' }));
   identity = await status();

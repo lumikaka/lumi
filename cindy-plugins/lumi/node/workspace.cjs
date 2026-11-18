@@ -2,7 +2,8 @@
 const { RuntimeError, aborted, validEnvelope } = require('./errors.cjs');
 const { UUID } = require('./project.cjs');
 
-const methods = new Set(['read_app_resource', 'write_app_resource', 'read_app_image', 'watch_app_changes']);
+const { pageTools } = require('./workspace-contract.cjs');
+const methods = new Set(pageTools);
 function workspaceResult(raw, name) {
   const result = name === 'watch_app_changes' ? raw?.structuredContent : raw?._meta?.['lumi/app_response'];
   if (!validEnvelope(result) || (raw.isError === true) !== !result.success) {

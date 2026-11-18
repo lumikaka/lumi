@@ -3,13 +3,15 @@
   "sources": {
     "plugin-skills/create-picture-book/SKILL.md": "6a07d92aaa6d985d025ed6b504de858612b2826e81034fa4ddab8185bc3cd4bc",
     "plugin-skills/create-picture-book/references/mcp-usage.md": "4b86fc41fb7621f2eb224c465e356900cacbfbddc1be93454615dcb170bef5a9",
-    "plugin-skills/create-picture-book/references/page-images.md": "a5ec77eb1207aa8a38905fa9f393a497d2e163a95d11b1e4ac59242d96aa1ee1",
+    "plugin-skills/create-picture-book/references/page-images.md": "c3bee23a592e2d6535e08fd4184ac3a0b96a4f645f74cce312748fad93cbd028",
     "plugin-skills/create-picture-book/references/setting-references.md": "bd70ad80c9d28b428a4d32358966468b9fb34c9900ca6676303731a9900c4d1e",
     "scripts/build-skills.mjs": "5d1f3e0fcde1b013c4d4d4dc4b3f98a6f1dd8759b992b3c0380b84b481873bf3",
     "internal/textmcp/prompt.go": "716a336fb80520e31cd918f38a069eb3dedf3fc2694476502758927330acf6cd",
-    "internal/textmcp/schema.go": "5d954e1ef0bba848edde4f5422293aa902202f48ccdc202d95bbc3b2aba2d417",
+    "internal/textmcp/schema.go": "deb47802aa24bb2792d17e5464d6bbb7cc51da99a975cd1eecd046642e929c7b",
     "internal/production/host_page_review.go": "425d82895292ec1f4e681f3c1a23f077d91aea23a76b91cfd5ab6c208ba76051",
     "internal/production/text_export.go": "554925fb73c4e45f28a6bacd91531a07cb4d5b9d42b80ced8f4dc487e8446d76",
-    "cindy-plugins/lumi/node/export.cjs": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594"
+    "cindy-plugins/lumi/node/export.cjs": "1545c75464ac6c73585607fd9d1b01aad2d2fa62c257b72aceb44b4d42d1a594",
+    "internal/production/page_image_local_edit.go": "a574024fd556e051345e4bf6a054b1c98090f679635616540e976ddbe35c7209",
+    "plugin-skills/create-picture-book/references/serial-production.md": "6e8abbd5e454c95855285d5567005e3318531ff604721dded79a6a130c12eb69"
   }
 }

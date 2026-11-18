@@ -5,17 +5,22 @@ const crypto = require('node:crypto');
 const { RuntimeError, aborted } = require('./errors.cjs');
 
 const CHUNK_BYTES = 48 * 1024, MAX_BYTES = 20 * 1024 * 1024;
-const fail = () => { throw new RuntimeError('reference_unavailable', '完整参考合图无法交接。', '未提交生图；重新 prepare_page_image，不要用缩略图或单项图片替代合图。'); };
+const fail = () => { throw new RuntimeError('reference_unavailable', '完整页面参考图无法交接。', '未提交生图；重新 prepare_page_image，不要用缩略图替代合图或原尺寸上下文裁图。'); };
 
 // Only a successful Go prepare_page_image result reaches this reader. Never
 // accept a model path, use a generic file reader, or expose these tokens to it.
 async function readReference(data, tempDir, signal) {
   aborted(signal);
   const file = data?.reference_image_path, info = data?.image_info;
-  if (data?.reference_mode !== 'collage' || typeof file !== 'string' || !path.isAbsolute(file)
+  if (!['collage', 'local_edit'].includes(data?.reference_mode) || typeof file !== 'string' || !path.isAbsolute(file)
     || !/^lumi-page-premise-[A-Za-z0-9]+\.png$/.test(path.basename(file))
     || !info || info.mime_type !== 'image/png' || !Number.isSafeInteger(info.width) || info.width < 1
-    || !Number.isSafeInteger(info.height) || info.height < 1) fail();
+    || !Number.isSafeInteger(info.height) || info.height < 1
+    || !/^[a-f0-9]{64}$/.test(data.reference_image_sha256)) fail();
+  if (data.reference_mode === 'local_edit') {
+    const crop = data.preparation?.local_edit?.crop_pixels;
+    if (crop?.width !== info.width || crop?.height !== info.height) fail();
+  }
   let handle;
   try {
     if (path.dirname(file) !== await fs.realpath(tempDir)) fail();
@@ -36,7 +41,8 @@ async function readReference(data, tempDir, signal) {
     if (after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs
       || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
       || bytes.toString('ascii', 12, 16) !== 'IHDR' || bytes.readUInt32BE(8) !== 13
-      || bytes.readUInt32BE(16) !== info.width || bytes.readUInt32BE(20) !== info.height) fail();
+      || bytes.readUInt32BE(16) !== info.width || bytes.readUInt32BE(20) !== info.height
+      || crypto.createHash('sha256').update(bytes).digest('hex') !== data.reference_image_sha256) fail();
     aborted(signal);
     return bytes;
   } catch (error) {
@@ -60,7 +66,7 @@ class ReferenceTransfers {
       const item = { owner, bytes, next: 0 };
       this.items.set(transfer, item);
       item.timer = setTimeout(() => this.remove(transfer), this.idleMs); item.timer.unref();
-      return { transfer, bytes: bytes.length, sha256, mime_type: 'image/png', width: data.image_info.width, height: data.image_info.height, chunk_bytes: CHUNK_BYTES };
+      return { transfer, kind: data.reference_mode === 'local_edit' ? 'local_edit_crop' : 'full_collage', bytes: bytes.length, sha256, mime_type: 'image/png', width: data.image_info.width, height: data.image_info.height, chunk_bytes: CHUNK_BYTES };
     } finally { this.starting--; }
   }
   get(owner, transfer) {

@@ -4,6 +4,7 @@
   @include meta.load-css('../src/styles/common');
   @include meta.load-css('../src/styles/simple-project-body');
   @include meta.load-css('../src/styles/comic-export-dialog');
+  @include meta.load-css('../mcp-app/workspace');
   margin: 0; background: var(--panel-bg, #f7f7f3); color: var(--text-primary, #20231f);
   font: 430 14px/1.5 Inter, 'PingFang SC', system-ui, sans-serif;
   *, *::before, *::after { box-sizing: border-box; }

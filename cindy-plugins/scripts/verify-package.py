@@ -2,6 +2,7 @@
 """Verify the exact local Forge archive; never installs or publishes."""
 import hashlib
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -11,6 +12,14 @@ repo = Path(__file__).resolve().parents[2]
 channel = sys.argv[2] if len(sys.argv) > 2 else 'production'
 assert channel in ('production', 'development')
 author = repo / ('build/cindy-dev/lumi-dev' if channel == 'development' else 'cindy-plugins/lumi')
+# An isolated development profile can be reviewed without replacing the normal
+# author tree or the normal package evidence. Defaults remain unchanged.
+profile = sys.argv[4] if len(sys.argv) > 4 else ''
+if len(sys.argv) > 3:
+    assert channel == 'development'
+    author = (repo / sys.argv[3]).resolve(strict=True)
+    assert author.is_relative_to(repo / 'build')
+assert not profile or re.fullmatch(r'[a-z][a-z0-9-]{0,39}', profile)
 manifest = json.loads((author / 'ghost.json').read_text())
 package = author / f"{manifest['id']}-{manifest['version']}.cindy"
 build = json.loads((author / 'build-info.json').read_text())
@@ -32,9 +41,29 @@ with zipfile.ZipFile(package) as archive:
                  'node/request-lifetime.cjs', 'node/project.cjs', 'node/catalog.cjs', 'node/business-specs.json', 'node/export.cjs',
                  'node/config.cjs', 'node/runtime-config.json', 'node/media.cjs', 'node/reference.cjs',
                  'node/authoring.cjs', 'node/media-contract.cjs', 'node/workspace.cjs', 'workspace.html',
+                 'node/workspace-contract.cjs', 'node/production-contract.json', 'node/production.cjs', 'node/production-schedule.cjs',
                  'manual/runtime/MANUAL.md', 'manual/project/MANUAL.md', 'manual/authoring/MANUAL.md',
-                 'manual/authoring/references/settings.md', 'assets/icon.png'):
+                 'manual/authoring/references/settings.md', 'manual/authoring/references/serial-production.md', 'assets/icon.png'):
         assert archive.read(name) == (author / name).read_bytes(), name
+    resource_uri = 'ui://lumi/workspace/v1'
+    resources = manifest['mcpApps']['ui']['resources']
+    assert any(r['uri'] == resource_uri and r['file'] == 'workspace.html' for r in resources)
+    assert '@modelcontextprotocol/ext-apps' in archive.read('workspace.html').decode()
+    launches = ['review_book', 'review_chapters', 'review_chapter', 'review_page', 'review_settings', 'review_candidates']
+    page_tools = ['read_app_resource', 'write_app_resource', 'read_app_image', 'read_app_image_detail', 'watch_app_changes']
+    declarations = {tool['name']: tool for tool in manifest['tools']}
+    assert len(declarations) <= 16
+    assert manifest['agent']['tasks'] is True
+    production_schemas = json.loads(archive.read('node/production-contract.json'))
+    for name, schema in production_schemas.items():
+        assert declarations[name]['parameters'] == schema
+    assert 'user-data/lumi-production/' in archive.read('manual/authoring/references/serial-production.md').decode()
+    for name in launches + page_tools:
+        binding = manifest['mcpApps']['ui']['tools'][name]
+        assert binding['resourceUri'] == resource_uri
+        assert binding['visibility'] == (['model'] if name in launches else ['app'])
+        if name in page_tools:
+            assert 'expected_project_uuid' in declarations[name]['parameters']['required']
     # Verify all shipped files, including new capabilities, against this exact author tree.
     for entry in entries:
         if not entry.is_dir():
@@ -44,6 +73,10 @@ with zipfile.ZipFile(package) as archive:
               'bytes': package.stat().st_size, 'sha256': hashlib.sha256(package.read_bytes()).hexdigest(),
               'cli_sha256': build['cli_sha256'], 'cli_mode': '755', 'channel': channel, 'build_id': build['build_id'],
               'entries': [{'name': e.filename, 'bytes': e.file_size} for e in entries]}
+    record['mcp_apps'] = {'resources': resources, 'launch_tools': launches, 'app_only_tools': page_tools, 'sdk_import_present': True}
+    record['production'] = {'tools': list(production_schemas), 'agent_tasks': True,
+                            'records_directory': 'user-data/lumi-production/',
+                            'workflow': 'host_drafts_coordinator_commits'}
 # Forge install repacks into the same filename. Freeze the reviewed bytes under
 # their digest before a later install, so the original archive remains auditable.
 review = repo / 'build/cindy-reviewed' / manifest['id'] / (record['sha256'] + '.cindy')
@@ -54,9 +87,12 @@ if not review.exists():
 assert hashlib.sha256(review.read_bytes()).hexdigest() == record['sha256']
 record['review_archive'] = str(review.relative_to(repo))
 step = sys.argv[1] if len(sys.argv) > 1 else 'step2'
-assert step == 'codex-alignment' or (step.startswith('step') and step[4:].isdigit())
-target = repo / f'docs/features/cindy-plugins/acceptance/{step}-evidence/{"package-development" if channel == "development" else "package"}.json'
+assert re.fullmatch(r'(?:codex-alignment|step[0-9]+|alignment-[0-9]{8})', step)
+directory = step if step.startswith('alignment-') else step + '-evidence'
+filename = ('package-development' if channel == 'development' else 'package') + ('-' + profile if profile else '')
+target = repo / 'build/cindy-acceptance' / directory / f'{filename}.json'
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(json.dumps(record, ensure_ascii=False, indent=2) + '\n')
 print(f"PASS: {len(entries)} archive entries, manifest, source bytes, CLI SHA256/mode, size limits; no installation")
 print(f"package_sha256={record['sha256']}")
+print(f"record={target.relative_to(repo)}")

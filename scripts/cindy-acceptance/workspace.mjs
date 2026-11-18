@@ -20,7 +20,7 @@ const build = JSON.parse(await readFile(path.join(repo, 'cindy-plugins/lumi/buil
 const env = { HOME: home, PATH: '/usr/bin:/bin', TMPDIR: os.tmpdir() }
 const runtime = new Runtime({ executable, build, dataDir, env })
 const status = () => runCLI(executable, ['status', '--data-dir', dataDir, '--json'], { cwd: base, env })
-const fixtures = {}, pages = new Map(), log = []
+const fixtures = {}, pages = new Map(), log = [], selections = []
 const ok = result => { if (!result.success) throw new Error(JSON.stringify(result.error)); return result.data }
 const call = (fixture, name, args = {}) => runtime.execute('call_tool', { context: fixture.context, arguments: { name, args } }).then(ok)
 for (const slot of ['a', 'b']) {
@@ -61,7 +61,7 @@ const server = createServer(async (request, response) => {
   try {
     if (url.pathname === '/') { response.setHeader('Content-Type', 'text/html'); response.end(html); return }
     if (url.pathname === '/blocked.html') { response.setHeader('Content-Type', 'text/html'); response.end(await readFile(path.join(repo, 'cindy-plugins/lumi/workspace.html'))); return }
-    if (url.pathname === '/stats') { send({ log, open_pages: pages.size }); return }
+    if (url.pathname === '/stats') { send({ log, selections, open_pages: pages.size }); return }
     const launch = /^\/launch\/([ab])\/(book|chapters|chapter|page|settings|setting|candidates)$/.exec(url.pathname)
     if (launch) {
       const fixture = fixtures[launch[1]], view = launch[2], key = randomUUID(), sender = {}, lifecycle = new AbortController()
@@ -76,12 +76,16 @@ const server = createServer(async (request, response) => {
       send({ key, result }); return
     }
     if (request.method === 'POST') {
-      const route = /^\/(call|close)\/([a-f0-9-]+)$/.exec(url.pathname)
+      const route = /^\/(call|close|context)\/([a-f0-9-]+)$/.exec(url.pathname)
       if (route) {
         const page = pages.get(route[2]); if (!page) { response.statusCode = 410; send({ transport_error: { code: 'workspace_revoked', message: 'Test page closed' } }); return }
         if (route[1] === 'close') { page.lifecycle.abort(); await page.gateway.close(); pages.delete(route[2]); send({ closed: true }); return }
         let text = ''; for await (const chunk of request) { text += chunk; if (text.length > 262144) throw new Error('Fixture input too large') }
         const body = JSON.parse(text)
+        if (route[1] === 'context') {
+          if (body.project_uuid !== page.fixture.project.uuid) throw new Error('Fixture context identity mismatch')
+          selections.push({ at: Date.now(), context: body }); send({}); return
+        }
         log.push({ at: Date.now(), name: body.name, resource: body.args?.resource, action: body.args?.action, project: body.project })
         send(await page.gateway.call(body.name, body.args, { project: body.project })); return
       }
