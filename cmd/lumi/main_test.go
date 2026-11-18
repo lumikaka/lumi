@@ -297,7 +297,7 @@ type apiResult struct {
 
 func apiRequest(t *testing.T, base, method, path, body, origin, cookie, host string, want int) apiResult {
 	t.Helper()
-	r, err := http.NewRequest(method, base+path, strings.NewReader(body))
+	r, err := http.NewRequestWithContext(t.Context(), method, base+path, strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,13 @@ func apiRequest(t *testing.T, base, method, path, body, origin, cookie, host str
 	if host != "" {
 		r.Host = host
 	}
-	response, err := localClient.Do(r)
+	// Project operations can run SQLite migrations before sending response headers.
+	client := http.Client{
+		Transport:     localClient.Transport,
+		CheckRedirect: localClient.CheckRedirect,
+		Timeout:       20 * time.Second,
+	}
+	response, err := client.Do(r)
 	if err != nil {
 		t.Fatal(err)
 	}
