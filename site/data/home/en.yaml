@@ -15,20 +15,21 @@ install:
   show_prompt: View full prompt
   hide_prompt: Hide full prompt
   codex_preview: Please install Lumi for Codex App…
-  codex_hint: Paste the prompt into a Codex App chat and send it.
+  codex_hint: Paste into Codex App. Writing and images use your Codex allowance; no extra API key needed.
   guide: Setup guide
   copied: Copied
   cindy_preview: Help me import my local Lumi plugin…
   cindy_prompt: Read %s and help me import my local Lumi preview package in Cindy on an Apple Silicon Mac. If I have not provided the package, ask me for it instead of installing from a marketplace. Pause for my confirmation when required and report the actual installation status.
-  cindy_hint: Paste into Cindy. A local preview package is required; there is no public release yet.
+  cindy_hint: Paste into Cindy (local preview package required). Use Cindy’s AI tools without adding an API key in Lumi.
   generic_preview: Connect Lumi to this picture-book project…
   generic_prompt: Read %s and follow the %s section to connect the Lumi CLI and picture-book skill to my current book project. Confirm the local CLI, skill and project paths, ask me for anything missing, preserve existing settings, and verify the connection with project_overview.
-  generic_hint: Paste into %s. The local Lumi CLI and picture-book skill are required.
+  generic_hint: Paste into %s. No extra API key for writing; generating page illustrations with Lumi needs your own key.
   desktop: Download desktop app
-  desktop_hint: macOS or Windows · Bring your own model provider
+  desktop_hint: macOS / Windows · Bring a provider API key or token for first launch
   install_help: Installation & checksums
   all_releases: All releases
-  sample: Read a picture book made with Lumi
+  sample: Compare two versions of The Tummy Slide
+  website_demo: 'Read Mars Princess β: a website exported with the Codex plugin (Chinese)'
 
 process:
   eyebrow: From spark to storybook
@@ -46,7 +47,7 @@ process:
     - title: Generate and choose images
       body: Bring premise references into generation and choose from saved candidates.
     - title: Preview and export
-      body: Read the chapter as a sequence, then export one chapter or the whole project as an original-image ZIP or A4 PDF.
+      body: Export a chapter or the whole book as an original-image ZIP or A4 PDF. The Codex plugin can also turn the whole book into a reading website with a chapter index to preview locally.
 
 formats:
   eyebrow: Five picture-book formats
@@ -135,12 +136,22 @@ trust:
 
 faq_title: A few things to know before you begin
 faq:
+  - question: Do I need my own API key to use Lumi?
+    answer: You don’t need a key to download or install Lumi. Whether you enter one in Lumi to make a book depends on where you work.
+    paths:
+      - label: Codex App plugin
+        text: No extra key. Writing and image generation use the allowance available on your Codex account.
+      - label: Cindy plugin (local preview)
+        text: No extra key. Your current Cindy agent handles writing. Image generation depends on the media tools and permissions available in Cindy.
+      - label: Claude Code, OpenCode, or pi
+        text: Your AI tool handles writing without a separate key in Lumi. To generate page illustrations with Lumi, connect your own image provider. Its usage rates apply.
+      - label: Lumi desktop app
+        text: Yes. On first launch, connect your model provider using its API key or token. The desktop app does not include model credits.
+    guide: How to connect a model provider in Lumi
   - question: Can I use Lumi if I cannot draw?
     answer: Yes. Start by describing the protagonist, goal, and change. Lumi can draft the story, premise, and storyboard, while you choose, edit, and regenerate the result.
   - question: Which operating systems are supported?
     answer: Current desktop builds support Apple Silicon Macs and Windows x64. The installation guide covers downloads, checksums, and the system prompts you may see on first launch.
-  - question: Which AI providers can Lumi use?
-    answer: Lumi currently connects to Alibaba Cloud Model Studio or Cloudflare AI Gateway. Provider usage may be billed by that provider; Lumi does not resell model usage.
   - question: Where is my picture-book project stored?
     answer: The project stays in a local folder you choose, including STORY.md, the project database, images, and required internal files. Back up or move the folder as one unit.
   - question: What if I do not like a generated result?

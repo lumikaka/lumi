@@ -1,6 +1,6 @@
 ---
 title: Create in Codex App
-description: Install the Lumi plugin with one prompt, then turn an idea into a local picture book in Codex App without an API key.
+description: Make a picture book in Codex App, export it as a PDF or a reading website, and try the Mars Princess β demo. No extra API key is needed.
 translationKey: codex
 slug: codex
 docs_group: start
@@ -29,6 +29,16 @@ In the new chat, try:
 You can request review after the story or after each image. Without a preference, the skill pauses before finalizing the book specifications and after the story, references, and a representative page are ready.
 
 Generated images are imported immediately. Character and scene reference images help maintain consistency. Small aspect-ratio differences can be kept, cropped, or padded. The PDF uses page images; Markdown or ZIP preserves editable text.
+
+## Export the whole book as a reading website
+
+In the Codex App chat for your book project, ask:
+
+> Use Lumi to export this book as a reading website. Give me the local preview link; don’t publish it.
+
+Open the preview and choose a chapter from the contents. After editing the story or replacing a page image, ask “Update the Lumi reading website” and check the new preview. **Exporting creates a local site; it does not make your book public.**
+
+Try {{< reading-website-demo >}}Mars Princess β (in Chinese){{< /reading-website-demo >}}, a vertical comic published separately after export. Pick a chapter and scroll to read it.
 
 ## Resume, upgrade, or uninstall
 

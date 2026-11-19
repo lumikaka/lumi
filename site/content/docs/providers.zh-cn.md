@@ -1,6 +1,6 @@
 ---
 title: 配置模型服务
-description: 连接阿里云百炼或 Cloudflare AI Gateway，并安全保存和验证访问凭据。
+description: 了解哪些使用方式需要自备 API Key 或 Token，以及如何在 Lumi 中配置并验证模型服务。
 translationKey: providers
 slug: providers
 docs_group: start
@@ -8,7 +8,9 @@ weight: 20
 keywords: [模型, 服务商, 阿里云百炼, Cloudflare, API Key, Token, 连接]
 ---
 
-Lumi 自身不提供云端模型额度。第一次启动时，需要选择一个模型服务商，并填写你在该服务商申请的凭据。Lumi 使用一个“当前服务商”作为默认来源，也可以在模型设置中选择其他已就绪的服务商。
+**桌面版**首次启动时需要连接自己的模型服务，用于 AI 写作和生图。**Claude Code、OpenCode 和 pi** 使用各自的模型写作；要用 Lumi 生成页面插画，请在“设置 → 模型服务商”连接图片服务。**Codex App 和 Cindy 插件**使用各自工具已有的 AI 能力，不需要在 Lumi 填密钥。
+
+请在 Lumi 的服务商表单中填写 API Key 或 Token，不要把密钥粘贴到对话里。Lumi 不附带模型额度，费用按你所连接服务商的规则计算。
 
 ## 选择服务商
 
@@ -31,11 +33,15 @@ Lumi 会使用内置的文本和图片模型配置。填写信息后选择“连
 
 接口地址由 Lumi 根据 Account ID 固定生成，使用 Responses API。默认文本模型和图片模型均为 `openai/gpt-6-sol`，也可分别在下拉框中选择 `openai/gpt-5.6-terra` 或 `openai/gpt-5.6-sol`。API Token 需要 Account → Workers AI → Read 权限。升级后若提示需要验证，重新保存并验证即可。
 
+### OpenAI 中转站
+
+分别填写文本组和生图组的 Base URL 与 API Key。保存并验证时会检查文本连接并生成一张测试图，会产生调用费用。
+
 ## 保存并验证连接
 
-1. 在首次启动页选择一个服务商。
-2. 填入界面要求的 ID、区域和密钥。
-3. 选择“连接并开始使用”。已经进入 Lumi 后，可从“设置 → 模型服务商”重新打开配置。
+1. 在桌面版首次启动页或“设置 → 模型服务商”中选择服务商。
+2. 填入该服务商要求的连接信息和密钥。
+3. 选择“连接并开始使用”或“保存并验证”。
 4. 等待连接状态变为“连接已验证”。如果失败，保留页面上的错误信息并逐项核对凭据、空间/账户和网络。
 
 {{< callout type="note" title="密钥如何保存" >}}

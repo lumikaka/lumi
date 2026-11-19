@@ -59,6 +59,12 @@ Export history is paginated and saved by the service. Download a completed histo
 Both the original-image ZIP and A4 PDF are delivery files. They do not include every database record, version, and internal state required for continued editing. Back up the complete project folder instead.
 {{< /callout >}}
 
+## Export a reading website with the Codex plugin
+
+If you want readers to browse chapters instead of downloading a ZIP or PDF, ask in the Codex App chat for your book: “Export the whole book as a reading website.” At least one illustrated body page is required. If images are missing, the plugin reports how many so you can finish them first or agree to export only the available images.
+
+Preview the site locally and ask separately to publish it if you want to share it online. Try the published {{< reading-website-demo >}}Mars Princess β demo (in Chinese){{< /reading-website-demo >}}, or see {{< doc-link "codex" >}}Create in Codex App{{< /doc-link >}} for export and update prompts.
+
 ## Check the downloaded result
 
 Extract a ZIP into a new folder and verify filenames, image count, reading order, and that every image opens correctly. For a PDF, verify the page count, chapter breaks, and that every image remains complete. Do not extract a ZIP inside your only project folder, where delivery files could be confused with project assets.

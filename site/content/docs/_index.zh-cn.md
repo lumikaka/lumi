@@ -7,7 +7,7 @@ translationKey: docs
 Lumi 的教程围绕一条完整路径组织：先让软件和模型服务可以工作，再做出第一本绘本，最后理解项目保存与排障方式。第一次使用时，建议按页面顺序阅读。
 
 {{< callout type="note" title="开始前准备" >}}
-当前桌面安装包支持 macOS Apple Silicon 和 Windows x64。使用 AI 写作或图片生成功能，需要你自己的阿里云百炼或 Cloudflare AI Gateway 凭据，对应服务可能产生费用。
+桌面版支持 macOS Apple Silicon 和 Windows x64。下载安装不需要密钥；首次启动时需要服务商的 API Key 或 Token。桌面版写作和生图的费用按该服务商的规则计算。
 {{< /callout >}}
 
 ## 推荐学习路径
@@ -15,7 +15,7 @@ Lumi 的教程围绕一条完整路径组织：先让软件和模型服务可以
 已有 Codex App 的 macOS 用户也可以{{< doc-link "codex-installation" >}}安装 Codex 绘本插件{{< /doc-link >}}，复制一句提示词即可开始安装，无需配置 API key。
 
 1. 完成安装并通过首次启动提醒。
-2. 连接模型服务，确认 Lumi 显示“连接已验证”。
+2. {{< doc-link "providers" >}}连接模型服务{{< /doc-link >}}，确认 Lumi 显示“连接已验证”。
 3. 用快速生成完成第一个可编辑雏形。
 4. 依次理解故事、设定、分镜、图片候选与导出。
 5. 最后阅读本地项目与排障，建立自己的备份习惯。

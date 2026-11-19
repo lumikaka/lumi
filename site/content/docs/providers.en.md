@@ -1,6 +1,6 @@
 ---
 title: Configure a model provider
-description: Connect Alibaba Cloud Model Studio or Cloudflare AI Gateway, then store and verify the credentials safely.
+description: Find out when you need your own API key or token and how to connect and verify a model provider in Lumi.
 translationKey: providers
 slug: providers
 docs_group: start
@@ -8,7 +8,9 @@ weight: 20
 keywords: [model, provider, Alibaba Cloud, Cloudflare, API key, token, connection]
 ---
 
-Lumi does not include hosted model credits. On first launch, choose a provider and enter credentials created in that provider’s account. One current provider supplies the fallback defaults; model settings can also select other ready providers.
+**Desktop app:** Connect your own model provider on first launch for AI writing and image generation. **Claude Code, OpenCode, and pi:** Your AI tool handles writing. To generate page illustrations with Lumi, connect your image provider in Settings → Providers. **Codex App and Cindy plugins:** These use the AI tools already available in the host; you don’t need to enter a key in Lumi.
+
+Enter your provider’s API key or token in Lumi’s provider form, not in a chat. Lumi does not include model credits. When you connect your own provider, its usage rates apply.
 
 ## Choose a provider
 
@@ -31,11 +33,15 @@ Prepare:
 
 Lumi derives the Responses API endpoint from the Account ID. Text and image models each default to `openai/gpt-6-sol`. You can independently choose `openai/gpt-5.6-terra` or `openai/gpt-5.6-sol` from the dropdowns instead. The token needs Account → Workers AI → Read permission. If verification is requested after an upgrade, save and verify the connection again.
 
+### OpenAI Relay
+
+Enter a base URL and API key for each group: text and images. Saving and verifying the connection checks text access and generates one test image, which incurs usage charges.
+
 ## Save and verify
 
-1. Choose a provider on the first-launch screen.
-2. Enter the requested IDs, region, and secret.
-3. Select “Connect and start using.” After onboarding, reopen these fields from Settings → Providers.
+1. Choose a provider on the desktop app’s first-launch screen or in Settings → Providers.
+2. Enter the connection details and credentials that provider requires.
+3. Select “Connect and start using” or “Save and verify.”
 4. Wait for “Connection verified.” If the check fails, keep the visible error and verify the credentials, workspace/account, and network one at a time.
 
 {{< callout type="note" title="How secrets are stored" >}}

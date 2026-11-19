@@ -32,6 +32,7 @@ languages:
 params:
   repositoryURL: https://github.com/lumikaka/lumi
   releasesURL: https://github.com/lumikaka/lumi/releases
+  readingWebsiteDemoURL: https://lumi-mars-princess-beta.hxgdzyuyi.chatgpt.site/
   sourceReference: https://www.readfrog.app/
 
 permalinks:

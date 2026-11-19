@@ -15,20 +15,21 @@ install:
   show_prompt: 查看全文
   hide_prompt: 收起全文
   codex_preview: 请帮我安装 Lumi 绘本插件…
-  codex_hint: 复制后，粘贴到 Codex App 的对话中发送。
+  codex_hint: 粘贴到 Codex App 对话。写作和生图使用 Codex 额度，无需另配 API Key。
   guide: 安装说明
   copied: 已复制
   cindy_preview: 请帮我导入本地的 Lumi 绘本插件…
   cindy_prompt: 请阅读 %s，按指南帮我在 Cindy 导入已取得的 Lumi 本地预览包（仅 macOS Apple Silicon）；如果我没有提供本地包，请先向我索取，不要从市场安装。需要我确认时请停下来，最后告诉我实际安装状态。
-  cindy_hint: 粘贴到 Cindy 对话。需要本地预览包，尚未公开发布。
+  cindy_hint: 粘贴到 Cindy 对话（需本地预览包）。使用 Cindy 已有的 AI 能力，无需在 Lumi 配 API Key。
   generic_preview: 请为当前项目接入 Lumi 绘本工具…
   generic_prompt: 请阅读 %s，按 %s 对应的章节，帮我在当前绘本项目接入 Lumi CLI 和绘本创作 Skill；先确认本地 CLI、Skill 和项目路径，缺少时请询问我，保留已有配置，并在接入后用 project_overview 验证连接。
-  generic_hint: 粘贴到 %s 对话。需要本地 Lumi CLI 和绘本创作 Skill。
+  generic_hint: 粘贴到 %s 对话。写作无需另配 API Key；用 Lumi 生成页面插画时需自备密钥。
   desktop: 下载桌面版
-  desktop_hint: macOS 或 Windows · 自备模型服务
+  desktop_hint: macOS / Windows · 首次启动需自备 API Key 或 Token
   install_help: 安装与校验说明
   all_releases: 所有版本
-  sample: 先翻一本 Lumi 做的绘本
+  sample: 对比绘本《肚子里的滑滑梯》
+  website_demo: 试读《火星公主β》：Codex 插件导出的网站
 
 process:
   eyebrow: 从灵感到成书
@@ -46,7 +47,7 @@ process:
     - title: 生成并挑选画面
       body: 带上设定参考生成图片，在多个候选中选择当前版本。
     - title: 连续预览与导出
-      body: 检查整章阅读节奏，导出单章或完整项目的原图 ZIP 与 A4 PDF。
+      body: 导出单章或整本的原图 ZIP、A4 PDF。也可以让 Codex 插件把整本做成带章节目录的阅读网站，先在本地试读。
 
 formats:
   eyebrow: 五种绘本形式
@@ -135,12 +136,22 @@ trust:
 
 faq_title: 开始之前，你可能想知道
 faq:
+  - question: 使用 Lumi 需要自己的 API Key 吗？
+    answer: 下载安装本身不需要密钥。创作时是否要在 Lumi 填密钥，取决于你从哪里开始：
+    paths:
+      - label: Codex App 插件
+        text: 不用另配。写作和生图都使用当前 Codex 账号的可用额度。
+      - label: Cindy 插件（本地预览）
+        text: 不用另配。写作由当前 Cindy Agent 完成；能否生图取决于 Cindy 已启用的媒体工具和权限。
+      - label: Claude Code、OpenCode、pi
+        text: 写作用当前工具，不用在 Lumi 填密钥。用 Lumi 生成页面插画时，需要先配置自己的图片服务，费用按该服务商的规则计算。
+      - label: Lumi 桌面版
+        text: 需要。首次启动时连接自己的模型服务，填写服务商提供的 API Key 或 Token。桌面版不附带模型额度。
+    guide: 如何在 Lumi 中配置模型服务
   - question: 不会画画，也能使用 Lumi 吗？
     answer: 可以。你可以先说清楚主角、愿望和故事变化，让 Lumi 提供故事、设定与分镜初稿，再由你选择、编辑和重新生成。
   - question: Lumi 支持哪些系统？
     answer: 当前桌面安装包支持 macOS Apple Silicon 和 Windows x64。安装教程会说明下载文件、校验方式和首次启动时可能遇到的系统提醒。
-  - question: AI 功能使用哪些模型服务？
-    answer: 当前可以连接阿里云百炼或 Cloudflare AI Gateway。模型调用可能由对应服务商计费，Lumi 不代收模型费用。
   - question: 我的绘本项目保存在哪里？
     answer: 项目保存在你选择的本机文件夹中，包含 STORY.md、项目数据库、图片与必要的内部文件，可以整体备份或移动。
   - question: 生成结果不满意怎么办？

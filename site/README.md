@@ -36,6 +36,8 @@ hugo --source site --gc --minify --panicOnWarning
 
 首页按「在 AI 工具中使用」和「下载桌面版」分流。宿主及指南路径集中在 `data/install_hosts.yaml`，中英界面文案在 `data/home/`。每个宿主均可复制提示词或打开指南：Codex 的完整提示词与安装教程共用 `install_prompt`；Cindy 提示导入已有本地包，不承诺市场安装；通用宿主按各自指南配置已有 CLI 和 Skill。桌面下载使用 Release 的稳定资产名；若打包名称调整，请同步修改首页、安装教程和构建校验。
 
+首页的《火星公主β》链接指向已公开的实际导出站点。示例地址集中在 `hugo.yaml` 的 `params.readingWebsiteDemoURL`，两种语言的首页、Codex 创作教程和导出教程共用；本地构建不会重新导出或发布示例作品。
+
 ## 相对路径与部署
 
 页面导航、CSS、JavaScript、字体、图片和搜索索引由 Hugo 生成相对 URL。构建时只需传入部署位置对应的 `baseURL`，它同时用于 canonical、Open Graph、hreflang 和 sitemap：

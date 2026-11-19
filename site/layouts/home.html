@@ -121,7 +121,13 @@
       {{ range $home.faq }}
         <details>
           <summary>{{ .question }}<span aria-hidden="true">+</span></summary>
-          <p>{{ .answer }}</p>
+          <div class="faq__answer">
+            <p>{{ .answer }}</p>
+            {{ with .paths }}
+              <ul>{{ range . }}<li><strong>{{ .label }}</strong> — {{ .text }}</li>{{ end }}</ul>
+            {{ end }}
+            {{ with .guide }}<a href="{{ partial "relative-url.html" (dict "Page" $ "URL" ($.RelRef (dict "path" "/docs/providers"))) }}">{{ . }}</a>{{ end }}
+          </div>
         </details>
       {{ end }}
     </div>

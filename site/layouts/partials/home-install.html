@@ -61,7 +61,10 @@
       <p class="install__hint">{{ $copy.desktop_hint }}</p>
     </div>
   </div>
-  {{ with .Site.GetPage "/codex-vs-lumi/belly-slide" }}
-    <a class="install__sample" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}#book-comparison">{{ $copy.sample }} <span aria-hidden="true">→</span></a>
-  {{ end }}
+  <div class="install__samples">
+    <a class="install__sample" href="{{ .Site.Params.readingWebsiteDemoURL }}">{{ $copy.website_demo }} <span aria-hidden="true">→</span></a>
+    {{ with .Site.GetPage "/codex-vs-lumi/belly-slide" }}
+      <a class="install__sample" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}#book-comparison">{{ $copy.sample }} <span aria-hidden="true">→</span></a>
+    {{ end }}
+  </div>
 </div>

@@ -1,6 +1,6 @@
 ---
 title: 在 Codex App 中创作
-description: 用一句提示词安装 Lumi 插件，在 Codex App 中从想法创作并导出本地绘本，无需 API key。
+description: 在 Codex App 中创作绘本，导出 PDF 或整本阅读网站，并试读《火星公主β》示例。无需另配 API Key。
 translationKey: codex
 slug: codex
 docs_group: start
@@ -29,6 +29,16 @@ macOS Codex App 提供 Apple Silicon 与 Intel CLI；Windows 原生 x64 另有�
 也可以要求“故事写完先给我审阅”“每张图确认后再继续”。没有指定时，模型会在规格定稿前，以及故事、设定和代表页完成后停顿审阅。
 
 图片生成后会立即保存到项目，角色和场景可使用设定图作为参考。宽高比略有差异时，可以保留原图、裁切或补边。PDF 使用图片版面，可编辑文字随 Markdown/ZIP 交付。
+
+## 把整本绘本导出成网站
+
+在绘本项目的 Codex App 对话里说：
+
+> 请用 Lumi 把这本绘本导出为阅读网站，给我本地预览链接，不要发布。
+
+打开预览，从目录选一章就能开始读。改了故事或换了页面图片后，说「用 Lumi 更新阅读网站」，再检查新版。**导出只生成本地网站，不会自动公开作品。**
+
+试读{{< reading-website-demo >}}《火星公主β》{{< /reading-website-demo >}}：这是已经单独发布的条漫示例。点开一话，向下滚动就能连续阅读。
 
 ## 继续、升级与卸载
 
