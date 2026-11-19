@@ -14,15 +14,15 @@ Open [Lumi Releases](https://github.com/lumikaka/lumi/releases) and download the
 
 | System | File | Notes |
 |---|---|---|
-| Apple Silicon macOS | `Lumi-macos-aarch64.app.zip` | For M1, M2, M3, M4, and later Apple-chip Macs |
+| Apple Silicon macOS | `Lumi-macos-aarch64.dmg` | For Macs with Apple silicon |
 | Windows x64 | `Lumi-windows-x64-setup.exe` | For 64-bit Windows 10 or 11 |
 
 There is currently no desktop package for older Intel Macs. Do not treat the outer artifact downloaded from GitHub Actions as the application; the Release page provides the direct delivery files.
 
 ## Install on macOS
 
-1. Open the ZIP to obtain `Lumi.app`.
-2. Move `Lumi.app` to Applications, or keep it in another location you trust.
+1. Double-click the DMG to open the disk image.
+2. Drag `Lumi.app` into Applications, then eject the disk image.
 3. Open Lumi from Finder. The launcher starts the Lumi service on this Mac and opens the workspace in your default browser.
 4. If macOS blocks the app because it is not notarized yet, verify that it came from this repository’s Release page and compare its SHA-256 with the file shipped alongside the release. Then open System Settings → Privacy & Security and choose “Open Anyway” only after confirming the source.
 

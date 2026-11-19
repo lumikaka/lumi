@@ -14,15 +14,15 @@ keywords: [下载, 安装, macOS, Windows, SmartScreen, 校验]
 
 | 系统 | 下载文件 | 说明 |
 |---|---|---|
-| macOS Apple Silicon | `Lumi-macos-aarch64.app.zip` | 适用于 M1、M2、M3、M4 等 Apple 芯片 Mac |
+| macOS Apple Silicon | `Lumi-macos-aarch64.dmg` | 适用于 Apple 芯片 Mac |
 | Windows x64 | `Lumi-windows-x64-setup.exe` | 适用于 64 位 Windows 10/11 |
 
 旧版 Intel Mac 当前没有桌面安装包。不要把 GitHub Actions 下载的外层 artifact 容器直接当作应用；正式 Release 页面提供的是可以直接使用的交付文件。
 
 ## 在 macOS 上安装
 
-1. 双击 ZIP 解压，得到 `Lumi.app`。
-2. 将 `Lumi.app` 移到“应用程序”文件夹，或保存在你信任的位置。
+1. 双击 DMG 打开磁盘映像。
+2. 将其中的 `Lumi.app` 拖入“应用程序”文件夹，再推出磁盘映像。
 3. 在 Finder 中打开 Lumi。启动器会在本机启动 Lumi 服务，再用默认浏览器打开工作台。
 4. 如果 macOS 因应用尚未公证而阻止启动，先确认下载来自本仓库 Release，并核对同版本提供的 SHA-256。随后前往“系统设置 → 隐私与安全性”，仅在确认来源后选择“仍要打开”。
 

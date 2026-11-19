@@ -1,0 +1,15 @@
+- key: codex
+  name: Codex App
+  doc: /docs/codex-installation
+- key: cindy
+  name: Cindy
+  guide: docs/features/cindy-plugins/install.md
+- key: claude
+  name: Claude Code
+  guide: agent-integration/README.md#claude-code
+- key: opencode
+  name: OpenCode
+  guide: agent-integration/README.md#opencode
+- key: pi
+  name: pi
+  guide: agent-integration/README.md#pi

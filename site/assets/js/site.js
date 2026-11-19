@@ -32,19 +32,43 @@
     window.addEventListener('scroll', updateHeader, { passive: true })
   }
 
+  const setPromptExpanded = (prompt, expanded) => {
+    const toggle = prompt.querySelector('[data-prompt-toggle]')
+    if (!toggle) return
+    toggle.setAttribute('aria-expanded', String(expanded))
+    prompt.querySelector('[data-copy-prompt-text]').hidden = !expanded
+    if (!expanded && prompt.classList.contains('needs-manual-copy')) {
+      prompt.classList.remove('needs-manual-copy')
+      prompt.querySelector('[data-copy-prompt-status]').textContent = ''
+    }
+  }
+
   document.querySelectorAll('[data-copy-prompt]').forEach((prompt) => {
     const text = prompt.querySelector('[data-copy-prompt-text]')
     const button = prompt.querySelector('[data-copy-prompt-button]')
     const status = prompt.querySelector('[data-copy-prompt-status]')
+    const label = button.textContent
+    let resetLabel
     prompt.querySelector('[data-copy-prompt-actions]').hidden = false
+    const toggle = prompt.querySelector('[data-prompt-toggle]')
+    toggle?.addEventListener('click', () => setPromptExpanded(prompt, text.hidden))
 
     button.addEventListener('click', async () => {
+      clearTimeout(resetLabel)
+      button.textContent = label
+      prompt.classList.remove('needs-manual-copy')
       button.disabled = true
       status.textContent = ''
       try {
         await navigator.clipboard.writeText(text.textContent.trim())
         status.textContent = prompt.dataset.copySuccess
+        if (button.dataset.copiedLabel) {
+          button.textContent = button.dataset.copiedLabel
+          resetLabel = setTimeout(() => { button.textContent = label }, 2500)
+        }
       } catch {
+        setPromptExpanded(prompt, true)
+        prompt.classList.add('needs-manual-copy')
         const selection = window.getSelection()
         const range = document.createRange()
         range.selectNodeContents(text)
@@ -56,6 +80,38 @@
       }
     })
   })
+
+  const install = document.querySelector('[data-install]')
+  if (install) {
+    const select = install.querySelector('[data-install-host]')
+    const syncHost = () => {
+      const host = select.value
+      install.querySelectorAll('[data-install-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.installPanel !== host
+        if (panel.hidden) setPromptExpanded(panel, false)
+      })
+      install.querySelectorAll('[data-install-hint]').forEach((note) => { note.hidden = note.dataset.installHint !== host })
+    }
+    syncHost()
+    select.addEventListener('change', syncHost)
+    window.addEventListener('pageshow', syncHost)
+    install.querySelector('[data-install-fallback]').hidden = true
+    install.querySelector('[data-install-picker]').hidden = false
+
+    const download = install.querySelector('[data-desktop-download]')
+    document.addEventListener('click', (event) => {
+      if (!download.contains(event.target) || event.target.closest('a')) download.open = false
+    })
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && download.open) {
+        download.open = false
+        download.querySelector('summary').focus()
+      }
+    })
+    download.addEventListener('focusout', (event) => {
+      if (event.relatedTarget && !download.contains(event.relatedTarget)) download.open = false
+    })
+  }
 
   const docsSidebar = document.querySelector('[data-docs-sidebar]')
   const docsOpen = document.querySelector('[data-docs-open]')

@@ -160,7 +160,6 @@ img, svg { display: block; max-width: 100%; }
 .button--light:hover { border-color: var(--line-strong); background: #fff; }
 .button--large { min-height: 54px; padding: 0 27px; font-size: 16px; }
 .button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.button-row--centered { justify-content: center; }
 
 .menu-toggle {
   display: none;
@@ -215,6 +214,7 @@ img, svg { display: block; max-width: 100%; }
   overflow: hidden;
 }
 .hero__copy { position: relative; z-index: 2; max-width: 950px; margin: 0 auto; text-align: center; }
+.hero__copy:has(.install__dropdown[open]) { z-index: 5; }
 .hero h1 {
   max-width: 920px;
   margin: 0 auto;
@@ -225,7 +225,55 @@ img, svg { display: block; max-width: 100%; }
   text-wrap: balance;
 }
 .hero__description { max-width: 760px; margin: 28px auto 30px; color: var(--ink-soft); font-size: clamp(1.05rem, 2vw, 1.28rem); line-height: 1.72; text-wrap: balance; }
-.hero__note { margin: 15px 0 0; color: var(--ink-soft); font-size: 13px; }
+.install { max-width: 800px; margin-inline: auto; padding-inline: 4px; }
+.install [hidden] { display: none; }
+.install__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 30%); align-items: start; gap: 12px; }
+.install__bar, .install__dropdown > summary {
+  min-height: 54px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 3px 8px rgba(49, 39, 25, 0.05);
+}
+.install__bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "host preview copy" "full full full" "status status status"; align-items: center; padding: 4px; text-align: start; }
+.install__bar select {
+  grid-area: host;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 9px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 650 14px var(--font-sans);
+  cursor: pointer;
+}
+.install__bar select:hover { background: var(--paper); }
+.install__panel { display: contents; }
+.install__preview { grid-area: preview; display: flex; gap: 8px; align-items: center; min-width: 0; min-height: 44px; margin-inline: 4px; padding: 5px 9px; border: 0; border-inline-start: 1px solid var(--line); background: transparent; color: var(--ink-soft); font: inherit; font-size: 14px; text-align: start; cursor: pointer; }
+.install__excerpt { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.install__expand-label, .install__collapse-label { color: var(--blue); font-size: 13px; white-space: nowrap; }
+.install__collapse-label, .install__preview[aria-expanded="true"] .install__expand-label { display: none; }
+.install__preview[aria-expanded="true"] .install__collapse-label { display: inline; }
+.install__preview:hover, .install__preview[aria-expanded="true"]:hover { background: var(--paper); }
+.install__copy { grid-area: copy; }
+.install__action { display: inline-flex; min-height: 44px; padding: 6px 12px; align-items: center; border: 0; border-radius: 8px; background: var(--paper); color: var(--ink); font: 650 14px var(--font-sans); cursor: pointer; }
+.install__action:hover { background: var(--paper-deep); }
+.install__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.install__full-prompt { grid-area: full; margin: 4px 4px 0; padding: 12px 8px 8px; border-top: 1px solid var(--line); overflow-wrap: anywhere; font-size: 15px; line-height: 1.65; }
+.install__panel.needs-manual-copy .install__status { grid-area: status; position: static; width: auto; height: auto; padding-inline: 12px; clip-path: none; font-size: 13px; color: var(--blue); }
+.install__dropdown { position: relative; }
+.install__dropdown > summary { padding: 14px; color: var(--ink); font-size: 15px; font-weight: 680; cursor: pointer; }
+.install__desktop summary { background: var(--ink); color: white; border-color: var(--ink); }
+.install__desktop summary:hover, .install__desktop details[open] > summary:hover { background: #33322e; }
+.install__links { position: absolute; z-index: 6; inset: calc(100% + 6px) 0 auto; display: grid; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow-sm); text-align: start; }
+.install__links a { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 42px; padding: 6px 9px; border-radius: 7px; font-size: 14px; }
+.install__links a:hover { background: var(--paper); }
+.install__links small { color: var(--ink-soft); font-size: 11px; }
+.install__hint { margin: 8px 0 0; color: var(--ink-soft); font-size: 13px; }
+.install__hint a, .install__sample { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+.install__sample { display: inline-block; padding: 9px 0; margin-top: 8px; font-size: 15px; font-weight: 620; }
+.install__hint a:hover, .install__sample:hover { color: var(--ink); }
 .hero__ambient { position: absolute; border-radius: 50%; filter: blur(2px); opacity: 0.62; pointer-events: none; }
 .hero__ambient--one { width: 410px; height: 410px; top: 190px; left: -240px; background: radial-gradient(circle, var(--yellow-soft), transparent 68%); }
 .hero__ambient--two { width: 480px; height: 480px; top: 120px; right: -300px; background: radial-gradient(circle, var(--blue-soft), transparent 70%); }
@@ -675,7 +723,10 @@ kbd { padding: 2px 6px; border: 1px solid var(--line-strong); border-bottom-widt
   .hero { width: unquote("min(calc(100% - 30px), 1320px)"); padding: 60px 0 86px; }
   .hero h1 { font-size: clamp(2.75rem, 13vw, 4.25rem); }
   .hero__description { margin-top: 22px; font-size: 1rem; }
-  .hero__note { max-width: 300px; margin-inline: auto; }
+  .install { max-width: 420px; }
+  .install__row { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .install__bar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "host copy" "preview preview" "full full" "status status"; }
+  .install__preview { margin: 3px 0 0; border-inline-start: 0; border-top: 1px solid var(--line); }
   .hero__visual { margin-top: 60px; padding: 62px 0 54px; }
   .floating-note { min-height: 36px; padding: 0 12px; font-size: 11px; }
   .floating-note--story { top: 9px; left: 3px; }

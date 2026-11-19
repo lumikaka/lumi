@@ -34,6 +34,8 @@ hugo --source site --gc --minify --panicOnWarning
 
 构建产物位于 `site/public/`，不会提交到 Git。
 
+首页按「在 AI 工具中使用」和「下载桌面版」分流。宿主及指南路径集中在 `data/install_hosts.yaml`，中英界面文案在 `data/home/`。每个宿主均可复制提示词或打开指南：Codex 的完整提示词与安装教程共用 `install_prompt`；Cindy 提示导入已有本地包，不承诺市场安装；通用宿主按各自指南配置已有 CLI 和 Skill。桌面下载使用 Release 的稳定资产名；若打包名称调整，请同步修改首页、安装教程和构建校验。
+
 ## 相对路径与部署
 
 页面导航、CSS、JavaScript、字体、图片和搜索索引由 Hugo 生成相对 URL。构建时只需传入部署位置对应的 `baseURL`，它同时用于 canonical、Open Graph、hreflang 和 sitemap：

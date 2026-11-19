@@ -17,7 +17,7 @@
     </nav>
     <div class="site-header__actions">
       {{ partial "language-switch.html" . }}
-      <a class="button button--dark header-download" href="{{ .Site.Params.releasesURL }}">{{ i18n "download_lumi" }}</a>
+      <a class="button button--dark header-download" href="{{ if .IsHome }}#get-started{{ else }}{{ .Site.Params.releasesURL }}{{ end }}">{{ if .IsHome }}{{ (index hugo.Data.home .Site.Language.Lang).install.start }}{{ else }}{{ i18n "download_lumi" }}{{ end }}</a>
       <button class="menu-toggle" type="button" aria-controls="site-navigation" aria-expanded="false" aria-label="{{ i18n "open_menu" }}" data-menu-toggle>
         <span></span><span></span><span></span>
       </button>

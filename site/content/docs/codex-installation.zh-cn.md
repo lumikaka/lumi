@@ -6,6 +6,7 @@ slug: codex-installation
 docs_group: start
 weight: 14
 keywords: [Codex, plugin, 插件, 安装, 提示词, macOS]
+install_prompt: 请帮我安装 Lumi 绘本插件。请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md ，识别当前 Agent 执行环境并按文档安装（macOS；Windows 原生 x64 预览）；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
 ---
 
 Lumi 绘本插件让你在 Codex App 对话中创作和导出绘本。写作与生图使用 Codex 自身额度，无需额外配置 API key，绘本项目保存在本地。
@@ -22,8 +23,6 @@ Windows 原生 x64 提供[安装预览指南](https://github.com/lumikaka/lumi/b
 点击“复制提示词”，将下面的完整内容粘贴到 Codex App 对话中并发送：
 
 {{< copy-prompt >}}
-请阅读 https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md，识别当前 Agent 执行环境，按文档安装 Lumi 绘本插件（macOS；Windows 原生 x64 预览）；安装后告诉我实际使用的 codex 路径和版本、安装结果及如何新开会话开始创作。
-{{< /copy-prompt >}}
 
 Codex 会读取安装指南并执行安装。下载文件、写入用户安装目录和 `~/.codex`、注册插件市场及启用插件时，可能会请求批准；根据界面提示处理即可。
 

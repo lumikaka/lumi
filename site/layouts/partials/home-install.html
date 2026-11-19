@@ -1,0 +1,67 @@
+{{ $page := . }}
+{{ $copy := (index hugo.Data.home .Site.Language.Lang).install }}
+{{ $hosts := hugo.Data.install_hosts }}
+{{ $guides := dict }}
+{{ range $hosts }}
+  {{ $url := printf "%s/blob/master/%s" $page.Site.Params.repositoryURL (.guide | default "") }}
+  {{ with .doc }}{{ $url = partial "relative-url.html" (dict "Page" $page "URL" ($page.RelRef (dict "path" .))) }}{{ end }}
+  {{ $guides = merge $guides (dict .key $url) }}
+{{ end }}
+<div class="install" id="get-started" tabindex="-1" data-install>
+  <div class="install__row">
+    <div class="install__agent">
+      <details class="install__dropdown" data-install-fallback>
+        <summary>{{ $copy.in_agent }}</summary>
+        <div class="install__links">
+          {{ range $hosts }}<a href="{{ index $guides .key }}">{{ .name }}</a>{{ end }}
+        </div>
+      </details>
+      <div data-install-picker hidden>
+        <div class="install__bar">
+          <select aria-label="{{ $copy.choose }}" data-install-host>
+            {{ range $hosts }}<option value="{{ .key }}">{{ .name }}</option>{{ end }}
+          </select>
+          {{ range $hosts }}
+            {{ $guide := index $guides .key }}
+            {{ $preview := $copy.generic_preview }}
+            {{ $prompt := printf $copy.generic_prompt $guide .name }}
+            {{ if eq .key "codex" }}
+              {{ $preview = $copy.codex_preview }}
+              {{ $prompt = ($page.Site.GetPage .doc).Params.install_prompt }}
+            {{ else if eq .key "cindy" }}
+              {{ $preview = $copy.cindy_preview }}
+              {{ $prompt = printf $copy.cindy_prompt $guide }}
+            {{ end }}
+            <div class="install__panel" data-install-panel="{{ .key }}" data-copy-prompt data-copy-success="{{ $copy.copied }}" data-copy-error="{{ i18n "copy_prompt_error" }}"{{ if ne .key "codex" }} hidden{{ end }}>
+              <button type="button" class="install__preview" data-prompt-toggle aria-expanded="false" aria-controls="install-prompt-{{ .key }}">
+                <span class="install__excerpt">{{ $preview }}</span>
+                <span class="install__expand-label">{{ $copy.show_prompt }}</span><span class="install__collapse-label">{{ $copy.hide_prompt }}</span>
+              </button>
+              <span class="install__copy" data-copy-prompt-actions hidden><button type="button" class="install__action" data-copy-prompt-button aria-controls="install-prompt-{{ .key }}" data-copied-label="{{ $copy.copied }}">{{ i18n "copy_prompt" }}</button></span>
+              <p class="install__full-prompt" data-copy-prompt-text id="install-prompt-{{ .key }}" hidden>{{ $prompt }}</p>
+              <span class="install__status" role="status" data-copy-prompt-status></span>
+            </div>
+          {{ end }}
+        </div>
+        {{ range $hosts }}
+          <p class="install__hint" data-install-hint="{{ .key }}"{{ if ne .key "codex" }} hidden{{ end }}>{{ if eq .key "codex" }}{{ $copy.codex_hint }}{{ else if eq .key "cindy" }}{{ $copy.cindy_hint }}{{ else }}{{ printf $copy.generic_hint .name }}{{ end }} <a href="{{ index $guides .key }}">{{ $copy.guide }}</a></p>
+        {{ end }}
+      </div>
+    </div>
+    <div class="install__desktop">
+      <details class="install__dropdown" data-desktop-download>
+        <summary>{{ $copy.desktop }}</summary>
+        <div class="install__links">
+          <a href="{{ .Site.Params.releasesURL }}/latest/download/Lumi-macos-aarch64.dmg">macOS · Apple Silicon <small>DMG</small></a>
+          <a href="{{ .Site.Params.releasesURL }}/latest/download/Lumi-windows-x64-setup.exe">Windows · x64 <small>EXE</small></a>
+          <a href="{{ partial "relative-url.html" (dict "Page" . "URL" (.RelRef (dict "path" "/docs/installation"))) }}">{{ $copy.install_help }}</a>
+          <a href="{{ .Site.Params.releasesURL }}">{{ $copy.all_releases }}</a>
+        </div>
+      </details>
+      <p class="install__hint">{{ $copy.desktop_hint }}</p>
+    </div>
+  </div>
+  {{ with .Site.GetPage "/codex-vs-lumi/belly-slide" }}
+    <a class="install__sample" href="{{ partial "relative-url.html" (dict "Page" $page "URL" .RelPermalink) }}#book-comparison">{{ $copy.sample }} <span aria-hidden="true">→</span></a>
+  {{ end }}
+</div>

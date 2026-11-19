@@ -6,6 +6,7 @@ slug: codex-installation
 docs_group: start
 weight: 14
 keywords: [Codex, plugin, installation, prompt, macOS]
+install_prompt: Please install Lumi for Codex App. Read https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md and follow the guide for the detected agent environment (macOS, or the native Windows x64 preview). Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
 ---
 
 The Lumi picture-book plugin lets you create and export books in a Codex App chat. Writing and image generation use your Codex allowance without an extra API key. Book projects are saved locally.
@@ -22,8 +23,6 @@ A [native Windows x64 installation preview](https://github.com/lumikaka/lumi/blo
 Click “Copy prompt”, paste the full text below into a Codex App chat, and send it:
 
 {{< copy-prompt >}}
-Read https://raw.githubusercontent.com/lumikaka/lumi/refs/heads/master/docs/features/codex-plugins/install.md and detect the actual agent environment and install Lumi for Codex App (macOS, or the native Windows x64 preview). Report the actual codex executable and version, the installation result, and how to start creating in a new chat.
-{{< /copy-prompt >}}
 
 Codex will read the guide and perform the installation. Downloading files, writing the user installation directory and `~/.codex`, registering the plugin marketplace, and enabling the plugin may require approval. Follow the prompts shown in the app.
 

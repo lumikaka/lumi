@@ -92,6 +92,19 @@ assert_home_formats "${build_dir}/en/index.html" \
   "Classic picture book" "Wordless picture book" "Interactive picture book" "Comic story" "Vertical strip"
 
 for prefix in "" "en/"; do
+  home_file="${build_dir}/${prefix}index.html"
+  for target in 'data-install-host' 'codex-plugins/install.md' 'cindy-plugins/install.md' \
+    'agent-integration/README.md#claude-code' 'agent-integration/README.md#opencode' 'agent-integration/README.md#pi' \
+    'latest/download/Lumi-macos-aarch64.dmg' 'latest/download/Lumi-windows-x64-setup.exe' \
+    "${prefix}codex-vs-lumi/belly-slide/#book-comparison" "${prefix}docs/first-picture-book/"; do
+    if ! grep -Fq "$target" "$home_file"; then
+      echo "Missing home install or reading target '${target}': ${home_file}" >&2
+      exit 1
+    fi
+  done
+  for host in codex cindy claude opencode pi; do
+    grep -Fq "install-prompt-${host}" "$home_file" || { echo "Missing ${host} installation prompt: ${home_file}" >&2; exit 1; }
+  done
   comparison_file="${build_dir}/${prefix}codex-vs-lumi/belly-slide/index.html"
   strip_file="${build_dir}/${prefix}codex-vs-lumi/vertical-strip/index.html"
   grep -Fq 'codex-vs-lumi/vertical-strip/' "${comparison_file}"

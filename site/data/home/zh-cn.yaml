@@ -2,14 +2,33 @@ hero:
   eyebrow: 专注绘本创作
   title: 把一个想法，做成一本真正能翻阅的绘本
   description: Lumi 把故事、角色与场景设定、分镜、画面候选和导出放进同一个本地项目。AI 帮你向前推进，故事怎么讲、哪一版留下，始终由你决定。
-  primary: 下载 Lumi
-  secondary: 查看使用教程
-  note: 目前支持 macOS Apple Silicon 与 Windows x64 · AI 功能需要连接模型服务
   floating:
     - 故事自己定
     - 角色不跑偏
     - 过程可修改
     - 作品留在本地
+
+install:
+  choose: 选择 AI 工具
+  in_agent: 在 AI 工具中使用
+  start: 开始使用
+  show_prompt: 查看全文
+  hide_prompt: 收起全文
+  codex_preview: 请帮我安装 Lumi 绘本插件…
+  codex_hint: 复制后，粘贴到 Codex App 的对话中发送。
+  guide: 安装说明
+  copied: 已复制
+  cindy_preview: 请帮我导入本地的 Lumi 绘本插件…
+  cindy_prompt: 请阅读 %s，按指南帮我在 Cindy 导入已取得的 Lumi 本地预览包（仅 macOS Apple Silicon）；如果我没有提供本地包，请先向我索取，不要从市场安装。需要我确认时请停下来，最后告诉我实际安装状态。
+  cindy_hint: 粘贴到 Cindy 对话。需要本地预览包，尚未公开发布。
+  generic_preview: 请为当前项目接入 Lumi 绘本工具…
+  generic_prompt: 请阅读 %s，按 %s 对应的章节，帮我在当前绘本项目接入 Lumi CLI 和绘本创作 Skill；先确认本地 CLI、Skill 和项目路径，缺少时请询问我，保留已有配置，并在接入后用 project_overview 验证连接。
+  generic_hint: 粘贴到 %s 对话。需要本地 Lumi CLI 和绘本创作 Skill。
+  desktop: 下载桌面版
+  desktop_hint: macOS 或 Windows · 自备模型服务
+  install_help: 安装与校验说明
+  all_releases: 所有版本
+  sample: 先翻一本 Lumi 做的绘本
 
 process:
   eyebrow: 从灵感到成书
@@ -129,4 +148,6 @@ faq:
 
 closing:
   title: 让今晚想到的故事，真正拥有自己的画面
-  body: 下载 Lumi，从一个想法开始；或者先用十分钟看完第一本绘本教程。
+  body: 在你熟悉的 AI 工具或 Lumi 桌面版中开始，也可以先看看第一本绘本怎么做。
+  primary: 开始使用 Lumi
+  secondary: 第一本绘本教程

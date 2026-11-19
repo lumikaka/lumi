@@ -1,6 +1,5 @@
 {{ define "main" }}
 {{ $home := index hugo.Data.home .Site.Language.Lang }}
-{{ $docsURL := "docs/" | relLangURL }}
 <main id="main-content">
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero__ambient hero__ambient--one" aria-hidden="true"></div>
@@ -9,11 +8,7 @@
       <p class="eyebrow">{{ $home.hero.eyebrow }}</p>
       <h1 id="hero-title">{{ $home.hero.title }}</h1>
       <p class="hero__description">{{ $home.hero.description }}</p>
-      <div class="button-row button-row--centered">
-        <a class="button button--dark button--large" href="{{ .Site.Params.releasesURL }}">{{ $home.hero.primary }}</a>
-        <a class="button button--light button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ $home.hero.secondary }}</a>
-      </div>
-      <p class="hero__note">{{ $home.hero.note }}</p>
+      {{ partial "home-install.html" . }}
     </div>
     <div class="hero__visual">
       <span class="floating-note floating-note--story">{{ index $home.hero.floating 0 }}</span>
@@ -139,8 +134,8 @@
       <p>{{ $home.closing.body }}</p>
     </div>
     <div class="button-row">
-      <a class="button button--dark button--large" href="{{ .Site.Params.releasesURL }}">{{ $home.hero.primary }}</a>
-      <a class="button button--light button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" $docsURL) }}">{{ $home.hero.secondary }}</a>
+      <a class="button button--dark button--large" href="#get-started">{{ $home.closing.primary }}</a>
+      <a class="button button--light button--large" href="{{ partial "relative-url.html" (dict "Page" . "URL" (.RelRef (dict "path" "/docs/first-picture-book"))) }}">{{ $home.closing.secondary }}</a>
     </div>
   </section>
 </main>

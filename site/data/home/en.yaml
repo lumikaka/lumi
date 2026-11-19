@@ -2,14 +2,33 @@ hero:
   eyebrow: AI made for picture books
   title: Turn one small idea into a picture book you can truly make your own
   description: Lumi keeps your story, visual references, storyboards, image candidates, and exports inside one local project. AI helps you move forward; you still decide how the story is told and which version stays.
-  primary: Download Lumi
-  secondary: Read the guides
-  note: Available for Apple Silicon Macs and Windows x64 · AI features require a model provider
   floating:
     - Your story, your call
     - Characters stay consistent
     - Every step stays editable
     - Your work stays local
+
+install:
+  choose: Choose your AI tool
+  in_agent: Use in an AI tool
+  start: Get started
+  show_prompt: View full prompt
+  hide_prompt: Hide full prompt
+  codex_preview: Please install Lumi for Codex App…
+  codex_hint: Paste the prompt into a Codex App chat and send it.
+  guide: Setup guide
+  copied: Copied
+  cindy_preview: Help me import my local Lumi plugin…
+  cindy_prompt: Read %s and help me import my local Lumi preview package in Cindy on an Apple Silicon Mac. If I have not provided the package, ask me for it instead of installing from a marketplace. Pause for my confirmation when required and report the actual installation status.
+  cindy_hint: Paste into Cindy. A local preview package is required; there is no public release yet.
+  generic_preview: Connect Lumi to this picture-book project…
+  generic_prompt: Read %s and follow the %s section to connect the Lumi CLI and picture-book skill to my current book project. Confirm the local CLI, skill and project paths, ask me for anything missing, preserve existing settings, and verify the connection with project_overview.
+  generic_hint: Paste into %s. The local Lumi CLI and picture-book skill are required.
+  desktop: Download desktop app
+  desktop_hint: macOS or Windows · Bring your own model provider
+  install_help: Installation & checksums
+  all_releases: All releases
+  sample: Read a picture book made with Lumi
 
 process:
   eyebrow: From spark to storybook
@@ -129,4 +148,6 @@ faq:
 
 closing:
   title: Give tonight’s story a world of its own
-  body: Download Lumi and begin with one idea—or take ten minutes to follow the first-picture-book guide.
+  body: Start in your AI tool or the Lumi desktop app, or see how to make your first picture book.
+  primary: Get started with Lumi
+  secondary: First picture book guide
